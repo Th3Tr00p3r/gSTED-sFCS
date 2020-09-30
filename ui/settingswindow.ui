@@ -103,7 +103,7 @@
          </font>
         </property>
         <property name="currentIndex">
-         <number>4</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="paths">
          <attribute name="title">
@@ -132,7 +132,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="text">
-                 <string/>
+                 <string>D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS</string>
                 </property>
                </widget>
               </item>
@@ -153,7 +153,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="text">
-                 <string/>
+                 <string>D:\Lab\sFCS-gSTED data\solution measurement data</string>
                 </property>
                </widget>
               </item>
@@ -174,7 +174,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="text">
-                 <string/>
+                 <string>D:\Lab\sFCS-gSTED data\image measurement data</string>
                 </property>
                </widget>
               </item>
@@ -193,7 +193,7 @@
                    <bool>true</bool>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string>D:\Lab\sFCS-gSTED data\camera photos</string>
                   </property>
                  </widget>
                 </item>

@@ -1,3 +1,4 @@
+um232DeviceDescription,
 counterPixelClockChannel,Dev1/Ctr0
 counterPixelClockOutputChannel,/Dev3/Ctr0InternalOutput
 counterTriggerChannel,Dev3/port1/line0
@@ -28,11 +29,14 @@ excChan,Dev3/port0/line21
 depMod,MPB
 depPort,COM7
 depShutterChan,Dev3/port0/line11
-mainProgPath,
-solDataPath,
-imgDataPath,
-camDataPath,
-um232DeviceDescription,
+mainProgPath,D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS
+solDataPath,D:\Lab\sFCS-gSTED data\solution measurement data
+imgDataPath,D:\Lab\sFCS-gSTED data\image measurement data
+camDataPath,D:\Lab\sFCS-gSTED data\camera photos
+um232DevIdxSpinner,0
+um232latencyTimerValSpinner,2
+um232InTransferRateSpinner,256000
+um232ReadTimeoutSpinner,10
 counterBufferSizeSpinner,2000
 TDClaserFreqSpinner,10
 TDCFPGAFreqSpinner,400
@@ -43,8 +47,4 @@ pixelClockHighTicksSpinner,2
 pixelClockFreqSpinner,4000
 AIclkDivSpinner,100
 depUpdateTimeSpinner,10
-um232DevIdxSpinner,0
-um232latencyTimerValSpinner,2
-um232InTransferRateSpinner,256000
-um232ReadTimeoutSpinner,10
 counterUpdateTimeSpinner,0.0
