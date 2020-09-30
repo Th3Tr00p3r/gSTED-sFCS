@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Project SYSTEM "Project-5.1.dtd">
+<!-- eric project file for project gSTEDsFCS -->
+<!-- Saved: 2020-09-29, 03:10:39 -->
+<!-- Copyright (C) 2020 idomic,  -->
+<Project version="5.1">
+  <Language>en_US</Language>
+  <Hash>c44c4f29a6e008d4372597d4bc4266d897948644</Hash>
+  <ProgLanguage mixed="0">Python3</ProgLanguage>
+  <ProjectType>PyQt5</ProjectType>
+  <Version>0.1</Version>
+  <Author>idomic</Author>
+  <Email></Email>
+  <Eol index="0"/>
+  <Sources>
+    <Source>__init__.py</Source>
+    <Source>gSTEDsFCS.py</Source>
+    <Source>icons_rc.py</Source>
+    <Source>ui/Ui_cameraswindow.py</Source>
+    <Source>ui/Ui_mainwindow.py</Source>
+    <Source>ui/Ui_settingswindow.py</Source>
+    <Source>ui/mainwindow.py</Source>
+    <Source>ui/settingswindow.py</Source>
+  </Sources>
+  <Forms>
+    <Form>ui/cameraswindow.ui</Form>
+    <Form>ui/mainwindow.ui</Form>
+    <Form>ui/settingswindow.ui</Form>
+  </Forms>
+  <Resources>
+    <Resource>icons.qrc</Resource>
+  </Resources>
+  <MainScript>gSTEDsFCS.py</MainScript>
+  <Vcs>
+    <VcsType>None</VcsType>
+  </Vcs>
+  <FiletypeAssociations>
+    <FiletypeAssociation pattern="*.e4p" type="OTHERS"/>
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES"/>
+    <FiletypeAssociation pattern="*.md" type="OTHERS"/>
+    <FiletypeAssociation pattern="*.proto" type="PROTOCOLS"/>
+    <FiletypeAssociation pattern="*.py" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.py3" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.pyw" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.pyw3" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.qm" type="TRANSLATIONS"/>
+    <FiletypeAssociation pattern="*.qrc" type="RESOURCES"/>
+    <FiletypeAssociation pattern="*.rst" type="OTHERS"/>
+    <FiletypeAssociation pattern="*.ts" type="TRANSLATIONS"/>
+    <FiletypeAssociation pattern="*.txt" type="OTHERS"/>
+    <FiletypeAssociation pattern="*.ui" type="FORMS"/>
+    <FiletypeAssociation pattern="GNUmakefile" type="OTHERS"/>
+    <FiletypeAssociation pattern="Makefile" type="OTHERS"/>
+    <FiletypeAssociation pattern="README" type="OTHERS"/>
+    <FiletypeAssociation pattern="README.*" type="OTHERS"/>
+    <FiletypeAssociation pattern="makefile" type="OTHERS"/>
+  </FiletypeAssociations>
+</Project>

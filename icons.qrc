@@ -1,0 +1,23 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+<qresource>
+    <file>icons/actions/system-search.png</file>
+    <file>icons/actions/view-refresh.png</file>
+    <file>icons/actions/system-log-out.png</file>
+    <file>icons/actions/document-open.png</file>
+    <file>icons/actions/document-save-as.png</file>
+    <file>icons/emblems/emblem-system.png</file>
+    <file>icons/status/dialog-warning.png</file>
+    <file>icons/status/software-update-urgent.png</file>
+    <file>icons/categories/preferences-system.png</file>
+    <file>icons/devices/camera-photo.png</file>
+    <file>icons/devices/input-gaming.png</file>
+    <file>icons/myIcons/laser.png</file>
+    <file>icons/myIcons/led_off.png</file>
+    <file>icons/myIcons/led_red.png</file>
+    <file>icons/myIcons/led_blue.png</file>
+    <file>icons/myIcons/led_green.png</file>
+    <file>icons/myIcons/led_orange.png</file>
+    <file>icons/myIcons/crosshair.png</file>
+</qresource>
+</RCC>
