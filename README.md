@@ -6,7 +6,7 @@ GUI for controlling our optical measurement system.
 
 #### <u>GUI</u>
 
-1. .ui files are created graphically via ''Qt Designer', then are compiled into .py files ()e.g. mainwindow.ui ----> Ui__mainwindow.py) which are just the translation of the graphical layout into PyQt5 code.
+1. .ui files are created graphically via ''Qt Designer', then are compiled into .py files (e.g. mainwindow.ui ----> Ui__mainwindow.py) which are just the translation of the graphical layout into PyQt5 code.
 
 2. These files are then imported into the mainwindow.py module, where the signals/slots (similar to callbacks) are coded as methods for the classes that are named after the windows (MainWindow, SettingsWindow, etc.).
 
