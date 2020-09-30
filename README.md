@@ -2,7 +2,7 @@
 
 GUI for controlling our optical measurement system.
 
-## How This project works:
+## How this project works:
 
 #### <u>GUI</u>
 
@@ -13,6 +13,8 @@ GUI for controlling our optical measurement system.
 3. Finally, when running the project (gSTEDsFCS.py), a MainWindow() object is instantiated and the window is shown on screen.
 
 #### <u>Physical Device Control</u>
+
+- 
 
 ## What's here:
 
