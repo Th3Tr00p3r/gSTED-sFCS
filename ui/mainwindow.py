@@ -7,7 +7,7 @@ import csv
 import pandas as pd
 
 from PyQt5.QtCore import pyqtSlot,  QTimer, QDir
-from PyQt5.QtWidgets import QWidget, QMainWindow, QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox
+from PyQt5.QtWidgets import QWidget, QMainWindow, QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QMessageBox
 from PyQt5.QtGui import QIcon
 
 from .Ui_mainwindow import Ui_MainWindow
@@ -23,9 +23,25 @@ class SettingsWindow(QMainWindow, Ui_Settings):
         super(SettingsWindow,  self).__init__(parent)
         self.setupUi(self)
         self.setWindowTitle('Settings')
-    
-    def writeCsv(self):
-        filepath, _ = QFileDialog.getSaveFileName(self, 'Save Settings', QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
+        
+        # load default settings
+        try:
+            def_filepath = QDir.currentPath() + '/settings/default.csv'
+            self.read_csv(def_filepath)
+        except FileNotFoundError:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            #msg.setText('Error: File Not Found')
+            msg.setText('Default settings file "default.csv"'
+                                'not found in:\n\n' +
+                                def_filepath +
+                                '.\n\nUsing standard settings.\n'
+                                'To avoid this error, please save some settings as "default.csv".')
+            msg.setWindowTitle('Error: File Not Found')
+            msg.exec_()
+            #error_dialog.showMessage('Defualt settings filed not found in')#'\n' + def_filepath)
+
+    def write_csv(self, filepath):
         if filepath:
             self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
             with open(filepath, 'w') as stream:
@@ -36,21 +52,20 @@ class SettingsWindow(QMainWindow, Ui_Settings):
                 l1 = self.frame.findChildren(QLineEdit)
                 l2 = self.frame.findChildren(QSpinBox)
                 l3 = self.frame.findChildren(QDoubleSpinBox)
-                fieldNames = [w.objectName() for w in (l1 + l2 + l3) if (not w.objectName() == 'qt_spinbox_lineedit') and (not w.objectName() == 'settingsFileName')]
+                field_names = [w.objectName() for w in (l1 + l2 + l3) if (not w.objectName() == 'qt_spinbox_lineedit') and (not w.objectName() == 'settingsFileName')]
                 #print(fieldNames)
-                for i in range(len(fieldNames)):
-                    widget = self.frame.findChild(QWidget, fieldNames[i])
+                for i in range(len(field_names)):
+                    widget = self.frame.findChild(QWidget, field_names[i])
                     if hasattr(widget, 'value'): # spinner
-                        rowdata = [fieldNames[i],  self.frame.findChild(QWidget, fieldNames[i]).value()]
+                        rowdata = [field_names[i],  self.frame.findChild(QWidget, field_names[i]).value()]
                     else: # line edit
-                        rowdata = [fieldNames[i],  self.frame.findChild(QWidget, fieldNames[i]).text()]
+                        rowdata = [field_names[i],  self.frame.findChild(QWidget, field_names[i]).text()]
                     writer.writerow(rowdata)
                     
-    def readCsv(self):
-        filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
+    def read_csv(self, filepath):
         if filepath:
-            self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
             df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
+            self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
             for i in range(len(df)):
                 widget = self.frame.findChild(QWidget, df.iloc[i, 0])
                 if not widget == 'nullptr':
@@ -65,7 +80,8 @@ class SettingsWindow(QMainWindow, Ui_Settings):
         Slot documentation goes here.
         """
         # TODO:
-        self.writeCsv()
+        filepath, _ = QFileDialog.getSaveFileName(self, 'Save Settings', QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
+        self.write_csv(filepath)
         
     @pyqtSlot()
     def on_loadButton_released(self):
@@ -73,7 +89,8 @@ class SettingsWindow(QMainWindow, Ui_Settings):
         Slot documentation goes here.
         """
         # TODO:
-        self.readCsv()
+        filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
+        self.read_csv(filepath)
 
 class CamerasWindow(QMainWindow, Ui_Cameras):
     """
@@ -126,20 +143,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         @param parent reference to the parent widget
         @type QWidget
         """
+        # TODO: add "save preferences as default" - similar to settings window - and load it on startup.
+        # general window settings
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
         self.setWindowTitle('gSTED-sFCS Measurement Program')
-
+        
+        # set up main timeout event
         self.timer = QTimer()
         self.timer.timeout.connect(self.timeout)
         self.timer.start(10)
         
+        # define additinal windows
         self.settings = SettingsWindow()
         self.cameras = CamerasWindow()
         
+        # intialize buttons
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
-        self.actionCamera_Control.setChecked(False)
 
     def timeout(self):
         if self.depTemp.value() < 52:
@@ -258,12 +279,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot(int)
     def on_solScanTypeCombox_currentIndexChanged(self, index):
         """
-        Slot documentation goes here.
+        Change stacked widget 'solScanParamsStacked' index according to index of the combo box 'solScanTypeCombox'.
         
-        @param index DESCRIPTION
+        @param index - the index of the combo box 'solScanTypeCombox'
         @type int
         """
-        # TODO: not implemented yet
         self.solScanParamsStacked.setCurrentIndex(index)
     
     @pyqtSlot()
