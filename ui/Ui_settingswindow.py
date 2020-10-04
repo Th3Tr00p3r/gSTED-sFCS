@@ -1009,7 +1009,7 @@ class Ui_Settings(object):
         self.gridLayout.addWidget(self.label_10, 0, 0, 1, 1)
 
         self.retranslateUi(Settings)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(4)
         self.stackedWidget.setCurrentIndex(1)
         self.um232FlowControlCombox.setCurrentIndex(1)
         self.um232BitModeCombox.setCurrentIndex(7)

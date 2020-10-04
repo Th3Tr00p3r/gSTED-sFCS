@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS\ui\cameraswindow.ui'
+# Form implementation generated from reading ui file 'D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS\ui\camerawindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.0
 #
