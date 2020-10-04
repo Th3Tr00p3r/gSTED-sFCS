@@ -15,14 +15,14 @@ import random
 from PyQt5.QtCore import pyqtSlot,  QTimer, QDir
 from PyQt5.QtWidgets import (QWidget, QMainWindow, QFileDialog,
                                               QLineEdit, QSpinBox, QDoubleSpinBox,
-                                              QMessageBox, QPushButton)
+                                              QMessageBox, QDialog)
 from PyQt5.QtGui import QIcon
 
 from .Ui_mainwindow import Ui_MainWindow
 from .Ui_settingswindow import Ui_Settings
 from .Ui_camerawindow import Ui_Camera
 
-class SettingsWindow(QMainWindow, Ui_Settings):
+class SettingsWindow(QDialog, Ui_Settings):
     """
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
@@ -34,17 +34,17 @@ class SettingsWindow(QMainWindow, Ui_Settings):
         
         # load default settings
         try:
-            def_filepath = QDir.currentPath() + '/settings/default.csv'
+            def_filepath = QDir.currentPath() + '/settings/default_settings.csv'
             self.read_csv(def_filepath)
         except FileNotFoundError:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             #msg.setText('Error: File Not Found')
-            msg.setText('Default settings file "default.csv"'
+            msg.setText('Default settings file "default_settings.csv"'
                                 'not found in:\n\n' +
                                 def_filepath +
                                 '.\n\nUsing standard settings.\n'
-                                'To avoid this error, please save some settings as "default.csv".')
+                                'To avoid this error, please save some settings as "default_settings.csv".')
             msg.setWindowTitle('Error: File Not Found')
             msg.exec_()
             #error_dialog.showMessage('Defualt settings filed not found in')#'\n' + def_filepath)
@@ -100,17 +100,30 @@ class SettingsWindow(QMainWindow, Ui_Settings):
         filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
         self.read_csv(filepath)
 
-class CameraWindow(QMainWindow, Ui_Camera):
+class CameraWindow(QDialog, Ui_Camera):
     """
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
     """
-    
-    def plot(self):
-        ''' plot some random stuff '''
-        # random data
-        data = [random.random() for i in range(10)]
+        
+    def __init__(self,  parent=None):
+        super(CameraWindow,  self).__init__(parent)
+        self.setupUi(self)
+        self.setWindowTitle('Cameras')
+        
+        # add matplotlib-ready widget (canvas) for showing camera output
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.gridLayout.addWidget(self.canvas, 0, 1)
+        
+        # initialize camera
+        self.cam = UC480_Camera() # instantiate camera object
+        self.cam.open() # connect to first available camera
 
+    def imshow(self, img):
+        '''
+        Plot image
+        '''
         # instead of ax.hold(False)
         self.figure.clear()
 
@@ -121,19 +134,14 @@ class CameraWindow(QMainWindow, Ui_Camera):
         # ax.hold(False) # deprecated, see above
 
         # plot data
-        ax.plot(data, '*-')
+        ax.imshow(img)
 
         # refresh canvas
         self.canvas.draw()
-        
-    def __init__(self,  parent=None):
-        super(CameraWindow,  self).__init__(parent)
-        self.setupUi(self)
-        self.setWindowTitle('Cameras')
-        self.figure = plt.figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.gridLayout.addWidget(self.canvas, 0, 1)
-        self.plot()
+    
+    def video_timeout(self):
+        img = self.cam.get_captured_image()
+        self.imshow(self.cam.get_captured_image())
 
     @pyqtSlot()
     def on_shootButton_released(self):
@@ -141,24 +149,11 @@ class CameraWindow(QMainWindow, Ui_Camera):
         Slot documentation goes here.
         """
         # TODO:
-        # create instance and connect to library
-        print('instantiating camera object')
-        cam = UC480_Camera()
-        
-        # connect to first available camera
-        print('connecting to camera')
-        cam.open()
-        
         # take a single image
         print('acquiring photo')
-        img = cam.grab_image()
-
-        # clean up
-        print('disconnecting camera')
-        cam.close()
-        
-        plt.imshow(img)
-        plt.show()
+        img = self.cam.grab_image()
+        self.imshow(img)
+#        plt.show()
 
     @pyqtSlot()
     def on_videoButton_released(self):
@@ -170,6 +165,10 @@ class CameraWindow(QMainWindow, Ui_Camera):
         if self.videoButton.text() == 'Start Video':
             self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
             self.videoButton.setText('Video ON')
+            self.cam.start_live_video()
+            self.video_timer = QTimer()
+            self.video_timer.timeout.connect(self.imshow(self.cam.get_captured_image(timeout='1s')))
+            self.video_timer.start(3000)
         #Turn Off
         else:
             self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
@@ -199,11 +198,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         # define additinal windows
         self.settings = SettingsWindow()
-        self.cameras = CameraWindow()
+        self.camera = CameraWindow()
         
         # intialize buttons
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
+        
+    def closeEvent(self, event):
+        # clean up
+        if hasattr(self, 'camera'):
+            self.camera.cam.close()
 
     def timeout(self):
         if self.depTemp.value() < 52:
@@ -375,8 +379,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         @type bool
         """
         # TODO:
-        self.cameras.show()
-        self.cameras.activateWindow()
+        self.camera.show()
+        self.camera.activateWindow()
         
     @pyqtSlot()
     def on_ledExc_clicked(self):
