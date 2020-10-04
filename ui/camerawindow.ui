@@ -29,7 +29,7 @@
    <iconset resource="../icons.qrc">
     <normaloff>:/icons/devices/camera-photo.png</normaloff>:/icons/devices/camera-photo.png</iconset>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
     <widget class="QFrame" name="frame">
      <property name="sizePolicy">
@@ -46,7 +46,7 @@
      </property>
      <layout class="QGridLayout" name="gridLayout_34">
       <item row="0" column="0">
-       <layout class="QGridLayout" name="gridLayout_2" rowstretch="1,0" columnstretch="0,1">
+       <layout class="QGridLayout" name="gridLayout" rowstretch="1,0" columnstretch="0,1">
         <item row="0" column="0">
          <layout class="QVBoxLayout" name="verticalLayout_5">
           <item>
@@ -59,6 +59,15 @@
             </property>
             <property name="text">
              <string>Take Photo</string>
+            </property>
+            <property name="autoDefault">
+             <bool>false</bool>
+            </property>
+            <property name="default">
+             <bool>false</bool>
+            </property>
+            <property name="flat">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
