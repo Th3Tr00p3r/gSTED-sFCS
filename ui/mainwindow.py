@@ -6,13 +6,21 @@ Module implementing MainWindow.
 import csv
 import pandas as pd
 
+# for cameras (to be moved to seperate module for camera class
+from instrumental.drivers.cameras.uc480 import UC480_Camera
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import random
+
 from PyQt5.QtCore import pyqtSlot,  QTimer, QDir
-from PyQt5.QtWidgets import QWidget, QMainWindow, QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QMessageBox
+from PyQt5.QtWidgets import (QWidget, QMainWindow, QFileDialog,
+                                              QLineEdit, QSpinBox, QDoubleSpinBox,
+                                              QMessageBox, QPushButton)
 from PyQt5.QtGui import QIcon
 
 from .Ui_mainwindow import Ui_MainWindow
 from .Ui_settingswindow import Ui_Settings
-from .Ui_cameraswindow import Ui_Cameras
+from .Ui_camerawindow import Ui_Camera
 
 class SettingsWindow(QMainWindow, Ui_Settings):
     """
@@ -92,45 +100,80 @@ class SettingsWindow(QMainWindow, Ui_Settings):
         filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
         self.read_csv(filepath)
 
-class CamerasWindow(QMainWindow, Ui_Cameras):
+class CameraWindow(QMainWindow, Ui_Camera):
     """
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
     """
+    
+    def plot(self):
+        ''' plot some random stuff '''
+        # random data
+        data = [random.random() for i in range(10)]
+
+        # instead of ax.hold(False)
+        self.figure.clear()
+
+        # create an axis
+        ax = self.figure.add_subplot(111)
+
+        # discards the old graph
+        # ax.hold(False) # deprecated, see above
+
+        # plot data
+        ax.plot(data, '*-')
+
+        # refresh canvas
+        self.canvas.draw()
+        
     def __init__(self,  parent=None):
-        super(CamerasWindow,  self).__init__(parent)
+        super(CameraWindow,  self).__init__(parent)
         self.setupUi(self)
         self.setWindowTitle('Cameras')
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.gridLayout.addWidget(self.canvas, 0, 1)
+        self.plot()
+
+    @pyqtSlot()
+    def on_shootButton_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # TODO:
+        # create instance and connect to library
+        print('instantiating camera object')
+        cam = UC480_Camera()
         
+        # connect to first available camera
+        print('connecting to camera')
+        cam.open()
+        
+        # take a single image
+        print('acquiring photo')
+        img = cam.grab_image()
+
+        # clean up
+        print('disconnecting camera')
+        cam.close()
+        
+        plt.imshow(img)
+        plt.show()
+
     @pyqtSlot()
-    def on_cam1VideoModeOn_released(self):
+    def on_videoButton_released(self):
         """
         Slot documentation goes here.
         """
         # TODO:
         #Turn On
-        if self.cam1VideoModeOn.text() == 'Start Video':
-            self.cam1VideoModeOn.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
-            self.cam1VideoModeOn.setText('Video ON')
+        if self.videoButton.text() == 'Start Video':
+            self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
+            self.videoButton.setText('Video ON')
         #Turn Off
         else:
-            self.cam1VideoModeOn.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-            self.cam1VideoModeOn.setText('Start Video')
-    
-    @pyqtSlot()
-    def on_cam2VideoModeOn_released(self):
-        """
-        Slot documentation goes here.
-        """
-        # TODO:
-        #Turn On
-        if self.cam2VideoModeOn.text() == 'Start Video':
-            self.cam2VideoModeOn.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
-            self.cam2VideoModeOn.setText('Video ON')
-        #Turn Off
-        else:
-            self.cam2VideoModeOn.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-            self.cam2VideoModeOn.setText('Start Video')
+            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.videoButton.setText('Start Video')
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     """
@@ -156,7 +199,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         # define additinal windows
         self.settings = SettingsWindow()
-        self.cameras = CamerasWindow()
+        self.cameras = CameraWindow()
         
         # intialize buttons
         self.actionLaser_Control.setChecked(True)
