@@ -6,11 +6,12 @@ Module implementing MainWindow.
 import csv
 import pandas as pd
 
+import drivers
+import implementation.implementation as imp
+
 # for cameras (to be moved to seperate module for camera class
-from instrumental.drivers.cameras.uc480 import UC480_Camera
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import random
 
 from PyQt5.QtCore import pyqtSlot,  QTimer, QDir
 from PyQt5.QtWidgets import (QWidget, QMainWindow, QFileDialog,
@@ -37,68 +38,33 @@ class SettingsWindow(QDialog, Ui_Settings):
             def_filepath = QDir.currentPath() + '/settings/default_settings.csv'
             self.read_csv(def_filepath)
         except FileNotFoundError:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            #msg.setText('Error: File Not Found')
-            msg.setText('Default settings file "default_settings.csv"'
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.setText('Default settings file "default_settings.csv"'
                                 'not found in:\n\n' +
                                 def_filepath +
                                 '.\n\nUsing standard settings.\n'
                                 'To avoid this error, please save some settings as "default_settings.csv".')
-            msg.setWindowTitle('Error: File Not Found')
-            msg.exec_()
-            #error_dialog.showMessage('Defualt settings filed not found in')#'\n' + def_filepath)
-
-    def write_csv(self, filepath):
-        if filepath:
-            self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
-            with open(filepath, 'w') as stream:
-                print("saving", filepath)
-                writer = csv.writer(stream)
-                
-                # get all names of fields in settings window (for file saving/loading)
-                l1 = self.frame.findChildren(QLineEdit)
-                l2 = self.frame.findChildren(QSpinBox)
-                l3 = self.frame.findChildren(QDoubleSpinBox)
-                field_names = [w.objectName() for w in (l1 + l2 + l3) if (not w.objectName() == 'qt_spinbox_lineedit') and (not w.objectName() == 'settingsFileName')]
-                #print(fieldNames)
-                for i in range(len(field_names)):
-                    widget = self.frame.findChild(QWidget, field_names[i])
-                    if hasattr(widget, 'value'): # spinner
-                        rowdata = [field_names[i],  self.frame.findChild(QWidget, field_names[i]).value()]
-                    else: # line edit
-                        rowdata = [field_names[i],  self.frame.findChild(QWidget, field_names[i]).text()]
-                    writer.writerow(rowdata)
-                    
-    def read_csv(self, filepath):
-        if filepath:
-            df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
-            self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
-            for i in range(len(df)):
-                widget = self.frame.findChild(QWidget, df.iloc[i, 0])
-                if not widget == 'nullptr':
-                    if hasattr(widget, 'value'): # spinner
-                        widget.setValue(float(df.iloc[i, 1]))
-                    else: # line edit
-                        widget.setText(df.iloc[i, 1])
+            msgBox.setWindowTitle('Error: File Not Found')
+            msgBox.exec_()
 
     @pyqtSlot()
     def on_saveButton_released(self):
         """
-        Slot documentation goes here.
+        Save settings as .csv
         """
-        # TODO:
+        # TODO: add all forms in main window too
         filepath, _ = QFileDialog.getSaveFileName(self, 'Save Settings', QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
-        self.write_csv(filepath)
+        imp.Qt2csv.write_csv(self, filepath)
         
     @pyqtSlot()
     def on_loadButton_released(self):
         """
-        Slot documentation goes here.
+        load settings .csv file
         """
-        # TODO:
+        # TODO: add all forms in main window too
         filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
-        self.read_csv(filepath)
+        imp.Qt2csv.read_csv(self, filepath)
 
 class CameraWindow(QDialog, Ui_Camera):
     """
@@ -109,7 +75,7 @@ class CameraWindow(QDialog, Ui_Camera):
     def __init__(self,  parent=None):
         super(CameraWindow,  self).__init__(parent)
         self.setupUi(self)
-        self.setWindowTitle('Cameras')
+        self.setWindowTitle('Camera')
         
         # add matplotlib-ready widget (canvas) for showing camera output
         self.figure = plt.figure()
@@ -117,8 +83,20 @@ class CameraWindow(QDialog, Ui_Camera):
         self.gridLayout.addWidget(self.canvas, 0, 1)
         
         # initialize camera
-        self.cam = UC480_Camera() # instantiate camera object
+        self.cam = drivers.Camera() # instantiate camera object
         self.cam.open() # connect to first available camera
+    
+    def reject(self):
+        '''
+        On pressing the 'X' button (closing the dialog, but really only hiding it)
+        '''
+        # clean up
+        if hasattr(self, 'video_timer'):
+            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.videoButton.setText('Start Video')
+            self.cam.stop_live_video()
+            self.video_timer.stop()
+        self.hide()
 
     def imshow(self, img):
         '''
@@ -129,9 +107,6 @@ class CameraWindow(QDialog, Ui_Camera):
 
         # create an axis
         ax = self.figure.add_subplot(111)
-
-        # discards the old graph
-        # ax.hold(False) # deprecated, see above
 
         # plot data
         ax.imshow(img)
@@ -148,12 +123,9 @@ class CameraWindow(QDialog, Ui_Camera):
         """
         Slot documentation goes here.
         """
-        # TODO:
         # take a single image
-        print('acquiring photo')
         img = self.cam.grab_image()
         self.imshow(img)
-#        plt.show()
 
     @pyqtSlot()
     def on_videoButton_released(self):
@@ -168,7 +140,7 @@ class CameraWindow(QDialog, Ui_Camera):
             self.cam.start_live_video()
             self.video_timer = QTimer()
             self.video_timer.timeout.connect(self.video_timeout)
-            self.video_timer.start(500)
+            self.video_timer.start(50) # video refresh period (ms)
         #Turn Off
         else:
             self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
@@ -187,7 +159,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         @param parent reference to the parent widget
         @type QWidget
         """
-        # TODO: add "save preferences as default" - similar to settings window - and load it on startup.
         # general window settings
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
@@ -199,8 +170,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.timer.start(10)
         
         # define additinal windows
-        self.settings = SettingsWindow()
-        self.camera = CameraWindow()
+        self.settings_win = SettingsWindow()
+        self.camera_win = CameraWindow()
         
         # intialize buttons
         self.actionLaser_Control.setChecked(True)
@@ -209,7 +180,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         # clean up
         if hasattr(self, 'camera'):
-            self.camera.cam.close()
+            self.camera_win.cam.close()
 
     def timeout(self):
         if self.depTemp.value() < 52:
@@ -341,8 +312,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Slot documentation goes here.
         """
         # TODO:
-        self.settings.show()
-        self.settings.activateWindow()
+        self.settings_win.show()
+        self.settings_win.activateWindow()
     
     @pyqtSlot(bool)
     def on_actionLaser_Control_toggled(self, p0):
@@ -381,8 +352,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         @type bool
         """
         # TODO:
-        self.camera.show()
-        self.camera.activateWindow()
+        self.camera_win.show()
+        self.camera_win.activateWindow()
         
     @pyqtSlot()
     def on_ledExc_clicked(self):
