@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-10-05, 02:07:15 -->
+<!-- Saved: 2020-10-06, 00:25:04 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -14,8 +14,11 @@
   <Eol index="0"/>
   <Sources>
     <Source>__init__.py</Source>
+    <Source>drivers/__init__.py</Source>
     <Source>gSTEDsFCS.py</Source>
     <Source>icons_rc.py</Source>
+    <Source>implementation/__init__.py</Source>
+    <Source>implementation/implementation.py</Source>
     <Source>ui/Ui_camerawindow.py</Source>
     <Source>ui/Ui_mainwindow.py</Source>
     <Source>ui/Ui_settingswindow.py</Source>
