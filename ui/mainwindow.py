@@ -1,10 +1,6 @@
-# -*- coding: utf-8 -*-
-
 """
-Module implementing MainWindow.
+GUI Module.
 """
-import csv
-import pandas as pd
 
 import drivers
 import implementation.implementation as imp
@@ -14,9 +10,7 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from PyQt5.QtCore import pyqtSlot,  QTimer, QDir
-from PyQt5.QtWidgets import (QWidget, QMainWindow, QFileDialog,
-                                              QLineEdit, QSpinBox, QDoubleSpinBox,
-                                              QMessageBox, QDialog)
+from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QMessageBox, QDialog)
 from PyQt5.QtGui import QIcon
 
 from .Ui_mainwindow import Ui_MainWindow
@@ -36,7 +30,7 @@ class SettingsWindow(QDialog, Ui_Settings):
         # load default settings
         try:
             def_filepath = QDir.currentPath() + '/settings/default_settings.csv'
-            self.read_csv(def_filepath)
+            imp.Qt2csv.read_csv(self, def_filepath)
         except FileNotFoundError:
             msgBox = QMessageBox()
             msgBox.setIcon(QMessageBox.Critical)
@@ -191,30 +185,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_startFcsMeasurementButton_released(self):
         """
-        Slot documentation goes here.
+        Begin FCS Measurement.
         """
         # TODO: 
-        if self.startFcsMeasurementButton.isChecked():
+        if self.startFcsMeasurementButton.text() == 'Start \nMeasurement':
+            self.measurement = imp.Measurement('FCS',  self.measFCSDurationSpinBox.value(), self.FCSprogressBar)
+            self.measurement.start()
             self.startFcsMeasurementButton.setText('Stop \nMeasurement')
-            on_state = 1
-        else:
-            self.startFcsMeasurementButton.setText('Start \nMeasurement')
-            on_state = 0
-
-        if on_state:
-            self.FCStimer = QTimer()
-            self.FCStimer.timeout.connect(self.FCSmeasTimer)
-            self.FCStimer.start(1000)
         else: # off state
-            self.FCStimer.stop()
-            self.FCSprogressBar.setValue(0)
+            self.measurement.stop()
+            self.startFcsMeasurementButton.setText('Start \nMeasurement')
 
-    def FCSmeasTimer(self):
-        prog = self.FCSprogressBar.value() + (100 / self.measTimeSpinBox.value())
-        if prog > 100:
-            prog = 100 / self.measTimeSpinBox.value() 
-        self.FCSprogressBar.setValue(prog)            
-    
     @pyqtSlot()
     def on_excOnButton_released(self):
         """
@@ -223,12 +204,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # TODO: 
         # turning on
         if self.excOnButton.text() == 'Laser \nOFF':
-            #self.excOnButton.setStyleSheet("background-color: rgb(105, 105, 255); color: white;")
+            self.excOnButton.setStyleSheet("background-color: rgb(105, 105, 255); color: white;")
             self.excOnButton.setText('Laser \nON')
             self.ledExc.setIcon(QIcon('./icons/myIcons/led_blue.png')) 
         # turning off
         else:
-            #self.excOnButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.excOnButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.excOnButton.setText('Laser \nOFF')
             self.ledExc.setIcon(QIcon('./icons/myIcons/led_off.png')) 
 
@@ -239,11 +220,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         # TODO: 
         if self.depEmissionOn.text() == 'Laser \nOFF':
-            #self.depEmissionOn.setStyleSheet("background-color: rgb(255, 222, 155); color: black;")
+            self.depEmissionOn.setStyleSheet("background-color: rgb(255, 222, 155); color: black;")
             self.depEmissionOn.setText('Laser \nON')
             self.ledDep.setIcon(QIcon('./icons/myIcons/led_orange.png')) 
         else:
-            #self.depEmissionOn.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.depEmissionOn.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.depEmissionOn.setText('Laser \nOFF')
             self.ledDep.setIcon(QIcon('./icons/myIcons/led_off.png')) 
     
@@ -254,11 +235,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         # TODO: 
         if self.depShutterOn.text() == 'Shutter \nClosed':
-            #self.depShutterOn.setStyleSheet("background-color: rgb(255, 222, 155); color: black;")
+            self.depShutterOn.setStyleSheet("background-color: rgb(255, 222, 155); color: black;")
             self.depShutterOn.setText('Shutter \nOpen')
             self.ledShutter.setIcon(QIcon('./icons/myIcons/led_green.png')) 
         else:
-            #self.depShutterOn.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.depShutterOn.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.depShutterOn.setText('Shutter \nClosed')
             self.ledShutter.setIcon(QIcon('./icons/myIcons/led_off.png')) 
 

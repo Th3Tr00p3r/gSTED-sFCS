@@ -38,7 +38,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -4245,7 +4245,7 @@ Pattern</string>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QSpinBox" name="measTimeSpinBox">
+                  <widget class="QSpinBox" name="measFCSDurationSpinBox">
                    <property name="minimumSize">
                     <size>
                      <width>30</width>
@@ -4351,7 +4351,7 @@ Measurement</string>
                      <item>
                       <widget class="QLabel" name="label_2">
                        <property name="sizePolicy">
-                        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
@@ -4435,6 +4435,12 @@ Measurement</string>
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>106</width>
+                         <height>0</height>
+                        </size>
                        </property>
                        <property name="maximumSize">
                         <size>
@@ -7346,7 +7352,7 @@ Closed</string>
   <tabstop>solScanFileSize</tabstop>
   <tabstop>solScanFileSize_2</tabstop>
   <tabstop>solScanFilename</tabstop>
-  <tabstop>measTimeSpinBox</tabstop>
+  <tabstop>measFCSDurationSpinBox</tabstop>
   <tabstop>startFcsMeasurementButton</tabstop>
   <tabstop>lineEdit</tabstop>
   <tabstop>lineEdit_2</tabstop>
