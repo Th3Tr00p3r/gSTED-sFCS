@@ -140,8 +140,8 @@ class CameraWindow(QDialog, Ui_Camera):
         self.canvas.draw()
     
     def video_timeout(self):
-        img = self.cam.get_captured_image()
-        self.imshow(self.cam.get_captured_image())
+        img = self.cam.grab_image()
+        self.imshow(img)
 
     @pyqtSlot()
     def on_shootButton_released(self):
@@ -167,12 +167,14 @@ class CameraWindow(QDialog, Ui_Camera):
             self.videoButton.setText('Video ON')
             self.cam.start_live_video()
             self.video_timer = QTimer()
-            self.video_timer.timeout.connect(self.imshow(self.cam.get_captured_image(timeout='1s')))
-            self.video_timer.start(3000)
+            self.video_timer.timeout.connect(self.video_timeout)
+            self.video_timer.start(500)
         #Turn Off
         else:
             self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.videoButton.setText('Start Video')
+            self.cam.stop_live_video()
+            self.video_timer.stop()
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     """
