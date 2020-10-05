@@ -1,6 +1,36 @@
 import csv
 import pandas as pd
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox, QDoubleSpinBox)
+from PyQt5.QtCore import QTimer
+
+class Measurement():
+    
+    timer = QTimer()
+    time_passed = 0
+#    timer.timeout.connect(__timer_timeout)
+    
+    def __init__(self, type, duration, prog_bar=None):
+        self.type = type
+        self.duration = duration
+        self.prog_bar = prog_bar
+        self.timer.timeout.connect(self.__timer_timeout)
+        
+    def start(self):
+        self.timer.start(1000)
+        
+    def stop(self):
+        self.timer.stop()
+        if self.prog_bar:
+            self.prog_bar.setValue(0)
+
+    def __timer_timeout(self):
+        if self.time_passed < self.duration:
+            self.time_passed += 1
+        else:
+            self.time_passed = 1
+        if self.prog_bar:
+            prog = self.time_passed / self.duration * 100
+            self.prog_bar.setValue(prog)          
 
 class Qt2csv():
 
