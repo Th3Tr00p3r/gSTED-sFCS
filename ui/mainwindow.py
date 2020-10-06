@@ -80,7 +80,8 @@ class CameraWindow(QDialog, Ui_Camera):
         self.cam = drivers.Camera() # instantiate camera object
         self.cam.open() # connect to first available camera
     
-    def reject(self):
+    @pyqtSlot()
+    def on_rejected(self):
         '''
         On pressing the 'X' button (closing the dialog, but really only hiding it)
         '''
@@ -90,7 +91,8 @@ class CameraWindow(QDialog, Ui_Camera):
             self.videoButton.setText('Start Video')
             self.cam.stop_live_video()
             self.video_timer.stop()
-        self.hide()
+        self.cam.close()
+        self.close()
 
     def imshow(self, img):
         '''
@@ -165,16 +167,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         # define additinal windows
         self.settings_win = SettingsWindow()
-        self.camera_win = CameraWindow()
+        #self.camera1_win = CameraWindow()
         
         # intialize buttons
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
         
+        #connect signals and slots
+        self.ledExc.clicked.connect(self.show_laser_dock)
+        self.ledDep.clicked.connect(self.show_laser_dock)
+        self.ledShutter.clicked.connect(self.show_laser_dock)
+        
+        
     def closeEvent(self, event):
         # clean up
-        if hasattr(self, 'camera'):
-            self.camera_win.cam.close()
+        pass
+#        if hasattr(self, 'camera1_win'):
+#            self.camera1_win.cam.close()
 
     def timeout(self):
         if self.depTemp.value() < 52:
@@ -189,7 +198,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         # TODO: 
         if self.startFcsMeasurementButton.text() == 'Start \nMeasurement':
-            self.measurement = imp.Measurement('FCS',  self.measFCSDurationSpinBox.value(), self.FCSprogressBar)
+            self.measurement = imp.Measurement('FCS',  self.measFCSDurationSpinBox, self.FCSprogressBar)
             self.measurement.start()
             self.startFcsMeasurementButton.setText('Stop \nMeasurement')
         else: # off state
@@ -290,7 +299,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_actionSettings_triggered(self):
         """
-        Slot documentation goes here.
+        Show settings window
         """
         # TODO:
         self.settings_win.show()
@@ -313,7 +322,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot(bool)
     def on_actionStepper_Stage_Control_toggled(self, p0):
         """
-        Slot documentation goes here.
+        Show/hide stepper stage control dock
         
         @param p0 DESCRIPTION
         @type bool
@@ -327,39 +336,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_actionCamera_Control_triggered(self):
         """
-        Slot documentation goes here.
-        
-        @param p0 DESCRIPTION
-        @type bool
+        Instantiate 'CameraWindow' object and show it
         """
-        # TODO:
-        self.camera_win.show()
-        self.camera_win.activateWindow()
+        # TODO: add support for 2nd camera
+        self.camera1_win = CameraWindow()
+        self.camera1_win.show()
+        self.camera1_win.activateWindow()
         
     @pyqtSlot()
-    def on_ledExc_clicked(self):
+    def show_laser_dock(self):
         """
-        Slot documentation goes here.
-        """
-        self.laserDock.setVisible(True)
-        p0 = self.actionLaser_Control.isChecked()
-        if not p0:
-            self.actionLaser_Control.setChecked(not p0)
-        
-    @pyqtSlot()
-    def on_ledDep_clicked(self):
-        """
-        Slot documentation goes here.
-        """
-        self.laserDock.setVisible(True)
-        p0 = self.actionLaser_Control.isChecked()
-        if not p0:
-            self.actionLaser_Control.setChecked(not p0)
-
-    @pyqtSlot()
-    def on_ledShutter_clicked(self):
-        """
-        Slot documentation goes here.
+        Make the laser dock visible (convenience)
         """
         self.laserDock.setVisible(True)
         p0 = self.actionLaser_Control.isChecked()
