@@ -1,25 +1,30 @@
+import os
+import sys
 import csv
 import pandas as pd
-from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox, QDoubleSpinBox)
+from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
+                                              QDoubleSpinBox, QMessageBox)
 from PyQt5.QtCore import QTimer
 
 class Measurement():
     
-    timer = QTimer()
-    time_passed = 0
+    # class attributes
+    _timer = QTimer()
     
     def __init__(self, type, duration_spinbox, prog_bar=None):
+        # instance attributes
         self.type = type
         self.duration_spinbox = duration_spinbox
         self.prog_bar = prog_bar
-        self.timer.timeout.connect(self.__timer_timeout)
+        self._timer.timeout.connect(self.__timer_timeout)
+        self.time_passed = 0
         
     # public methods
     def start(self):
-        self.timer.start(1000)
+        self._timer.start(1000)
         
     def stop(self):
-        self.timer.stop()
+        self._timer.stop()
         if self.prog_bar:
             self.prog_bar.setValue(0)
     
@@ -39,7 +44,7 @@ class Qt2csv():
         if filepath:
             window.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
             with open(filepath, 'w') as stream:
-                print("saving", filepath)
+                #print("saving", filepath)
                 writer = csv.writer(stream)
 
                 # get all names of fields in settings window (for file saving/loading)
@@ -58,15 +63,49 @@ class Qt2csv():
 
     def read_csv(window, filepath):
         if filepath:
-            df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
-            window.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
-            for i in range(len(df)):
-                widget = window.frame.findChild(QWidget, df.iloc[i, 0])
-                if not widget == 'nullptr':
-                    if hasattr(widget, 'value'): # spinner
-                        widget.setValue(float(df.iloc[i, 1]))
-                    else: # line edit
-                        widget.setText(df.iloc[i, 1])
+            try:
+                df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
+                window.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+                for i in range(len(df)):
+                    widget = window.frame.findChild(QWidget, df.iloc[i, 0])
+                    if not widget == 'nullptr':
+                        if hasattr(widget, 'value'): # spinner
+                            widget.setValue(float(df.iloc[i, 1]))
+                        else: # line edit
+                            widget.setText(df.iloc[i, 1])
+            except Exception: # handeling missing default settings file
+                error_text = ('Default settings file "default_settings.csv"'
+                                   'not found in:\n\n' +
+                                   filepath +
+                                   '.\n\nUsing standard settings.\n'
+                                   'To avoid this error, please save some settings as "default_settings.csv".')
+                Error(text=error_text).display()
 
-class ErrorMessage():
-    pass
+class Error():
+    
+    def __init__(self, text=None):
+        # exception info
+        exc_type, _, self.tb = sys.exc_info()
+        self.type = exc_type.__name__
+        self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
+        self.lineno = self.tb.tb_lineno
+        self.text = text
+        
+        # message box init
+        self._msgBox = QMessageBox()
+        self._msgBox.setIcon(QMessageBox.Critical)
+        self._msgBox.setWindowTitle('Error: ' + self.type)
+        self._msgBox.setText(self.text)
+    
+    def display(self):
+        self._msgBox.exec_()
+
+def Exit(main_window):
+    '''
+    Clean up and exit
+    '''
+    main_window.settings_win.reject()
+    if hasattr(main_window, 'camera1_win'):
+        main_window.camera1_win.reject()
+    # finally
+    main_window.close()

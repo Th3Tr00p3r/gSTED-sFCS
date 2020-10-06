@@ -4,13 +4,14 @@ GUI Module.
 
 import drivers
 import implementation.implementation as imp
+import implementation.constants as const
 
 # for cameras (to be moved to seperate module for camera class
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from PyQt5.QtCore import pyqtSlot,  QTimer, QDir
-from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QMessageBox, QDialog)
+from PyQt5.QtCore import pyqtSlot,  QTimer
+from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QDialog)
 from PyQt5.QtGui import QIcon
 
 from .Ui_mainwindow import Ui_MainWindow
@@ -28,19 +29,8 @@ class SettingsWindow(QDialog, Ui_Settings):
         self.setWindowTitle('Settings')
         
         # load default settings
-        try:
-            def_filepath = QDir.currentPath() + '/settings/default_settings.csv'
-            imp.Qt2csv.read_csv(self, def_filepath)
-        except FileNotFoundError:
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Critical)
-            msgBox.setText('Default settings file "default_settings.csv"'
-                                'not found in:\n\n' +
-                                def_filepath +
-                                '.\n\nUsing standard settings.\n'
-                                'To avoid this error, please save some settings as "default_settings.csv".')
-            msgBox.setWindowTitle('Error: File Not Found')
-            msgBox.exec_()
+        def_filepath = const.DEFAULT_SETTINGS_FILE_PATH
+        imp.Qt2csv.read_csv(self, def_filepath)
 
     @pyqtSlot()
     def on_saveButton_released(self):
@@ -48,7 +38,7 @@ class SettingsWindow(QDialog, Ui_Settings):
         Save settings as .csv
         """
         # TODO: add all forms in main window too
-        filepath, _ = QFileDialog.getSaveFileName(self, 'Save Settings', QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
+        filepath, _ = QFileDialog.getSaveFileName(self, 'Save Settings', const.SETTINGS_FOLDER_PATH, "CSV Files(*.csv *.txt)")
         imp.Qt2csv.write_csv(self, filepath)
         
     @pyqtSlot()
@@ -57,7 +47,7 @@ class SettingsWindow(QDialog, Ui_Settings):
         load settings .csv file
         """
         # TODO: add all forms in main window too
-        filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", QDir.currentPath() + "\settings\\", "CSV Files(*.csv *.txt)")
+        filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", const.SETTINGS_FOLDER_PATH, "CSV Files(*.csv *.txt)")
         imp.Qt2csv.read_csv(self, filepath)
 
 class CameraWindow(QDialog, Ui_Camera):
@@ -177,13 +167,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ledExc.clicked.connect(self.show_laser_dock)
         self.ledDep.clicked.connect(self.show_laser_dock)
         self.ledShutter.clicked.connect(self.show_laser_dock)
+        self.actionQuit.triggered.connect(self.closeEvent)
         
         
     def closeEvent(self, event):
         # clean up
-        pass
-#        if hasattr(self, 'camera1_win'):
-#            self.camera1_win.cam.close()
+        imp.Exit(self)
 
     def timeout(self):
         if self.depTemp.value() < 52:
