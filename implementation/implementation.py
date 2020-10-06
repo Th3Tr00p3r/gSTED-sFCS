@@ -7,14 +7,14 @@ class Measurement():
     
     timer = QTimer()
     time_passed = 0
-#    timer.timeout.connect(__timer_timeout)
     
-    def __init__(self, type, duration, prog_bar=None):
+    def __init__(self, type, duration_spinbox, prog_bar=None):
         self.type = type
-        self.duration = duration
+        self.duration_spinbox = duration_spinbox
         self.prog_bar = prog_bar
         self.timer.timeout.connect(self.__timer_timeout)
         
+    # public methods
     def start(self):
         self.timer.start(1000)
         
@@ -22,18 +22,19 @@ class Measurement():
         self.timer.stop()
         if self.prog_bar:
             self.prog_bar.setValue(0)
-
+    
+    # private methods
     def __timer_timeout(self):
-        if self.time_passed < self.duration:
+        if self.time_passed < self.duration_spinbox.value():
             self.time_passed += 1
         else:
             self.time_passed = 1
         if self.prog_bar:
-            prog = self.time_passed / self.duration * 100
+            prog = self.time_passed / self.duration_spinbox.value() * 100
             self.prog_bar.setValue(prog)          
 
 class Qt2csv():
-
+    # public methods
     def write_csv(window, filepath):
         if filepath:
             window.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
