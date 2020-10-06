@@ -103,7 +103,7 @@
          </font>
         </property>
         <property name="currentIndex">
-         <number>4</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="paths">
          <attribute name="title">
@@ -131,6 +131,11 @@
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
+                <property name="font">
+                 <font>
+                  <pointsize>8</pointsize>
+                 </font>
+                </property>
                 <property name="text">
                  <string>D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS</string>
                 </property>
@@ -151,6 +156,11 @@
                <widget class="QLineEdit" name="solDataPath">
                 <property name="enabled">
                  <bool>true</bool>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>8</pointsize>
+                 </font>
                 </property>
                 <property name="text">
                  <string>D:\Lab\sFCS-gSTED data\solution measurement data</string>
@@ -173,6 +183,11 @@
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
+                <property name="font">
+                 <font>
+                  <pointsize>8</pointsize>
+                 </font>
+                </property>
                 <property name="text">
                  <string>D:\Lab\sFCS-gSTED data\image measurement data</string>
                 </property>
@@ -191,6 +206,11 @@
                  <widget class="QLineEdit" name="camDataPath">
                   <property name="enabled">
                    <bool>true</bool>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
                   </property>
                   <property name="text">
                    <string>D:\Lab\sFCS-gSTED data\camera photos</string>
@@ -270,6 +290,11 @@
                    <property name="enabled">
                     <bool>true</bool>
                    </property>
+                   <property name="font">
+                    <font>
+                     <pointsize>8</pointsize>
+                    </font>
+                   </property>
                    <property name="text">
                     <string>PicoQuant</string>
                    </property>
@@ -302,6 +327,11 @@
                       </item>
                       <item>
                        <widget class="QComboBox" name="excTriggerSrcCombox">
+                        <property name="font">
+                         <font>
+                          <pointsize>8</pointsize>
+                         </font>
+                        </property>
                         <item>
                          <property name="text">
                           <string>External (TDC)</string>
@@ -368,6 +398,11 @@
                           </item>
                           <item>
                            <widget class="QLineEdit" name="excTriggerIntChan">
+                            <property name="font">
+                             <font>
+                              <pointsize>8</pointsize>
+                             </font>
+                            </property>
                             <property name="text">
                              <string>Dev3/port0/</string>
                             </property>
@@ -401,6 +436,11 @@
                  </item>
                  <item>
                   <widget class="QLineEdit" name="excChan">
+                   <property name="font">
+                    <font>
+                     <pointsize>8</pointsize>
+                    </font>
+                   </property>
                    <property name="text">
                     <string>Dev3/port0/line21</string>
                    </property>
@@ -449,6 +489,11 @@
                      <height>16777215</height>
                     </size>
                    </property>
+                   <property name="font">
+                    <font>
+                     <pointsize>8</pointsize>
+                    </font>
+                   </property>
                    <property name="text">
                     <string>MPB</string>
                    </property>
@@ -488,6 +533,11 @@
                      <height>24</height>
                     </size>
                    </property>
+                   <property name="font">
+                    <font>
+                     <pointsize>8</pointsize>
+                    </font>
+                   </property>
                    <property name="text">
                     <string>COM7</string>
                    </property>
@@ -518,6 +568,11 @@
                      <height>24</height>
                     </size>
                    </property>
+                   <property name="font">
+                    <font>
+                     <pointsize>8</pointsize>
+                    </font>
+                   </property>
                    <property name="buttonSymbols">
                     <enum>QAbstractSpinBox::NoButtons</enum>
                    </property>
@@ -545,6 +600,11 @@
                  </item>
                  <item>
                   <widget class="QLineEdit" name="depShutterChan">
+                   <property name="font">
+                    <font>
+                     <pointsize>8</pointsize>
+                    </font>
+                   </property>
                    <property name="text">
                     <string>Dev3/port0/line11</string>
                    </property>
@@ -619,6 +679,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="AOXchannel">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>Dev3/ao0</string>
                        </property>
@@ -643,6 +708,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="AOYchannel">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>Dev3/ao1</string>
                        </property>
@@ -667,6 +737,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="AOZchannel">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>Dev3/ao2</string>
                        </property>
@@ -693,6 +768,11 @@
                    </item>
                    <item>
                     <widget class="QLineEdit" name="AOXintChan">
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <property name="text">
                       <string>Dev3/_ao0_vs_aognd</string>
                      </property>
@@ -717,6 +797,11 @@
                    </item>
                    <item>
                     <widget class="QLineEdit" name="AOYintChan">
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <property name="text">
                       <string>Dev3/_ao1_vs_aognd</string>
                      </property>
@@ -741,6 +826,11 @@
                    </item>
                    <item>
                     <widget class="QLineEdit" name="AOZintChan">
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <property name="text">
                       <string>Dev3/_ao2_vs_aognd</string>
                      </property>
@@ -765,6 +855,11 @@
                    </item>
                    <item>
                     <widget class="QLineEdit" name="AOdigTrigSrc">
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <property name="text">
                       <string>/Dev3/PFI0</string>
                      </property>
@@ -789,6 +884,11 @@
                    </item>
                    <item>
                     <widget class="QComboBox" name="AOtriggerEdge">
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <item>
                       <property name="text">
                        <string>Rising</string>
@@ -820,6 +920,11 @@
                    </item>
                    <item>
                     <widget class="QComboBox" name="AOwfType">
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <item>
                       <property name="text">
                        <string>Sine</string>
@@ -876,6 +981,11 @@
                        <height>0</height>
                       </size>
                      </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <property name="text">
                       <string>Dev3/ai23, Dev3/ai7, Dev3/ai9, Dev3/ai3</string>
                      </property>
@@ -900,6 +1010,11 @@
                    </item>
                    <item>
                     <widget class="QLineEdit" name="AItrigSrc">
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <property name="text">
                       <string>/Dev3/PFI0</string>
                      </property>
@@ -920,6 +1035,11 @@
                     <widget class="QSpinBox" name="AIclkDivSpinner">
                      <property name="enabled">
                       <bool>true</bool>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
                      </property>
                      <property name="wrapping">
                       <bool>false</bool>
@@ -959,6 +1079,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="AIXchannel">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>Dev3/ai23</string>
                        </property>
@@ -983,6 +1108,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="AIYchannel">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>Dev3/ai7</string>
                        </property>
@@ -1007,6 +1137,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="AIZchannel">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>Dev3/ai9</string>
                        </property>
@@ -1033,6 +1168,11 @@
                    </item>
                    <item>
                     <widget class="QLineEdit" name="AIlaserMon">
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
                      <property name="text">
                       <string>Dev3/ai3</string>
                      </property>
@@ -1115,6 +1255,11 @@
                         </item>
                         <item>
                          <widget class="QSpinBox" name="counterBufferSizeSpinner">
+                          <property name="font">
+                           <font>
+                            <pointsize>8</pointsize>
+                           </font>
+                          </property>
                           <property name="buttonSymbols">
                            <enum>QAbstractSpinBox::NoButtons</enum>
                           </property>
@@ -1145,6 +1290,11 @@
                         </item>
                         <item>
                          <widget class="QDoubleSpinBox" name="counterUpdateTimeSpinner">
+                          <property name="font">
+                           <font>
+                            <pointsize>8</pointsize>
+                           </font>
+                          </property>
                           <property name="buttonSymbols">
                            <enum>QAbstractSpinBox::NoButtons</enum>
                           </property>
@@ -1184,6 +1334,11 @@
                            </item>
                            <item>
                             <widget class="QLineEdit" name="counterPixelClockChannel">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
                              <property name="text">
                               <string>Dev1/Ctr0</string>
                              </property>
@@ -1208,6 +1363,11 @@
                            </item>
                            <item>
                             <widget class="QLineEdit" name="counterPixelClockOutputChannel">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
                              <property name="text">
                               <string>/Dev3/Ctr0InternalOutput</string>
                              </property>
@@ -1241,6 +1401,11 @@
                            </item>
                            <item>
                             <widget class="QLineEdit" name="counterTriggerChannel">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
                              <property name="text">
                               <string>Dev3/port1/line0</string>
                              </property>
@@ -1265,6 +1430,11 @@
                            </item>
                            <item>
                             <widget class="QLineEdit" name="counterTriggerArmStartDigEdgeSrc">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
                              <property name="text">
                               <string>/Dev3/PFI0</string>
                              </property>
@@ -1289,6 +1459,11 @@
                            </item>
                            <item>
                             <widget class="QComboBox" name="counterTriggerEdge">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
                              <item>
                               <property name="text">
                                <string>Rising</string>
@@ -1329,6 +1504,11 @@
                            </item>
                            <item>
                             <widget class="QLineEdit" name="counterPhotonCounter">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
                              <property name="text">
                               <string>Dev3/ctr1</string>
                              </property>
@@ -1353,6 +1533,11 @@
                            </item>
                            <item>
                             <widget class="QLineEdit" name="counterCIcountEdgesTerm">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
                              <property name="text">
                               <string>/Dev3/PFI8</string>
                              </property>
@@ -1403,6 +1588,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="TDCstartChannel">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>Dev3/port0/line12</string>
                        </property>
@@ -1427,6 +1617,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="TDCdataVersion">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>7bytes noreset</string>
                        </property>
@@ -1447,6 +1642,11 @@
                       <widget class="QSpinBox" name="TDClaserFreqSpinner">
                        <property name="enabled">
                         <bool>true</bool>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
                        </property>
                        <property name="wrapping">
                         <bool>false</bool>
@@ -1477,6 +1677,11 @@
                       <widget class="QSpinBox" name="TDCFPGAFreqSpinner">
                        <property name="enabled">
                         <bool>true</bool>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
                        </property>
                        <property name="wrapping">
                         <bool>false</bool>
@@ -1511,6 +1716,11 @@
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="wrapping">
                         <bool>false</bool>
                        </property>
@@ -1543,6 +1753,11 @@
                       <widget class="QSpinBox" name="TDCverionSpinner">
                        <property name="enabled">
                         <bool>true</bool>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
                        </property>
                        <property name="wrapping">
                         <bool>false</bool>
@@ -1583,6 +1798,11 @@
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="wrapping">
                         <bool>false</bool>
                        </property>
@@ -1612,6 +1832,11 @@
                       <widget class="QSpinBox" name="pixelClockHighTicksSpinner">
                        <property name="enabled">
                         <bool>true</bool>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
                        </property>
                        <property name="wrapping">
                         <bool>false</bool>
@@ -1646,6 +1871,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="pixelClockCounterChan">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>Dev3/ctr0</string>
                        </property>
@@ -1670,6 +1900,11 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="pixelClockSrcOfTicks">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
                        <property name="text">
                         <string>/Dev3/PFI3</string>
                        </property>
@@ -1690,6 +1925,11 @@
                       <widget class="QSpinBox" name="pixelClockFreqSpinner">
                        <property name="enabled">
                         <bool>true</bool>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
                        </property>
                        <property name="wrapping">
                         <bool>false</bool>
@@ -1773,6 +2013,11 @@
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
                   <property name="wrapping">
                    <bool>false</bool>
                   </property>
@@ -1799,6 +2044,11 @@
                  <widget class="QSpinBox" name="um232latencyTimerValSpinner">
                   <property name="enabled">
                    <bool>true</bool>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
                   </property>
                   <property name="wrapping">
                    <bool>false</bool>
@@ -1829,6 +2079,11 @@
                  <widget class="QSpinBox" name="um232InTransferRateSpinner">
                   <property name="enabled">
                    <bool>true</bool>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
                   </property>
                   <property name="wrapping">
                    <bool>false</bool>
@@ -1863,6 +2118,11 @@
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
                   <property name="wrapping">
                    <bool>false</bool>
                   </property>
@@ -1890,6 +2150,11 @@
                 </item>
                 <item>
                  <widget class="QComboBox" name="um232FlowControlCombox">
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
                   <property name="currentIndex">
                    <number>1</number>
                   </property>
@@ -1928,6 +2193,11 @@
                 </item>
                 <item>
                  <widget class="QComboBox" name="um232BitModeCombox">
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
                   <property name="currentIndex">
                    <number>7</number>
                   </property>
@@ -1990,6 +2260,11 @@
                <widget class="QLineEdit" name="um232DeviceDescription">
                 <property name="enabled">
                  <bool>true</bool>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>8</pointsize>
+                 </font>
                 </property>
                 <property name="readOnly">
                  <bool>true</bool>
