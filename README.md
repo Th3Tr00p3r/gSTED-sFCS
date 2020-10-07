@@ -14,24 +14,21 @@ Python-based software for our optical measurement system.
 
 #### <u>Physical Device Control</u>
 
-1. the `drivers` package contains an `__init__.py` file which imports the neccesary drivers from existing packages (pyVISA, nidaqmx, instrumental etc.), which provide the interface to the devices
+1. the `drivers` package contains an `__init__.py` file which imports the necessary drivers from existing packages (pyVISA, nidaqmx, instrumental etc.), which provide the interface to the physical devices.
 
 2. `drivers` is imported into the implementation modules which communicate with the devices.
 
 #### <u>Implemetation</u>
 
-1. 
+1. ## What's here/Noteworthy files:
+- `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together.
 
-## What's here/Noteworthy files:
+- `./ui/mainwindow.py` - GUI module.
 
-- `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together
+- `./implementation/implementation.py` - main implementation module.
 
-- `./ui/mainwindow.py` - GUI module
+- `./implementation/constants.py` - constants used across the project.
 
-- `./implementation/implementation.py` - main implementation module
+- `./drivers` - package for physical devices interfaces (used only in implementation modules).
 
-- `./implementation/constants.py` - constants used across the project
-
-- `./drivers` - package for physical devices interfaces (used only in implementation modules)
-
-- `./settings/default_settings.csv` - default setting file, initial values for all GUI forms
+- `./settings/default_settings.csv` - default setting file, initial values for all GUI forms.
