@@ -3,8 +3,9 @@ import sys
 import csv
 import pandas as pd
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
-                                              QDoubleSpinBox, QMessageBox)
+                                              QDoubleSpinBox, QMessageBox, QApplication)
 from PyQt5.QtCore import QTimer
+import implementation.constants as const
 
 class Measurement():
     
@@ -82,12 +83,12 @@ class Qt2csv():
                         else: # line edit
                             widget.setText(df.iloc[i, 1])
             except Exception: # handeling missing default settings file
-                error_text = ('Default settings file "default_settings.csv"'
+                error_txt = ('Default settings file "default_settings.csv"'
                                    'not found in:\n\n' +
                                    filepath +
                                    '.\n\nUsing standard settings.\n'
                                    'To avoid this error, please save some settings as "default_settings.csv".')
-                Error(sys.exc_info(), error_text=error_text).display()
+                Error(sys.exc_info(), error_txt=error_txt).display()
 
 class UserDialog():
     
@@ -95,17 +96,21 @@ class UserDialog():
                        msg_icon=QMessageBox.NoIcon,
                        msg_title=None,
                        msg_text=None):
-        self._msgBox = QMessageBox()
-        self._msgBox.setIcon(msg_icon)
-        self._msgBox.setWindowTitle(msg_title)
-        self._msgBox.setText(msg_text)
+        self._msg_box = QMessageBox()
+        self._msg_box.setIcon(msg_icon)
+        self._msg_box.setWindowTitle(msg_title)
+        self._msg_box.setText(msg_text)
     
+    def set_buttons(self, std_bttn_list):
+        for std_bttn in std_bttn_list:
+            self._msg_box.addButton(getattr(QMessageBox, std_bttn))
+        
     def display(self):
-        self._msgBox.exec_()
+        return self._msg_box.exec_()
     
 class Error(UserDialog):
     
-    def __init__(self, error_info, error_text=None):
+    def __init__(self, error_info, error_txt=None):
         self.exc_type, _, self.tb = error_info
         self.error_type = self.exc_type.__name__
         self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
@@ -115,17 +120,46 @@ class Error(UserDialog):
                                                ', line: {})').format(self.error_type,
                                                                                 self.fname,
                                                                                 self.lineno),
-                               msg_text=error_text)
+                               msg_text=error_txt)
 
-class Note(UserDialog):
-    pass
-    
-def Exit(main_window):
+class Question(UserDialog):
+    def __init__(self, q_title, q_txt):
+        super().__init__(msg_icon=QMessageBox.Question,
+                               msg_title=(q_title),
+                               msg_text=q_txt)
+        self.set_buttons(['Yes', 'No'])
+        self._msg_box.setDefaultButton(QMessageBox.No)
+
+def clean_up_app(main_window):
     '''
-    Clean up and exit
+    Disconnect from all devices safely
+    and close secondary windows
+    (before closing/restarting application)
     '''
     main_window.settings_win.reject()
     if hasattr(main_window, 'camera1_win'):
         main_window.camera1_win.reject()
-    # finally
-    main_window.close()
+        
+def exit_app(main_window, event):
+    '''
+    Clean up and exit, ask first.
+    '''
+    pressed = Question(q_title='Quitting Program', q_txt='Are you sure you want to quit?').display()
+    if pressed == QMessageBox.Yes:
+        clean_up_app(main_window)
+        main_window.close()
+    else:
+        event.ignore()
+        
+def restart_app(main_window):
+    '''
+    Clean up and restrat, ask first.
+    '''
+    pressed = Question(q_title='Restarting Program',
+                               q_txt=('Are you sure you want ' +
+                                         'to restart the program?')).display()
+    if pressed == QMessageBox.Yes:
+        clean_up_app(main_window)
+        QApplication.exit(const.EXIT_CODE_REBOOT);
+#        QCoreApplication.quit()
+#        _ = QProcess.startDetached(sys.executable, sys.argv)
