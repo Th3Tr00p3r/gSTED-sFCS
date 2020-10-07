@@ -19,126 +19,6 @@ from .Ui_mainwindow import Ui_MainWindow
 from .Ui_settingswindow import Ui_Settings
 from .Ui_camerawindow import Ui_Camera
 
-class SettingsWindow(QDialog, Ui_Settings):
-    """
-    This "window" is a QWidget. If it has no parent, it 
-    will appear as a free-floating window as we want.
-    """
-    def __init__(self,  parent=None):
-        super(SettingsWindow,  self).__init__(parent)
-        self.setupUi(self)
-        self.setWindowTitle('Settings')
-        
-        # load default settings
-        def_filepath = const.DEFAULT_SETTINGS_FILE_PATH
-        imp.Qt2csv.read_csv(self, def_filepath)
-
-    @pyqtSlot()
-    def on_saveButton_released(self):
-        """
-        Save settings as .csv
-        """
-        # TODO: add all forms in main window too
-        filepath, _ = QFileDialog.getSaveFileName(self, 'Save Settings', const.SETTINGS_FOLDER_PATH, "CSV Files(*.csv *.txt)")
-        imp.Qt2csv.write_csv(self, filepath)
-        
-    @pyqtSlot()
-    def on_loadButton_released(self):
-        """
-        load settings .csv file
-        """
-        # TODO: add all forms in main window too
-        filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", const.SETTINGS_FOLDER_PATH, "CSV Files(*.csv *.txt)")
-        imp.Qt2csv.read_csv(self, filepath)
-
-class CameraWindow(QDialog, Ui_Camera):
-    """
-    This "window" is a QWidget. If it has no parent, it 
-    will appear as a free-floating window as we want.
-    """
-        
-    def __init__(self,  parent=None):
-        super(CameraWindow,  self).__init__(parent)
-        self.setupUi(self)
-        self.setWindowTitle('Camera')
-        
-        # add matplotlib-ready widget (canvas) for showing camera output
-        self.figure = plt.figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.gridLayout.addWidget(self.canvas, 0, 1)
-        
-        # initialize camera
-        self.cam = drivers.Camera() # instantiate camera object
-        self.cam.open() # connect to first available camera
-    
-    @pyqtSlot()
-    def on_rejected(self):
-        '''
-        cleaning up the camera controls and closing the camera window
-        '''
-        if hasattr(self, 'video_timer'):
-            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-            self.videoButton.setText('Start Video')
-            self.cam.stop_live_video()
-            self.video_timer.stop()
-        self.cam.close()
-        self.close()
-
-    def imshow(self, img):
-        '''
-        Plot image
-        '''
-        # TODO: move to imp
-        
-        # instead of ax.hold(False)
-        self.figure.clear()
-
-        # create an axis
-        ax = self.figure.add_subplot(111)
-
-        # plot data
-        ax.imshow(img)
-
-        # refresh canvas
-        self.canvas.draw()
-    
-    def video_timeout(self):
-        '''
-        '''
-        # TODO: move to imp
-        img = self.cam.grab_image()
-        self.imshow(img)
-
-    @pyqtSlot()
-    def on_shootButton_released(self):
-        """
-        Slot documentation goes here.
-        """
-        # take a single image
-        img = self.cam.grab_image()
-        self.imshow(img)
-
-    @pyqtSlot()
-    def on_videoButton_released(self):
-        """
-        Slot documentation goes here.
-        """
-        # TODO: move to imp
-        #Turn On
-        if self.videoButton.text() == 'Start Video':
-            self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
-            self.videoButton.setText('Video ON')
-            self.cam.start_live_video()
-            self.video_timer = QTimer()
-            self.video_timer.timeout.connect(self.video_timeout)
-            self.video_timer.start(50) # video refresh period (ms)
-        #Turn Off
-        else:
-            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-            self.videoButton.setText('Start Video')
-            self.cam.stop_live_video()
-            self.video_timer.stop()
-
 class MainWindow(QMainWindow, Ui_MainWindow):
     """
     Class documentation goes here.
@@ -156,6 +36,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
         self.setWindowTitle('gSTED-sFCS Measurement Program')
+        self.EXIT_CODE_REBOOT = const.EXIT_CODE_REBOOT
         
         # set up main timeout event
         self.timer = QTimer()
@@ -174,12 +55,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ledExc.clicked.connect(self.show_laser_dock)
         self.ledDep.clicked.connect(self.show_laser_dock)
         self.ledShutter.clicked.connect(self.show_laser_dock)
-        self.actionQuit.triggered.connect(self.closeEvent)
-        
+        self.actionRestart.triggered.connect(self.restart)
         
     def closeEvent(self, event):
-        # clean up
-        imp.Exit(self)
+        imp.exit_program(self, event)
+    
+    def restart(self):
+        imp.restart_app(self)
 
     def timeout(self):
         '''
@@ -358,3 +240,123 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Slot documentation goes here.
         """
         self.tabWidget.setCurrentIndex(3) #error tab
+
+class SettingsWindow(QDialog, Ui_Settings):
+    """
+    This "window" is a QWidget. If it has no parent, it 
+    will appear as a free-floating window as we want.
+    """
+    def __init__(self,  parent=None):
+        super(SettingsWindow,  self).__init__(parent)
+        self.setupUi(self)
+        self.setWindowTitle('Settings')
+        
+        # load default settings
+        def_filepath = const.DEFAULT_SETTINGS_FILE_PATH
+        imp.Qt2csv.read_csv(self, def_filepath)
+
+    @pyqtSlot()
+    def on_saveButton_released(self):
+        """
+        Save settings as .csv
+        """
+        # TODO: add all forms in main window too
+        filepath, _ = QFileDialog.getSaveFileName(self, 'Save Settings', const.SETTINGS_FOLDER_PATH, "CSV Files(*.csv *.txt)")
+        imp.Qt2csv.write_csv(self, filepath)
+        
+    @pyqtSlot()
+    def on_loadButton_released(self):
+        """
+        load settings .csv file
+        """
+        # TODO: add all forms in main window too
+        filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", const.SETTINGS_FOLDER_PATH, "CSV Files(*.csv *.txt)")
+        imp.Qt2csv.read_csv(self, filepath)
+
+class CameraWindow(QDialog, Ui_Camera):
+    """
+    This "window" is a QWidget. If it has no parent, it 
+    will appear as a free-floating window as we want.
+    """
+        
+    def __init__(self,  parent=None):
+        super(CameraWindow,  self).__init__(parent)
+        self.setupUi(self)
+        self.setWindowTitle('Camera')
+        
+        # add matplotlib-ready widget (canvas) for showing camera output
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.gridLayout.addWidget(self.canvas, 0, 1)
+        
+        # initialize camera
+        self.cam = drivers.Camera() # instantiate camera object
+        self.cam.open() # connect to first available camera
+    
+    @pyqtSlot()
+    def on_rejected(self):
+        '''
+        cleaning up the camera controls and closing the camera window
+        '''
+        if hasattr(self, 'video_timer'):
+            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.videoButton.setText('Start Video')
+            self.cam.stop_live_video()
+            self.video_timer.stop()
+        self.cam.close()
+        self.close()
+
+    def imshow(self, img):
+        '''
+        Plot image
+        '''
+        # TODO: move to imp
+        
+        # instead of ax.hold(False)
+        self.figure.clear()
+
+        # create an axis
+        ax = self.figure.add_subplot(111)
+
+        # plot data
+        ax.imshow(img)
+
+        # refresh canvas
+        self.canvas.draw()
+    
+    def video_timeout(self):
+        '''
+        '''
+        # TODO: move to imp
+        img = self.cam.grab_image()
+        self.imshow(img)
+
+    @pyqtSlot()
+    def on_shootButton_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # take a single image
+        img = self.cam.grab_image()
+        self.imshow(img)
+
+    @pyqtSlot()
+    def on_videoButton_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # TODO: move to imp
+        #Turn On
+        if self.videoButton.text() == 'Start Video':
+            self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
+            self.videoButton.setText('Video ON')
+            self.cam.start_live_video()
+            self.video_timer = QTimer()
+            self.video_timer.timeout.connect(self.video_timeout)
+            self.video_timer.start(50) # video refresh period (ms)
+        #Turn Off
+        else:
+            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.videoButton.setText('Start Video')
+            self.cam.stop_live_video()
+            self.video_timer.stop()

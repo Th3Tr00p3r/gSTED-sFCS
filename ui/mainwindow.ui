@@ -6176,7 +6176,6 @@ Measurement</string>
    </attribute>
    <addaction name="actionRestart"/>
    <addaction name="actionSettings"/>
-   <addaction name="actionQuit"/>
    <addaction name="separator"/>
    <addaction name="actionLaser_Control"/>
    <addaction name="actionStepper_Stage_Control"/>
@@ -7210,18 +7209,6 @@ Closed</string>
    </property>
    <property name="menuRole">
     <enum>QAction::TextHeuristicRole</enum>
-   </property>
-  </action>
-  <action name="actionQuit">
-   <property name="icon">
-    <iconset resource="../icons.qrc">
-     <normaloff>:/icons/actions/system-log-out.png</normaloff>:/icons/actions/system-log-out.png</iconset>
-   </property>
-   <property name="text">
-    <string>Quit</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Q</string>
    </property>
   </action>
   <action name="actionRestart">
