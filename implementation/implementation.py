@@ -70,7 +70,6 @@ class Qt2csv():
         Read 'filepath' (csv) and write to matching QLineEdit, QspinBox and QdoubleSpinBox of settings window.
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
-        print('TEST TEST TEST')
         if filepath:
             try:
                 df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
