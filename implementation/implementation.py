@@ -41,6 +41,10 @@ class Measurement():
 class Qt2csv():
     # public methods
     def write_csv(window, filepath):
+        '''
+        Write all QLineEdit, QspinBox and QdoubleSpinBox of settings window to 'filepath' (csv).
+        Show 'filepath' in 'settingsFileName' QLineEdit.
+        '''
         if filepath:
             window.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
             with open(filepath, 'w') as stream:
@@ -62,6 +66,11 @@ class Qt2csv():
                     writer.writerow(rowdata)
 
     def read_csv(window, filepath):
+        '''
+        Read 'filepath' (csv) and write to matching QLineEdit, QspinBox and QdoubleSpinBox of settings window.
+        Show 'filepath' in 'settingsFileName' QLineEdit.
+        '''
+        print('TEST TEST TEST')
         if filepath:
             try:
                 df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
@@ -79,27 +88,39 @@ class Qt2csv():
                                    filepath +
                                    '.\n\nUsing standard settings.\n'
                                    'To avoid this error, please save some settings as "default_settings.csv".')
-                Error(text=error_text).display()
+                Error(sys.exc_info(), error_text=error_text).display()
 
-class Error():
+class UserDialog():
     
-    def __init__(self, text=None):
-        # exception info
-        exc_type, _, self.tb = sys.exc_info()
-        self.type = exc_type.__name__
-        self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
-        self.lineno = self.tb.tb_lineno
-        self.text = text
-        
-        # message box init
+    def __init__(self,
+                       msg_icon=QMessageBox.NoIcon,
+                       msg_title=None,
+                       msg_text=None):
         self._msgBox = QMessageBox()
-        self._msgBox.setIcon(QMessageBox.Critical)
-        self._msgBox.setWindowTitle('Error: ' + self.type)
-        self._msgBox.setText(self.text)
+        self._msgBox.setIcon(msg_icon)
+        self._msgBox.setWindowTitle(msg_title)
+        self._msgBox.setText(msg_text)
     
     def display(self):
         self._msgBox.exec_()
+    
+class Error(UserDialog):
+    
+    def __init__(self, error_info, error_text=None):
+        self.exc_type, _, self.tb = error_info
+        self.error_type = self.exc_type.__name__
+        self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
+        self.lineno = self.tb.tb_lineno
+        super().__init__(msg_icon=QMessageBox.Critical,
+                               msg_title=('Error: {} ({}' +
+                                               ', line: {})').format(self.error_type,
+                                                                                self.fname,
+                                                                                self.lineno),
+                               msg_text=error_text)
 
+class Note(UserDialog):
+    pass
+    
 def Exit(main_window):
     '''
     Clean up and exit
