@@ -1,7 +1,7 @@
 """
 GUI Module.
 """
-
+# project modules
 import drivers
 import implementation.implementation as imp
 import implementation.constants as const
@@ -14,6 +14,7 @@ from PyQt5.QtCore import pyqtSlot,  QTimer
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QDialog)
 from PyQt5.QtGui import QIcon
 
+# GUI Windows
 from .Ui_mainwindow import Ui_MainWindow
 from .Ui_settingswindow import Ui_Settings
 from .Ui_camerawindow import Ui_Camera
@@ -73,9 +74,8 @@ class CameraWindow(QDialog, Ui_Camera):
     @pyqtSlot()
     def on_rejected(self):
         '''
-        On pressing the 'X' button (closing the dialog, but really only hiding it)
+        cleaning up the camera controls and closing the camera window
         '''
-        # clean up
         if hasattr(self, 'video_timer'):
             self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.videoButton.setText('Start Video')
@@ -88,6 +88,8 @@ class CameraWindow(QDialog, Ui_Camera):
         '''
         Plot image
         '''
+        # TODO: move to imp
+        
         # instead of ax.hold(False)
         self.figure.clear()
 
@@ -101,6 +103,9 @@ class CameraWindow(QDialog, Ui_Camera):
         self.canvas.draw()
     
     def video_timeout(self):
+        '''
+        '''
+        # TODO: move to imp
         img = self.cam.grab_image()
         self.imshow(img)
 
@@ -118,7 +123,7 @@ class CameraWindow(QDialog, Ui_Camera):
         """
         Slot documentation goes here.
         """
-        # TODO:
+        # TODO: move to imp
         #Turn On
         if self.videoButton.text() == 'Start Video':
             self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
@@ -145,6 +150,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         @param parent reference to the parent widget
         @type QWidget
         """
+        # TODO: move to imp
+        
         # general window settings
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
@@ -175,6 +182,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         imp.Exit(self)
 
     def timeout(self):
+        '''
+        '''
+        # TODO: move to imp
         if self.depTemp.value() < 52:
             self.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
         else:
