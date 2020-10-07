@@ -58,7 +58,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionRestart.triggered.connect(self.restart)
         
     def closeEvent(self, event):
-        imp.exit_program(self, event)
+        imp.exit_app(self, event)
     
     def restart(self):
         imp.restart_app(self)
