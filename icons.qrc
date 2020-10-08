@@ -1,21 +1,21 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
 <qresource>
-<file>.\icons\camera-photo.png</file>
+<file>.\icons\camera.png</file>
 <file>.\icons\crosshair.png</file>
-<file>.\icons\document-open.png</file>
-<file>.\icons\document-save-as.png</file>
-<file>.\icons\emblem-system.png</file>
-<file>.\icons\input-gaming.png</file>
-<file>.\icons\laser.png</file>
+<file>.\icons\laser_blue.png</file>
 <file>.\icons\led_blue.png</file>
 <file>.\icons\led_green.png</file>
 <file>.\icons\led_off.png</file>
 <file>.\icons\led_orange.png</file>
 <file>.\icons\led_red.png</file>
-<file>.\icons\preferences-system.png</file>
-<file>.\icons\system-search.png</file>
-<file>.\icons\system-shutdown.png</file>
-<file>.\icons\view-refresh.png</file>
+<file>.\icons\load.png</file>
+<file>.\icons\preferences.png</file>
+<file>.\icons\restart.png</file>
+<file>.\icons\save_as.png</file>
+<file>.\icons\settings.png</file>
+<file>.\icons\stage.png</file>
+<file>.\icons\switch_on.png</file>
+<file>.\icons\zoom.png</file>
 </qresource>
 </RCC>

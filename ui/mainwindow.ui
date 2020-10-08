@@ -7181,7 +7181,7 @@ Closed</string>
   <action name="actionLoad">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/document-open.png</normaloff>:/icons/document-open.png</iconset>
+     <normaloff>:/icons/load.png</normaloff>:/icons/load.png</iconset>
    </property>
    <property name="text">
     <string>Load Settings</string>
@@ -7196,7 +7196,7 @@ Closed</string>
   <action name="actionSave">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/document-open.png</normaloff>:/icons/document-open.png</iconset>
+     <normaloff>:/icons/save_as.png</normaloff>:/icons/save_as.png</iconset>
    </property>
    <property name="text">
     <string>Save Settings</string>
@@ -7214,7 +7214,7 @@ Closed</string>
   <action name="actionRestart">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/view-refresh.png</normaloff>:/icons/view-refresh.png</iconset>
+     <normaloff>:/icons/restart.png</normaloff>:/icons/restart.png</iconset>
    </property>
    <property name="text">
     <string>Restart Program</string>
@@ -7229,7 +7229,7 @@ Closed</string>
   <action name="actionSettings">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/emblem-system.png</normaloff>:/icons/emblem-system.png</iconset>
+     <normaloff>:/icons/settings.png</normaloff>:/icons/settings.png</iconset>
    </property>
    <property name="text">
     <string>Settings</string>
@@ -7244,7 +7244,7 @@ Closed</string>
    </property>
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/laser.png</normaloff>:/icons/laser.png</iconset>
+     <normaloff>:/icons/laser_blue.png</normaloff>:/icons/laser_blue.png</iconset>
    </property>
    <property name="text">
     <string>Laser Control</string>
@@ -7259,7 +7259,7 @@ Closed</string>
    </property>
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/input-gaming.png</normaloff>:/icons/input-gaming.png</iconset>
+     <normaloff>:/icons/stage.png</normaloff>:/icons/stage.png</iconset>
    </property>
    <property name="text">
     <string>Stepper Stage Control</string>
@@ -7271,7 +7271,7 @@ Closed</string>
   <action name="actionCamera_Control">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/camera-photo.png</normaloff>:/icons/camera-photo.png</iconset>
+     <normaloff>:/icons/camera.png</normaloff>:/icons/camera.png</iconset>
    </property>
    <property name="text">
     <string>Camera Control</string>

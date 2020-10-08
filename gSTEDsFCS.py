@@ -1,9 +1,7 @@
 from PyQt5.QtWidgets import QApplication
 from ui.mainwindow import MainWindow
 import implementation.constants as const
-
-#import implementation.implementation as imp
-#imp.generate_icons_resource_file()
+import icons
 
 if __name__ == "__main__":
     import sys
