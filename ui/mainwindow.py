@@ -3,6 +3,7 @@ GUI Module.
 """
 # project modules
 import drivers
+import icons.icon_paths as icon
 import implementation.implementation as imp
 import implementation.constants as const
 
@@ -96,12 +97,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.excOnButton.text() == 'Laser \nOFF':
             self.excOnButton.setStyleSheet("background-color: rgb(105, 105, 255); color: white;")
             self.excOnButton.setText('Laser \nON')
-            self.ledExc.setIcon(QIcon('./icons/myIcons/led_blue.png')) 
+            self.ledExc.setIcon(QIcon(icon.LED_BLUE)) 
         # turning off
         else:
             self.excOnButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.excOnButton.setText('Laser \nOFF')
-            self.ledExc.setIcon(QIcon('./icons/myIcons/led_off.png')) 
+            self.ledExc.setIcon(QIcon(icon.LED_OFF)) 
 
     @pyqtSlot()
     def on_depEmissionOn_released(self):
@@ -112,11 +113,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.depEmissionOn.text() == 'Laser \nOFF':
             self.depEmissionOn.setStyleSheet("background-color: rgb(255, 222, 155); color: black;")
             self.depEmissionOn.setText('Laser \nON')
-            self.ledDep.setIcon(QIcon('./icons/myIcons/led_orange.png')) 
+            self.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
         else:
             self.depEmissionOn.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.depEmissionOn.setText('Laser \nOFF')
-            self.ledDep.setIcon(QIcon('./icons/myIcons/led_off.png')) 
+            self.ledDep.setIcon(QIcon(icon.LED_OFF)) 
     
     @pyqtSlot()
     def on_depShutterOn_released(self):
@@ -127,11 +128,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.depShutterOn.text() == 'Shutter \nClosed':
             self.depShutterOn.setStyleSheet("background-color: rgb(255, 222, 155); color: black;")
             self.depShutterOn.setText('Shutter \nOpen')
-            self.ledShutter.setIcon(QIcon('./icons/myIcons/led_green.png')) 
+            self.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
         else:
             self.depShutterOn.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.depShutterOn.setText('Shutter \nClosed')
-            self.ledShutter.setIcon(QIcon('./icons/myIcons/led_off.png')) 
+            self.ledShutter.setIcon(QIcon(icon.LED_OFF)) 
 
     @pyqtSlot()
     def on_stageOn_released(self):
@@ -141,7 +142,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # TODO:
         #Turn On
         if not self.stageRelease.isEnabled():
-            self.stageOn.setIcon(QIcon('./icons/myIcons/led_green.png')) 
+            self.stageOn.setIcon(QIcon(icon.LED_GREEN)) 
             self.stageUp.setEnabled(True)
             self.stageDown.setEnabled(True)
             self.stageLeft.setEnabled(True)
@@ -149,7 +150,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.stageRelease.setEnabled(True)
         #Turn Off
         else:
-            self.stageOn.setIcon(QIcon('./icons/myIcons/led_off.png')) 
+            self.stageOn.setIcon(QIcon(icon.LED_OFF)) 
             self.stageUp.setEnabled(False)
             self.stageDown.setEnabled(False)
             self.stageLeft.setEnabled(False)
