@@ -33,7 +33,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="../icons.qrc">
-    <normaloff>:/icons/emblems/emblem-system.png</normaloff>:/icons/emblems/emblem-system.png</iconset>
+    <normaloff>:/icons/emblem-system.png</normaloff>:/icons/emblem-system.png</iconset>
   </property>
   <widget class="QFrame" name="frame">
    <property name="geometry">
@@ -2363,7 +2363,7 @@
             </property>
             <property name="icon">
              <iconset resource="../icons.qrc">
-              <normaloff>:/icons/actions/document-open.png</normaloff>:/icons/actions/document-open.png</iconset>
+              <normaloff>:/icons/document-open.png</normaloff>:/icons/document-open.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -2436,7 +2436,7 @@
             </property>
             <property name="icon">
              <iconset resource="../icons.qrc">
-              <normaloff>:/icons/actions/document-save-as.png</normaloff>:/icons/actions/document-save-as.png</iconset>
+              <normaloff>:/icons/document-save-as.png</normaloff>:/icons/document-save-as.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -2509,7 +2509,7 @@
             </property>
             <property name="icon">
              <iconset resource="../icons.qrc">
-              <normaloff>:/icons/categories/preferences-system.png</normaloff>:/icons/categories/preferences-system.png</iconset>
+              <normaloff>:/icons/preferences-system.png</normaloff>:/icons/preferences-system.png</iconset>
             </property>
             <property name="iconSize">
              <size>

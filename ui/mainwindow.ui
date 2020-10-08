@@ -1928,7 +1928,7 @@ background-repeat: no-repeat;</string>
                                   <string/>
                                  </property>
                                  <property name="icon">
-                                  <iconset resource="../icons.qrc">
+                                  <iconset>
                                    <normaloff>:/icons/myIcons/crosshair.png</normaloff>:/icons/myIcons/crosshair.png</iconset>
                                  </property>
                                  <property name="iconSize">
@@ -5077,7 +5077,7 @@ Measurement</string>
                <item>
                 <widget class="QPushButton" name="ledDepVISAError_2">
                  <property name="enabled">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </property>
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -5105,7 +5105,7 @@ Measurement</string>
                  </property>
                  <property name="icon">
                   <iconset resource="../icons.qrc">
-                   <normaloff>:/icons/myIcons/led_off.png</normaloff>:/icons/myIcons/led_off.png</iconset>
+                   <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
                  </property>
                  <property name="iconSize">
                   <size>
@@ -5172,7 +5172,7 @@ Measurement</string>
                <item>
                 <widget class="QPushButton" name="ledDepVISAError">
                  <property name="enabled">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </property>
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -5200,7 +5200,7 @@ Measurement</string>
                  </property>
                  <property name="icon">
                   <iconset resource="../icons.qrc">
-                   <normaloff>:/icons/myIcons/led_off.png</normaloff>:/icons/myIcons/led_off.png</iconset>
+                   <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
                  </property>
                  <property name="iconSize">
                   <size>
@@ -5691,7 +5691,7 @@ Measurement</string>
                <item>
                 <widget class="QPushButton" name="ledUM232Error">
                  <property name="enabled">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </property>
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -5719,7 +5719,7 @@ Measurement</string>
                  </property>
                  <property name="icon">
                   <iconset resource="../icons.qrc">
-                   <normaloff>:/icons/myIcons/led_off.png</normaloff>:/icons/myIcons/led_off.png</iconset>
+                   <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
                  </property>
                  <property name="iconSize">
                   <size>
@@ -5891,7 +5891,7 @@ Measurement</string>
               </property>
               <property name="icon">
                <iconset resource="../icons.qrc">
-                <normaloff>:/icons/myIcons/led_off.png</normaloff>:/icons/myIcons/led_off.png</iconset>
+                <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -5961,7 +5961,7 @@ Measurement</string>
               </property>
               <property name="icon">
                <iconset resource="../icons.qrc">
-                <normaloff>:/icons/myIcons/led_off.png</normaloff>:/icons/myIcons/led_off.png</iconset>
+                <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -6031,7 +6031,7 @@ Measurement</string>
               </property>
               <property name="icon">
                <iconset resource="../icons.qrc">
-                <normaloff>:/icons/myIcons/led_off.png</normaloff>:/icons/myIcons/led_off.png</iconset>
+                <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -6114,7 +6114,7 @@ Measurement</string>
               </property>
               <property name="icon">
                <iconset resource="../icons.qrc">
-                <normaloff>:/icons/myIcons/led_off.png</normaloff>:/icons/myIcons/led_off.png</iconset>
+                <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -6857,7 +6857,7 @@ Closed</string>
             </property>
             <property name="icon">
              <iconset resource="../icons.qrc">
-              <normaloff>:/icons/myIcons/led_off.png</normaloff>:/icons/myIcons/led_off.png</iconset>
+              <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -7181,7 +7181,7 @@ Closed</string>
   <action name="actionLoad">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/actions/document-open.png</normaloff>:/icons/actions/document-open.png</iconset>
+     <normaloff>:/icons/document-open.png</normaloff>:/icons/document-open.png</iconset>
    </property>
    <property name="text">
     <string>Load Settings</string>
@@ -7196,7 +7196,7 @@ Closed</string>
   <action name="actionSave">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/actions/document-save-as.png</normaloff>:/icons/actions/document-save-as.png</iconset>
+     <normaloff>:/icons/document-open.png</normaloff>:/icons/document-open.png</iconset>
    </property>
    <property name="text">
     <string>Save Settings</string>
@@ -7214,7 +7214,7 @@ Closed</string>
   <action name="actionRestart">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/actions/view-refresh.png</normaloff>:/icons/actions/view-refresh.png</iconset>
+     <normaloff>:/icons/view-refresh.png</normaloff>:/icons/view-refresh.png</iconset>
    </property>
    <property name="text">
     <string>Restart Program</string>
@@ -7229,7 +7229,7 @@ Closed</string>
   <action name="actionSettings">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/emblems/emblem-system.png</normaloff>:/icons/emblems/emblem-system.png</iconset>
+     <normaloff>:/icons/emblem-system.png</normaloff>:/icons/emblem-system.png</iconset>
    </property>
    <property name="text">
     <string>Settings</string>
@@ -7244,7 +7244,7 @@ Closed</string>
    </property>
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/myIcons/laser.png</normaloff>:/icons/myIcons/laser.png</iconset>
+     <normaloff>:/icons/laser.png</normaloff>:/icons/laser.png</iconset>
    </property>
    <property name="text">
     <string>Laser Control</string>
@@ -7259,7 +7259,7 @@ Closed</string>
    </property>
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/devices/input-gaming.png</normaloff>:/icons/devices/input-gaming.png</iconset>
+     <normaloff>:/icons/input-gaming.png</normaloff>:/icons/input-gaming.png</iconset>
    </property>
    <property name="text">
     <string>Stepper Stage Control</string>
@@ -7271,7 +7271,7 @@ Closed</string>
   <action name="actionCamera_Control">
    <property name="icon">
     <iconset resource="../icons.qrc">
-     <normaloff>:/icons/devices/camera-photo.png</normaloff>:/icons/devices/camera-photo.png</iconset>
+     <normaloff>:/icons/camera-photo.png</normaloff>:/icons/camera-photo.png</iconset>
    </property>
    <property name="text">
     <string>Camera Control</string>

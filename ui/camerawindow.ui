@@ -27,7 +27,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="../icons.qrc">
-    <normaloff>:/icons/devices/camera-photo.png</normaloff>:/icons/devices/camera-photo.png</iconset>
+    <normaloff>:/icons/camera-photo.png</normaloff>:/icons/camera-photo.png</iconset>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
@@ -117,7 +117,7 @@
                 </property>
                 <property name="font">
                  <font>
-                  <pointsize>6</pointsize>
+                  <pointsize>7</pointsize>
                  </font>
                 </property>
                 <property name="text">
@@ -170,7 +170,7 @@
                 </property>
                 <property name="font">
                  <font>
-                  <pointsize>6</pointsize>
+                  <pointsize>7</pointsize>
                  </font>
                 </property>
                 <property name="text">
@@ -250,6 +250,16 @@ background-repeat: no-repeat;</string>
              <property name="text">
               <string/>
              </property>
+             <property name="icon">
+              <iconset resource="../icons.qrc">
+               <normaloff>:/icons/system-search.png</normaloff>:/icons/system-search.png</iconset>
+             </property>
+             <property name="iconSize">
+              <size>
+               <width>32</width>
+               <height>32</height>
+              </size>
+             </property>
              <property name="checkable">
               <bool>true</bool>
              </property>
@@ -300,7 +310,7 @@ background-repeat: no-repeat;</string>
              </property>
              <property name="icon">
               <iconset resource="../icons.qrc">
-               <normaloff>:/icons/myIcons/crosshair.png</normaloff>:/icons/myIcons/crosshair.png</iconset>
+               <normaloff>:/icons/crosshair.png</normaloff>:/icons/crosshair.png</iconset>
              </property>
              <property name="iconSize">
               <size>
