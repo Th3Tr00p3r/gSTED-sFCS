@@ -164,19 +164,3 @@ def restart_app(main_window):
     if pressed == QMessageBox.Yes:
         clean_up_app(main_window)
         QApplication.exit(const.EXIT_CODE_REBOOT);
-
-def generate_icons_resource_file():
-    import glob
-    header = ('<!DOCTYPE RCC>' + '\n' +
-                  '<RCC version="1.0">' + '\n' +
-                  '<qresource>' + '\n') 
-    footer = ('</qresource>' + '\n' +
-                 '</RCC>' + '\n')
-    icon_paths = glob.glob('.\icons\*.png')
-#    (_, _, filenames) = next(os.walk('./icons/icons/'))
-    with open('icons.qrc', 'w') as f: 
-        f.write(header)
-        for icon_path in icon_paths:
-            f.write('<file>' + icon_path + '</file>' + '\n')
-        f.write(footer)
-        
