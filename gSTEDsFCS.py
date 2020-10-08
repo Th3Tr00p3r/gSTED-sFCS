@@ -2,6 +2,9 @@ from PyQt5.QtWidgets import QApplication
 from ui.mainwindow import MainWindow
 import implementation.constants as const
 
+#import implementation.implementation as imp
+#imp.generate_icons_resource_file()
+
 if __name__ == "__main__":
     import sys
     current_exit_code = const.EXIT_CODE_REBOOT
