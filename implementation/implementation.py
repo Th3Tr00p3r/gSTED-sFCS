@@ -1,7 +1,5 @@
 import os
 import sys
-import csv
-import pandas as pd
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QApplication)
 from PyQt5.QtCore import QTimer
@@ -31,8 +29,11 @@ class Measurement():
     
     # private methods
     def __timer_timeout(self):
+#        from PyQt5.QtMultimedia import QSound
         if self.time_passed < self.duration_spinbox.value():
             self.time_passed += 1
+#            if self.time_passed == self.duration_spinbox.value():
+#                QSound.play(const.MEAS_COMPLETE_SOUND);
         else:
             self.time_passed = 1
         if self.prog_bar:
@@ -46,6 +47,7 @@ class Qt2csv():
         Write all QLineEdit, QspinBox and QdoubleSpinBox of settings window to 'filepath' (csv).
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
+        import csv
         if filepath:
             window.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
             with open(filepath, 'w') as stream:
@@ -71,6 +73,7 @@ class Qt2csv():
         Read 'filepath' (csv) and write to matching QLineEdit, QspinBox and QdoubleSpinBox of settings window.
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
+        import pandas as pd
         if filepath:
             try:
                 df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
@@ -153,7 +156,7 @@ def exit_app(main_window, event):
         
 def restart_app(main_window):
     '''
-    Clean up and restrat, ask first.
+    Clean up and restart, ask first.
     '''
     pressed = Question(q_title='Restarting Program',
                                q_txt=('Are you sure you want ' +
@@ -161,5 +164,19 @@ def restart_app(main_window):
     if pressed == QMessageBox.Yes:
         clean_up_app(main_window)
         QApplication.exit(const.EXIT_CODE_REBOOT);
-#        QCoreApplication.quit()
-#        _ = QProcess.startDetached(sys.executable, sys.argv)
+
+def generate_icons_resource_file():
+    import glob
+    header = ('<!DOCTYPE RCC>' + '\n' +
+                  '<RCC version="1.0">' + '\n' +
+                  '<qresource>' + '\n') 
+    footer = ('</qresource>' + '\n' +
+                 '</RCC>' + '\n')
+    icon_paths = glob.glob('.\icons\*.png')
+#    (_, _, filenames) = next(os.walk('./icons/icons/'))
+    with open('icons.qrc', 'w') as f: 
+        f.write(header)
+        for icon_path in icon_paths:
+            f.write('<file>' + icon_path + '</file>' + '\n')
+        f.write(footer)
+        
