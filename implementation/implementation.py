@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QApplication)
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
+import drivers
 
 class Measurement():
     
@@ -164,3 +165,23 @@ def restart_app(main_window):
     if pressed == QMessageBox.Yes:
         clean_up_app(main_window)
         QApplication.exit(const.EXIT_CODE_REBOOT);
+
+def ready_camera_window(camera_window):
+     from matplotlib import pyplot as plt
+     from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+     # add matplotlib-ready widget (canvas) for showing camera output
+     try:
+        camera_window.figure = plt.figure()
+        camera_window.canvas = FigureCanvas(camera_window.figure)
+        camera_window.gridLayout.addWidget(camera_window.canvas, 0, 1)
+        
+        # initialize camera
+        camera_window.cam = drivers.Camera() # instantiate camera object
+        camera_window.cam.open() # connect to first available camera
+        
+        # show window
+        camera_window.show()
+        camera_window.activateWindow()
+     except:
+        error_txt = ('No cameras appear to be connected.')
+        Error(sys.exc_info(), error_txt=error_txt).display()

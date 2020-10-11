@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-10-11, 22:42:46 -->
+<!-- Saved: 2020-10-11, 23:19:01 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -16,21 +16,22 @@
     <Source>__init__.py</Source>
     <Source>drivers/__init__.py</Source>
     <Source>gSTEDsFCS.py</Source>
+    <Source>gui/Ui_camerawindow.py</Source>
+    <Source>gui/Ui_mainwindow.py</Source>
+    <Source>gui/Ui_settingswindow.py</Source>
+    <Source>gui/__init__.py</Source>
+    <Source>gui/mainwindow.py</Source>
     <Source>icons/__init__.py</Source>
     <Source>icons/icon_paths.py</Source>
     <Source>icons/icons_rc.py</Source>
     <Source>implementation/__init__.py</Source>
     <Source>implementation/constants.py</Source>
     <Source>implementation/implementation.py</Source>
-    <Source>ui/Ui_camerawindow.py</Source>
-    <Source>ui/Ui_mainwindow.py</Source>
-    <Source>ui/Ui_settingswindow.py</Source>
-    <Source>ui/mainwindow.py</Source>
   </Sources>
   <Forms>
-    <Form>ui/camerawindow.ui</Form>
-    <Form>ui/mainwindow.ui</Form>
-    <Form>ui/settingswindow.ui</Form>
+    <Form>gui/camerawindow.ui</Form>
+    <Form>gui/mainwindow.ui</Form>
+    <Form>gui/settingswindow.ui</Form>
   </Forms>
   <Resources>
     <Resource>icons/icons.qrc</Resource>

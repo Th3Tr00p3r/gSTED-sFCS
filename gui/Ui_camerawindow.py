@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS\ui\camerawindow.ui'
+# Form implementation generated from reading ui file 'D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS\gui\camerawindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.0
 #
@@ -18,7 +18,7 @@ class Ui_Camera(object):
         Camera.setMinimumSize(QtCore.QSize(550, 580))
         Camera.setMaximumSize(QtCore.QSize(9999, 9999))
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/camera.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(":/camera.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         Camera.setWindowIcon(icon)
         self.gridLayout_2 = QtWidgets.QGridLayout(Camera)
         self.gridLayout_2.setObjectName("gridLayout_2")
@@ -140,7 +140,7 @@ class Ui_Camera(object):
 "background-repeat: no-repeat;")
         self.magToolButton.setText("")
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/zoom.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon1.addPixmap(QtGui.QPixmap(":/zoom.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.magToolButton.setIcon(icon1)
         self.magToolButton.setIconSize(QtCore.QSize(32, 32))
         self.magToolButton.setCheckable(True)
@@ -161,7 +161,7 @@ class Ui_Camera(object):
         self.ROItoolButton.setLayoutDirection(QtCore.Qt.LeftToRight)
         self.ROItoolButton.setText("")
         icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap(":/icons/crosshair.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon2.addPixmap(QtGui.QPixmap(":/crosshair.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.ROItoolButton.setIcon(icon2)
         self.ROItoolButton.setIconSize(QtCore.QSize(25, 25))
         self.ROItoolButton.setCheckable(True)
