@@ -9,8 +9,8 @@ if __name__ == "__main__":
     
 #    pyqt5ac.main(rccOptions='', uicOptions='--from-imports',
 #                       force=False, initPackage=True, config='',
-#                       ioPaths=[['ui/*.ui', 'generated/%%FILENAME%%_ui.py'],
-#                       ['resources/*.qrc', 'generated/%%FILENAME%%_rc.py']])
+#                       ioPaths=[['gui/*.ui', 'gui/%%FILENAME%%_ui.py'],
+#                       ['icons/*.qrc', 'icons/%%FILENAME%%_rc.py']])
     
     current_exit_code = const.EXIT_CODE_REBOOT
     while current_exit_code == const.EXIT_CODE_REBOOT:

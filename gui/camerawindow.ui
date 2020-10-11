@@ -26,8 +26,8 @@
    <string>Camera</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../icons.qrc">
-    <normaloff>:/icons/camera.png</normaloff>:/icons/camera.png</iconset>
+   <iconset resource="../icons/icons.qrc">
+    <normaloff>:/camera.png</normaloff>:/camera.png</iconset>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
@@ -251,8 +251,8 @@ background-repeat: no-repeat;</string>
               <string/>
              </property>
              <property name="icon">
-              <iconset resource="../icons.qrc">
-               <normaloff>:/icons/zoom.png</normaloff>:/icons/zoom.png</iconset>
+              <iconset resource="../icons/icons.qrc">
+               <normaloff>:/zoom.png</normaloff>:/zoom.png</iconset>
              </property>
              <property name="iconSize">
               <size>
@@ -309,8 +309,8 @@ background-repeat: no-repeat;</string>
               <string/>
              </property>
              <property name="icon">
-              <iconset resource="../icons.qrc">
-               <normaloff>:/icons/crosshair.png</normaloff>:/icons/crosshair.png</iconset>
+              <iconset resource="../icons/icons.qrc">
+               <normaloff>:/crosshair.png</normaloff>:/crosshair.png</iconset>
              </property>
              <property name="iconSize">
               <size>
@@ -340,7 +340,7 @@ background-repeat: no-repeat;</string>
   </layout>
  </widget>
  <resources>
-  <include location="../icons.qrc"/>
+  <include location="../icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>

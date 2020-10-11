@@ -7,9 +7,6 @@ import implementation.implementation as imp
 import implementation.constants as const
 
 # should be moved to implementation, then deleted
-from matplotlib import pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import drivers
 from instrumental import instrument, list_instruments
 from implementation.implementation import Error
 import sys
@@ -285,27 +282,10 @@ class CameraWindow(QDialog, Ui_Camera):
      # TODO: clean up - move most stuff to implementation
      
     def __init__(self,  parent=None):
-#        if 'UC480_Camera' in self.instrument_names:
-        try:
-            super(CameraWindow,  self).__init__(parent)
-            self.setupUi(self)
-            self.setWindowTitle('Camera')
-            
-            # add matplotlib-ready widget (canvas) for showing camera output
-            self.figure = plt.figure()
-            self.canvas = FigureCanvas(self.figure)
-            self.gridLayout.addWidget(self.canvas, 0, 1)
-            
-            # initialize camera
-            self.cam = drivers.Camera() # instantiate camera object
-            self.cam.open() # connect to first available camera
-            
-            # show window
-            self.show()
-            self.activateWindow()
-        except:
-            error_txt = ('No cameras appear to be connected.')
-            Error(sys.exc_info(), error_txt=error_txt).display()
+        super(CameraWindow,  self).__init__(parent)
+        self.setupUi(self)
+        self.setWindowTitle('Camera')
+        imp.ready_camera_window(self)
 
     @pyqtSlot()
     def on_rejected(self):
