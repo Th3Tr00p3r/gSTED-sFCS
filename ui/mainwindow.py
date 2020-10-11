@@ -226,6 +226,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Instantiate 'CameraWindow' object and show it
         """
         # TODO: add support for 2nd camera
+        self.camera1_win = None
         self.camera1_win = CameraWindow()
         
     @pyqtSlot()
@@ -314,7 +315,6 @@ class CameraWindow(QDialog, Ui_Camera):
         if hasattr(self, 'video_timer'):
             self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.videoButton.setText('Start Video')
-            self.cam.stop_live_video()
             self.video_timer.stop()
         self.cam.close()
         self.close()
@@ -341,8 +341,14 @@ class CameraWindow(QDialog, Ui_Camera):
         '''
         '''
         # TODO: move to imp
-        img = self.cam.grab_image()
-        self.imshow(img)
+        try:
+            img = self.cam.grab_image()
+            self.imshow(img)
+        except:
+            error_txt = ('Camera disconnected.' + '\n' +
+                             'Reconnect and re-open the camera window.')
+            Error(sys.exc_info(), error_txt).display()
+            self.on_rejected()
 
     @pyqtSlot()
     def on_shootButton_released(self):
@@ -354,7 +360,10 @@ class CameraWindow(QDialog, Ui_Camera):
             img = self.cam.grab_image()
             self.imshow(img)
         except:
-            Error(sys.exc_info()).display()
+            error_txt = ('Camera disconnected.' + '\n' +
+                             'Reconnect and re-open the camera window.')
+            Error(sys.exc_info(), error_txt).display()
+            self.on_rejected()
             
     @pyqtSlot()
     def on_videoButton_released(self):
@@ -363,16 +372,22 @@ class CameraWindow(QDialog, Ui_Camera):
         """
         # TODO: move to imp
         #Turn On
-        if self.videoButton.text() == 'Start Video':
-            self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
-            self.videoButton.setText('Video ON')
-            self.cam.start_live_video()
-            self.video_timer = QTimer()
-            self.video_timer.timeout.connect(self.video_timeout)
-            self.video_timer.start(50) # video refresh period (ms)
-        #Turn Off
-        else:
-            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-            self.videoButton.setText('Start Video')
-            self.cam.stop_live_video()
-            self.video_timer.stop()
+        try:
+            if self.videoButton.text() == 'Start Video':
+                self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
+                self.videoButton.setText('Video ON')
+                self.cam.start_live_video()
+                self.video_timer = QTimer()
+                self.video_timer.timeout.connect(self.video_timeout)
+                self.video_timer.start(50) # video refresh period (ms)
+            #Turn Off
+            else:
+                self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+                self.videoButton.setText('Start Video')
+                self.cam.stop_live_video()
+                self.video_timer.stop()
+        except:
+            error_txt = ('Camera disconnected.' + '\n' +
+                             'Reconnect and re-open the camera window.')
+            Error(sys.exc_info(), error_txt).display()
+            self.on_rejected()

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Tasks SYSTEM "Tasks-6.0.dtd">
 <!-- eric6 tasks file for project gSTEDsFCS -->
-<!-- Saved: 2020-10-11, 20:59:54 -->
+<!-- Saved: 2020-10-11, 21:54:18 -->
 <Tasks version="6.0">
   <ProjectScanFilter></ProjectScanFilter>
   <Task priority="1" completed="False" type="2" uid="{ea0dbbe3-9a97-46a7-b50c-2cd8fdd73522}">
@@ -31,166 +31,166 @@
       <Linenumber>7</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{9fa7d639-aeda-498d-ac63-92ed388a202b}">
+  <Task priority="1" completed="False" type="1" uid="{c81d607c-a6e3-4f95-b704-b9d466f82afc}">
     <Summary>TODO: move to imp</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>37</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{8195d22f-c0c8-43ed-840e-5b8e12a9f49b}">
+  <Task priority="1" completed="False" type="1" uid="{a94f9ee2-0b32-44f3-961d-cf247c224756}">
     <Summary>TODO: move to implementation</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>75</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{2b297e10-2691-44de-aea4-f017b0d1ccf8}">
+  <Task priority="1" completed="False" type="1" uid="{46aa3506-6471-4d5d-9287-fa42807316e6}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>86</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{ac87d871-bf70-4b04-937a-7f12c15860f3}">
+  <Task priority="1" completed="False" type="1" uid="{d2b5b63f-29f7-47e8-ab9f-36f2161caa1b}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>100</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{fbe787b3-661c-4fec-a493-b45259431499}">
+  <Task priority="1" completed="False" type="1" uid="{473c5b34-c536-468f-9e84-0971a6238759}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>117</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{5f879f17-a06f-44c9-9197-49f986680138}">
+  <Task priority="1" completed="False" type="1" uid="{09668dd2-db62-4172-a3b8-34ecde62e047}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>132</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{3c34b97a-0271-4c92-bc1a-568b9482e945}">
+  <Task priority="1" completed="False" type="1" uid="{8a57b16a-34af-45d0-ad7f-dc301687a3fb}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>147</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{294c74e5-9b79-4906-b2bf-2b3a8fce7746}">
+  <Task priority="1" completed="False" type="1" uid="{43bee7ba-1b0b-4483-bfaa-89e1353e7adc}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>173</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{06990c71-28b9-4c35-9cdd-77c10ee1d5fb}">
+  <Task priority="1" completed="False" type="1" uid="{7ca0898d-60ba-487e-826f-46c674553eb5}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>191</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{aa0c87bc-264c-4c8e-beaa-116241097401}">
+  <Task priority="1" completed="False" type="1" uid="{75e4230e-f19f-45e6-9e87-299652f048df}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>203</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{cb413fdf-3a4e-4a38-947e-03f45c9ab03d}">
+  <Task priority="1" completed="False" type="1" uid="{f31f4be4-3120-47b6-913f-efd2292782fb}">
     <Summary>TODO:</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>217</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{fcfd9c07-4545-4c27-812f-dfe3220fe5a1}">
+  <Task priority="1" completed="False" type="1" uid="{f4a03659-1544-40df-a9f1-e7e5f18ae443}">
     <Summary>TODO: add support for 2nd camera</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>228</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{2b3c1770-8fbd-4983-a696-a164b20a6cba}">
+  <Task priority="1" completed="False" type="1" uid="{a74c5d60-e530-4f31-b6a2-a00bce7334f2}">
     <Summary>TODO: add all forms in main window too</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
-      <Linenumber>267</Linenumber>
+      <Linenumber>268</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{78194095-7366-4e33-bd0d-b4319615d267}">
+  <Task priority="1" completed="False" type="1" uid="{4fe19ea5-dfba-433f-bae1-10ff458cb55b}">
     <Summary>TODO: add all forms in main window too</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
-      <Linenumber>276</Linenumber>
+      <Linenumber>277</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{25907617-30cc-477e-9a8c-84002d12bb6c}">
+  <Task priority="1" completed="False" type="1" uid="{4d979918-0e5f-40c9-9476-4566344da075}">
     <Summary>TODO: clean up - move most stuff to implementation</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
-      <Linenumber>284</Linenumber>
+      <Linenumber>285</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{18b5c01a-06ca-4943-8bd6-7d610e3d589a}">
+  <Task priority="1" completed="False" type="1" uid="{eca32d8b-bbf8-4cf6-a301-20baa7c75639}">
     <Summary>TODO: move to imp</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>326</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{a86a7261-b6eb-40f4-8290-3d6fe9c26868}">
+  <Task priority="1" completed="False" type="1" uid="{b3a00243-eca1-4b18-a421-84524d53c33c}">
     <Summary>TODO: move to imp</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
       <Linenumber>343</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{9462824b-2cc4-4ab4-bb44-f91f509ea42e}">
+  <Task priority="1" completed="False" type="1" uid="{1bc27155-95de-4bd4-a300-ab670c4a360d}">
     <Summary>TODO: move to imp</Summary>
     <Description></Description>
-    <Created>2020-10-11, 20:59:51</Created>
+    <Created>2020-10-11, 21:54:15</Created>
     <Resource>
       <Filename>ui/mainwindow.py</Filename>
-      <Linenumber>364</Linenumber>
+      <Linenumber>373</Linenumber>
     </Resource>
   </Task>
 </Tasks>
