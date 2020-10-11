@@ -17,10 +17,11 @@ def gen_icons_resource_file():
 
     icon_paths = glob.glob('.\icons\*.png')
     
-    with open('icons.qrc', 'w') as f: 
+    with open('./icons/icons.qrc', 'w') as f: 
         f.write(header)
         for icon_path in icon_paths:
-            f.write('<file>' + icon_path + '</file>' + '\n')
+            _, icon_fname = os.path.split(icon_path)
+            f.write('<file>' + icon_fname + '</file>' + '\n')
         f.write(footer)
 
 def gen_icon_paths_module():
@@ -34,8 +35,8 @@ def gen_icon_paths_module():
         f.write(header)
         for icon_path in icon_paths:
             _, icon_fname = os.path.split(icon_path)
-            icon_fname = os.path.splitext(icon_fname)[0]
-            f.write(icon_fname.upper() + ' = \'' + icon_path + '\'' + '\n')
+            icon_fname_notype = os.path.splitext(icon_fname)[0]
+            f.write(icon_fname_notype.upper() + ' = \'' + icon_fname + '\'' + '\n')
             
 gen_icons_resource_file()
 gen_icon_paths_module()
