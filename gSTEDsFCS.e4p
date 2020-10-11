@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-10-08, 23:20:14 -->
+<!-- Saved: 2020-10-11, 22:42:46 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -18,7 +18,7 @@
     <Source>gSTEDsFCS.py</Source>
     <Source>icons/__init__.py</Source>
     <Source>icons/icon_paths.py</Source>
-    <Source>icons_rc.py</Source>
+    <Source>icons/icons_rc.py</Source>
     <Source>implementation/__init__.py</Source>
     <Source>implementation/constants.py</Source>
     <Source>implementation/implementation.py</Source>
@@ -33,7 +33,7 @@
     <Form>ui/settingswindow.ui</Form>
   </Forms>
   <Resources>
-    <Resource>icons.qrc</Resource>
+    <Resource>icons/icons.qrc</Resource>
   </Resources>
   <MainScript>gSTEDsFCS.py</MainScript>
   <Vcs>
