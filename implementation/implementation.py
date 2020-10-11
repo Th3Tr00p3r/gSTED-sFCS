@@ -85,7 +85,7 @@ class Qt2csv():
                             widget.setValue(float(df.iloc[i, 1]))
                         else: # line edit
                             widget.setText(df.iloc[i, 1])
-            except Exception: # handeling missing default settings file
+            except: # handeling missing default settings file
                 error_txt = ('Default settings file "default_settings.csv"'
                                    'not found in:\n\n' +
                                    filepath +
@@ -113,7 +113,7 @@ class UserDialog():
     
 class Error(UserDialog):
     
-    def __init__(self, error_info, error_txt=None):
+    def __init__(self, error_info, error_txt='Error occured. See details in title.'):
         self.exc_type, _, self.tb = error_info
         self.error_type = self.exc_type.__name__
         self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
