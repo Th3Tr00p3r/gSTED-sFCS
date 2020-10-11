@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS\ui\settingswindow.ui'
+# Form implementation generated from reading ui file 'D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS\gui\settingswindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.0
 #
@@ -23,7 +23,7 @@ class Ui_Settings(object):
         Settings.setMinimumSize(QtCore.QSize(820, 720))
         Settings.setMaximumSize(QtCore.QSize(820, 720))
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/settings.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(":/settings.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         Settings.setWindowIcon(icon)
         self.frame = QtWidgets.QFrame(Settings)
         self.frame.setGeometry(QtCore.QRect(10, 10, 800, 700))
@@ -1084,7 +1084,7 @@ class Ui_Settings(object):
         self.loadButton.setFont(font)
         self.loadButton.setText("")
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/load.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon1.addPixmap(QtGui.QPixmap(":/load.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.loadButton.setIcon(icon1)
         self.loadButton.setIconSize(QtCore.QSize(32, 32))
         self.loadButton.setObjectName("loadButton")
@@ -1116,7 +1116,7 @@ class Ui_Settings(object):
         self.saveButton.setFont(font)
         self.saveButton.setText("")
         icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap(":/icons/save_as.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon2.addPixmap(QtGui.QPixmap(":/save_as.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.saveButton.setIcon(icon2)
         self.saveButton.setIconSize(QtCore.QSize(32, 32))
         self.saveButton.setObjectName("saveButton")
@@ -1148,7 +1148,7 @@ class Ui_Settings(object):
         self.confirmButton.setFont(font)
         self.confirmButton.setText("")
         icon3 = QtGui.QIcon()
-        icon3.addPixmap(QtGui.QPixmap(":/icons/preferences.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon3.addPixmap(QtGui.QPixmap(":/preferences.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.confirmButton.setIcon(icon3)
         self.confirmButton.setIconSize(QtCore.QSize(32, 32))
         self.confirmButton.setObjectName("confirmButton")

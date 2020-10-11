@@ -5104,8 +5104,8 @@ Measurement</string>
                   <string/>
                  </property>
                  <property name="icon">
-                  <iconset resource="../icons.qrc">
-                   <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
+                  <iconset resource="../icons/icons.qrc">
+                   <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
                  </property>
                  <property name="iconSize">
                   <size>
@@ -5199,8 +5199,8 @@ Measurement</string>
                   <string/>
                  </property>
                  <property name="icon">
-                  <iconset resource="../icons.qrc">
-                   <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
+                  <iconset resource="../icons/icons.qrc">
+                   <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
                  </property>
                  <property name="iconSize">
                   <size>
@@ -5718,8 +5718,8 @@ Measurement</string>
                   <string/>
                  </property>
                  <property name="icon">
-                  <iconset resource="../icons.qrc">
-                   <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
+                  <iconset resource="../icons/icons.qrc">
+                   <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
                  </property>
                  <property name="iconSize">
                   <size>
@@ -5890,8 +5890,8 @@ Measurement</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="../icons.qrc">
-                <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
+               <iconset resource="../icons/icons.qrc">
+                <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -5960,8 +5960,8 @@ Measurement</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="../icons.qrc">
-                <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
+               <iconset resource="../icons/icons.qrc">
+                <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -6030,8 +6030,8 @@ Measurement</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="../icons.qrc">
-                <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
+               <iconset resource="../icons/icons.qrc">
+                <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -6113,8 +6113,8 @@ Measurement</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="../icons.qrc">
-                <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
+               <iconset resource="../icons/icons.qrc">
+                <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -6856,8 +6856,8 @@ Closed</string>
              <string/>
             </property>
             <property name="icon">
-             <iconset resource="../icons.qrc">
-              <normaloff>:/icons/led_off.png</normaloff>:/icons/led_off.png</iconset>
+             <iconset resource="../icons/icons.qrc">
+              <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -7178,43 +7178,10 @@ Closed</string>
     </layout>
    </widget>
   </widget>
-  <action name="actionLoad">
-   <property name="icon">
-    <iconset resource="../icons.qrc">
-     <normaloff>:/icons/load.png</normaloff>:/icons/load.png</iconset>
-   </property>
-   <property name="text">
-    <string>Load Settings</string>
-   </property>
-   <property name="toolTip">
-    <string>load settings</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+L</string>
-   </property>
-  </action>
-  <action name="actionSave">
-   <property name="icon">
-    <iconset resource="../icons.qrc">
-     <normaloff>:/icons/save_as.png</normaloff>:/icons/save_as.png</iconset>
-   </property>
-   <property name="text">
-    <string>Save Settings</string>
-   </property>
-   <property name="toolTip">
-    <string>save settings</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+S</string>
-   </property>
-   <property name="menuRole">
-    <enum>QAction::TextHeuristicRole</enum>
-   </property>
-  </action>
   <action name="actionRestart">
    <property name="icon">
-    <iconset resource="../icons.qrc">
-     <normaloff>:/icons/restart.png</normaloff>:/icons/restart.png</iconset>
+    <iconset resource="../icons/icons.qrc">
+     <normaloff>:/restart.png</normaloff>:/restart.png</iconset>
    </property>
    <property name="text">
     <string>Restart Program</string>
@@ -7228,8 +7195,8 @@ Closed</string>
   </action>
   <action name="actionSettings">
    <property name="icon">
-    <iconset resource="../icons.qrc">
-     <normaloff>:/icons/settings.png</normaloff>:/icons/settings.png</iconset>
+    <iconset resource="../icons/icons.qrc">
+     <normaloff>:/settings.png</normaloff>:/settings.png</iconset>
    </property>
    <property name="text">
     <string>Settings</string>
@@ -7243,8 +7210,8 @@ Closed</string>
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../icons.qrc">
-     <normaloff>:/icons/laser_blue.png</normaloff>:/icons/laser_blue.png</iconset>
+    <iconset resource="../icons/icons.qrc">
+     <normaloff>:/laser_blue.png</normaloff>:/laser_blue.png</iconset>
    </property>
    <property name="text">
     <string>Laser Control</string>
@@ -7258,8 +7225,8 @@ Closed</string>
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../icons.qrc">
-     <normaloff>:/icons/stage.png</normaloff>:/icons/stage.png</iconset>
+    <iconset resource="../icons/icons.qrc">
+     <normaloff>:/stage.png</normaloff>:/stage.png</iconset>
    </property>
    <property name="text">
     <string>Stepper Stage Control</string>
@@ -7270,8 +7237,8 @@ Closed</string>
   </action>
   <action name="actionCamera_Control">
    <property name="icon">
-    <iconset resource="../icons.qrc">
-     <normaloff>:/icons/camera.png</normaloff>:/icons/camera.png</iconset>
+    <iconset resource="../icons/icons.qrc">
+     <normaloff>:/camera.png</normaloff>:/camera.png</iconset>
    </property>
    <property name="text">
     <string>Camera Control</string>
@@ -7374,7 +7341,7 @@ Closed</string>
   <tabstop>ledErrors</tabstop>
  </tabstops>
  <resources>
-  <include location="../icons.qrc"/>
+  <include location="../icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>
