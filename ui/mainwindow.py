@@ -2,14 +2,17 @@
 GUI Module.
 """
 # project modules
-import drivers
 import icons.icon_paths as icon
 import implementation.implementation as imp
 import implementation.constants as const
 
-# for cameras (to be moved to seperate module for camera class
+# should be moved to implementation, then deleted
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import drivers
+from instrumental import instrument, list_instruments
+from implementation.implementation import Error
+import sys
 
 from PyQt5.QtCore import pyqtSlot,  QTimer
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QDialog)
@@ -39,6 +42,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setWindowTitle('gSTED-sFCS Measurement Program')
         self.EXIT_CODE_REBOOT = const.EXIT_CODE_REBOOT
         
+        # check conected devices
+        self.instrument_names = [param_set._dict['classname'] for param_set in list_instruments()]
+        
         # set up main timeout event
         self.timer = QTimer()
         self.timer.timeout.connect(self.timeout)
@@ -46,7 +52,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         # define additinal windows
         self.settings_win = SettingsWindow()
-        #self.camera1_win = CameraWindow()
         
         # intialize buttons
         self.actionLaser_Control.setChecked(True)
@@ -67,7 +72,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def timeout(self):
         '''
         '''
-        # TODO: move to imp
+        # TODO: move to implementation
         if self.depTemp.value() < 52:
             self.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
         else:
@@ -222,8 +227,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         # TODO: add support for 2nd camera
         self.camera1_win = CameraWindow()
-        self.camera1_win.show()
-        self.camera1_win.activateWindow()
         
     @pyqtSlot()
     def show_laser_dock(self):
@@ -276,24 +279,33 @@ class SettingsWindow(QDialog, Ui_Settings):
 
 class CameraWindow(QDialog, Ui_Camera):
     """
-    This "window" is a QWidget. If it has no parent, it 
-    will appear as a free-floating window as we want.
+    documentation
     """
-        
+     # TODO: clean up - move most stuff to implementation
+     
     def __init__(self,  parent=None):
-        super(CameraWindow,  self).__init__(parent)
-        self.setupUi(self)
-        self.setWindowTitle('Camera')
-        
-        # add matplotlib-ready widget (canvas) for showing camera output
-        self.figure = plt.figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.gridLayout.addWidget(self.canvas, 0, 1)
-        
-        # initialize camera
-        self.cam = drivers.Camera() # instantiate camera object
-        self.cam.open() # connect to first available camera
-    
+#        if 'UC480_Camera' in self.instrument_names:
+        try:
+            super(CameraWindow,  self).__init__(parent)
+            self.setupUi(self)
+            self.setWindowTitle('Camera')
+            
+            # add matplotlib-ready widget (canvas) for showing camera output
+            self.figure = plt.figure()
+            self.canvas = FigureCanvas(self.figure)
+            self.gridLayout.addWidget(self.canvas, 0, 1)
+            
+            # initialize camera
+            self.cam = drivers.Camera() # instantiate camera object
+            self.cam.open() # connect to first available camera
+            
+            # show window
+            self.show()
+            self.activateWindow()
+        except:
+            error_txt = ('No cameras appear to be connected.')
+            Error(sys.exc_info(), error_txt=error_txt).display()
+
     @pyqtSlot()
     def on_rejected(self):
         '''
@@ -338,9 +350,12 @@ class CameraWindow(QDialog, Ui_Camera):
         Slot documentation goes here.
         """
         # take a single image
-        img = self.cam.grab_image()
-        self.imshow(img)
-
+        try:
+            img = self.cam.grab_image()
+            self.imshow(img)
+        except:
+            Error(sys.exc_info()).display()
+            
     @pyqtSlot()
     def on_videoButton_released(self):
         """
