@@ -6,6 +6,18 @@ from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import drivers
 
+class Log():
+    
+    # class attributes
+    
+    def __init__(self):
+        # instance attributes
+        pass
+    
+    # public methods
+    
+    # private methods
+    
 class Measurement():
     
     # class attributes
@@ -16,20 +28,20 @@ class Measurement():
         self.type = type
         self.duration_spinbox = duration_spinbox
         self.prog_bar = prog_bar
-        self._timer.timeout.connect(self.__timer_timeout)
+        self.__timer.timeout.connect(self.___timer_timeout)
         self.time_passed = 0
         
     # public methods
     def start(self):
-        self._timer.start(1000)
+        self.__timer.start(1000)
         
     def stop(self):
-        self._timer.stop()
+        self.__timer.stop()
         if self.prog_bar:
             self.prog_bar.setValue(0)
     
     # private methods
-    def __timer_timeout(self):
+    def ___timer_timeout(self):
 #        from PyQt5.QtMultimedia import QSound
         if self.time_passed < self.duration_spinbox.value():
             self.time_passed += 1
@@ -99,11 +111,13 @@ class UserDialog():
     def __init__(self,
                        msg_icon=QMessageBox.NoIcon,
                        msg_title=None,
-                       msg_text=None):
+                       msg_text=None,
+                       msg_inf=None):
         self._msg_box = QMessageBox()
         self._msg_box.setIcon(msg_icon)
         self._msg_box.setWindowTitle(msg_title)
         self._msg_box.setText(msg_text)
+        self._msg_box.setInformativeText(msg_inf)
     
     def set_buttons(self, std_bttn_list):
         for std_bttn in std_bttn_list:
@@ -120,11 +134,12 @@ class Error(UserDialog):
         self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
         self.lineno = self.tb.tb_lineno
         super().__init__(msg_icon=QMessageBox.Critical,
-                               msg_title=('Error: {} ({}' +
-                                               ', line: {})').format(self.error_type,
-                                                                                self.fname,
-                                                                                self.lineno),
-                               msg_text=error_txt)
+                               msg_title='Error',
+                               msg_text=error_txt,
+                               msg_inf=('{}, {}' +
+                                           ', line: {}').format(self.error_type,
+                                                                            self.fname,
+                                                                            self.lineno))
 
 class Question(UserDialog):
     def __init__(self, q_title, q_txt):
@@ -166,22 +181,99 @@ def restart_app(main_window):
         clean_up_app(main_window)
         QApplication.exit(const.EXIT_CODE_REBOOT);
 
-def ready_camera_window(camera_window):
-     from matplotlib import pyplot as plt
-     from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-     # add matplotlib-ready widget (canvas) for showing camera output
-     try:
-        camera_window.figure = plt.figure()
-        camera_window.canvas = FigureCanvas(camera_window.figure)
-        camera_window.gridLayout.addWidget(camera_window.canvas, 0, 1)
+class CamWinImp():
+    
+    # class attributes
+    __video_timer = QTimer()
+    
+    def __init__(self):
+        # instance attributes
+        pass
         
-        # initialize camera
-        camera_window.cam = drivers.Camera() # instantiate camera object
-        camera_window.cam.open() # connect to first available camera
-        
-        # show window
-        camera_window.show()
-        camera_window.activateWindow()
-     except:
-        error_txt = ('No cameras appear to be connected.')
-        Error(sys.exc_info(), error_txt=error_txt).display()
+    # public methods
+    def ready_camera_window(self):
+        '''
+        ready the gui for camera view, connect to camera and show window
+        '''
+        from matplotlib import pyplot as plt
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+        # add matplotlib-ready widget (canvas) for showing camera output
+        try:
+            self.figure = plt.figure()
+            self.canvas = FigureCanvas(self.figure)
+            self.gridLayout.addWidget(self.canvas, 0, 1)
+            
+            # initialize camera
+            self.cam = drivers.Camera() # instantiate camera object
+            self.cam.open() # connect to first available camera
+            
+            # show window
+            self.show()
+            self.activateWindow()
+        except:
+            error_txt = ('No cameras appear to be connected.')
+            Error(sys.exc_info(), error_txt=error_txt).display()
+
+    def start_stop_video(self):
+        try:
+            #Turn On
+            if self.videoButton.text() == 'Start Video':
+                self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
+                self.videoButton.setText('Video ON')
+                self.cam.start_live_video()
+                self.__video_timer.timeout.connect(self.__video_timeout)
+                self.__video_timer.start(50) # video refresh period (ms)
+            #Turn Off
+            else:
+                self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+                self.videoButton.setText('Start Video')
+                self.cam.stop_live_video()
+                self.__video_timer.stop()
+        except:
+            error_txt = ('Camera disconnected.' + '\n' +
+                             'Reconnect and re-open the camera window.')
+            Error(sys.exc_info(), error_txt).display()
+            self.on_rejected()
+
+    def shoot(self):
+        try:
+            img = self.cam.grab_image()
+            self.__imshow(img)
+        except:
+            error_txt = ('Camera disconnected.' + '\n' +
+                             'Reconnect and re-open the camera window.')
+            Error(sys.exc_info(), error_txt).display()
+            self.on_rejected()
+
+    def clean_up(self):
+        '''
+        clean up before closing window
+        '''
+        if hasattr(self, '__video_timer'):
+            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.videoButton.setText('Start Video')
+            self.__video_timer.stop()
+        self.cam.close()
+        self.close()
+    
+    # private methods
+    def __imshow(self, img):
+        '''
+        Plot image
+        '''
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        ax.imshow(img)
+        self.canvas.draw()
+    
+    def __video_timeout(self):
+        '''
+        '''
+        try:
+            img = self.cam.grab_image()
+            self.__imshow(img)
+        except:
+            error_txt = ('Camera disconnected.' + '\n' +
+                             'Reconnect and re-open the camera window.')
+            Error(sys.exc_info(), error_txt).display()
+            self.on_rejected()

@@ -36,7 +36,7 @@ def gen_icon_paths_module():
         for icon_path in icon_paths:
             _, icon_fname = os.path.split(icon_path)
             icon_fname_notype = os.path.splitext(icon_fname)[0]
-            f.write(icon_fname_notype.upper() + ' = \'' + icon_fname + '\'' + '\n')
+            f.write(icon_fname_notype.upper() + ' = \'' + icon_path + '\'' + '\n')
             
 gen_icons_resource_file()
 gen_icon_paths_module()
