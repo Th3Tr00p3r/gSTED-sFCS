@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-10-11, 23:19:01 -->
+<!-- Saved: 2020-10-13, 00:26:00 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -17,6 +17,7 @@
     <Source>drivers/__init__.py</Source>
     <Source>gSTEDsFCS.py</Source>
     <Source>gui/Ui_camerawindow.py</Source>
+    <Source>gui/Ui_errorswindow.py</Source>
     <Source>gui/Ui_mainwindow.py</Source>
     <Source>gui/Ui_settingswindow.py</Source>
     <Source>gui/__init__.py</Source>
@@ -30,6 +31,7 @@
   </Sources>
   <Forms>
     <Form>gui/camerawindow.ui</Form>
+    <Form>gui/errorswindow.ui</Form>
     <Form>gui/mainwindow.ui</Form>
     <Form>gui/settingswindow.ui</Form>
   </Forms>

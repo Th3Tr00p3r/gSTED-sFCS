@@ -13,6 +13,7 @@ from PyQt5.QtGui import QIcon
 # GUI Windows
 from .Ui_mainwindow import Ui_MainWindow
 from .Ui_settingswindow import Ui_Settings
+from .Ui_errorswindow import Ui_Errors
 from .Ui_camerawindow import Ui_Camera
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -43,7 +44,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.timer.start(10)
         
         # define additinal windows
+        # TODO: keep all windows in same place '.windows' (e.g. for closing together)
         self.settings_win = SettingsWindow()
+        self.errors_win = ErrorsWindow()
         
         # intialize buttons
         self.actionLaser_Control.setChecked(True)
@@ -226,9 +229,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_ledErrors_clicked(self):
         """
-        Slot documentation goes here.
+        Show errors window
         """
-        self.tabWidget.setCurrentIndex(3) #error tab
+        # TODO:
+        self.errors_win.show()
+        self.errors_win.activateWindow()
+
+class ErrorsWindow(QDialog, Ui_Errors):
+    """
+    This "window" is a QWidget. If it has no parent, it 
+    will appear as a free-floating window as we want.
+    """
+    # TODO: when error occures, change appropriate list items background to red, font to white
+    def __init__(self,  parent=None):
+        super(ErrorsWindow,  self).__init__(parent)
+        self.setupUi(self)
+        self.setWindowTitle('Errors')
+    
+    @pyqtSlot(int)
+    def on_errorSelectList_currentRowChanged(self, index):
+        self.errorDetailsStacked.setCurrentIndex(index)
 
 class SettingsWindow(QDialog, Ui_Settings):
     """
