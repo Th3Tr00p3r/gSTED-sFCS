@@ -20,7 +20,8 @@ Python-based software for our optical measurement system.
 
 #### <u>Implemetation</u>
 
-1. ## What's here/Noteworthy files:
+## What's here/Noteworthy files:
+
 - `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together.
 
 - `./ui/mainwindow.py` - GUI module.
@@ -32,3 +33,17 @@ Python-based software for our optical measurement system.
 - `./drivers` - package for physical devices interfaces (used only in implementation modules).
 
 - `./settings/default_settings.csv` - default setting file, initial values for all GUI forms.
+
+## Dependencies/Imports:
+
+- Python 3.x
+
+- PyQt5
+
+- pyqt5ac
+
+- pandas
+
+- matplotlib
+
+- instrumental-lib
