@@ -5049,9 +5049,26 @@ Measurement</string>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_39" stretch="1,0">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,0">
+         <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1,0,0,0">
           <item>
-           <spacer name="horizontalSpacer_16">
+           <widget class="QLabel" name="label_65">
+            <property name="text">
+             <string>Current/Last Action</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lastActionLineEdit">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_6">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -5462,6 +5479,7 @@ Measurement</string>
    </attribute>
    <addaction name="actionRestart"/>
    <addaction name="actionSettings"/>
+   <addaction name="actionLog"/>
    <addaction name="separator"/>
    <addaction name="actionLaser_Control"/>
    <addaction name="actionStepper_Stage_Control"/>
@@ -6525,6 +6543,18 @@ OFF</string>
    </property>
    <property name="toolTip">
     <string>camera control</string>
+   </property>
+  </action>
+  <action name="actionLog">
+   <property name="icon">
+    <iconset resource="../icons/icons.qrc">
+     <normaloff>:/log.png</normaloff>:/log.png</iconset>
+   </property>
+   <property name="text">
+    <string>Log</string>
+   </property>
+   <property name="toolTip">
+    <string>log</string>
    </property>
   </action>
  </widget>
