@@ -6,11 +6,6 @@ import icons.icon_paths as icon
 import implementation.implementation as imp
 import implementation.constants as const
 
-# should be moved to implementation, then deleted
-from instrumental import instrument, list_instruments
-from implementation.implementation import Error
-import sys
-
 from PyQt5.QtCore import pyqtSlot,  QTimer
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QDialog)
 from PyQt5.QtGui import QIcon
@@ -39,8 +34,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setWindowTitle('gSTED-sFCS Measurement Program')
         self.EXIT_CODE_REBOOT = const.EXIT_CODE_REBOOT
         
-        # check conected devices
-        self.instrument_names = [param_set._dict['classname'] for param_set in list_instruments()]
+#        # check conected devices
+#        self.instrument_names = [param_set._dict['classname'] for param_set in list_instruments()]
         
         # set up main timeout event
         self.timer = QTimer()
@@ -53,6 +48,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # intialize buttons
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
+        self.stageButtonsGroup.setEnabled(False)
         
         #connect signals and slots
         self.ledExc.clicked.connect(self.show_laser_dock)
@@ -143,21 +139,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         # TODO:
         #Turn On
-        if not self.stageRelease.isEnabled():
-            self.stageOn.setIcon(QIcon(icon.LED_GREEN)) 
-            self.stageUp.setEnabled(True)
-            self.stageDown.setEnabled(True)
-            self.stageLeft.setEnabled(True)
-            self.stageRight.setEnabled(True)
-            self.stageRelease.setEnabled(True)
+        if not self.stageButtonsGroup.isEnabled():
+            self.stageOn.setIcon(QIcon(icon.LED_GREEN))
+            self.stageButtonsGroup.setEnabled(True)
         #Turn Off
         else:
-            self.stageOn.setIcon(QIcon(icon.LED_OFF)) 
-            self.stageUp.setEnabled(False)
-            self.stageDown.setEnabled(False)
-            self.stageLeft.setEnabled(False)
-            self.stageRight.setEnabled(False)
-            self.stageRelease.setEnabled(False)
+            self.stageOn.setIcon(QIcon(icon.LED_OFF))
+            self.stageButtonsGroup.setEnabled(False)
     
     @pyqtSlot(int)
     def on_depSetCombox_currentIndexChanged(self, index):
@@ -223,7 +211,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Instantiate 'CameraWindow' object and show it
         """
         # TODO: add support for 2nd camera
-        self.camera1_win = None
         self.camera1_win = CameraWindow()
         
     @pyqtSlot()
@@ -254,8 +241,7 @@ class SettingsWindow(QDialog, Ui_Settings):
         self.setWindowTitle('Settings')
         
         # load default settings
-        def_filepath = const.DEFAULT_SETTINGS_FILE_PATH
-        imp.Qt2csv.read_csv(self, def_filepath)
+        imp.Qt2csv.read_csv(self, const.DEFAULT_SETTINGS_FILE_PATH)
 
     @pyqtSlot()
     def on_saveButton_released(self):
@@ -263,7 +249,10 @@ class SettingsWindow(QDialog, Ui_Settings):
         Save settings as .csv
         """
         # TODO: add all forms in main window too
-        filepath, _ = QFileDialog.getSaveFileName(self, 'Save Settings', const.SETTINGS_FOLDER_PATH, "CSV Files(*.csv *.txt)")
+        filepath, _ = QFileDialog.getSaveFileName(self,
+                                                                 'Save Settings',
+                                                                 const.SETTINGS_FOLDER_PATH,
+                                                                 "CSV Files(*.csv *.txt)")
         imp.Qt2csv.write_csv(self, filepath)
         
     @pyqtSlot()
@@ -272,102 +261,40 @@ class SettingsWindow(QDialog, Ui_Settings):
         load settings .csv file
         """
         # TODO: add all forms in main window too
-        filepath, _ = QFileDialog.getOpenFileName(self, "Load Settings", const.SETTINGS_FOLDER_PATH, "CSV Files(*.csv *.txt)")
+        filepath, _ = QFileDialog.getOpenFileName(self,
+                                                                 "Load Settings",
+                                                                 const.SETTINGS_FOLDER_PATH,
+                                                                 "CSV Files(*.csv *.txt)")
         imp.Qt2csv.read_csv(self, filepath)
 
-class CameraWindow(QDialog, Ui_Camera):
+class CameraWindow(QDialog, Ui_Camera, imp.CamWinImp):
     """
     documentation
     """
-     # TODO: clean up - move most stuff to implementation
-     
     def __init__(self,  parent=None):
         super(CameraWindow,  self).__init__(parent)
         self.setupUi(self)
         self.setWindowTitle('Camera')
-        imp.ready_camera_window(self)
+        
+        self.ready_camera_window()
 
     @pyqtSlot()
     def on_rejected(self):
         '''
         cleaning up the camera controls and closing the camera window
         '''
-        if hasattr(self, 'video_timer'):
-            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-            self.videoButton.setText('Start Video')
-            self.video_timer.stop()
-        self.cam.close()
-        self.close()
-
-    def imshow(self, img):
-        '''
-        Plot image
-        '''
-        # TODO: move to imp
-        
-        # instead of ax.hold(False)
-        self.figure.clear()
-
-        # create an axis
-        ax = self.figure.add_subplot(111)
-
-        # plot data
-        ax.imshow(img)
-
-        # refresh canvas
-        self.canvas.draw()
-    
-    def video_timeout(self):
-        '''
-        '''
-        # TODO: move to imp
-        try:
-            img = self.cam.grab_image()
-            self.imshow(img)
-        except:
-            error_txt = ('Camera disconnected.' + '\n' +
-                             'Reconnect and re-open the camera window.')
-            Error(sys.exc_info(), error_txt).display()
-            self.on_rejected()
+        self.clean_up()
 
     @pyqtSlot()
     def on_shootButton_released(self):
         """
         Slot documentation goes here.
         """
-        # take a single image
-        try:
-            img = self.cam.grab_image()
-            self.imshow(img)
-        except:
-            error_txt = ('Camera disconnected.' + '\n' +
-                             'Reconnect and re-open the camera window.')
-            Error(sys.exc_info(), error_txt).display()
-            self.on_rejected()
-            
+        self.shoot()
+
     @pyqtSlot()
     def on_videoButton_released(self):
         """
         Slot documentation goes here.
         """
-        # TODO: move to imp
-        #Turn On
-        try:
-            if self.videoButton.text() == 'Start Video':
-                self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
-                self.videoButton.setText('Video ON')
-                self.cam.start_live_video()
-                self.video_timer = QTimer()
-                self.video_timer.timeout.connect(self.video_timeout)
-                self.video_timer.start(50) # video refresh period (ms)
-            #Turn Off
-            else:
-                self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-                self.videoButton.setText('Start Video')
-                self.cam.stop_live_video()
-                self.video_timer.stop()
-        except:
-            error_txt = ('Camera disconnected.' + '\n' +
-                             'Reconnect and re-open the camera window.')
-            Error(sys.exc_info(), error_txt).display()
-            self.on_rejected()
+        self.start_stop_video()
