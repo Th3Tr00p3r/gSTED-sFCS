@@ -156,6 +156,7 @@ def clean_up_app(main_window):
     (before closing/restarting application)
     '''
     main_window.settings_win.reject()
+    main_window.errors_win.reject()
     if hasattr(main_window, 'camera1_win'):
         main_window.camera1_win.reject()
         
