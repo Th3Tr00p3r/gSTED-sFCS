@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QApplication
 from gui.mainwindow import MainWindow
 import implementation.constants as const
-import gui.icons
-import pyqt5ac
+import gui.icons # NOQA
+#import pyqt5ac
 
 if __name__ == "__main__":
     import sys

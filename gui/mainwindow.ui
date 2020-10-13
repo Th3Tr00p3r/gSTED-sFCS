@@ -5193,7 +5193,7 @@ Measurement</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="../icons/icons.qrc">
+               <iconset resource="icons/icons.qrc">
                 <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
               </property>
               <property name="iconSize">
@@ -5263,7 +5263,7 @@ Measurement</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="../icons/icons.qrc">
+               <iconset resource="icons/icons.qrc">
                 <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
               </property>
               <property name="iconSize">
@@ -5333,7 +5333,7 @@ Measurement</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="../icons/icons.qrc">
+               <iconset resource="icons/icons.qrc">
                 <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
               </property>
               <property name="iconSize">
@@ -5416,7 +5416,7 @@ Measurement</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="../icons/icons.qrc">
+               <iconset resource="icons/icons.qrc">
                 <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
               </property>
               <property name="iconSize">
@@ -5589,7 +5589,7 @@ Measurement</string>
 OFF</string>
             </property>
             <property name="icon">
-             <iconset resource="../icons/icons.qrc">
+             <iconset resource="icons/icons.qrc">
               <normaloff>:/switch_off.png</normaloff>
               <normalon>:/switch_off.png</normalon>
               <selectedoff>:/switch_off.png</selectedoff>
@@ -6006,7 +6006,7 @@ Settings</string>
 OFF</string>
                 </property>
                 <property name="icon">
-                 <iconset resource="../icons/icons.qrc">
+                 <iconset resource="icons/icons.qrc">
                   <normaloff>:/switch_off.png</normaloff>
                   <normalon>:/switch_off.png</normalon>
                   <selectedoff>:/switch_off.png</selectedoff>
@@ -6056,7 +6056,7 @@ OFF</string>
 Closed</string>
                 </property>
                 <property name="icon">
-                 <iconset resource="../icons/icons.qrc">
+                 <iconset resource="icons/icons.qrc">
                   <normaloff>:/switch_off.png</normaloff>
                   <normalon>:/switch_on.png</normalon>
                   <selectedoff>:/switch_off.png</selectedoff>
@@ -6145,7 +6145,7 @@ Closed</string>
 OFF</string>
        </property>
        <property name="icon">
-        <iconset resource="../icons/icons.qrc">
+        <iconset resource="icons/icons.qrc">
          <normaloff>:/switch_off.png</normaloff>
          <normalon>:/switch_on.png</normalon>
          <selectedoff>:/switch_off.png</selectedoff>
@@ -6478,7 +6478,7 @@ OFF</string>
   </widget>
   <action name="actionRestart">
    <property name="icon">
-    <iconset resource="../icons/icons.qrc">
+    <iconset resource="icons/icons.qrc">
      <normaloff>:/restart.png</normaloff>:/restart.png</iconset>
    </property>
    <property name="text">
@@ -6493,7 +6493,7 @@ OFF</string>
   </action>
   <action name="actionSettings">
    <property name="icon">
-    <iconset resource="../icons/icons.qrc">
+    <iconset resource="icons/icons.qrc">
      <normaloff>:/settings.png</normaloff>:/settings.png</iconset>
    </property>
    <property name="text">
@@ -6508,7 +6508,7 @@ OFF</string>
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../icons/icons.qrc">
+    <iconset resource="icons/icons.qrc">
      <normaloff>:/laser_blue.png</normaloff>:/laser_blue.png</iconset>
    </property>
    <property name="text">
@@ -6523,7 +6523,7 @@ OFF</string>
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../icons/icons.qrc">
+    <iconset resource="icons/icons.qrc">
      <normaloff>:/stage.png</normaloff>:/stage.png</iconset>
    </property>
    <property name="text">
@@ -6535,7 +6535,7 @@ OFF</string>
   </action>
   <action name="actionCamera_Control">
    <property name="icon">
-    <iconset resource="../icons/icons.qrc">
+    <iconset resource="icons/icons.qrc">
      <normaloff>:/camera.png</normaloff>:/camera.png</iconset>
    </property>
    <property name="text">
@@ -6547,7 +6547,7 @@ OFF</string>
   </action>
   <action name="actionLog">
    <property name="icon">
-    <iconset resource="../icons/icons.qrc">
+    <iconset resource="icons/icons.qrc">
      <normaloff>:/log.png</normaloff>:/log.png</iconset>
    </property>
    <property name="text">
@@ -6640,7 +6640,7 @@ OFF</string>
   <tabstop>ledErrors</tabstop>
  </tabstops>
  <resources>
-  <include location="../icons/icons.qrc"/>
+  <include location="icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>

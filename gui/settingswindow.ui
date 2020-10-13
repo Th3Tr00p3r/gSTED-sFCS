@@ -32,7 +32,7 @@
    <string>Settings</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../icons/icons.qrc">
+   <iconset resource="icons/icons.qrc">
     <normaloff>:/settings.png</normaloff>:/settings.png</iconset>
   </property>
   <widget class="QFrame" name="frame">
@@ -2362,7 +2362,7 @@
              <string/>
             </property>
             <property name="icon">
-             <iconset resource="../icons/icons.qrc">
+             <iconset resource="icons/icons.qrc">
               <normaloff>:/load.png</normaloff>:/load.png</iconset>
             </property>
             <property name="iconSize">
@@ -2435,7 +2435,7 @@
              <string/>
             </property>
             <property name="icon">
-             <iconset resource="../icons/icons.qrc">
+             <iconset resource="icons/icons.qrc">
               <normaloff>:/save_as.png</normaloff>:/save_as.png</iconset>
             </property>
             <property name="iconSize">
@@ -2508,7 +2508,7 @@
              <string/>
             </property>
             <property name="icon">
-             <iconset resource="../icons/icons.qrc">
+             <iconset resource="icons/icons.qrc">
               <normaloff>:/preferences.png</normaloff>:/preferences.png</iconset>
             </property>
             <property name="iconSize">
@@ -2559,7 +2559,7 @@
   </widget>
  </widget>
  <resources>
-  <include location="../icons/icons.qrc"/>
+  <include location="icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>
