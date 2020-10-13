@@ -6,9 +6,9 @@ Python-based software for our optical measurement system.
 
 #### <u>GUI</u>
 
-1. .ui files are created graphically via ''Qt Designer', then are compiled into .py files (e.g. `mainwindow.ui` compiles into `Ui__mainwindow.py`) which are just the translation of the graphical layout into PyQt5 code.
+1. `.ui` files are created graphically using Qt Designer, and are dynamically compiled into Python from within the `gui.py` module.
 
-2. These files are then imported into the `mainwindow.py` module, where the signals/slots (similar to callbacks) are coded as methods for the classes that are named after the windows (`MainWindow`, `SettingsWindow`, etc.).
+2. Signals/slots (similar to callbacks) are coded as methods for the classes that are named after the windows (`MainWindow`, `SettingsWindow`, etc.).
 
 3. Finally, when running the project (`gSTEDsFCS.py`), a `MainWindow()` object is instantiated and the window is shown on screen.
 
@@ -20,11 +20,13 @@ Python-based software for our optical measurement system.
 
 #### <u>Implemetation</u>
 
+1. 
+
 ## What's here/Noteworthy files:
 
 - `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together.
 
-- `./ui/mainwindow.py` - GUI module.
+- `./gui/gui.py` - GUI module.
 
 - `./implementation/implementation.py` - main implementation module.
 
@@ -40,7 +42,7 @@ Python-based software for our optical measurement system.
 
 - PyQt5
 
-- pyqt5ac
+- #pyqt5ac (placeholder)
 
 - pandas
 
