@@ -1,0 +1,670 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Errors</class>
+ <widget class="QWidget" name="Errors">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>703</width>
+    <height>536</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>ErrorsWindow</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normalon>:/led_red.png</normalon>
+   </iconset>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_4">
+   <item row="0" column="0">
+    <widget class="QFrame" name="frame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1">
+        <item>
+         <widget class="QGroupBox" name="groupBox">
+          <property name="title">
+           <string>Error</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout">
+           <item row="0" column="0">
+            <widget class="QListWidget" name="errorSelectList">
+             <property name="frameShadow">
+              <enum>QFrame::Sunken</enum>
+             </property>
+             <property name="movement">
+              <enum>QListView::Static</enum>
+             </property>
+             <property name="isWrapping" stdset="0">
+              <bool>false</bool>
+             </property>
+             <property name="resizeMode">
+              <enum>QListView::Fixed</enum>
+             </property>
+             <property name="currentRow">
+              <number>0</number>
+             </property>
+             <property name="sortingEnabled">
+              <bool>false</bool>
+             </property>
+             <item>
+              <property name="text">
+               <string>UM232</string>
+              </property>
+              <property name="background">
+               <brush brushstyle="NoBrush">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </property>
+              <property name="foreground">
+               <brush brushstyle="NoBrush">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Depletion Laser VISA</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Miscellaneous</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox_2">
+          <property name="title">
+           <string>Details</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_2">
+           <item row="0" column="0">
+            <widget class="QStackedWidget" name="errorDetailsStacked">
+             <property name="frameShadow">
+              <enum>QFrame::Plain</enum>
+             </property>
+             <property name="currentIndex">
+              <number>0</number>
+             </property>
+             <widget class="QWidget" name="page">
+              <layout class="QGridLayout" name="gridLayout_5">
+               <item row="0" column="0">
+                <layout class="QVBoxLayout" name="verticalLayout_5">
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout_69">
+                   <item>
+                    <widget class="QLabel" name="label_67">
+                     <property name="text">
+                      <string>FT Open Status</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="um232ftOpenStat">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>FT_OK</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_HANDLE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_FOUND</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_IO_ERROR</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INSUFFICIENT_RESOURCES</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_PARAMETER</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_BAUD_RATE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED_FOR_ERASE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED_FOR_WRITE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_FAILED_TO_WRITE_DEVICE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_READ_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_WRITE_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_ERASE_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_NOT_PRESENT</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_NOT_PROGRAMMED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_ARGS</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_NOT_SUPPORTED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_OTHER_ERROR</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout_70">
+                   <item>
+                    <widget class="QLabel" name="label_68">
+                     <property name="text">
+                      <string>FT Device</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="um232ftDev">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="editable">
+                      <bool>false</bool>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>FT_OK</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_HANDLE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_FOUND</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_IO_ERROR</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INSUFFICIENT_RESOURCES</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_PARAMETER</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_BAUD_RATE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED_FOR_ERASE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED_FOR_WRITE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_FAILED_TO_WRITE_DEVICE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_READ_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_WRITE_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_ERASE_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_NOT_PRESENT</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_NOT_PROGRAMMED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_ARGS</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_NOT_SUPPORTED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_OTHER_ERROR</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout_73">
+                   <item>
+                    <widget class="QLabel" name="label_72">
+                     <property name="text">
+                      <string>FT Close Status</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="um232ftCloseStat">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>FT_OK</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_HANDLE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_FOUND</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_IO_ERROR</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INSUFFICIENT_RESOURCES</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_PARAMETER</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_BAUD_RATE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED_FOR_ERASE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED_FOR_WRITE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_FAILED_TO_WRITE_DEVICE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_READ_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_WRITE_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_ERASE_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_NOT_PRESENT</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_NOT_PROGRAMMED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_ARGS</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_NOT_SUPPORTED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_OTHER_ERROR</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout_74">
+                   <item>
+                    <widget class="QLabel" name="label_73">
+                     <property name="text">
+                      <string>FT Read Status</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="um232ftReadStat">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>FT_OK</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_HANDLE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_FOUND</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_IO_ERROR</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INSUFFICIENT_RESOURCES</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_PARAMETER</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_BAUD_RATE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED_FOR_ERASE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_DEVICE_NOT_OPENED_FOR_WRITE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_FAILED_TO_WRITE_DEVICE</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_READ_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_WRITE_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_ERASE_FAILED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_NOT_PRESENT</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_EEPROM_NOT_PROGRAMMED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_INVALID_ARGS</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_NOT_SUPPORTED</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>FT_OTHER_ERROR</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QWidget" name="page_2">
+              <layout class="QGridLayout" name="gridLayout_6">
+               <item row="0" column="0">
+                <layout class="QVBoxLayout" name="verticalLayout_65">
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout_64">
+                   <item>
+                    <widget class="QLabel" name="label_64">
+                     <property name="text">
+                      <string>Code</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="depVISAerrorCode">
+                     <property name="readOnly">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="label_65">
+                   <property name="text">
+                    <string>Source</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPlainTextEdit" name="depVISAerrorSource">
+                   <property name="readOnly">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QWidget" name="page_3">
+              <layout class="QGridLayout" name="gridLayout_7">
+               <item row="1" column="0">
+                <layout class="QVBoxLayout" name="verticalLayout_77">
+                 <item>
+                  <widget class="QLabel" name="label_75">
+                   <property name="text">
+                    <string>Source</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPlainTextEdit" name="miscErrorSource">
+                   <property name="readOnly">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="0" column="0">
+                <layout class="QVBoxLayout" name="verticalLayout_76">
+                 <item>
+                  <widget class="QLabel" name="label_74">
+                   <property name="text">
+                    <string>Code</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="miscErrorCode">
+                   <property name="readOnly">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="../icons/icons.qrc"/>
+ </resources>
+ <connections/>
+</ui>
