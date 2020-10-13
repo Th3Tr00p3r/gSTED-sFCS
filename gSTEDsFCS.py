@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QApplication
 from gui.mainwindow import MainWindow
 import implementation.constants as const
-import icons
+import gui.icons
 import pyqt5ac
 
 if __name__ == "__main__":

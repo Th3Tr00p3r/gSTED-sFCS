@@ -2,21 +2,16 @@
 GUI Module.
 """
 # project modules
-import icons.icon_paths as icon
+import gui.icons.icon_paths as icon
 import implementation.implementation as imp
 import implementation.constants as const
 
 from PyQt5.QtCore import pyqtSlot,  QTimer
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QDialog)
 from PyQt5.QtGui import QIcon
+from PyQt5 import uic
 
-# GUI Windows
-from .Ui_mainwindow import Ui_MainWindow
-from .Ui_settingswindow import Ui_Settings
-from .Ui_errorswindow import Ui_Errors
-from .Ui_camerawindow import Ui_Camera
-
-class MainWindow(QMainWindow, Ui_MainWindow):
+class MainWindow(QMainWindow):
     """
     Class documentation goes here.
     """
@@ -31,7 +26,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         # general window settings
         super(MainWindow, self).__init__(parent)
-        self.setupUi(self)
+        uic.loadUi(const.MAINWINDOW_UI_PATH, self)
+#        self.setupUi(self)
         self.setWindowTitle('gSTED-sFCS Measurement Program')
         self.EXIT_CODE_REBOOT = const.EXIT_CODE_REBOOT
         
@@ -235,7 +231,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.errors_win.show()
         self.errors_win.activateWindow()
 
-class ErrorsWindow(QDialog, Ui_Errors):
+class ErrorsWindow(QDialog):
     """
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
@@ -243,21 +239,21 @@ class ErrorsWindow(QDialog, Ui_Errors):
     # TODO: when error occures, change appropriate list items background to red, font to white
     def __init__(self,  parent=None):
         super(ErrorsWindow,  self).__init__(parent)
-        self.setupUi(self)
+        uic.loadUi(const.ERRORSWINDOW_UI_PATH, self)
         self.setWindowTitle('Errors')
     
     @pyqtSlot(int)
     def on_errorSelectList_currentRowChanged(self, index):
         self.errorDetailsStacked.setCurrentIndex(index)
 
-class SettingsWindow(QDialog, Ui_Settings):
+class SettingsWindow(QDialog):
     """
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
     """
     def __init__(self,  parent=None):
         super(SettingsWindow,  self).__init__(parent)
-        self.setupUi(self)
+        uic.loadUi(const.SETTINGSWINDOW_UI_PATH, self)
         self.setWindowTitle('Settings')
         
         # load default settings
@@ -287,13 +283,13 @@ class SettingsWindow(QDialog, Ui_Settings):
                                                                  "CSV Files(*.csv *.txt)")
         imp.Qt2csv.read_csv(self, filepath)
 
-class CameraWindow(QDialog, Ui_Camera, imp.CamWinImp):
+class CameraWindow(QDialog, imp.CamWinImp):
     """
     documentation
     """
     def __init__(self,  parent=None):
         super(CameraWindow,  self).__init__(parent)
-        self.setupUi(self)
+        uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
         self.setWindowTitle('Camera')
         
         self.ready_camera_window()

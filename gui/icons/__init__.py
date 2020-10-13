@@ -17,7 +17,7 @@ def gen_icons_resource_file():
 
     icon_paths = glob.glob('.\icons\*.png')
     
-    with open('./icons/icons.qrc', 'w') as f: 
+    with open('./gui/icons/icons.qrc', 'w') as f: 
         f.write(header)
         for icon_path in icon_paths:
             _, icon_fname = os.path.split(icon_path)
@@ -31,7 +31,7 @@ def gen_icon_paths_module():
                   'if needed, changes should be made in \'./icons/__init__.py)\'' + '\n'
                   "'''" + '\n')
     icon_paths = glob.glob('.\icons\*.png')
-    with open('./icons/icon_paths.py', 'w') as f: 
+    with open('./gui/icons/icon_paths.py', 'w') as f: 
         f.write(header)
         for icon_path in icon_paths:
             _, icon_fname = os.path.split(icon_path)
