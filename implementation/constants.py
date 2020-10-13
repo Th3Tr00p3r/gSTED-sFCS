@@ -1,6 +1,10 @@
 '''
 Constants
 '''
+MAINWINDOW_UI_PATH = './gui/mainwindow.ui'
+SETTINGSWINDOW_UI_PATH = './gui/settingswindow.ui'
+CAMERAWINDOW_UI_PATH = './gui/camerawindow.ui'
+ERRORSWINDOW_UI_PATH = './gui/errorswindow.ui'
 
 SETTINGS_FOLDER_PATH = './settings/'
 
