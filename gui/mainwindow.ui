@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1193</width>
+    <width>1246</width>
     <height>861</height>
    </rect>
   </property>
@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>gSTED-sFCS Measurement Program</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout_8">
@@ -5479,30 +5479,30 @@ Measurement</string>
    </attribute>
    <addaction name="actionRestart"/>
    <addaction name="actionSettings"/>
-   <addaction name="actionLog"/>
    <addaction name="separator"/>
    <addaction name="actionLaser_Control"/>
    <addaction name="actionStepper_Stage_Control"/>
+   <addaction name="actionLog"/>
    <addaction name="separator"/>
    <addaction name="actionCamera_Control"/>
   </widget>
   <widget class="QDockWidget" name="laserDock">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
    <property name="minimumSize">
     <size>
-     <width>262</width>
-     <height>294</height>
+     <width>315</width>
+     <height>283</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
-     <width>999</width>
-     <height>999</height>
+     <width>315</width>
+     <height>283</height>
     </size>
    </property>
    <property name="features">
@@ -5520,12 +5520,15 @@ Measurement</string>
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QGridLayout" name="gridLayout_20">
      <item row="0" column="0">
-      <layout class="QVBoxLayout" name="verticalLayout_34" stretch="1,2">
-       <property name="spacing">
-        <number>3</number>
-       </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
        <item>
         <widget class="QGroupBox" name="groupBox_6">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="font">
           <font>
            <pointsize>10</pointsize>
@@ -5631,7 +5634,7 @@ OFF</string>
          </property>
          <property name="minimumSize">
           <size>
-           <width>220</width>
+           <width>0</width>
            <height>0</height>
           </size>
          </property>
@@ -5649,124 +5652,12 @@ OFF</string>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
          </property>
-         <layout class="QGridLayout" name="gridLayout" rowstretch="0,0">
-          <property name="leftMargin">
-           <number>1</number>
-          </property>
-          <property name="topMargin">
-           <number>5</number>
-          </property>
-          <property name="rightMargin">
-           <number>1</number>
-          </property>
-          <property name="bottomMargin">
-           <number>5</number>
-          </property>
-          <property name="spacing">
-           <number>3</number>
-          </property>
-          <item row="1" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_35">
-            <property name="spacing">
-             <number>3</number>
-            </property>
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_60">
-              <item>
-               <widget class="QLabel" name="label_61">
-                <property name="font">
-                 <font>
-                  <pointsize>7</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>Current (mA)</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBox" name="depActualCurrSpinner">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">background-color: rgb(255, 255, 255);</string>
-                </property>
-                <property name="readOnly">
-                 <bool>true</bool>
-                </property>
-                <property name="buttonSymbols">
-                 <enum>QAbstractSpinBox::NoButtons</enum>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_61">
-              <item>
-               <widget class="QLabel" name="label_62">
-                <property name="font">
-                 <font>
-                  <pointsize>7</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>Power (mW)</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBox" name="depActualPowerSpinner">
-                <property name="styleSheet">
-                 <string notr="true">background-color: rgb(255, 255, 255);</string>
-                </property>
-                <property name="readOnly">
-                 <bool>true</bool>
-                </property>
-                <property name="buttonSymbols">
-                 <enum>QAbstractSpinBox::NoButtons</enum>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_62">
-              <item>
-               <widget class="QLabel" name="label_63">
-                <property name="font">
-                 <font>
-                  <pointsize>7</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>SHG Temp.</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBox" name="depTemp">
-                <property name="styleSheet">
-                 <string notr="true">background-color: rgb(255, 255, 255);</string>
-                </property>
-                <property name="readOnly">
-                 <bool>true</bool>
-                </property>
-                <property name="buttonSymbols">
-                 <enum>QAbstractSpinBox::NoButtons</enum>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
+         <layout class="QGridLayout" name="gridLayout_6">
           <item row="0" column="0">
-           <layout class="QVBoxLayout" name="verticalLayout_8">
+           <layout class="QVBoxLayout" name="verticalLayout_4" stretch="1,0">
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="1,0">
-              <item>
+             <layout class="QGridLayout" name="gridLayout" rowstretch="0,1">
+              <item row="0" column="0" colspan="2">
                <layout class="QVBoxLayout" name="verticalLayout_9">
                 <item>
                  <widget class="QComboBox" name="depSetCombox_2">
@@ -5778,7 +5669,7 @@ OFF</string>
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>80</width>
+                    <width>0</width>
                     <height>0</height>
                    </size>
                   </property>
@@ -5813,15 +5704,28 @@ OFF</string>
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>120</width>
+                    <width>0</width>
                     <height>0</height>
                    </size>
                   </property>
                   <property name="currentIndex">
-                   <number>0</number>
+                   <number>1</number>
                   </property>
                   <widget class="QWidget" name="current_2">
                    <layout class="QHBoxLayout" name="horizontalLayout_12">
+                    <item>
+                     <spacer name="horizontalSpacer_11">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
                     <item>
                      <widget class="QSpinBox" name="spinBox_2">
                       <property name="sizePolicy">
@@ -5832,8 +5736,14 @@ OFF</string>
                       </property>
                       <property name="minimumSize">
                        <size>
-                        <width>60</width>
+                        <width>0</width>
                         <height>0</height>
+                       </size>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>16777215</width>
+                        <height>20</height>
                        </size>
                       </property>
                       <property name="styleSheet">
@@ -5874,6 +5784,19 @@ OFF</string>
                   <widget class="QWidget" name="power_2">
                    <layout class="QHBoxLayout" name="horizontalLayout_13">
                     <item>
+                     <spacer name="horizontalSpacer_10">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item>
                      <widget class="QSpinBox" name="spinBox_7">
                       <property name="sizePolicy">
                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -5883,8 +5806,14 @@ OFF</string>
                       </property>
                       <property name="minimumSize">
                        <size>
-                        <width>60</width>
+                        <width>0</width>
                         <height>0</height>
+                       </size>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>16777215</width>
+                        <height>20</height>
                        </size>
                       </property>
                       <property name="styleSheet">
@@ -5933,15 +5862,138 @@ OFF</string>
                   </widget>
                  </widget>
                 </item>
+                <item>
+                 <spacer name="verticalSpacer_3">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
                </layout>
               </item>
-              <item>
+              <item row="1" column="0">
+               <layout class="QVBoxLayout" name="verticalLayout_5">
+                <item>
+                 <widget class="QPushButton" name="depEmissionOn">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>50</width>
+                    <height>50</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>999</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(225, 225, 225);</string>
+                  </property>
+                  <property name="text">
+                   <string>Laser 
+OFF</string>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="icons/icons.qrc">
+                    <normaloff>:/switch_off.png</normaloff>
+                    <normalon>:/switch_off.png</normalon>
+                    <selectedoff>:/switch_off.png</selectedoff>
+                    <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>32</width>
+                    <height>32</height>
+                   </size>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="depShutterOn">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>50</width>
+                    <height>50</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>999</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(225, 225, 225);</string>
+                  </property>
+                  <property name="text">
+                   <string>Shutter 
+Closed</string>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="icons/icons.qrc">
+                    <normaloff>:/switch_off.png</normaloff>
+                    <normalon>:/switch_on.png</normalon>
+                    <selectedoff>:/switch_off.png</selectedoff>
+                    <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>32</width>
+                    <height>32</height>
+                   </size>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="1" column="1">
                <widget class="QPushButton" name="depEmissionOn_4">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>100</width>
+                  <height>60</height>
+                 </size>
                 </property>
                 <property name="font">
                  <font>
@@ -5972,106 +6024,99 @@ Settings</string>
              </layout>
             </item>
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_22">
+             <layout class="QHBoxLayout" name="horizontalLayout_35">
+              <property name="spacing">
+               <number>3</number>
+              </property>
               <item>
-               <widget class="QPushButton" name="depEmissionOn">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>50</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>999</width>
-                  <height>100</height>
-                 </size>
-                </property>
-                <property name="font">
-                 <font>
-                  <pointsize>8</pointsize>
-                 </font>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">background-color: rgb(225, 225, 225);</string>
-                </property>
-                <property name="text">
-                 <string>Laser 
-OFF</string>
-                </property>
-                <property name="icon">
-                 <iconset resource="icons/icons.qrc">
-                  <normaloff>:/switch_off.png</normaloff>
-                  <normalon>:/switch_off.png</normalon>
-                  <selectedoff>:/switch_off.png</selectedoff>
-                  <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
-                </property>
-                <property name="iconSize">
-                 <size>
-                  <width>32</width>
-                  <height>32</height>
-                 </size>
-                </property>
-                <property name="flat">
-                 <bool>true</bool>
-                </property>
-               </widget>
+               <layout class="QVBoxLayout" name="verticalLayout_60">
+                <item>
+                 <widget class="QLabel" name="label_61">
+                  <property name="font">
+                   <font>
+                    <pointsize>7</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Current (mA)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="depActualCurrSpinner">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(255, 255, 255);</string>
+                  </property>
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::NoButtons</enum>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
               <item>
-               <widget class="QPushButton" name="depShutterOn">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>50</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>999</width>
-                  <height>100</height>
-                 </size>
-                </property>
-                <property name="font">
-                 <font>
-                  <pointsize>8</pointsize>
-                 </font>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">background-color: rgb(225, 225, 225);</string>
-                </property>
-                <property name="text">
-                 <string>Shutter 
-Closed</string>
-                </property>
-                <property name="icon">
-                 <iconset resource="icons/icons.qrc">
-                  <normaloff>:/switch_off.png</normaloff>
-                  <normalon>:/switch_on.png</normalon>
-                  <selectedoff>:/switch_off.png</selectedoff>
-                  <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
-                </property>
-                <property name="iconSize">
-                 <size>
-                  <width>32</width>
-                  <height>32</height>
-                 </size>
-                </property>
-                <property name="flat">
-                 <bool>true</bool>
-                </property>
-               </widget>
+               <layout class="QVBoxLayout" name="verticalLayout_61">
+                <item>
+                 <widget class="QLabel" name="label_62">
+                  <property name="font">
+                   <font>
+                    <pointsize>7</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Power (mW)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="depActualPowerSpinner">
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(255, 255, 255);</string>
+                  </property>
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::NoButtons</enum>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QVBoxLayout" name="verticalLayout_62">
+                <item>
+                 <widget class="QLabel" name="label_63">
+                  <property name="font">
+                   <font>
+                    <pointsize>7</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>SHG Temp.</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="depTemp">
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(255, 255, 255);</string>
+                  </property>
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::NoButtons</enum>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </item>
@@ -6087,7 +6132,7 @@ Closed</string>
   </widget>
   <widget class="QDockWidget" name="stepperDock">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
@@ -6095,13 +6140,13 @@ Closed</string>
    <property name="minimumSize">
     <size>
      <width>207</width>
-     <height>235</height>
+     <height>243</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
-     <width>999</width>
-     <height>999</height>
+     <width>315</width>
+     <height>243</height>
     </size>
    </property>
    <property name="layoutDirection">
@@ -6120,96 +6165,29 @@ Closed</string>
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
-    <layout class="QGridLayout" name="gridLayout_4">
-     <item row="0" column="0">
-      <widget class="QPushButton" name="stageOn">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+    <layout class="QVBoxLayout" name="verticalLayout_7">
+     <item>
+      <spacer name="verticalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
        </property>
-       <property name="maximumSize">
+       <property name="sizeHint" stdset="0">
         <size>
-         <width>999</width>
-         <height>999</height>
+         <width>20</width>
+         <height>24</height>
         </size>
        </property>
-       <property name="font">
-        <font>
-         <pointsize>8</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>Control 
-OFF</string>
-       </property>
-       <property name="icon">
-        <iconset resource="icons/icons.qrc">
-         <normaloff>:/switch_off.png</normaloff>
-         <normalon>:/switch_on.png</normalon>
-         <selectedoff>:/switch_off.png</selectedoff>
-         <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="checkable">
-        <bool>false</bool>
-       </property>
-       <property name="checked">
-        <bool>false</bool>
-       </property>
-       <property name="autoRepeat">
-        <bool>false</bool>
-       </property>
-       <property name="autoExclusive">
-        <bool>false</bool>
-       </property>
-       <property name="autoDefault">
-        <bool>false</bool>
-       </property>
-       <property name="default">
-        <bool>false</bool>
-       </property>
-       <property name="flat">
-        <bool>true</bool>
-       </property>
-      </widget>
+      </spacer>
      </item>
-     <item row="0" column="1">
-      <layout class="QVBoxLayout" name="verticalLayout_6">
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_7">
        <item>
-        <widget class="QLabel" name="label_5">
-         <property name="font">
-          <font>
-           <pointsize>10</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string># Steps</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSpinBox" name="stageSteps">
+        <widget class="QPushButton" name="stageOn">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>70</width>
-           <height>20</height>
-          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -6219,23 +6197,107 @@ OFF</string>
          </property>
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>8</pointsize>
           </font>
          </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
+         <property name="text">
+          <string>Control 
+OFF</string>
          </property>
-         <property name="maximum">
-          <number>500</number>
+         <property name="icon">
+          <iconset resource="icons/icons.qrc">
+           <normaloff>:/switch_off.png</normaloff>
+           <normalon>:/switch_on.png</normalon>
+           <selectedoff>:/switch_off.png</selectedoff>
+           <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
          </property>
-         <property name="value">
-          <number>250</number>
+         <property name="iconSize">
+          <size>
+           <width>32</width>
+           <height>32</height>
+          </size>
+         </property>
+         <property name="checkable">
+          <bool>false</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <property name="autoRepeat">
+          <bool>false</bool>
+         </property>
+         <property name="autoExclusive">
+          <bool>false</bool>
+         </property>
+         <property name="autoDefault">
+          <bool>false</bool>
+         </property>
+         <property name="default">
+          <bool>false</bool>
+         </property>
+         <property name="flat">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_6">
+         <item>
+          <widget class="QLabel" name="label_5">
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string># Steps</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="stageSteps">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>70</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>12</pointsize>
+            </font>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="maximum">
+            <number>500</number>
+           </property>
+           <property name="value">
+            <number>250</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
       </layout>
      </item>
-     <item row="1" column="0" colspan="2">
+     <item>
       <widget class="QGroupBox" name="stageButtonsGroup">
        <property name="enabled">
         <bool>true</bool>
@@ -6449,17 +6511,23 @@ OFF</string>
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_2">
+  <widget class="QDockWidget" name="logDock">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
+   <property name="minimumSize">
+    <size>
+     <width>315</width>
+     <height>200</height>
+    </size>
+   </property>
    <property name="maximumSize">
     <size>
-     <width>999</width>
-     <height>999</height>
+     <width>600</width>
+     <height>9999</height>
     </size>
    </property>
    <property name="features">
@@ -6469,12 +6537,25 @@ OFF</string>
     <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>Not Used Yet</string>
+    <string>Log</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_4"/>
+   <widget class="QWidget" name="dockWidgetContents_4">
+    <layout class="QGridLayout" name="gridLayout_7">
+     <item row="0" column="0">
+      <widget class="QPlainTextEdit" name="logText">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <action name="actionRestart">
    <property name="icon">
@@ -6546,6 +6627,9 @@ OFF</string>
    </property>
   </action>
   <action name="actionLog">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="icons/icons.qrc">
      <normaloff>:/log.png</normaloff>:/log.png</iconset>
@@ -6629,10 +6713,6 @@ OFF</string>
   <tabstop>lineEdit</tabstop>
   <tabstop>lineEdit_2</tabstop>
   <tabstop>FCSgraphicsView</tabstop>
-  <tabstop>excOnButton</tabstop>
-  <tabstop>depActualCurrSpinner</tabstop>
-  <tabstop>depActualPowerSpinner</tabstop>
-  <tabstop>depTemp</tabstop>
   <tabstop>lineEdit_3</tabstop>
   <tabstop>ledExc</tabstop>
   <tabstop>ledDep</tabstop>

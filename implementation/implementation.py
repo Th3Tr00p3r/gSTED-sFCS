@@ -5,18 +5,6 @@ from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import drivers
-
-class Log():
-    
-    # class attributes
-    
-    def __init__(self):
-        # instance attributes
-        pass
-    
-    # public methods
-    
-    # private methods
     
 class Measurement():
     
@@ -182,6 +170,19 @@ def restart_app(main_window):
         clean_up_app(main_window)
         QApplication.exit(const.EXIT_CODE_REBOOT);
 
+class LogDockImp():
+    
+    def ready_dock(self):
+        '''
+        ready and show the log window
+        '''
+        try:
+            # load today's log file, add "program started" etc.
+            pass
+        except:
+            error_txt = ('')
+            Error(sys.exc_info(), error_txt=error_txt).display()
+
 class CamWinImp():
     
     # class attributes
@@ -192,7 +193,7 @@ class CamWinImp():
         pass
         
     # public methods
-    def ready_camera_window(self):
+    def ready_window(self):
         '''
         ready the gui for camera view, connect to camera and show window
         '''
