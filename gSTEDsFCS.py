@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication
-from gui.mainwindow import MainWindow
+from gui.gui import MainWindow
 import implementation.constants as const
 import gui.icons # NOQA
 #import pyqt5ac
