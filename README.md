@@ -20,10 +20,7 @@ Python-based software for our optical measurement system.
 
 #### <u>Implemetation</u>
 
-1. 
-
-## What's here/Noteworthy files:
-
+1. ## What's here/Noteworthy files:
 - `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together.
 
 - `./gui/gui.py` - GUI module.
@@ -49,3 +46,7 @@ Python-based software for our optical measurement system.
 - matplotlib
 
 - instrumental-lib
+
+- nicelib
+
+- Thorlabs [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam)
