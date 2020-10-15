@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE UserProject SYSTEM "UserProject-4.0.dtd">
 <!-- eric6 user project file for project gSTEDsFCS -->
+<<<<<<< HEAD
 <!-- Saved: 2020-10-16, 00:22:02 -->
+=======
+<!-- Saved: 2020-10-16, 00:09:21 -->
+>>>>>>> af71e26c140d727eda220ee04e55521da40775bb
 <!-- Copyright (C) 2020 idomic,  -->
 <UserProject version="4.0"/>

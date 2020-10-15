@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Tasks SYSTEM "Tasks-6.0.dtd">
 <!-- eric6 tasks file for project gSTEDsFCS -->
+<<<<<<< HEAD
 <!-- Saved: 2020-10-16, 00:22:02 -->
 <Tasks version="6.0">
   <ProjectScanFilter></ProjectScanFilter>
@@ -175,4 +176,9 @@
       <Linenumber>295</Linenumber>
     </Resource>
   </Task>
+=======
+<!-- Saved: 2020-10-16, 00:09:21 -->
+<Tasks version="6.0">
+  <ProjectScanFilter></ProjectScanFilter>
+>>>>>>> af71e26c140d727eda220ee04e55521da40775bb
 </Tasks>
