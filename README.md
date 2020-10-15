@@ -50,3 +50,25 @@ Python-based software for our optical measurement system.
 - nicelib
 
 - Thorlabs [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam)
+
+## Installing Eric IDE on Windows:
+
+Eric IDE is notoriously complicated to install properly. I've tries to make it easier with the following steps (assuming Python is installed and added to PATH):
+
+1. [Download](https://sourceforge.net/projects/eric-ide/) Eric IDE distribution and extract to temporary folder.
+
+2. In Command Prompt:
+   
+   * Go to a directory where you want to install Eric (along with a virtual environment), e.g. `cd c:\Python`
+   
+   * Create a virtual environment, e.g. `python -m venv eric_env`
+   
+   * Activate virtual environment, e.g. `eric_env\Scripts\activate.bat` (`(eric_env)` should appear on left of next).
+   
+   * Install eric via pip e.g. `python -m pip install eric-ide`, say `y` to all.
+   
+   * Run install.py from the distribution (still in the virtual environment) e.g. `python C:\temporary folder\eric6-20.10\install.py`
+   
+   * install pyqt5-tools to have access to Qt Designer e.g. `pip install pyqt5-tools`
+
+3. That's it, icons should appear on desktop.
