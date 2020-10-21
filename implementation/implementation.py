@@ -9,7 +9,7 @@ import drivers
 class Measurement():
     
     # class attributes
-    _timer = QTimer()
+    __timer = QTimer()
     
     def __init__(self, type, duration_spinbox, prog_bar=None):
         # instance attributes
