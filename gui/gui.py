@@ -42,13 +42,15 @@ class MainWindow(QMainWindow):
         # TODO: keep all windows in same place '.windows' (e.g. for closing together)
         self.settings_win = SettingsWindow()
         self.errors_win = ErrorsWindow()
-        self.log_dock = LogDock()
 
         # intialize buttons
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
         self.stageButtonsGroup.setEnabled(False)
         self.actionLog.setChecked(True)
+        
+        # initialize Log Dock
+        imp.LogDock.__init__(self)
 
         #connect signals and slots
         self.ledExc.clicked.connect(self.show_laser_dock)
@@ -131,21 +133,6 @@ class MainWindow(QMainWindow):
             self.depShutterOn.setText('Shutter \nClosed')
             self.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.ledShutter.setIcon(QIcon(icon.LED_OFF)) 
-
-    @pyqtSlot()
-    def on_stageOn_released(self):
-        """
-        Slot documentation goes here.
-        """
-        # TODO:
-        #Turn On
-        if not self.stageButtonsGroup.isEnabled():
-            self.stageOn.setIcon(QIcon(icon.SWITCH_ON))
-            self.stageButtonsGroup.setEnabled(True)
-        #Turn Off
-        else:
-            self.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
-            self.stageButtonsGroup.setEnabled(False)
 
     @pyqtSlot(int)
     def on_depSetCombox_currentIndexChanged(self, index):
@@ -240,15 +227,68 @@ class MainWindow(QMainWindow):
         self.errors_win.show()
         self.errors_win.activateWindow()
 
-class LogDock(imp.LogDockImp):
-    """
-    This "window" is a QWidget. If it has no parent, it 
-    will appear as a free-floating window as we want.
-    """
-    # TODO: when error occures, change appropriate list items background to red, font to white
-    def __init__(self,  parent=None):
-        self.ready_dock()
-        
+    #----------------------------------------------------------------------------
+    # Stepper Stage Dock
+    #----------------------------------------------------------------------------
+    
+    @pyqtSlot()
+    def on_stageOn_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # TODO:
+        #Turn On
+        if not self.stageButtonsGroup.isEnabled():
+            self.stageOn.setIcon(QIcon(icon.SWITCH_ON))
+            self.stageButtonsGroup.setEnabled(True)
+            self.stage = imp.StepperStage(rsrc_alias=self.settings_win.arduinoChan.text())
+            
+        #Turn Off
+        else:
+            self.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
+            self.stageButtonsGroup.setEnabled(False)
+            self.stage = self.stage.clean_up()
+            
+    @pyqtSlot()
+    def on_stageUp_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # TODO:
+        self.stage.move(dir='UP', steps=self.stageSteps.value())
+
+    @pyqtSlot()
+    def on_stageDown_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # TODO:
+        self.stage.move(dir='DOWN', steps=self.stageSteps.value())
+
+    @pyqtSlot()
+    def on_stageLeft_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # TODO:
+        self.stage.move(dir='LEFT', steps=self.stageSteps.value())
+
+    @pyqtSlot()
+    def on_stageRight_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # TODO:
+        self.stage.move(dir='RIGHT', steps=self.stageSteps.value())
+
+    @pyqtSlot()
+    def on_stageRelease_released(self):
+        """
+        Slot documentation goes here.
+        """
+        # TODO:
+        self.stage.release()
+
 class ErrorsWindow(QDialog):
     """
     This "window" is a QWidget. If it has no parent, it 
@@ -263,7 +303,7 @@ class ErrorsWindow(QDialog):
     def on_errorSelectList_currentRowChanged(self, index):
         self.errorDetailsStacked.setCurrentIndex(index)
 
-class SettingsWindow(QDialog):
+class SettingsWindow(QDialog, imp.SettingsWin):
     """
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
@@ -271,9 +311,12 @@ class SettingsWindow(QDialog):
     def __init__(self,  parent=None):
         super(SettingsWindow,  self).__init__(parent)
         uic.loadUi(const.SETTINGSWINDOW_UI_PATH, self)
-
-        # load default settings
-        imp.Qt2csv.read_csv(self, const.DEFAULT_SETTINGS_FILE_PATH)
+        
+        self.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+    
+    def closeEvent(self, event):
+        print('Settings window closed (closeEvent)') # TEST
+        self.clean_up()
 
     @pyqtSlot()
     def on_saveButton_released(self):
@@ -281,11 +324,7 @@ class SettingsWindow(QDialog):
         Save settings as .csv
         """
         # TODO: add all forms in main window too
-        filepath, _ = QFileDialog.getSaveFileName(self,
-                                                                 'Save Settings',
-                                                                 const.SETTINGS_FOLDER_PATH,
-                                                                 "CSV Files(*.csv *.txt)")
-        imp.Qt2csv.write_csv(self, filepath)
+        self.write_csv()
 
     @pyqtSlot()
     def on_loadButton_released(self):
@@ -293,27 +332,22 @@ class SettingsWindow(QDialog):
         load settings .csv file
         """
         # TODO: add all forms in main window too
-        filepath, _ = QFileDialog.getOpenFileName(self,
-                                                                 "Load Settings",
-                                                                 const.SETTINGS_FOLDER_PATH,
-                                                                 "CSV Files(*.csv *.txt)")
-        imp.Qt2csv.read_csv(self, filepath)
+        self.read_csv()
 
-class CameraWindow(QDialog, imp.CamWinImp):
+class CameraWindow(QDialog, imp.CamWin):
     """
     documentation
     """
     def __init__(self,  parent=None):
         super(CameraWindow,  self).__init__(parent)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
-
         self.ready_window()
 
-    @pyqtSlot()
-    def on_rejected(self):
+    def closeEvent(self, event):
         '''
         cleaning up the camera controls and closing the camera window
         '''
+        print('Camera window closed (closeEvent)') # TEST
         self.clean_up()
 
     @pyqtSlot()
