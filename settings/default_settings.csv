@@ -23,16 +23,17 @@ AIYchannel,Dev3/ai7
 AIZchannel,Dev3/ai9
 AIlaserMon,Dev3/ai3
 excMod,PicoQuant
-excTriggerExtChan,Dev1/port0/line6
 excTriggerIntChan,Dev3/port0/
+excTriggerExtChan,Dev1/port0/line6
 excChan,Dev3/port0/line21
 depMod,MPB
-depPort,COM7
+depPort,COM4
 depShutterChan,Dev3/port0/line11
 mainProgPath,D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS
 solDataPath,D:\Lab\sFCS-gSTED data\solution measurement data
 imgDataPath,D:\Lab\sFCS-gSTED data\image measurement data
 camDataPath,D:\Lab\sFCS-gSTED data\camera photos
+arduinoChan,COM3
 um232DevIdxSpinner,0
 um232latencyTimerValSpinner,2
 um232InTransferRateSpinner,256000

@@ -1,10 +1,15 @@
 import os
 import sys
+import time
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
-                                              QDoubleSpinBox, QMessageBox, QApplication)
+                                              QDoubleSpinBox, QMessageBox, QApplication, 
+                                              QFileDialog
+                                              )
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import drivers
+
+import pyvisa as visa
     
 class Measurement():
     
@@ -41,58 +46,91 @@ class Measurement():
             prog = self.time_passed / self.duration_spinbox.value() * 100
             self.prog_bar.setValue(prog)          
 
-class Qt2csv():
+class SettingsWin():
+    
+    def clean_up(self):
+        # TODO: add check to see if changes were made, if not, don't ask user
+        pressed = Question('Keep changes if made? ' +
+                                  '(otherwise, revert to last loaded settings file.)'
+                                  ).display()
+        if pressed == QMessageBox.No:
+            self.read_csv(self.settingsFileName.text())
+
     # public methods
-    def write_csv(window, filepath):
+    def write_csv(self):
         '''
         Write all QLineEdit, QspinBox and QdoubleSpinBox of settings window to 'filepath' (csv).
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
+        filepath, _ = QFileDialog.getSaveFileName(self,
+                                                                 'Save Settings',
+                                                                 const.SETTINGS_FOLDER_PATH,
+                                                                 "CSV Files(*.csv *.txt)")
         import csv
         if filepath:
-            window.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+            self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
             with open(filepath, 'w') as stream:
                 #print("saving", filepath)
                 writer = csv.writer(stream)
 
                 # get all names of fields in settings window (for file saving/loading)
-                l1 = window.frame.findChildren(QLineEdit)
-                l2 = window.frame.findChildren(QSpinBox)
-                l3 = window.frame.findChildren(QDoubleSpinBox)
+                l1 = self.frame.findChildren(QLineEdit)
+                l2 = self.frame.findChildren(QSpinBox)
+                l3 = self.frame.findChildren(QDoubleSpinBox)
                 field_names = [w.objectName() for w in (l1 + l2 + l3) if (not w.objectName() == 'qt_spinbox_lineedit') and (not w.objectName() == 'settingsFileName')]
                 #print(fieldNames)
                 for i in range(len(field_names)):
-                    widget = window.frame.findChild(QWidget, field_names[i])
+                    widget = self.frame.findChild(QWidget, field_names[i])
                     if hasattr(widget, 'value'): # spinner
-                        rowdata = [field_names[i],  window.frame.findChild(QWidget, field_names[i]).value()]
+                        rowdata = [field_names[i],  self.frame.findChild(QWidget, field_names[i]).value()]
                     else: # line edit
-                        rowdata = [field_names[i],  window.frame.findChild(QWidget, field_names[i]).text()]
+                        rowdata = [field_names[i],  self.frame.findChild(QWidget, field_names[i]).text()]
                     writer.writerow(rowdata)
 
-    def read_csv(window, filepath):
+    def read_csv(self, filepath=''):
         '''
         Read 'filepath' (csv) and write to matching QLineEdit, QspinBox and QdoubleSpinBox of settings window.
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
+        # TODO: return to try/catch after fixing Error() so that the full stack is shown (hide/show details)
+        if not filepath:
+            filepath, _ = QFileDialog.getOpenFileName(self,
+                                                                     "Load Settings",
+                                                                     const.SETTINGS_FOLDER_PATH,
+                                                                     "CSV Files(*.csv *.txt)")
         import pandas as pd
         if filepath:
-            try:
-                df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
-                window.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
-                for i in range(len(df)):
-                    widget = window.frame.findChild(QWidget, df.iloc[i, 0])
-                    if not widget == 'nullptr':
-                        if hasattr(widget, 'value'): # spinner
-                            widget.setValue(float(df.iloc[i, 1]))
-                        else: # line edit
-                            widget.setText(df.iloc[i, 1])
-            except: # handeling missing default settings file
-                error_txt = ('Default settings file "default_settings.csv"'
-                                   'not found in:\n\n' +
-                                   filepath +
-                                   '.\n\nUsing standard settings.\n'
-                                   'To avoid this error, please save some settings as "default_settings.csv".')
-                Error(sys.exc_info(), error_txt=error_txt).display()
+             df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
+             self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+             for i in range(len(df)):
+                widget = self.frame.findChild(QWidget, df.iloc[i, 0])
+                if not widget == 'nullptr':
+                    if hasattr(widget, 'value'): # spinner
+                        widget.setValue(float(df.iloc[i, 1]))
+                    else: # line edit
+                        widget.setText(df.iloc[i, 1])
+        else:
+            error_txt = ('File path not supplied.')
+            Error(error_txt=error_txt).display()
+            
+#            try:
+#                df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
+#                print(df) # TEST
+#                self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+#                for i in range(len(df)):
+#                    widget = self.frame.findChild(QWidget, df.iloc[i, 0])
+#                    if not widget == 'nullptr':
+#                        if hasattr(widget, 'value'): # spinner
+#                            widget.setValue(float(df.iloc[i, 1]))
+#                        else: # line edit
+#                            widget.setText(df.iloc[i, 1])
+#            except: # handeling missing default settings file
+#                error_txt = ('Default settings file "default_settings.csv"'
+#                                   'not found in:\n\n' +
+#                                   filepath +
+#                                   '.\n\nUsing standard settings.\n'
+#                                   'To avoid this error, please save some settings as "default_settings.csv".')
+#                Error(sys.exc_info(), error_txt=error_txt).display()
 
 class UserDialog():
     
@@ -116,24 +154,33 @@ class UserDialog():
     
 class Error(UserDialog):
     
-    def __init__(self, error_info, error_txt='Error occured. See details in title.'):
-        self.exc_type, _, self.tb = error_info
-        self.error_type = self.exc_type.__name__
-        self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
-        self.lineno = self.tb.tb_lineno
-        super().__init__(msg_icon=QMessageBox.Critical,
-                               msg_title='Error',
-                               msg_text=error_txt,
-                               msg_inf=('{}, {}' +
-                                           ', line: {}').format(self.error_type,
-                                                                            self.fname,
-                                                                            self.lineno))
+    def __init__(self, error_info='', error_txt='Error occured. ' +
+                                                               'See details in the ' +
+                                                               'informative text'):
+        if error_info:
+            self.exc_type, _, self.tb = error_info
+            self.error_type = self.exc_type.__name__
+            self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
+            self.lineno = self.tb.tb_lineno
+            super().__init__(msg_icon=QMessageBox.Critical,
+                                   msg_title='Error',
+                                   msg_text=error_txt,
+                                   msg_inf=('{}, {}' + ', line: {}').format(self.error_type,
+                                                                                                 self.fname,
+                                                                                                 self.lineno)
+                                  )
+        else:
+            super().__init__(msg_icon=QMessageBox.Critical,
+                                   msg_title='Error',
+                                   msg_text=error_txt,
+                                  )
 
 class Question(UserDialog):
-    def __init__(self, q_title, q_txt):
+    def __init__(self, q_txt,  q_title='User Input Needed'):
         super().__init__(msg_icon=QMessageBox.Question,
-                               msg_title=(q_title),
-                               msg_text=q_txt)
+                               msg_title=q_title,
+                               msg_text=q_txt
+                               )
         self.set_buttons(['Yes', 'No'])
         self._msg_box.setDefaultButton(QMessageBox.No)
 
@@ -152,7 +199,7 @@ def exit_app(main_window, event):
     '''
     Clean up and exit, ask first.
     '''
-    pressed = Question(q_title='Quitting Program', q_txt='Are you sure you want to quit?').display()
+    pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
     if pressed == QMessageBox.Yes:
         clean_up_app(main_window)
         main_window.close()
@@ -170,20 +217,21 @@ def restart_app(main_window):
         clean_up_app(main_window)
         QApplication.exit(const.EXIT_CODE_REBOOT);
 
-class LogDockImp():
+class LogDock():
     
-    def ready_dock(self):
+    def __init__(self):
         '''
         ready and show the log window
         '''
         try:
             # load today's log file, add "program started" etc.
+            print('Log Dock Initialized') # TEST
             pass
         except:
             error_txt = ('')
             Error(sys.exc_info(), error_txt=error_txt).display()
 
-class CamWinImp():
+class CamWin():
     
     # class attributes
     __video_timer = QTimer()
@@ -191,7 +239,18 @@ class CamWinImp():
     def __init__(self):
         # instance attributes
         pass
-        
+
+    def clean_up(self):
+        '''
+        clean up before closing window
+        '''
+        if hasattr(self, '__video_timer'):
+            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.videoButton.setText('Start Video')
+            self.__video_timer.stop()
+        self.cam.close()
+        self.close()
+
     # public methods
     def ready_window(self):
         '''
@@ -238,25 +297,17 @@ class CamWinImp():
             self.on_rejected()
 
     def shoot(self):
-        try:
-            img = self.cam.grab_image()
-            self.__imshow(img)
-        except:
-            error_txt = ('Camera disconnected.' + '\n' +
-                             'Reconnect and re-open the camera window.')
-            Error(sys.exc_info(), error_txt).display()
-            self.on_rejected()
-
-    def clean_up(self):
-        '''
-        clean up before closing window
-        '''
-        if hasattr(self, '__video_timer'):
-            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-            self.videoButton.setText('Start Video')
-            self.__video_timer.stop()
-        self.cam.close()
-        self.close()
+        #TODO: fix Error to show full stack, then return the try/except
+        img = self.cam.grab_image()
+        self.__imshow(img)
+#        try:
+#            img = self.cam.grab_image()
+#            self.__imshow(img)
+#        except:
+#            error_txt = ('Camera disconnected.' + '\n' +
+#                             'Reconnect and re-open the camera window.')
+#            Error(sys.exc_info(), error_txt).display()
+#            self.clean_up()
     
     # private methods
     def __imshow(self, img):
@@ -269,13 +320,36 @@ class CamWinImp():
         self.canvas.draw()
     
     def __video_timeout(self):
-        '''
-        '''
-        try:
-            img = self.cam.grab_image()
-            self.__imshow(img)
-        except:
-            error_txt = ('Camera disconnected.' + '\n' +
-                             'Reconnect and re-open the camera window.')
-            Error(sys.exc_info(), error_txt).display()
-            self.on_rejected()
+        #TODO: fix Error to show full stack, then return the try/except
+        img = self.cam.grab_image()
+        self.__imshow(img)
+#        try:
+#            img = self.cam.grab_image()
+#            self.__imshow(img)
+#        except:
+#            error_txt = ('Camera disconnected.' + '\n' +
+#                             'Reconnect and re-open the camera window.')
+#            Error(sys.exc_info(), error_txt).display()
+#            self.clean_up()
+
+class StepperStage():
+    
+    def __init__(self,  rsrc_alias):
+        self.rm = visa.ResourceManager()
+        self.rsrc = self.rm.open_resource(rsrc_alias)
+#        print(rsrc_alias,  self.rsrc) # TEST
+
+    def clean_up(self):
+        self.rsrc.close()
+        return None
+    
+    def move(self, dir=None,  steps=None):
+        cmd_dict = {'UP': (lambda steps: 'my ' + str(-steps)),
+                        'DOWN': (lambda steps: 'my ' + str(steps)),
+                        'LEFT': (lambda steps: 'mx ' + str(steps)),
+                        'RIGHT': (lambda steps: 'mx ' + str(-steps))}
+        self.rsrc.write(cmd_dict[dir](steps))
+    
+    def release(self):
+        cmnd = 'ryx '
+        self.rsrc.write(cmnd)
