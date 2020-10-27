@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         self.actionLog.setChecked(True)
         
         # initialize Log Dock
-        imp.LogDock.__init__(self)
+        self.log_dock = imp.LogDock(self)
 
         #connect signals and slots
         self.ledExc.clicked.connect(self.show_laser_dock)
