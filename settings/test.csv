@@ -1,3 +1,15 @@
+arduinoChan,COM3
+um232DeviceDescription,
+counterPixelClockChannel,Dev1/Ctr0
+counterPixelClockOutputChannel,/Dev3/Ctr0InternalOutput
+counterTriggerChannel,Dev3/port1/line0
+counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
+counterPhotonCounter,Dev3/ctr1
+counterCIcountEdgesTerm,/Dev3/PFI8
+TDCstartChannel,Dev3/port0/line12
+TDCdataVersion,7bytes noreset
+pixelClockCounterChan,Dev3/ctr0
+pixelClockSrcOfTicks,/Dev3/PFI3
 AOXchannel,Dev3/ao0
 AOYchannel,Dev3/ao1
 AOZchannel,Dev3/ao2
@@ -11,29 +23,17 @@ AIXchannel,Dev3/ai23
 AIYchannel,Dev3/ai7
 AIZchannel,Dev3/ai9
 AIlaserMon,Dev3/ai3
-um232DeviceDescription,
-counterPixelClockChannel,Dev1/Ctr0
-counterPixelClockOutputChannel,/Dev3/Ctr0InternalOutput
-counterTriggerChannel,Dev3/port1/line0
-counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
-counterPhotonCounter,Dev3/ctr1
-counterCIcountEdgesTerm,/Dev3/PFI8
-TDCstartChannel,Dev3/port0/line12
-TDCdataVersion,7bytes noreset
-pixelClockCounterChan,Dev3/ctr0
-pixelClockSrcOfTicks,/Dev3/PFI3
 excMod,PicoQuant
-excTriggerExtChan,Dev1/port0/line6
 excTriggerIntChan,Dev3/port0/
+excTriggerExtChan,Dev1/port0/line6
 excChan,Dev3/port0/line21
 depMod,MPB
-depPort,COM7
+depPort,COM4
 depShutterChan,Dev3/port0/line11
-mainProgPath,TEST
-solDataPath,TEST
-imgDataPath,TEST
-camDataPath,TEST
-AIclkDivSpinner,100
+mainProgPath,D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS
+solDataPath,D:\Lab\sFCS-gSTED data\solution measurement data
+imgDataPath,D:\Lab\sFCS-gSTED data\image measurement data
+camDataPath,D:\Lab\sFCS-gSTED data\camera photos
 um232DevIdxSpinner,0
 um232latencyTimerValSpinner,2
 um232InTransferRateSpinner,256000
@@ -46,5 +46,6 @@ TDCverionSpinner,3
 pixelClockLowTicksSpinner,10
 pixelClockHighTicksSpinner,2
 pixelClockFreqSpinner,4000
+AIclkDivSpinner,100
 depUpdateTimeSpinner,10
 counterUpdateTimeSpinner,0.0

@@ -1839,130 +1839,104 @@ to Scan</string>
                       <number>3</number>
                      </property>
                      <item>
-                      <widget class="QFrame" name="imgTools">
-                       <property name="frameShape">
-                        <enum>QFrame::Box</enum>
+                      <widget class="QGroupBox" name="imgScanToolsGroup">
+                       <property name="title">
+                        <string>Tools</string>
                        </property>
-                       <property name="frameShadow">
-                        <enum>QFrame::Sunken</enum>
-                       </property>
-                       <layout class="QGridLayout" name="gridLayout_13">
-                        <property name="leftMargin">
-                         <number>1</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>1</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>1</number>
-                        </property>
-                        <property name="bottomMargin">
-                         <number>1</number>
-                        </property>
-                        <property name="spacing">
-                         <number>1</number>
-                        </property>
-                        <item row="0" column="0">
-                         <layout class="QVBoxLayout" name="verticalLayout_21" stretch="0">
-                          <property name="spacing">
-                           <number>1</number>
+                       <layout class="QGridLayout" name="gridLayout_32">
+                        <item row="0" column="2">
+                         <widget class="QToolButton" name="ROItoolButton">
+                          <property name="minimumSize">
+                           <size>
+                            <width>32</width>
+                            <height>32</height>
+                           </size>
                           </property>
-                          <item>
-                           <layout class="QGridLayout" name="gridLayout_11">
-                            <item row="0" column="0">
-                             <widget class="QGroupBox" name="imgScanToolsGroup">
-                              <property name="title">
-                               <string>Tools</string>
-                              </property>
-                              <layout class="QGridLayout" name="gridLayout_31">
-                               <item row="0" column="3">
-                                <widget class="QToolButton" name="magToolButton">
-                                 <property name="minimumSize">
-                                  <size>
-                                   <width>32</width>
-                                   <height>32</height>
-                                  </size>
-                                 </property>
-                                 <property name="maximumSize">
-                                  <size>
-                                   <width>32</width>
-                                   <height>32</height>
-                                  </size>
-                                 </property>
-                                 <property name="toolTip">
-                                  <string>magnify</string>
-                                 </property>
-                                 <property name="styleSheet">
-                                  <string notr="true">background-image: url(:/icons/actions/system-search.png);
+                          <property name="maximumSize">
+                           <size>
+                            <width>32</width>
+                            <height>32</height>
+                           </size>
+                          </property>
+                          <property name="font">
+                           <font>
+                            <pointsize>18</pointsize>
+                           </font>
+                          </property>
+                          <property name="toolTip">
+                           <string>crosshair</string>
+                          </property>
+                          <property name="layoutDirection">
+                           <enum>Qt::LeftToRight</enum>
+                          </property>
+                          <property name="text">
+                           <string/>
+                          </property>
+                          <property name="icon">
+                           <iconset>
+                            <normalon>:/crosshair.png</normalon>
+                           </iconset>
+                          </property>
+                          <property name="iconSize">
+                           <size>
+                            <width>25</width>
+                            <height>25</height>
+                           </size>
+                          </property>
+                          <property name="checkable">
+                           <bool>true</bool>
+                          </property>
+                          <property name="autoExclusive">
+                           <bool>true</bool>
+                          </property>
+                          <property name="toolButtonStyle">
+                           <enum>Qt::ToolButtonIconOnly</enum>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="3">
+                         <widget class="QToolButton" name="magToolButton">
+                          <property name="minimumSize">
+                           <size>
+                            <width>32</width>
+                            <height>32</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>32</width>
+                            <height>32</height>
+                           </size>
+                          </property>
+                          <property name="toolTip">
+                           <string>magnify</string>
+                          </property>
+                          <property name="styleSheet">
+                           <string notr="true">background-image: url(:/icons/actions/system-search.png);
 background-position: center;
 background-repeat: no-repeat;</string>
-                                 </property>
-                                 <property name="text">
-                                  <string/>
-                                 </property>
-                                 <property name="checkable">
-                                  <bool>true</bool>
-                                 </property>
-                                 <property name="autoExclusive">
-                                  <bool>true</bool>
-                                 </property>
-                                </widget>
-                               </item>
-                               <item row="0" column="2">
-                                <widget class="QToolButton" name="ROItoolButton">
-                                 <property name="minimumSize">
-                                  <size>
-                                   <width>32</width>
-                                   <height>32</height>
-                                  </size>
-                                 </property>
-                                 <property name="maximumSize">
-                                  <size>
-                                   <width>32</width>
-                                   <height>32</height>
-                                  </size>
-                                 </property>
-                                 <property name="font">
-                                  <font>
-                                   <pointsize>18</pointsize>
-                                  </font>
-                                 </property>
-                                 <property name="toolTip">
-                                  <string>crosshair</string>
-                                 </property>
-                                 <property name="layoutDirection">
-                                  <enum>Qt::LeftToRight</enum>
-                                 </property>
-                                 <property name="text">
-                                  <string/>
-                                 </property>
-                                 <property name="icon">
-                                  <iconset>
-                                   <normaloff>:/icons/myIcons/crosshair.png</normaloff>:/icons/myIcons/crosshair.png</iconset>
-                                 </property>
-                                 <property name="iconSize">
-                                  <size>
-                                   <width>25</width>
-                                   <height>25</height>
-                                  </size>
-                                 </property>
-                                 <property name="checkable">
-                                  <bool>true</bool>
-                                 </property>
-                                 <property name="autoExclusive">
-                                  <bool>true</bool>
-                                 </property>
-                                 <property name="toolButtonStyle">
-                                  <enum>Qt::ToolButtonIconOnly</enum>
-                                 </property>
-                                </widget>
-                               </item>
-                              </layout>
-                             </widget>
-                            </item>
-                           </layout>
-                          </item>
-                         </layout>
+                          </property>
+                          <property name="text">
+                           <string/>
+                          </property>
+                          <property name="icon">
+                           <iconset>
+                            <normalon>:/zoom.png</normalon>
+                           </iconset>
+                          </property>
+                          <property name="iconSize">
+                           <size>
+                            <width>32</width>
+                            <height>32</height>
+                           </size>
+                          </property>
+                          <property name="checkable">
+                           <bool>true</bool>
+                          </property>
+                          <property name="autoExclusive">
+                           <bool>true</bool>
+                          </property>
+                         </widget>
                         </item>
                        </layout>
                       </widget>
@@ -1990,7 +1964,7 @@ background-repeat: no-repeat;</string>
                            </property>
                            <property name="font">
                             <font>
-                             <pointsize>6</pointsize>
+                             <pointsize>7</pointsize>
                             </font>
                            </property>
                            <property name="text">
@@ -2046,7 +2020,7 @@ background-repeat: no-repeat;</string>
                            </property>
                            <property name="font">
                             <font>
-                             <pointsize>6</pointsize>
+                             <pointsize>7</pointsize>
                             </font>
                            </property>
                            <property name="text">
@@ -6677,8 +6651,6 @@ OFF</string>
   <tabstop>selectROI</tabstop>
   <tabstop>scanImgGraphicsView</tabstop>
   <tabstop>graphicsView_2</tabstop>
-  <tabstop>ROItoolButton</tabstop>
-  <tabstop>magToolButton</tabstop>
   <tabstop>imgScanContrastSlider</tabstop>
   <tabstop>imgScanBrightnessSlider</tabstop>
   <tabstop>graphicsView</tabstop>

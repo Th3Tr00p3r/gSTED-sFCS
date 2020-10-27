@@ -45,6 +45,8 @@ Python-based software for our optical measurement system.
 
 - matplotlib
 
+- pyVISA
+
 - instrumental-lib
 
 - nicelib
@@ -69,6 +71,6 @@ Eric IDE is notoriously complicated to install properly. I've tries to make it e
    
    * Run install.py from the distribution (still in the virtual environment) e.g. `python C:\temporary folder\eric6-20.10\install.py`
    
-   * install pyqt5-tools to have access to Qt Designer e.g. `pip install pyqt5-tools`
+   * To have access to Qt Designer, install pyqt5-tools e.g. `pip install pyqt5-tools`, then copy the contents of `\eric_env\Lib\site-packages\pyqt5_tools\Qt` into `\eric_env\Lib\site-packages\PyQt5\Qt`
 
 3. That's it, icons should appear on desktop.
