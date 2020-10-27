@@ -1,6 +1,6 @@
 import os
 import sys
-import time
+#import time
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QApplication, 
                                               QFileDialog
@@ -192,8 +192,8 @@ def clean_up_app(main_window):
     '''
     main_window.settings_win.reject()
     main_window.errors_win.reject()
-    if hasattr(main_window, 'camera1_win'):
-        main_window.camera1_win.reject()
+    if hasattr(main_window, 'cam_win'):
+        main_window.cam_win.reject()
         
 def exit_app(main_window, event):
     '''
@@ -236,8 +236,10 @@ class CamWin():
     # class attributes
     __video_timer = QTimer()
     
-    def __init__(self):
-        # instance attributes
+    def __init__(self, cam_gui):
+        self.gui = cam_gui
+        self.ready_window()
+        self.init_cam()
         pass
 
     def clean_up(self):
@@ -249,60 +251,64 @@ class CamWin():
             self.videoButton.setText('Start Video')
             self.__video_timer.stop()
         self.cam.close()
-        self.close()
+        return None
+#        self.gui.close()
 
     # public methods
     def ready_window(self):
         '''
         ready the gui for camera view, connect to camera and show window
         '''
+        #TODO: fix Error to show full stack, then return the try/except
         from matplotlib import pyplot as plt
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+        
         # add matplotlib-ready widget (canvas) for showing camera output
-        try:
-            self.figure = plt.figure()
-            self.canvas = FigureCanvas(self.figure)
-            self.gridLayout.addWidget(self.canvas, 0, 1)
-            
-            # initialize camera
-            self.cam = drivers.Camera() # instantiate camera object
-            self.cam.open() # connect to first available camera
-            
-            # show window
-            self.show()
-            self.activateWindow()
-        except:
-            error_txt = ('No cameras appear to be connected.')
-            Error(sys.exc_info(), error_txt=error_txt).display()
+        self.gui.figure = plt.figure()
+        self.gui.canvas = FigureCanvas(self.gui.figure)
+        self.gui.gridLayout.addWidget(self.gui.canvas, 0, 1)
+        
+        # show window
+        self.gui.show()
+        self.gui.activateWindow()
 
+#        try:
+#        except:
+#            error_txt = ('No cameras appear to be connected.')
+#            Error(sys.exc_info(), error_txt=error_txt).display()
+
+    def init_cam(self):
+        # initialize camera
+        self.cam = drivers.Camera(reopen_policy='new') # instantiate camera object
+        self.cam.open() # connect to first available camera
+    
     def start_stop_video(self):
-        try:
-            #Turn On
-            if self.videoButton.text() == 'Start Video':
-                self.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
-                self.videoButton.setText('Video ON')
-                self.cam.start_live_video()
-                self.__video_timer.timeout.connect(self.__video_timeout)
-                self.__video_timer.start(50) # video refresh period (ms)
-            #Turn Off
-            else:
-                self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-                self.videoButton.setText('Start Video')
-                self.cam.stop_live_video()
-                self.__video_timer.stop()
-        except:
-            error_txt = ('Camera disconnected.' + '\n' +
-                             'Reconnect and re-open the camera window.')
-            Error(sys.exc_info(), error_txt).display()
-            self.on_rejected()
+        #TODO: fix Error to show full stack, then return the try/except
+        #Turn On
+        if self.gui.videoButton.text() == 'Start Video':
+            self.gui.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
+            self.gui.videoButton.setText('Video ON')
+            self.cam.start_live_video()
+            self.__video_timer.timeout.connect(self.__video_timeout)
+            self.__video_timer.start(50) # video refresh period (ms)
+        #Turn Off
+        else:
+            self.gui.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.gui.videoButton.setText('Start Video')
+            self.cam.stop_live_video()
+            self.__video_timer.stop()
+#        try:
+#        except:
+#            error_txt = ('Camera disconnected.' + '\n' +
+#                             'Reconnect and re-open the camera window.')
+#            Error(sys.exc_info(), error_txt).display()
+#            self.on_rejected()
 
     def shoot(self):
         #TODO: fix Error to show full stack, then return the try/except
         img = self.cam.grab_image()
         self.__imshow(img)
 #        try:
-#            img = self.cam.grab_image()
-#            self.__imshow(img)
 #        except:
 #            error_txt = ('Camera disconnected.' + '\n' +
 #                             'Reconnect and re-open the camera window.')
@@ -314,10 +320,10 @@ class CamWin():
         '''
         Plot image
         '''
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
+        self.gui.figure.clear()
+        ax = self.gui.figure.add_subplot(111)
         ax.imshow(img)
-        self.canvas.draw()
+        self.gui.canvas.draw()
     
     def __video_timeout(self):
         #TODO: fix Error to show full stack, then return the try/except
@@ -345,9 +351,10 @@ class StepperStage():
     
     def move(self, dir=None,  steps=None):
         cmd_dict = {'UP': (lambda steps: 'my ' + str(-steps)),
-                        'DOWN': (lambda steps: 'my ' + str(steps)),
-                        'LEFT': (lambda steps: 'mx ' + str(steps)),
-                        'RIGHT': (lambda steps: 'mx ' + str(-steps))}
+                          'DOWN': (lambda steps: 'my ' + str(steps)),
+                          'LEFT': (lambda steps: 'mx ' + str(steps)),
+                          'RIGHT': (lambda steps: 'mx ' + str(-steps))
+                        }
         self.rsrc.write(cmd_dict[dir](steps))
     
     def release(self):

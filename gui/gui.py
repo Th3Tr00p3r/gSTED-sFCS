@@ -6,7 +6,7 @@ import implementation.implementation as imp
 import implementation.constants as const
 
 from PyQt5.QtCore import pyqtSlot,  QTimer
-from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QDialog)
+from PyQt5.QtWidgets import (QMainWindow, QDialog)
 from PyQt5.QtGui import QIcon
 from PyQt5 import uic
 
@@ -195,7 +195,7 @@ class MainWindow(QMainWindow):
         Instantiate 'CameraWindow' object and show it
         """
         # TODO: add support for 2nd camera
-        self.camera1_win = CameraWindow()
+        self.cam_win = CameraWindow()
 
     @pyqtSlot(bool)
     def on_actionLog_toggled(self, p0):
@@ -334,32 +334,33 @@ class SettingsWindow(QDialog, imp.SettingsWin):
         # TODO: add all forms in main window too
         self.read_csv()
 
-class CameraWindow(QDialog, imp.CamWin):
+class CameraWindow(QDialog):
     """
     documentation
     """
     def __init__(self,  parent=None):
         super(CameraWindow,  self).__init__(parent)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
-        self.ready_window()
+        self.imp = imp.CamWin(self)
 
     def closeEvent(self, event):
         '''
-        cleaning up the camera controls and closing the camera window
+        cleaning up the camera driver, closing the camera window
+        and setting CameraWindow.imp to ''None''
         '''
-        print('Camera window closed (closeEvent)') # TEST
-        self.clean_up()
+#        print('Camera window closed (closeEvent)') # TEST
+        self.imp = self.imp.clean_up()
 
     @pyqtSlot()
     def on_shootButton_released(self):
         """
         Slot documentation goes here.
         """
-        self.shoot()
+        self.imp.shoot()
 
     @pyqtSlot()
     def on_videoButton_released(self):
         """
         Slot documentation goes here.
         """
-        self.start_stop_video()
+        self.imp.start_stop_video()
