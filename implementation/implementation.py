@@ -100,50 +100,41 @@ class SettingsWin():
                                                                      "CSV Files(*.csv *.txt)")
         import pandas as pd
         if filepath:
-             df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
-             self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
-             for i in range(len(df)):
-                widget = self.frame.findChild(QWidget, df.iloc[i, 0])
-                if not widget == 'nullptr':
-                    if hasattr(widget, 'value'): # spinner
-                        widget.setValue(float(df.iloc[i, 1]))
-                    else: # line edit
-                        widget.setText(df.iloc[i, 1])
+            try:
+                 df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
+                 self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+                 for i in range(len(df)):
+                    widget = self.frame.findChild(QWidget, df.iloc[i, 0])
+                    if not widget == 'nullptr':
+                        if hasattr(widget, 'value'): # spinner
+                            widget.setValue(float(df.iloc[i, 1]))
+                        else: # line edit
+                            widget.setText(df.iloc[i, 1])
+            except: # handeling missing default settings file
+                error_txt = ('Default settings file "default_settings.csv"'
+                                   'not found in:\n\n' +
+                                   filepath +
+                                   '.\n\nUsing standard settings.\n' +
+                                   'To avoid this error, please save' +
+                                   'some settings as "default_settings.csv".')
+                Error(sys.exc_info(), error_txt=error_txt).display()
+
         else:
             error_txt = ('File path not supplied.')
             Error(error_txt=error_txt).display()
             
-#            try:
-#                df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
-#                print(df) # TEST
-#                self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
-#                for i in range(len(df)):
-#                    widget = self.frame.findChild(QWidget, df.iloc[i, 0])
-#                    if not widget == 'nullptr':
-#                        if hasattr(widget, 'value'): # spinner
-#                            widget.setValue(float(df.iloc[i, 1]))
-#                        else: # line edit
-#                            widget.setText(df.iloc[i, 1])
-#            except: # handeling missing default settings file
-#                error_txt = ('Default settings file "default_settings.csv"'
-#                                   'not found in:\n\n' +
-#                                   filepath +
-#                                   '.\n\nUsing standard settings.\n'
-#                                   'To avoid this error, please save some settings as "default_settings.csv".')
-#                Error(sys.exc_info(), error_txt=error_txt).display()
-
 class UserDialog():
     
     def __init__(self,
                        msg_icon=QMessageBox.NoIcon,
                        msg_title=None,
                        msg_text=None,
-                       msg_inf=None):
+                       msg_det=None):
         self._msg_box = QMessageBox()
         self._msg_box.setIcon(msg_icon)
         self._msg_box.setWindowTitle(msg_title)
         self._msg_box.setText(msg_text)
-        self._msg_box.setInformativeText(msg_inf)
+        self._msg_box.setDetailedText(msg_det)
     
     def set_buttons(self, std_bttn_list):
         for std_bttn in std_bttn_list:
@@ -165,7 +156,7 @@ class Error(UserDialog):
             super().__init__(msg_icon=QMessageBox.Critical,
                                    msg_title='Error',
                                    msg_text=error_txt,
-                                   msg_inf=('{}, {}' + ', line: {}').format(self.error_type,
+                                   msg_det=('{}, {}' + ', line: {}').format(self.error_type,
                                                                                                  self.fname,
                                                                                                  self.lineno)
                                   )
@@ -330,8 +321,6 @@ class CamWin():
         img = self.cam.grab_image()
         self.__imshow(img)
 #        try:
-#            img = self.cam.grab_image()
-#            self.__imshow(img)
 #        except:
 #            error_txt = ('Camera disconnected.' + '\n' +
 #                             'Reconnect and re-open the camera window.')
