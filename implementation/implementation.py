@@ -145,9 +145,7 @@ class UserDialog():
     
 class Error(UserDialog):
     
-    def __init__(self, error_info='', error_txt='Error occured. ' +
-                                                               'See details in the ' +
-                                                               'informative text'):
+    def __init__(self, error_info='', error_txt='Error occured.'):
         if error_info:
             self.exc_type, _, self.tb = error_info
             self.error_type = self.exc_type.__name__

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Tasks SYSTEM "Tasks-6.0.dtd">
 <!-- eric6 tasks file for project gSTEDsFCS -->
-<!-- Saved: 2020-10-27, 17:36:54 -->
+<!-- Saved: 2020-10-27, 20:36:02 -->
 <Tasks version="6.0">
   <ProjectScanFilter></ProjectScanFilter>
   <Task priority="1" completed="False" type="1" uid="{2eb66893-f0fc-4240-a19b-594adcae7a4c}">
@@ -418,58 +418,58 @@
       <Linenumber>334</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{b1012347-ba5d-4650-b0b1-2693f78ab2e2}">
+  <Task priority="1" completed="False" type="1" uid="{49fbe38d-c7d4-43c3-8bf6-2e156a7695c1}">
     <Summary>TODO: add check to see if changes were made, if not, don't ask user</Summary>
     <Description></Description>
-    <Created>2020-10-27, 17:36:10</Created>
+    <Created>2020-10-27, 20:35:59</Created>
     <Resource>
       <Filename>implementation/implementation.py</Filename>
       <Linenumber>52</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{fa43c519-b947-441c-95c0-bf3c884fa4a0}">
+  <Task priority="1" completed="False" type="1" uid="{20575473-99b4-4f38-9867-12e6730e5f43}">
     <Summary>TODO: return to try/catch after fixing Error() so that the full stack is shown (hide/show details)</Summary>
     <Description></Description>
-    <Created>2020-10-27, 17:36:10</Created>
+    <Created>2020-10-27, 20:35:59</Created>
     <Resource>
       <Filename>implementation/implementation.py</Filename>
       <Linenumber>95</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{09c899b7-2ba0-4c99-a7a6-f42371bb7f9c}">
+  <Task priority="1" completed="False" type="1" uid="{b7f01ec7-6dd1-4ad6-8ea8-ddebd1e59781}">
     <Summary>TODO: fix Error to show full stack, then return the try/except</Summary>
     <Description></Description>
-    <Created>2020-10-27, 17:36:10</Created>
+    <Created>2020-10-27, 20:35:59</Created>
     <Resource>
       <Filename>implementation/implementation.py</Filename>
-      <Linenumber>253</Linenumber>
+      <Linenumber>251</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{afefc746-d835-4a9b-af58-35f1a1a9de0c}">
+  <Task priority="1" completed="False" type="1" uid="{56cd76e7-dbcc-437a-880e-e6bac3c559d5}">
     <Summary>TODO: fix Error to show full stack, then return the try/except</Summary>
     <Description></Description>
-    <Created>2020-10-27, 17:36:10</Created>
+    <Created>2020-10-27, 20:35:59</Created>
     <Resource>
       <Filename>implementation/implementation.py</Filename>
-      <Linenumber>277</Linenumber>
+      <Linenumber>275</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{772df927-3eaf-4cab-97b2-22c39967f233}">
+  <Task priority="1" completed="False" type="1" uid="{d77d5fe2-4aac-4c85-a624-23805b4d1e69}">
     <Summary>TODO: fix Error to show full stack, then return the try/except</Summary>
     <Description></Description>
-    <Created>2020-10-27, 17:36:10</Created>
+    <Created>2020-10-27, 20:35:59</Created>
     <Resource>
       <Filename>implementation/implementation.py</Filename>
-      <Linenumber>299</Linenumber>
+      <Linenumber>297</Linenumber>
     </Resource>
   </Task>
-  <Task priority="1" completed="False" type="1" uid="{8d9d6aa8-4ea6-4dfb-8130-c62aa328f62f}">
+  <Task priority="1" completed="False" type="1" uid="{79c3221a-fbf4-4099-8dca-9229ec7d6b8a}">
     <Summary>TODO: fix Error to show full stack, then return the try/except</Summary>
     <Description></Description>
-    <Created>2020-10-27, 17:36:10</Created>
+    <Created>2020-10-27, 20:35:59</Created>
     <Resource>
       <Filename>implementation/implementation.py</Filename>
-      <Linenumber>320</Linenumber>
+      <Linenumber>318</Linenumber>
     </Resource>
   </Task>
 </Tasks>
