@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               )
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
-import drivers
+import implementation.drivers as drivers
 
 import pyvisa as visa
     
@@ -269,7 +269,7 @@ class CamWin():
         self.cam.open() # connect to first available camera
     
     def start_stop_video(self):
-        #TODO: fix Error to show full stack, then return the try/except
+        #TODO: return the try/except
         #Turn On
         if self.gui.videoButton.text() == 'Start Video':
             self.gui.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
@@ -285,15 +285,9 @@ class CamWin():
             self.__video_timer.stop()
 
     def shoot(self):
-        #TODO: fix Error to show full stack, then return the try/except
+        #TODO: return the try/except
         img = self.cam.grab_image()
         self.__imshow(img)
-#        try:
-#        except:
-#            error_txt = ('Camera disconnected.' + '\n' +
-#                             'Reconnect and re-open the camera window.')
-#            Error(sys.exc_info(), error_txt).display()
-#            self.clean_up()
     
     # private methods
     def __imshow(self, img):
@@ -306,22 +300,15 @@ class CamWin():
         self.gui.canvas.draw()
     
     def __video_timeout(self):
-        #TODO: fix Error to show full stack, then return the try/except
+        #TODO: return the try/except
         img = self.cam.grab_image()
         self.__imshow(img)
-#        try:
-#        except:
-#            error_txt = ('Camera disconnected.' + '\n' +
-#                             'Reconnect and re-open the camera window.')
-#            Error(sys.exc_info(), error_txt).display()
-#            self.clean_up()
 
 class StepperStage():
     
     def __init__(self,  rsrc_alias):
         self.rm = visa.ResourceManager()
         self.rsrc = self.rm.open_resource(rsrc_alias)
-#        print(rsrc_alias,  self.rsrc) # TEST
 
     def clean_up(self):
         self.rsrc.close()
