@@ -1,3 +1,7 @@
+# Specific files (idomich)
+lextab.py
+yacctab.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
