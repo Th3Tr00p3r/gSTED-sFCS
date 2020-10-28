@@ -2,7 +2,8 @@
 GUI Module.
 """
 import gui.icons.icon_paths as icon
-import implementation.implementation as imp
+import implementation.logic as logic
+import implementation.drivers as drivers
 import implementation.constants as const
 
 from PyQt5.QtCore import pyqtSlot,  QTimer
@@ -24,7 +25,7 @@ class MainWindow(QMainWindow):
         @param parent reference to the parent widget
         @type QWidget
         """
-        # TODO: move to imp
+        # TODO: move to logic
 
         # general window settings
         super(MainWindow, self).__init__(parent)
@@ -50,7 +51,7 @@ class MainWindow(QMainWindow):
         self.actionLog.setChecked(True)
         
         # initialize Log Dock
-        self.log_dock = imp.LogDock(self)
+        self.log_dock = logic.LogDock()
 
         #connect signals and slots
         self.ledExc.clicked.connect(self.show_laser_dock)
@@ -59,10 +60,10 @@ class MainWindow(QMainWindow):
         self.actionRestart.triggered.connect(self.restart)
 
     def closeEvent(self, event):
-        imp.exit_app(self, event)
+        logic.exit_app(self, event)
 
     def restart(self):
-        imp.restart_app(self)
+        logic.restart_app(self)
 
     def timeout(self):
         '''
@@ -80,7 +81,7 @@ class MainWindow(QMainWindow):
         """
         # TODO: 
         if self.startFcsMeasurementButton.text() == 'Start \nMeasurement':
-            self.measurement = imp.Measurement('FCS',  self.measFCSDurationSpinBox, self.FCSprogressBar)
+            self.measurement = logic.Measurement('FCS',  self.measFCSDurationSpinBox, self.FCSprogressBar)
             self.measurement.start()
             self.startFcsMeasurementButton.setText('Stop \nMeasurement')
         else: # off state
@@ -241,7 +242,7 @@ class MainWindow(QMainWindow):
         if not self.stageButtonsGroup.isEnabled():
             self.stageOn.setIcon(QIcon(icon.SWITCH_ON))
             self.stageButtonsGroup.setEnabled(True)
-            self.stage = imp.StepperStage(rsrc_alias=self.settings_win.arduinoChan.text())
+            self.stage = drivers.StepperStage(rsrc_alias=self.settings_win.arduinoChan.text())
             
         #Turn Off
         else:
@@ -303,7 +304,7 @@ class ErrorsWindow(QDialog):
     def on_errorSelectList_currentRowChanged(self, index):
         self.errorDetailsStacked.setCurrentIndex(index)
 
-class SettingsWindow(QDialog, imp.SettingsWin):
+class SettingsWindow(QDialog, logic.SettingsWin):
     """
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
@@ -341,7 +342,7 @@ class CameraWindow(QDialog):
     def __init__(self,  parent=None):
         super(CameraWindow,  self).__init__(parent)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
-        self.imp = imp.CamWin(self)
+        self.imp = logic.CamWin(self)
 
     def closeEvent(self, event):
         '''
