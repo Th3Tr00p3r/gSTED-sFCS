@@ -72,7 +72,6 @@ class SettingsWin():
             with open(filepath, 'w') as stream:
                 #print("saving", filepath)
                 writer = csv.writer(stream)
-
                 # get all names of fields in settings window (for file saving/loading)
                 l1 = self.frame.findChildren(QLineEdit)
                 l2 = self.frame.findChildren(QSpinBox)
@@ -92,7 +91,6 @@ class SettingsWin():
         Read 'filepath' (csv) and write to matching QLineEdit, QspinBox and QdoubleSpinBox of settings window.
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
-        # TODO: return to try/catch after fixing Error() so that the full stack is shown (hide/show details)
         if not filepath:
             filepath, _ = QFileDialog.getOpenFileName(self,
                                                                      "Load Settings",
@@ -111,11 +109,11 @@ class SettingsWin():
                         else: # line edit
                             widget.setText(df.iloc[i, 1])
             except: # handeling missing default settings file
-                error_txt = ('Default settings file "default_settings.csv"'
-                                   'not found in:\n\n' +
-                                   filepath +
-                                   '.\n\nUsing standard settings.\n' +
-                                   'To avoid this error, please save' +
+                error_txt = ('Default settings file "default_settings.csv" '
+                                   'not found in' + '\n'
+                                   '\'' + filepath + '\''
+                                   '\nUsing standard settings.' + '\n'
+                                   'To avoid this error, please save '
                                    'some settings as "default_settings.csv".')
                 Error(sys.exc_info(), error_txt=error_txt).display()
 
@@ -129,11 +127,13 @@ class UserDialog():
                        msg_icon=QMessageBox.NoIcon,
                        msg_title=None,
                        msg_text=None,
+                       msg_inf=None,
                        msg_det=None):
         self._msg_box = QMessageBox()
         self._msg_box.setIcon(msg_icon)
         self._msg_box.setWindowTitle(msg_title)
         self._msg_box.setText(msg_text)
+        self._msg_box.setInformativeText(msg_inf)
         self._msg_box.setDetailedText(msg_det)
     
     def set_buttons(self, std_bttn_list):
@@ -146,6 +146,7 @@ class UserDialog():
 class Error(UserDialog):
     
     def __init__(self, error_info='', error_txt='Error occured.'):
+        import traceback
         if error_info:
             self.exc_type, _, self.tb = error_info
             self.error_type = self.exc_type.__name__
@@ -154,9 +155,11 @@ class Error(UserDialog):
             super().__init__(msg_icon=QMessageBox.Critical,
                                    msg_title='Error',
                                    msg_text=error_txt,
-                                   msg_det=('{}, {}' + ', line: {}').format(self.error_type,
-                                                                                                 self.fname,
-                                                                                                 self.lineno)
+                                   msg_inf=('{}, {}' +
+                                                    ', line: {}').format(self.error_type,
+                                                                                      self.fname,
+                                                                                      self.lineno),
+                                    msg_det='\n'.join(traceback.format_tb(self.tb))
                                   )
         else:
             super().__init__(msg_icon=QMessageBox.Critical,
@@ -222,14 +225,16 @@ class LogDock():
 
 class CamWin():
     
-    # class attributes
     __video_timer = QTimer()
     
     def __init__(self, cam_gui):
-        self.gui = cam_gui
-        self.ready_window()
-        self.init_cam()
-        pass
+        try:
+            self.gui = cam_gui
+            self.init_cam()
+            self.ready_window()
+        except:
+            error_txt = ('No cameras appear to be connected.')
+            Error(error_txt=error_txt).display()
 
     def clean_up(self):
         '''
@@ -241,14 +246,11 @@ class CamWin():
             self.__video_timer.stop()
         self.cam.close()
         return None
-#        self.gui.close()
 
-    # public methods
     def ready_window(self):
         '''
         ready the gui for camera view, connect to camera and show window
         '''
-        #TODO: fix Error to show full stack, then return the try/except
         from matplotlib import pyplot as plt
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
         
@@ -260,11 +262,6 @@ class CamWin():
         # show window
         self.gui.show()
         self.gui.activateWindow()
-
-#        try:
-#        except:
-#            error_txt = ('No cameras appear to be connected.')
-#            Error(sys.exc_info(), error_txt=error_txt).display()
 
     def init_cam(self):
         # initialize camera
@@ -286,12 +283,6 @@ class CamWin():
             self.gui.videoButton.setText('Start Video')
             self.cam.stop_live_video()
             self.__video_timer.stop()
-#        try:
-#        except:
-#            error_txt = ('Camera disconnected.' + '\n' +
-#                             'Reconnect and re-open the camera window.')
-#            Error(sys.exc_info(), error_txt).display()
-#            self.on_rejected()
 
     def shoot(self):
         #TODO: fix Error to show full stack, then return the try/except
