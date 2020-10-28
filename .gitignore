@@ -2,6 +2,9 @@
 lextab.py
 yacctab.py
 
+# eric project folder (test) (idomich)
+.eric6project
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
