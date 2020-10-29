@@ -8,43 +8,51 @@ from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import implementation.drivers as drivers
-    
-class Measurement():
-    
-    # class attributes
-    __timer = QTimer()
-    
-    def __init__(self, type, duration_spinbox, prog_bar=None):
-        # instance attributes
-        self.type = type
-        self.duration_spinbox = duration_spinbox
-        self.prog_bar = prog_bar
-        self.__timer.timeout.connect(self.__timer_timeout)
-        self.time_passed = 0
+
+class MainWin():
+
+    def __init__(self,  main_gui):
+        self.gui = main_gui
         
-    # public methods
-    def start(self):
-        self.__timer.start(1000)
+        # set up main timeout event
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.timeout)
+        self.timer.start(10)
+
+        # intialize buttons
+        self.gui.actionLaser_Control.setChecked(True)
+        self.gui.actionStepper_Stage_Control.setChecked(True)
+        self.gui.stageButtonsGroup.setEnabled(False)
+        self.gui.actionLog.setChecked(True)
         
-    def stop(self):
-        self.__timer.stop()
-        if self.prog_bar:
-            self.prog_bar.setValue(0)
+        # initialize Log Dock
+        self.log_dock = LogDock()
+
+        #connect signals and slots
+        self.gui.ledExc.clicked.connect(self.gui.show_laser_dock)
+        self.gui.ledDep.clicked.connect(self.gui.show_laser_dock)
+        self.gui.ledShutter.clicked.connect(self.gui.show_laser_dock)
+        self.gui.actionRestart.triggered.connect(self.restart)
     
-    # private methods
-    def __timer_timeout(self):
-#        from PyQt5.QtMultimedia import QSound
-        if self.time_passed < self.duration_spinbox.value():
-            self.time_passed += 1
-#            if self.time_passed == self.duration_spinbox.value():
-#                QSound.play(const.MEAS_COMPLETE_SOUND);
+    def closeEvent(self, event):
+        App.exit_app(self, event)
+
+    def restart(self):
+        App.restart_app(self)
+
+    def timeout(self):
+        '''
+        '''
+        # TODO: move to implementation
+        if self.gui.depTemp.value() < 52:
+            self.gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
         else:
-            self.time_passed = 1
-        if self.prog_bar:
-            prog = self.time_passed / self.duration_spinbox.value() * 100
-            self.prog_bar.setValue(prog)          
+            self.gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
 class SettingsWin():
+    
+    def __init__(self, settings_gui):
+        self.gui = settings_gui
     
     def clean_up(self):
         # TODO: add check to see if changes were made, if not, don't ask user
@@ -52,7 +60,7 @@ class SettingsWin():
                                   '(otherwise, revert to last loaded settings file.)'
                                   ).display()
         if pressed == QMessageBox.No:
-            self.read_csv(self.settingsFileName.text())
+            self.read_csv(self.gui.settingsFileName.text())
 
     # public methods
     def write_csv(self):
@@ -60,28 +68,28 @@ class SettingsWin():
         Write all QLineEdit, QspinBox and QdoubleSpinBox of settings window to 'filepath' (csv).
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
-        filepath, _ = QFileDialog.getSaveFileName(self,
+        filepath, _ = QFileDialog.getSaveFileName(self.gui,
                                                                  'Save Settings',
                                                                  const.SETTINGS_FOLDER_PATH,
                                                                  "CSV Files(*.csv *.txt)")
         import csv
         if filepath:
-            self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+            self.gui.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
             with open(filepath, 'w') as stream:
                 #print("saving", filepath)
                 writer = csv.writer(stream)
                 # get all names of fields in settings window (for file saving/loading)
-                l1 = self.frame.findChildren(QLineEdit)
-                l2 = self.frame.findChildren(QSpinBox)
-                l3 = self.frame.findChildren(QDoubleSpinBox)
+                l1 = self.gui.frame.findChildren(QLineEdit)
+                l2 = self.gui.frame.findChildren(QSpinBox)
+                l3 = self.gui.frame.findChildren(QDoubleSpinBox)
                 field_names = [w.objectName() for w in (l1 + l2 + l3) if (not w.objectName() == 'qt_spinbox_lineedit') and (not w.objectName() == 'settingsFileName')]
                 #print(fieldNames)
                 for i in range(len(field_names)):
-                    widget = self.frame.findChild(QWidget, field_names[i])
+                    widget = self.gui.frame.findChild(QWidget, field_names[i])
                     if hasattr(widget, 'value'): # spinner
-                        rowdata = [field_names[i],  self.frame.findChild(QWidget, field_names[i]).value()]
+                        rowdata = [field_names[i],  self.gui.frame.findChild(QWidget, field_names[i]).value()]
                     else: # line edit
-                        rowdata = [field_names[i],  self.frame.findChild(QWidget, field_names[i]).text()]
+                        rowdata = [field_names[i],  self.gui.frame.findChild(QWidget, field_names[i]).text()]
                     writer.writerow(rowdata)
 
     def read_csv(self, filepath=''):
@@ -90,7 +98,7 @@ class SettingsWin():
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
         if not filepath:
-            filepath, _ = QFileDialog.getOpenFileName(self,
+            filepath, _ = QFileDialog.getOpenFileName(self.gui,
                                                                      "Load Settings",
                                                                      const.SETTINGS_FOLDER_PATH,
                                                                      "CSV Files(*.csv *.txt)")
@@ -98,9 +106,9 @@ class SettingsWin():
         if filepath:
             try:
                  df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
-                 self.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+                 self.gui.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
                  for i in range(len(df)):
-                    widget = self.frame.findChild(QWidget, df.iloc[i, 0])
+                    widget = self.gui.frame.findChild(QWidget, df.iloc[i, 0])
                     if not widget == 'nullptr':
                         if hasattr(widget, 'value'): # spinner
                             widget.setValue(float(df.iloc[i, 1]))
@@ -118,108 +126,6 @@ class SettingsWin():
         else:
             error_txt = ('File path not supplied.')
             Error(error_txt=error_txt).display()
-            
-class UserDialog():
-    
-    def __init__(self,
-                       msg_icon=QMessageBox.NoIcon,
-                       msg_title=None,
-                       msg_text=None,
-                       msg_inf=None,
-                       msg_det=None):
-        self._msg_box = QMessageBox()
-        self._msg_box.setIcon(msg_icon)
-        self._msg_box.setWindowTitle(msg_title)
-        self._msg_box.setText(msg_text)
-        self._msg_box.setInformativeText(msg_inf)
-        self._msg_box.setDetailedText(msg_det)
-    
-    def set_buttons(self, std_bttn_list):
-        for std_bttn in std_bttn_list:
-            self._msg_box.addButton(getattr(QMessageBox, std_bttn))
-        
-    def display(self):
-        return self._msg_box.exec_()
-    
-class Error(UserDialog):
-    
-    def __init__(self, error_info='', error_txt='Error occured.'):
-        import traceback
-        if error_info:
-            self.exc_type, _, self.tb = error_info
-            self.error_type = self.exc_type.__name__
-            self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
-            self.lineno = self.tb.tb_lineno
-            super().__init__(msg_icon=QMessageBox.Critical,
-                                   msg_title='Error',
-                                   msg_text=error_txt,
-                                   msg_inf=('{}, {}' +
-                                                    ', line: {}').format(self.error_type,
-                                                                                      self.fname,
-                                                                                      self.lineno),
-                                    msg_det='\n'.join(traceback.format_tb(self.tb))
-                                  )
-        else:
-            super().__init__(msg_icon=QMessageBox.Critical,
-                                   msg_title='Error',
-                                   msg_text=error_txt,
-                                  )
-
-class Question(UserDialog):
-    def __init__(self, q_txt,  q_title='User Input Needed'):
-        super().__init__(msg_icon=QMessageBox.Question,
-                               msg_title=q_title,
-                               msg_text=q_txt
-                               )
-        self.set_buttons(['Yes', 'No'])
-        self._msg_box.setDefaultButton(QMessageBox.No)
-
-def clean_up_app(main_window):
-    '''
-    Disconnect from all devices safely
-    and close secondary windows
-    (before closing/restarting application)
-    '''
-    main_window.settings_win.reject()
-    main_window.errors_win.reject()
-    if hasattr(main_window, 'cam_win'):
-        main_window.cam_win.reject()
-        
-def exit_app(main_window, event):
-    '''
-    Clean up and exit, ask first.
-    '''
-    pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
-    if pressed == QMessageBox.Yes:
-        clean_up_app(main_window)
-        main_window.close()
-    else:
-        event.ignore()
-        
-def restart_app(main_window):
-    '''
-    Clean up and restart, ask first.
-    '''
-    pressed = Question(q_title='Restarting Program',
-                               q_txt=('Are you sure you want ' +
-                                         'to restart the program?')).display()
-    if pressed == QMessageBox.Yes:
-        clean_up_app(main_window)
-        QApplication.exit(const.EXIT_CODE_REBOOT);
-
-class LogDock():
-    
-    def __init__(self):
-        '''
-        ready and show the log window
-        '''
-        try:
-            # load today's log file, add "program started" etc.
-            print('Log Dock Initialized') # TEST
-            pass
-        except:
-            error_txt = ('')
-            Error(sys.exc_info(), error_txt=error_txt).display()
 
 class CamWin():
     
@@ -301,3 +207,141 @@ class CamWin():
         #TODO: return the try/except
         img = self.cam.grab_image()
         self.__imshow(img)
+
+class UserDialog():
+    
+    def __init__(self,
+                       msg_icon=QMessageBox.NoIcon,
+                       msg_title=None,
+                       msg_text=None,
+                       msg_inf=None,
+                       msg_det=None):
+        self._msg_box = QMessageBox()
+        self._msg_box.setIcon(msg_icon)
+        self._msg_box.setWindowTitle(msg_title)
+        self._msg_box.setText(msg_text)
+        self._msg_box.setInformativeText(msg_inf)
+        self._msg_box.setDetailedText(msg_det)
+    
+    def set_buttons(self, std_bttn_list):
+        for std_bttn in std_bttn_list:
+            self._msg_box.addButton(getattr(QMessageBox, std_bttn))
+        
+    def display(self):
+        return self._msg_box.exec_()
+    
+class Error(UserDialog):
+    
+    def __init__(self, error_info='', error_txt='Error occured.'):
+        import traceback
+        if error_info:
+            self.exc_type, _, self.tb = error_info
+            self.error_type = self.exc_type.__name__
+            self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
+            self.lineno = self.tb.tb_lineno
+            super().__init__(msg_icon=QMessageBox.Critical,
+                                   msg_title='Error',
+                                   msg_text=error_txt,
+                                   msg_inf=('{}, {}' +
+                                                    ', line: {}').format(self.error_type,
+                                                                                      self.fname,
+                                                                                      self.lineno),
+                                    msg_det='\n'.join(traceback.format_tb(self.tb))
+                                  )
+        else:
+            super().__init__(msg_icon=QMessageBox.Critical,
+                                   msg_title='Error',
+                                   msg_text=error_txt,
+                                  )
+
+class Question(UserDialog):
+    def __init__(self, q_txt,  q_title='User Input Needed'):
+        super().__init__(msg_icon=QMessageBox.Question,
+                               msg_title=q_title,
+                               msg_text=q_txt
+                               )
+        self.set_buttons(['Yes', 'No'])
+        self._msg_box.setDefaultButton(QMessageBox.No)
+
+class Measurement():
+    
+    # class attributes
+    __timer = QTimer()
+    
+    def __init__(self, type, duration_spinbox, prog_bar=None):
+        # instance attributes
+        self.type = type
+        self.duration_spinbox = duration_spinbox
+        self.prog_bar = prog_bar
+        self.__timer.timeout.connect(self.__timer_timeout)
+        self.time_passed = 0
+        
+    # public methods
+    def start(self):
+        self.__timer.start(1000)
+        
+    def stop(self):
+        self.__timer.stop()
+        if self.prog_bar:
+            self.prog_bar.setValue(0)
+    
+    # private methods
+    def __timer_timeout(self):
+#        from PyQt5.QtMultimedia import QSound
+        if self.time_passed < self.duration_spinbox.value():
+            self.time_passed += 1
+#            if self.time_passed == self.duration_spinbox.value():
+#                QSound.play(const.MEAS_COMPLETE_SOUND);
+        else:
+            self.time_passed = 1
+        if self.prog_bar:
+            prog = self.time_passed / self.duration_spinbox.value() * 100
+            self.prog_bar.setValue(prog)
+
+class App():
+    def clean_up_app(self, main_gui):
+        '''
+        Disconnect from all devices safely
+        and close secondary windows
+        (before closing/restarting application)
+        '''
+        main_gui.windows['settings'].reject()
+        main_gui.windows['errors'].reject()
+        if hasattr(main_gui, 'windows.cam'):
+            main_gui.windows.cameras.reject()
+            
+    def exit_app(self, main_gui, event):
+        '''
+        Clean up and exit, ask first.
+        '''
+        pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
+        if pressed == QMessageBox.Yes:
+            self.clean_up_app(main_gui)
+            main_gui.close()
+        else:
+            event.ignore()
+            
+    def restart_app(self, main_gui):
+        '''
+        Clean up and restart, ask first.
+        '''
+        pressed = Question(q_title='Restarting Program',
+                                   q_txt=('Are you sure you want ' +
+                                             'to restart the program?')).display()
+        if pressed == QMessageBox.Yes:
+            self.clean_up_app(main_gui)
+            QApplication.exit(const.EXIT_CODE_REBOOT);
+
+class LogDock():
+    
+    def __init__(self):
+        '''
+        ready and show the log window
+        '''
+        try:
+            # load today's log file, add "program started" etc.
+            print('Log Dock Initialized') # TEST
+            pass
+        except:
+            error_txt = ('')
+            Error(sys.exc_info(), error_txt=error_txt).display()
