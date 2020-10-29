@@ -6,7 +6,7 @@ import implementation.logic as logic
 import implementation.drivers as drivers
 import implementation.constants as const
 
-from PyQt5.QtCore import pyqtSlot,  QTimer
+from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import (QMainWindow, QDialog)
 from PyQt5.QtGui import QIcon
 from PyQt5 import uic
@@ -25,61 +25,23 @@ class MainWindow(QMainWindow):
         @param parent reference to the parent widget
         @type QWidget
         """
-        # TODO: move to logic
-
         # general window settings
         super(MainWindow, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
-
-#        # check conected devices
-#        self.instrument_names = [param_set._dict['classname'] for param_set in list_instruments()]
-
-        # set up main timeout event
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.timeout)
-        self.timer.start(10)
-
-        # define additinal windows
-        # TODO: keep all windows in same place '.windows' (e.g. for closing together)
-        self.settings_win = SettingsWindow()
-        self.errors_win = ErrorsWindow()
-
-        # intialize buttons
-        self.actionLaser_Control.setChecked(True)
-        self.actionStepper_Stage_Control.setChecked(True)
-        self.stageButtonsGroup.setEnabled(False)
-        self.actionLog.setChecked(True)
         
-        # initialize Log Dock
-        self.log_dock = logic.LogDock()
-
-        #connect signals and slots
-        self.ledExc.clicked.connect(self.show_laser_dock)
-        self.ledDep.clicked.connect(self.show_laser_dock)
-        self.ledShutter.clicked.connect(self.show_laser_dock)
-        self.actionRestart.triggered.connect(self.restart)
-
-    def closeEvent(self, event):
-        logic.exit_app(self, event)
-
-    def restart(self):
-        logic.restart_app(self)
-
-    def timeout(self):
-        '''
-        '''
-        # TODO: move to implementation
-        if self.depTemp.value() < 52:
-            self.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
-        else:
-            self.depTemp.setStyleSheet("background-color: white; color: black;")
+        self.imp = logic.MainWin(self)
+        
+        # define additinal windows
+        self.windows = {}
+        self.windows['settings'] = SettingsWindow()
+        self.windows['errors'] = ErrorsWindow()
 
     @pyqtSlot()
     def on_startFcsMeasurementButton_released(self):
         """
         Begin FCS Measurement.
         """
-        # TODO: 
+        # TODO:  move details to imp
         if self.startFcsMeasurementButton.text() == 'Start \nMeasurement':
             self.measurement = logic.Measurement('FCS',  self.measFCSDurationSpinBox, self.FCSprogressBar)
             self.measurement.start()
@@ -162,8 +124,8 @@ class MainWindow(QMainWindow):
         Show settings window
         """
         # TODO:
-        self.settings_win.show()
-        self.settings_win.activateWindow()
+        self.windows['settings'].show()
+        self.windows['settings'].activateWindow()
 
     @pyqtSlot(bool)
     def on_actionLaser_Control_toggled(self, p0):
@@ -196,7 +158,7 @@ class MainWindow(QMainWindow):
         Instantiate 'CameraWindow' object and show it
         """
         # TODO: add support for 2nd camera
-        self.cam_win = CameraWindow()
+        self.windows['cameras'] = CameraWindow()
 
     @pyqtSlot(bool)
     def on_actionLog_toggled(self, p0):
@@ -225,8 +187,8 @@ class MainWindow(QMainWindow):
         Show errors window
         """
         # TODO:
-        self.errors_win.show()
-        self.errors_win.activateWindow()
+        self.windows.errors.show()
+        self.windows.errors.activateWindow()
 
     #----------------------------------------------------------------------------
     # Stepper Stage Dock
@@ -242,7 +204,7 @@ class MainWindow(QMainWindow):
         if not self.stageButtonsGroup.isEnabled():
             self.stageOn.setIcon(QIcon(icon.SWITCH_ON))
             self.stageButtonsGroup.setEnabled(True)
-            self.stage = drivers.StepperStage(rsrc_alias=self.settings_win.arduinoChan.text())
+            self.stage = drivers.StepperStage(rsrc_alias=self.windows['settings'].arduinoChan.text())
             
         #Turn Off
         else:
@@ -304,7 +266,7 @@ class ErrorsWindow(QDialog):
     def on_errorSelectList_currentRowChanged(self, index):
         self.errorDetailsStacked.setCurrentIndex(index)
 
-class SettingsWindow(QDialog, logic.SettingsWin):
+class SettingsWindow(QDialog):
     """
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
@@ -312,12 +274,12 @@ class SettingsWindow(QDialog, logic.SettingsWin):
     def __init__(self,  parent=None):
         super(SettingsWindow,  self).__init__(parent)
         uic.loadUi(const.SETTINGSWINDOW_UI_PATH, self)
-        
-        self.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+        self.imp = logic.SettingsWin(self)
+        self.imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
     
     def closeEvent(self, event):
         print('Settings window closed (closeEvent)') # TEST
-        self.clean_up()
+        self.imp.clean_up()
 
     @pyqtSlot()
     def on_saveButton_released(self):
@@ -325,7 +287,7 @@ class SettingsWindow(QDialog, logic.SettingsWin):
         Save settings as .csv
         """
         # TODO: add all forms in main window too
-        self.write_csv()
+        self.imp.write_csv()
 
     @pyqtSlot()
     def on_loadButton_released(self):
@@ -333,7 +295,7 @@ class SettingsWindow(QDialog, logic.SettingsWin):
         load settings .csv file
         """
         # TODO: add all forms in main window too
-        self.read_csv()
+        self.imp.read_csv()
 
 class CameraWindow(QDialog):
     """
