@@ -8,8 +8,6 @@ from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import implementation.drivers as drivers
-
-import pyvisa as visa
     
 class Measurement():
     
@@ -303,25 +301,3 @@ class CamWin():
         #TODO: return the try/except
         img = self.cam.grab_image()
         self.__imshow(img)
-
-class StepperStage():
-    
-    def __init__(self,  rsrc_alias):
-        self.rm = visa.ResourceManager()
-        self.rsrc = self.rm.open_resource(rsrc_alias)
-
-    def clean_up(self):
-        self.rsrc.close()
-        return None
-    
-    def move(self, dir=None,  steps=None):
-        cmd_dict = {'UP': (lambda steps: 'my ' + str(-steps)),
-                          'DOWN': (lambda steps: 'my ' + str(steps)),
-                          'LEFT': (lambda steps: 'mx ' + str(steps)),
-                          'RIGHT': (lambda steps: 'mx ' + str(-steps))
-                        }
-        self.rsrc.write(cmd_dict[dir](steps))
-    
-    def release(self):
-        cmnd = 'ryx '
-        self.rsrc.write(cmnd)
