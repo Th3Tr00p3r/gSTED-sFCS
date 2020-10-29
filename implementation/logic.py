@@ -21,7 +21,7 @@ class Measurement():
         self.type = type
         self.duration_spinbox = duration_spinbox
         self.prog_bar = prog_bar
-        self.__timer.timeout.connect(self.___timer_timeout)
+        self.__timer.timeout.connect(self.__timer_timeout)
         self.time_passed = 0
         
     # public methods
@@ -34,7 +34,7 @@ class Measurement():
             self.prog_bar.setValue(0)
     
     # private methods
-    def ___timer_timeout(self):
+    def __timer_timeout(self):
 #        from PyQt5.QtMultimedia import QSound
         if self.time_passed < self.duration_spinbox.value():
             self.time_passed += 1
