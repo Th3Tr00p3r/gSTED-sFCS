@@ -47,6 +47,8 @@ Python-based software for our optical measurement system.
 
 - pyVISA
 
+- nidaqmx
+
 - instrumental-lib
 
 - nicelib
