@@ -1,6 +1,6 @@
 import os
 import sys
-import time
+#import time
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QApplication, 
                                               QFileDialog
@@ -19,13 +19,10 @@ class App():
     
     def clean_up_app(self):
         '''
-        Disconnect from all devices safely
-        and close secondary windows
-        (before closing/restarting application)
+        Close all secondary windows
+        before closing/restarting application
         '''
-        self.gui.windows['settings'].reject()
-        self.gui.windows['errors'].reject()
-        self.gui.windows['cameras'].reject()
+        [window.reject() for window in self.gui.windows.values()]
             
     def exit_app(self, event):
         '''
@@ -42,6 +39,7 @@ class App():
         '''
         Clean up and restart, ask first.
         '''
+        # TODO: restart fails if camera window open (creates second main)
         pressed = Question(q_title='Restarting Program',
                                    q_txt=('Are you sure you want ' +
                                              'to restart the program?')).display()
@@ -64,9 +62,9 @@ class MainWin(App):
         self.gui.stageButtonsGroup.setEnabled(False)
         self.gui.actionLog.setChecked(True)
         #connect signals and slots
-        self.gui.ledExc.clicked.connect(self.gui.show_laser_dock)
-        self.gui.ledDep.clicked.connect(self.gui.show_laser_dock)
-        self.gui.ledShutter.clicked.connect(self.gui.show_laser_dock)
+        self.gui.ledExc.clicked.connect(self.show_laser_dock)
+        self.gui.ledDep.clicked.connect(self.show_laser_dock)
+        self.gui.ledShutter.clicked.connect(self.show_laser_dock)
         self.gui.actionRestart.triggered.connect(self.restart_app)
         #initialize active devices
         self.actv_dvcs['exc_laser_emisson'] = 0
@@ -124,6 +122,28 @@ class MainWin(App):
             self.actv_dvcs['dep_shutter'] = 0
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
+
+    def stage_toggle(self):
+        
+        if not self.actv_dvcs['stage_control']:
+            self.actv_dvcs['stage_control'] = 1
+            self.gui.stageOn.setIcon(QIcon(icon.SWITCH_ON))
+            self.gui.stageButtonsGroup.setEnabled(True)
+            self.stage = drivers.StepperStage(rsrc_alias=self.gui.windows['settings'].arduinoChan.text())
+
+        else:
+            self.actv_dvcs['stage_control'] = 0
+            self.gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
+            self.gui.stageButtonsGroup.setEnabled(False)
+            self.stage = self.stage.clean_up()
+
+    def show_laser_dock(self):
+        '''
+        Make the laser dock visible (convenience)
+        '''
+        if not self.gui.laserDock.isVisible():
+            self.gui.laserDock.setVisible(True)
+            self.gui.actionLaser_Control.setChecked(True)
 
     def start_FCS_meas(self):
         
