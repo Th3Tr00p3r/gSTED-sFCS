@@ -1,53 +1,141 @@
 import os
 import sys
-#import time
+import time
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QApplication, 
                                               QFileDialog
                                               )
+from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import implementation.drivers as drivers
+import gui.icons.icon_paths as icon
 
-class MainWin():
+class App():
+    
+    actv_dvcs = {}
+    meas_state = {}
+    meas = None
+    
+    def clean_up_app(self):
+        '''
+        Disconnect from all devices safely
+        and close secondary windows
+        (before closing/restarting application)
+        '''
+        self.gui.windows['settings'].reject()
+        self.gui.windows['errors'].reject()
+        self.gui.windows['cameras'].reject()
+            
+    def exit_app(self, event):
+        '''
+        Clean up and exit, ask first.
+        '''
+        pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
+        if pressed == QMessageBox.Yes:
+            self.clean_up_app()
+            self.gui.close()
+        else:
+            event.ignore()
+            
+    def restart_app(self):
+        '''
+        Clean up and restart, ask first.
+        '''
+        pressed = Question(q_title='Restarting Program',
+                                   q_txt=('Are you sure you want ' +
+                                             'to restart the program?')).display()
+        if pressed == QMessageBox.Yes:
+            self.clean_up_app()
+            QApplication.exit(const.EXIT_CODE_REBOOT);
 
+class MainWin(App):
+    
     def __init__(self,  main_gui):
-        self.gui = main_gui
         
+        self.gui = main_gui
         # set up main timeout event
         self.timer = QTimer()
         self.timer.timeout.connect(self.timeout)
         self.timer.start(10)
-
         # intialize buttons
         self.gui.actionLaser_Control.setChecked(True)
         self.gui.actionStepper_Stage_Control.setChecked(True)
         self.gui.stageButtonsGroup.setEnabled(False)
         self.gui.actionLog.setChecked(True)
-        
-        # initialize Log Dock
-        self.log_dock = LogDock()
-
         #connect signals and slots
         self.gui.ledExc.clicked.connect(self.gui.show_laser_dock)
         self.gui.ledDep.clicked.connect(self.gui.show_laser_dock)
         self.gui.ledShutter.clicked.connect(self.gui.show_laser_dock)
-        self.gui.actionRestart.triggered.connect(self.restart)
-    
-    def closeEvent(self, event):
-        App.exit_app(self, event)
-
-    def restart(self):
-        App.restart_app(self)
+        self.gui.actionRestart.triggered.connect(self.restart_app)
+        #initialize active devices
+        self.actv_dvcs['exc_laser_emisson'] = 0
+        self.actv_dvcs['dep_laser_emisson'] = 0
+        self.actv_dvcs['dep_shutter'] = 0
+        self.actv_dvcs['stage_control'] = 0
+        self.actv_dvcs['camera_control'] = 0
+        # initialize measurement states
+        self.meas_state['FCS'] = ''
+        self.meas_state['sol_sFCS'] = ''
+        self.meas_state['img_sFCS'] = ''
 
     def timeout(self):
         '''
+        Continuous updates
         '''
-        # TODO: move to implementation
-        if self.gui.depTemp.value() < 52:
-            self.gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
+        
+        def check_SHG_temp(self):
+            if self.gui.depTemp.value() < 52:
+                self.gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
+            else:
+                self.gui.depTemp.setStyleSheet("background-color: white; color: black;")
+        #MAIN
+        check_SHG_temp(self)
+    
+    def exc_emission_toggle(self):
+        
+        if not self.actv_dvcs['exc_laser_emisson']:
+            self.actv_dvcs['exc_laser_emisson'] = 1
+            self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_ON))
+            self.gui.ledExc.setIcon(QIcon(icon.LED_BLUE))
         else:
-            self.gui.depTemp.setStyleSheet("background-color: white; color: black;")
+            self.actv_dvcs['exc_laser_emisson'] = 0
+            self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
+            self.gui.ledExc.setIcon(QIcon(icon.LED_OFF)) 
+
+    def dep_emission_toggle(self):
+        
+        if not self.actv_dvcs['dep_laser_emisson']:
+            self.actv_dvcs['dep_laser_emisson'] = 1
+            self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
+            self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
+        else:
+            self.actv_dvcs['dep_laser_emisson'] = 0
+            self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
+            self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
+
+    def dep_shutter_toggle(self):
+        
+        if not self.actv_dvcs['dep_shutter']:
+            self.actv_dvcs['dep_shutter'] = 1
+            self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
+            self.gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
+        else:
+            self.actv_dvcs['dep_shutter'] = 0
+            self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
+            self.gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
+
+    def start_FCS_meas(self):
+        
+        if not self.meas_state['FCS']:
+            self.meas = Measurement(type='FCS', 
+                                                               duration_spinner=self.gui.measFCSDurationSpinBox,
+                                                               prog_bar=self.gui.FCSprogressBar)
+            self.meas.start()
+            self.gui.startFcsMeasurementButton.setText('Stop \nMeasurement')
+        else: # off state
+            self.meas.stop()
+            self.gui.startFcsMeasurementButton.setText('Start \nMeasurement')
 
 class SettingsWin():
     
@@ -130,52 +218,45 @@ class SettingsWin():
 class CamWin():
     
     __video_timer = QTimer()
+    state = {}
     
     def __init__(self, cam_gui):
-        try:
-            self.gui = cam_gui
-            self.init_cam()
-            self.ready_window()
-        except:
-            error_txt = ('No cameras appear to be connected.')
-            Error(error_txt=error_txt).display()
+        
+        self.gui = cam_gui
+        # add matplotlib-ready widget (canvas) for showing camera output
+        from matplotlib import pyplot as plt
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+        self.gui.figure = plt.figure()
+        self.gui.canvas = FigureCanvas(self.gui.figure)
+        self.gui.gridLayout.addWidget(self.gui.canvas, 0, 1)
+        # initialize states
+        self.state['video'] = 0
 
     def clean_up(self):
         '''
         clean up before closing window
         '''
-        if hasattr(self, '__video_timer'):
-            self.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
-            self.videoButton.setText('Start Video')
-            self.__video_timer.stop()
+        # turn off video if On
+        if self.state['video']:
+            self.toggle_video()
+        # disconnect camera
         self.cam.close()
         return None
 
-    def ready_window(self):
-        '''
-        ready the gui for camera view, connect to camera and show window
-        '''
-        from matplotlib import pyplot as plt
-        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-        
-        # add matplotlib-ready widget (canvas) for showing camera output
-        self.gui.figure = plt.figure()
-        self.gui.canvas = FigureCanvas(self.gui.figure)
-        self.gui.gridLayout.addWidget(self.gui.canvas, 0, 1)
-        
-        # show window
-        self.gui.show()
-        self.gui.activateWindow()
-
     def init_cam(self):
-        # initialize camera
-        self.cam = drivers.Camera(reopen_policy='new') # instantiate camera object
-        self.cam.open() # connect to first available camera
+        
+        try:
+            self.cam = drivers.Camera(reopen_policy='new') # instantiate camera object
+            self.cam.open() # connect to first available camera
+        except:
+            error_txt = ('No cameras appear to be connected.')
+            Error(error_txt=error_txt).display()
     
-    def start_stop_video(self):
+    def toggle_video(self):
         #TODO: return the try/except
         #Turn On
-        if self.gui.videoButton.text() == 'Start Video':
+        if not self.state['video']:
+            self.state['video'] = 1
             self.gui.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
             self.gui.videoButton.setText('Video ON')
             self.cam.start_live_video()
@@ -183,6 +264,7 @@ class CamWin():
             self.__video_timer.start(50) # video refresh period (ms)
         #Turn Off
         else:
+            self.state['video'] = 0
             self.gui.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.gui.videoButton.setText('Start Video')
             self.cam.stop_live_video()
@@ -268,10 +350,10 @@ class Measurement():
     # class attributes
     __timer = QTimer()
     
-    def __init__(self, type, duration_spinbox, prog_bar=None):
+    def __init__(self, type, duration_spinner, prog_bar=None):
         # instance attributes
         self.type = type
-        self.duration_spinbox = duration_spinbox
+        self.duration_spinner = duration_spinner
         self.prog_bar = prog_bar
         self.__timer.timeout.connect(self.__timer_timeout)
         self.time_passed = 0
@@ -288,50 +370,15 @@ class Measurement():
     # private methods
     def __timer_timeout(self):
 #        from PyQt5.QtMultimedia import QSound
-        if self.time_passed < self.duration_spinbox.value():
+        if self.time_passed < self.duration_spinner.value():
             self.time_passed += 1
 #            if self.time_passed == self.duration_spinbox.value():
 #                QSound.play(const.MEAS_COMPLETE_SOUND);
         else:
             self.time_passed = 1
         if self.prog_bar:
-            prog = self.time_passed / self.duration_spinbox.value() * 100
+            prog = self.time_passed / self.duration_spinner.value() * 100
             self.prog_bar.setValue(prog)
-
-class App():
-    def clean_up_app(self, main_gui):
-        '''
-        Disconnect from all devices safely
-        and close secondary windows
-        (before closing/restarting application)
-        '''
-        main_gui.windows['settings'].reject()
-        main_gui.windows['errors'].reject()
-        if hasattr(main_gui, 'windows.cam'):
-            main_gui.windows.cameras.reject()
-            
-    def exit_app(self, main_gui, event):
-        '''
-        Clean up and exit, ask first.
-        '''
-        pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
-        if pressed == QMessageBox.Yes:
-            self.clean_up_app(main_gui)
-            main_gui.close()
-        else:
-            event.ignore()
-            
-    def restart_app(self, main_gui):
-        '''
-        Clean up and restart, ask first.
-        '''
-        pressed = Question(q_title='Restarting Program',
-                                   q_txt=('Are you sure you want ' +
-                                             'to restart the program?')).display()
-        if pressed == QMessageBox.Yes:
-            self.clean_up_app(main_gui)
-            QApplication.exit(const.EXIT_CODE_REBOOT);
-
 class LogDock():
     
     def __init__(self):
