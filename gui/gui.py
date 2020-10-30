@@ -1,14 +1,11 @@
 """
 GUI Module.
 """
-import gui.icons.icon_paths as icon
 import implementation.logic as logic
-import implementation.drivers as drivers
 import implementation.constants as const
 
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import (QMainWindow, QDialog)
-from PyQt5.QtGui import QIcon
 from PyQt5 import uic
 
 # resource files
@@ -93,26 +90,15 @@ class MainWindow(QMainWindow):
     @pyqtSlot(bool)
     def on_actionLaser_Control_toggled(self, p0):
         '''
-        Slot documentation goes here.
-
-        @param p0 DESCRIPTION
-        @type bool
+        Show/hide stepper laser control dock
         '''
-        # TODO:
-        if p0:
-            self.laserDock.setVisible(True)
-        else:
-            self.laserDock.setVisible(False)
+        self.laserDock.setVisible(p0)
 
     @pyqtSlot(bool)
     def on_actionStepper_Stage_Control_toggled(self, p0):
         '''
         Show/hide stepper stage control dock
-
-        @param p0 DESCRIPTION
-        @type bool
         '''
-        # TODO:
         self.stepperDock.setVisible(p0)
 
     @pyqtSlot()
@@ -129,22 +115,8 @@ class MainWindow(QMainWindow):
     def on_actionLog_toggled(self, p0):
         '''
         Show/hide log dock
-
-        @param p0 DESCRIPTION
-        @type bool
         '''
-        # TODO:
         self.logDock.setVisible(p0)
-
-    @pyqtSlot()
-    def show_laser_dock(self):
-        '''
-        Make the laser dock visible (convenience)
-        '''
-        self.laserDock.setVisible(True)
-        p0 = self.actionLaser_Control.isChecked()
-        if not p0:
-            self.actionLaser_Control.setChecked(not p0)
 
     @pyqtSlot()
     def on_ledErrors_clicked(self):
@@ -161,61 +133,33 @@ class MainWindow(QMainWindow):
     
     @pyqtSlot()
     def on_stageOn_released(self):
-        '''
-        Slot documentation goes here.
-        '''
-        # TODO:
-        #Turn On
-        if not self.stageButtonsGroup.isEnabled():
-            self.stageOn.setIcon(QIcon(icon.SWITCH_ON))
-            self.stageButtonsGroup.setEnabled(True)
-            self.stage = drivers.StepperStage(rsrc_alias=self.windows['settings'].arduinoChan.text())
-            
-        #Turn Off
-        else:
-            self.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
-            self.stageButtonsGroup.setEnabled(False)
-            self.stage = self.stage.clean_up()
-            
+
+        self.imp.stage_toggle()
+
     @pyqtSlot()
     def on_stageUp_released(self):
-        '''
-        Slot documentation goes here.
-        '''
-        # TODO:
-        self.stage.move(dir='UP', steps=self.stageSteps.value())
+
+        self.imp.stage.move(dir='UP', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageDown_released(self):
-        '''
-        Slot documentation goes here.
-        '''
-        # TODO:
-        self.stage.move(dir='DOWN', steps=self.stageSteps.value())
+
+        self.imp.stage.move(dir='DOWN', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageLeft_released(self):
-        '''
-        Slot documentation goes here.
-        '''
-        # TODO:
-        self.stage.move(dir='LEFT', steps=self.stageSteps.value())
+
+        self.imp.stage.move(dir='LEFT', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRight_released(self):
-        '''
-        Slot documentation goes here.
-        '''
-        # TODO:
-        self.stage.move(dir='RIGHT', steps=self.stageSteps.value())
+
+        self.imp.stage.move(dir='RIGHT', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRelease_released(self):
-        '''
-        Slot documentation goes here.
-        '''
-        # TODO:
-        self.stage.release()
+ 
+        self.imp.stage.release()
 
 class ErrorsWindow(QDialog):
     '''
