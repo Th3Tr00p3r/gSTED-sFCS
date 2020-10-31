@@ -111,38 +111,7 @@
          </attribute>
          <layout class="QGridLayout" name="gridLayout_2">
           <item row="0" column="0">
-           <layout class="QVBoxLayout" name="verticalLayout_11">
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_5">
-              <item>
-               <widget class="QLabel" name="label">
-                <property name="font">
-                 <font>
-                  <pointsize>7</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>Main Program Folder Path</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="mainProgPath">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="font">
-                 <font>
-                  <pointsize>8</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>D:\MEGA\BioPhysics Lab\Optical System\gSTEDsFCS</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
+           <layout class="QVBoxLayout" name="verticalLayout_5">
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_9">
               <item>
@@ -163,14 +132,14 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>D:\Lab\sFCS-gSTED data\solution measurement data</string>
+                 <string>./data/solution measurements</string>
                 </property>
                </widget>
               </item>
              </layout>
             </item>
             <item>
-             <layout class="QVBoxLayout" name="verticalLayout_10">
+             <layout class="QVBoxLayout" name="verticalLayout">
               <item>
                <widget class="QLabel" name="label_9">
                 <property name="text">
@@ -189,35 +158,61 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>D:\Lab\sFCS-gSTED data\image measurement data</string>
+                 <string>./data/image measurements</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_13">
+              <item>
+               <widget class="QLabel" name="label_11">
+                <property name="text">
+                 <string>Camera Photos Data Folder Path</string>
                 </property>
                </widget>
               </item>
               <item>
-               <layout class="QVBoxLayout" name="verticalLayout_13">
-                <item>
-                 <widget class="QLabel" name="label_11">
-                  <property name="text">
-                   <string>Camera Photos Data Folder Path</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLineEdit" name="camDataPath">
-                  <property name="enabled">
-                   <bool>true</bool>
-                  </property>
-                  <property name="font">
-                   <font>
-                    <pointsize>8</pointsize>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>D:\Lab\sFCS-gSTED data\camera photos</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
+               <widget class="QLineEdit" name="camDataPath">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>8</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>./data/camera photos</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_14">
+              <item>
+               <widget class="QLabel" name="label_12">
+                <property name="text">
+                 <string>Log Files Folder Path</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="logDataPath">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>8</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>./log/</string>
+                </property>
+               </widget>
               </item>
              </layout>
             </item>
@@ -2598,7 +2593,7 @@
        </font>
       </property>
       <property name="text">
-       <string>PATH\settings.csv</string>
+       <string>./settings/default_settings.csv</string>
       </property>
       <property name="readOnly">
        <bool>true</bool>
