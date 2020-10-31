@@ -87,6 +87,7 @@ class MainWin(App):
                 self.gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
             else:
                 self.gui.depTemp.setStyleSheet("background-color: white; color: black;")
+                
         #MAIN
         check_SHG_temp(self)
     
@@ -176,6 +177,7 @@ class SettingsWin():
         Write all QLineEdit, QspinBox and QdoubleSpinBox of settings window to 'filepath' (csv).
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
+        # TODO: add support for combo box index
         filepath, _ = QFileDialog.getSaveFileName(self.gui,
                                                                  'Save Settings',
                                                                  const.SETTINGS_FOLDER_PATH,
@@ -205,6 +207,7 @@ class SettingsWin():
         Read 'filepath' (csv) and write to matching QLineEdit, QspinBox and QdoubleSpinBox of settings window.
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
+        # TODO: add support for combo box index
         if not filepath:
             filepath, _ = QFileDialog.getOpenFileName(self.gui,
                                                                      "Load Settings",
@@ -220,16 +223,16 @@ class SettingsWin():
                     if not widget == 'nullptr':
                         if hasattr(widget, 'value'): # spinner
                             widget.setValue(float(df.iloc[i, 1]))
-                        else: # line edit
+                        elif hasattr(widget, 'text'): # line edit
                             widget.setText(df.iloc[i, 1])
-            except: # handeling missing default settings file
-                error_txt = ('Default settings file "default_settings.csv" '
-                                   'not found in' + '\n'
-                                   '\'' + filepath + '\''
-                                   '\nUsing standard settings.' + '\n'
-                                   'To avoid this error, please save '
-                                   'some settings as "default_settings.csv".')
-                Error(sys.exc_info(), error_txt=error_txt).display()
+            except:
+#                error_txt = ('Default settings file "default_settings.csv" '
+#                                   'not found in' + '\n'
+#                                   '\'' + filepath + '\''
+#                                   '\nUsing standard settings.' + '\n'
+#                                   'To avoid this error, please save '
+#                                   'some settings as "default_settings.csv".')
+                Error(sys.exc_info()).display()
 
         else:
             error_txt = ('File path not supplied.')

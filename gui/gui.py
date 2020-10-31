@@ -207,32 +207,22 @@ class SettingsWindow(QDialog):
         self.imp.read_csv()
 
 class CameraWindow(QDialog):
-    '''
-    documentation
-    '''
+
     def __init__(self,  parent=None):
         super(CameraWindow,  self).__init__(parent)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
         self.imp = logic.CamWin(self)
 
     def closeEvent(self, event):
-        '''
-        cleaning up the camera driver, closing the camera window
-        and setting CameraWindow.imp to ''None''
-        '''
-#        print('Camera window closed (closeEvent)') # TEST
+        
         self.imp.clean_up()
 
     @pyqtSlot()
     def on_shootButton_released(self):
-        '''
-        Slot documentation goes here.
-        '''
+
         self.imp.shoot()
 
     @pyqtSlot()
     def on_videoButton_released(self):
-        '''
-        Slot documentation goes here.
-        '''
+
         self.imp.toggle_video()
