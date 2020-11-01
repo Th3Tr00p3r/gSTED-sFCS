@@ -5,11 +5,12 @@ from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QApplication, 
                                               QFileDialog
                                               )
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QCloseEvent
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import implementation.drivers as drivers
 import gui.icons.icon_paths as icon
+from datetime import datetime
 
 class App():
     
@@ -25,33 +26,34 @@ class App():
         [window.reject() for window in self.gui.windows.values()]
             
     def exit_app(self, event):
-        '''
-        Clean up and exit, ask first.
-        '''
-        pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
-        if pressed == QMessageBox.Yes:
-            self.clean_up_app()
-            self.gui.close()
-        else:
-            event.ignore()
-            
-    def restart_app(self):
-        '''
-        Clean up and restart, ask first.
-        '''
-        # TODO: restart fails if camera window open (creates second main)
-        pressed = Question(q_title='Restarting Program',
+        
+        if not self.restart_flag: # closing
+            pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
+            if pressed == QMessageBox.Yes:
+                self.clean_up_app()
+                event.ignore()
+                QApplication.exit(0)
+            else:
+                event.ignore()
+        else: # restarting
+            # TODO: can only restart once for some reason
+            pressed = Question(q_title='Restarting Program',
                                    q_txt=('Are you sure you want ' +
                                              'to restart the program?')).display()
-        if pressed == QMessageBox.Yes:
-            self.clean_up_app()
-            QApplication.exit(const.EXIT_CODE_REBOOT);
+            if pressed == QMessageBox.Yes:
+                self.clean_up_app()
+                event.ignore()
+                QApplication.exit(const.EXIT_CODE_REBOOT)
+            else:
+                event.ignore()
 
 class MainWin(App):
     
     def __init__(self,  main_gui):
         
         self.gui = main_gui
+        # set restart flag
+        self.restart_flag = False
         # set up main timeout event
         self.timer = QTimer()
         self.timer.timeout.connect(self.timeout)
@@ -65,7 +67,7 @@ class MainWin(App):
         self.gui.ledExc.clicked.connect(self.show_laser_dock)
         self.gui.ledDep.clicked.connect(self.show_laser_dock)
         self.gui.ledShutter.clicked.connect(self.show_laser_dock)
-        self.gui.actionRestart.triggered.connect(self.restart_app)
+        self.gui.actionRestart.triggered.connect(self.restart)
         #initialize active devices
         self.actv_dvcs['exc_laser_emisson'] = 0
         self.actv_dvcs['dep_laser_emisson'] = 0
@@ -76,6 +78,12 @@ class MainWin(App):
         self.meas_state['FCS'] = ''
         self.meas_state['sol_sFCS'] = ''
         self.meas_state['img_sFCS'] = ''
+        # initialize log dock
+        Log(self.gui.windows['settings'])
+    
+    def restart(self):
+        self.restart_flag = True
+        self.gui.close()
 
     def timeout(self):
         '''
@@ -402,16 +410,23 @@ class Measurement():
         if self.prog_bar:
             prog = self.time_passed / self.duration_spinner.value() * 100
             self.prog_bar.setValue(prog)
-class LogDock():
+class Log():
     
-    def __init__(self):
-        '''
-        ready and show the log window
-        '''
+    def __init__(self, setting_gui):
+        
+        log_dir_path = setting_gui.logDataPath.text()
         try:
-            # load today's log file, add "program started" etc.
-            print('Log Dock Initialized') # TEST
-            pass
+            os.mkdir(log_dir_path)
         except:
-            error_txt = ('')
-            Error(sys.exc_info(), error_txt=error_txt).display()
+            pass
+        date_str = datetime.now().strftime("%d_%m_%Y")
+        logfilepath = log_dir_path + date_str + '.csv'
+        with open(logfilepath, 'a+') as file:
+            time_str = datetime.now().strftime("%H:%M:%S")
+            file.write(time_str + ' ' + 'Application Started' + '\n')
+    
+    def read_csv(self, filepath=''):
+    
+        with open(filepath, 'r') as f:
+            str = '\n'.join(f.readlines())
+

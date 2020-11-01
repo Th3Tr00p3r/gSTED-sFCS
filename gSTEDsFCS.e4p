@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-10-28, 15:58:24 -->
+<!-- Saved: 2020-10-31, 20:55:37 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -14,7 +14,6 @@
   <Eol index="0"/>
   <Sources>
     <Source>__init__.py</Source>
-    <Source>drivers/__init__.py</Source>
     <Source>gSTEDsFCS.py</Source>
     <Source>gui/__init__.py</Source>
     <Source>gui/gui.py</Source>
@@ -25,7 +24,6 @@
     <Source>implementation/__init__.py</Source>
     <Source>implementation/constants.py</Source>
     <Source>implementation/drivers.py</Source>
-    <Source>implementation/implementation.py</Source>
     <Source>implementation/logic.py</Source>
   </Sources>
   <Forms>
