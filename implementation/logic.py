@@ -30,6 +30,7 @@ class App():
         if not self.restart_flag: # closing
             pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
             if pressed == QMessageBox.Yes:
+                self.log.write_line('Quitting Application')
                 self.clean_up_app()
                 event.ignore()
                 QApplication.exit(0)
@@ -41,6 +42,7 @@ class App():
                                    q_txt=('Are you sure you want ' +
                                              'to restart the program?')).display()
             if pressed == QMessageBox.Yes:
+                self.log.write_line('Restarting Application')
                 self.clean_up_app()
                 event.ignore()
                 QApplication.exit(const.EXIT_CODE_REBOOT)
@@ -79,7 +81,7 @@ class MainWin(App):
         self.meas_state['sol_sFCS'] = ''
         self.meas_state['img_sFCS'] = ''
         # initialize log dock
-        Log(self.gui.windows['settings'])
+        self.log = Log(self.gui)
     
     def restart(self):
         self.restart_flag = True
@@ -98,49 +100,67 @@ class MainWin(App):
                 
         #MAIN
         check_SHG_temp(self)
+        self.log.read_log()
+        self.gui.lastActionLineEdit.setText(self.log.get_last_line())
     
     def exc_emission_toggle(self):
         
+        # switch ON
         if not self.actv_dvcs['exc_laser_emisson']:
+            self.log.write_line('Excitation ON')
             self.actv_dvcs['exc_laser_emisson'] = 1
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledExc.setIcon(QIcon(icon.LED_BLUE))
+        # switch OFF
         else:
+            self.log.write_line('Excitation OFF')
             self.actv_dvcs['exc_laser_emisson'] = 0
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledExc.setIcon(QIcon(icon.LED_OFF)) 
 
     def dep_emission_toggle(self):
         
+        # switch ON
         if not self.actv_dvcs['dep_laser_emisson']:
+            self.log.write_line('Depletion ON')
             self.actv_dvcs['dep_laser_emisson'] = 1
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
+        # switch OFF
         else:
+            self.log.write_line('Depletion OFF')
             self.actv_dvcs['dep_laser_emisson'] = 0
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
 
     def dep_shutter_toggle(self):
         
+        # switch ON
         if not self.actv_dvcs['dep_shutter']:
+            self.log.write_line('Depletion shutter ON')
             self.actv_dvcs['dep_shutter'] = 1
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
+        # switch OFF
         else:
+            self.log.write_line('Depletion shutter OFF')
             self.actv_dvcs['dep_shutter'] = 0
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
 
     def stage_toggle(self):
         
+        # switch ON
         if not self.actv_dvcs['stage_control']:
+            self.log.write_line('Stage Control ON')
             self.actv_dvcs['stage_control'] = 1
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.stageButtonsGroup.setEnabled(True)
             self.stage = drivers.StepperStage(rsrc_alias=self.gui.windows['settings'].arduinoChan.text())
-
+        
+        # switch OFF
         else:
+            self.log.write_line('Stage Control OFF')
             self.actv_dvcs['stage_control'] = 0
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.stageButtonsGroup.setEnabled(False)
@@ -412,21 +432,36 @@ class Measurement():
             self.prog_bar.setValue(prog)
 class Log():
     
-    def __init__(self, setting_gui):
+    def __init__(self, gui):
         
-        log_dir_path = setting_gui.logDataPath.text()
+        self.gui = gui
+        self.dir_path = self.gui.windows['settings'].logDataPath.text()
         try:
-            os.mkdir(log_dir_path)
+            os.mkdir(self.dir_path)
         except:
             pass
         date_str = datetime.now().strftime("%d_%m_%Y")
-        logfilepath = log_dir_path + date_str + '.csv'
-        with open(logfilepath, 'a+') as file:
+        self.file_path = self.dir_path + date_str + '.csv'
+        self.write_line('Application Started')
+    
+    def write_line(self, log_line):
+        with open(self.file_path, 'a+') as file:
             time_str = datetime.now().strftime("%H:%M:%S")
-            file.write(time_str + ' ' + 'Application Started' + '\n')
+            file.write(time_str + ' ' + log_line + '\n')
     
-    def read_csv(self, filepath=''):
+    def read_log(self):
+        
+        with open(self.file_path, 'r') as file:
+            log = []
+            for line in reversed(list(file)):
+                log.append(line.rstrip())
+            log = '\n'.join(log)
+        self.gui.logText.setPlainText(log)
     
-        with open(filepath, 'r') as f:
-            str = '\n'.join(f.readlines())
-
+    def get_last_line(self):
+        
+        with open(self.file_path, 'r') as file:
+            for line in reversed(list(file)):
+                line = line.rstrip()
+                break
+        return line
