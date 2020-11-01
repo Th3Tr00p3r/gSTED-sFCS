@@ -18,14 +18,16 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
-        self.imp = logic.MainWin(self)
         # initialize other windows
         self.windows = {}
         self.windows['settings'] = SettingsWindow()
         self.windows['errors'] = ErrorsWindow()
         self.windows['cameras'] = CameraWindow()
+        
+        self.imp = logic.MainWin(self)
 
     def closeEvent(self, event):
+        
         self.imp.exit_app(event)
 
     @pyqtSlot()
