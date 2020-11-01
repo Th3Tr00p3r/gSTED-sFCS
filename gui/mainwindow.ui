@@ -5473,13 +5473,13 @@ Measurement</string>
    <property name="minimumSize">
     <size>
      <width>300</width>
-     <height>357</height>
+     <height>320</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
      <width>300</width>
-     <height>357</height>
+     <height>320</height>
     </size>
    </property>
    <property name="features">
