@@ -30,7 +30,7 @@ class App():
         if not self.restart_flag: # closing
             pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
             if pressed == QMessageBox.Yes:
-                self.log.write_line('Quitting Application')
+                self.log.update('Quitting Application')
                 self.clean_up_app()
                 event.ignore()
                 QApplication.exit(0)
@@ -42,7 +42,7 @@ class App():
                                    q_txt=('Are you sure you want ' +
                                              'to restart the program?')).display()
             if pressed == QMessageBox.Yes:
-                self.log.write_line('Restarting Application')
+                self.log.update('Restarting Application')
                 self.clean_up_app()
                 event.ignore()
                 QApplication.exit(const.EXIT_CODE_REBOOT)
@@ -100,20 +100,18 @@ class MainWin(App):
                 
         #MAIN
         check_SHG_temp(self)
-        self.log.read_log()
-        self.gui.lastActionLineEdit.setText(self.log.get_last_line())
     
     def exc_emission_toggle(self):
         
         # switch ON
         if not self.actv_dvcs['exc_laser_emisson']:
-            self.log.write_line('Excitation ON')
+            self.log.update('Excitation ON')
             self.actv_dvcs['exc_laser_emisson'] = 1
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledExc.setIcon(QIcon(icon.LED_BLUE))
         # switch OFF
         else:
-            self.log.write_line('Excitation OFF')
+            self.log.update('Excitation OFF')
             self.actv_dvcs['exc_laser_emisson'] = 0
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledExc.setIcon(QIcon(icon.LED_OFF)) 
@@ -122,13 +120,13 @@ class MainWin(App):
         
         # switch ON
         if not self.actv_dvcs['dep_laser_emisson']:
-            self.log.write_line('Depletion ON')
+            self.log.update('Depletion ON')
             self.actv_dvcs['dep_laser_emisson'] = 1
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
         # switch OFF
         else:
-            self.log.write_line('Depletion OFF')
+            self.log.update('Depletion OFF')
             self.actv_dvcs['dep_laser_emisson'] = 0
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
@@ -137,13 +135,13 @@ class MainWin(App):
         
         # switch ON
         if not self.actv_dvcs['dep_shutter']:
-            self.log.write_line('Depletion shutter ON')
+            self.log.update('Depletion shutter ON')
             self.actv_dvcs['dep_shutter'] = 1
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
         # switch OFF
         else:
-            self.log.write_line('Depletion shutter OFF')
+            self.log.update('Depletion shutter OFF')
             self.actv_dvcs['dep_shutter'] = 0
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
@@ -152,7 +150,7 @@ class MainWin(App):
         
         # switch ON
         if not self.actv_dvcs['stage_control']:
-            self.log.write_line('Stage Control ON')
+            self.log.update('Stage Control ON')
             self.actv_dvcs['stage_control'] = 1
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.stageButtonsGroup.setEnabled(True)
@@ -160,7 +158,7 @@ class MainWin(App):
         
         # switch OFF
         else:
-            self.log.write_line('Stage Control OFF')
+            self.log.update('Stage Control OFF')
             self.actv_dvcs['stage_control'] = 0
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.stageButtonsGroup.setEnabled(False)
@@ -442,12 +440,18 @@ class Log():
             pass
         date_str = datetime.now().strftime("%d_%m_%Y")
         self.file_path = self.dir_path + date_str + '.csv'
-        self.write_line('Application Started')
+        self.update('Application Started')
     
-    def write_line(self, log_line):
+    def update(self, log_line):
+        
+        # add line to log file
         with open(self.file_path, 'a+') as file:
             time_str = datetime.now().strftime("%H:%M:%S")
             file.write(time_str + ' ' + log_line + '\n')
+        # read log file to log dock
+        self.read_log()
+        # read last line
+        self.gui.lastActionLineEdit.setText(self.get_last_line())
     
     def read_log(self):
         
