@@ -16,3 +16,8 @@ DEFAULT_SETTINGS_FILE_PATH = './settings/default_settings.csv'
 
 # sounds
 MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
+
+# device names
+EXC_LASER_NAME = 'exc_laser'
+DEP_SHUTTER_NAME = 'dep_shutter'
+STAGE_NAME = 'stage'

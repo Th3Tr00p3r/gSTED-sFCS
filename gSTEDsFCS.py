@@ -15,4 +15,4 @@ if __name__ == "__main__":
         ui.destroy()
         ui = None
         app = None
-        print(current_exit_code)
+#        print(current_exit_code)
