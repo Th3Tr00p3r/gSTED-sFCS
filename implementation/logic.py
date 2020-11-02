@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QApplication, 
                                               QFileDialog
                                               )
-from PyQt5.QtGui import QIcon, QCloseEvent
+from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import implementation.drivers as drivers
@@ -14,7 +14,6 @@ from datetime import datetime
 
 class App():
     
-    actv_dvcs = {}
     meas_state = {}
     meas = None
     
@@ -71,11 +70,18 @@ class MainWin(App):
         self.gui.ledShutter.clicked.connect(self.show_laser_dock)
         self.gui.actionRestart.triggered.connect(self.restart)
         #initialize active devices
-        self.actv_dvcs['exc_laser_emisson'] = 0
-        self.actv_dvcs['dep_laser_emisson'] = 0
-        self.actv_dvcs['dep_shutter'] = 0
-        self.actv_dvcs['stage_control'] = 0
-        self.actv_dvcs['camera_control'] = 0
+        self.actv_dvcs = {}
+        # TODO: organize in a single method - make a list of all devices that need initialization/testing (get channels/addresses from settings) and make a 'for' loop
+        # exc laser
+        dvc = drivers.ExcitationLaser(address=self.gui.windows['settings'].excTriggerExtChan.text())
+        self.actv_dvcs[dvc.name] = dvc
+        # dep shutter
+        dvc = drivers.DepletionShutter(address=self.gui.windows['settings'].depShutterChan.text())
+        self.actv_dvcs[dvc.name] = dvc
+        
+        self.actv_dvcs['dep_laser'] = 'READY'
+        self.actv_dvcs['stage'] = 'OFF'
+        self.actv_dvcs['camera'] = 'OFF'
         # initialize measurement states
         self.meas_state['FCS'] = ''
         self.meas_state['sol_sFCS'] = ''
@@ -103,66 +109,66 @@ class MainWin(App):
     
     def exc_emission_toggle(self):
         
+        self.actv_dvcs[const.EXC_LASER_NAME].toggle()
+        
         # switch ON
-        if not self.actv_dvcs['exc_laser_emisson']:
-            self.log.update('Excitation ON')
-            self.actv_dvcs['exc_laser_emisson'] = 1
+        if self.actv_dvcs[const.EXC_LASER_NAME].state == 'ON':
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledExc.setIcon(QIcon(icon.LED_BLUE))
+            self.log.update('Excitation ON')
         # switch OFF
         else:
-            self.log.update('Excitation OFF')
-            self.actv_dvcs['exc_laser_emisson'] = 0
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledExc.setIcon(QIcon(icon.LED_OFF)) 
+            self.log.update('Excitation OFF')
 
     def dep_emission_toggle(self):
         
         # switch ON
-        if not self.actv_dvcs['dep_laser_emisson']:
-            self.log.update('Depletion ON')
-            self.actv_dvcs['dep_laser_emisson'] = 1
+        if self.actv_dvcs['dep_laser'] == 'READY':
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
+            self.actv_dvcs['dep_laser_emisson'] = 'ON'
+            self.log.update('Depletion ON')
         # switch OFF
         else:
-            self.log.update('Depletion OFF')
-            self.actv_dvcs['dep_laser_emisson'] = 0
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
+            self.actv_dvcs['dep_laser'] = 'READY'
+            self.log.update('Depletion OFF')
 
     def dep_shutter_toggle(self):
         
+        self.actv_dvcs[const.DEP_SHUTTER_NAME].toggle()
+        
         # switch ON
-        if not self.actv_dvcs['dep_shutter']:
-            self.log.update('Depletion shutter ON')
-            self.actv_dvcs['dep_shutter'] = 1
+        if self.actv_dvcs['dep_shutter'] == 'OPEN':
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
+            self.log.update('Depletion shutter OPEN')
         # switch OFF
         else:
-            self.log.update('Depletion shutter OFF')
-            self.actv_dvcs['dep_shutter'] = 0
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
+            self.log.update('Depletion shutter CLOSED')
 
     def stage_toggle(self):
         
         # switch ON
-        if not self.actv_dvcs['stage_control']:
-            self.log.update('Stage Control ON')
-            self.actv_dvcs['stage_control'] = 1
+        if self.actv_dvcs['stage_control'] == 'OFF':
+            self.stage = drivers.StepperStage(rsrc_alias=self.gui.windows['settings'].arduinoChan.text())
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.stageButtonsGroup.setEnabled(True)
-            self.stage = drivers.StepperStage(rsrc_alias=self.gui.windows['settings'].arduinoChan.text())
+            self.actv_dvcs['stage_control'] = 'ON'
+            self.log.update('Stage Control ON')
         
         # switch OFF
         else:
-            self.log.update('Stage Control OFF')
-            self.actv_dvcs['stage_control'] = 0
+            self.stage = self.stage.clean_up()
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.stageButtonsGroup.setEnabled(False)
-            self.stage = self.stage.clean_up()
+            self.actv_dvcs['stage_control'] = 0
+            self.log.update('Stage Control OFF')
 
     def show_laser_dock(self):
         '''
@@ -175,14 +181,18 @@ class MainWin(App):
     def start_FCS_meas(self):
         
         if not self.meas_state['FCS']:
+            self.meas_state['FCS'] = True
             self.meas = Measurement(type='FCS', 
-                                                               duration_spinner=self.gui.measFCSDurationSpinBox,
-                                                               prog_bar=self.gui.FCSprogressBar)
+                                                duration_spinner=self.gui.measFCSDurationSpinBox,
+                                                prog_bar=self.gui.FCSprogressBar)
             self.meas.start()
             self.gui.startFcsMeasurementButton.setText('Stop \nMeasurement')
+            self.log.update('FCS measurement started.')
         else: # off state
+            self.meas_state['FCS'] = False
             self.meas.stop()
             self.gui.startFcsMeasurementButton.setText('Start \nMeasurement')
+            self.log.update('FCS measurement stopped.')
 
 class SettingsWin():
     
@@ -303,6 +313,7 @@ class CamWin():
     
     def toggle_video(self):
         #TODO: return the try/except
+        # TODO: allow control of refresh period from GUI
         #Turn On
         if not self.state['video']:
             self.state['video'] = 1
