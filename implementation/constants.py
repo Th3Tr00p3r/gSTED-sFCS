@@ -1,6 +1,7 @@
 '''
 Constants
 '''
+
 # general
 EXIT_CODE_REBOOT = -123456789
 
@@ -17,7 +18,18 @@ DEFAULT_SETTINGS_FILE_PATH = './settings/default_settings.csv'
 # sounds
 MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
 
-# device names
-EXC_LASER_NAME = 'exc_laser'
-DEP_SHUTTER_NAME = 'dep_shutter'
-STAGE_NAME = 'stage'
+# device nicks
+DEV_NICKS = ['EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE']
+
+# device address fields in settings
+DEV_ADDRSS_FLDS = {'EXC_LASER': 'excTriggerExtChan',
+                                  'DEP_LASER': 'depPort',
+                                  'DEP_SHUTTER': 'depShutterChan',
+                                  'STAGE': 'arduinoChan', 
+                                  }
+# device classes
+DEV_DRIVERS = {'EXC_LASER': 'ExcitationLaser',
+                            'DEP_LASER': 'DepletionLaser',
+                            'DEP_SHUTTER': 'DepletionShutter',
+                            'STAGE': 'StepperStage', 
+                            }

@@ -141,27 +141,26 @@ class MainWindow(QMainWindow):
     @pyqtSlot()
     def on_stageUp_released(self):
 
-        self.imp.stage.move(dir='UP', steps=self.stageSteps.value())
+        self.imp.dvcs['STAGE'].move(dir='UP', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageDown_released(self):
 
-        self.imp.stage.move(dir='DOWN', steps=self.stageSteps.value())
-
+        self.imp.dvcs['STAGE'].move(dir='DOWN', steps=self.stageSteps.value())
     @pyqtSlot()
     def on_stageLeft_released(self):
 
-        self.imp.stage.move(dir='LEFT', steps=self.stageSteps.value())
+        self.imp.dvcs['STAGE'].move(dir='LEFT', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRight_released(self):
 
-        self.imp.stage.move(dir='RIGHT', steps=self.stageSteps.value())
+        self.imp.dvcs['STAGE'].move(dir='RIGHT', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRelease_released(self):
  
-        self.imp.stage.release()
+        self.imp.dvcs['STAGE'].release()
 
 class ErrorsWindow(QDialog):
     '''
