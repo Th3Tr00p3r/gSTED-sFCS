@@ -70,18 +70,9 @@ class MainWin(App):
         self.gui.ledShutter.clicked.connect(self.show_laser_dock)
         self.gui.actionRestart.triggered.connect(self.restart)
         #initialize active devices
-        self.actv_dvcs = {}
-        # TODO: organize in a single method - make a list of all devices that need initialization/testing (get channels/addresses from settings) and make a 'for' loop
-        # exc laser
-        dvc = drivers.ExcitationLaser(address=self.gui.windows['settings'].excTriggerExtChan.text())
-        self.actv_dvcs[dvc.name] = dvc
-        # dep shutter
-        dvc = drivers.DepletionShutter(address=self.gui.windows['settings'].depShutterChan.text())
-        self.actv_dvcs[dvc.name] = dvc
-        
-        self.actv_dvcs['dep_laser'] = 'READY'
-        self.actv_dvcs['stage'] = 'OFF'
-        self.actv_dvcs['camera'] = 'OFF'
+        self.dvcs = {}
+        self.init_devices()
+
         # initialize measurement states
         self.meas_state['FCS'] = ''
         self.meas_state['sol_sFCS'] = ''
@@ -89,6 +80,15 @@ class MainWin(App):
         # initialize log dock
         self.log = Log(self.gui)
     
+    def init_devices(self):
+        
+        for nick in const.DEV_NICKS:
+            dev_driver = getattr(drivers,
+                                           const.DEV_DRIVERS[nick])
+            dev_address = getattr(self.gui.windows['settings'],
+                                              const.DEV_ADDRSS_FLDS[nick]).text()
+            self.dvcs[nick] = dev_driver(nick=nick, address=dev_address)
+            
     def restart(self):
         self.restart_flag = True
         self.gui.close()
@@ -109,10 +109,11 @@ class MainWin(App):
     
     def exc_emission_toggle(self):
         
-        self.actv_dvcs[const.EXC_LASER_NAME].toggle()
+        nick = 'EXC_LASER'
+        self.dvcs[nick].toggle()
         
         # switch ON
-        if self.actv_dvcs[const.EXC_LASER_NAME].state == 'ON':
+        if self.dvcs[nick].state == 'ON':
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledExc.setIcon(QIcon(icon.LED_BLUE))
             self.log.update('Excitation ON')
@@ -124,25 +125,28 @@ class MainWin(App):
 
     def dep_emission_toggle(self):
         
+        nick = 'DEP_LASER'
+        
         # switch ON
-        if self.actv_dvcs['dep_laser'] == 'READY':
+        if self.dvcs[nick] == 'READY':
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
-            self.actv_dvcs['dep_laser_emisson'] = 'ON'
+            self.dvcs['dep_laser_emisson'] = 'ON'
             self.log.update('Depletion ON')
         # switch OFF
         else:
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
-            self.actv_dvcs['dep_laser'] = 'READY'
+            self.dvcs['dep_laser'] = 'READY'
             self.log.update('Depletion OFF')
 
     def dep_shutter_toggle(self):
         
-        self.actv_dvcs[const.DEP_SHUTTER_NAME].toggle()
+        nick = 'DEP_SHUTTER'
+        self.dvcs[nick].toggle()
         
         # switch ON
-        if self.actv_dvcs['dep_shutter'] == 'OPEN':
+        if self.dvcs[nick].state == 'OPEN':
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
             self.log.update('Depletion shutter OPEN')
@@ -154,20 +158,20 @@ class MainWin(App):
 
     def stage_toggle(self):
         
+        nick = 'STAGE'
+        
         # switch ON
-        if self.actv_dvcs['stage_control'] == 'OFF':
-            self.stage = drivers.StepperStage(rsrc_alias=self.gui.windows['settings'].arduinoChan.text())
+        if self.dvcs[nick].state == 'OFF':
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.stageButtonsGroup.setEnabled(True)
-            self.actv_dvcs['stage_control'] = 'ON'
+            self.dvcs[nick].state = 'ON'
             self.log.update('Stage Control ON')
         
         # switch OFF
         else:
-            self.stage = self.stage.clean_up()
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.stageButtonsGroup.setEnabled(False)
-            self.actv_dvcs['stage_control'] = 0
+            self.dvcs[nick].state = 'OFF'
             self.log.update('Stage Control OFF')
 
     def show_laser_dock(self):
