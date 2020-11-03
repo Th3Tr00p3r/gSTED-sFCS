@@ -1,14 +1,13 @@
 import pyvisa as visa
 import nidaqmx
-import implementation.constants as const
 from instrumental.drivers.cameras.uc480 import UC480_Camera as Camera # NOQA
 #import time #testing
 
 class ExcitationLaser():
     
-    def __init__(self, address):
+    def __init__(self, nick, address):
         
-        self.name = const.EXC_LASER_NAME
+        self.nick = nick
         self.address = address
         self.comm_type = 'DO'
         # Turn OFF if somehow ON
@@ -23,12 +22,20 @@ class ExcitationLaser():
             task.do_channels.add_do_chan(self.address)
             task.write(self.state == 'OFF')
         self.state = 'ON' if self.state == 'OFF' else 'OFF'
+
+class DepletionLaser():
+    
+    def __init__(self, nick, address):
         
+        self.nick = nick
+        self.address = address
+        self.comm_type = None
+
 class DepletionShutter():
     
-    def __init__(self, address):
+    def __init__(self, nick, address):
         
-        self.name = const.DEP_SHUTTER_NAME
+        self.nick = nick
         self.address = address
         self.comm_type = 'DO'
         # CLOSE if somehow OPEN
@@ -68,27 +75,25 @@ class StepperStage():
     Control stepper stage through pyVISA
     '''
     
-    def __init__(self,  rsrc_alias):
+    def __init__(self, nick, address):
         
-        self.name = const.STAGE_NAME
-        self.state = 'ON'
+        self.nick = nick
+        self.address = address
         self.rm = visa.ResourceManager()
-        self.rsrc = self.rm.open_resource(rsrc_alias)
-
-    def clean_up(self):
-        
-        self.rsrc.close()
         self.state = 'OFF'
-        return None
     
     def move(self, dir=None,  steps=None):
+        rsrc = self.rm.open_resource(self.address)
         cmd_dict = {'UP': (lambda steps: 'my ' + str(-steps)),
                           'DOWN': (lambda steps: 'my ' + str(steps)),
                           'LEFT': (lambda steps: 'mx ' + str(steps)),
                           'RIGHT': (lambda steps: 'mx ' + str(-steps))
                         }
-        self.rsrc.write(cmd_dict[dir](steps))
+        rsrc.write(cmd_dict[dir](steps))
+        rsrc.close()
     
     def release(self):
+        rsrc = self.rm.open_resource(self.address)
         cmnd = 'ryx '
-        self.rsrc.write(cmnd)
+        rsrc.write(cmnd)
+        rsrc.close()
