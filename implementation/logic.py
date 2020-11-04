@@ -19,9 +19,12 @@ class App():
     
     def clean_up_app(self):
         '''
-        Close all secondary windows
+        Close all devices and secondary windows
         before closing/restarting application
         '''
+#        for nick in const.DEV_NICKS:
+#            self.dvcs[nick].clean_up()
+        self.init_devices()
         [window.reject() for window in self.gui.windows.values()]
             
     def exit_app(self, event):
@@ -56,9 +59,8 @@ class MainWin(App):
         # set restart flag
         self.restart_flag = False
         # set up main timeout event
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.timeout)
-        self.timer.start(10)
+        self.timeout_loop = self.timeout(self)
+#        self.timeout_loop.timer.start(50)
         # intialize buttons
         self.gui.actionLaser_Control.setChecked(True)
         self.gui.actionStepper_Stage_Control.setChecked(True)
@@ -81,7 +83,9 @@ class MainWin(App):
         self.log = Log(self.gui)
     
     def init_devices(self):
-        
+        '''
+        goes through a list of device nicknames, instantiating a driver object for each device
+        '''
         for nick in const.DEV_NICKS:
             dev_driver = getattr(drivers,
                                            const.DEV_DRIVERS[nick])
@@ -93,19 +97,24 @@ class MainWin(App):
         self.restart_flag = True
         self.gui.close()
 
-    def timeout(self):
-        '''
-        Continuous updates
-        '''
+    class timeout():
+    
+        def __init__(self, gui):
+            self.gui = gui
+            self.timer = QTimer()
+            self.timer.timeout.connect(self.main)
         
         def check_SHG_temp(self):
-            if self.gui.depTemp.value() < 52:
+            SHG_temp = self.gui.dvcs['DEP_LASER'].get_SHG_temp()
+            self.gui.depTemp.setValue(SHG_temp)
+            if SHG_temp < 52:
                 self.gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
             else:
                 self.gui.depTemp.setStyleSheet("background-color: white; color: black;")
                 
         #MAIN
-        check_SHG_temp(self)
+        def main(self):
+            self.check_SHG_temp()
     
     def exc_emission_toggle(self):
         
@@ -113,7 +122,7 @@ class MainWin(App):
         self.dvcs[nick].toggle()
         
         # switch ON
-        if self.dvcs[nick].state == 'ON':
+        if self.dvcs[nick].state:
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledExc.setIcon(QIcon(icon.LED_BLUE))
             self.log.update('Excitation ON')
@@ -126,18 +135,17 @@ class MainWin(App):
     def dep_emission_toggle(self):
         
         nick = 'DEP_LASER'
+        self.dvcs[nick].toggle()
         
         # switch ON
-        if self.dvcs[nick] == 'READY':
+        if self.dvcs[nick].state:
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
-            self.dvcs['dep_laser_emisson'] = 'ON'
             self.log.update('Depletion ON')
         # switch OFF
         else:
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
-            self.dvcs['dep_laser'] = 'READY'
             self.log.update('Depletion OFF')
 
     def dep_shutter_toggle(self):
@@ -146,7 +154,7 @@ class MainWin(App):
         self.dvcs[nick].toggle()
         
         # switch ON
-        if self.dvcs[nick].state == 'OPEN':
+        if self.dvcs[nick].state:
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
             self.log.update('Depletion shutter OPEN')
@@ -161,17 +169,17 @@ class MainWin(App):
         nick = 'STAGE'
         
         # switch ON
-        if self.dvcs[nick].state == 'OFF':
+        if not self.dvcs[nick].state:
+            self.dvcs[nick].open()
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.stageButtonsGroup.setEnabled(True)
-            self.dvcs[nick].state = 'ON'
             self.log.update('Stage Control ON')
         
         # switch OFF
         else:
+            self.dvcs[nick].close()
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.stageButtonsGroup.setEnabled(False)
-            self.dvcs[nick].state = 'OFF'
             self.log.update('Stage Control OFF')
 
     def show_laser_dock(self):
