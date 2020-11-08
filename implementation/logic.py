@@ -10,6 +10,7 @@ from PyQt5.QtCore import QTimer
 import implementation.constants as const
 import implementation.drivers as drivers
 import gui.icons.icon_paths as icon
+import gui.gui as gui
 from datetime import datetime
 
 class App():
@@ -18,6 +19,13 @@ class App():
     meas = None
     
     def __init__(self):
+        
+        #init windows
+        self.win = {}
+        self.win['main'] = gui.MainWin(self)
+        self.win['settings'] = gui.SettWin(self)
+        self.win['errors'] = gui.ErrWin(self)
+        self.win['camera'] = gui.CamWin(self)
         
         # set restart flag
         self.restart_flag = False
@@ -28,8 +36,45 @@ class App():
         self.meas_state['FCS'] = ''
         self.meas_state['sol_sFCS'] = ''
         self.meas_state['img_sFCS'] = ''
-        # initialize log dock
-        self.log = Log(self.gui)
+        # initialize log
+        self.log = Log(self.win['main'], dir_path='./log/')
+        
+        #FINALLY
+        self.win['main'].show()
+        self.win['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+
+        # set up main timeout event
+        self.timeout_loop = self.timeout(self)
+#        self.timeout_loop.timer.start(50)
+        
+    class timeout():
+    
+        def __init__(self, app):
+            self.app = app
+            self.timer = QTimer()
+            self.timer.timeout.connect(self.main)
+        
+        def check_SHG_temp(self):
+            SHG_temp = self.app.dvcs['DEP_LASER'].get_SHG_temp()
+            self.app.win['main'].gui.depTemp.setValue(SHG_temp)
+            if SHG_temp < const.MIN_SHG_TEMP:
+                self.app.win['main'].gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
+            else:
+                self.app.win['main'].gui.depTemp.setStyleSheet("background-color: white; color: black;")
+        
+        def check_power(self):
+            power = self.app.dvcs['DEP_LASER'].get_power()
+            self.app.win['main'].gui.depActualPowerSpinner.setValue(power)
+        
+        def check_current(self):
+            current = self.app.dvcs['DEP_LASER'].get_current()
+            self.app.win['main'].gui.depActualCurrSpinner.setValue(current)
+        
+        #MAIN
+        def main(self):
+            self.check_SHG_temp()
+            self.check_power()
+            self.check_current()
         
     def init_devices(self):
         '''
@@ -38,7 +83,7 @@ class App():
         for nick in const.DEV_NICKS:
             dev_driver = getattr(drivers,
                                            const.DEV_DRIVERS[nick])
-            dev_address = getattr(self.gui.windows['settings'],
+            dev_address = getattr(self.win['settings'],
                                               const.DEV_ADDRSS_FLDS[nick]).text()
             self.dvcs[nick] = dev_driver(nick=nick, address=dev_address)
     
@@ -48,7 +93,7 @@ class App():
         before closing/restarting application
         '''
         self.init_devices() # TODO: just being lazy for now, need to create a new function which only closes all devices, no init needed
-        [window.reject() for window in self.gui.windows.values()]
+        [self.win[win_key].reject() for win_key in self.win.keys() if win_key not in {'main'}]
             
     def exit_app(self, event):
         
@@ -74,11 +119,13 @@ class App():
             else:
                 event.ignore()
 
-class MainWin(App):
+class MainWin():
     
-    def __init__(self,  main_gui):
+    def __init__(self, gui, app):
         
-        self.gui = main_gui
+        self.app = app
+        self.gui = gui
+        
         # intialize buttons
         self.gui.actionLaser_Control.setChecked(True)
         self.gui.actionStepper_Stage_Control.setChecked(True)
@@ -89,123 +136,91 @@ class MainWin(App):
         self.gui.ledDep.clicked.connect(self.show_laser_dock)
         self.gui.ledShutter.clicked.connect(self.show_laser_dock)
         self.gui.actionRestart.triggered.connect(self.restart)
-        # set up main timeout event
-        self.timeout_loop = self.timeout(self)
-        self.timeout_loop.timer.start(50)
-        
-        super().__init__()
     
-    class timeout():
-    
-        def __init__(self, main_win):
-            self.main_win = main_win
-            self.timer = QTimer()
-            self.timer.timeout.connect(self.main)
+    def close(self, event):
         
-        def check_SHG_temp(self):
-            SHG_temp = self.main_win.dvcs['DEP_LASER'].get_SHG_temp()
-            self.main_win.gui.depTemp.setValue(SHG_temp)
-            if SHG_temp < const.min_SHG_temp:
-                self.main_win.gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
-            else:
-                self.main_win.gui.depTemp.setStyleSheet("background-color: white; color: black;")
+        self.app.exit_app(event)
         
-        def check_power(self):
-            power = self.main_win.dvcs['DEP_LASER'].get_power()
-            self.main_win.gui.depActualPowerSpinner.setValue(power)
-        
-        def check_current(self):
-            current = self.main_win.dvcs['DEP_LASER'].get_current()
-            self.main_win.gui.depActualCurrSpinner.setValue(current)
-        
-        #MAIN
-        def main(self):
-            self.check_SHG_temp()
-            self.check_power()
-            self.check_current()
-    
     def restart(self):
+        
         self.restart_flag = True
         self.gui.close()
     
     def exc_emission_toggle(self):
         
         nick = 'EXC_LASER'
-        self.dvcs[nick].toggle()
+        self.app.dvcs[nick].toggle()
         
         # switch ON
-        if self.dvcs[nick].state:
+        if self.app.dvcs[nick].state:
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledExc.setIcon(QIcon(icon.LED_BLUE))
-            self.log.update('Excitation ON')
+            self.app.log.update('Excitation ON', tag='verbose')
         # switch OFF
         else:
             self.gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledExc.setIcon(QIcon(icon.LED_OFF)) 
-            self.log.update('Excitation OFF')
+            self.app.log.update('Excitation OFF', tag='verbose')
 
     def dep_emission_toggle(self):
         
         nick = 'DEP_LASER'
         
         # switch ON
-        if not self.dvcs[nick].state:
-            self.dvcs[nick].toggle(True)
-            self.dvcs[nick].state = True
+        if not self.app.dvcs[nick].state:
+            self.app.dvcs[nick].toggle(True)
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
-            self.log.update('Depletion ON')
+            self.app.log.update('Depletion ON', tag='verbose')
         # switch OFF
         else:
-            self.dvcs[nick].toggle(False)
-            self.dvcs[nick].state = False
+            self.app.dvcs[nick].toggle(False)
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
-            self.log.update('Depletion OFF')
+            self.app.log.update('Depletion OFF', tag='verbose')
 
     def dep_shutter_toggle(self):
         
         nick = 'DEP_SHUTTER'
         
         # switch ON
-        if not self.dvcs[nick].state:
-            self.dvcs[nick].toggle(True)
-            self.dvcs[nick].state = True
+        if not self.app.dvcs[nick].state:
+            self.app.dvcs[nick].toggle(True)
+            self.app.dvcs[nick].state = True
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
-            self.log.update('Depletion shutter OPEN')
+            self.app.log.update('Depletion shutter OPEN', tag='verbose')
         # switch OFF
         else:
-            self.dvcs[nick].toggle(False)
-            self.dvcs[nick].state = False
+            self.app.dvcs[nick].toggle(False)
+            self.app.dvcs[nick].state = False
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
-            self.log.update('Depletion shutter CLOSED')
+            self.app.log.update('Depletion shutter CLOSED', tag='verbose')
     
     def dep_sett_apply(self):
         
-        if self.gui.depSetCombox.text() == 'Current Mode':
+        if self.gui.depSetCombox.currentText() == 'Current Mode':
             val = self.gui.depCurrSpinner.value()
-            self.dvcs['DEP_LASER'].set_current(val)
-            
-
+            self.app.dvcs['DEP_LASER'].set_current(val)
+    
     def stage_toggle(self):
         
         nick = 'STAGE'
         
         # switch ON
-        if not self.dvcs[nick].state:
-            self.dvcs[nick].open()
+        if not self.app.dvcs[nick].state:
+            self.app.dvcs[nick].open()
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.stageButtonsGroup.setEnabled(True)
-            self.log.update('Stage Control ON')
+            self.app.log.update('Stage Control ON', tag='verbose')
         
         # switch OFF
         else:
-            self.dvcs[nick].close()
+            self.app.dvcs[nick].close()
             self.gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.stageButtonsGroup.setEnabled(False)
-            self.log.update('Stage Control OFF')
+            self.app.log.update('Stage Control OFF', tag='verbose')
 
     def show_laser_dock(self):
         '''
@@ -219,22 +234,32 @@ class MainWin(App):
         
         if not self.meas_state['FCS']:
             self.meas_state['FCS'] = True
-            self.meas = Measurement(type='FCS', 
+            self.meas = Measurement(self, type='FCS', 
                                                 duration_spinner=self.gui.measFCSDurationSpinBox,
-                                                prog_bar=self.gui.FCSprogressBar)
+                                                prog_bar=self.gui.FCSprogressBar, log=self.app.log)
             self.meas.start()
             self.gui.startFcsMeasurementButton.setText('Stop \nMeasurement')
-            self.log.update('FCS measurement started.')
         else: # off state
             self.meas_state['FCS'] = False
             self.meas.stop()
             self.gui.startFcsMeasurementButton.setText('Start \nMeasurement')
-            self.log.update('FCS measurement stopped.')
-
-class SettingsWin():
     
-    def __init__(self, settings_gui):
-        self.gui = settings_gui
+    def open_settwin(self):
+        
+        self.app.win['settings'].show()
+        self.app.win['settings'].activateWindow()
+    
+    def open_camwin(self):
+        
+        self.app.win['camera'].show()
+        self.app.win['camera'].activateWindow()
+        self.app.win['camera'].imp.init_cam()
+    
+class SettWin():
+    
+    def __init__(self, gui, app):
+        self.app = app
+        self.gui = gui
     
     def clean_up(self):
         # TODO: add check to see if changes were made, if not, don't ask user
@@ -251,6 +276,7 @@ class SettingsWin():
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
         # TODO: add support for combo box index
+
         filepath, _ = QFileDialog.getSaveFileName(self.gui,
                                                                  'Save Settings',
                                                                  const.SETTINGS_FOLDER_PATH,
@@ -274,6 +300,7 @@ class SettingsWin():
                     else: # line edit
                         rowdata = [field_names[i],  self.gui.frame.findChild(QWidget, field_names[i]).text()]
                     writer.writerow(rowdata)
+            self.app.log.update('Settings file save as: ' + filepath)
 
     def read_csv(self, filepath=''):
         '''
@@ -281,6 +308,7 @@ class SettingsWin():
         Show 'filepath' in 'settingsFileName' QLineEdit.
         '''
         # TODO: add support for combo box index
+        
         if not filepath:
             filepath, _ = QFileDialog.getOpenFileName(self.gui,
                                                                      "Load Settings",
@@ -289,7 +317,8 @@ class SettingsWin():
         import pandas as pd
         if filepath:
             try:
-                 df = pd.read_csv(filepath, header=None, delimiter=',', keep_default_na=False, error_bad_lines=False)
+                 df = pd.read_csv(filepath, header=None, delimiter=',',
+                                         keep_default_na=False, error_bad_lines=False)
                  self.gui.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
                  for i in range(len(df)):
                     widget = self.gui.frame.findChild(QWidget, df.iloc[i, 0])
@@ -299,13 +328,9 @@ class SettingsWin():
                         elif hasattr(widget, 'text'): # line edit
                             widget.setText(df.iloc[i, 1])
             except:
-#                error_txt = ('Default settings file "default_settings.csv" '
-#                                   'not found in' + '\n'
-#                                   '\'' + filepath + '\''
-#                                   '\nUsing standard settings.' + '\n'
-#                                   'To avoid this error, please save '
-#                                   'some settings as "default_settings.csv".')
                 Error(sys.exc_info()).display()
+            
+            self.app.log.update('Settings file loaded: ' + filepath)
 
         else:
             error_txt = ('File path not supplied.')
@@ -315,9 +340,11 @@ class CamWin():
     
     state = {}
     
-    def __init__(self, cam_gui):
+    def __init__(self, gui, app):
         
-        self.gui = cam_gui
+        self.app = app
+        self.gui = gui
+        
         # add matplotlib-ready widget (canvas) for showing camera output
         from matplotlib import pyplot as plt
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -336,6 +363,7 @@ class CamWin():
             self.toggle_video()
         # disconnect camera
         self.cam.driver.close()
+        self.app.log.update('Camera connection slosed', tag='verbose')
         return None
 
     def init_cam(self):
@@ -347,25 +375,32 @@ class CamWin():
             Error(sys.exc_info()).display()
     
     def toggle_video(self):
+        
         #TODO: return the try/except
         # TODO: allow control of refresh period from GUI
         #Turn On
         if not self.state['video']:
             self.state['video'] = 1
-            self.gui.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
+            self.gui.videoButton.setStyleSheet("background-color: "
+                                                                                 "rgb(225, 245, 225); "
+                                                                                 "color: black;")
             self.gui.videoButton.setText('Video ON')
             self._video_timer = QTimer()
             self._video_timer.timeout.connect(self._wait_for_frame)
             self.cam.driver.start_live_video()
             self._video_timer.start(0)  # Run full throttle
+            self.app.log.update('Camera video mode ON', tag='verbose')
             
         #Turn Off
         else:
             self.state['video'] = 0
-            self.gui.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
+            self.gui.videoButton.setStyleSheet("background-color: "
+                                                                                 "rgb(225, 225, 225); "
+                                                                                 "color: black;")
             self.gui.videoButton.setText('Start Video')
             self.cam.driver.stop_live_video()
             self._video_timer.stop()
+            self.app.log.update('Camera video mode OFF', tag='verbose')
 
     def shoot(self):
         #TODO: return the try/except
@@ -377,6 +412,7 @@ class CamWin():
         else:
             img = self.cam.driver.grab_image()
             self._imshow(img)
+        self.app.log.update('Camera photo taken', tag='verbose')
     
     # private methods
     def _imshow(self, img):
@@ -392,8 +428,14 @@ class CamWin():
         frame_ready = self.cam.driver.wait_for_frame(timeout='0 ms')
         if frame_ready:
             img = self.cam.driver.latest_frame(copy=False)
-#            self._set_pixmap_from_array(arr)
             self._imshow(img)
+            
+class ErrWin():
+    # TODO: 
+    
+    def __init__(self, gui, app):
+        
+        self.app = app
 
 class UserDialog():
     
@@ -455,20 +497,25 @@ class Measurement():
     # class attributes
     _timer = QTimer()
     
-    def __init__(self, type, duration_spinner, prog_bar=None):
+    def __init__(self, type, duration_spinner, prog_bar=None, log=None):
         # instance attributes
         self.type = type
         self.duration_spinner = duration_spinner
         self.prog_bar = prog_bar
+        self.log = log
         self._timer.timeout.connect(self._timer_timeout)
         self.time_passed = 0
         
     # public methods
     def start(self):
         self._timer.start(1000)
+        if self.log:
+            self.log.update('FCS measurement started')
         
     def stop(self):
         self._timer.stop()
+        if self.log:
+            self.log.update('FCS measurement stopped')
         if self.prog_bar:
             self.prog_bar.setValue(0)
     
@@ -484,12 +531,13 @@ class Measurement():
         if self.prog_bar:
             prog = self.time_passed / self.duration_spinner.value() * 100
             self.prog_bar.setValue(prog)
+    
 class Log():
     
-    def __init__(self, gui):
+    def __init__(self, gui, dir_path):
         
         self.gui = gui
-        self.dir_path = self.gui.windows['settings'].logDataPath.text()
+        self.dir_path = dir_path
         try:
             os.mkdir(self.dir_path)
         except:
@@ -498,16 +546,17 @@ class Log():
         self.file_path = self.dir_path + date_str + '.csv'
         self.update('Application Started')
     
-    def update(self, log_line):
+    def update(self, log_line, tag='always'):
         
         # add line to log file
-        with open(self.file_path, 'a+') as file:
-            time_str = datetime.now().strftime("%H:%M:%S")
-            file.write(time_str + ' ' + log_line + '\n')
-        # read log file to log dock
-        self.read_log()
-        # read last line
-        self.gui.lastActionLineEdit.setText(self.get_last_line())
+        if tag in const.VERBOSITY:
+            with open(self.file_path, 'a+') as file:
+                time_str = datetime.now().strftime("%H:%M:%S")
+                file.write(time_str + ' ' + log_line + '\n')
+            # read log file to log dock
+            self.read_log()
+            # read last line
+            self.gui.lastActionLineEdit.setText(self.get_last_line())
     
     def read_log(self):
         
