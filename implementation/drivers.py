@@ -1,9 +1,15 @@
 import pyvisa as visa
 import nidaqmx
 import implementation.constants as const
-from instrumental.drivers.cameras.uc480 import UC480_Camera as Camera # NOQA
+from instrumental.drivers.cameras.uc480 import UC480_Camera # NOQA
 #import time #testing
 
+class Camera():
+    
+    def __init__(self):
+        
+        self.driver = UC480_Camera(reopen_policy='new')
+    
 class ExcitationLaser():
     
     def __init__(self, address):
