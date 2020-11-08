@@ -21,20 +21,34 @@ class VISAInstrument():
     class Task():
         
         def __init__(self, inst):
-            
+
             self.inst = inst
             
     
         def __enter__(self):
             
             self.rsrc = self.inst.rm.open_resource(self.inst.address,
-                                                    read_termination=self.inst.read_termination,
-                                                    write_termination=self.inst.write_termination)
+                                                               read_termination=self.inst.read_termination,
+                                                               write_termination=self.inst.write_termination)
             return self.rsrc
         
         def __exit__(self, exc_type, exc_value, exc_tb):
             
             self.rsrc.close()
+    
+    def write(self, cmnd):
+        
+        with VISAInstrument.Task(self) as task:
+            task.write(cmnd)
+    
+    def query(self, cmnd):
+        
+        with VISAInstrument.Task(self) as task:
+            reply = task.query(cmnd)
+            try:
+                return float(reply)
+            except:
+                return -999                
     
 class ExcitationLaser():
     
@@ -63,57 +77,75 @@ class DepletionLaser(VISAInstrument):
     
     def __init__(self, nick, address):
         
-        self.SHG_temp = None
         self.mode = None
         self.current = None
         self.power = None
         super().__init__(nick=nick, address=address,
                                read_termination = '\r', 
                                write_termination = '\r')
-        with VISAInstrument.Task(self) as task:
-            task.write('setLDenable 0')
+        self.toggle(False)
+        self.state = False
+        self.temp = -999
+        self.mode = 'current'
     
-    def toggle(self):
+    def toggle(self, bool):
         
-        with VISAInstrument.Task(self) as task:
-    #        if self.SHG_temp > 52 :
-            if 1:
-                if not self.state:
-                    task.write('setLDenable 1')
-                else:
-                    task.write('setLDenable 0')
+        if self.temp > 52 :
+            if bool:
+                self.write('setLDenable 1')
             else:
-                logic.Error(error_txt='SHG temperature too low.')
-            self.state = not self.state
+                self.write('setLDenable 0')
+        else:
+            logic.Error(error_txt='SHG temperature too low.')
         
     def get_SHG_temp(self):
+        self.temp = self.query('SHGtemp')
+        return self.temp
+    
+    def get_power(self):
         
-        rsrc = self.rm.open_resource(self.address)
-        rsrc.write('SHGtemp\r')
-        ans = rsrc.read_raw(size=1)
-        print(ans)
-        rsrc.close()
-        return ans
+        return self.query('Power 0')
+    
+    def get_current(self):
+        
+        return self.query('LDcurrent 1')
+    
+    def set_current(self, value):
+        
+        # check that current value is within range
+        if (float(value) <= 2500) and (float(value) >= 1500):
+            # change the mode to current
+            self.write('Powerenable 0')
+            # test that mode has changed
+            if not self.query('Getpowerenable'):
+                self.mode = 'current'
+            else:
+                logic.Error(error_txt='Something went wrong'
+                                      'with the mode setting.')
+                return
+            self.write('setLDcur 1 ' + value)
+        
+            
 
 class DepletionShutter():
-    
+    '''
+    Depletion Shutter Control
+    '''
     def __init__(self, nick, address):
-        
+        '''
+        Instatiate object and close the shutter
+        '''
         self.nick = nick
         self.address = address
         self.comm_type = 'DO'
-        # CLOSE if somehow OPEN
-        with nidaqmx.Task() as task:
-            task.do_channels.add_do_chan(self.address)
-            task.write(False)
+        self.toggle(False)
         self.state = False
     
-    def toggle(self):
+    def toggle(self,  bool):
         
         with nidaqmx.Task() as task:
             task.do_channels.add_do_chan(self.address)
-            self.state = not self.state
-            task.write(self.state)
+            task.write(bool)
     
 class StepperStage():
     '''

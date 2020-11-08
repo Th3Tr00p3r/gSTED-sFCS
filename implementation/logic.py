@@ -17,14 +17,37 @@ class App():
     meas_state = {}
     meas = None
     
+    def __init__(self):
+        
+        # set restart flag
+        self.restart_flag = False
+        #initialize active devices
+        self.dvcs = {}
+        self.init_devices()
+        # initialize measurement states
+        self.meas_state['FCS'] = ''
+        self.meas_state['sol_sFCS'] = ''
+        self.meas_state['img_sFCS'] = ''
+        # initialize log dock
+        self.log = Log(self.gui)
+        
+    def init_devices(self):
+        '''
+        goes through a list of device nicknames, instantiating a driver object for each device
+        '''
+        for nick in const.DEV_NICKS:
+            dev_driver = getattr(drivers,
+                                           const.DEV_DRIVERS[nick])
+            dev_address = getattr(self.gui.windows['settings'],
+                                              const.DEV_ADDRSS_FLDS[nick]).text()
+            self.dvcs[nick] = dev_driver(nick=nick, address=dev_address)
+    
     def clean_up_app(self):
         '''
         Close all devices and secondary windows
         before closing/restarting application
         '''
-#        for nick in const.DEV_NICKS:
-#            self.dvcs[nick].clean_up()
-        self.init_devices()
+        self.init_devices() # TODO: just being lazy for now, need to create a new function which only closes all devices, no init needed
         [window.reject() for window in self.gui.windows.values()]
             
     def exit_app(self, event):
@@ -56,11 +79,6 @@ class MainWin(App):
     def __init__(self,  main_gui):
         
         self.gui = main_gui
-        # set restart flag
-        self.restart_flag = False
-        # set up main timeout event
-        self.timeout_loop = self.timeout(self)
-#        self.timeout_loop.timer.start(50)
         # intialize buttons
         self.gui.actionLaser_Control.setChecked(True)
         self.gui.actionStepper_Stage_Control.setChecked(True)
@@ -71,50 +89,44 @@ class MainWin(App):
         self.gui.ledDep.clicked.connect(self.show_laser_dock)
         self.gui.ledShutter.clicked.connect(self.show_laser_dock)
         self.gui.actionRestart.triggered.connect(self.restart)
-        #initialize active devices
-        self.dvcs = {}
-        self.init_devices()
-
-        # initialize measurement states
-        self.meas_state['FCS'] = ''
-        self.meas_state['sol_sFCS'] = ''
-        self.meas_state['img_sFCS'] = ''
-        # initialize log dock
-        self.log = Log(self.gui)
+        # set up main timeout event
+        self.timeout_loop = self.timeout(self)
+        self.timeout_loop.timer.start(50)
+        
+        super().__init__()
     
-    def init_devices(self):
-        '''
-        goes through a list of device nicknames, instantiating a driver object for each device
-        '''
-        for nick in const.DEV_NICKS:
-            dev_driver = getattr(drivers,
-                                           const.DEV_DRIVERS[nick])
-            dev_address = getattr(self.gui.windows['settings'],
-                                              const.DEV_ADDRSS_FLDS[nick]).text()
-            self.dvcs[nick] = dev_driver(nick=nick, address=dev_address)
-            
-    def restart(self):
-        self.restart_flag = True
-        self.gui.close()
-
     class timeout():
     
-        def __init__(self, gui):
-            self.gui = gui
+        def __init__(self, main_win):
+            self.main_win = main_win
             self.timer = QTimer()
             self.timer.timeout.connect(self.main)
         
         def check_SHG_temp(self):
-            SHG_temp = self.gui.dvcs['DEP_LASER'].get_SHG_temp()
-            self.gui.depTemp.setValue(SHG_temp)
-            if SHG_temp < 52:
-                self.gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
+            SHG_temp = self.main_win.dvcs['DEP_LASER'].get_SHG_temp()
+            self.main_win.gui.depTemp.setValue(SHG_temp)
+            if SHG_temp < const.min_SHG_temp:
+                self.main_win.gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
             else:
-                self.gui.depTemp.setStyleSheet("background-color: white; color: black;")
-                
+                self.main_win.gui.depTemp.setStyleSheet("background-color: white; color: black;")
+        
+        def check_power(self):
+            power = self.main_win.dvcs['DEP_LASER'].get_power()
+            self.main_win.gui.depActualPowerSpinner.setValue(power)
+        
+        def check_current(self):
+            current = self.main_win.dvcs['DEP_LASER'].get_current()
+            self.main_win.gui.depActualCurrSpinner.setValue(current)
+        
         #MAIN
         def main(self):
             self.check_SHG_temp()
+            self.check_power()
+            self.check_current()
+    
+    def restart(self):
+        self.restart_flag = True
+        self.gui.close()
     
     def exc_emission_toggle(self):
         
@@ -135,15 +147,18 @@ class MainWin(App):
     def dep_emission_toggle(self):
         
         nick = 'DEP_LASER'
-        self.dvcs[nick].toggle()
         
         # switch ON
-        if self.dvcs[nick].state:
+        if not self.dvcs[nick].state:
+            self.dvcs[nick].toggle(True)
+            self.dvcs[nick].state = True
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
             self.log.update('Depletion ON')
         # switch OFF
         else:
+            self.dvcs[nick].toggle(False)
+            self.dvcs[nick].state = False
             self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
             self.log.update('Depletion OFF')
@@ -151,18 +166,28 @@ class MainWin(App):
     def dep_shutter_toggle(self):
         
         nick = 'DEP_SHUTTER'
-        self.dvcs[nick].toggle()
         
         # switch ON
-        if self.dvcs[nick].state:
+        if not self.dvcs[nick].state:
+            self.dvcs[nick].toggle(True)
+            self.dvcs[nick].state = True
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
             self.log.update('Depletion shutter OPEN')
         # switch OFF
         else:
+            self.dvcs[nick].toggle(False)
+            self.dvcs[nick].state = False
             self.gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
             self.gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
             self.log.update('Depletion shutter CLOSED')
+    
+    def dep_sett_apply(self):
+        
+        if self.gui.depSetCombox.text() == 'Current Mode':
+            val = self.gui.depCurrSpinner.value()
+            self.dvcs['DEP_LASER'].set_current(val)
+            
 
     def stage_toggle(self):
         
