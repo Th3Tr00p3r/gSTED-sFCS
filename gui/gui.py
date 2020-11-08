@@ -1,8 +1,8 @@
 """
 GUI Module.
 """
-import implementation.logic as logic
 import implementation.constants as const
+import implementation.logic as logic
 
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import (QMainWindow, QDialog)
@@ -11,24 +11,19 @@ from PyQt5 import uic
 # resource files
 from gui.icons import icons_rc # for initial icons # NOQA
 
-class MainWindow(QMainWindow):
+class MainWin(QMainWindow):
     """
     Class documentation goes here.
     """
-    def __init__(self, parent=None):
-        super(MainWindow, self).__init__(parent)
+    # TDOD: possibly move 'self.windows['cameras'] = CameraWindow()' to when the button is actually pressed? also disallow multiple pressings
+    def __init__(self, app, parent=None):
+        super(MainWin, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
-        # initialize other windows
-        self.windows = {}
-        self.windows['settings'] = SettingsWindow()
-        self.windows['errors'] = ErrorsWindow()
-        self.windows['cameras'] = CameraWindow()
-        
-        self.imp = logic.MainWin(self)
+        self.imp = logic.MainWin(self, app)
 
     def closeEvent(self, event):
         
-        self.imp.exit_app(event)
+        self.imp.close(event)
 
     @pyqtSlot()
     def on_startFcsMeasurementButton_released(self):
@@ -94,8 +89,7 @@ class MainWindow(QMainWindow):
         Show settings window
         '''
         
-        self.windows['settings'].show()
-        self.windows['settings'].activateWindow()
+        self.imp.open_settwin()
 
     @pyqtSlot(bool)
     def on_actionLaser_Control_toggled(self, p0):
@@ -117,9 +111,8 @@ class MainWindow(QMainWindow):
         Instantiate 'CameraWindow' object and show it
         '''
         # TODO: add support for 2nd camera
-        self.windows['cameras'].show()
-        self.windows['cameras'].activateWindow()
-        self.windows['cameras'].imp.init_cam()
+        
+        self.imp.open_camwin()
 
     @pyqtSlot(bool)
     def on_actionLog_toggled(self, p0):
@@ -134,8 +127,8 @@ class MainWindow(QMainWindow):
         Show errors window
         '''
         # TODO:
-        self.windows['errors'].show()
-        self.windows['errors'].activateWindow()
+        self.imp.gui.show()
+        self.imp.gui.activateWindow()
 
     #----------------------------------------------------------------------------
     # Stepper Stage Dock
@@ -149,51 +142,51 @@ class MainWindow(QMainWindow):
     @pyqtSlot()
     def on_stageUp_released(self):
 
-        self.imp.dvcs['STAGE'].move(dir='UP', steps=self.stageSteps.value())
+        self.imp.app.dvcs['STAGE'].move(dir='UP', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageDown_released(self):
 
-        self.imp.dvcs['STAGE'].move(dir='DOWN', steps=self.stageSteps.value())
+        self.imp.app.dvcs['STAGE'].move(dir='DOWN', steps=self.stageSteps.value())
     @pyqtSlot()
     def on_stageLeft_released(self):
 
-        self.imp.dvcs['STAGE'].move(dir='LEFT', steps=self.stageSteps.value())
+        self.imp.app.dvcs['STAGE'].move(dir='LEFT', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRight_released(self):
 
-        self.imp.dvcs['STAGE'].move(dir='RIGHT', steps=self.stageSteps.value())
+        self.imp.app.dvcs['STAGE'].move(dir='RIGHT', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRelease_released(self):
  
-        self.imp.dvcs['STAGE'].release()
+        self.imp.app.dvcs['STAGE'].release()
 
-class ErrorsWindow(QDialog):
+class ErrWin(QDialog):
     '''
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
     '''
     # TODO: when error occures, change appropriate list items background to red, font to white
-    def __init__(self,  parent=None):
-        super(ErrorsWindow,  self).__init__(parent)
+    def __init__(self, app, parent=None):
+        super(ErrWin,  self).__init__(parent)
         uic.loadUi(const.ERRORSWINDOW_UI_PATH, self)
-
+        self.imp = logic.ErrWin(self, app)
+    
     @pyqtSlot(int)
     def on_errorSelectList_currentRowChanged(self, index):
         self.errorDetailsStacked.setCurrentIndex(index)
 
-class SettingsWindow(QDialog):
+class SettWin(QDialog):
     '''
     This "window" is a QWidget. If it has no parent, it 
     will appear as a free-floating window as we want.
     '''
-    def __init__(self,  parent=None):
-        super(SettingsWindow,  self).__init__(parent)
+    def __init__(self, app, parent=None):
+        super(SettWin,  self).__init__(parent)
         uic.loadUi(const.SETTINGSWINDOW_UI_PATH, self)
-        self.imp = logic.SettingsWin(self)
-        self.imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+        self.imp = logic.SettWin(self, app)
     
     def closeEvent(self, event):
         print('Settings window closed (closeEvent)') # TEST
@@ -205,7 +198,7 @@ class SettingsWindow(QDialog):
         Save settings as .csv
         '''
         # TODO: add all forms in main window too
-        self.imp.write_csv()
+        self.imp.win['settings'].write_csv()
 
     @pyqtSlot()
     def on_loadButton_released(self):
@@ -213,14 +206,14 @@ class SettingsWindow(QDialog):
         load settings .csv file
         '''
         # TODO: add all forms in main window too
-        self.imp.read_csv()
+        self.imp.win['settings'].read_csv()
 
-class CameraWindow(QDialog):
+class CamWin(QDialog):
 
-    def __init__(self,  parent=None):
-        super(CameraWindow,  self).__init__(parent)
+    def __init__(self, app, parent=None):
+        super(CamWin,  self).__init__(parent)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
-        self.imp = logic.CamWin(self)
+        self.imp = logic.CamWin(self, app)
 
     def closeEvent(self, event):
         
