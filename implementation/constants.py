@@ -4,7 +4,10 @@ Constants
 
 # general
 EXIT_CODE_REBOOT = -123456789
-min_SHG_temp = 52
+MIN_SHG_TEMP = 52
+
+# log
+VERBOSITY = {'always', 'verbose'}
 
 # paths
 MAINWINDOW_UI_PATH = './gui/mainwindow.ui'

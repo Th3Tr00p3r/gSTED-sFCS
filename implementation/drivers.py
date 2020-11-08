@@ -85,23 +85,24 @@ class DepletionLaser(VISAInstrument):
         self.mode = None
         self.current = None
         self.power = None
+        self.state = False
+        self.temp = -999
+        self.mode = 'current'
         super().__init__(nick=nick, address=address,
                                read_termination = '\r', 
                                write_termination = '\r')
         self.toggle(False)
-        self.state = False
-        self.temp = -999
-        self.mode = 'current'
     
     def toggle(self, bool):
         
-        if self.temp > 52 :
+        if 1: # self.temp > 52 :
             if bool:
                 self.write('setLDenable 1')
             else:
                 self.write('setLDenable 0')
         else:
             logic.Error(error_txt='SHG temperature too low.')
+        self.state = bool
         
     def get_SHG_temp(self):
         self.temp = self.query('SHGtemp')
@@ -151,6 +152,7 @@ class DepletionShutter():
         with nidaqmx.Task() as task:
             task.do_channels.add_do_chan(self.address)
             task.write(bool)
+            self.state = bool
     
 class StepperStage():
     '''
