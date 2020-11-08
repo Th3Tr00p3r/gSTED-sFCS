@@ -73,11 +73,11 @@ class MainWin(App):
         self.actv_dvcs = {}
         # TODO: organize in a single method - make a list of all devices that need initialization/testing (get channels/addresses from settings) and make a 'for' loop
         # exc laser
-        dvc = drivers.ExcitationLaser(address=self.gui.windows['settings'].excTriggerExtChan.text())
-        self.actv_dvcs[dvc.name] = dvc
-        # dep shutter
-        dvc = drivers.DepletionShutter(address=self.gui.windows['settings'].depShutterChan.text())
-        self.actv_dvcs[dvc.name] = dvc
+#        dvc = drivers.ExcitationLaser(address=self.gui.windows['settings'].excTriggerExtChan.text())
+#        self.actv_dvcs[dvc.name] = dvc
+#        # dep shutter
+#        dvc = drivers.DepletionShutter(address=self.gui.windows['settings'].depShutterChan.text())
+#        self.actv_dvcs[dvc.name] = dvc
         
         self.actv_dvcs['dep_laser'] = 'READY'
         self.actv_dvcs['stage'] = 'OFF'
@@ -276,7 +276,6 @@ class SettingsWin():
 
 class CamWin():
     
-    __video_timer = QTimer()
     state = {}
     
     def __init__(self, cam_gui):
@@ -299,17 +298,16 @@ class CamWin():
         if self.state['video']:
             self.toggle_video()
         # disconnect camera
-        self.cam.close()
+        self.cam.driver.close()
         return None
 
     def init_cam(self):
         
         try:
-            self.cam = drivers.Camera(reopen_policy='new') # instantiate camera object
-            self.cam.open() # connect to first available camera
+            self.cam = drivers.Camera() # instantiate camera object
+            self.cam.driver.set_auto_exposure()
         except:
-            error_txt = ('No cameras appear to be connected.')
-            Error(error_txt=error_txt).display()
+            Error(sys.exc_info()).display()
     
     def toggle_video(self):
         #TODO: return the try/except
@@ -319,24 +317,32 @@ class CamWin():
             self.state['video'] = 1
             self.gui.videoButton.setStyleSheet("background-color: rgb(225, 245, 225); color: black;")
             self.gui.videoButton.setText('Video ON')
-            self.cam.start_live_video()
-            self.__video_timer.timeout.connect(self.__video_timeout)
-            self.__video_timer.start(50) # video refresh period (ms)
+            self._video_timer = QTimer()
+            self._video_timer.timeout.connect(self._wait_for_frame)
+            self.cam.driver.start_live_video()
+            self._video_timer.start(0)  # Run full throttle
+            
         #Turn Off
         else:
             self.state['video'] = 0
             self.gui.videoButton.setStyleSheet("background-color: rgb(225, 225, 225); color: black;")
             self.gui.videoButton.setText('Start Video')
-            self.cam.stop_live_video()
-            self.__video_timer.stop()
+            self.cam.driver.stop_live_video()
+            self._video_timer.stop()
 
     def shoot(self):
         #TODO: return the try/except
-        img = self.cam.grab_image()
-        self.__imshow(img)
+        if self.state['video']:
+            self.toggle_video()
+            img = self.cam.driver.grab_image()
+            self._imshow(img)
+            self.toggle_video()
+        else:
+            img = self.cam.driver.grab_image()
+            self._imshow(img)
     
     # private methods
-    def __imshow(self, img):
+    def _imshow(self, img):
         '''
         Plot image
         '''
@@ -345,10 +351,12 @@ class CamWin():
         ax.imshow(img)
         self.gui.canvas.draw()
     
-    def __video_timeout(self):
-        #TODO: return the try/except
-        img = self.cam.grab_image()
-        self.__imshow(img)
+    def _wait_for_frame(self):
+        frame_ready = self.cam.driver.wait_for_frame(timeout='0 ms')
+        if frame_ready:
+            img = self.cam.driver.latest_frame(copy=False)
+#            self._set_pixmap_from_array(arr)
+            self._imshow(img)
 
 class UserDialog():
     
@@ -408,27 +416,27 @@ class Question(UserDialog):
 class Measurement():
     
     # class attributes
-    __timer = QTimer()
+    _timer = QTimer()
     
     def __init__(self, type, duration_spinner, prog_bar=None):
         # instance attributes
         self.type = type
         self.duration_spinner = duration_spinner
         self.prog_bar = prog_bar
-        self.__timer.timeout.connect(self.__timer_timeout)
+        self._timer.timeout.connect(self._timer_timeout)
         self.time_passed = 0
         
     # public methods
     def start(self):
-        self.__timer.start(1000)
+        self._timer.start(1000)
         
     def stop(self):
-        self.__timer.stop()
+        self._timer.stop()
         if self.prog_bar:
             self.prog_bar.setValue(0)
     
     # private methods
-    def __timer_timeout(self):
+    def _timer_timeout(self):
 #        from PyQt5.QtMultimedia import QSound
         if self.time_passed < self.duration_spinner.value():
             self.time_passed += 1
