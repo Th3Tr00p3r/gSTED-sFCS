@@ -68,6 +68,14 @@ class MainWindow(QMainWindow):
         '''
         
         self.depModeStacked.setCurrentIndex(index)
+    
+    @pyqtSlot()
+    def on_depApplySettings_released(self):
+        '''
+        Apply current/power mode and value
+        '''
+        
+        self.imp.dep_sett_apply()
 
     @pyqtSlot(int)
     def on_solScanTypeCombox_currentIndexChanged(self, index):

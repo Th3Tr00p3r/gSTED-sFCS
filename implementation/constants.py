@@ -4,6 +4,7 @@ Constants
 
 # general
 EXIT_CODE_REBOOT = -123456789
+min_SHG_temp = 52
 
 # paths
 MAINWINDOW_UI_PATH = './gui/mainwindow.ui'
