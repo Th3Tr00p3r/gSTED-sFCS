@@ -12,8 +12,8 @@ if __name__ == "__main__":
         ui = App()
 #        ui.show()
         current_exit_code = app.exec_()
-#        ui.win['main'].destroy()
+        ui.win['main'].destroy()
         ui = None
         app = None
 #        print(current_exit_code)
-# TODO: restart not working in current configuration
+# TODO: restart back to 'once and then close'

@@ -4,7 +4,7 @@ GUI Module.
 import implementation.constants as const
 import implementation.logic as logic
 
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtWidgets import (QMainWindow, QDialog)
 from PyQt5 import uic
 
@@ -56,14 +56,22 @@ class MainWin(QMainWindow):
         
         self.imp.dep_shutter_toggle()
 
-    @pyqtSlot(int)
-    def on_depSetCombox_currentIndexChanged(self, index):
+    @pyqtSlot()
+    def on_powModeRadio_released(self):
         '''
         Switch between power/current depletion laser settings
         '''
         
-        self.depModeStacked.setCurrentIndex(index)
+        self.depModeStacked.setCurrentIndex(1)
     
+    @pyqtSlot()
+    def on_currModeRadio_released(self):
+        '''
+        Switch between power/current depletion laser settings
+        '''
+        
+        self.depModeStacked.setCurrentIndex(0)
+        
     @pyqtSlot()
     def on_depApplySettings_released(self):
         '''
@@ -127,8 +135,7 @@ class MainWin(QMainWindow):
         Show errors window
         '''
         # TODO:
-        self.imp.gui.show()
-        self.imp.gui.activateWindow()
+        self.imp.open_errwin()
 
     #----------------------------------------------------------------------------
     # Stepper Stage Dock
@@ -148,6 +155,7 @@ class MainWin(QMainWindow):
     def on_stageDown_released(self):
 
         self.imp.app.dvcs['STAGE'].move(dir='DOWN', steps=self.stageSteps.value())
+    
     @pyqtSlot()
     def on_stageLeft_released(self):
 
@@ -211,7 +219,8 @@ class SettWin(QDialog):
 class CamWin(QDialog):
 
     def __init__(self, app, parent=None):
-        super(CamWin,  self).__init__(parent)
+        
+        super(CamWin,  self).__init__(parent, Qt.WindowStaysOnTopHint)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
         self.imp = logic.CamWin(self, app)
 

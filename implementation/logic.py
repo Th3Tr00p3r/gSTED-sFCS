@@ -15,9 +15,6 @@ from datetime import datetime
 
 class App():
     
-    meas_state = {}
-    meas = None
-    
     def __init__(self):
         
         #init windows
@@ -32,10 +29,6 @@ class App():
         #initialize active devices
         self.dvcs = {}
         self.init_devices()
-        # initialize measurement states
-        self.meas_state['FCS'] = ''
-        self.meas_state['sol_sFCS'] = ''
-        self.meas_state['img_sFCS'] = ''
         # initialize log
         self.log = Log(self.win['main'], dir_path='./log/')
         
@@ -44,9 +37,18 @@ class App():
         self.win['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
 
         # set up main timeout event
+        self.timing = self.timing_dict()
         self.timeout_loop = self.timeout(self)
 #        self.timeout_loop.timer.start(50)
+    
+    def timing_dict(self):
         
+        # TODO: add here all the different timings for timeout()
+        # TODO: should all times be in seconds? or include a 'unit' property (ms, s, etc.)
+        d ={}
+        d['DEP_LASER'] = self.win['settings'].depUpdateTimeSpinner.value()
+        return d
+    
     class timeout():
     
         def __init__(self, app):
@@ -56,25 +58,29 @@ class App():
         
         def check_SHG_temp(self):
             SHG_temp = self.app.dvcs['DEP_LASER'].get_SHG_temp()
-            self.app.win['main'].gui.depTemp.setValue(SHG_temp)
+            self.app.win['main'].depTemp.setValue(SHG_temp)
             if SHG_temp < const.MIN_SHG_TEMP:
-                self.app.win['main'].gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
+                self.app.win['main'].depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
             else:
-                self.app.win['main'].gui.depTemp.setStyleSheet("background-color: white; color: black;")
+                self.app.win['main'].depTemp.setStyleSheet("background-color: white; color: black;")
         
         def check_power(self):
             power = self.app.dvcs['DEP_LASER'].get_power()
-            self.app.win['main'].gui.depActualPowerSpinner.setValue(power)
+            self.app.win['main'].depActualPowerSpinner.setValue(power)
         
         def check_current(self):
             current = self.app.dvcs['DEP_LASER'].get_current()
-            self.app.win['main'].gui.depActualCurrSpinner.setValue(current)
+            self.app.win['main'].depActualCurrSpinner.setValue(current)
         
-        #MAIN
-        def main(self):
+        def update_dep(self):
+            
             self.check_SHG_temp()
             self.check_power()
             self.check_current()
+        
+        #MAIN
+        def main(self):
+            self.update_dep()
         
     def init_devices(self):
         '''
@@ -136,6 +142,12 @@ class MainWin():
         self.gui.ledDep.clicked.connect(self.show_laser_dock)
         self.gui.ledShutter.clicked.connect(self.show_laser_dock)
         self.gui.actionRestart.triggered.connect(self.restart)
+        # initialize measurement states
+        self.meas_state = {}
+        self.meas = None
+        self.meas_state['FCS'] = ''
+        self.meas_state['sol_sFCS'] = ''
+        self.meas_state['img_sFCS'] = ''
     
     def close(self, event):
         
@@ -143,7 +155,7 @@ class MainWin():
         
     def restart(self):
         
-        self.restart_flag = True
+        self.app.restart_flag = True
         self.gui.close()
     
     def exc_emission_toggle(self):
@@ -200,9 +212,12 @@ class MainWin():
     
     def dep_sett_apply(self):
         
-        if self.gui.depSetCombox.currentText() == 'Current Mode':
+        if self.gui.currModeRadio.isChecked(): # current mode
             val = self.gui.depCurrSpinner.value()
             self.app.dvcs['DEP_LASER'].set_current(val)
+        else: # power mode
+            val = self.gui.depPowSpinner.value()
+            self.app.dvcs['DEP_LASER'].set_power(val)
     
     def stage_toggle(self):
         
@@ -234,7 +249,7 @@ class MainWin():
         
         if not self.meas_state['FCS']:
             self.meas_state['FCS'] = True
-            self.meas = Measurement(self, type='FCS', 
+            self.meas = Measurement(type='FCS', 
                                                 duration_spinner=self.gui.measFCSDurationSpinBox,
                                                 prog_bar=self.gui.FCSprogressBar, log=self.app.log)
             self.meas.start()
@@ -254,6 +269,11 @@ class MainWin():
         self.app.win['camera'].show()
         self.app.win['camera'].activateWindow()
         self.app.win['camera'].imp.init_cam()
+    
+    def open_errwin(self):
+        
+        self.app.win['errors'].show()
+        self.app.win['errors'].activateWindow()
     
 class SettWin():
     
@@ -363,7 +383,7 @@ class CamWin():
             self.toggle_video()
         # disconnect camera
         self.cam.driver.close()
-        self.app.log.update('Camera connection slosed', tag='verbose')
+        self.app.log.update('Camera connection closed', tag='verbose')
         return None
 
     def init_cam(self):
@@ -371,6 +391,7 @@ class CamWin():
         try:
             self.cam = drivers.Camera() # instantiate camera object
             self.cam.driver.set_auto_exposure()
+            self.app.log.update('Camera connection opened', tag='verbose')
         except:
             Error(sys.exc_info()).display()
     
