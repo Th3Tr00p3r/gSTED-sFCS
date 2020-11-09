@@ -112,6 +112,17 @@ class DepletionLaser(VISAInstrument):
         
         return self.query('Power 0')
     
+    def set_power(self, value):
+        
+        # check that current value is within range
+        if (value <= 1000) and (value >= 99):
+            # change the mode to current
+            self.write('Powerenable 1')
+            # then set the power
+            self.write('Setpower 0 ' + str(value))
+        else:
+            logic.Error(error_txt='Power out of range').display()
+    
     def get_current(self):
         
         return self.query('LDcurrent 1')
@@ -119,18 +130,13 @@ class DepletionLaser(VISAInstrument):
     def set_current(self, value):
         
         # check that current value is within range
-        if (float(value) <= 2500) and (float(value) >= 1500):
+        if (value <= 2500) and (value >= 1500):
             # change the mode to current
             self.write('Powerenable 0')
-            # test that mode has changed
-            if not self.query('Getpowerenable'):
-                self.mode = 'current'
-            else:
-                logic.Error(error_txt='Something went wrong'
-                                      'with the mode setting.')
-                return
-            self.write('setLDcur 1 ' + value)
-        
+            # then set the current
+            self.write('setLDcur 1 ' + str(value))
+        else:
+            logic.Error(error_txt='Current out of range').display()
             
 
 class DepletionShutter():
