@@ -87,15 +87,15 @@ class DepletionLaser(VISAInstrument):
         self.power = None
         self.state = False
         self.temp = -999
-        self.mode = 'current'
         super().__init__(nick=nick, address=address,
                                read_termination = '\r', 
                                write_termination = '\r')
         self.toggle(False)
+        self.set_current(1500)
     
     def toggle(self, bool):
         
-        if 1: # self.temp > 52 :
+        if self.temp > 52 :
             if bool:
                 self.write('setLDenable 1')
             else:
