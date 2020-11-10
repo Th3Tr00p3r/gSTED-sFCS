@@ -25,8 +25,9 @@ class App():
         
         # set restart flag
         self.restart_flag = False
+        # initialize error dict
+        self.init_errors()
         #initialize active devices
-        self.dvcs = {}
         self.init_devices()
         # initialize log
         self.log = Log(self.win['main'], dir_path='./log/')
@@ -54,12 +55,14 @@ class App():
             def timings_dict(sett_gui):
                 
                 '''Associate an (interval (ms), update_function) tuple with each device'''
+                # TODO: possibly have a single or a few longer interval timers, not one for each (could be resource heavy)
                 
                 t_dict ={}
                 t_dict['DEP_LASER'] = (sett_gui.depUpdateTimeSpinner.value(),
                                                  self._update_dep)
                 t_dict['COUNTER'] = (sett_gui.counterUpdateTimeSpinner.value(),
                                               self._update_counter)
+                t_dict['ERRORS'] = (1, self._update_errorGUI)
                 return t_dict
             
             timers_dict = {}
@@ -84,8 +87,10 @@ class App():
             
             '''Update depletion laser GUI'''
             
+            nick = 'DEP_LASER'
+            
             def check_SHG_temp(self):
-                SHG_temp = self._app.dvcs['DEP_LASER'].get_SHG_temp()
+                SHG_temp = self._app.dvcs[nick].get_SHG_temp()
                 self._app.win['main'].depTemp.setValue(SHG_temp)
                 if SHG_temp < const.MIN_SHG_TEMP:
                     self._app.win['main'].depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
@@ -93,31 +98,46 @@ class App():
                     self._app.win['main'].depTemp.setStyleSheet("background-color: white; color: black;")
             
             def check_power(self):
-                power = self._app.dvcs['DEP_LASER'].get_power()
+                power = self._app.dvcs[nick].get_power()
                 self._app.win['main'].depActualPowerSpinner.setValue(power)
             
             def check_current(self):
-                current = self._app.dvcs['DEP_LASER'].get_current()
+                current = self._app.dvcs[nick].get_current()
                 self._app.win['main'].depActualCurrSpinner.setValue(current)
             
-            check_SHG_temp(self)
-            check_power(self)
-            check_current(self)
+            if not self._app.error_dict[nick]: # if there's no errors
+                check_SHG_temp(self)
+                check_power(self)
+                check_current(self)
+        
+        def _update_errorGUI(self):
+            # TODO: update the error GUI according to errors in self._app.error_dict
+            pass
         
         #MAIN
         def _main(self):
             pass
+    
+    def init_errors(self):
         
+        self.error_dict = {}
+        for nick in const.DEV_NICKS:
+            self.error_dict[nick] = None
+    
     def init_devices(self):
+        
         '''
-        goes through a list of device nicknames, instantiating a driver object for each device
+        goes through a list of device nicknames,
+        instantiating a driver object for each device
         '''
+        
+        self.dvcs = {}
         for nick in const.DEV_NICKS:
             dev_driver = getattr(drivers,
                                            const.DEV_DRIVERS[nick])
             dev_address = getattr(self.win['settings'],
                                               const.DEV_ADDRSS_FLDS[nick]).text()
-            self.dvcs[nick] = dev_driver(nick=nick, address=dev_address)
+            self.dvcs[nick] = dev_driver(nick=nick, address=dev_address, error_dict=self.error_dict)
     
     def clean_up_app(self):
         '''
@@ -207,15 +227,17 @@ class MainWin():
         # switch ON
         if not self.app.dvcs[nick].state:
             self.app.dvcs[nick].toggle(True)
-            self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
-            self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
-            self.app.log.update('Depletion ON', tag='verbose')
+            if self.app.dvcs[nick].state: # if managed to turn ON
+                self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
+                self.gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
+                self.app.log.update('Depletion ON', tag='verbose')
         # switch OFF
         else:
             self.app.dvcs[nick].toggle(False)
-            self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
-            self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
-            self.app.log.update('Depletion OFF', tag='verbose')
+            if not self.app.dvcs[nick].state: # if managed to turn OFF
+                self.gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
+                self.gui.ledDep.setIcon(QIcon(icon.LED_OFF))
+                self.app.log.update('Depletion OFF', tag='verbose')
 
     def dep_shutter_toggle(self):
         

@@ -31,7 +31,6 @@ class VISAInstrument():
             
     
         def __enter__(self):
-            
             self.rsrc = self.inst.rm.open_resource(self.inst.address,
                                                                read_termination=self.inst.read_termination,
                                                                write_termination=self.inst.write_termination)
@@ -39,7 +38,8 @@ class VISAInstrument():
         
         def __exit__(self, exc_type, exc_value, exc_tb):
             
-            self.rsrc.close()
+            if hasattr(self, 'rsrc'):
+                self.rsrc.close()
     
     def write(self, cmnd):
         
@@ -57,7 +57,7 @@ class VISAInstrument():
     
 class ExcitationLaser():
     
-    def __init__(self, nick, address):
+    def __init__(self, nick, address, error_dict):
         
         self.nick = nick
         self.address = address
@@ -80,9 +80,8 @@ class DepletionLaser(VISAInstrument):
     Control depletion laser through pyVISA
     '''
     
-    def __init__(self, nick, address):
+    def __init__(self, nick, address, error_dict):
         
-        self.mode = None
         self.current = None
         self.power = None
         self.state = False
@@ -90,19 +89,25 @@ class DepletionLaser(VISAInstrument):
         super().__init__(nick=nick, address=address,
                                read_termination = '\r', 
                                write_termination = '\r')
-        self.toggle(False)
-        self.set_current(1500)
+        try:
+            self.toggle(False)
+            self.set_current(1500)
+        except visa.errors.VisaIOError:
+            error_dict[nick] = 'VISA Error'
+            logic.Error(error_txt='VISA can\'t access ' + address +
+                                         ' (depletion laser)').display()
     
     def toggle(self, bool):
         
-        if self.temp > 52 :
             if bool:
-                self.write('setLDenable 1')
+                if self.temp > 52 :
+                    self.write('setLDenable 1')
+                    self.state = bool
+                else:
+                    logic.Error(error_txt='SHG temperature too low.').display()
             else:
                 self.write('setLDenable 0')
-        else:
-            logic.Error(error_txt='SHG temperature too low.')
-        self.state = bool
+                self.state = bool
         
     def get_SHG_temp(self):
         self.temp = self.query('SHGtemp')
@@ -143,7 +148,7 @@ class DepletionShutter():
     '''
     Depletion Shutter Control
     '''
-    def __init__(self, nick, address):
+    def __init__(self, nick, address, error_dict):
         '''
         Instatiate object and close the shutter
         '''
@@ -166,7 +171,7 @@ class StepperStage():
     This device operates slowly and needs special care.
     '''
     
-    def __init__(self, nick, address):
+    def __init__(self, nick, address, error_dict):
         
         self.nick = nick
         self.address = address
