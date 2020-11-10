@@ -1293,6 +1293,9 @@
                           <property name="buttonSymbols">
                            <enum>QAbstractSpinBox::NoButtons</enum>
                           </property>
+                          <property name="value">
+                           <double>0.500000000000000</double>
+                          </property>
                          </widget>
                         </item>
                        </layout>
