@@ -1,6 +1,5 @@
 import os
 import sys
-#import time
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QApplication, 
                                               QFileDialog
@@ -37,50 +36,77 @@ class App():
         self.win['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
 
         # set up main timeout event
-        self.timing = self.timing_dict()
         self.timeout_loop = self.timeout(self)
-#        self.timeout_loop.timer.start(50)
-    
-    def timing_dict(self):
-        
-        # TODO: add here all the different timings for timeout()
-        # TODO: should all times be in seconds? or include a 'unit' property (ms, s, etc.)
-        d ={}
-        d['DEP_LASER'] = self.win['settings'].depUpdateTimeSpinner.value()
-        return d
+        self.timeout_loop.start()
     
     class timeout():
-    
+        
         def __init__(self, app):
-            self.app = app
-            self.timer = QTimer()
-            self.timer.timeout.connect(self.main)
+            self._app = app            
+            self._timers = self._get_timers()
+            self._main_timer = QTimer()
+            self._main_timer.timeout.connect(self._main)
         
-        def check_SHG_temp(self):
-            SHG_temp = self.app.dvcs['DEP_LASER'].get_SHG_temp()
-            self.app.win['main'].depTemp.setValue(SHG_temp)
-            if SHG_temp < const.MIN_SHG_TEMP:
-                self.app.win['main'].depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
-            else:
-                self.app.win['main'].depTemp.setStyleSheet("background-color: white; color: black;")
-        
-        def check_power(self):
-            power = self.app.dvcs['DEP_LASER'].get_power()
-            self.app.win['main'].depActualPowerSpinner.setValue(power)
-        
-        def check_current(self):
-            current = self.app.dvcs['DEP_LASER'].get_current()
-            self.app.win['main'].depActualCurrSpinner.setValue(current)
-        
-        def update_dep(self):
+        def _get_timers(self):
             
-            self.check_SHG_temp()
-            self.check_power()
-            self.check_current()
+            '''Instantiate specific timers for devices'''
+            
+            def timings_dict(sett_gui):
+                
+                '''Associate an (interval (ms), update_function) tuple with each device'''
+                
+                t_dict ={}
+                t_dict['DEP_LASER'] = (sett_gui.depUpdateTimeSpinner.value(),
+                                                 self._update_dep)
+                t_dict['COUNTER'] = (sett_gui.counterUpdateTimeSpinner.value(),
+                                              self._update_counter)
+                return t_dict
+            
+            timers_dict = {}
+            sett_gui = self._app.win['settings']
+            for key, value in timings_dict(sett_gui).items():
+                timers_dict[key] = QTimer()
+                timers_dict[key].setInterval(1000 * value[0]) # values are is seconds
+                timers_dict[key].timeout.connect(value[1])
+                
+            return timers_dict
+        
+        def start(self):
+            self._main_timer.start(50)
+            for key in self._timers.keys():
+                self._timers[key].start()
+        
+        def _update_counter(self):
+            
+            pass
+        
+        def _update_dep(self):
+            
+            '''Update depletion laser GUI'''
+            
+            def check_SHG_temp(self):
+                SHG_temp = self._app.dvcs['DEP_LASER'].get_SHG_temp()
+                self._app.win['main'].depTemp.setValue(SHG_temp)
+                if SHG_temp < const.MIN_SHG_TEMP:
+                    self._app.win['main'].depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
+                else:
+                    self._app.win['main'].depTemp.setStyleSheet("background-color: white; color: black;")
+            
+            def check_power(self):
+                power = self._app.dvcs['DEP_LASER'].get_power()
+                self._app.win['main'].depActualPowerSpinner.setValue(power)
+            
+            def check_current(self):
+                current = self._app.dvcs['DEP_LASER'].get_current()
+                self._app.win['main'].depActualCurrSpinner.setValue(current)
+            
+            check_SHG_temp(self)
+            check_power(self)
+            check_current(self)
         
         #MAIN
-        def main(self):
-            self.update_dep()
+        def _main(self):
+            pass
         
     def init_devices(self):
         '''
@@ -320,7 +346,7 @@ class SettWin():
                     else: # line edit
                         rowdata = [field_names[i],  self.gui.frame.findChild(QWidget, field_names[i]).text()]
                     writer.writerow(rowdata)
-            self.app.log.update('Settings file save as: ' + filepath)
+            self.app.log.update('Settings file saved as: ' + filepath)
 
     def read_csv(self, filepath=''):
         '''
@@ -375,9 +401,9 @@ class CamWin():
         self.state['video'] = 0
 
     def clean_up(self):
-        '''
-        clean up before closing window
-        '''
+        
+        '''clean up before closing window'''
+        
         # turn off video if On
         if self.state['video']:
             self.toggle_video()
@@ -437,9 +463,9 @@ class CamWin():
     
     # private methods
     def _imshow(self, img):
-        '''
-        Plot image
-        '''
+        
+        '''Plot image'''
+        
         self.gui.figure.clear()
         ax = self.gui.figure.add_subplot(111)
         ax.imshow(img)

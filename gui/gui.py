@@ -206,7 +206,7 @@ class SettWin(QDialog):
         Save settings as .csv
         '''
         # TODO: add all forms in main window too
-        self.imp.win['settings'].write_csv()
+        self.imp.write_csv()
 
     @pyqtSlot()
     def on_loadButton_released(self):
@@ -214,7 +214,7 @@ class SettWin(QDialog):
         load settings .csv file
         '''
         # TODO: add all forms in main window too
-        self.imp.win['settings'].read_csv()
+        self.imp.read_csv()
 
 class CamWin(QDialog):
 
