@@ -212,7 +212,7 @@ class CamWin(QWidget):
         
         super(CamWin,  self).__init__(parent, Qt.WindowStaysOnTopHint)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
-        self.move(-30, 100)
+        self.move(30, 180)
         self.imp = logic.CamWin(self, app)
 
     def closeEvent(self, event):

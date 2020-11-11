@@ -1,17 +1,32 @@
+'''
+Logic Module.
+'''
+
+# PyQt5 imports
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
-                                              QDoubleSpinBox, QMessageBox, QApplication, 
-                                              QFileDialog)
+                                              QDoubleSpinBox, QMessageBox, QFileDialog)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QTimer
+#implementation imports
 import implementation.constants as const
 import implementation.drivers as drivers
 from implementation.dialog import Error, Question
 from implementation.log import Log
+# GUI imports
 import gui.icons.icon_paths as icon
 import gui.gui as gui_module
-
-# camera
+# camera error
 from instrumental.drivers.cameras.uc480 import UC480Error
+
+import numpy as np
+
+class Counter():
+    
+    def __init__(self):
+        
+        self.cont_count_buff = None
+        self.buff_sz = 2000 # get from settings
+        selfcounts = None
 
 class App():
     
@@ -22,10 +37,7 @@ class App():
         self.win['main'] = gui_module.MainWin(self)
         self.win['settings'] = gui_module.SettWin(self)
         self.win['errors'] = gui_module.ErrWin(self)
-#        self.win['camera'] = gui.CamWin(self)
-        
-        # set restart flag
-        self.restart_flag = False
+        self.win['camera'] = None # instantiated on pressing camera button
         # initialize error dict
         self.init_errors()
         #initialize active devices
@@ -76,6 +88,7 @@ class App():
             return timers_dict
         
         def start(self):
+            
             self._main_timer.start(50)
             for key in self._timers.keys():
                 self._timers[key].start()
@@ -151,38 +164,27 @@ class App():
             
             for nick in const.DEV_NICKS:
                 app.dvcs[nick].toggle(False)
+                
+        def close_all_wins(app):
+            
+            for win_key in self.win.keys():
+                if self.win[win_key]: # if not None (can happen for camwin
+                    if win_key not in {'main', 'camera'}: # dialogs close with reject()
+                        self.win[win_key].reject()
+                    else:
+                        self.win[win_key].close() # mainwindows and widgets close with close()
         
         close_all_dvcs(self)
-        for win_key in self.win.keys():
-            if win_key not in {'main', 'camera'}: # dialogs close with reject()
-                self.win[win_key].reject()
-            else:
-                self.win[win_key].close() # mainwindows and widgets close with close()
-            
-            
+        close_all_wins(self)
+    
     def exit_app(self, event):
         
-        if not self.restart_flag: # closing
-            pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
-            if pressed == QMessageBox.Yes:
-                self.log.update('Quitting Application')
-                self.clean_up_app()
-                event.ignore()
-                QApplication.exit(0)
-            else:
-                event.ignore()
-        else: # restarting
-            # TODO: can only restart once for some reason
-            pressed = Question(q_title='Restarting Program',
-                                   q_txt=('Are you sure you want ' +
-                                             'to restart the program?')).display()
-            if pressed == QMessageBox.Yes:
-                self.log.update('Restarting Application')
-                self.clean_up_app()
-                event.ignore()
-                QApplication.exit(const.EXIT_CODE_REBOOT)
-            else:
-                event.ignore()
+        pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
+        if pressed == QMessageBox.Yes:
+            self.log.update('Quitting Application')
+            self.clean_up_app()
+        else:
+            event.ignore()
 
 class MainWin():
     
@@ -233,9 +235,6 @@ class MainWin():
         
         self._app.init_devices()
         self._app.log.update('Restarting Devices', tag='verbose')
-        
-#        self._app.restart_flag = True
-#        self._gui.close()
     
     def exc_emission_toggle(self):
         
@@ -346,8 +345,8 @@ class MainWin():
         if not self.meas_state['FCS']:
             self.meas_state['FCS'] = True
             self.meas = Measurement(type='FCS', 
-                                                duration_spinner=self.gui.measFCSDurationSpinBox,
-                                                prog_bar=self.gui.FCSprogressBar, log=self.app.log)
+                                                duration_spinner=self._gui.measFCSDurationSpinBox,
+                                                prog_bar=self._gui.FCSprogressBar, log=self.app.log)
             self.meas.start()
             self._gui.startFcsMeasurementButton.setText('Stop \nMeasurement')
         else: # off state
