@@ -4,6 +4,16 @@ from instrumental.drivers.cameras.uc480 import UC480_Camera # NOQA
 import implementation.logic as logic
 #import time #testing
 
+import numpy as np
+
+class Counter():
+    
+    def __init__(self):
+        
+        self.cont_count_buff = None
+        self.buff_sz = 2000 # get from settings
+        selfcounts = None
+
 class Camera():
     
     def __init__(self):
