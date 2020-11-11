@@ -3,7 +3,7 @@ Constants
 '''
 
 # general
-EXIT_CODE_REBOOT = -123456789
+EXIT_CODE_REBOOT = -123456789 # for restarting the application
 MIN_SHG_TEMP = 52
 
 # log

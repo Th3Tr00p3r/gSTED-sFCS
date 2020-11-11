@@ -1,21 +1,20 @@
-"""
+'''
 GUI Module.
-"""
+'''
+
 import implementation.constants as const
 import implementation.logic as logic
 
 from PyQt5.QtCore import pyqtSlot, Qt
-from PyQt5.QtWidgets import (QMainWindow, QDialog)
+from PyQt5.QtWidgets import (QMainWindow, QDialog, QWidget)
 from PyQt5 import uic
 
-# resource files
-from gui.icons import icons_rc # for initial icons # NOQA
+from gui.icons import icons_rc # for initial icons loadout # NOQA
 
 class MainWin(QMainWindow):
-    """
-    Class documentation goes here.
-    """
-    # TDOD: possibly move 'self.windows['cameras'] = CameraWindow()' to when the button is actually pressed? also disallow multiple pressings
+    
+    """Class documentation goes here."""
+    
     def __init__(self, app, parent=None):
         super(MainWin, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
@@ -27,63 +26,58 @@ class MainWin(QMainWindow):
 
     @pyqtSlot()
     def on_startFcsMeasurementButton_released(self):
-        '''
-        Begin FCS Measurement.
-        '''
+        
+        '''Begin FCS Measurement.'''
+        
         self.imp.start_FCS_meas()
 
     @pyqtSlot()
     def on_excOnButton_released(self):
-        '''
-        Turn excitation laser On/Off
-        '''
+        
+        '''Turn excitation laser On/Off'''
         
         self.imp.exc_emission_toggle()
 
     @pyqtSlot()
     def on_depEmissionOn_released(self):
-        '''
-        Turn depletion laser On/Off
-        '''
+        
+        '''Turn depletion laser On/Off'''
         
         self.imp.dep_emission_toggle()
 
     @pyqtSlot()
     def on_depShutterOn_released(self):
-        '''
-        Turn depletion physical shutter On/Off
-        '''
+        
+        '''Turn depletion physical shutter On/Off'''
         
         self.imp.dep_shutter_toggle()
 
     @pyqtSlot()
     def on_powModeRadio_released(self):
-        '''
-        Switch between power/current depletion laser settings
-        '''
+        
+        '''Switch between power/current depletion laser settings'''
         
         self.depModeStacked.setCurrentIndex(1)
     
     @pyqtSlot()
     def on_currModeRadio_released(self):
-        '''
-        Switch between power/current depletion laser settings
-        '''
+        
+        '''Switch between power/current depletion laser settings'''
         
         self.depModeStacked.setCurrentIndex(0)
         
     @pyqtSlot()
     def on_depApplySettings_released(self):
-        '''
-        Apply current/power mode and value
-        '''
+        
+        '''Apply current/power mode and value'''
         
         self.imp.dep_sett_apply()
 
     @pyqtSlot(int)
     def on_solScanTypeCombox_currentIndexChanged(self, index):
         '''
-        Change stacked widget 'solScanParamsStacked' index according to index of the combo box 'solScanTypeCombox'.
+        Change stacked widget 'solScanParamsStacked' index
+        according to index of the combo box 'solScanTypeCombox'.
 
         @param index - the index of the combo box 'solScanTypeCombox'
         @type int
@@ -93,48 +87,46 @@ class MainWin(QMainWindow):
 
     @pyqtSlot()
     def on_actionSettings_triggered(self):
-        '''
-        Show settings window
-        '''
+        
+        '''Show settings window'''
         
         self.imp.open_settwin()
 
     @pyqtSlot(bool)
     def on_actionLaser_Control_toggled(self, p0):
-        '''
-        Show/hide stepper laser control dock
-        '''
+        
+        '''Show/hide stepper laser control dock'''
+        
         self.laserDock.setVisible(p0)
 
     @pyqtSlot(bool)
     def on_actionStepper_Stage_Control_toggled(self, p0):
-        '''
-        Show/hide stepper stage control dock
-        '''
+        
+        '''Show/hide stepper stage control dock'''
+        
         self.stepperDock.setVisible(p0)
 
     @pyqtSlot()
     def on_actionCamera_Control_triggered(self):
-        '''
-        Instantiate 'CameraWindow' object and show it
-        '''
+        
+        '''Instantiate 'CameraWindow' object and show it'''
         # TODO: add support for 2nd camera
         
         self.imp.open_camwin()
 
     @pyqtSlot(bool)
     def on_actionLog_toggled(self, p0):
-        '''
-        Show/hide log dock
-        '''
+        
+        '''Show/hide log dock'''
+        
         self.logDock.setVisible(p0)
 
     @pyqtSlot()
     def on_ledErrors_clicked(self):
-        '''
-        Show errors window
-        '''
+        
+        '''Show errors window'''
         # TODO:
+        
         self.imp.open_errwin()
 
     #----------------------------------------------------------------------------
@@ -149,34 +141,33 @@ class MainWin(QMainWindow):
     @pyqtSlot()
     def on_stageUp_released(self):
 
-        self.imp.app.dvcs['STAGE'].move(dir='UP', steps=self.stageSteps.value())
+        self.imp.move_stage(dir='UP', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageDown_released(self):
 
-        self.imp.app.dvcs['STAGE'].move(dir='DOWN', steps=self.stageSteps.value())
+        self.imp.move_stage(dir='DOWN', steps=self.stageSteps.value())
     
     @pyqtSlot()
     def on_stageLeft_released(self):
 
-        self.imp.app.dvcs['STAGE'].move(dir='LEFT', steps=self.stageSteps.value())
+        self.imp.move_stage(dir='LEFT', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRight_released(self):
 
-        self.imp.app.dvcs['STAGE'].move(dir='RIGHT', steps=self.stageSteps.value())
+        self.imp.move_stage(dir='RIGHT', steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRelease_released(self):
  
-        self.imp.app.dvcs['STAGE'].release()
+        self.imp.release_stage()
 
 class ErrWin(QDialog):
-    '''
-    This "window" is a QWidget. If it has no parent, it 
-    will appear as a free-floating window as we want.
-    '''
+    
+    '''Documentation'''
     # TODO: when error occures, change appropriate list items background to red, font to white
+    
     def __init__(self, app, parent=None):
         super(ErrWin,  self).__init__(parent)
         uic.loadUi(const.ERRORSWINDOW_UI_PATH, self)
@@ -187,10 +178,9 @@ class ErrWin(QDialog):
         self.errorDetailsStacked.setCurrentIndex(index)
 
 class SettWin(QDialog):
-    '''
-    This "window" is a QWidget. If it has no parent, it 
-    will appear as a free-floating window as we want.
-    '''
+    
+    '''Documentation'''
+    
     def __init__(self, app, parent=None):
         super(SettWin,  self).__init__(parent)
         uic.loadUi(const.SETTINGSWINDOW_UI_PATH, self)
@@ -202,26 +192,27 @@ class SettWin(QDialog):
 
     @pyqtSlot()
     def on_saveButton_released(self):
-        '''
-        Save settings as .csv
-        '''
+        
+        '''Save settings as .csv'''
         # TODO: add all forms in main window too
+        
         self.imp.write_csv()
 
     @pyqtSlot()
     def on_loadButton_released(self):
-        '''
-        load settings .csv file
-        '''
+        
+        '''load settings .csv file'''
         # TODO: add all forms in main window too
+        
         self.imp.read_csv()
 
-class CamWin(QDialog):
+class CamWin(QWidget):
 
     def __init__(self, app, parent=None):
         
         super(CamWin,  self).__init__(parent, Qt.WindowStaysOnTopHint)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
+        self.move(-30, 100)
         self.imp = logic.CamWin(self, app)
 
     def closeEvent(self, event):

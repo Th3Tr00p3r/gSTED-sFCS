@@ -68,12 +68,12 @@ class ExcitationLaser():
             task.write(False)
         self.state = False
     
-    def toggle(self):
+    def toggle(self, bool):
         
         with nidaqmx.Task() as task:
             task.do_channels.add_do_chan(self.address)
-            self.state = not self.state
-            task.write(self.state)
+            self.state = bool
+            task.write(bool)
 
 class DepletionLaser(VISAInstrument):
     '''
@@ -92,9 +92,9 @@ class DepletionLaser(VISAInstrument):
         try:
             self.toggle(False)
             self.set_current(1500)
-        except visa.errors.VisaIOError:
+        except visa.errors.VisaIOError as exc:
             error_dict[nick] = 'VISA Error'
-            logic.Error(error_txt='VISA can\'t access ' + address +
+            logic.Error(exc, error_txt='VISA can\'t access ' + address +
                                          ' (depletion laser)').display()
     
     def toggle(self, bool):
@@ -178,15 +178,14 @@ class StepperStage():
         self.rm = visa.ResourceManager()
         self.state = False
     
-    def open(self):
+    def toggle(self, bool):
         
-        self.rsrc = self.rm.open_resource(self.address)
-        self.state = True
-        
-    def close(self):
-        
-        self.rsrc.close()
-        self.state = False
+        if bool:
+            self.rsrc = self.rm.open_resource(self.address)
+        else:
+            if hasattr(self, 'rsrc'):
+                self.rsrc.close()
+        self.state = bool
     
     def move(self, dir=None,  steps=None):
         
