@@ -1,13 +1,35 @@
 '''
 Constants
 '''
+import gui.icons.icon_paths as icon
 
 # general
 EXIT_CODE_REBOOT = -123456789 # for restarting the application
 MIN_SHG_TEMP = 52
 
+# icons
+ICON_DICT = {'EXC_LASER': {'LED': 'ledExc',
+                                          'SWITCH': 'excOnButton',
+                                          'ICON': icon.LED_BLUE
+                                          }, 
+                   'DEP_LASER': {'LED': 'ledDep',
+                                         'SWITCH': 'depEmissionOn',
+                                         'ICON': icon.LED_ORANGE
+                                         },
+                   'DEP_SHUTTER': {'LED': 'ledShutter',
+                                         'SWITCH': 'depShutterOn',
+                                         'ICON': icon.LED_GREEN
+                                         },
+                   'STAGE': {'SWITCH': 'stageOn'}
+                    }
+
 # log
-VERBOSITY = {'always', 'verbose'}
+LOG_VERBOSITY = {'always', 'verbose'}
+LOG_DICT = {'EXC_LASER': 'excitation laser',
+                   'DEP_LASER': 'depletion laser',
+                   'DEP_SHUTTER': 'depletion shutter',
+                   'STAGE': 'stepper stage', 
+                   }
 
 # paths
 MAINWINDOW_UI_PATH = './gui/mainwindow.ui'
@@ -27,13 +49,13 @@ DEVICE_NICKS = ['EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE']
 
 # device address fields in settings
 DEVICE_ADDRSS_FIELD_NAMES = {'EXC_LASER': 'excTriggerExtChan',
-                                  'DEP_LASER': 'depPort',
-                                  'DEP_SHUTTER': 'depShutterChan',
-                                  'STAGE': 'arduinoChan', 
-                                  }
+                                                'DEP_LASER': 'depPort',
+                                                'DEP_SHUTTER': 'depShutterChan',
+                                                'STAGE': 'arduinoChan', 
+                                                }
 # device classes
 DEVICE_CLASS_NAMES = {'EXC_LASER': 'ExcitationLaser',
-                            'DEP_LASER': 'DepletionLaser',
-                            'DEP_SHUTTER': 'DepletionShutter',
-                            'STAGE': 'StepperStage', 
-                            }
+                                     'DEP_LASER': 'DepletionLaser',
+                                     'DEP_SHUTTER': 'DepletionShutter',
+                                     'STAGE': 'StepperStage', 
+                                     }

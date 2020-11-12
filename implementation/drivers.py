@@ -26,24 +26,6 @@ class VISAInstrument():
         self.read_termination = read_termination
         self.write_termination = write_termination
         self.rm = visa.ResourceManager()
-        
-    class Task():
-    
-        def __init__(self, inst):
-
-            self.inst = inst
-            
-
-        def __enter__(self):
-            self.rsrc = self.inst.rm.open_resource(self.inst.address,
-                                                               read_termination=self.inst.read_termination,
-                                                               write_termination=self.inst.write_termination)
-            return self.rsrc
-        
-        def __exit__(self, exc_type, exc_value, exc_tb):
-            
-            if hasattr(self, 'rsrc'):
-                self.rsrc.close()
     
     def write(self, cmnd):
         
@@ -58,6 +40,22 @@ class VISAInstrument():
                 return float(reply)
             except:
                 return -999
+                
+    class Task():
+    
+        def __init__(self, inst):
+            self.inst = inst
+            
+        def __enter__(self):
+            self.rsrc = self.inst.rm.open_resource(self.inst.address,
+                                                               read_termination=self.inst.read_termination,
+                                                               write_termination=self.inst.write_termination)
+            return self.rsrc
+        
+        def __exit__(self, exc_type, exc_value, exc_tb):
+            
+            if hasattr(self, 'rsrc'):
+                self.rsrc.close()
 
 ####TESTING####
         
