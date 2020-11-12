@@ -19,7 +19,7 @@ class Log():
     def update(self, log_line, tag='always'):
         
         # add line to log file
-        if tag in const.VERBOSITY:
+        if tag in const.LOG_VERBOSITY:
             with open(self.file_path, 'a+') as file:
                 time_str = datetime.now().strftime("%H:%M:%S")
                 file.write(time_str + ' ' + log_line + '\n')

@@ -36,21 +36,21 @@ class MainWin(QMainWindow):
         
         '''Turn excitation laser On/Off'''
         
-        self.imp.exc_emission_toggle()
+        self.imp.dvc_toggle('EXC_LASER')
 
     @pyqtSlot()
     def on_depEmissionOn_released(self):
         
         '''Turn depletion laser On/Off'''
         
-        self.imp.dep_emission_toggle()
+        self.imp.dvc_toggle('DEP_LASER')
 
     @pyqtSlot()
     def on_depShutterOn_released(self):
         
         '''Turn depletion physical shutter On/Off'''
         
-        self.imp.dep_shutter_toggle()
+        self.imp.dvc_toggle('DEP_SHUTTER')
 
     @pyqtSlot()
     def on_powModeRadio_released(self):
@@ -136,7 +136,8 @@ class MainWin(QMainWindow):
     @pyqtSlot()
     def on_stageOn_released(self):
 
-        self.imp.stage_toggle()
+        is_on = self.imp.dvc_toggle('STAGE')
+        self.stageButtonsGroup.setEnabled(is_on)
 
     @pyqtSlot()
     def on_stageUp_released(self):

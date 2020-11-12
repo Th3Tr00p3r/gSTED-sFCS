@@ -40,26 +40,24 @@ class App():
         self.win['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
 
         # set up main timeout event
-        self.timeout_loop = self.timeout(self)
-        self.timeout_loop.start()
+        self.timeout_loop = self.Timeout(self)
     
-    class timeout():
+    class Timeout():
         
         def __init__(self, app):
             self._app = app            
             self._timers = self._get_timers()
             self._main_timer = QTimer()
             self._main_timer.timeout.connect(self._main)
+            
+            self._start_all_timers()
         
-        def _get_timers(self):
-            
-            '''Instantiate specific timers for devices'''
-            
-            def timings_dict(sett_gui):
+        def _get_timings_dict(self):
                 
                 '''Associate an (interval (ms), update_function) tuple with each device'''
                 # TODO: possibly have a single or a few longer interval timers, not one for each (could be resource heavy)
                 
+                sett_gui = self._app.win['settings']
                 t_dict ={}
                 t_dict['DEP_LASER'] = (sett_gui.depUpdateTimeSpinner.value(),
                                                  self._update_dep)
@@ -67,18 +65,27 @@ class App():
                                               self._update_counter)
                 t_dict['ERRORS'] = (1, self._update_errorGUI)
                 return t_dict
+        
+        def _get_timers(self):
+            
+            '''Instantiate specific timers for devices'''
             
             timers_dict = {}
-            sett_gui = self._app.win['settings']
-            for key, value in timings_dict(sett_gui).items():
+            for key, value in self._get_timings_dict().items():
                 timers_dict[key] = QTimer()
                 timers_dict[key].setInterval(1000 * value[0]) # values are is seconds
                 timers_dict[key].timeout.connect(value[1])
                 
             return timers_dict
         
-        def start(self):
+        def _start_all_timers(self):
             
+            # initiate all update functions once
+            update_func_dict = self._get_timings_dict()
+            for key, value in update_func_dict.items():
+                update_func_dict[key][1]()
+                
+            # then start individual timers
             self._main_timer.start(50)
             for key in self._timers.keys():
                 self._timers[key].start()
@@ -94,22 +101,23 @@ class App():
             nick = 'DEP_LASER'
             
             def check_SHG_temp(self):
-                SHG_temp = self._app.dvcs[nick].get_SHG_temp()
-                self._app.win['main'].depTemp.setValue(SHG_temp)
-                if SHG_temp < const.MIN_SHG_TEMP:
+                self._app.dvcs[nick].get_SHG_temp()
+                self._app.win['main'].depTemp.setValue(self._app.dvcs[nick].temp)
+                if self._app.dvcs[nick].temp < const.MIN_SHG_TEMP:
                     self._app.win['main'].depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
                 else:
                     self._app.win['main'].depTemp.setStyleSheet("background-color: white; color: black;")
             
             def check_power(self):
-                power = self._app.dvcs[nick].get_power()
-                self._app.win['main'].depActualPowerSpinner.setValue(power)
+                self._app.dvcs[nick].get_power()
+                self._app.win['main'].depActualPowerSpinner.setValue(self._app.dvcs[nick].power)
             
             def check_current(self):
-                current = self._app.dvcs[nick].get_current()
-                self._app.win['main'].depActualCurrSpinner.setValue(current)
+                self._app.dvcs[nick].get_current()
+                self._app.win['main'].depActualCurrSpinner.setValue(self._app.dvcs[nick].current)
             
             if not self._app.error_dict[nick]: # if there's no errors
+            
                 check_SHG_temp(self)
                 check_power(self)
                 check_current(self)
@@ -225,68 +233,35 @@ class MainWin():
             self._gui.stageButtonsGroup.setEnabled(False)
         
         self._app.init_devices()
-        self._app.log.update('Restarting Devices', tag='verbose')
+        self.timeout_loop = self._app.Timeout(self._app)
+        self._app.log.update('Restarting...', tag='verbose')
     
-    def exc_emission_toggle(self):
+    def dvc_toggle(self, nick):
         
-        # TODO: make a general toggle method for all relevant devices
-        
-        nick = 'EXC_LASER'
-        
-        # switch ON
-        if not self._app.dvcs[nick].state:
-            self._app.dvcs[nick].toggle(True)
-            self._gui.excOnButton.setIcon(QIcon(icon.SWITCH_ON))
-            self._gui.ledExc.setIcon(QIcon(icon.LED_BLUE))
-            self._app.log.update('Excitation ON', tag='verbose')
-        # switch OFF
-        else:
-            self._app.dvcs[nick].toggle(False)
-            self._gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
-            self._gui.ledExc.setIcon(QIcon(icon.LED_OFF)) 
-            self._app.log.update('Excitation OFF', tag='verbose')
-
-    def dep_emission_toggle(self):
-        
-        # TODO: make a general toggle method for all relevant devices
-        
-        nick = 'DEP_LASER'
-        
+        gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]['SWITCH'])
         # switch ON
         if not self._app.dvcs[nick].state:
             self._app.dvcs[nick].toggle(True)
             if self._app.dvcs[nick].state: # if managed to turn ON
-                self._gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_ON))
-                self._gui.ledDep.setIcon(QIcon(icon.LED_ORANGE)) 
-                self._app.log.update('Depletion ON', tag='verbose')
+                gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
+                if 'LED' in const.ICON_DICT[nick].keys():
+                    gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
+                    on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
+                    gui_led_object.setIcon(on_icon)
+                self._app.log.update(const.LOG_DICT[nick] +
+                                            ' toggled ON', tag='verbose')
+            return True
         # switch OFF
         else:
             self._app.dvcs[nick].toggle(False)
             if not self._app.dvcs[nick].state: # if managed to turn OFF
-                self._gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
-                self._gui.ledDep.setIcon(QIcon(icon.LED_OFF))
-                self._app.log.update('Depletion OFF', tag='verbose')
-
-    def dep_shutter_toggle(self):
-        
-        # TODO: make a general toggle method for all relevant devices
-        
-        nick = 'DEP_SHUTTER'
-        
-        # switch ON
-        if not self._app.dvcs[nick].state:
-            self._app.dvcs[nick].toggle(True)
-            self._app.dvcs[nick].state = True
-            self._gui.depShutterOn.setIcon(QIcon(icon.SWITCH_ON))
-            self._gui.ledShutter.setIcon(QIcon(icon.LED_GREEN)) 
-            self._app.log.update('Depletion shutter OPEN', tag='verbose')
-        # switch OFF
-        else:
-            self._app.dvcs[nick].toggle(False)
-            self._app.dvcs[nick].state = False
-            self._gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
-            self._gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
-            self._app.log.update('Depletion shutter CLOSED', tag='verbose')
+                gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
+                if 'LED' in const.ICON_DICT[nick].keys():
+                    gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
+                    gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
+                self._app.log.update(const.LOG_DICT[nick] +
+                                        ' toggled OFF', tag='verbose')
+            return False
     
     def dep_sett_apply(self):
         
@@ -297,31 +272,20 @@ class MainWin():
             val = self._gui.depPowSpinner.value()
             self._app.dvcs['DEP_LASER'].set_power(val)
     
-    def stage_toggle(self):
-        
-        nick = 'STAGE'
-        
-        # switch ON
-        if not self._app.dvcs[nick].state:
-            self._app.dvcs[nick].toggle(True)
-            self._gui.stageOn.setIcon(QIcon(icon.SWITCH_ON))
-            self._gui.stageButtonsGroup.setEnabled(True)
-            self._app.log.update('Stage Control ON', tag='verbose')
-        
-        # switch OFF
-        else:
-            self._app.dvcs[nick].toggle(False)
-            self._gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
-            self._gui.stageButtonsGroup.setEnabled(False)
-            self._app.log.update('Stage Control OFF', tag='verbose')
-    
     def move_stage(self, dir, steps):
         
-        self._app.dvcs['STAGE'].move(dir=dir, steps=steps)
+        nick = 'STAGE'
+        self._app.dvcs[nick].move(dir=dir, steps=steps)
+        self._app.log.update(const.LOG_DICT[nick] +
+                                    ' moved ' + str(steps) +
+                                    ' steps ' + str(dir), tag='verbose')
     
     def release_stage(self):
         
-        self._app.dvcs['STAGE'].release()
+        nick = 'STAGE'
+        self._app.dvcs[nick].release()
+        self._app.log.update(const.LOG_DICT[nick] +
+                                    ' released', tag='verbose')
 
     def show_laser_dock(self):
         '''
