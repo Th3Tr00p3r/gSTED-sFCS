@@ -78,7 +78,9 @@ class DepletionLaser(drivers.VISAInstrument):
         try:
             self.toggle(False)
             self.set_current(1500)
-            self.temp = self.get_SHG_temp()
+            while self.temp == -999:
+                self.get_SHG_temp()
+            error_dict[nick] = None
         except drivers.visa.errors.VisaIOError as exc:
             error_dict[nick] = 'VISA Error'
             logic.Error(exc, error_txt='VISA can\'t access ' + address +
@@ -98,12 +100,10 @@ class DepletionLaser(drivers.VISAInstrument):
         
     def get_SHG_temp(self):
         self.temp = self.query('SHGtemp')
-        return self.temp
     
     def get_power(self):
         
         self.power = self.query('Power 0')
-        return self.power
     
     def set_power(self, value):
         
@@ -119,7 +119,6 @@ class DepletionLaser(drivers.VISAInstrument):
     def get_current(self):
         
         self.current = self.query('LDcurrent 1')
-        return self.current
     
     def set_current(self, value):
         
