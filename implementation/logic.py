@@ -9,7 +9,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QTimer
 #implementation imports
 import implementation.constants as const
-import implementation.drivers as drivers
+import implementation.devices as devices
 from implementation.dialog import Error, Question
 from implementation.log import Log
 # GUI imports
@@ -17,16 +17,6 @@ import gui.icons.icon_paths as icon
 import gui.gui as gui_module
 # camera error
 from instrumental.drivers.cameras.uc480 import UC480Error
-
-import numpy as np
-
-class Counter():
-    
-    def __init__(self):
-        
-        self.cont_count_buff = None
-        self.buff_sz = 2000 # get from settings
-        selfcounts = None
 
 class App():
     
@@ -135,7 +125,7 @@ class App():
     def init_errors(self):
         
         self.error_dict = {}
-        for nick in const.DEV_NICKS:
+        for nick in const.DEVICE_NICKS:
             self.error_dict[nick] = None
     
     def init_devices(self):
@@ -146,11 +136,11 @@ class App():
         '''
         
         self.dvcs = {}
-        for nick in const.DEV_NICKS:
-            dev_driver = getattr(drivers,
-                                           const.DEV_DRIVERS[nick])
+        for nick in const.DEVICE_NICKS:
+            dev_driver = getattr(devices,
+                                           const.DEVICE_CLASS_NAMES[nick])
             dev_address = getattr(self.win['settings'],
-                                              const.DEV_ADDRSS_FLDS[nick]).text()
+                                              const.DEVICE_ADDRSS_FIELD_NAMES[nick]).text()
             self.dvcs[nick] = dev_driver(nick=nick, address=dev_address, error_dict=self.error_dict)
     
     def clean_up_app(self):
@@ -162,8 +152,9 @@ class App():
         
         def close_all_dvcs(app):
             
-            for nick in const.DEV_NICKS:
-                app.dvcs[nick].toggle(False)
+            for nick in const.DEVICE_NICKS:
+                if not self.error_dict[nick]:
+                    app.dvcs[nick].toggle(False)
                 
         def close_all_wins(app):
             
@@ -176,12 +167,12 @@ class App():
         
         close_all_dvcs(self)
         close_all_wins(self)
+        self.log.update('Quitting Application')
     
     def exit_app(self, event):
         
         pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
         if pressed == QMessageBox.Yes:
-            self.log.update('Quitting Application')
             self.clean_up_app()
         else:
             event.ignore()
@@ -471,18 +462,16 @@ class CamWin():
         self._gui.figure = plt.figure()
         self._gui.canvas = FigureCanvas(self._gui.figure)
         self._gui.gridLayout.addWidget(self._gui.canvas, 0, 1)
-        # initialize states
-        self.state['video'] = 0
 
     def clean_up(self):
         
         '''clean up before closing window'''
         
         # turn off video if On
-        if self.state['video']:
-            self.toggle_video()
+        if self._cam.video_state:
+            self.toggle_video(False)
         # disconnect camera
-        self._cam.driver.close()
+        self._cam.close()
         self._app.win['main'].actionCamera_Control.setEnabled(True)
         self._app.win['camera'] = None
         self._app.log.update('Camera connection closed', tag='verbose')
@@ -491,47 +480,45 @@ class CamWin():
     def init_cam(self):
         
         try:
-            self._cam = drivers.Camera() # instantiate camera object
-            self._cam.driver.set_auto_exposure()
+            self._cam = devices.Camera() # instantiate camera object
+            self._cam.set_auto_exposure(True) #TEST?
             self._app.log.update('Camera connection opened', tag='verbose')
         except UC480Error as exc:
             Error(exc=exc).display()
     
-    def toggle_video(self):
+    def toggle_video(self, bool):
         
         #Turn On
-        if not self.state['video']:
-            self.state['video'] = 1
+        if bool:
             self._gui.videoButton.setStyleSheet("background-color: "
-                                                                                 "rgb(225, 245, 225); "
-                                                                                 "color: black;")
+                                                             "rgb(225, 245, 225); "
+                                                             "color: black;")
             self._gui.videoButton.setText('Video ON')
             self._video_timer = QTimer()
             self._video_timer.timeout.connect(self._wait_for_frame)
-            self._cam.driver.start_live_video()
+            self._cam.toggle_video(True)
             self._video_timer.start(0)  # Run full throttle
             self._app.log.update('Camera video mode ON', tag='verbose')
             
         #Turn Off
         else:
-            self.state['video'] = 0
             self._gui.videoButton.setStyleSheet("background-color: "
-                                                                                 "rgb(225, 225, 225); "
-                                                                                 "color: black;")
+                                                             "rgb(225, 225, 225); "
+                                                             "color: black;")
             self._gui.videoButton.setText('Start Video')
-            self._cam.driver.stop_live_video()
+            self._cam.toggle_video(False)
             self._video_timer.stop()
             self._app.log.update('Camera video mode OFF', tag='verbose')
 
     def shoot(self):
 
-        if self.state['video']:
-            self.toggle_video()
-            img = self._cam.driver.grab_image()
+        if self._cam.video_state:
+            self.toggle_video(False)
+            img = self._cam.shoot()
             self._imshow(img)
-            self.toggle_video()
+            self.toggle_video(True)
         else:
-            img = self._cam.driver.grab_image()
+            img = self._cam.shoot()
             self._imshow(img)
         self._app.log.update('Camera photo taken', tag='verbose')
     
@@ -546,10 +533,10 @@ class CamWin():
         self._gui.canvas.draw()
     
     def _wait_for_frame(self):
-        frame_ready = self._cam.driver.wait_for_frame(timeout='0 ms')
-        if frame_ready:
-            img = self._cam.driver.latest_frame(copy=False)
-            self._imshow(img)
+
+        img = self._cam.latest_frame()
+        self._imshow(img)
+        
             
 class ErrWin():
     # TODO: 

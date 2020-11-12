@@ -23,16 +23,16 @@ DEFAULT_SETTINGS_FILE_PATH = './settings/default_settings.csv'
 MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
 
 # device nicks
-DEV_NICKS = ['EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE']
+DEVICE_NICKS = ['EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE']
 
 # device address fields in settings
-DEV_ADDRSS_FLDS = {'EXC_LASER': 'excTriggerExtChan',
+DEVICE_ADDRSS_FIELD_NAMES = {'EXC_LASER': 'excTriggerExtChan',
                                   'DEP_LASER': 'depPort',
                                   'DEP_SHUTTER': 'depShutterChan',
                                   'STAGE': 'arduinoChan', 
                                   }
 # device classes
-DEV_DRIVERS = {'EXC_LASER': 'ExcitationLaser',
+DEVICE_CLASS_NAMES = {'EXC_LASER': 'ExcitationLaser',
                             'DEP_LASER': 'DepletionLaser',
                             'DEP_SHUTTER': 'DepletionShutter',
                             'STAGE': 'StepperStage', 
