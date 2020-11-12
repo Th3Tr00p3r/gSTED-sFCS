@@ -1,0 +1,187 @@
+import implementation.drivers as drivers
+import implementation.logic as logic
+
+import numpy as np
+
+class Counter():
+    
+    def __init__(self):
+        
+        self.cont_count_buff = None
+        self.buff_sz = 2000 # get from settings
+        self.counts = None
+
+class Camera():
+    
+    def __init__(self):
+        
+        # idealy 'Camera' would inherit 'UC480_Camera', but this is problematic because of the 'Instrumental' API
+        self._driver = drivers.UC480_Camera(reopen_policy='new')
+        
+        self.video_state = False
+        
+    def close(self):
+        
+        self._driver.close()
+    
+    def set_auto_exposure(self, bool):
+        
+        self._driver.set_auto_exposure(bool)
+    
+    def shoot(self):
+        
+        return self._driver.grab_image()
+    
+    def toggle_video(self, bool):
+        
+        if bool:
+            self._driver.start_live_video()
+        else:
+            self._driver.stop_live_video()
+        self.video_state = bool
+    
+    def latest_frame(self):
+        
+        frame_ready = self._driver.wait_for_frame(timeout='0 ms')
+        if frame_ready:
+           return self._driver.latest_frame(copy=False)            
+    
+class ExcitationLaser(drivers.DAQmxInstrument):
+    
+    def __init__(self, nick, address, error_dict):
+        
+        self.nick = nick # for errors?
+        super().__init__(address=address, type='D')
+
+        self.toggle(False)
+        self.state = False
+    
+    def toggle(self, bool):
+        
+        self.write(bool)
+        self.state = bool
+
+class DepletionLaser(drivers.VISAInstrument):
+    '''
+    Control depletion laser through pyVISA
+    '''
+    
+    def __init__(self, nick, address, error_dict):
+        
+        self.current = None
+        self.power = None
+        self.state = None
+        self.temp = -999
+        super().__init__(address=address,
+                               read_termination = '\r', 
+                               write_termination = '\r')
+        try:
+            self.toggle(False)
+            self.set_current(1500)
+            self.temp = self.get_SHG_temp()
+        except drivers.visa.errors.VisaIOError as exc:
+            error_dict[nick] = 'VISA Error'
+            logic.Error(exc, error_txt='VISA can\'t access ' + address +
+                                         ' (depletion laser)').display()
+    
+    def toggle(self, bool):
+        
+            if bool:
+                if self.temp > 52 :
+                    self.write('setLDenable 1')
+                    self.state = bool
+                else:
+                    logic.Error(error_txt='SHG temperature too low.').display()
+            else:
+                self.write('setLDenable 0')
+                self.state = bool
+        
+    def get_SHG_temp(self):
+        self.temp = self.query('SHGtemp')
+        return self.temp
+    
+    def get_power(self):
+        
+        self.power = self.query('Power 0')
+        return self.power
+    
+    def set_power(self, value):
+        
+        # check that current value is within range
+        if (value <= 1000) and (value >= 99):
+            # change the mode to current
+            self.write('Powerenable 1')
+            # then set the power
+            self.write('Setpower 0 ' + str(value))
+        else:
+            logic.Error(error_txt='Power out of range').display()
+    
+    def get_current(self):
+        
+        self.current = self.query('LDcurrent 1')
+        return self.current
+    
+    def set_current(self, value):
+        
+        # check that current value is within range
+        if (value <= 2500) and (value >= 1500):
+            # change the mode to current
+            self.write('Powerenable 0')
+            # then set the current
+            self.write('setLDcur 1 ' + str(value))
+        else:
+            logic.Error(error_txt='Current out of range').display()
+            
+
+class DepletionShutter(drivers.DAQmxInstrument):
+    '''
+    Depletion Shutter Control
+    '''
+    def __init__(self, nick, address, error_dict):
+        
+        self.nick = nick # for errors?
+        super().__init__(address=address, type='D')
+        
+        self.toggle(False)
+        self.state = False
+    
+    def toggle(self, bool):
+        
+        self.write(bool)
+        self.state = bool
+    
+class StepperStage():
+    '''
+    Control stepper stage through Arduino chip using PyVISA.
+    This device operates slowly and needs special care,
+    and so its driver is within its own class (not inherited)
+    '''
+    
+    def __init__(self, nick, address, error_dict):
+        
+        self.nick = nick
+        self.address = address
+        self.rm = drivers.visa.ResourceManager()
+        self.state = False
+    
+    def toggle(self, bool):
+        
+        if bool:
+            self.rsrc = self.rm.open_resource(self.address)
+        else:
+            if hasattr(self, 'rsrc'):
+                self.rsrc.close()
+        self.state = bool
+    
+    def move(self, dir=None,  steps=None):
+        
+        cmd_dict = {'UP': (lambda steps: 'my ' + str(-steps)),
+                          'DOWN': (lambda steps: 'my ' + str(steps)),
+                          'LEFT': (lambda steps: 'mx ' + str(steps)),
+                          'RIGHT': (lambda steps: 'mx ' + str(-steps))
+                        }
+        self.rsrc.write(cmd_dict[dir](steps))
+    
+    def release(self):
+
+        self.rsrc.write('ryx ')
