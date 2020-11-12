@@ -1,6 +1,6 @@
 import os
-import implementation.constants as const
 from datetime import datetime
+import implementation.constants as const
 
 class Log():
     
