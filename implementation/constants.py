@@ -45,10 +45,10 @@ DEFAULT_SETTINGS_FILE_PATH = './settings/default_settings.csv'
 MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
 
 # device nicks
-DEVICE_NICKS = ['EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE']
+DEVICE_NICKS = ['EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'COUNTER']
 
 # device address fields in settings
-DEVICE_ADDRSS_FIELD_NAMES = {'EXC_LASER': 'excTriggerExtChan',
+DEVICE_ADDRSS_FIELD_NAMES = {'EXC_LASER': 'excTriggerExtChan', # TODO: change name to DEVICE_ADDRESS_GUI_DICT
                                                 'DEP_LASER': 'depPort',
                                                 'DEP_SHUTTER': 'depShutterChan',
                                                 'STAGE': 'arduinoChan', 
@@ -57,5 +57,28 @@ DEVICE_ADDRSS_FIELD_NAMES = {'EXC_LASER': 'excTriggerExtChan',
 DEVICE_CLASS_NAMES = {'EXC_LASER': 'ExcitationLaser',
                                      'DEP_LASER': 'DepletionLaser',
                                      'DEP_SHUTTER': 'DepletionShutter',
-                                     'STAGE': 'StepperStage', 
+                                     'STAGE': 'StepperStage',
+                                     'COUNTER': 'Counter'
                                      }
+                            
+COUNTER_PARAM_GUI_DICT = { 'buff_sz': {'field': 'counterBufferSizeSpinner',
+                                                               'access': 'value'},
+                                            'update_time': {'field': 'counterUpdateTimeSpinner',
+                                                                     'access': 'value'},
+                                            'pxl_clk': {'field': 'pixelClockCounterAddress',
+                                                              'access': 'text'},
+                                           'pxl_clk_output': {'field': 'pixelClockCounterIntOutputAddress',
+                                                                         'access': 'text'},
+                                           'trggr': {'field': 'counterTriggerAddress',
+                                                          'access': 'text'},
+                                           'trggr_armstart_digedge': {'field': 'counterTriggerArmStartDigEdgeSrc',
+                                                                                     'access': 'text'},
+                                           'trggr_edge': {'field': 'counterTriggerEdge',
+                                                                  'access': 'currentText'},
+                                           'photon_cntr': {'field': 'counterPhotonCounter',
+                                                                    'access': 'text'},
+                                           'CI_cnt_edges_term': {'field': 'counterCIcountEdgesTerm',
+                                                                             'access': 'text'},
+                                           'CI_dup_prvnt': {'field': 'counterCIdupCountPrevention',
+                                                                          'access': 'isChecked'}
+                                            }

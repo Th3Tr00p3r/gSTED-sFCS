@@ -143,13 +143,35 @@ class App():
         instantiating a driver object for each device
         '''
         
+        def get_counter_params(app):
+            
+            '''
+            Get counter parameters from settings GUI
+            using a dictionary predefined in constants.py
+            '''
+            
+            gui_dict = const.COUNTER_PARAM_GUI_DICT
+            param_dict = {}
+            
+            for key, val_dict in gui_dict.items():
+                gui_field = getattr(app.win['settings'], val_dict['field'])
+                gui_field_value = getattr(gui_field, val_dict['access'])()
+                param_dict[key] = gui_field_value
+            return param_dict
+        
         self.dvcs = {}
         for nick in const.DEVICE_NICKS:
-            dev_driver = getattr(devices,
-                                           const.DEVICE_CLASS_NAMES[nick])
-            dev_address = getattr(self.win['settings'],
-                                              const.DEVICE_ADDRSS_FIELD_NAMES[nick]).text()
-            self.dvcs[nick] = dev_driver(nick=nick, address=dev_address, error_dict=self.error_dict)
+            if nick in {'COUNTER'}:
+                dvc_class = getattr(devices,
+                                            const.DEVICE_CLASS_NAMES[nick])
+                self.dvcs[nick] = dvc_class(param_dict=get_counter_params(self),
+                                                      error_dict=self.error_dict)
+            elif nick in {'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE'}:
+                dvc_class = getattr(devices,
+                                            const.DEVICE_CLASS_NAMES[nick])
+                dvc_address = getattr(self.win['settings'],
+                                                  const.DEVICE_ADDRSS_FIELD_NAMES[nick]).text()
+                self.dvcs[nick] = dvc_class(address=dvc_address, error_dict=self.error_dict)
     
     def clean_up_app(self):
         
