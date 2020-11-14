@@ -1331,7 +1331,7 @@
                             </widget>
                            </item>
                            <item>
-                            <widget class="QLineEdit" name="counterPixelClockChannel">
+                            <widget class="QLineEdit" name="pixelClockCounterAddress">
                              <property name="font">
                               <font>
                                <pointsize>8</pointsize>
@@ -1360,7 +1360,7 @@
                             </widget>
                            </item>
                            <item>
-                            <widget class="QLineEdit" name="counterPixelClockOutputChannel">
+                            <widget class="QLineEdit" name="pixelClockCounterIntOutputAddress">
                              <property name="font">
                               <font>
                                <pointsize>8</pointsize>
@@ -1398,7 +1398,7 @@
                             </widget>
                            </item>
                            <item>
-                            <widget class="QLineEdit" name="counterTriggerChannel">
+                            <widget class="QLineEdit" name="counterTriggerAddress">
                              <property name="font">
                               <font>
                                <pointsize>8</pointsize>
