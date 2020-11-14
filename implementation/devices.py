@@ -1,15 +1,21 @@
 import implementation.drivers as drivers
 import implementation.logic as logic
 
-import numpy as np
+#import numpy as np
 
-class Counter():
+class Counter(drivers.DAQmxInstrumentCI):
     
-    def __init__(self):
+    def __init__(self, param_dict, error_dict):
+        
+        self.nick = 'COUNTER' # for errors?
+        super().__init__(param_dict=param_dict)
         
         self.cont_count_buff = None
-        self.buff_sz = 2000 # get from settings
         self.counts = None
+    
+    def start_cont(self):
+        
+        self.start()
 
 class Camera():
     
@@ -46,12 +52,12 @@ class Camera():
         if frame_ready:
            return self._driver.latest_frame(copy=False)            
     
-class ExcitationLaser(drivers.DAQmxInstrument):
+class ExcitationLaser(drivers.DAQmxInstrumentDO):
     
-    def __init__(self, nick, address, error_dict):
+    def __init__(self, address, error_dict):
         
-        self.nick = nick # for errors?
-        super().__init__(address=address, type='D')
+        self.nick = 'EXC_LASER' # for errors?
+        super().__init__(address=address)
 
         self.toggle(False)
         self.state = False
@@ -66,8 +72,9 @@ class DepletionLaser(drivers.VISAInstrument):
     Control depletion laser through pyVISA
     '''
     
-    def __init__(self, nick, address, error_dict):
+    def __init__(self, address, error_dict):
         
+        self.nick = 'DEP_LASER'
         self.current = None
         self.power = None
         self.state = None
@@ -79,9 +86,9 @@ class DepletionLaser(drivers.VISAInstrument):
             self.toggle(False)
             self.set_current(1500)
             self.get_SHG_temp()
-            error_dict[nick] = None
+            error_dict[self.nick] = None
         except drivers.visa.errors.VisaIOError as exc:
-            error_dict[nick] = 'VISA Error'
+            error_dict[self.nick] = 'VISA Error'
             logic.Error(exc, error_txt='VISA can\'t access ' + address +
                                          ' (depletion laser)').display()
     
@@ -138,14 +145,14 @@ class DepletionLaser(drivers.VISAInstrument):
             logic.Error(error_txt='Current out of range').display()
             
 
-class DepletionShutter(drivers.DAQmxInstrument):
+class DepletionShutter(drivers.DAQmxInstrumentDO):
     '''
     Depletion Shutter Control
     '''
-    def __init__(self, nick, address, error_dict):
+    def __init__(self, address, error_dict):
         
-        self.nick = nick # for errors?
-        super().__init__(address=address, type='D')
+        self.nick = 'DEP_SHUTTER' # for errors?
+        super().__init__(address=address)
         
         self.toggle(False)
         self.state = False
@@ -162,9 +169,9 @@ class StepperStage():
     and so its driver is within its own class (not inherited)
     '''
     
-    def __init__(self, nick, address, error_dict):
+    def __init__(self, address, error_dict):
         
-        self.nick = nick
+        self.nick = 'STAGE'
         self.address = address
         self.rm = drivers.visa.ResourceManager()
         self.state = False

@@ -2,19 +2,33 @@ from instrumental.drivers.cameras.uc480 import UC480_Camera # NOQA
 import pyvisa as visa
 import nidaqmx
 
-class DAQmxInstrument():
+class DAQmxInstrumentDO():
     
-    def __init__(self, address, type): # types : AI/O, DI/O, CI/O
+    def __init__(self, address):
         self.address = address
-        self.type = type
     
     def write(self, cmnd):
         with nidaqmx.Task() as task:
-            if self.type == 'D':
-                task.do_channels.add_do_chan(self.address)
-            elif self.type == 'C':
-                print('Implement me!')
+            task.do_channels.add_do_chan(self.address)
             task.write(cmnd)
+
+class DAQmxInstrumentCI():
+    
+    def __init__(self, param_dict):
+        
+         self.params = param_dict
+        
+    def start(self):
+        
+        with nidaqmx.Task() as task:
+            chan = task.ci_channels. \
+                       add_ci_count_edges_chan(counter=self.params['photon_cntr'],
+                                                           edge=nidaqmx.constants.Edge.RISING,
+                                                           initial_count=0,
+                                                           count_direction=nidaqmx.constants.CountDirection.COUNT_UP)
+            chan.ci_count_edges_term = self.params['CI_cnt_edges_term']
+            chan.ci_dup_count_prevention = self.params['CI_dup_prvnt']
+            task.start()
 
 class VISAInstrument():
     
