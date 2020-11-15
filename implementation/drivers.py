@@ -1,34 +1,47 @@
 from instrumental.drivers.cameras.uc480 import UC480_Camera # NOQA
 import pyvisa as visa
 import nidaqmx
+import numpy as np
 
 class DAQmxInstrumentDO():
     
     def __init__(self, address):
-        self.address = address
+        self._address = address
     
     def write(self, cmnd):
         with nidaqmx.Task() as task:
-            task.do_channels.add_do_chan(self.address)
+            task.do_channels.add_do_chan(self._address)
             task.write(cmnd)
 
 class DAQmxInstrumentCI():
     
     def __init__(self, param_dict):
         
-         self.params = param_dict
+        self._params = param_dict
+        self._task = nidaqmx.Task()
+        self._init_chan()
         
+    def _init_chan(self):
+    
+        chan = self._task.ci_channels. \
+                   add_ci_count_edges_chan(counter=self._params['photon_cntr'],
+                                                       edge=nidaqmx.constants.Edge.RISING,
+                                                       initial_count=0,
+                                                       count_direction=nidaqmx.constants.CountDirection.COUNT_UP)
+        chan.ci_count_edges_term = self._params['CI_cnt_edges_term']
+#        chan.ci_dup_count_prevention = self._params['CI_dup_prvnt']
+    
     def start(self):
         
-        with nidaqmx.Task() as task:
-            chan = task.ci_channels. \
-                       add_ci_count_edges_chan(counter=self.params['photon_cntr'],
-                                                           edge=nidaqmx.constants.Edge.RISING,
-                                                           initial_count=0,
-                                                           count_direction=nidaqmx.constants.CountDirection.COUNT_UP)
-            chan.ci_count_edges_term = self.params['CI_cnt_edges_term']
-            chan.ci_dup_count_prevention = self.params['CI_dup_prvnt']
-            task.start()
+        self._task.start()
+    
+    def read(self):
+    
+        return np.array(self._task.read(number_of_samples_per_channel=-1)[0])
+        
+    def stop(self):
+        
+        self._task.stop()
 
 class VISAInstrument():
     
@@ -58,18 +71,18 @@ class VISAInstrument():
     class Task():
     
         def __init__(self, inst):
-            self.inst = inst
+            self._inst = inst
             
         def __enter__(self):
-            self.rsrc = self.inst.rm.open_resource(self.inst.address,
-                                                               read_termination=self.inst.read_termination,
-                                                               write_termination=self.inst.write_termination)
-            return self.rsrc
+            self._rsrc = self._inst.rm.open_resource(self._inst.address,
+                                                               read_termination=self._inst.read_termination,
+                                                               write_termination=self._inst.write_termination)
+            return self._rsrc
         
         def __exit__(self, exc_type, exc_value, exc_tb):
             
-            if hasattr(self, 'rsrc'):
-                self.rsrc.close()
+            if hasattr(self, '_rsrc'):
+                self._rsrc.close()
 
 ####TESTING####
         

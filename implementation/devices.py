@@ -1,7 +1,6 @@
 import implementation.drivers as drivers
 import implementation.logic as logic
-
-#import numpy as np
+import numpy as np
 
 class Counter(drivers.DAQmxInstrumentCI):
     
@@ -10,12 +9,24 @@ class Counter(drivers.DAQmxInstrumentCI):
         self.nick = 'COUNTER' # for errors?
         super().__init__(param_dict=param_dict)
         
-        self.cont_count_buff = None
+        self.cont_count_buff = np.zeros(1, )
         self.counts = None
-    
-    def start_cont(self):
         
-        self.start()
+        self.toggle(True) # turn ON right from the start
+    
+    def toggle(self, bool):
+        
+        if bool:
+            self.start()
+        else:
+            self.stop()
+        self.state = bool
+    
+    def count(self):
+        
+        self.cont_count_buff = np.append(self.cont_count_buff, self.read())
+#        self.cont_count_buff.append(self.read())
+        
 
 class Camera():
     
@@ -60,8 +71,7 @@ class ExcitationLaser(drivers.DAQmxInstrumentDO):
         super().__init__(address=address)
 
         self.toggle(False)
-        self.state = False
-    
+        
     def toggle(self, bool):
         
         self.write(bool)
@@ -77,7 +87,6 @@ class DepletionLaser(drivers.VISAInstrument):
         self.nick = 'DEP_LASER'
         self.current = None
         self.power = None
-        self.state = None
         self.temp = -999
         super().__init__(address=address,
                                read_termination = '\r', 
@@ -88,6 +97,7 @@ class DepletionLaser(drivers.VISAInstrument):
             self.get_SHG_temp()
             error_dict[self.nick] = None
         except drivers.visa.errors.VisaIOError as exc:
+            self.state = None
             error_dict[self.nick] = 'VISA Error'
             logic.Error(exc, error_txt='VISA can\'t access ' + address +
                                          ' (depletion laser)').display()
@@ -155,7 +165,6 @@ class DepletionShutter(drivers.DAQmxInstrumentDO):
         super().__init__(address=address)
         
         self.toggle(False)
-        self.state = False
     
     def toggle(self, bool):
         
@@ -174,7 +183,8 @@ class StepperStage():
         self.nick = 'STAGE'
         self.address = address
         self.rm = drivers.visa.ResourceManager()
-        self.state = False
+        
+        self.toggle(False)
     
     def toggle(self, bool):
         
