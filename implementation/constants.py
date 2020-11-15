@@ -6,6 +6,7 @@ import gui.icons.icon_paths as icon
 # general
 EXIT_CODE_REBOOT = -123456789 # for restarting the application
 MIN_SHG_TEMP = 52
+COUNTER_BUFFER_ALLOC_SIZE = (1, )
 
 # icons
 ICON_DICT = {'EXC_LASER': {'LED': 'ledExc',
