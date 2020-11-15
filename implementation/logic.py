@@ -45,7 +45,7 @@ class App():
     class Timeout():
         
         def __init__(self, app):
-            self._app = app            
+            self._app = app
             self._timers = self._get_timers()
             self._main_timer = QTimer()
             self._main_timer.timeout.connect(self._main)
@@ -69,6 +69,9 @@ class App():
         def _get_timers(self):
             
             '''Instantiate specific timers for devices'''
+            # TODO: note that in LabVIEW original, apparently the updates were always "ready" in 'Timing' cluster (LEDs  always ON)
+            # This could mean this special treatment is unnecessary
+            # (the counts don't even work there when counter timing LED is turned OFF before running)
             
             timers_dict = {}
             for key, value in self._get_timings_dict().items():
@@ -86,13 +89,9 @@ class App():
                 update_func_dict[key][1]()
                 
             # then start individual timers
-            self._main_timer.start(50)
+            self._main_timer.start(10)
             for key in self._timers.keys():
                 self._timers[key].start()
-        
-        def _update_counter(self):
-            
-            pass
         
         def _update_dep(self):
             
@@ -125,10 +124,28 @@ class App():
         def _update_errorGUI(self):
             # TODO: update the error GUI according to errors in self._app.error_dict
             pass
+            
+        def _update_counter(self):
+            
+            def average_counts(app):
+                
+                cnts_arr = app.dvcs[nick].cont_count_buff
+                avg_interval = app.win['main'].countsAvgSlider.value() # in ms (range 10-1000)
+                dt = 1 # in ms (TODO: why is this value chosen? Ask Oleg)
+                start_idx = len(cnts_arr) - int(avg_interval/dt)
+                
+                if start_idx > 0:
+                    return (cnts_arr[-1] - cnts_arr[start_idx]) / avg_interval # to have KHz
+                else:
+                    return 0
+                
+            nick = 'COUNTER'
+            self._app.dvcs[nick].count()
+            self._app.win['main'].countsSpinner.setValue(average_counts(self._app))
         
         #MAIN
         def _main(self):
-            pass
+            self._update_counter()
     
     def init_errors(self):
         
@@ -237,9 +254,7 @@ class MainWin():
         
     def restart(self):
         
-        '''Restart all devices (except camera)'''
-        # TODO: no need to restart the application, only re-initiate the devices (I think).
-        # this function was changed, clean up the application restart stuff from the rest of the code.
+        '''Restart all devices (except camera) and the timeout loop'''
         
         def lights_out(self):
             
