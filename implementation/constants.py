@@ -46,7 +46,7 @@ DEFAULT_SETTINGS_FILE_PATH = './settings/default_settings.csv'
 MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
 
 # device nicks
-DEVICE_NICKS = ['EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'COUNTER']
+DEVICE_NICKS = ['COUNTER', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE']
 
 # device address fields in settings
 DEVICE_ADDRSS_FIELD_NAMES = {'EXC_LASER': 'excTriggerExtChan', # TODO: change name to DEVICE_ADDRESS_GUI_DICT
