@@ -1,46 +1,11 @@
+'''
+Devices Module.
+'''
+
 import implementation.drivers as drivers
 import implementation.logic as logic
 import numpy as np
-
-import functools
-
-def error_handler(func):
-    
-    # TODO: possibly turn this into a class, and create subclasses as needed. also create one for logging
-    
-    @functools.wraps(func)
-    def wrapper_error_handler(self, *args, **kwargs):
-        
-        dvc = self
-        
-        if not dvc.error_dict[dvc.nick]: # if there's no errors
-            try:
-                func(self, *args, **kwargs)
-                
-            except drivers.visa.errors.VisaIOError as exc:
-                dvc.error_dict[dvc.nick] = 'VISA Error'
-                logic.Error(exc, error_txt='VISA can\'t access ' + dvc.address +
-                                                   ' (depletion laser)').display()
-        else:
-            print(F"'{dvc.nick}' error. Ignoring '{func.__name__}()' call.")
-                                               
-    return wrapper_error_handler
-
-
-#@contextmanager
-#def error_handler():
-#    
-#    '''For clean handeling of errors and logging outside functions'''
-#    
-#    try:
-#        yield
-#    except drivers.visa.errors.VisaIOError as exc:
-#        error_dict[dvc.nick] = 'VISA Error'
-#        logic.Error(exc, error_txt='VISA can\'t access ' + dvc.address +
-#                                           ' (depletion laser)').display()
-#    except TypeError:
-#        print("This is a custom TypeError message.")
-#        raise
+from implementation.error_handler import dvc_error_handler as err_hndlr
 
 class Counter(drivers.DAQmxInstrumentCI):
     
@@ -159,7 +124,7 @@ class DepletionLaser(drivers.VISAInstrument):
         self.set_current(1500)
         self.get_SHG_temp()
     
-    @error_handler
+    @err_hndlr
     def toggle(self, bool):
         
             if bool:
@@ -172,21 +137,21 @@ class DepletionLaser(drivers.VISAInstrument):
                 self.write('setLDenable 0')
                 self.state = bool
     
-    @error_handler
+    @err_hndlr
     def get_SHG_temp(self):
         while True:
             self.temp = self.query('SHGtemp')
             if self.temp != -999:
                 break
     
-    @error_handler
+    @err_hndlr
     def get_power(self):
         while True:
             self.power = self.query('Power 0')
             if self.power != -999:
                 break
                 
-    @error_handler
+    @err_hndlr
     def set_power(self, value):
         
         # check that current value is within range
@@ -198,14 +163,14 @@ class DepletionLaser(drivers.VISAInstrument):
         else:
             logic.Error(error_txt='Power out of range').display()
     
-    @error_handler
+    @err_hndlr
     def get_current(self):
         while True:
             self.current = self.query('LDcurrent 1')
             if self.current != -999:
                 break
     
-    @error_handler
+    @err_hndlr
     def set_current(self, value):
         
         # check that current value is within range
