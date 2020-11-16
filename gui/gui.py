@@ -188,7 +188,7 @@ class SettWin(QDialog):
         self.imp = logic.SettWin(self, app)
     
     def closeEvent(self, event):
-        print('Settings window closed (closeEvent)') # TEST
+    
         self.imp.clean_up()
 
     @pyqtSlot()
@@ -229,8 +229,8 @@ class CamWin(QWidget):
     def on_videoButton_released(self):
         
         # Turn ON
-        if self.videoButton.text() == 'Video OFF':
+        if self.videoButton.text() == 'Start Video':
             self.imp.toggle_video(True)
         # Turn OFF
         else:
-            self.imp.toggle_video(True)
+            self.imp.toggle_video(False)

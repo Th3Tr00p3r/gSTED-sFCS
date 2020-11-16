@@ -44,7 +44,7 @@ class Error(UserDialog):
                                   )
         else:
             super().__init__(msg_icon=QMessageBox.Critical,
-                                   msg_title=str(exc),
+                                   msg_title='User Error',
                                    msg_text=error_txt,
                                   )
 

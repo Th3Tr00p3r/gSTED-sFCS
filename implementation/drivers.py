@@ -17,18 +17,18 @@ class DAQmxInstrumentCI():
     
     def __init__(self, param_dict):
         
-        self._params = param_dict
+        self._param_dict = param_dict
         self._task = nidaqmx.Task()
         self._init_chan()
         
     def _init_chan(self):
     
         chan = self._task.ci_channels. \
-                   add_ci_count_edges_chan(counter=self._params['photon_cntr'],
+                   add_ci_count_edges_chan(counter=self._param_dict['photon_cntr'],
                                                        edge=nidaqmx.constants.Edge.RISING,
                                                        initial_count=0,
                                                        count_direction=nidaqmx.constants.CountDirection.COUNT_UP)
-        chan.ci_count_edges_term = self._params['CI_cnt_edges_term']
+        chan.ci_count_edges_term = self._param_dict['CI_cnt_edges_term']
 #        chan.ci_dup_count_prevention = self._params['CI_dup_prvnt']
     
     def start(self):
@@ -65,7 +65,7 @@ class VISAInstrument():
             reply = task.query(cmnd)
             try:
                 return float(reply)
-            except:
+            except ValueError:
                 return -999
                 
     class Task():
