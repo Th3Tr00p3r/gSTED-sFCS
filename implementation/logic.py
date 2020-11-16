@@ -2,6 +2,17 @@
 Logic Module.
 '''
 
+##import functools
+##
+##def decorator(func):
+##    @functools.wraps(func)
+##    def wrapper_decorator(*args, **kwargs):
+##        # Do something before
+##        value = func(*args, **kwargs)
+##        # Do something after
+##        return value
+##    return wrapper_decorator
+
 # PyQt5 imports
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QFileDialog)
@@ -34,6 +45,8 @@ class App():
         self.init_devices()
         # initialize log
         self.log = Log(self.win['main'], dir_path='./log/')
+        # initialize measurement
+        self.meas = None
         
         #FINALLY
         self.win['main'].show()
@@ -127,25 +140,24 @@ class App():
             
         def _update_counter(self):
             
-            def average_counts(app):
-                
-                cnts_arr = app.dvcs[nick].cont_count_buff
-                avg_interval = app.win['main'].countsAvgSlider.value() # in ms (range 10-1000)
-                dt = 1 # in ms (TODO: why is this value chosen? Ask Oleg)
-                start_idx = len(cnts_arr) - int(avg_interval/dt)
-                
-                if start_idx > 0:
-                    return (cnts_arr[-1] - cnts_arr[start_idx]) / avg_interval # to have KHz
-                else:
-                    return 0
-                
-            nick = 'COUNTER'
-            self._app.dvcs[nick].count()
-            self._app.win['main'].countsSpinner.setValue(average_counts(self._app))
+            # definitions
+            cntr = self._app.dvcs['COUNTER']
+            gui = self._app.win['main']
+            avg_interval = gui.countsAvgSlider.value()
+            
+            cntr.count() # read new counts
+            gui.countsSpinner.setValue( # update avg counts in main GUI
+                cntr.average_counts(avg_interval)
+                )
+            cntr.dump_buff_overflow() # dump old counts beyond buffer size
         
         #MAIN
         def _main(self):
-            self._update_counter()
+            if hasattr(self, 'meas'):
+                if self.meas.type == 'FCS':
+                    self._update_counter()
+            else: # no ongoing measurement (self.meas == None)
+                self._update_counter()
     
     def init_errors(self):
         
@@ -190,7 +202,7 @@ class App():
                                                   const.DEVICE_ADDRSS_FIELD_NAMES[nick]).text()
                 self.dvcs[nick] = dvc_class(address=dvc_address, error_dict=self.error_dict)
     
-    def clean_up_app(self):
+    def clean_up_app(self, restart=False):
         
         '''
         Close all devices and secondary windows
@@ -212,9 +224,27 @@ class App():
                     else:
                         self.win[win_key].close() # mainwindows and widgets close with close()
         
-        close_all_dvcs(self)
-        close_all_wins(self)
-        self.log.update('Quitting Application')
+        def lights_out(gui):
+            
+            '''turn OFF all device switch/LED icons'''
+            
+            gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
+            gui.ledExc.setIcon(QIcon(icon.LED_OFF))
+            gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
+            gui.ledDep.setIcon(QIcon(icon.LED_OFF))
+            gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
+            gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
+            gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
+            gui.stageButtonsGroup.setEnabled(False)
+        
+        if restart:
+            close_all_dvcs(self)
+            lights_out(self.win['main'])
+        else:
+            if self.meas:
+                self.meas.stop()
+            close_all_wins(self)
+            self.log.update('Quitting Application.')
     
     def exit_app(self, event):
         
@@ -241,12 +271,6 @@ class MainWin():
         self._gui.ledDep.clicked.connect(self.show_laser_dock)
         self._gui.ledShutter.clicked.connect(self.show_laser_dock)
         self._gui.actionRestart.triggered.connect(self.restart)
-        # initialize measurement states
-        self.meas_state = {}
-        self.meas = None
-        self.meas_state['FCS'] = ''
-        self.meas_state['sol_sFCS'] = ''
-        self.meas_state['img_sFCS'] = ''
     
     def close(self, event):
         
@@ -256,22 +280,12 @@ class MainWin():
         
         '''Restart all devices (except camera) and the timeout loop'''
         
-        def lights_out(self):
-            
-            '''turn OFF all device switches and LED icons'''
-            
-            self._gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
-            self._gui.ledExc.setIcon(QIcon(icon.LED_OFF))
-            self._gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
-            self._gui.ledDep.setIcon(QIcon(icon.LED_OFF))
-            self._gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
-            self._gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
-            self._gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
-            self._gui.stageButtonsGroup.setEnabled(False)
-        
-        self._app.init_devices()
-        self.timeout_loop = self._app.Timeout(self._app)
-        self._app.log.update('Restarting...', tag='verbose')
+        pressed = Question(q_txt='Are you sure?', q_title='Restarting Program').display()
+        if pressed == QMessageBox.Yes:
+            self._app.clean_up_app(restart=True)
+            self._app.init_devices()
+            self.timeout_loop = self._app.Timeout(self._app)
+            self._app.log.update('Restarting...', tag='verbose')
     
     def dvc_toggle(self, nick):
         
@@ -302,12 +316,18 @@ class MainWin():
     
     def dep_sett_apply(self):
         
-        if self._gui.currModeRadio.isChecked(): # current mode
-            val = self._gui.depCurrSpinner.value()
-            self._app.dvcs['DEP_LASER'].set_current(val)
-        else: # power mode
-            val = self._gui.depPowSpinner.value()
-            self._app.dvcs['DEP_LASER'].set_power(val)
+        # TODO: handle errors with decorator as in devices
+        nick = 'DEP_LASER'
+        if not self._app.error_dict[nick]: # if there's no errors
+            if self._gui.currModeRadio.isChecked(): # current mode
+                val = self._gui.depCurrSpinner.value()
+                self._app.dvcs[nick].set_current(val)
+            else: # power mode
+                val = self._gui.depPowSpinner.value()
+                self._app.dvcs[nick].set_power(val)
+        else:
+            error_txt = ('Depletion laser error')
+            Error(error_txt=error_txt).display()
     
     def move_stage(self, dir, steps):
         
@@ -334,17 +354,20 @@ class MainWin():
 
     def start_FCS_meas(self):
         
-        if not self.meas_state['FCS']:
-            self.meas_state['FCS'] = True
-            self.meas = Measurement(type='FCS', 
+        if not self._app.meas:
+            self._app.meas = Measurement(type='FCS', 
                                                 duration_spinner=self._gui.measFCSDurationSpinBox,
-                                                prog_bar=self._gui.FCSprogressBar, log=self.app.log)
-            self.meas.start()
+                                                prog_bar=self._gui.FCSprogressBar, log=self._app.log)
+            self._app.meas.start()
             self._gui.startFcsMeasurementButton.setText('Stop \nMeasurement')
-        else: # off state
-            self.meas_state['FCS'] = False
-            self.meas.stop()
+        elif self._app.meas.type == 'FCS':
+            self._app.meas.stop()
+            self._app.meas = None
             self._gui.startFcsMeasurementButton.setText('Start \nMeasurement')
+        else:
+            error_txt = (F"Another type of measurement "
+                             F"({self._app.meas.type}) is currently running.")
+            Error(error_txt=error_txt).display()
     
     def open_settwin(self):
         
@@ -565,12 +588,12 @@ class Measurement():
     def start(self):
         self._timer.start(1000)
         if self.log:
-            self.log.update('FCS measurement started')
+            self.log.update(self.type + ' measurement started')
         
     def stop(self):
         self._timer.stop()
         if self.log:
-            self.log.update('FCS measurement stopped')
+            self.log.update(self.type + ' measurement stopped')
         if self.prog_bar:
             self.prog_bar.setValue(0)
     
