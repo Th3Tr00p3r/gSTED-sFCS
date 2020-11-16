@@ -2,17 +2,6 @@
 Logic Module.
 '''
 
-##import functools
-##
-##def decorator(func):
-##    @functools.wraps(func)
-##    def wrapper_decorator(*args, **kwargs):
-##        # Do something before
-##        value = func(*args, **kwargs)
-##        # Do something after
-##        return value
-##    return wrapper_decorator
-
 # PyQt5 imports
 from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
                                               QDoubleSpinBox, QMessageBox, QFileDialog)
@@ -26,8 +15,8 @@ from implementation.log import Log
 # GUI imports
 import gui.icons.icon_paths as icon
 import gui.gui as gui_module
-# camera error
-from instrumental.drivers.cameras.uc480 import UC480Error
+
+from implementation.error_handler import logic_error_handler as err_hndlr
 
 class App():
     
@@ -248,7 +237,8 @@ class App():
     
     def exit_app(self, event):
         
-        pressed = Question(q_txt='Are you sure you want to quit?', q_title='Quitting Program').display()
+        pressed = Question(q_txt='Are you sure you want to quit?',
+                                   q_title='Quitting Program').display()
         if pressed == QMessageBox.Yes:
             self.clean_up_app()
         else:
@@ -280,12 +270,14 @@ class MainWin():
         
         '''Restart all devices (except camera) and the timeout loop'''
         
-        pressed = Question(q_txt='Are you sure?', q_title='Restarting Program').display()
+        pressed = Question(q_txt='Are you sure?',
+                                   q_title='Restarting Program').display()
         if pressed == QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
             self._app.init_devices()
             self.timeout_loop = self._app.Timeout(self._app)
-            self._app.log.update('Restarting...', tag='verbose')
+            self._app.log.update('restarting application.',
+                                        tag='verbose')
     
     def dvc_toggle(self, nick):
         
@@ -299,8 +291,8 @@ class MainWin():
                     gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
                     on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
                     gui_led_object.setIcon(on_icon)
-                self._app.log.update(const.LOG_DICT[nick] +
-                                            ' toggled ON', tag='verbose')
+                self._app.log.update(F"{const.LOG_DICT[nick]} toggled ON",
+                                            tag='verbose')
             return True
         # switch OFF
         else:
@@ -310,39 +302,34 @@ class MainWin():
                 if 'LED' in const.ICON_DICT[nick].keys():
                     gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
                     gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
-                self._app.log.update(const.LOG_DICT[nick] +
-                                        ' toggled OFF', tag='verbose')
+                self._app.log.update(F"{const.LOG_DICT[nick]} toggled OFF",
+                                            tag='verbose')
             return False
     
     def dep_sett_apply(self):
         
-        # TODO: handle errors with decorator as in devices
         nick = 'DEP_LASER'
-        if not self._app.error_dict[nick]: # if there's no errors
-            if self._gui.currModeRadio.isChecked(): # current mode
-                val = self._gui.depCurrSpinner.value()
-                self._app.dvcs[nick].set_current(val)
-            else: # power mode
-                val = self._gui.depPowSpinner.value()
-                self._app.dvcs[nick].set_power(val)
-        else:
-            error_txt = ('Depletion laser error')
-            Error(error_txt=error_txt).display()
+        if self._gui.currModeRadio.isChecked(): # current mode
+            val = self._gui.depCurrSpinner.value()
+            self._app.dvcs[nick].set_current(val)
+        else: # power mode
+            val = self._gui.depPowSpinner.value()
+            self._app.dvcs[nick].set_power(val)
     
     def move_stage(self, dir, steps):
         
         nick = 'STAGE'
         self._app.dvcs[nick].move(dir=dir, steps=steps)
-        self._app.log.update(const.LOG_DICT[nick] +
-                                    ' moved ' + str(steps) +
-                                    ' steps ' + str(dir), tag='verbose')
+        self._app.log.update(F"{const.LOG_DICT[nick]} "
+                                    F"moved {str(steps)} steps {str(dir)}",
+                                    tag='verbose')
     
     def release_stage(self):
         
         nick = 'STAGE'
         self._app.dvcs[nick].release()
-        self._app.log.update(const.LOG_DICT[nick] +
-                                    ' released', tag='verbose')
+        self._app.log.update(F"{const.LOG_DICT[nick]} released",
+                                    tag='verbose')
 
     def show_laser_dock(self):
         '''
@@ -395,13 +382,14 @@ class SettWin():
     
     def clean_up(self):
         # TODO: add check to see if changes were made, if not, don't ask user
-        pressed = Question('Keep changes if made? ' +
-                                  '(otherwise, revert to last loaded settings file.)'
+        pressed = Question('Keep changes if made? '
+                                   '(otherwise, revert to last loaded settings file.)'
                                   ).display()
         if pressed == QMessageBox.No:
             self.read_csv(self._gui.settingsFileName.text())
 
     # public methods
+    @err_hndlr
     def write_csv(self):
         '''
         Write all QLineEdit, QspinBox and QdoubleSpinBox of settings window to 'filepath' (csv).
@@ -414,28 +402,29 @@ class SettWin():
                                                                  const.SETTINGS_FOLDER_PATH,
                                                                  "CSV Files(*.csv *.txt)")
         import csv
-        if filepath:
-            self._gui.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
-            with open(filepath, 'w') as stream:
-                #print("saving", filepath)
-                writer = csv.writer(stream)
-                # get all names of fields in settings window (for file saving/loading)
-                l1 = self._gui.frame.findChildren(QLineEdit)
-                l2 = self._gui.frame.findChildren(QSpinBox)
-                l3 = self._gui.frame.findChildren(QDoubleSpinBox)
-                field_names = [w.objectName() for w in (l1 + l2 + l3) if \
-                                     (not w.objectName() == 'qt_spinbox_lineedit') and \
-                                     (not w.objectName() == 'settingsFileName')] # perhaps better as for loop for readability
-                #print(fieldNames)
-                for i in range(len(field_names)):
-                    widget = self._gui.frame.findChild(QWidget, field_names[i])
-                    if hasattr(widget, 'value'): # spinner
-                        rowdata = [field_names[i],  self._gui.frame.findChild(QWidget, field_names[i]).value()]
-                    else: # line edit
-                        rowdata = [field_names[i],  self._gui.frame.findChild(QWidget, field_names[i]).text()]
-                    writer.writerow(rowdata)
-            self._app.log.update('Settings file saved as: ' + filepath)
-
+        self._gui.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+        with open(filepath, 'w') as stream:
+            #print("saving", filepath)
+            writer = csv.writer(stream)
+            # get all names of fields in settings window (for file saving/loading)
+            l1 = self._gui.frame.findChildren(QLineEdit)
+            l2 = self._gui.frame.findChildren(QSpinBox)
+            l3 = self._gui.frame.findChildren(QDoubleSpinBox)
+            field_names = [w.objectName() for w in (l1 + l2 + l3) if \
+                                 (not w.objectName() == 'qt_spinbox_lineedit') and \
+                                 (not w.objectName() == 'settingsFileName')] # perhaps better as for loop for readability
+            #print(fieldNames)
+            for i in range(len(field_names)):
+                widget = self._gui.frame.findChild(QWidget, field_names[i])
+                if hasattr(widget, 'value'): # spinner
+                    rowdata = [field_names[i],  self._gui.frame.findChild(QWidget, field_names[i]).value()]
+                else: # line edit
+                    rowdata = [field_names[i],  self._gui.frame.findChild(QWidget, field_names[i]).text()]
+                writer.writerow(rowdata)
+                
+        self._app.log.update(F"Settings file saved as: '{filepath}'")
+    
+    @err_hndlr
     def read_csv(self, filepath=''):
         '''
         Read 'filepath' (csv) and write to matching QLineEdit, QspinBox and QdoubleSpinBox of settings window.
@@ -449,27 +438,18 @@ class SettWin():
                                                                      const.SETTINGS_FOLDER_PATH,
                                                                      "CSV Files(*.csv *.txt)")
         import pandas as pd
-        if filepath:
-            try:
-                 df = pd.read_csv(filepath, header=None, delimiter=',',
-                                         keep_default_na=False, error_bad_lines=False)
-                 self._gui.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
-                 for i in range(len(df)):
-                    widget = self._gui.frame.findChild(QWidget, df.iloc[i, 0])
-                    if not widget == 'nullptr':
-                        if hasattr(widget, 'value'): # spinner
-                            widget.setValue(float(df.iloc[i, 1]))
-                        elif hasattr(widget, 'text'): # line edit
-                            widget.setText(df.iloc[i, 1])
-            except Exception as exc:
-                txt = 'Error during read_csv.'
-                Error(exc=exc, error_txt=txt).display()
-            
-            self._app.log.update('Settings file loaded: ' + filepath)
-
-        else:
-            error_txt = ('File path not supplied.')
-            Error(error_txt=error_txt).display()
+        df = pd.read_csv(filepath, header=None, delimiter=',',
+                                 keep_default_na=False, error_bad_lines=False)
+        self._gui.frame.findChild(QWidget, 'settingsFileName').setText(filepath)
+        for i in range(len(df)):
+            widget = self._gui.frame.findChild(QWidget, df.iloc[i, 0])
+            if not widget == 'nullptr':
+                if hasattr(widget, 'value'): # spinner
+                    widget.setValue(float(df.iloc[i, 1]))
+                elif hasattr(widget, 'text'): # line edit
+                    widget.setText(df.iloc[i, 1])
+        
+        self._app.log.update(F"Settings file loaded: '{filepath}'")
 
 class CamWin():
     
@@ -498,17 +478,17 @@ class CamWin():
         self._cam.close()
         self._app.win['main'].actionCamera_Control.setEnabled(True)
         self._app.win['camera'] = None
-        self._app.log.update('Camera connection closed', tag='verbose')
+        self._app.log.update('Camera connection closed',
+                                    tag='verbose')
         return None
-
+    
+    @err_hndlr
     def init_cam(self):
         
-        try:
-            self._cam = devices.Camera() # instantiate camera object
-            self._cam.set_auto_exposure(True) #TEST?
-            self._app.log.update('Camera connection opened', tag='verbose')
-        except UC480Error as exc:
-            Error(exc=exc).display()
+        self._cam = devices.Camera() # instantiate camera object
+        self._cam.set_auto_exposure(True) #TEST?
+        self._app.log.update('Camera connection opened',
+                                    tag='verbose')
     
     def toggle_video(self, bool):
         
@@ -522,7 +502,8 @@ class CamWin():
             self._video_timer.timeout.connect(self._wait_for_frame)
             self._cam.toggle_video(True)
             self._video_timer.start(0)  # Run full throttle
-            self._app.log.update('Camera video mode ON', tag='verbose')
+            self._app.log.update('Camera video mode ON',
+                                        tag='verbose')
             
         #Turn Off
         else:
@@ -532,7 +513,8 @@ class CamWin():
             self._gui.videoButton.setText('Start Video')
             self._cam.toggle_video(False)
             self._video_timer.stop()
-            self._app.log.update('Camera video mode OFF', tag='verbose')
+            self._app.log.update('Camera video mode OFF',
+                                        tag='verbose')
 
     def shoot(self):
 
@@ -544,7 +526,8 @@ class CamWin():
         else:
             img = self._cam.shoot()
             self._imshow(img)
-        self._app.log.update('Camera photo taken', tag='verbose')
+        self._app.log.update('Camera photo taken',
+                                    tag='verbose')
     
     # private methods
     def _imshow(self, img):
@@ -588,12 +571,14 @@ class Measurement():
     def start(self):
         self._timer.start(1000)
         if self.log:
-            self.log.update(self.type + ' measurement started')
+            self.log.update(F"{self.type} measurement started")
         
     def stop(self):
         self._timer.stop()
+        
         if self.log:
-            self.log.update(self.type + ' measurement stopped')
+            self.log.update(F"{self.type} measurement stopped")
+            
         if self.prog_bar:
             self.prog_bar.setValue(0)
     
