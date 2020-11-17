@@ -23,13 +23,13 @@ Python-based software for our optical measurement system.
 1. ## What's here/Noteworthy files:
 - `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together.
 
-- `./gui/gui.py` - GUI module.
+- `./gui/gui.py` - GUI module, containing strictly user interaction signals and slots, the slots implemented in `logic.py`.
 
-- `./implementation/implementation.py` - main implementation module.
+- `./implementation/logic.py` - general implementations, slowly taking shape when things are moved to seperate modules. Currently contains mostly implementations of the main application stuff (`App()` class) and the GUI windows (i.e. `MainWin()` class).
+
+- `./implementation/devices.py` - module implementing front-end device interaction with `logic.py` and back-end driver communication with physical instruments through subclassing driver implementations in `drivers.py`
 
 - `./implementation/constants.py` - constants used across the project.
-
-- `./drivers` - package for physical devices interfaces (used only in implementation modules).
 
 - `./settings/default_settings.csv` - default setting file, initial values for all GUI forms.
 
@@ -37,23 +37,19 @@ Python-based software for our optical measurement system.
 
 - Python 3.x
 
-- PyQt5
+- PyQt5 - Qt-Python API, used for GUI and timers
 
-- #pyqt5ac (placeholder)
+- pandas - currently used only for reading the settings out of laziness (overkill)
 
-- pandas
+- matplotlib - used for plotting (currently only the camera, later the graphs)
 
-- matplotlib
+- pyVISA - communication with VISA-supported devices
 
-- pyVISA
+- nidaqmx - communication with NI-DAQmx supported devices
 
-- nidaqmx
+- [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), Instrumental-lib, nicelib,  - communication with DC480 cameras
 
-- instrumental-lib
-
-- nicelib
-
-- Thorlabs [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam)
+- [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232 (FPGA data)
 
 ## Installing Eric IDE on Windows:
 
