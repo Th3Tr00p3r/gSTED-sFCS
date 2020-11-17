@@ -35,9 +35,9 @@ Python-based software for our optical measurement system.
 
 ## Dependencies/Imports:
 
-- Python 3.x
+- Python 3.8.6 (some dependencies may not support newer versions yet, e.g. QScintilla does not support python 3.9 yet)
 
-- PyQt5 - Qt-Python API, used for GUI and timers
+- PyQt5 - Qt-Python API, used for GUI and timers (installed with Eric IDE)
 
 - pandas - currently used only for reading the settings out of laziness (overkill)
 
@@ -63,12 +63,12 @@ Eric IDE is notoriously complicated to install properly. I've tries to make it e
    
    * Create a virtual environment, e.g. `python -m venv eric_env`
    
-   * Activate virtual environment, e.g. `eric_env\Scripts\activate.bat` (`(eric_env)` should appear on left of next).
+   * Activate virtual environment, e.g. `eric_env\Scripts\activate.bat` (or `& .\activate` in powershell). `(eric_env)` should appear on left of text.
    
-   * Install eric via pip e.g. `python -m pip install eric-ide`, say `y` to all.
+   * Install eric via pip e.g. `pip install eric-ide`, say `y` to all.
    
    * Run install.py from the distribution (still in the virtual environment) e.g. `python C:\temporary folder\eric6-20.10\install.py`
    
-   * To have access to Qt Designer, install pyqt5-tools e.g. `pip install pyqt5-tools`, then copy the contents of `\eric_env\Lib\site-packages\pyqt5_tools\Qt` into `\eric_env\Lib\site-packages\PyQt5\Qt`
+   * To have access to Qt Designer from within Eric IDE, copy the contents of `\eric_env\Lib\site-packages\qt5_applications\Qt\bin` into `\eric_env\Lib\site-packages\PyQt5\Qt\bin`
 
 3. That's it, icons should appear on desktop.
