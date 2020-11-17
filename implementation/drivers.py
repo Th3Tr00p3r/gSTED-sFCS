@@ -7,15 +7,28 @@ import pyvisa as visa
 import nidaqmx
 import numpy as np
 
+class FTDI_Instrument():
+    
+    def __init__(self, ):
+        
+        pass
+
 class DAQmxInstrumentDO():
     
     def __init__(self, address):
+        
         self._address = address
-    
-    def write(self, cmnd):
+        self.toggle(False)
+        
+    def _write(self, cmnd):
         with nidaqmx.Task() as task:
             task.do_channels.add_do_chan(self._address)
             task.write(cmnd)
+            
+    def toggle(self, bool):
+        
+        self._write(bool)
+        self.state = bool
 
 class DAQmxInstrumentCI():
     

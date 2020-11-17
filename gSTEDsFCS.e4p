@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-11-12, 11:15:12 -->
+<!-- Saved: 2020-11-17, 11:12:58 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -26,6 +26,7 @@
     <Source>implementation/devices.py</Source>
     <Source>implementation/dialog.py</Source>
     <Source>implementation/drivers.py</Source>
+    <Source>implementation/error_handler.py</Source>
     <Source>implementation/log.py</Source>
     <Source>implementation/logic.py</Source>
   </Sources>

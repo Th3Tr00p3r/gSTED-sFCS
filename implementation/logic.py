@@ -189,7 +189,10 @@ class App():
                                             const.DEVICE_CLASS_NAMES[nick])
                 dvc_address = getattr(self.win['settings'],
                                                   const.DEVICE_ADDRSS_FIELD_NAMES[nick]).text()
-                self.dvcs[nick] = dvc_class(address=dvc_address, error_dict=self.error_dict)
+                if nick in {'DEP_LASER'}:
+                    self.dvcs[nick] = dvc_class(address=dvc_address, error_dict=self.error_dict)
+                else:
+                    self.dvcs[nick] = dvc_class(address=dvc_address)
     
     def clean_up_app(self, restart=False):
         

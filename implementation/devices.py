@@ -7,6 +7,12 @@ import implementation.logic as logic
 import numpy as np
 from implementation.error_handler import dvc_error_handler as err_hndlr
 
+class UM232(drivers.FTDI_Instrument):
+    
+    def __init__(self):
+        
+        pass
+    
 class Counter(drivers.DAQmxInstrumentCI):
     
     def __init__(self, param_dict, error_dict):
@@ -87,18 +93,12 @@ class Camera():
            return self._driver.latest_frame(copy=False)            
     
 class ExcitationLaser(drivers.DAQmxInstrumentDO):
+        
+    '''Excitation Laser Control'''
+        
+    def __init__(self, address):
     
-    def __init__(self, address, error_dict):
-        
-        self.nick = 'EXC_LASER' # for errors?
         super().__init__(address=address)
-
-        self.toggle(False)
-        
-    def toggle(self, bool):
-        
-        self.write(bool)
-        self.state = bool
 
 class DepletionLaser(drivers.VISAInstrument):
     '''
@@ -139,6 +139,7 @@ class DepletionLaser(drivers.VISAInstrument):
     
     @err_hndlr
     def get_SHG_temp(self):
+        
         while True:
             self.temp = self.query('SHGtemp')
             if self.temp != -999:
@@ -146,6 +147,7 @@ class DepletionLaser(drivers.VISAInstrument):
     
     @err_hndlr
     def get_power(self):
+        
         while True:
             self.power = self.query('Power 0')
             if self.power != -999:
@@ -184,29 +186,22 @@ class DepletionLaser(drivers.VISAInstrument):
             
 
 class DepletionShutter(drivers.DAQmxInstrumentDO):
-    '''
-    Depletion Shutter Control
-    '''
-    def __init__(self, address, error_dict):
-        
-        self.nick = 'DEP_SHUTTER' # for errors?
-        super().__init__(address=address)
-        
-        self.toggle(False)
     
-    def toggle(self, bool):
-        
-        self.write(bool)
-        self.state = bool
+    '''Depletion Shutter Control'''
+    
+    def __init__(self, address):
+    
+        super().__init__(address=address)
     
 class StepperStage():
+    
     '''
     Control stepper stage through Arduino chip using PyVISA.
     This device operates slowly and needs special care,
     and so its driver is within its own class (not inherited)
     '''
     
-    def __init__(self, address, error_dict):
+    def __init__(self, address):
         
         self.nick = 'STAGE'
         self.address = address
