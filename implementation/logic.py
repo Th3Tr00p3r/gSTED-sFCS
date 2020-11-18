@@ -25,21 +25,23 @@ class App():
         #init windows
         self.win = {}
         self.win['main'] = gui_module.MainWin(self)
+        self.log = Log(self.win['main'], dir_path='./log/')
+        
         self.win['settings'] = gui_module.SettWin(self)
+        self.win['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+        
         self.win['errors'] = gui_module.ErrWin(self)
         self.win['camera'] = None # instantiated on pressing camera button
+        
         # initialize error dict
         self.init_errors()
         #initialize active devices
         self.init_devices()
-        # initialize log
-        self.log = Log(self.win['main'], dir_path='./log/')
         # initialize measurement
         self.meas = None
         
         #FINALLY
         self.win['main'].show()
-        self.win['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
 
         # set up main timeout event
         self.timeout_loop = self.Timeout(self)
@@ -161,14 +163,13 @@ class App():
         instantiating a driver object for each device
         '''
         
-        def get_counter_params(app):
+        def params_from_GUI(app, gui_dict):
             
             '''
             Get counter parameters from settings GUI
             using a dictionary predefined in constants.py
             '''
-            
-            gui_dict = const.COUNTER_PARAM_GUI_DICT
+        
             param_dict = {}
             
             for key, val_dict in gui_dict.items():
@@ -179,20 +180,22 @@ class App():
         
         self.dvcs = {}
         for nick in const.DEVICE_NICKS:
-            if nick in {'COUNTER'}:
+            if nick in {'COUNTER', 'UM232'}:
                 dvc_class = getattr(devices,
                                             const.DEVICE_CLASS_NAMES[nick])
-                self.dvcs[nick] = dvc_class(param_dict=get_counter_params(self),
+                param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
+                self.dvcs[nick] = dvc_class(nick=nick,
+                                                      param_dict=param_dict,
                                                       error_dict=self.error_dict)
             elif nick in {'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE'}:
                 dvc_class = getattr(devices,
                                             const.DEVICE_CLASS_NAMES[nick])
                 dvc_address = getattr(self.win['settings'],
-                                                  const.DEVICE_ADDRSS_FIELD_NAMES[nick]).text()
-                if nick in {'DEP_LASER'}:
-                    self.dvcs[nick] = dvc_class(address=dvc_address, error_dict=self.error_dict)
-                else:
-                    self.dvcs[nick] = dvc_class(address=dvc_address)
+                                                const.DEVICE_ADDRESS_GUI_DICT[nick]).text()
+                self.dvcs[nick] = dvc_class(nick=nick,
+                                                      address=dvc_address,
+                                                      error_dict=self.error_dict
+                                                      )
     
     def clean_up_app(self, restart=False):
         
@@ -277,6 +280,7 @@ class MainWin():
                                    q_title='Restarting Program').display()
         if pressed == QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
+            self._app.init_errors()
             self._app.init_devices()
             self.timeout_loop = self._app.Timeout(self._app)
             self._app.log.update('restarting application.',
@@ -485,7 +489,6 @@ class CamWin():
                                     tag='verbose')
         return None
     
-    @err_hndlr
     def init_cam(self):
         
         self._cam = devices.Camera() # instantiate camera object

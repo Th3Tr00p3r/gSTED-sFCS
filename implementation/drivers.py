@@ -6,25 +6,33 @@ from instrumental.drivers.cameras.uc480 import UC480_Camera # NOQA
 import pyvisa as visa
 import nidaqmx
 import numpy as np
+from implementation.error_handler import driver_error_handler as err_hndlr
 
 class FTDI_Instrument():
     
-    def __init__(self, ):
+    def __init__(self, nick, param_dict, error_dict):
         
-        pass
+        self.nick = nick
+        self._param_dict = param_dict
+        self.error_dict = error_dict
 
 class DAQmxInstrumentDO():
     
-    def __init__(self, address):
+    def __init__(self, nick, address, error_dict):
         
+        self.nick = nick
         self._address = address
+        self.error_dict = error_dict
+        
         self.toggle(False)
         
+    @err_hndlr
     def _write(self, cmnd):
         with nidaqmx.Task() as task:
             task.do_channels.add_do_chan(self._address)
             task.write(cmnd)
             
+    @err_hndlr        
     def toggle(self, bool):
         
         self._write(bool)
@@ -32,9 +40,11 @@ class DAQmxInstrumentDO():
 
 class DAQmxInstrumentCI():
     
-    def __init__(self, param_dict):
+    def __init__(self, nick, param_dict, error_dict):
         
+        self.nick = nick
         self._param_dict = param_dict
+        self.error_dict = error_dict
         self._task = nidaqmx.Task()
         self._init_chan()
         
@@ -48,42 +58,46 @@ class DAQmxInstrumentCI():
         chan.ci_count_edges_term = self._param_dict['CI_cnt_edges_term']
 #        chan.ci_dup_count_prevention = self._params['CI_dup_prvnt']
     
+    @err_hndlr
     def start(self):
         
         self._task.start()
     
+    @err_hndlr
     def read(self):
-    
-        return np.array(self._task.read(number_of_samples_per_channel=-1)[0])
         
+        counts = self._task.read(number_of_samples_per_channel=-1)[0]
+        return np.array(counts)
+    
+    @err_hndlr
     def stop(self):
         
         self._task.stop()
 
 class VISAInstrument():
     
-    def __init__(self, address,
+    def __init__(self, nick, address, error_dict,
                        read_termination='',
                        write_termination=''):
         
+        self.nick = nick
         self.address = address
+        self.error_dict = error_dict
         self.read_termination = read_termination
         self.write_termination = write_termination
         self.rm = visa.ResourceManager()
     
+    @err_hndlr
     def write(self, cmnd):
         
         with VISAInstrument.Task(self) as task:
             task.write(cmnd)
     
+    @err_hndlr
     def query(self, cmnd):
         
         with VISAInstrument.Task(self) as task:
-            reply = task.query(cmnd)
-            try:
-                return float(reply)
-            except ValueError:
-                return -999
+            return float(task.query(cmnd))
                 
     class Task():
     

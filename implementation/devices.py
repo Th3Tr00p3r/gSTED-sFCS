@@ -5,20 +5,21 @@ Devices Module.
 import implementation.drivers as drivers
 import implementation.logic as logic
 import numpy as np
-from implementation.error_handler import dvc_error_handler as err_hndlr
+from implementation.error_handler import driver_error_handler as err_hndlr
 
 class UM232(drivers.FTDI_Instrument):
     
-    def __init__(self):
+    def __init__(self, param_dict, error_dict):
         
-        pass
+        super().__init__(param_dict=param_dict)
     
 class Counter(drivers.DAQmxInstrumentCI):
     
-    def __init__(self, param_dict, error_dict):
+    def __init__(self, nick, param_dict, error_dict):
         
-        self.nick = 'COUNTER' # for errors?
-        super().__init__(param_dict=param_dict)
+        super().__init__(nick=nick,
+                               param_dict=param_dict,
+                               error_dict=error_dict)
         
         self.cont_count_buff = np.zeros(1, )
         self.counts = None
@@ -35,7 +36,8 @@ class Counter(drivers.DAQmxInstrumentCI):
     
     def count(self):
         
-        self.cont_count_buff = np.append(self.cont_count_buff, self.read())
+        counts_np = self.read()
+        self.cont_count_buff = np.append(self.cont_count_buff, counts_np)
         
     def average_counts(self, avg_intrvl): # in ms (range 10-1000)
                 
@@ -59,25 +61,32 @@ class Counter(drivers.DAQmxInstrumentCI):
             
 class Camera():
     
-    def __init__(self):
+    def __init__(self, nick, error_dict):
+        
+        self.nick = nick
+        self.error_dict = error_dict
         
         # idealy 'Camera' would inherit 'UC480_Camera', but this is problematic because of the 'Instrumental' API
         self._driver = drivers.UC480_Camera(reopen_policy='new')
         
         self.video_state = False
-        
+    
+    @err_hndlr
     def close(self):
         
         self._driver.close()
     
+    @err_hndlr
     def set_auto_exposure(self, bool):
         
         self._driver.set_auto_exposure(bool)
     
+    @err_hndlr
     def shoot(self):
         
         return self._driver.grab_image()
     
+    @err_hndlr
     def toggle_video(self, bool):
         
         if bool:
@@ -86,6 +95,7 @@ class Camera():
             self._driver.stop_live_video()
         self.video_state = bool
     
+    @err_hndlr
     def latest_frame(self):
         
         frame_ready = self._driver.wait_for_frame(timeout='0 ms')
@@ -96,35 +106,34 @@ class ExcitationLaser(drivers.DAQmxInstrumentDO):
         
     '''Excitation Laser Control'''
         
-    def __init__(self, address):
+    def __init__(self, nick, address, error_dict):
     
-        super().__init__(address=address)
+        super().__init__(nick=nick,
+                               address=address,
+                               error_dict=error_dict)
 
 class DepletionLaser(drivers.VISAInstrument):
     '''
     Control depletion laser through pyVISA
     '''
     
-    def __init__(self, address, error_dict):
+    def __init__(self, nick, address, error_dict):
         
-        self.nick = 'DEP_LASER'
-        self.address = address
-        self.error_dict = error_dict
-        self.error_dict[self.nick] = None
+        super().__init__(nick=nick,
+                               address=address,
+                               error_dict=error_dict,
+                               read_termination = '\r', 
+                               write_termination = '\r')
         
         self.current = None
         self.power = None
         self.temp = -999
         self.state = None
-        super().__init__(address=address,
-                               read_termination = '\r', 
-                               write_termination = '\r')
-                               
+        
         self.toggle(False)
         self.set_current(1500)
         self.get_SHG_temp()
     
-    @err_hndlr
     def toggle(self, bool):
         
             if bool:
@@ -137,23 +146,18 @@ class DepletionLaser(drivers.VISAInstrument):
                 self.write('setLDenable 0')
                 self.state = bool
     
-    @err_hndlr
     def get_SHG_temp(self):
         
-        while True:
-            self.temp = self.query('SHGtemp')
-            if self.temp != -999:
-                break
+        self.temp = self.query('SHGtemp')
     
-    @err_hndlr
+    def get_current(self):
+        
+        self.current = self.query('LDcurrent 1')
+    
     def get_power(self):
         
-        while True:
-            self.power = self.query('Power 0')
-            if self.power != -999:
-                break
-                
-    @err_hndlr
+        self.power = self.query('Power 0')
+    
     def set_power(self, value):
         
         # check that current value is within range
@@ -165,14 +169,6 @@ class DepletionLaser(drivers.VISAInstrument):
         else:
             logic.Error(error_txt='Power out of range').display()
     
-    @err_hndlr
-    def get_current(self):
-        while True:
-            self.current = self.query('LDcurrent 1')
-            if self.current != -999:
-                break
-    
-    @err_hndlr
     def set_current(self, value):
         
         # check that current value is within range
@@ -189,9 +185,11 @@ class DepletionShutter(drivers.DAQmxInstrumentDO):
     
     '''Depletion Shutter Control'''
     
-    def __init__(self, address):
+    def __init__(self, nick, address, error_dict):
     
-        super().__init__(address=address)
+        super().__init__(nick=nick,
+                               address=address,
+                               error_dict=error_dict)
     
 class StepperStage():
     
@@ -201,10 +199,11 @@ class StepperStage():
     and so its driver is within its own class (not inherited)
     '''
     
-    def __init__(self, address):
+    def __init__(self, nick, address, error_dict):
         
-        self.nick = 'STAGE'
+        self.nick = nick
         self.address = address
+        self.error_dict = error_dict
         self.rm = drivers.visa.ResourceManager()
         
         self.toggle(False)
