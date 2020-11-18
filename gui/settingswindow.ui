@@ -1331,7 +1331,7 @@
                             </widget>
                            </item>
                            <item>
-                            <widget class="QLineEdit" name="pixelClockCounterAddress">
+                            <widget class="QLineEdit" name="counterPixelClockAddress">
                              <property name="font">
                               <font>
                                <pointsize>8</pointsize>
@@ -1585,7 +1585,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="TDCstartChannel">
+                      <widget class="QLineEdit" name="TDCstartAddress">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -1637,7 +1637,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="TDClaserFreqSpinner">
+                      <widget class="QSpinBox" name="TDClaserFreq">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -1672,7 +1672,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="TDCFPGAFreqSpinner">
+                      <widget class="QSpinBox" name="TDCFPGAFreq">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -1710,7 +1710,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="TDCpixelClockFreqSpinner">
+                      <widget class="QSpinBox" name="TDCpixelClockFreq">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -1748,7 +1748,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="TDCverionSpinner">
+                      <widget class="QSpinBox" name="TDCversion">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -1792,7 +1792,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="pixelClockLowTicksSpinner">
+                      <widget class="QSpinBox" name="pixelClockLowTicks">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -1827,7 +1827,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="pixelClockHighTicksSpinner">
+                      <widget class="QSpinBox" name="pixelClockHighTicks">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -1868,7 +1868,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="pixelClockCounterChan">
+                      <widget class="QLineEdit" name="pixelClockCounterAddress">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -1920,7 +1920,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="pixelClockFreqSpinner">
+                      <widget class="QSpinBox" name="pixelClockFreq">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -2007,7 +2007,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QSpinBox" name="um232DevIdxSpinner">
+                 <widget class="QSpinBox" name="um232DvcIdx">
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
@@ -2039,7 +2039,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QSpinBox" name="um232latencyTimerValSpinner">
+                 <widget class="QSpinBox" name="um232latencyTimerVal">
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
@@ -2074,7 +2074,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QSpinBox" name="um232InTransferRateSpinner">
+                 <widget class="QSpinBox" name="um232InTransferRate">
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
@@ -2112,7 +2112,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QSpinBox" name="um232ReadTimeoutSpinner">
+                 <widget class="QSpinBox" name="um232ReadTimeout">
                   <property name="enabled">
                    <bool>true</bool>
                   </property>
@@ -2147,7 +2147,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="um232FlowControlCombox">
+                 <widget class="QComboBox" name="um232FlowControl">
                   <property name="font">
                    <font>
                     <pointsize>8</pointsize>
@@ -2190,7 +2190,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="um232BitModeCombox">
+                 <widget class="QComboBox" name="um232BitMode">
                   <property name="font">
                    <font>
                     <pointsize>8</pointsize>
