@@ -40,7 +40,9 @@ class Counter(drivers.DAQmxInstrumentCI):
         self.cont_count_buff = np.append(self.cont_count_buff, counts_np)
         
     def average_counts(self, avg_intrvl): # in ms (range 10-1000)
-                
+        
+        # TODO: this seems to average over about X10 the interval...
+        
         dt = 1 # in ms (TODO: why is this value chosen? Ask Oleg)
         
         intrvl_time_unts = int(avg_intrvl/dt)
