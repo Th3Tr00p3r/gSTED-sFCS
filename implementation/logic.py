@@ -302,30 +302,28 @@ class MainWin():
         if not self._app.dvcs[nick].state: # switch ON
             self._app.dvcs[nick].toggle(True)
             
-            if self._app.dvcs[nick].state: # if managed to turn ON
-                gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
+            gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
+            
+            if 'LED' in const.ICON_DICT[nick].keys():
+                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
+                on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
+                gui_led_object.setIcon(on_icon)
                 
-                if 'LED' in const.ICON_DICT[nick].keys():
-                    gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
-                    on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
-                    gui_led_object.setIcon(on_icon)
-                    
-                self._app.log.update(F"{const.LOG_DICT[nick]} toggled ON",
-                                            tag='verbose')
+            self._app.log.update(F"{const.LOG_DICT[nick]} toggled ON",
+                                        tag='verbose')
             return True
             
         else: # switch OFF
             self._app.dvcs[nick].toggle(False)
             
-            if not self._app.dvcs[nick].state: # if managed to turn OFF
-                gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
+            gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
+            
+            if 'LED' in const.ICON_DICT[nick].keys():
+                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
+                gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
                 
-                if 'LED' in const.ICON_DICT[nick].keys():
-                    gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
-                    gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
-                    
-                self._app.log.update(F"{const.LOG_DICT[nick]} toggled OFF",
-                                            tag='verbose')
+            self._app.log.update(F"{const.LOG_DICT[nick]} toggled OFF",
+                                        tag='verbose')
             return False
     
     def dep_sett_apply(self):
