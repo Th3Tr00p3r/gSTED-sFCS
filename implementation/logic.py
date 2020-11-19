@@ -103,27 +103,32 @@ class App():
             
             nick = 'DEP_LASER'
             
-            def check_SHG_temp(self):
-                self._app.dvcs[nick].get_SHG_temp()
-                self._app.win['main'].depTemp.setValue(self._app.dvcs[nick].temp)
-                if self._app.dvcs[nick].temp < const.MIN_SHG_TEMP:
-                    self._app.win['main'].depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
+            def check_SHG_temp(dvcs_dict, main_gui):
+                dvcs_dict[nick].get_SHG_temp()
+                main_gui.depTemp.setValue(dvcs_dict[nick].temp)
+                if dvcs_dict[nick].temp < const.MIN_SHG_TEMP:
+                    main_gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
                 else:
-                    self._app.win['main'].depTemp.setStyleSheet("background-color: white; color: black;")
+                    main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
             
-            def check_power(self):
+            def check_power(dvcs_dict, main_gui):
                 self._app.dvcs[nick].get_power()
-                self._app.win['main'].depActualPowerSpinner.setValue(self._app.dvcs[nick].power)
+                main_gui.depActualPowerSpinner.setValue(dvcs_dict[nick].power)
             
-            def check_current(self):
-                self._app.dvcs[nick].get_current()
-                self._app.win['main'].depActualCurrSpinner.setValue(self._app.dvcs[nick].current)
+            def check_current(dvcs_dict, main_gui):
+                dvcs_dict[nick].get_current()
+                main_gui.depActualCurrSpinner.setValue(dvcs_dict[nick].current)
             
-            if not self._app.error_dict[nick]: # if there's no errors
-            
-                check_SHG_temp(self)
-                check_power(self)
-                check_current(self)
+            if not self._app.error_dict[nick]: # check anything only if there are no errors
+                
+                dvcs_dict = self._app.dvcs
+                main_gui = self._app.win['main']
+                
+                check_SHG_temp(dvcs_dict, main_gui)
+                
+                if dvcs_dict[nick].state: # check current/power only if laser is ON
+                    check_power(dvcs_dict, main_gui)
+                    check_current(dvcs_dict, main_gui)
         
         def _update_errorGUI(self):
             # TODO: update the error GUI according to errors in self._app.error_dict
@@ -196,6 +201,10 @@ class App():
                                                       address=dvc_address,
                                                       error_dict=self.error_dict
                                                       )
+            elif nick in {'CAMERA'}:
+                dvc_class = getattr(devices,
+                                            const.DEVICE_CLASS_NAMES[nick])
+                self.dvcs[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
     
     def clean_up_app(self, restart=False):
         
@@ -232,12 +241,12 @@ class App():
             gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             gui.stageButtonsGroup.setEnabled(False)
         
+        if self.meas:
+            self.meas.stop()
+        close_all_dvcs(self)
         if restart:
-            close_all_dvcs(self)
             lights_out(self.win['main'])
         else:
-            if self.meas:
-                self.meas.stop()
             close_all_wins(self)
             self.log.update('Quitting Application.')
     
@@ -289,26 +298,32 @@ class MainWin():
     def dvc_toggle(self, nick):
         
         gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]['SWITCH'])
-        # switch ON
-        if not self._app.dvcs[nick].state:
+        
+        if not self._app.dvcs[nick].state: # switch ON
             self._app.dvcs[nick].toggle(True)
+            
             if self._app.dvcs[nick].state: # if managed to turn ON
                 gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
+                
                 if 'LED' in const.ICON_DICT[nick].keys():
                     gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
                     on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
                     gui_led_object.setIcon(on_icon)
+                    
                 self._app.log.update(F"{const.LOG_DICT[nick]} toggled ON",
                                             tag='verbose')
             return True
-        # switch OFF
-        else:
+            
+        else: # switch OFF
             self._app.dvcs[nick].toggle(False)
+            
             if not self._app.dvcs[nick].state: # if managed to turn OFF
                 gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
+                
                 if 'LED' in const.ICON_DICT[nick].keys():
                     gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
                     gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
+                    
                 self._app.log.update(F"{const.LOG_DICT[nick]} toggled OFF",
                                             tag='verbose')
             return False
@@ -473,7 +488,15 @@ class CamWin():
         self._gui.figure = plt.figure()
         self._gui.canvas = FigureCanvas(self._gui.figure)
         self._gui.gridLayout.addWidget(self._gui.canvas, 0, 1)
-
+    
+    def init_cam(self):
+        
+        self._cam = self._app.dvcs['CAMERA']
+        self._cam.toggle(True)
+        
+        self._app.log.update('Camera connection opened',
+                                    tag='verbose')
+    
     def clean_up(self):
         
         '''clean up before closing window'''
@@ -482,19 +505,13 @@ class CamWin():
         if self._cam.video_state:
             self.toggle_video(False)
         # disconnect camera
-        self._cam.close()
+        self._cam.toggle(False)
         self._app.win['main'].actionCamera_Control.setEnabled(True)
         self._app.win['camera'] = None
+        
         self._app.log.update('Camera connection closed',
                                     tag='verbose')
         return None
-    
-    def init_cam(self):
-        
-        self._cam = devices.Camera() # instantiate camera object
-        self._cam.set_auto_exposure(True) #TEST?
-        self._app.log.update('Camera connection opened',
-                                    tag='verbose')
     
     def toggle_video(self, bool):
         
@@ -507,7 +524,8 @@ class CamWin():
             self._video_timer = QTimer()
             self._video_timer.timeout.connect(self._wait_for_frame)
             self._cam.toggle_video(True)
-            self._video_timer.start(0)  # Run full throttle
+            self._video_timer.start(100)  # Run full throttle
+            
             self._app.log.update('Camera video mode ON',
                                         tag='verbose')
             
@@ -528,12 +546,14 @@ class CamWin():
             self.toggle_video(False)
             img = self._cam.shoot()
             self._imshow(img)
+            self._app.log.update('Camera photo taken',
+                                        tag='verbose')
             self.toggle_video(True)
         else:
             img = self._cam.shoot()
             self._imshow(img)
-        self._app.log.update('Camera photo taken',
-                                    tag='verbose')
+            self._app.log.update('Camera photo taken',
+                                        tag='verbose')
     
     # private methods
     def _imshow(self, img):
@@ -549,8 +569,7 @@ class CamWin():
 
         img = self._cam.latest_frame()
         self._imshow(img)
-        
-            
+    
 class ErrWin():
     # TODO: 
     
