@@ -312,34 +312,36 @@ class MainWin():
         if not self._app.dvc_dict[nick].state: # switch ON
             self._app.dvc_dict[nick].toggle(True)
             
-            gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
-            
-            if 'LED' in const.ICON_DICT[nick].keys():
-                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
-                on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
-                gui_led_object.setIcon(on_icon)
+            if self._app.dvc_dict[nick].state: # if managed to turn ON
+                gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
                 
-            self._app.log.update(F"{const.LOG_DICT[nick]} toggled ON",
-                                        tag='verbose')
-            return True
+                if 'LED' in const.ICON_DICT[nick].keys():
+                    gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
+                    on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
+                    gui_led_object.setIcon(on_icon)
+                    
+                self._app.log.update(F"{const.LOG_DICT[nick]} toggled ON",
+                                            tag='verbose')
+                return True
             
         else: # switch OFF
             self._app.dvc_dict[nick].toggle(False)
             
-            gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
-            
-            if 'LED' in const.ICON_DICT[nick].keys():
-                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
-                gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
+            if not self._app.dvc_dict[nick].state: # if managed to turn OFF
+                gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
                 
-            self._app.log.update(F"{const.LOG_DICT[nick]} toggled OFF",
-                                        tag='verbose')
-            
-            if nick in {'DEP_LASER'}: # set curr/pow values to zero when depletion is turned OFF
-                self._gui.depActualCurrSpinner.setValue(0)
-                self._gui.depActualPowerSpinner.setValue(0)
+                if 'LED' in const.ICON_DICT[nick].keys():
+                    gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
+                    gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
+                    
+                self._app.log.update(F"{const.LOG_DICT[nick]} toggled OFF",
+                                            tag='verbose')
                 
-            return False
+                if nick in {'DEP_LASER'}: # set curr/pow values to zero when depletion is turned OFF
+                    self._gui.depActualCurrSpinner.setValue(0)
+                    self._gui.depActualPowerSpinner.setValue(0)
+                    
+                return False
     
     def dep_sett_apply(self):
         
