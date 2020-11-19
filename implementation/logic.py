@@ -23,15 +23,15 @@ class App():
     def __init__(self):
         
         #init windows
-        self.win = {}
-        self.win['main'] = gui_module.MainWin(self)
-        self.log = Log(self.win['main'], dir_path='./log/')
+        self.win_dict = {}
+        self.win_dict['main'] = gui_module.MainWin(self)
+        self.log = Log(self.win_dict['main'], dir_path='./log/')
         
-        self.win['settings'] = gui_module.SettWin(self)
-        self.win['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+        self.win_dict['settings'] = gui_module.SettWin(self)
+        self.win_dict['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
         
-        self.win['errors'] = gui_module.ErrWin(self)
-        self.win['camera'] = None # instantiated on pressing camera button
+        self.win_dict['errors'] = gui_module.ErrWin(self)
+        self.win_dict['camera'] = None # instantiated on pressing camera button
         
         # initialize error dict
         self.init_errors()
@@ -41,7 +41,7 @@ class App():
         self.meas = None
         
         #FINALLY
-        self.win['main'].show()
+        self.win_dict['main'].show()
 
         # set up main timeout event
         self.timeout_loop = self.Timeout(self)
@@ -58,16 +58,14 @@ class App():
         
         def _get_timings_dict(self):
                 
-                '''Associate an (interval (ms), update_function) tuple with each device'''
+                '''Associate an (interval (seconds), update_function) tuple with each device'''
                 # TODO: possibly have a single or a few longer interval timers, not one for each (could be resource heavy)
                 
-                sett_gui = self._app.win['settings']
+                sett_gui = self._app.win_dict['settings']
                 t_dict ={}
                 t_dict['DEP_LASER'] = (sett_gui.depUpdateTimeSpinner.value(),
                                                  self._update_dep)
-                t_dict['COUNTER'] = (sett_gui.counterUpdateTimeSpinner.value(),
-                                              self._update_counter)
-                t_dict['ERRORS'] = (1, self._update_errorGUI)
+                t_dict['ERRORS'] = (2, self._update_errorGUI)
                 return t_dict
         
         def _get_timers(self):
@@ -112,7 +110,7 @@ class App():
                     main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
             
             def check_power(dvcs_dict, main_gui):
-                self._app.dvcs[nick].get_power()
+                self._app.dvc_dict[nick].get_power()
                 main_gui.depActualPowerSpinner.setValue(dvcs_dict[nick].power)
             
             def check_current(dvcs_dict, main_gui):
@@ -121,8 +119,8 @@ class App():
             
             if not self._app.error_dict[nick]: # check anything only if there are no errors
                 
-                dvcs_dict = self._app.dvcs
-                main_gui = self._app.win['main']
+                dvcs_dict = self._app.dvc_dict
+                main_gui = self._app.win_dict['main']
                 
                 check_SHG_temp(dvcs_dict, main_gui)
                 
@@ -137,8 +135,8 @@ class App():
         def _update_counter(self):
             
             # definitions
-            cntr = self._app.dvcs['COUNTER']
-            gui = self._app.win['main']
+            cntr = self._app.dvc_dict['COUNTER']
+            gui = self._app.win_dict['main']
             avg_interval = gui.countsAvgSlider.value()
             
             cntr.count() # read new counts
@@ -178,33 +176,33 @@ class App():
             param_dict = {}
             
             for key, val_dict in gui_dict.items():
-                gui_field = getattr(app.win['settings'], val_dict['field'])
+                gui_field = getattr(app.win_dict['settings'], val_dict['field'])
                 gui_field_value = getattr(gui_field, val_dict['access'])()
                 param_dict[key] = gui_field_value
             return param_dict
         
-        self.dvcs = {}
+        self.dvc_dict = {}
         for nick in const.DEVICE_NICKS:
             if nick in {'COUNTER', 'UM232'}:
                 dvc_class = getattr(devices,
                                             const.DEVICE_CLASS_NAMES[nick])
                 param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
-                self.dvcs[nick] = dvc_class(nick=nick,
+                self.dvc_dict[nick] = dvc_class(nick=nick,
                                                       param_dict=param_dict,
                                                       error_dict=self.error_dict)
             elif nick in {'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE'}:
                 dvc_class = getattr(devices,
                                             const.DEVICE_CLASS_NAMES[nick])
-                dvc_address = getattr(self.win['settings'],
+                dvc_address = getattr(self.win_dict['settings'],
                                                 const.DEVICE_ADDRESS_GUI_DICT[nick]).text()
-                self.dvcs[nick] = dvc_class(nick=nick,
+                self.dvc_dict[nick] = dvc_class(nick=nick,
                                                       address=dvc_address,
                                                       error_dict=self.error_dict
                                                       )
             elif nick in {'CAMERA'}:
                 dvc_class = getattr(devices,
                                             const.DEVICE_CLASS_NAMES[nick])
-                self.dvcs[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
+                self.dvc_dict[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
     
     def clean_up_app(self, restart=False):
         
@@ -217,16 +215,16 @@ class App():
             
             for nick in const.DEVICE_NICKS:
                 if not self.error_dict[nick]:
-                    app.dvcs[nick].toggle(False)
+                    app.dvc_dict[nick].toggle(False)
                 
         def close_all_wins(app):
             
-            for win_key in self.win.keys():
-                if self.win[win_key]: # if not None (can happen for camwin
+            for win_key in self.win_dict.keys():
+                if self.win_dict[win_key]: # if not None (can happen for camwin
                     if win_key not in {'main', 'camera'}: # dialogs close with reject()
-                        self.win[win_key].reject()
+                        self.win_dict[win_key].reject()
                     else:
-                        self.win[win_key].close() # mainwindows and widgets close with close()
+                        self.win_dict[win_key].close() # mainwindows and widgets close with close()
         
         def lights_out(gui):
             
@@ -243,9 +241,12 @@ class App():
         
         if self.meas:
             self.meas.stop()
+            
         close_all_dvcs(self)
+        
         if restart:
-            lights_out(self.win['main'])
+            lights_out(self.win_dict['main'])
+            
         else:
             close_all_wins(self)
             self.log.update('Quitting Application.')
@@ -299,8 +300,8 @@ class MainWin():
         
         gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]['SWITCH'])
         
-        if not self._app.dvcs[nick].state: # switch ON
-            self._app.dvcs[nick].toggle(True)
+        if not self._app.dvc_dict[nick].state: # switch ON
+            self._app.dvc_dict[nick].toggle(True)
             
             gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
             
@@ -314,7 +315,7 @@ class MainWin():
             return True
             
         else: # switch OFF
-            self._app.dvcs[nick].toggle(False)
+            self._app.dvc_dict[nick].toggle(False)
             
             gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
             
@@ -324,6 +325,11 @@ class MainWin():
                 
             self._app.log.update(F"{const.LOG_DICT[nick]} toggled OFF",
                                         tag='verbose')
+            
+            if nick in {'DEP_LASER'}: # set curr/pow values to zero when depletion is turned OFF
+                self._gui.depActualCurrSpinner.setValue(0)
+                self._gui.depActualPowerSpinner.setValue(0)
+                
             return False
     
     def dep_sett_apply(self):
@@ -331,15 +337,15 @@ class MainWin():
         nick = 'DEP_LASER'
         if self._gui.currModeRadio.isChecked(): # current mode
             val = self._gui.depCurrSpinner.value()
-            self._app.dvcs[nick].set_current(val)
+            self._app.dvc_dict[nick].set_current(val)
         else: # power mode
             val = self._gui.depPowSpinner.value()
-            self._app.dvcs[nick].set_power(val)
+            self._app.dvc_dict[nick].set_power(val)
     
     def move_stage(self, dir, steps):
         
         nick = 'STAGE'
-        self._app.dvcs[nick].move(dir=dir, steps=steps)
+        self._app.dvc_dict[nick].move(dir=dir, steps=steps)
         self._app.log.update(F"{const.LOG_DICT[nick]} "
                                     F"moved {str(steps)} steps {str(dir)}",
                                     tag='verbose')
@@ -347,7 +353,7 @@ class MainWin():
     def release_stage(self):
         
         nick = 'STAGE'
-        self._app.dvcs[nick].release()
+        self._app.dvc_dict[nick].release()
         self._app.log.update(F"{const.LOG_DICT[nick]} released",
                                     tag='verbose')
 
@@ -378,21 +384,21 @@ class MainWin():
     
     def open_settwin(self):
         
-        self._app.win['settings'].show()
-        self._app.win['settings'].activateWindow()
+        self._app.win_dict['settings'].show()
+        self._app.win_dict['settings'].activateWindow()
     
     def open_camwin(self):
         
         self._gui.actionCamera_Control.setEnabled(False)
-        self._app.win['camera'] = gui_module.CamWin(app=self._app)
-        self._app.win['camera'].show()
-        self._app.win['camera'].activateWindow()
-        self._app.win['camera'].imp.init_cam()
+        self._app.win_dict['camera'] = gui_module.CamWin(app=self._app)
+        self._app.win_dict['camera'].show()
+        self._app.win_dict['camera'].activateWindow()
+        self._app.win_dict['camera'].imp.init_cam()
     
     def open_errwin(self):
         
-        self._app.win['errors'].show()
-        self._app.win['errors'].activateWindow()
+        self._app.win_dict['errors'].show()
+        self._app.win_dict['errors'].activateWindow()
     
 class SettWin():
     
@@ -489,7 +495,7 @@ class CamWin():
     
     def init_cam(self):
         
-        self._cam = self._app.dvcs['CAMERA']
+        self._cam = self._app.dvc_dict['CAMERA']
         self._cam.toggle(True)
         
         self._app.log.update('Camera connection opened',
@@ -499,13 +505,11 @@ class CamWin():
         
         '''clean up before closing window'''
         
-        # turn off video if On
-        if self._cam.video_state:
-            self.toggle_video(False)
-        # disconnect camera
+        self.toggle_video(False)
         self._cam.toggle(False)
-        self._app.win['main'].actionCamera_Control.setEnabled(True)
-        self._app.win['camera'] = None
+        
+        self._app.win_dict['main'].actionCamera_Control.setEnabled(True) # enable camera button again
+        self._app.win_dict['camera'] = None
         
         self._app.log.update('Camera connection closed',
                                     tag='verbose')
@@ -513,28 +517,29 @@ class CamWin():
     
     def toggle_video(self, bool):
         
-        #Turn On
-        if bool:
+        if bool: #turn On
+            self._video_timer = QTimer()
+            self._video_timer.timeout.connect(self._wait_for_frame)
+            self._cam.toggle_video(True)
+            self._video_timer.start(0)  # TODO: this disrupts the main timeout timer. can this be helped? should the main timer stop while video is running?
+            
             self._gui.videoButton.setStyleSheet("background-color: "
                                                              "rgb(225, 245, 225); "
                                                              "color: black;")
             self._gui.videoButton.setText('Video ON')
-            self._video_timer = QTimer()
-            self._video_timer.timeout.connect(self._wait_for_frame)
-            self._cam.toggle_video(True)
-            self._video_timer.start(100)  # Run full throttle
             
             self._app.log.update('Camera video mode ON',
                                         tag='verbose')
             
-        #Turn Off
-        else:
+        else: #turn Off
+            self._cam.toggle_video(False)
+            self._video_timer.stop()
+            
             self._gui.videoButton.setStyleSheet("background-color: "
                                                              "rgb(225, 225, 225); "
                                                              "color: black;")
             self._gui.videoButton.setText('Start Video')
-            self._cam.toggle_video(False)
-            self._video_timer.stop()
+            
             self._app.log.update('Camera video mode OFF',
                                         tag='verbose')
 
