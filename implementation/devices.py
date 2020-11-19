@@ -6,6 +6,7 @@ import implementation.drivers as drivers
 import implementation.logic as logic
 import numpy as np
 from implementation.error_handler import driver_error_handler as err_hndlr
+from PyQt5.QtCore import QTimer
 
 class UM232(drivers.FTDI_Instrument):
     
@@ -70,7 +71,8 @@ class Camera():
         
         self.nick = nick
         self.error_dict = error_dict
-        self.video_state = False
+        self.video_timer = QTimer()
+        self.video_timer.setInterval(100) # set to 100 ms
     
     @err_hndlr
     def toggle(self, bool):
@@ -78,6 +80,8 @@ class Camera():
         if bool:
             self._driver = drivers.UC480_Camera(reopen_policy='new')
         elif hasattr(self, '_driver'):
+            self.video_timer.stop() # in case video is ON
+            # TODO: possibly need to turn off video before closing?
             self._driver.close()
         self.state = bool
     
@@ -89,16 +93,29 @@ class Camera():
     @err_hndlr
     def shoot(self):
         
-        return self._driver.grab_image()
+        if self.video_timer.isActive():
+            # TODO: is this really needed? check again.
+            self.toggle_video(False)
+            img = self._driver.grab_image()
+            self.toggle_video(True)
+            
+        else:
+            img = self._driver.grab_image()
+            
+        return img
     
     @err_hndlr
     def toggle_video(self, bool):
-        if self.state:
-            if bool:
-                self._driver.start_live_video()
-            else:
-                self._driver.stop_live_video()
-            self.video_state = bool
+        
+        if bool:
+            self._driver.start_live_video()
+            self.video_timer.start()
+            
+        else:
+            self._driver.stop_live_video()
+            self.video_timer.stop()
+            
+        self.video_state = bool
     
     @err_hndlr
     def latest_frame(self):
