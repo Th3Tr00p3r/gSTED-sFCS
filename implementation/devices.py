@@ -94,7 +94,6 @@ class Camera():
     def shoot(self):
         
         if self.video_timer.isActive():
-            # TODO: is this really needed? check again.
             self.toggle_video(False)
             img = self._driver.grab_image()
             self.toggle_video(True)
