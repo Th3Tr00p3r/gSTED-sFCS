@@ -46,7 +46,7 @@ DEFAULT_SETTINGS_FILE_PATH = './settings/default_settings.csv'
 MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
 
 # devices
-DEVICE_NICKS = ['COUNTER', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE']
+DEVICE_NICKS = {'COUNTER', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA'}
 
 DEVICE_ADDRESS_GUI_DICT = {'EXC_LASER': 'excTriggerExtChan',
                                             'DEP_LASER': 'depPort',
@@ -59,7 +59,8 @@ DEVICE_CLASS_NAMES = {'EXC_LASER': 'ExcitationLaser',
                                      'DEP_SHUTTER': 'DepletionShutter',
                                      'STAGE': 'StepperStage',
                                      'COUNTER': 'Counter',
-                                     'UM232': 'UM232'
+                                     'UM232': 'UM232',
+                                     'CAMERA': 'Camera'
                                      }
                             
 COUNTER_PARAM_GUI_DICT = {'buff_sz': {'field': 'counterBufferSizeSpinner',

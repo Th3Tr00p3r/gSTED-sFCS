@@ -61,20 +61,23 @@ class Counter(drivers.DAQmxInstrumentCI):
             
 class Camera():
     
+#    idealy 'Camera' would inherit 'UC480_Camera',
+#    but this is problematic because of the 'Instrumental' API
+    
     def __init__(self, nick, error_dict):
         
         self.nick = nick
         self.error_dict = error_dict
-        
-        # idealy 'Camera' would inherit 'UC480_Camera', but this is problematic because of the 'Instrumental' API
-        self._driver = drivers.UC480_Camera(reopen_policy='new')
-        
         self.video_state = False
     
     @err_hndlr
-    def close(self):
+    def toggle(self, bool):
         
-        self._driver.close()
+        if bool:
+            self._driver = drivers.UC480_Camera(reopen_policy='new')
+        elif hasattr(self, '_driver'):
+            self._driver.close()
+        self.state = bool
     
     @err_hndlr
     def set_auto_exposure(self, bool):
@@ -124,10 +127,7 @@ class DepletionLaser(drivers.VISAInstrument):
                                error_dict=error_dict,
                                read_termination = '\r', 
                                write_termination = '\r')
-        
-        self.current = None
-        self.power = None
-        self.temp = -999
+                               
         self.state = None
         
         self.toggle(False)
