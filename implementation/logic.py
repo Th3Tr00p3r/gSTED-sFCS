@@ -50,11 +50,13 @@ class App():
         
         def __init__(self, app):
             self._app = app
-            self._timers = self._get_timers()
-            self._main_timer = QTimer()
-            self._main_timer.timeout.connect(self._main)
+            self._timer_dict = self._get_timers()
             
-            self._start_all_timers()
+            self._timer_dict['main'] = QTimer()
+            self._timer_dict['main'].setInterval(10) # set main timer interval to 10 ms
+            self._timer_dict['main'].timeout.connect(self._main)
+            
+            self.start_timers()
         
         def _get_timings_dict(self):
                 
@@ -83,7 +85,7 @@ class App():
                 
             return timers_dict
         
-        def _start_all_timers(self):
+        def start_timers(self):
             
             # initiate all update functions once
             update_func_dict = self._get_timings_dict()
@@ -91,9 +93,16 @@ class App():
                 update_func_dict[key][1]()
                 
             # then start individual timers
-            self._main_timer.start(10)
-            for key in self._timers.keys():
-                self._timers[key].start()
+            for key in self._timer_dict.keys():
+                self._timer_dict[key].start()
+        
+        def stop_main(self):
+            
+            self._timer_dict['main'].stop()
+            
+        def start_main(self):
+            
+            self._timer_dict['main'].start()
         
         def _update_dep(self):
             
@@ -393,7 +402,6 @@ class MainWin():
         self._app.win_dict['camera'] = gui_module.CamWin(app=self._app)
         self._app.win_dict['camera'].show()
         self._app.win_dict['camera'].activateWindow()
-        self._app.win_dict['camera'].imp.init_cam()
     
     def open_errwin(self):
         
@@ -492,11 +500,14 @@ class CamWin():
         self._gui.figure = plt.figure()
         self._gui.canvas = FigureCanvas(self._gui.figure)
         self._gui.gridLayout.addWidget(self._gui.canvas, 0, 1)
+        
+        self.init_cam()
     
     def init_cam(self):
         
         self._cam = self._app.dvc_dict['CAMERA']
         self._cam.toggle(True)
+        self._cam.video_timer.timeout.connect(self._video_timeout)
         
         self._app.log.update('Camera connection opened',
                                     tag='verbose')
@@ -504,12 +515,11 @@ class CamWin():
     def clean_up(self):
         
         '''clean up before closing window'''
-        
-        self.toggle_video(False)
+
         self._cam.toggle(False)
         
         self._app.win_dict['main'].actionCamera_Control.setEnabled(True) # enable camera button again
-        self._app.win_dict['camera'] = None
+        self._app.win_dict['camera'] = None # TODO: is this needed? check
         
         self._app.log.update('Camera connection closed',
                                     tag='verbose')
@@ -518,10 +528,8 @@ class CamWin():
     def toggle_video(self, bool):
         
         if bool: #turn On
-            self._video_timer = QTimer()
-            self._video_timer.timeout.connect(self._wait_for_frame)
+            self._app.timeout_loop.stop_main()
             self._cam.toggle_video(True)
-            self._video_timer.start(0)  # TODO: this disrupts the main timeout timer. can this be helped? should the main timer stop while video is running?
             
             self._gui.videoButton.setStyleSheet("background-color: "
                                                              "rgb(225, 245, 225); "
@@ -533,7 +541,7 @@ class CamWin():
             
         else: #turn Off
             self._cam.toggle_video(False)
-            self._video_timer.stop()
+            self._app.timeout_loop.start_main()
             
             self._gui.videoButton.setStyleSheet("background-color: "
                                                              "rgb(225, 225, 225); "
@@ -544,19 +552,12 @@ class CamWin():
                                         tag='verbose')
 
     def shoot(self):
-
-        if self._cam.video_state:
-            self.toggle_video(False)
-            img = self._cam.shoot()
-            self._imshow(img)
-            self._app.log.update('Camera photo taken',
-                                        tag='verbose')
-            self.toggle_video(True)
-        else:
-            img = self._cam.shoot()
-            self._imshow(img)
-            self._app.log.update('Camera photo taken',
-                                        tag='verbose')
+        
+        img = self._cam.shoot()
+        self._imshow(img)
+        
+        self._app.log.update('Camera photo taken',
+                                    tag='verbose')
     
     # private methods
     def _imshow(self, img):
@@ -568,7 +569,7 @@ class CamWin():
         ax.imshow(img)
         self._gui.canvas.draw()
     
-    def _wait_for_frame(self):
+    def _video_timeout(self):
 
         img = self._cam.latest_frame()
         self._imshow(img)
