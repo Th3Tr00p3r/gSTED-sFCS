@@ -93,12 +93,12 @@ class Camera():
     
     @err_hndlr
     def toggle_video(self, bool):
-        
-        if bool:
-            self._driver.start_live_video()
-        else:
-            self._driver.stop_live_video()
-        self.video_state = bool
+        if self.state:
+            if bool:
+                self._driver.start_live_video()
+            else:
+                self._driver.stop_live_video()
+            self.video_state = bool
     
     @err_hndlr
     def latest_frame(self):
