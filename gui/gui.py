@@ -228,9 +228,4 @@ class CamWin(QWidget):
     @pyqtSlot()
     def on_videoButton_released(self):
         
-        # Turn ON
-        if self.videoButton.text() == 'Start Video':
-            self.imp.toggle_video(True)
-        # Turn OFF
-        else:
-            self.imp.toggle_video(False)
+        self.imp.toggle_video(True) if (self.videoButton.text() == 'Start Video') else self.imp.toggle_video(False)
