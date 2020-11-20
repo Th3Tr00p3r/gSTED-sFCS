@@ -16,58 +16,29 @@ from implementation.log import Log
 import gui.icons.icon_paths as icon
 import gui.gui as gui_module
 
+import time
+
 from implementation.error_handler import logic_error_handler as err_hndlr
 
-class App():
-    
-    def __init__(self):
-        
-        #init windows
-        self.win_dict = {}
-        self.win_dict['main'] = gui_module.MainWin(self)
-        self.log = Log(self.win_dict['main'], dir_path='./log/')
-        
-        self.win_dict['settings'] = gui_module.SettWin(self)
-        self.win_dict['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
-        
-        self.win_dict['errors'] = gui_module.ErrWin(self)
-        self.win_dict['camera'] = None # instantiated on pressing camera button
-        
-        # initialize error dict
-        self.init_errors()
-        #initialize active devices
-        self.init_devices()
-        # initialize measurement
-        self.meas = None
-        
-        #FINALLY
-        self.win_dict['main'].show()
-
-        # set up main timeout event
-        self.timeout_loop = self.Timeout(self)
-    
-    class Timeout():
+class Timeout():
         
         def __init__(self, app):
             self._app = app
             self._timer_dict = self._get_timers()
             
-            self._timer_dict['main'] = QTimer()
-            self._timer_dict['main'].setInterval(10) # set main timer interval to 10 ms
-            self._timer_dict['main'].timeout.connect(self._main)
-            
             self.start_timers()
         
         def _get_timings_dict(self):
                 
-                '''Associate an (interval (seconds), update_function) tuple with each device'''
+                '''Associate an (interval (ms), update_function) tuple with each device'''
                 # TODO: possibly have a single or a few longer interval timers, not one for each (could be resource heavy)
                 
                 sett_gui = self._app.win_dict['settings']
                 t_dict ={}
-                t_dict['DEP_LASER'] = (sett_gui.depUpdateTimeSpinner.value(),
+                t_dict['MAIN'] = (10, self._main)
+                t_dict['DEP_LASER'] = (sett_gui.depUpdateTimeSpinner.value() * 1000,
                                                  self._update_dep)
-                t_dict['ERRORS'] = (2, self._update_errorGUI)
+                t_dict['ERRORS'] = (2000, self._update_errorGUI)
                 return t_dict
         
         def _get_timers(self):
@@ -80,7 +51,7 @@ class App():
             timers_dict = {}
             for key, value in self._get_timings_dict().items():
                 timers_dict[key] = QTimer()
-                timers_dict[key].setInterval(1000 * value[0]) # values are is seconds
+                timers_dict[key].setInterval(value[0])
                 timers_dict[key].timeout.connect(value[1])
                 
             return timers_dict
@@ -98,11 +69,11 @@ class App():
         
         def stop_main(self):
             
-            self._timer_dict['main'].stop()
+            self._timer_dict['MAIN'].stop()
             
         def start_main(self):
             
-            self._timer_dict['main'].start()
+            self._timer_dict['MAIN'].start()
         
         def _update_dep(self):
             
@@ -161,12 +132,34 @@ class App():
                     self._update_counter()
             else: # no ongoing measurement (self.meas == None)
                 self._update_counter()
+
+class App():
     
-    def init_errors(self):
+    def __init__(self):
         
-        self.error_dict = {}
-        for nick in const.DEVICE_NICKS:
-            self.error_dict[nick] = None
+        #init windows
+        self.win_dict = {}
+        self.win_dict['main'] = gui_module.MainWin(self)
+        self.log = Log(self.win_dict['main'], dir_path='./log/')
+        
+        self.win_dict['settings'] = gui_module.SettWin(self)
+        self.win_dict['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+        
+        self.win_dict['errors'] = gui_module.ErrWin(self)
+        self.win_dict['camera'] = None # instantiated on pressing camera button
+        
+        # initialize error dict
+        self.init_errors()
+        #initialize active devices
+        self.init_devices()
+        # initialize measurement
+        self.meas = None
+        
+        #FINALLY
+        self.win_dict['main'].show()
+
+        # set up main timeout event
+        self.timeout_loop = Timeout(self)
     
     def init_devices(self):
         
@@ -212,6 +205,12 @@ class App():
                 dvc_class = getattr(devices,
                                             const.DEVICE_CLASS_NAMES[nick])
                 self.dvc_dict[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
+    
+    def init_errors(self):
+        
+        self.error_dict = {}
+        for nick in const.DEVICE_NICKS:
+            self.error_dict[nick] = None
     
     def clean_up_app(self, restart=False):
         
@@ -298,10 +297,12 @@ class MainWin():
         pressed = Question(q_txt='Are you sure?',
                                    q_title='Restarting Program').display()
         if pressed == QMessageBox.Yes:
+            self._app.timeout_loop.stop_main()
             self._app.clean_up_app(restart=True)
             self._app.init_errors()
             self._app.init_devices()
-            self.timeout_loop = self._app.Timeout(self._app)
+            time.sleep(0.1) # needed to avoid error with main timeout
+            self.timeout_loop = Timeout(self._app)
             self._app.log.update('restarting application.',
                                         tag='verbose')
     
@@ -489,8 +490,6 @@ class SettWin():
 
 class CamWin():
     
-    state = {}
-    
     def __init__(self, gui, app):
         
         self._app = app
@@ -519,12 +518,11 @@ class CamWin():
         '''clean up before closing window'''
 
         self._cam.toggle(False)
-        
         self._app.win_dict['main'].actionCamera_Control.setEnabled(True) # enable camera button again
-        self._app.win_dict['camera'] = None # TODO: is this needed? check
         
         self._app.log.update('Camera connection closed',
                                     tag='verbose')
+                                    
         return None
     
     def toggle_video(self, bool):
