@@ -10,9 +10,21 @@ from PyQt5.QtCore import QTimer
 
 class UM232(drivers.FTDI_Instrument):
     
-    def __init__(self, param_dict, error_dict):
+    def __init__(self, nick, param_dict, error_dict):
         
-        super().__init__(param_dict=param_dict)
+        super().__init__(nick=nick,
+                               param_dict=param_dict,
+                               error_dict=error_dict
+                               )
+        self.toggle(True)
+    
+    def toggle(self, bool):
+        
+        if bool:
+            self.open()
+        else:
+            self.close()
+        self.state = bool
     
 class Counter(drivers.DAQmxInstrumentCI):
     
@@ -20,8 +32,8 @@ class Counter(drivers.DAQmxInstrumentCI):
         
         super().__init__(nick=nick,
                                param_dict=param_dict,
-                               error_dict=error_dict)
-        
+                               error_dict=error_dict
+                               )
         self.cont_count_buff = np.zeros(1, )
         self.counts = None
         

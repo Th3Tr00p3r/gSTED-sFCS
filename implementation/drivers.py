@@ -5,6 +5,7 @@ Drivers Module.
 from instrumental.drivers.cameras.uc480 import UC480_Camera # NOQA
 import pyvisa as visa
 import nidaqmx
+from pyftdi.ftdi import Ftdi
 import numpy as np
 from implementation.error_handler import driver_error_handler as err_hndlr
 
@@ -15,6 +16,28 @@ class FTDI_Instrument():
         self.nick = nick
         self._param_dict = param_dict
         self.error_dict = error_dict
+        self.inst = Ftdi()
+    
+    def open(self):
+        
+        self.inst.open(self._param_dict['vend_id'],
+                           self._param_dict['prod_id']
+                           )
+        self.inst.set_bitmode(0, getattr(Ftdi.BitMode,
+                                                   self._param_dict['bit_mode']
+                                                   ))
+        self.inst._usb_read_timeout = self._param_dict['read_timeout']
+        self.inst._usb_write_timeout = self._param_dict['read_timeout']
+        self.inst.set_latency_timer(self._param_dict['ltncy_tmr_val'])
+        self.inst.set_flowctrl(self._param_dict['flow_ctrl'])
+        self.eff_baud_rate = self.inst.set_baudrate(self._param_dict['baud_rate'])
+        
+        self.inst.purge_buffers()
+    
+    def close(self):
+        
+        self.inst.close()
+        
 
 class DAQmxInstrumentDO():
     

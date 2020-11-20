@@ -46,7 +46,8 @@ DEFAULT_SETTINGS_FILE_PATH = './settings/default_settings.csv'
 MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
 
 # devices
-DEVICE_NICKS = {'COUNTER', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA'}
+#DEVICE_NICKS = {'COUNTER', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA'}
+DEVICE_NICKS = {'COUNTER', 'UM232', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA'}
 
 DEVICE_ADDRESS_GUI_DICT = {'EXC_LASER': 'excTriggerExtChan',
                                             'DEP_LASER': 'depPort',
@@ -85,20 +86,22 @@ COUNTER_PARAM_GUI_DICT = {'buff_sz': {'field': 'counterBufferSizeSpinner',
                                                                           'access': 'isChecked'}
                                             }
                                             
-UM232_PARAM_GUI_DICT = {'dvc_idx': {'field': 'um232DvcIdx',
+UM232_PARAM_GUI_DICT = {'vend_id': {'field': 'um232VendID',
                                                            'access': 'value'},
+                                        'prod_id': {'field': 'um232ProdID',
+                                                           'access': 'value'},
+                                        'dvc_dscrp': {'field': 'um232DeviceDescription',
+                                                             'access': 'text'}, 
                                         'ltncy_tmr_val': {'field': 'um232latencyTimerVal',
                                                                     'access': 'value'},
-                                        'in_trnsfr_rate': {'field': 'um232InTransferRate',
+                                        'baud_rate': {'field': 'um232BaudRate',
                                                                      'access': 'value'},
                                         'read_timeout': {'field': 'um232ReadTimeout',
                                                                   'access': 'value'},
                                         'flow_ctrl': {'field': 'um232FlowControl',
-                                                              'access': 'currentText'},
+                                                              'access': 'text'},
                                         'bit_mode': {'field': 'um232BitMode',
-                                                            'access': 'currentText'},
-                                        'dvc_dscrp': {'field': 'um232DeviceDescription',
-                                                             'access': 'currentText'}
+                                                            'access': 'text'}
                                         }
                                             
 TDC_PARAM_GUI_DICT = {'start_addr': {'field': 'TDCstartAddress',
