@@ -127,9 +127,11 @@ class Timeout():
         
         #MAIN
         def _main(self):
-            if hasattr(self, 'meas'):
-                if self.meas.type == 'FCS':
-                    self._update_counter()
+            
+            if self._app.meas.type == 'FCS':
+                self._update_counter()
+                self._app.dvc_dict['UM232'].read_TDC_data()
+                
             else: # no ongoing measurement (self.meas == None)
                 self._update_counter()
 
@@ -153,7 +155,7 @@ class App():
         #initialize active devices
         self.init_devices()
         # initialize measurement
-        self.meas = None
+        self.meas = Measurement()
         
         #FINALLY
         self.win_dict['main'].show()
@@ -379,10 +381,12 @@ class MainWin():
 
     def start_FCS_meas(self):
         
-        if not self._app.meas:
-            self._app.meas = Measurement(type='FCS', 
-                                                duration_spinner=self._gui.measFCSDurationSpinBox,
-                                                prog_bar=self._gui.FCSprogressBar, log=self._app.log)
+        if self._app.meas.type is None:
+            self._app.meas = Measurement(type='FCS',
+                                                       data_inpt_dvc=self._app.dvc_dict['UM232'],
+                                                       duration_spinner=self._gui.measFCSDurationSpinBox,
+                                                       prog_bar=self._gui.FCSprogressBar,
+                                                       log=self._app.log)
             self._app.meas.start()
             self._gui.startFcsMeasurementButton.setText('Stop \nMeasurement')
         elif self._app.meas.type == 'FCS':
@@ -587,9 +591,14 @@ class Measurement():
     # class attributes
     _timer = QTimer()
     
-    def __init__(self, type, duration_spinner, prog_bar=None, log=None):
+    def __init__(self, type=None,
+                       data_inpt_dvc=None,
+                       duration_spinner=None,
+                       prog_bar=None,
+                       log=None):
         # instance attributes
         self.type = type
+        self.data_inpt_dvc = data_inpt_dvc
         self.duration_spinner = duration_spinner
         self.prog_bar = prog_bar
         self.log = log
@@ -618,8 +627,14 @@ class Measurement():
             self.time_passed += 1
 #            if self.time_passed == self.duration_spinbox.value():
 #                QSound.play(const.MEAS_COMPLETE_SOUND);
-        else:
+        else: # timer finished
+            self.disp_ACF()
+            self.data_inpt_dvc.init_data()
             self.time_passed = 1
         if self.prog_bar:
             prog = self.time_passed / self.duration_spinner.value() * 100
             self.prog_bar.setValue(prog)
+    
+    def disp_ACF(self):
+        
+        print(F"displaying ACF: {self.data_inpt_dvc.data}")

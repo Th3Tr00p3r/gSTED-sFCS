@@ -101,7 +101,9 @@ UM232_PARAM_GUI_DICT = {'vend_id': {'field': 'um232VendID',
                                         'flow_ctrl': {'field': 'um232FlowControl',
                                                               'access': 'text'},
                                         'bit_mode': {'field': 'um232BitMode',
-                                                            'access': 'text'}
+                                                            'access': 'text'},
+                                        'n_bytes': {'field': 'um232nBytes',
+                                                          'access': 'value'}
                                         }
                                             
 TDC_PARAM_GUI_DICT = {'start_addr': {'field': 'TDCstartAddress',

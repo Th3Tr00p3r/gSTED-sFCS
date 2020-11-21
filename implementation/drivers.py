@@ -18,7 +18,7 @@ class FTDI_Instrument():
         self.error_dict = error_dict
         self.inst = Ftdi()
     
-    def open(self):
+    def _open(self):
         
         self.inst.open(self._param_dict['vend_id'],
                            self._param_dict['prod_id']
@@ -34,7 +34,7 @@ class FTDI_Instrument():
         
         self.inst.purge_buffers()
     
-    def close(self):
+    def _close(self):
         
         self.inst.close()
         
