@@ -16,15 +16,28 @@ class UM232(drivers.FTDI_Instrument):
                                param_dict=param_dict,
                                error_dict=error_dict
                                )
+        self.init_data()
+        
         self.toggle(True)
     
     def toggle(self, bool):
         
         if bool:
-            self.open()
+            self._open()
         else:
-            self.close()
+            self._close()
         self.state = bool
+    
+    def read_TDC_data(self):
+        
+        read_bytes = self.inst.read_data_bytes(self._param_dict['n_bytes'])
+        self.total_bytes_read += len(read_bytes)
+        self.data = np.append(self.data, read_bytes)
+    
+    def init_data(self):
+        
+        self.data = np.empty(shape=(0, ))
+        self.total_bytes_read = 0
     
 class Counter(drivers.DAQmxInstrumentCI):
     
