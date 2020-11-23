@@ -33,10 +33,10 @@ class Timeout():
                 '''Associate an (interval (ms), update_function) tuple with each device'''
                 # TODO: possibly have a single or a few longer interval timers, not one for each (could be resource heavy)
                 
-                sett_gui = self._app.win_dict['settings']
                 t_dict ={}
                 t_dict['MAIN'] = (10, self._main)
-                t_dict['DEP_LASER'] = (sett_gui.depUpdateTimeSpinner.value() * 1000,
+                dep_param_dict = self._app.dvc_dict['DEP_LASER'].param_dict
+                t_dict['DEP_LASER'] = (dep_param_dict['update_time'] * 1000,
                                                  self._update_dep)
                 t_dict['ERRORS'] = (2000, self._update_errorGUI)
                 return t_dict
@@ -187,26 +187,17 @@ class App():
         
         self.dvc_dict = {}
         for nick in const.DEVICE_NICKS:
-            if nick in {'COUNTER', 'UM232'}:
-                dvc_class = getattr(devices,
-                                            const.DEVICE_CLASS_NAMES[nick])
+            dvc_class = getattr(devices,
+                                        const.DEVICE_CLASS_NAMES[nick])
+            
+            if nick in {'CAMERA'}:
+                self.dvc_dict[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
+            
+            else:
                 param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
                 self.dvc_dict[nick] = dvc_class(nick=nick,
-                                                      param_dict=param_dict,
-                                                      error_dict=self.error_dict)
-            elif nick in {'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE'}:
-                dvc_class = getattr(devices,
-                                            const.DEVICE_CLASS_NAMES[nick])
-                dvc_address = getattr(self.win_dict['settings'],
-                                                const.DEVICE_ADDRESS_GUI_DICT[nick]).text()
-                self.dvc_dict[nick] = dvc_class(nick=nick,
-                                                      address=dvc_address,
-                                                      error_dict=self.error_dict
-                                                      )
-            elif nick in {'CAMERA'}:
-                dvc_class = getattr(devices,
-                                            const.DEVICE_CLASS_NAMES[nick])
-                self.dvc_dict[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
+                                                           param_dict=param_dict,
+                                                           error_dict=self.error_dict)
     
     def init_errors(self):
         
@@ -249,13 +240,15 @@ class App():
             gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             gui.stageButtonsGroup.setEnabled(False)
         
-        if self.meas:
+        if self.meas.type is not None:
             self.meas.stop()
             
         close_all_dvcs(self)
         
         if restart:
             lights_out(self.win_dict['main'])
+            self.win_dict['main'].depActualCurrSpinner.setValue(0)
+            self.win_dict['main'].depActualPowerSpinner.setValue(0)
             
         else:
             close_all_wins(self)
@@ -266,6 +259,7 @@ class App():
         pressed = Question(q_txt='Are you sure you want to quit?',
                                    q_title='Quitting Program').display()
         if pressed == QMessageBox.Yes:
+            self.timeout_loop.stop_main()
             self.clean_up_app()
         else:
             event.ignore()
@@ -383,7 +377,8 @@ class MainWin():
         
         if self._app.meas.type is None:
             self._app.meas = Measurement(type='FCS',
-                                                       data_inpt_dvc=self._app.dvc_dict['UM232'],
+                                                       TDC_hndl=self._app.dvc_dict['TDC'],
+                                                       data_inpt_hndl=self._app.dvc_dict['UM232'],
                                                        duration_spinner=self._gui.measFCSDurationSpinBox,
                                                        prog_bar=self._gui.FCSprogressBar,
                                                        log=self._app.log)
@@ -391,7 +386,7 @@ class MainWin():
             self._gui.startFcsMeasurementButton.setText('Stop \nMeasurement')
         elif self._app.meas.type == 'FCS':
             self._app.meas.stop()
-            self._app.meas = None
+            self._app.meas = Measurement()
             self._gui.startFcsMeasurementButton.setText('Start \nMeasurement')
         else:
             error_txt = (F"Another type of measurement "
@@ -523,6 +518,7 @@ class CamWin():
 
         self._cam.toggle(False)
         self._app.win_dict['main'].actionCamera_Control.setEnabled(True) # enable camera button again
+        self._app.timeout_loop.start_main() # for restarting main loop in case camwin closed while video ON
         
         self._app.log.update('Camera connection closed',
                                     tag='verbose')
@@ -592,13 +588,16 @@ class Measurement():
     _timer = QTimer()
     
     def __init__(self, type=None,
-                       data_inpt_dvc=None,
+                       TDC_hndl=None,
+                       data_inpt_hndl=None,
                        duration_spinner=None,
                        prog_bar=None,
                        log=None):
+                           
         # instance attributes
         self.type = type
-        self.data_inpt_dvc = data_inpt_dvc
+        self.TDC_hndl = TDC_hndl
+        self.data_inpt_hndl = data_inpt_hndl
         self.duration_spinner = duration_spinner
         self.prog_bar = prog_bar
         self.log = log
@@ -608,17 +607,18 @@ class Measurement():
     # public methods
     def start(self):
         self._timer.start(1000)
-        if self.log:
-            self.log.update(F"{self.type} measurement started")
+        self.TDC_hndl.toggle(True)
+        
+        self.log.update(F"{self.type} measurement started")
         
     def stop(self):
         self._timer.stop()
-        
-        if self.log:
-            self.log.update(F"{self.type} measurement stopped")
+        self.TDC_hndl.toggle(False)
             
         if self.prog_bar:
             self.prog_bar.setValue(0)
+            
+        self.log.update(F"{self.type} measurement stopped")
     
     # private methods
     def _timer_timeout(self):
@@ -629,7 +629,7 @@ class Measurement():
 #                QSound.play(const.MEAS_COMPLETE_SOUND);
         else: # timer finished
             self.disp_ACF()
-            self.data_inpt_dvc.init_data()
+            self.data_inpt_hndl.init_data()
             self.time_passed = 1
         if self.prog_bar:
             prog = self.time_passed / self.duration_spinner.value() * 100
@@ -637,4 +637,6 @@ class Measurement():
     
     def disp_ACF(self):
         
-        print(F"displaying ACF: {self.data_inpt_dvc.data}")
+        print(F"Measurement Finished:\n"
+                F"Full Data = {self.data_inpt_hndl.data}\n"
+                F"Total Bytes = {self.data_inpt_hndl.tot_bytes}\n")

@@ -5,6 +5,7 @@ from implementation.dialog import Error
 from pyvisa.errors import VisaIOError
 from instrumental.drivers.cameras.uc480 import UC480Error
 from nidaqmx.errors import DaqError
+from pyftdi.ftdi import FtdiError
 import functools
 
 def driver_error_handler(func):
@@ -13,7 +14,7 @@ def driver_error_handler(func):
     @functools.wraps(func)
     def wrapper_error_handler(dvc, *args, **kwargs):
         
-        if not dvc.error_dict[dvc.nick]: # if there's no errors
+        if dvc.error_dict[dvc.nick] is None: # if there's no errors
             try:
                 return func(dvc, *args, **kwargs)
             
@@ -25,9 +26,15 @@ def driver_error_handler(func):
                 
             except VisaIOError as exc:
                 dvc.error_dict[dvc.nick] = 'VISA Error'
-                Error(exc, error_txt='VISA can\'t access ' + dvc.address +
-                                                   ' (depletion laser)').display()
-            
+                # TODO: instead of showing error, show it in dedicated the ErrWin and set the LED to red
+                Error(exc,
+                    error_txt=F"VISA can't access {dvc.address} (depletion laser)").display()
+                
+            except FtdiError as exc:
+                Error(exc).display()
+                dvc.error_dict[dvc.nick] = 'FTDI Error'
+                # TODO: STOP REPEATING ERRORS!
+                
             except UC480Error as exc:
                 Error(exc).display()
             

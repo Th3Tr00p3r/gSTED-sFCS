@@ -47,7 +47,7 @@ MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
 
 # devices
 #DEVICE_NICKS = {'COUNTER', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA'}
-DEVICE_NICKS = {'COUNTER', 'UM232', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA'}
+DEVICE_NICKS = {'COUNTER', 'UM232', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA',  'TDC'}
 
 DEVICE_ADDRESS_GUI_DICT = {'EXC_LASER': 'excTriggerExtChan',
                                             'DEP_LASER': 'depPort',
@@ -55,15 +55,44 @@ DEVICE_ADDRESS_GUI_DICT = {'EXC_LASER': 'excTriggerExtChan',
                                             'STAGE': 'arduinoChan', 
                                             }
 # device classes
-DEVICE_CLASS_NAMES = {'EXC_LASER': 'ExcitationLaser',
+DEVICE_CLASS_NAMES = {'EXC_LASER': 'SimpleDO',
+                                     'TDC': 'SimpleDO',
+                                     'DEP_SHUTTER': 'SimpleDO',
                                      'DEP_LASER': 'DepletionLaser',
-                                     'DEP_SHUTTER': 'DepletionShutter',
                                      'STAGE': 'StepperStage',
                                      'COUNTER': 'Counter',
                                      'UM232': 'UM232',
                                      'CAMERA': 'Camera'
                                      }
-                            
+
+EXC_LASER_PARAM_GUI_DICT = {'model': {'field': 'excMod',
+                                                             'access': 'text'},
+                                              'trg_src': {'field': 'excTriggerSrc',
+                                                                'access': 'currentText'},
+                                              'ext_trg_addr': {'field': 'excTriggerExtAddr',
+                                                                        'access': 'text'},
+                                              'int_trg_addr': {'field': 'excTriggerIntAddr',
+                                                                        'access': 'text'},
+                                              'addr': {'field': 'excAddr',
+                                                           'access': 'text'}
+                                            }
+
+DEP_LASER_PARAM_GUI_DICT = {'model': {'field': 'depMod',
+                                                             'access': 'text'},
+                                              'update_time': {'field': 'depUpdateTime',
+                                                                       'access': 'value'},
+                                              'addr': {'field': 'depAddr',
+                                                           'access': 'text'}
+                                            }
+
+DEP_SHUTTER_PARAM_GUI_DICT = {'addr': {'field': 'depShutterAddr',
+                                                               'access': 'text'}
+                                                }
+
+STAGE_PARAM_GUI_DICT = {'addr': {'field': 'depAddr',
+                                                     'access': 'text'}
+                                      }
+
 COUNTER_PARAM_GUI_DICT = {'buff_sz': {'field': 'counterBufferSizeSpinner',
                                                                'access': 'value'},
                                            'update_time': {'field': 'counterUpdateTimeSpinner',
@@ -85,7 +114,7 @@ COUNTER_PARAM_GUI_DICT = {'buff_sz': {'field': 'counterBufferSizeSpinner',
                                            'CI_dup_prvnt': {'field': 'counterCIdupCountPrevention',
                                                                           'access': 'isChecked'}
                                             }
-                                            
+
 UM232_PARAM_GUI_DICT = {'vend_id': {'field': 'um232VendID',
                                                            'access': 'value'},
                                         'prod_id': {'field': 'um232ProdID',
@@ -105,9 +134,9 @@ UM232_PARAM_GUI_DICT = {'vend_id': {'field': 'um232VendID',
                                         'n_bytes': {'field': 'um232nBytes',
                                                           'access': 'value'}
                                         }
-                                            
-TDC_PARAM_GUI_DICT = {'start_addr': {'field': 'TDCstartAddress',
-                                                           'access': 'text'},
+
+TDC_PARAM_GUI_DICT = {'addr': {'field': 'TDCaddress',
+                                                  'access': 'text'},
                                     'data_vrsn': {'field': 'TDCdataVersion',
                                                           'access': 'text'},
                                     'laser_freq': {'field': 'TDClaserFreq',
@@ -132,7 +161,11 @@ PXL_CLK_PARAM_GUI_DICT = {'low_ticks': {'field': 'pixelClockLowTicks',
                                                        'access': 'value'},
                                         }
 
-DVC_NICK_PARAMS_DICT = {'COUNTER': COUNTER_PARAM_GUI_DICT,
+DVC_NICK_PARAMS_DICT = {'EXC_LASER': EXC_LASER_PARAM_GUI_DICT,
+                                        'DEP_SHUTTER': DEP_SHUTTER_PARAM_GUI_DICT,
+                                        'DEP_LASER': DEP_LASER_PARAM_GUI_DICT,
+                                        'STAGE': STAGE_PARAM_GUI_DICT,
+                                        'COUNTER': COUNTER_PARAM_GUI_DICT,
                                         'UM232': UM232_PARAM_GUI_DICT,
                                         'TDC': TDC_PARAM_GUI_DICT,
                                         'PXL_CLK': PXL_CLK_PARAM_GUI_DICT, 
