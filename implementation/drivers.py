@@ -6,6 +6,7 @@ from instrumental.drivers.cameras.uc480 import UC480_Camera # NOQA
 import pyvisa as visa
 import nidaqmx
 from pyftdi.ftdi import Ftdi
+#from pyftdi.gpio import GpioSyncController
 import numpy as np
 from implementation.error_handler import driver_error_handler as err_hndlr
 
@@ -18,7 +19,7 @@ class FTDI_Instrument():
         self.error_dict = error_dict
         self.inst = Ftdi()
     
-    def _open(self):
+    def open(self):
         
         self.inst.open(self._param_dict['vend_id'],
                            self._param_dict['prod_id']
@@ -34,11 +35,10 @@ class FTDI_Instrument():
         
         self.inst.purge_buffers()
     
-    def _close(self):
+    def close(self):
         
         self.inst.close()
         
-
 class DAQmxInstrumentDO():
     
     def __init__(self, nick, address, error_dict):
@@ -54,8 +54,7 @@ class DAQmxInstrumentDO():
         with nidaqmx.Task() as task:
             task.do_channels.add_do_chan(self._address)
             task.write(cmnd)
-            
-    @err_hndlr        
+               
     def toggle(self, bool):
         
         self._write(bool)

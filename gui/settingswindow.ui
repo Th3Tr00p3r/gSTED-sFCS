@@ -103,7 +103,7 @@
          </font>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>3</number>
         </property>
         <widget class="QWidget" name="paths">
          <attribute name="title">
@@ -321,7 +321,7 @@
                        </widget>
                       </item>
                       <item>
-                       <widget class="QComboBox" name="excTriggerSrcCombox">
+                       <widget class="QComboBox" name="excTriggerSrc">
                         <property name="font">
                          <font>
                           <pointsize>8</pointsize>
@@ -344,7 +344,7 @@
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="ext">
                        <layout class="QGridLayout" name="gridLayout_5">
@@ -364,7 +364,7 @@
                            </widget>
                           </item>
                           <item>
-                           <widget class="QLineEdit" name="excTriggerExtChan">
+                           <widget class="QLineEdit" name="excTriggerExtAddr">
                             <property name="text">
                              <string>Dev1/port0/line6</string>
                             </property>
@@ -392,7 +392,7 @@
                            </widget>
                           </item>
                           <item>
-                           <widget class="QLineEdit" name="excTriggerIntChan">
+                           <widget class="QLineEdit" name="excTriggerIntAddr">
                             <property name="font">
                              <font>
                               <pointsize>8</pointsize>
@@ -430,7 +430,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLineEdit" name="excChan">
+                  <widget class="QLineEdit" name="excAddr">
                    <property name="font">
                     <font>
                      <pointsize>8</pointsize>
@@ -518,7 +518,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLineEdit" name="depPort">
+                  <widget class="QLineEdit" name="depAddr">
                    <property name="enabled">
                     <bool>true</bool>
                    </property>
@@ -556,7 +556,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QSpinBox" name="depUpdateTimeSpinner">
+                  <widget class="QSpinBox" name="depUpdateTime">
                    <property name="maximumSize">
                     <size>
                      <width>16777215</width>
@@ -594,7 +594,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLineEdit" name="depShutterChan">
+                  <widget class="QLineEdit" name="depShutterAddr">
                    <property name="font">
                     <font>
                      <pointsize>8</pointsize>
@@ -1572,7 +1572,7 @@
                    <item row="0" column="0" colspan="2">
                     <layout class="QVBoxLayout" name="verticalLayout_43">
                      <item>
-                      <widget class="QLabel" name="label_41">
+                      <widget class="QLabel" name="Address">
                        <property name="maximumSize">
                         <size>
                          <width>16777215</width>
@@ -1585,7 +1585,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="TDCstartAddress">
+                      <widget class="QLineEdit" name="TDCaddress">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -2176,7 +2176,7 @@
                  <number>300</number>
                 </property>
                 <property name="value">
-                 <number>16</number>
+                 <number>2</number>
                 </property>
                </widget>
               </item>
@@ -2336,7 +2336,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLineEdit" name="arduinoChan">
+             <widget class="QLineEdit" name="arduinoAddr">
               <property name="font">
                <font>
                 <pointsize>8</pointsize>
