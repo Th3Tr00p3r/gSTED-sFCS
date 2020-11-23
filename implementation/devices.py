@@ -23,22 +23,24 @@ class UM232(drivers.FTDI_Instrument):
     def toggle(self, bool):
         
         if bool:
-            self._open()
+            self.open()
         else:
-            self._close()
+            self.close()
         self.state = bool
     
+    @err_hndlr
     def read_TDC_data(self):
         
         read_bytes = self.inst.read_data_bytes(self._param_dict['n_bytes'])
-        self.total_bytes_read += len(read_bytes)
+#        print(F"TEST ({__name__}): read_bytes = {read_bytes}") # TEST
+        self.tot_bytes += len(read_bytes)
         self.data = np.append(self.data, read_bytes)
     
     def init_data(self):
         
         self.data = np.empty(shape=(0, ))
-        self.total_bytes_read = 0
-    
+        self.tot_bytes = 0
+
 class Counter(drivers.DAQmxInstrumentCI):
     
     def __init__(self, nick, param_dict, error_dict):
@@ -148,14 +150,14 @@ class Camera():
         if frame_ready:
            return self._driver.latest_frame(copy=False)            
     
-class ExcitationLaser(drivers.DAQmxInstrumentDO):
+class SimpleDO(drivers.DAQmxInstrumentDO):
         
-    '''Excitation Laser Control'''
+    '''ON/OFF device (excitation laser, depletion shutter, TDC)'''
         
-    def __init__(self, nick, address, error_dict):
+    def __init__(self, nick, param_dict, error_dict):
     
         super().__init__(nick=nick,
-                               address=address,
+                               address=param_dict['addr'],
                                error_dict=error_dict)
 
 class DepletionLaser(drivers.VISAInstrument):
@@ -163,10 +165,11 @@ class DepletionLaser(drivers.VISAInstrument):
     Control depletion laser through pyVISA
     '''
     
-    def __init__(self, nick, address, error_dict):
+    def __init__(self, nick, param_dict, error_dict):
         
+        self.param_dict = param_dict
         super().__init__(nick=nick,
-                               address=address,
+                               address=param_dict['addr'],
                                error_dict=error_dict,
                                read_termination = '\r', 
                                write_termination = '\r')
@@ -222,17 +225,6 @@ class DepletionLaser(drivers.VISAInstrument):
             self.write('setLDcur 1 ' + str(value))
         else:
             logic.Error(error_txt='Current out of range').display()
-            
-
-class DepletionShutter(drivers.DAQmxInstrumentDO):
-    
-    '''Depletion Shutter Control'''
-    
-    def __init__(self, nick, address, error_dict):
-    
-        super().__init__(nick=nick,
-                               address=address,
-                               error_dict=error_dict)
     
 class StepperStage():
     
@@ -242,10 +234,10 @@ class StepperStage():
     and so its driver is within its own class (not inherited)
     '''
     
-    def __init__(self, nick, address, error_dict):
+    def __init__(self, nick, param_dict, error_dict):
         
         self.nick = nick
-        self.address = address
+        self.address = param_dict['addr']
         self.error_dict = error_dict
         self.rm = drivers.visa.ResourceManager()
         
