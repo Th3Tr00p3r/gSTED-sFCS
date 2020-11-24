@@ -29,6 +29,9 @@ def driver_error_handler(func):
                 # TODO: instead of showing error, show it in dedicated the ErrWin and set the LED to red
                 Error(exc,
                     error_txt=F"VISA can't access {dvc.address} (depletion laser)").display()
+                    
+            except ValueError as exc:
+                Error(exc).display()
                 
             except FtdiError as exc:
                 Error(exc).display()
@@ -50,9 +53,14 @@ def logic_error_handler(func):
     def wrapper_error_handler(*args, **kwargs):
         
         try:
-            func(*args, **kwargs)
+            return func(*args, **kwargs)
             
         except FileNotFoundError as exc:
             Error(exc).display()
-                                               
+        
+        except TypeError as exc:
+            Error(exc).display()
+            if hasattr(args[0], 'temp'):
+                args[0].temp = -999
+        
     return wrapper_error_handler

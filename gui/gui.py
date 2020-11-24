@@ -29,7 +29,7 @@ class MainWin(QMainWindow):
         
         '''Begin FCS Measurement.'''
         
-        self.imp.start_FCS_meas()
+        self.imp.toggle_FCS_meas()
 
     @pyqtSlot()
     def on_excOnButton_released(self):

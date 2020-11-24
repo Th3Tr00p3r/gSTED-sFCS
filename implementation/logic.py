@@ -24,9 +24,11 @@ class Timeout():
         
         def __init__(self, app):
             
+            self._app = app
             self._main_gui = app.win_dict['main']
             self._error_dict = app.error_dict
-            self._meas =app.meas
+            self._meas = Measurement()
+            self.log = app.log
             
             self._dep = app.dvc_dict['DEP_LASER']
             self._cntr =app.dvc_dict['COUNTER']
@@ -51,10 +53,7 @@ class Timeout():
         
         def _get_timers(self):
             
-            '''Instantiate specific timers for devices'''
-            # TODO: note that in LabVIEW original, apparently the updates were always "ready" in 'Timing' cluster (LEDs  always ON)
-            # This could mean this special treatment is unnecessary
-            # (the counts don't even work there when counter timing LED is turned OFF before running)
+            '''Instantiate timers for specific updates devices'''
             
             timers_dict = {}
             for key, value in self._get_timings_dict().items():
@@ -78,10 +77,14 @@ class Timeout():
         def stop_main(self):
             
             self.timer_dict['MAIN'].stop()
+            self.log.update('stopping main timer.',
+                                        tag='verbose')
             
         def start_main(self):
             
             self.timer_dict['MAIN'].start()
+            self.log.update('starting main timer.',
+                                        tag='verbose')
         
         def _update_dep(self):
             
@@ -89,7 +92,9 @@ class Timeout():
             
             nick = 'DEP_LASER'
             
-            def check_SHG_temp(dep, main_gui):
+            @err_hndlr
+            def update_SHG_temp(dep, main_gui):
+                
                 dep.get_SHG_temp()
                 main_gui.depTemp.setValue(dep.temp)
                 if dep.temp < const.MIN_SHG_TEMP:
@@ -97,20 +102,20 @@ class Timeout():
                 else:
                     main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
             
-            def check_power(dep, main_gui):
+            def update_power(dep, main_gui):
                 dep.get_power()
                 main_gui.depActualPowerSpinner.setValue(dep.power)
             
-            def check_current(dep, main_gui):
+            def update_current(dep, main_gui):
                 dep.get_current()
                 main_gui.depActualCurrSpinner.setValue(dep.current)
             
             if (self._error_dict[nick] is None) and (self._dep.update_ready):
-                check_SHG_temp(self._dep, self._main_gui)
+                update_SHG_temp(self._dep, self._main_gui)
                 
                 if self._dep.state is True: # check current/power only if laser is ON
-                    check_power(self._dep, self._main_gui)
-                    check_current(self._dep, self._main_gui)
+                    update_power(self._dep, self._main_gui)
+                    update_current(self._dep, self._main_gui)
                     
                 self._dep.toggle_update_ready(False)
         
@@ -138,7 +143,7 @@ class Timeout():
             self._update_dep()
             self._update_counter()
             
-            if self._meas.type == 'FCS':
+            if self._app.meas.type == 'FCS':
                 self._um232.read_TDC_data()
 
 class App():
@@ -229,7 +234,7 @@ class App():
         def close_all_wins(app):
             
             for win_key in self.win_dict.keys():
-                if self.win_dict[win_key]: # if not None (can happen for camwin
+                if self.win_dict[win_key] is not None: # can happen for camwin
                     if win_key not in {'main', 'camera'}: # dialogs close with reject()
                         self.win_dict[win_key].reject()
                     else:
@@ -249,15 +254,29 @@ class App():
             gui.stageButtonsGroup.setEnabled(False)
         
         if self.meas.type is not None:
-            self.meas.stop()
+            if self.meas.type == 'FCS':
+                self.win_dict['main'].imp.toggle_FCS_meas()
             
         close_all_dvcs(self)
         
         if restart:
+            
+            if self.win_dict['camera'] is not None:
+                self.win_dict['camera'].close()
+            
+            self.timeout_loop.stop_main()
+            
             lights_out(self.win_dict['main'])
             self.win_dict['main'].depActualCurrSpinner.setValue(0)
             self.win_dict['main'].depActualPowerSpinner.setValue(0)
             
+            self.init_errors()
+            self.init_devices()
+            time.sleep(0.1) # needed to avoid error with main timeout
+            self.timeout_loop = Timeout(self)
+            self.log.update('restarting application.',
+                                        tag='verbose')
+        
         else:
             close_all_wins(self)
             self.log.update('Quitting Application.')
@@ -303,15 +322,9 @@ class MainWin():
         
         pressed = Question(q_txt='Are you sure?',
                                    q_title='Restarting Program').display()
+                                   
         if pressed == QMessageBox.Yes:
-            self._app.timeout_loop.stop_main()
             self._app.clean_up_app(restart=True)
-            self._app.init_errors()
-            self._app.init_devices()
-            time.sleep(0.1) # needed to avoid error with main timeout
-            self.timeout_loop = Timeout(self._app)
-            self._app.log.update('restarting application.',
-                                        tag='verbose')
     
     def dvc_toggle(self, nick):
         
@@ -384,7 +397,7 @@ class MainWin():
             self._gui.laserDock.setVisible(True)
             self._gui.actionLaser_Control.setChecked(True)
 
-    def start_FCS_meas(self):
+    def toggle_FCS_meas(self):
         
         if self._app.meas.type is None:
             self._app.meas = Measurement(type='FCS',
@@ -615,6 +628,8 @@ class ErrWin():
         self._gui = gui
 
 class Measurement():
+    
+    # TODO: move timer to timeout_loop. this would mean all updates will be made from there too (progress bar etc.)
     
     def __init__(self, type=None,
                        TDC_hndl=None,
