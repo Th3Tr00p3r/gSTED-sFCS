@@ -128,6 +128,11 @@ class MainWin(QMainWindow):
         # TODO:
         
         self.imp.open_errwin()
+        
+    @pyqtSlot(int)
+    def on_countsAvgSlider_valueChanged(self, val):
+        
+        self.imp.cnts_avg_sldr_changed(val)
 
     #----------------------------------------------------------------------------
     # Stepper Stage Dock
