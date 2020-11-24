@@ -23,9 +23,16 @@ from implementation.error_handler import logic_error_handler as err_hndlr
 class Timeout():
         
         def __init__(self, app):
-            self._app = app
-            self._timer_dict = self._get_timers()
             
+            self._main_gui = app.win_dict['main']
+            self._error_dict = app.error_dict
+            self._meas =app.meas
+            
+            self._dep = app.dvc_dict['DEP_LASER']
+            self._cntr =app.dvc_dict['COUNTER']
+            self._um232 = app.dvc_dict['UM232']
+            
+            self.timer_dict = self._get_timers()
             self.start_timers()
         
         def _get_timings_dict(self):
@@ -34,11 +41,12 @@ class Timeout():
                 # TODO: possibly have a single or a few longer interval timers, not one for each (could be resource heavy)
                 
                 t_dict ={}
-                t_dict['MAIN'] = (10, self._main)
-                dep_param_dict = self._app.dvc_dict['DEP_LASER'].param_dict
-                t_dict['DEP_LASER'] = (dep_param_dict['update_time'] * 1000,
-                                                 self._update_dep)
-                t_dict['ERRORS'] = (2000, self._update_errorGUI)
+                t_dict['MAIN'] = (const.TIMEOUT, self._main)
+                t_dict['DEP_LASER'] = (self._dep.update_time * 1000,
+                                                 lambda: self._dep.toggle_update_ready(True))
+                t_dict['COUNTER'] = (self._cntr.update_time * 1000,
+                                              lambda: self._cntr.toggle_update_ready(True))
+                t_dict['ERRORS'] = (2 * 1000, self._update_errorGUI)
                 return t_dict
         
         def _get_timers(self):
@@ -64,16 +72,16 @@ class Timeout():
                 update_func_dict[key][1]()
                 
             # then start individual timers
-            for key in self._timer_dict.keys():
-                self._timer_dict[key].start()
+            for key in self.timer_dict.keys():
+                self.timer_dict[key].start()
         
         def stop_main(self):
             
-            self._timer_dict['MAIN'].stop()
+            self.timer_dict['MAIN'].stop()
             
         def start_main(self):
             
-            self._timer_dict['MAIN'].start()
+            self.timer_dict['MAIN'].start()
         
         def _update_dep(self):
             
@@ -81,32 +89,30 @@ class Timeout():
             
             nick = 'DEP_LASER'
             
-            def check_SHG_temp(dvcs_dict, main_gui):
-                dvcs_dict[nick].get_SHG_temp()
-                main_gui.depTemp.setValue(dvcs_dict[nick].temp)
-                if dvcs_dict[nick].temp < const.MIN_SHG_TEMP:
+            def check_SHG_temp(dep, main_gui):
+                dep.get_SHG_temp()
+                main_gui.depTemp.setValue(dep.temp)
+                if dep.temp < const.MIN_SHG_TEMP:
                     main_gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
                 else:
                     main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
             
-            def check_power(dvcs_dict, main_gui):
-                self._app.dvc_dict[nick].get_power()
-                main_gui.depActualPowerSpinner.setValue(dvcs_dict[nick].power)
+            def check_power(dep, main_gui):
+                dep.get_power()
+                main_gui.depActualPowerSpinner.setValue(dep.power)
             
-            def check_current(dvcs_dict, main_gui):
-                dvcs_dict[nick].get_current()
-                main_gui.depActualCurrSpinner.setValue(dvcs_dict[nick].current)
+            def check_current(dep, main_gui):
+                dep.get_current()
+                main_gui.depActualCurrSpinner.setValue(dep.current)
             
-            if not self._app.error_dict[nick]: # check anything only if there are no errors
+            if (self._error_dict[nick] is None) and (self._dep.update_ready):
+                check_SHG_temp(self._dep, self._main_gui)
                 
-                dvcs_dict = self._app.dvc_dict
-                main_gui = self._app.win_dict['main']
-                
-                check_SHG_temp(dvcs_dict, main_gui)
-                
-                if dvcs_dict[nick].state: # check current/power only if laser is ON
-                    check_power(dvcs_dict, main_gui)
-                    check_current(dvcs_dict, main_gui)
+                if self._dep.state is True: # check current/power only if laser is ON
+                    check_power(self._dep, self._main_gui)
+                    check_current(self._dep, self._main_gui)
+                    
+                self._dep.toggle_update_ready(False)
         
         def _update_errorGUI(self):
             # TODO: update the error GUI according to errors in self._app.error_dict
@@ -114,26 +120,26 @@ class Timeout():
             
         def _update_counter(self):
             
-            # definitions
-            cntr = self._app.dvc_dict['COUNTER']
-            gui = self._app.win_dict['main']
-            avg_interval = gui.countsAvgSlider.value()
+            self._cntr.count() # read new counts
             
-            cntr.count() # read new counts
-            gui.countsSpinner.setValue( # update avg counts in main GUI
-                cntr.average_counts(avg_interval)
-                )
-            cntr.dump_buff_overflow() # dump old counts beyond buffer size
+            if self._cntr.update_ready:
+                avg_interval = self._main_gui.countsAvg.value()
+                self._main_gui.countsSpinner.setValue( # update avg counts in main GUI
+                    self._cntr.average_counts(avg_interval)
+                    )
+                    
+            self._cntr.dump_buff_overflow() # dump old counts beyond buffer size
+            
+            self._cntr.toggle_update_ready(False)
         
         #MAIN
         def _main(self):
             
-            if self._app.meas.type == 'FCS':
-                self._update_counter()
-                self._app.dvc_dict['UM232'].read_TDC_data()
-                
-            else: # no ongoing measurement (self.meas == None)
-                self._update_counter()
+            self._update_dep()
+            self._update_counter()
+            
+            if self._meas.type == 'FCS':
+                self._um232.read_TDC_data()
 
 class App():
     
@@ -146,6 +152,8 @@ class App():
         
         self.win_dict['settings'] = gui_module.SettWin(self)
         self.win_dict['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+        
+        self.win_dict['main'].imp.change_from_settings()
         
         self.win_dict['errors'] = gui_module.ErrWin(self)
         self.win_dict['camera'] = None # instantiated on pressing camera button
@@ -271,11 +279,14 @@ class MainWin():
         self._app = app
         self._gui = gui
         
-        # intialize buttons
+        # intialize gui
         self._gui.actionLaser_Control.setChecked(True)
         self._gui.actionStepper_Stage_Control.setChecked(True)
         self._gui.stageButtonsGroup.setEnabled(False)
         self._gui.actionLog.setChecked(True)
+        
+        self._gui.countsAvg.setValue(self._gui.countsAvgSlider.value())
+        
         #connect signals and slots
         self._gui.ledExc.clicked.connect(self.show_laser_dock)
         self._gui.ledDep.clicked.connect(self.show_laser_dock)
@@ -379,7 +390,7 @@ class MainWin():
             self._app.meas = Measurement(type='FCS',
                                                        TDC_hndl=self._app.dvc_dict['TDC'],
                                                        data_inpt_hndl=self._app.dvc_dict['UM232'],
-                                                       duration_spinner=self._gui.measFCSDurationSpinBox,
+                                                       duration_spinner=self._gui.measFCSDuration,
                                                        prog_bar=self._gui.FCSprogressBar,
                                                        log=self._app.log)
             self._app.meas.start()
@@ -409,6 +420,27 @@ class MainWin():
         
         self._app.win_dict['errors'].show()
         self._app.win_dict['errors'].activateWindow()
+    
+    def cnts_avg_sldr_changed(self, val):
+        '''
+        Set the spinner to show the value of the slider,
+        and change the counts display frequency to as low as needed
+        (lower then the averaging frequency)
+        '''
+        self._gui.countsAvg.setValue(val)
+        
+        curr_intrvl = self._app.dvc_dict['COUNTER'].update_time * 1000
+        
+        if val > curr_intrvl:
+            self._app.timeout_loop.timer_dict['COUNTER'].setInterval(val)
+        else:
+            self._app.timeout_loop.timer_dict['COUNTER'].setInterval(curr_intrvl)
+    
+    def change_from_settings(self):
+        
+        pass
+#        self._gui.countsAvgSlider.setMinimum(
+#            self._app.win_dict['settings'].counterUpdateTime.value() * 1000)
     
 class SettWin():
     
@@ -584,9 +616,6 @@ class ErrWin():
 
 class Measurement():
     
-    # class attributes
-    _timer = QTimer()
-    
     def __init__(self, type=None,
                        TDC_hndl=None,
                        data_inpt_hndl=None,
@@ -601,6 +630,7 @@ class Measurement():
         self.duration_spinner = duration_spinner
         self.prog_bar = prog_bar
         self.log = log
+        self._timer = QTimer()
         self._timer.timeout.connect(self._timer_timeout)
         self.time_passed = 0
         

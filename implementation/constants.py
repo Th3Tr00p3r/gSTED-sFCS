@@ -4,6 +4,7 @@ Constants
 import gui.icons.icon_paths as icon
 
 # general
+TIMEOUT = 10
 EXIT_CODE_REBOOT = -123456789 # for restarting the application
 MIN_SHG_TEMP = 52
 COUNTER_BUFFER_ALLOC_SIZE = (1, )
@@ -95,7 +96,7 @@ STAGE_PARAM_GUI_DICT = {'addr': {'field': 'depAddr',
 
 COUNTER_PARAM_GUI_DICT = {'buff_sz': {'field': 'counterBufferSizeSpinner',
                                                                'access': 'value'},
-                                           'update_time': {'field': 'counterUpdateTimeSpinner',
+                                           'update_time': {'field': 'counterUpdateTime',
                                                                      'access': 'value'},
                                            'pxl_clk': {'field': 'counterPixelClockAddress',
                                                               'access': 'text'},
