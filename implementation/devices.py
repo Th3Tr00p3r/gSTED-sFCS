@@ -44,6 +44,9 @@ class UM232(drivers.FTDI_Instrument):
 
 class Counter(drivers.DAQmxInstrumentCI):
     
+    # TODO: fix warning occuring sometimes during toggle (I think) -
+    # "Task of name "_unnamedTask<A>" was not explicitly closed before it was destructed. Resources on the task device may still be reserved."
+    
     def __init__(self, nick, param_dict, error_dict):
         
         super().__init__(nick=nick,
