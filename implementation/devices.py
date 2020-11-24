@@ -7,6 +7,7 @@ import implementation.logic as logic
 import numpy as np
 from implementation.error_handler import driver_error_handler as err_hndlr
 from PyQt5.QtCore import QTimer
+import implementation.constants as const
 
 class UM232(drivers.FTDI_Instrument):
     
@@ -16,8 +17,8 @@ class UM232(drivers.FTDI_Instrument):
                                param_dict=param_dict,
                                error_dict=error_dict
                                )
-        self.init_data()
         
+        self.init_data()
         self.toggle(True)
     
     def toggle(self, bool):
@@ -51,6 +52,8 @@ class Counter(drivers.DAQmxInstrumentCI):
                                )
         self.cont_count_buff = np.zeros(1, )
         self.counts = None
+        self.update_time = param_dict['update_time']
+        self.update_ready = True
         
         self.toggle(True) # turn ON right from the start
     
@@ -62,23 +65,25 @@ class Counter(drivers.DAQmxInstrumentCI):
             self.stop()
         self.state = bool
     
+    def toggle_update_ready(self, bool):
+        
+        self.update_ready = bool
+    
     def count(self):
         
         counts_np = self.read()
         self.cont_count_buff = np.append(self.cont_count_buff, counts_np)
         
-    def average_counts(self, avg_intrvl): # in ms (range 10-1000)
+    def average_counts(self, avg_intrvl):
         
-        # TODO: this seems to average over about X10 the interval...
-        
-        dt = 1 # in ms (TODO: why is this value chosen? Ask Oleg)
-        
-        intrvl_time_unts = int(avg_intrvl/dt)
+        intrvl_time_unts = int(avg_intrvl/const.TIMEOUT)
         start_idx = len(self.cont_count_buff) - intrvl_time_unts
+        
         if start_idx > 0:
-            return (self.cont_count_buff[-1] - self.cont_count_buff[-intrvl_time_unts]) /   \
+            return (self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts+1)]) /   \
                 avg_intrvl # to have KHz
-        else:
+                
+        else: # TODO: get the most averaging possible if requested fails
             return 0
     
     def dump_buff_overflow(self):
@@ -167,14 +172,15 @@ class DepletionLaser(drivers.VISAInstrument):
     
     def __init__(self, nick, param_dict, error_dict):
         
-        self.param_dict = param_dict
         super().__init__(nick=nick,
                                address=param_dict['addr'],
                                error_dict=error_dict,
                                read_termination = '\r', 
-                               write_termination = '\r')
-                               
+                               write_termination = '\r'
+                               )
+        self.update_time = param_dict['update_time']
         self.state = None
+        self.update_ready = True
         
         self.toggle(False)
         self.set_current(1500)
@@ -191,6 +197,10 @@ class DepletionLaser(drivers.VISAInstrument):
             else:
                 self.write('setLDenable 0')
                 self.state = bool
+    
+    def toggle_update_ready(self, bool):
+        
+        self.update_ready = bool
     
     def get_SHG_temp(self):
         

@@ -4063,7 +4063,7 @@ Pattern</string>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QSpinBox" name="measFCSDurationSpinBox">
+                  <widget class="QSpinBox" name="measFCSDuration">
                    <property name="minimumSize">
                     <size>
                      <width>30</width>
@@ -4845,7 +4845,7 @@ Measurement</string>
        </widget>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_39" stretch="1,0">
+       <layout class="QHBoxLayout" name="horizontalLayout_39" stretch="1,0,0">
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1,0,0,0">
           <item>
@@ -4913,7 +4913,7 @@ Measurement</string>
            </widget>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="1,0">
+           <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="1,0,0">
             <item>
              <widget class="QDoubleSpinBox" name="countsSpinner">
               <property name="minimumSize">
@@ -4950,13 +4950,6 @@ Measurement</string>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_7">
               <item>
-               <widget class="QLabel" name="label_24">
-                <property name="text">
-                 <string>Averaging interval (ms)</string>
-                </property>
-               </widget>
-              </item>
-              <item>
                <widget class="QSlider" name="countsAvgSlider">
                 <property name="maximumSize">
                  <size>
@@ -4968,7 +4961,7 @@ Measurement</string>
                  <number>10</number>
                 </property>
                 <property name="maximum">
-                 <number>1000</number>
+                 <number>2000</number>
                 </property>
                 <property name="singleStep">
                  <number>10</number>
@@ -4983,7 +4976,7 @@ Measurement</string>
                  <number>10</number>
                 </property>
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Vertical</enum>
                 </property>
                 <property name="invertedAppearance">
                  <bool>false</bool>
@@ -4992,7 +4985,7 @@ Measurement</string>
                  <bool>false</bool>
                 </property>
                 <property name="tickPosition">
-                 <enum>QSlider::TicksBothSides</enum>
+                 <enum>QSlider::TicksBelow</enum>
                 </property>
                 <property name="tickInterval">
                  <number>100</number>
@@ -5001,9 +4994,65 @@ Measurement</string>
               </item>
              </layout>
             </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_5">
+              <item>
+               <widget class="QLabel" name="label_29">
+                <property name="font">
+                 <font>
+                  <family>MS Shell Dlg 2</family>
+                 </font>
+                </property>
+                <property name="layoutDirection">
+                 <enum>Qt::LeftToRight</enum>
+                </property>
+                <property name="text">
+                 <string>Averaging
+interval
+(ms)</string>
+                </property>
+                <property name="textFormat">
+                 <enum>Qt::PlainText</enum>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="countsAvg">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="buttonSymbols">
+                 <enum>QAbstractSpinBox::NoButtons</enum>
+                </property>
+                <property name="minimum">
+                 <number>-9999</number>
+                </property>
+                <property name="maximum">
+                 <number>9999</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
            </layout>
           </item>
          </layout>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_16">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>13</width>
+            <height>13</height>
+           </size>
+          </property>
+         </spacer>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_24">
@@ -5780,7 +5829,7 @@ Settings</string>
              </widget>
             </item>
             <item>
-             <widget class="QSpinBox" name="depActualCurrSpinner">
+             <widget class="QDoubleSpinBox" name="depActualCurrSpinner">
               <property name="enabled">
                <bool>true</bool>
               </property>
@@ -5794,10 +5843,10 @@ Settings</string>
                <enum>QAbstractSpinBox::NoButtons</enum>
               </property>
               <property name="minimum">
-               <number>-999</number>
+               <double>-999.000000000000000</double>
               </property>
               <property name="maximum">
-               <number>999999</number>
+               <double>999999.000000000000000</double>
               </property>
              </widget>
             </item>
@@ -5824,7 +5873,7 @@ Settings</string>
              </widget>
             </item>
             <item>
-             <widget class="QSpinBox" name="depActualPowerSpinner">
+             <widget class="QDoubleSpinBox" name="depActualPowerSpinner">
               <property name="styleSheet">
                <string notr="true">background-color: rgb(255, 255, 255);</string>
               </property>
@@ -5835,10 +5884,10 @@ Settings</string>
                <enum>QAbstractSpinBox::NoButtons</enum>
               </property>
               <property name="minimum">
-               <number>-999</number>
+               <double>-999.000000000000000</double>
               </property>
               <property name="maximum">
-               <number>999999</number>
+               <double>999999.000000000000000</double>
               </property>
              </widget>
             </item>
@@ -5865,7 +5914,7 @@ Settings</string>
              </widget>
             </item>
             <item>
-             <widget class="QSpinBox" name="depTemp">
+             <widget class="QDoubleSpinBox" name="depTemp">
               <property name="styleSheet">
                <string notr="true">background-color: rgb(255, 255, 255);</string>
               </property>
@@ -5876,10 +5925,10 @@ Settings</string>
                <enum>QAbstractSpinBox::NoButtons</enum>
               </property>
               <property name="minimum">
-               <number>-999</number>
+               <double>-999.000000000000000</double>
               </property>
               <property name="maximum">
-               <number>999999</number>
+               <double>999999.000000000000000</double>
               </property>
              </widget>
             </item>
@@ -6693,7 +6742,7 @@ Settings</string>
   <tabstop>solScanFileSize</tabstop>
   <tabstop>solScanFileSize_2</tabstop>
   <tabstop>solScanFilename</tabstop>
-  <tabstop>measFCSDurationSpinBox</tabstop>
+  <tabstop>measFCSDuration</tabstop>
   <tabstop>startFcsMeasurementButton</tabstop>
   <tabstop>lineEdit</tabstop>
   <tabstop>lineEdit_2</tabstop>

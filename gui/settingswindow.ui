@@ -1284,7 +1284,7 @@
                          </widget>
                         </item>
                         <item>
-                         <widget class="QDoubleSpinBox" name="counterUpdateTimeSpinner">
+                         <widget class="QDoubleSpinBox" name="counterUpdateTime">
                           <property name="font">
                            <font>
                             <pointsize>8</pointsize>
@@ -1293,8 +1293,14 @@
                           <property name="buttonSymbols">
                            <enum>QAbstractSpinBox::NoButtons</enum>
                           </property>
+                          <property name="minimum">
+                           <double>0.010000000000000</double>
+                          </property>
+                          <property name="maximum">
+                           <double>1.000000000000000</double>
+                          </property>
                           <property name="value">
-                           <double>0.500000000000000</double>
+                           <double>0.200000000000000</double>
                           </property>
                          </widget>
                         </item>
