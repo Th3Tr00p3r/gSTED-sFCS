@@ -17,25 +17,37 @@ class UM232(drivers.FTDI_Instrument):
                                param_dict=param_dict,
                                error_dict=error_dict
                                )
-        
         self.init_data()
         self.toggle(True)
+        self.check_read_error()
     
     def toggle(self, bool):
         
         if bool:
             self.open()
+            self.purge()
         else:
+            self.purge()
             self.close()
         self.state = bool
+        
+    def purge_buffers(self):
+        
+        self.purge()
     
-    @err_hndlr
+    def check_read_error(self):
+        
+        if self.is_read_error():
+            self.error_dict[self.nick] = 'read error'
+            
     def read_TDC_data(self):
         
-        read_bytes = self.inst.read_data_bytes(self._param_dict['n_bytes'])
-#        print(F"TEST ({__name__}): read_bytes = {read_bytes}") # TEST
-        self.tot_bytes += len(read_bytes)
-        self.data = np.append(self.data, read_bytes)
+        read_bytes = self.read_bytes(self._param_dict['n_bytes'])
+        if isinstance(read_bytes, list): # check for error
+            self.tot_bytes += len(read_bytes)
+            self.data = np.append(self.data, read_bytes)
+        
+        self.check_read_error()
     
     def init_data(self):
         

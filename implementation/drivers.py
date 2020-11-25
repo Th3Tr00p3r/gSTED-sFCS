@@ -19,6 +19,7 @@ class FTDI_Instrument():
         self.error_dict = error_dict
         self.inst = Ftdi()
     
+    @err_hndlr
     def open(self):
         
         self.inst.open(self._param_dict['vend_id'],
@@ -32,9 +33,24 @@ class FTDI_Instrument():
         self.inst.set_latency_timer(self._param_dict['ltncy_tmr_val'])
         self.inst.set_flowctrl(self._param_dict['flow_ctrl'])
         self.eff_baud_rate = self.inst.set_baudrate(self._param_dict['baud_rate'])
+    
+    @err_hndlr
+    def read_bytes(self, bytes):
+        
+        return self.inst.read_data_bytes(bytes)
+    
+    @err_hndlr
+    def is_read_error(self):
+        
+        pass
+#        return bool(self.inst.get_cts() ^ self.inst.get_cd())
+    
+    @err_hndlr
+    def purge(self):
         
         self.inst.purge_buffers()
     
+    @err_hndlr
     def close(self):
         
         self.inst.close()
@@ -130,6 +146,7 @@ class VISAInstrument():
             self._rsrc = self._inst.rm.open_resource(self._inst.address,
                                                                read_termination=self._inst.read_termination,
                                                                write_termination=self._inst.write_termination)
+            self._rsrc.query_delay = 0.1
             return self._rsrc
         
         def __exit__(self, exc_type, exc_value, exc_tb):
