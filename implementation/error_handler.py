@@ -11,6 +11,7 @@ import functools
 def driver_error_handler(func):
     
     # TODO: possibly turn this into a class, and create subclasses as needed. also create one for logging
+    
     @functools.wraps(func)
     def wrapper_error_handler(dvc, *args, **kwargs):
         
@@ -37,6 +38,10 @@ def driver_error_handler(func):
                 Error(exc).display()
                 dvc.error_dict[dvc.nick] = 'FTDI Error'
                 # TODO: STOP REPEATING ERRORS!
+                
+            except OSError as exc:
+                Error(exc).display()
+                dvc.error_dict[dvc.nick] = 'UM232 Disconnected'
                 
             except UC480Error as exc:
                 Error(exc).display()

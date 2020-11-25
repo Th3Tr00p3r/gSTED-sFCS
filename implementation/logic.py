@@ -25,14 +25,6 @@ class Timeout():
         def __init__(self, app):
             
             self._app = app
-            self._main_gui = app.win_dict['main']
-            self._error_dict = app.error_dict
-            self._meas = Measurement()
-            self.log = app.log
-            
-            self._dep = app.dvc_dict['DEP_LASER']
-            self._cntr =app.dvc_dict['COUNTER']
-            self._um232 = app.dvc_dict['UM232']
             
             self.timer_dict = self._get_timers()
             self.start_timers()
@@ -44,10 +36,10 @@ class Timeout():
                 
                 t_dict ={}
                 t_dict['MAIN'] = (const.TIMEOUT, self._main)
-                t_dict['DEP_LASER'] = (self._dep.update_time * 1000,
-                                                 lambda: self._dep.toggle_update_ready(True))
-                t_dict['COUNTER'] = (self._cntr.update_time * 1000,
-                                              lambda: self._cntr.toggle_update_ready(True))
+                t_dict['DEP_LASER'] = (self._app.dvc_dict['DEP_LASER'].update_time * 1000,
+                                                 lambda: self._app.dvc_dict['DEP_LASER'].toggle_update_ready(True))
+                t_dict['COUNTER'] = (self._app.dvc_dict['COUNTER'].update_time * 1000,
+                                              lambda: self._app.dvc_dict['COUNTER'].toggle_update_ready(True))
                 t_dict['ERRORS'] = (2 * 1000, self._update_errorGUI)
                 return t_dict
         
@@ -77,13 +69,13 @@ class Timeout():
         def stop_main(self):
             
             self.timer_dict['MAIN'].stop()
-            self.log.update('stopping main timer.',
+            self._app.log.update('stopping main timer.',
                                         tag='verbose')
             
         def start_main(self):
             
             self.timer_dict['MAIN'].start()
-            self.log.update('starting main timer.',
+            self._app.log.update('starting main timer.',
                                         tag='verbose')
         
         def _update_dep(self):
@@ -110,14 +102,14 @@ class Timeout():
                 dep.get_current()
                 main_gui.depActualCurrSpinner.setValue(dep.current)
             
-            if (self._error_dict[nick] is None) and (self._dep.update_ready):
-                update_SHG_temp(self._dep, self._main_gui)
+            if (self._app.error_dict[nick] is None) and (self._app.dvc_dict['DEP_LASER'].update_ready):
+                update_SHG_temp(self._app.dvc_dict['DEP_LASER'], self._app.win_dict['main'])
                 
-                if self._dep.state is True: # check current/power only if laser is ON
-                    update_power(self._dep, self._main_gui)
-                    update_current(self._dep, self._main_gui)
+                if self._app.dvc_dict['DEP_LASER'].state is True: # check current/power only if laser is ON
+                    update_power(self._app.dvc_dict['DEP_LASER'], self._app.win_dict['main'])
+                    update_current(self._app.dvc_dict['DEP_LASER'], self._app.win_dict['main'])
                     
-                self._dep.toggle_update_ready(False)
+                self._app.dvc_dict['DEP_LASER'].toggle_update_ready(False)
         
         def _update_errorGUI(self):
             # TODO: update the error GUI according to errors in self._app.error_dict
@@ -125,17 +117,17 @@ class Timeout():
             
         def _update_counter(self):
             
-            self._cntr.count() # read new counts
+            self._app.dvc_dict['COUNTER'].count() # read new counts
             
-            if self._cntr.update_ready:
-                avg_interval = self._main_gui.countsAvg.value()
-                self._main_gui.countsSpinner.setValue( # update avg counts in main GUI
-                    self._cntr.average_counts(avg_interval)
+            if self._app.dvc_dict['COUNTER'].update_ready:
+                avg_interval = self._app.win_dict['main'].countsAvg.value()
+                self._app.win_dict['main'].countsSpinner.setValue( # update avg counts in main GUI
+                    self._app.dvc_dict['COUNTER'].average_counts(avg_interval)
                     )
                     
-            self._cntr.dump_buff_overflow() # dump old counts beyond buffer size
+            self._app.dvc_dict['COUNTER'].dump_buff_overflow() # dump old counts beyond buffer size
             
-            self._cntr.toggle_update_ready(False)
+            self._app.dvc_dict['COUNTER'].toggle_update_ready(False)
         
         #MAIN
         def _main(self):
@@ -144,7 +136,7 @@ class Timeout():
             self._update_counter()
             
             if self._app.meas.type == 'FCS':
-                self._um232.read_TDC_data()
+                self._app.dvc_dict['UM232'].read_TDC_data()
 
 class App():
     
@@ -168,7 +160,7 @@ class App():
         #initialize active devices
         self.init_devices()
         # initialize measurement
-        self.meas = Measurement()
+        self.meas = Measurement(self)
         
         #FINALLY
         self.win_dict['main'].show()
@@ -322,7 +314,6 @@ class MainWin():
         
         pressed = Question(q_txt='Are you sure?',
                                    q_title='Restarting Program').display()
-                                   
         if pressed == QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
     
@@ -400,9 +391,7 @@ class MainWin():
     def toggle_FCS_meas(self):
         
         if self._app.meas.type is None:
-            self._app.meas = Measurement(type='FCS',
-                                                       TDC_hndl=self._app.dvc_dict['TDC'],
-                                                       data_inpt_hndl=self._app.dvc_dict['UM232'],
+            self._app.meas = Measurement(self._app, type='FCS',
                                                        duration_spinner=self._gui.measFCSDuration,
                                                        prog_bar=self._gui.FCSprogressBar,
                                                        log=self._app.log)
@@ -410,7 +399,7 @@ class MainWin():
             self._gui.startFcsMeasurementButton.setText('Stop \nMeasurement')
         elif self._app.meas.type == 'FCS':
             self._app.meas.stop()
-            self._app.meas = Measurement()
+            self._app.meas = Measurement(self._app)
             self._gui.startFcsMeasurementButton.setText('Start \nMeasurement')
         else:
             error_txt = (F"Another type of measurement "
@@ -631,17 +620,14 @@ class Measurement():
     
     # TODO: move timer to timeout_loop. this would mean all updates will be made from there too (progress bar etc.)
     
-    def __init__(self, type=None,
-                       TDC_hndl=None,
-                       data_inpt_hndl=None,
+    def __init__(self, app, type=None,
                        duration_spinner=None,
                        prog_bar=None,
                        log=None):
                            
         # instance attributes
+        self._app = app
         self.type = type
-        self.TDC_hndl = TDC_hndl
-        self.data_inpt_hndl = data_inpt_hndl
         self.duration_spinner = duration_spinner
         self.prog_bar = prog_bar
         self.log = log
@@ -652,13 +638,13 @@ class Measurement():
     # public methods
     def start(self):
         self._timer.start(1000)
-        self.TDC_hndl.toggle(True)
+        self._app.dvc_dict['TDC'].toggle(True)
         
         self.log.update(F"{self.type} measurement started")
         
     def stop(self):
         self._timer.stop()
-        self.TDC_hndl.toggle(False)
+        self._app.dvc_dict['TDC'].toggle(False)
             
         if self.prog_bar:
             self.prog_bar.setValue(0)
@@ -674,7 +660,8 @@ class Measurement():
 #                QSound.play(const.MEAS_COMPLETE_SOUND);
         else: # timer finished
             self.disp_ACF()
-            self.data_inpt_hndl.init_data()
+            self._app.dvc_dict['UM232'].init_data()
+            self._app.dvc_dict['UM232'].purge()
             self.time_passed = 1
         if self.prog_bar:
             prog = self.time_passed / self.duration_spinner.value() * 100
@@ -683,5 +670,5 @@ class Measurement():
     def disp_ACF(self):
         
         print(F"Measurement Finished:\n"
-                F"Full Data = {self.data_inpt_hndl.data}\n"
-                F"Total Bytes = {self.data_inpt_hndl.tot_bytes}\n")
+                F"Full Data = {self._app.dvc_dict['UM232'].data}\n"
+                F"Total Bytes = {self._app.dvc_dict['UM232'].tot_bytes}\n")
