@@ -20,7 +20,8 @@ Python-based software for our optical measurement system.
 
 1. The `devices.py` module contains a high-level API for communicating with the instruments, some of the classes being subclassed from the more general `drivers.py`, where existing packages (pyVISA, nidaqmx, instrumental etc.) are also imported.
 
-1. ## What's here/Noteworthy files:
+## What's here/Noteworthy files:
+
 - `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together.
 
 - `./gui/gui.py` - GUI module, containing strictly user interaction signals and slots, the slots implemented in `logic.py`.
