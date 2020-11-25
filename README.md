@@ -12,13 +12,13 @@ Python-based software for our optical measurement system.
 
 3. Finally, when running the project (`gSTEDsFCS.py`), a `MainWindow()` object is instantiated and the window is shown on screen.
 
+#### <u>Implemetation</u>
+
+1. The`./implementation` package contains everything other than the most basic GUI - any button press triggers a slot in `gui.py` which in turn calls a function from the implementation. In this way the GUI is completely seperated from the implementation and the physical devices.
+
 #### <u>Physical Device Control</u>
 
-1. the `drivers` package contains an `__init__.py` file which imports the necessary drivers from existing packages (pyVISA, nidaqmx, instrumental etc.), which provide the interface to the physical devices.
-
-2. `drivers` is imported into the implementation modules which communicate with the devices.
-
-#### <u>Implemetation</u>
+1. The `devices.py` module contains a high-level API for communicating with the instruments, some of the classes being subclassed from the more general `drivers.py`, where existing packages (pyVISA, nidaqmx, instrumental etc.) are also imported.
 
 1. ## What's here/Noteworthy files:
 - `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together.
@@ -37,19 +37,19 @@ Python-based software for our optical measurement system.
 
 - Python 3.8.6 (some dependencies may not support newer versions yet, e.g. QScintilla does not support python 3.9 yet)
 
-- PyQt5 - Qt-Python API, used for GUI and timers (installed with Eric IDE)
+- [PyQt5]([PyQt5 · PyPI](https://pypi.org/project/PyQt5/)) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**)
 
 - pandas - currently used only for reading the settings out of laziness (overkill)
 
 - matplotlib - used for plotting (currently only the camera, later the graphs)
 
-- pyVISA - communication with VISA-supported devices
+- [pyVISA]([PyVISA · PyPI](https://pypi.org/project/PyVISA/)) - communication with VISA-supported devices
 
-- nidaqmx - communication with NI-DAQmx supported devices
+- [nidaqmx]([nidaqmx · PyPI](https://pypi.org/project/nidaqmx/)) - communication with NI-DAQmx supported devices
 
-- [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), Instrumental-lib, nicelib,  - communication with DC480 cameras
+- [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), [Instrumental-lib]([Instrumental-lib · PyPI](https://pypi.org/project/Instrumental-lib/)), [nicelib](https://pypi.org/project/NiceLib/),  - communication with DC480 cameras
 
-- [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232 (FPGA data)
+- [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232, which is a usb port to the FPGA (TDC data)
 
 ## Installing Eric IDE on Windows:
 
