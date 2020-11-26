@@ -62,19 +62,22 @@ class DAQmxInstrumentDO():
         self.nick = nick
         self._address = address
         self.error_dict = error_dict
+        self.state = False
         
         self.toggle(False)
         
     @err_hndlr
-    def _write(self, cmnd):
+    def _write(self, bool):
+        
         with nidaqmx.Task() as task:
             task.do_channels.add_do_chan(self._address)
-            task.write(cmnd)
-               
+            task.write(bool)
+            
+        self.state = bool
+    
     def toggle(self, bool):
         
         self._write(bool)
-        self.state = bool
 
 class DAQmxInstrumentCI():
     
@@ -85,7 +88,8 @@ class DAQmxInstrumentCI():
         self.error_dict = error_dict
         self._task = nidaqmx.Task()
         self._init_chan()
-        
+    
+    @err_hndlr    
     def _init_chan(self):
     
         chan = self._task.ci_channels. \
@@ -97,9 +101,10 @@ class DAQmxInstrumentCI():
 #        chan.ci_dup_count_prevention = self._params['CI_dup_prvnt']
     
     @err_hndlr
-    def start(self):
+    def _start(self):
         
         self._task.start()
+        self.state = True
     
     @err_hndlr
     def read(self):
@@ -108,9 +113,10 @@ class DAQmxInstrumentCI():
         return np.array(counts)
     
     @err_hndlr
-    def stop(self):
+    def _stop(self):
         
         self._task.stop()
+        self.state = False
 
 class VISAInstrument():
     
@@ -126,13 +132,15 @@ class VISAInstrument():
         self.rm = visa.ResourceManager()
     
     @err_hndlr
-    def write(self, cmnd):
+    def _write(self, cmnd):
         
         with VISAInstrument.Task(self) as task:
             task.write(cmnd)
+            
+        self.state = bool
     
     @err_hndlr
-    def query(self, cmnd):
+    def _query(self, cmnd):
         
         with VISAInstrument.Task(self) as task:
             return float(task.query(cmnd))
@@ -143,6 +151,7 @@ class VISAInstrument():
             self._inst = inst
             
         def __enter__(self):
+            
             self._rsrc = self._inst.rm.open_resource(self._inst.address,
                                                                read_termination=self._inst.read_termination,
                                                                write_termination=self._inst.write_termination)
@@ -151,8 +160,7 @@ class VISAInstrument():
         
         def __exit__(self, exc_type, exc_value, exc_tb):
             
-            if hasattr(self, '_rsrc'):
-                self._rsrc.close()
+            self._rsrc.close()
 
 ####TESTING####
         

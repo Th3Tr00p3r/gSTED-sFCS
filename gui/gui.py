@@ -141,8 +141,7 @@ class MainWin(QMainWindow):
     @pyqtSlot()
     def on_stageOn_released(self):
 
-        is_on = self.imp.dvc_toggle('STAGE')
-        self.stageButtonsGroup.setEnabled(is_on)
+        self.imp.dvc_toggle('STAGE')
 
     @pyqtSlot()
     def on_stageUp_released(self):

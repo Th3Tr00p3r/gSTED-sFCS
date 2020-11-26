@@ -19,38 +19,89 @@ def driver_error_handler(func):
             try:
                 return func(dvc, *args, **kwargs)
             
-            except ValueError:
-                return -999
+            except ValueError as exc:
+                dvc.error_dict[dvc.nick] = exc
+                
+                if dvc.nick == 'DEP_SHUTTER':
+                    return False
             
             except DaqError as exc:
-                Error(exc).display()
+                dvc.error_dict[dvc.nick] = exc
+                
+                if dvc.nick in {'EXC_LASER', 'DEP_SHUTTER', 'TDC'}:
+                    return False
                 
             except VisaIOError as exc:
-                dvc.error_dict[dvc.nick] = 'VISA Error'
-                # TODO: instead of showing error, show it in dedicated the ErrWin and set the LED to red
-                Error(exc,
-                    error_txt=F"VISA can't access {dvc.address} (depletion laser)").display()
+                dvc.error_dict[dvc.nick] = exc
+                
+                if dvc.nick == 'STAGE':
+                    return False
                     
-            except ValueError as exc:
-                Error(exc).display()
+#            except ValueError as exc:
+#                Error(exc).display()
                 
             except FtdiError as exc:
-                Error(exc).display()
-                dvc.error_dict[dvc.nick] = 'FTDI Error'
-                # TODO: STOP REPEATING ERRORS!
+                dvc.error_dict[dvc.nick] = exc
+            
+            except AttributeError as exc:
+                if dvc.nick == 'UM232':
+                    dvc.error_dict[dvc.nick] = exc
+                else:
+                    raise
                 
             except OSError as exc:
-                Error(exc).display()
-                dvc.error_dict[dvc.nick] = 'UM232 Disconnected'
-                
+                if dvc.nick == 'UM232':
+                    dvc.error_dict[dvc.nick] = exc
+                else:
+                    raise
+            
             except UC480Error as exc:
-                Error(exc).display()
+                dvc.error_dict[dvc.nick] = exc
             
         else:
             print(F"'{dvc.nick}' error. Ignoring '{func.__name__}()' call.")
-            return -999
+            # TODO: flash error LED
+            return False
                                                
     return wrapper_error_handler
+
+def error_checker(nick_set=None):
+    
+    def outer_wrapper(func):
+    
+        @functools.wraps(func)
+        def inner_wrapper(self, *args, **kwargs):
+            
+            if nick_set is not None:
+                count = 0
+                txt = ''
+                for nick in nick_set:
+                    exc = self._app.error_dict[nick]
+                    
+                    if exc != '':
+                        txt += F"{nick} error.\n"
+                        count += 1
+                
+                if count > 0:
+                    txt += '\nSee "error window" for details.'
+                    Error(error_txt=txt, error_title=F"Errors ({count})").display()
+                    
+                else:
+                    return func(self, *args, **kwargs)
+                    
+            else:
+                nick = args[0]
+                exc = self._app.error_dict[nick]
+                
+                if exc != '':
+                    txt = F"{nick} error.\n\nSee \"error window\" for details."
+                    Error(error_txt=txt, error_title='Error').display()
+                else:
+                    return func(self, *args, **kwargs)
+                
+        return inner_wrapper
+    return outer_wrapper
+
 
 def logic_error_handler(func):
     
