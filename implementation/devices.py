@@ -6,6 +6,7 @@ import implementation.drivers as drivers
 import implementation.logic as logic
 import numpy as np
 from implementation.error_handler import driver_error_handler as err_hndlr
+from instrumental.drivers.cameras.uc480 import UC480Error
 from PyQt5.QtCore import QTimer
 import implementation.constants as const
 
@@ -65,20 +66,21 @@ class Counter(drivers.DAQmxInstrumentCI):
                                param_dict=param_dict,
                                error_dict=error_dict
                                )
-        self.cont_count_buff = np.zeros(1, )
+        self.cont_count_buff = np.empty(shape=(0, ))
         self.counts = None
         self.update_time = param_dict['update_time']
         self.update_ready = True
+        self.state = False
         
         self.toggle(True) # turn ON right from the start
     
     def toggle(self, bool):
         
         if bool:
-            self.start()
+            self._start()
         else:
-            self.stop()
-        self.state = bool
+            self._stop()
+        
     
     def toggle_update_ready(self, bool):
         
@@ -99,6 +101,7 @@ class Counter(drivers.DAQmxInstrumentCI):
                 avg_intrvl # to have KHz
                 
         else: # TODO: get the most averaging possible if requested fails
+            print('TEST TEST TEST: start_idx < 0')
             return 0
     
     def dump_buff_overflow(self):
@@ -111,8 +114,7 @@ class Counter(drivers.DAQmxInstrumentCI):
             
 class Camera():
     
-#    idealy 'Camera' would inherit 'UC480_Camera',
-#    but this is problematic because of the 'Instrumental' API
+    # TODO: create driver class and move _driver and error handeling there    
     
     def __init__(self, nick, error_dict):
         
@@ -125,10 +127,12 @@ class Camera():
     def toggle(self, bool):
         
         if bool:
-            self._driver = drivers.UC480_Camera(reopen_policy='new')
+            try: # this is due to bad error handeling in instrumental-lib...
+                self._driver = drivers.UC480_Camera(reopen_policy='new')
+            except:
+                raise UC480Error
         elif hasattr(self, '_driver'):
             self.video_timer.stop() # in case video is ON
-            # TODO: possibly need to turn off video before closing?
             self._driver.close()
         self.state = bool
     
@@ -194,7 +198,7 @@ class DepletionLaser(drivers.VISAInstrument):
                                write_termination = '\r'
                                )
         self.update_time = param_dict['update_time']
-        self.state = None
+        self.state = False
         self.update_ready = True
         
         self.toggle(False)
@@ -202,16 +206,8 @@ class DepletionLaser(drivers.VISAInstrument):
         self.get_SHG_temp()
     
     def toggle(self, bool):
-        
-            if bool:
-                if self.temp > 52 :
-                    self.write('setLDenable 1')
-                    self.state = bool
-                else:
-                    logic.Error(error_txt='SHG temperature too low.').display()
-            else:
-                self.write('setLDenable 0')
-                self.state = bool
+            
+            self._write(F"setLDenable {int(bool)}")
     
     def toggle_update_ready(self, bool):
         
@@ -219,24 +215,24 @@ class DepletionLaser(drivers.VISAInstrument):
     
     def get_SHG_temp(self):
         
-        self.temp = self.query('SHGtemp')
+        self.temp = self._query('SHGtemp')
     
     def get_current(self):
         
-        self.current = self.query('LDcurrent 1')
+        self.current = self._query('LDcurrent 1')
     
     def get_power(self):
         
-        self.power = self.query('Power 0')
+        self.power = self._query('Power 0')
     
     def set_power(self, value):
         
         # check that current value is within range
         if (value <= 1000) and (value >= 99):
             # change the mode to current
-            self.write('Powerenable 1')
+            self._write('Powerenable 1')
             # then set the power
-            self.write('Setpower 0 ' + str(value))
+            self._write('Setpower 0 ' + str(value))
         else:
             logic.Error(error_txt='Power out of range').display()
     
@@ -245,9 +241,9 @@ class DepletionLaser(drivers.VISAInstrument):
         # check that current value is within range
         if (value <= 2500) and (value >= 1500):
             # change the mode to current
-            self.write('Powerenable 0')
+            self._write('Powerenable 0')
             # then set the current
-            self.write('setLDcur 1 ' + str(value))
+            self._write('setLDcur 1 ' + str(value))
         else:
             logic.Error(error_txt='Current out of range').display()
     
@@ -268,6 +264,7 @@ class StepperStage():
         
         self.toggle(False)
     
+    @err_hndlr
     def toggle(self, bool):
         
         if bool:
@@ -277,6 +274,7 @@ class StepperStage():
                 self.rsrc.close()
         self.state = bool
     
+    @err_hndlr
     def move(self, dir=None,  steps=None):
         
         cmd_dict = {'UP': (lambda steps: 'my ' + str(-steps)),
@@ -286,6 +284,7 @@ class StepperStage():
                         }
         self.rsrc.write(cmd_dict[dir](steps))
     
+    @err_hndlr
     def release(self):
 
         self.rsrc.write('ryx ')
