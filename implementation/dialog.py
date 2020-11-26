@@ -28,7 +28,8 @@ class UserDialog():
     
 class Error(UserDialog):
     
-    def __init__(self, exc=None, error_txt=''):
+    def __init__(self, exc=None, error_txt='', error_title=''):
+        
         if exc:
             self.exc_type, _, self.tb = sys.exc_info()
             self.error_type = self.exc_type.__name__
@@ -44,7 +45,7 @@ class Error(UserDialog):
                                   )
         else:
             super().__init__(msg_icon=QMessageBox.Critical,
-                                   msg_title='User Error',
+                                   msg_title=error_title,
                                    msg_text=error_txt,
                                   )
 

@@ -19,6 +19,7 @@ import gui.gui as gui_module
 import time
 
 from implementation.error_handler import logic_error_handler as err_hndlr
+from implementation.error_handler import error_checker as err_chck
 
 class Timeout():
         
@@ -102,14 +103,14 @@ class Timeout():
                 dep.get_current()
                 main_gui.depActualCurrSpinner.setValue(dep.current)
             
-            if (self._app.error_dict[nick] is None) and (self._app.dvc_dict['DEP_LASER'].update_ready):
-                update_SHG_temp(self._app.dvc_dict['DEP_LASER'], self._app.win_dict['main'])
+            if (self._app.error_dict[nick] is None) and (self._app.dvc_dict[nick].update_ready):
+                update_SHG_temp(self._app.dvc_dict[nick], self._app.win_dict['main'])
                 
-                if self._app.dvc_dict['DEP_LASER'].state is True: # check current/power only if laser is ON
-                    update_power(self._app.dvc_dict['DEP_LASER'], self._app.win_dict['main'])
-                    update_current(self._app.dvc_dict['DEP_LASER'], self._app.win_dict['main'])
+                if self._app.dvc_dict[nick].state is True: # check current/power only if laser is ON
+                    update_power(self._app.dvc_dict[nick], self._app.win_dict['main'])
+                    update_current(self._app.dvc_dict[nick], self._app.win_dict['main'])
                     
-                self._app.dvc_dict['DEP_LASER'].toggle_update_ready(False)
+                self._app.dvc_dict[nick].toggle_update_ready(False)
         
         def _update_errorGUI(self):
             # TODO: update the error GUI according to errors in self._app.error_dict
@@ -117,17 +118,21 @@ class Timeout():
             
         def _update_counter(self):
             
-            self._app.dvc_dict['COUNTER'].count() # read new counts
+            nick = 'COUNTER'
             
-            if self._app.dvc_dict['COUNTER'].update_ready:
-                avg_interval = self._app.win_dict['main'].countsAvg.value()
-                self._app.win_dict['main'].countsSpinner.setValue( # update avg counts in main GUI
-                    self._app.dvc_dict['COUNTER'].average_counts(avg_interval)
-                    )
-                    
-            self._app.dvc_dict['COUNTER'].dump_buff_overflow() # dump old counts beyond buffer size
-            
-            self._app.dvc_dict['COUNTER'].toggle_update_ready(False)
+            if self._app.error_dict[nick] is None:
+                
+                self._app.dvc_dict[nick].count() # read new counts
+                
+                if self._app.dvc_dict[nick].update_ready:
+                    avg_interval = self._app.win_dict['main'].countsAvg.value()
+                    self._app.win_dict['main'].countsSpinner.setValue( # update avg counts in main GUI
+                        self._app.dvc_dict[nick].average_counts(avg_interval)
+                        )
+                        
+                self._app.dvc_dict[nick].dump_buff_overflow() # dump old counts beyond buffer size
+                
+                self._app.dvc_dict[nick].toggle_update_ready(False)
         
         #MAIN
         def _main(self):
@@ -317,6 +322,7 @@ class MainWin():
         if pressed == QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
     
+    @err_chck()
     def dvc_toggle(self, nick):
         
         gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]['SWITCH'])
@@ -324,7 +330,7 @@ class MainWin():
         if not self._app.dvc_dict[nick].state: # switch ON
             self._app.dvc_dict[nick].toggle(True)
             
-            if self._app.dvc_dict[nick].state: # if managed to turn ON
+            if self._app.dvc_dict[nick].state and (not self._app.error_dict[nick]): # if managed to turn ON
                 gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
                 
                 if 'LED' in const.ICON_DICT[nick].keys():
@@ -334,7 +340,14 @@ class MainWin():
                     
                 self._app.log.update(F"{const.LOG_DICT[nick]} toggled ON",
                                             tag='verbose')
+                
+                if nick == 'STAGE':
+                    self._gui.stageButtonsGroup.setEnabled(True)
+                
                 return True
+            
+            else:
+                return False
             
         else: # switch OFF
             self._app.dvc_dict[nick].toggle(False)
@@ -355,6 +368,7 @@ class MainWin():
                     
                 return False
     
+    @err_chck({'DEP_LASER'})
     def dep_sett_apply(self):
         
         nick = 'DEP_LASER'
@@ -365,6 +379,7 @@ class MainWin():
             val = self._gui.depPowSpinner.value()
             self._app.dvc_dict[nick].set_power(val)
     
+    @err_chck({'STAGE'})
     def move_stage(self, dir, steps):
         
         nick = 'STAGE'
@@ -373,6 +388,7 @@ class MainWin():
                                     F"moved {str(steps)} steps {str(dir)}",
                                     tag='verbose')
     
+    @err_chck({'STAGE'})
     def release_stage(self):
         
         nick = 'STAGE'
@@ -387,7 +403,8 @@ class MainWin():
         if not self._gui.laserDock.isVisible():
             self._gui.laserDock.setVisible(True)
             self._gui.actionLaser_Control.setChecked(True)
-
+    
+    @err_chck({'TDC', 'UM232'})
     def toggle_FCS_meas(self):
         
         if self._app.meas.type is None:
@@ -411,6 +428,7 @@ class MainWin():
         self._app.win_dict['settings'].show()
         self._app.win_dict['settings'].activateWindow()
     
+    @err_chck({'CAMERA'})
     def open_camwin(self):
         
         self._gui.actionCamera_Control.setEnabled(False)
