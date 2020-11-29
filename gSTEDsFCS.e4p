@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-11-17, 11:12:58 -->
+<!-- Saved: 2020-11-26, 16:23:06 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -13,7 +13,6 @@
   <Email></Email>
   <Eol index="0"/>
   <Sources>
-    <Source>__init__.py</Source>
     <Source>gSTEDsFCS.py</Source>
     <Source>gui/__init__.py</Source>
     <Source>gui/gui.py</Source>

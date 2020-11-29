@@ -136,8 +136,9 @@ class VISAInstrument():
         
         with VISAInstrument.Task(self) as task:
             task.write(cmnd)
-            
-        self.state = bool
+        
+        if cmnd.startswith('setLDenable'): # change state if toggled
+            self.state = int(cmnd[-1])
     
     @err_hndlr
     def _query(self, cmnd):
