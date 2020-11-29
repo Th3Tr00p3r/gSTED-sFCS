@@ -330,7 +330,7 @@ class MainWin():
         if not self._app.dvc_dict[nick].state: # switch ON
             self._app.dvc_dict[nick].toggle(True)
             
-            if self._app.dvc_dict[nick].state and (not self._app.error_dict[nick]): # if managed to turn ON
+            if self._app.dvc_dict[nick].state: # if managed to turn ON
                 gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
                 
                 if 'LED' in const.ICON_DICT[nick].keys():
