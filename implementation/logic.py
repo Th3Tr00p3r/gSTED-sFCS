@@ -91,7 +91,7 @@ class Timeout():
                 dep.get_SHG_temp()
                 main_gui.depTemp.setValue(dep.temp)
                 if dep.temp < const.MIN_SHG_TEMP:
-                    main_gui.depTemp.setStyleSheet("background-color: rgb(255, 0, 0); color: white;")
+                    main_gui.depTemp.setStyleSheet("background-color: red; color: red;")
                 else:
                     main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
             

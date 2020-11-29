@@ -7,5 +7,3 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     ui = App()
     app.exec_()
-    ui = None
-    app = None
