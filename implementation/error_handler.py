@@ -19,11 +19,15 @@ def driver_error_handler(func):
             try:
                 return func(dvc, *args, **kwargs)
             
-            except ValueError as exc:
-                dvc.error_dict[dvc.nick] = exc
+            except ValueError:
+                if dvc.nick == 'DEP_LASER':
+                    return -999
                 
-                if dvc.nick == 'DEP_SHUTTER':
+                elif dvc.nick == 'DEP_SHUTTER':
                     return False
+                
+                else:
+                    raise
             
             except DaqError as exc:
                 dvc.error_dict[dvc.nick] = exc
@@ -78,7 +82,7 @@ def error_checker(nick_set=None):
                 for nick in nick_set:
                     exc = self._app.error_dict[nick]
                     
-                    if exc != '':
+                    if exc is not None:
                         txt += F"{nick} error.\n"
                         count += 1
                 
@@ -93,7 +97,7 @@ def error_checker(nick_set=None):
                 nick = args[0]
                 exc = self._app.error_dict[nick]
                 
-                if exc != '':
+                if exc is not None:
                     txt = F"{nick} error.\n\nSee \"error window\" for details."
                     Error(error_txt=txt, error_title='Error').display()
                 else:
