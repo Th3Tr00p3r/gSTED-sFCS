@@ -8,75 +8,60 @@ from PyQt5.QtGui import QIcon
 import gui.icons.icon_paths as icon
 import utilities.constants as const
 
+import time
+
+class Updatable():
+    
+    def __init__(self, intrvl):
+        self.ready = True
+        self.intrvl = intrvl
+        
+        self.last = time.perf_counter()
+    
+    def is_ready(self):
+        
+        if time.perf_counter() > (self.last + self.intrvl):
+            self.ready = True
+    
+    def just_updated(self):
+        
+        self.last = time.perf_counter()
+        self.ready = False
+
 class Timeout():
         
         def __init__(self, app):
             
             self._app = app
-            self._gui_update_ready = False
             
-            self.timer_dict = self._get_timers()
-            self.start_timers()
-        
-        def _get_timings_dict(self):
-                
-                '''Associate an (interval (ms), update_function) tuple with each device'''
-                
-                t_dict ={}
-                t_dict['MAIN'] = (const.TIMEOUT, self._main)
-                t_dict['DEP_LASER'] = (self._app.dvc_dict['DEP_LASER'].update_time * 1000,
-                                                 lambda: self._app.dvc_dict['DEP_LASER'].toggle_update_ready(True))
-                t_dict['COUNTER'] = (self._app.dvc_dict['COUNTER'].update_time * 1000,
-                                              lambda: self._app.dvc_dict['COUNTER'].toggle_update_ready(True))
-                t_dict['GUI'] = (2 * 1000,
-                                        self._set_gui_update_ready)
-                t_dict['MEAS'] = (1 * 1000,
-                                          lambda: self._app.meas.toggle_update_ready(True))
-                return t_dict
-        
-        def _get_timers(self):
+            self._timer = QTimer()
+            self._timer.setInterval(const.TIMEOUT)
+            self._timer.timeout.connect(self._main)
             
-            '''Instantiate timers for specific updates devices'''
+            # init updateables
+            self._gui_up = Updatable(intrvl=2)
+            self._meas_up = Updatable(intrvl=1)
+            self._dep_up = Updatable(intrvl=self._app.dvc_dict['DEP_LASER'].update_time)
+            self._cntr_up = Updatable(intrvl=self._app.dvc_dict['COUNTER'].update_time)
             
-            timers_dict = {}
-            for key, value in self._get_timings_dict().items():
-                timers_dict[key] = QTimer()
-                timers_dict[key].setInterval(value[0])
-                timers_dict[key].timeout.connect(value[1])
-                
-            return timers_dict
+            self.start()
         
-        def _set_gui_update_ready(self):
+        def _check_readiness(self):
             
-            self._gui_update_ready = True
+            self._gui_up.is_ready()
+            self._meas_up.is_ready()
+            self._dep_up.is_ready()
+            self._cntr_up.is_ready()
         
-        def start_timers(self):
+        def stop(self):
             
-            # initiate all update functions once
-            update_func_dict = self._get_timings_dict()
-            for key, value in update_func_dict.items():
-                update_func_dict[key][1]()
-                
-            # then start individual timers
-            for key in self.timer_dict.keys():
-                self.timer_dict[key].start()
-        
-        def stop_timers(self):
-                
-            for key in self.timer_dict.keys():
-                self.timer_dict[key].stop()
-            self._app.log.update('stopping all timers.',
-                                        tag='verbose')
-        
-        def stop_main(self):
-            
-            self.timer_dict['MAIN'].stop()
+            self._timer.stop()
             self._app.log.update('stopping main timer.',
                                         tag='verbose')
             
-        def start_main(self):
+        def start(self):
             
-            self.timer_dict['MAIN'].start()
+            self._timer.start()
             self._app.log.update('starting main timer.',
                                         tag='verbose')
         
@@ -105,21 +90,22 @@ class Timeout():
                 dep.get_current()
                 main_gui.depActualCurrSpinner.setValue(dep.current)
             
-            if (self._app.error_dict[nick] is None) and (self._app.dvc_dict[nick].update_ready):
+            if (self._app.error_dict[nick] is None) and (self._dep_up.ready):
                 update_SHG_temp(self._app.dvc_dict[nick], self._app.win_dict['main'])
                 
                 if self._app.dvc_dict[nick].state is True: # check current/power only if laser is ON
                     update_power(self._app.dvc_dict[nick], self._app.win_dict['main'])
                     update_current(self._app.dvc_dict[nick], self._app.win_dict['main'])
                     
-                self._app.dvc_dict[nick].toggle_update_ready(False)
+                self._dep_up.just_updated()
         
         def _update_gui(self):
             # TODO: update the error GUI according to errors in self._app.error_dict
             
-            if self._gui_update_ready:
+            if self._gui_up.ready is True:
             
                 for nick in self._app.dvc_dict.keys():
+                    
                     if self._app.error_dict[nick] is not None: # case ERROR
                         gui_led_object = getattr(self._app.win_dict['main'], const.ICON_DICT[nick]['LED'])
                         red_led = QIcon(icon.LED_RED)
@@ -135,7 +121,7 @@ class Timeout():
                         off_led = QIcon(icon.LED_OFF)
                         gui_led_object.setIcon(off_led)
                 
-                self._gui_update_ready = False
+                self._gui_up.just_updated()
         
         def _update_counter(self):
             
@@ -145,15 +131,14 @@ class Timeout():
                 
                 self._app.dvc_dict[nick].count() # read new counts
                 
-                if self._app.dvc_dict[nick].update_ready:
+                if self._cntr_up.ready:
                     avg_interval = self._app.win_dict['main'].countsAvg.value()
                     self._app.win_dict['main'].countsSpinner.setValue( # update avg counts in main GUI
                         self._app.dvc_dict[nick].average_counts(avg_interval)
                         )
+                    self._cntr_up.just_updated()
                         
                 self._app.dvc_dict[nick].dump_buff_overflow() # dump old counts beyond buffer size
-                
-                self._app.dvc_dict[nick].toggle_update_ready(False)
         
         def _update_measurement(self):
             
@@ -163,7 +148,7 @@ class Timeout():
                 if meas.type == 'FCS':
                     self._app.dvc_dict['UM232'].read_TDC_data()
                 
-                    if meas.update_ready:
+                    if self._meas_up.ready:
                         
                         if meas.time_passed < meas.duration_spinner.value():
                             meas.time_passed += 1
@@ -178,11 +163,12 @@ class Timeout():
                             prog = meas.time_passed / meas.duration_spinner.value() * 100
                             meas.prog_bar.setValue(prog)
                             
-                        meas.update_ready = False
+                        self._meas_up.just_updated()
         
         #MAIN
         def _main(self):
             
+            self._check_readiness()
             self._update_dep()
             self._update_counter()
             self._update_gui()
