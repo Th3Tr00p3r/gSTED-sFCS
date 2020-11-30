@@ -3,7 +3,7 @@ Logic Module.
 '''
 
 # PyQt5 imports
-from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox,
+from PyQt5.QtWidgets import (QWidget, QLineEdit, QSpinBox, QStatusBar,
                                               QDoubleSpinBox, QMessageBox, QFileDialog)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QTimer
@@ -26,6 +26,7 @@ class Timeout():
         def __init__(self, app):
             
             self._app = app
+            self._gui_update_ready = False
             
             self.timer_dict = self._get_timers()
             self.start_timers()
@@ -33,7 +34,6 @@ class Timeout():
         def _get_timings_dict(self):
                 
                 '''Associate an (interval (ms), update_function) tuple with each device'''
-                # TODO: possibly have a single or a few longer interval timers, not one for each (could be resource heavy)
                 
                 t_dict ={}
                 t_dict['MAIN'] = (const.TIMEOUT, self._main)
@@ -41,7 +41,8 @@ class Timeout():
                                                  lambda: self._app.dvc_dict['DEP_LASER'].toggle_update_ready(True))
                 t_dict['COUNTER'] = (self._app.dvc_dict['COUNTER'].update_time * 1000,
                                               lambda: self._app.dvc_dict['COUNTER'].toggle_update_ready(True))
-                t_dict['ERRORS'] = (2 * 1000, self._update_errorGUI)
+                t_dict['GUI'] = (2 * 1000,
+                                        self._set_gui_update_ready)
                 return t_dict
         
         def _get_timers(self):
@@ -56,6 +57,10 @@ class Timeout():
                 
             return timers_dict
         
+        def _set_gui_update_ready(self):
+            
+            self._gui_update_ready = True
+        
         def start_timers(self):
             
             # initiate all update functions once
@@ -66,6 +71,13 @@ class Timeout():
             # then start individual timers
             for key in self.timer_dict.keys():
                 self.timer_dict[key].start()
+        
+        def stop_timers(self):
+                
+            for key in self.timer_dict.keys():
+                self.timer_dict[key].stop()
+            self._app.log.update('stopping all timers.',
+                                        tag='verbose')
         
         def stop_main(self):
             
@@ -85,13 +97,14 @@ class Timeout():
             
             nick = 'DEP_LASER'
             
-            @err_hndlr
             def update_SHG_temp(dep, main_gui):
+                
+                # TODO: fix Nnone type when turning off dep laser while app running○
                 
                 dep.get_SHG_temp()
                 main_gui.depTemp.setValue(dep.temp)
                 if dep.temp < const.MIN_SHG_TEMP:
-                    main_gui.depTemp.setStyleSheet("background-color: red; color: red;")
+                    main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
                 else:
                     main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
             
@@ -112,10 +125,30 @@ class Timeout():
                     
                 self._app.dvc_dict[nick].toggle_update_ready(False)
         
-        def _update_errorGUI(self):
+        def _update_gui(self):
             # TODO: update the error GUI according to errors in self._app.error_dict
-            pass
             
+            if self._gui_update_ready:
+            
+                for nick in self._app.dvc_dict.keys():
+                    if self._app.error_dict[nick] is not None: # case ERROR
+                        gui_led_object = getattr(self._app.win_dict['main'], const.ICON_DICT[nick]['LED'])
+                        red_led = QIcon(icon.LED_RED)
+                        gui_led_object.setIcon(red_led)
+
+                    elif self._app.dvc_dict[nick].state is True: # case ON
+                        gui_led_object = getattr(self._app.win_dict['main'], const.ICON_DICT[nick]['LED'])
+                        on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
+                        gui_led_object.setIcon(on_icon)
+                    
+                    else: # case OFF
+                        gui_led_object = getattr(self._app.win_dict['main'], const.ICON_DICT[nick]['LED'])
+                        off_led = QIcon(icon.LED_OFF)
+                        gui_led_object.setIcon(off_led)
+                
+                self._gui_update_ready = False
+        
+        @err_chck({'COUNTER'})
         def _update_counter(self):
             
             nick = 'COUNTER'
@@ -139,9 +172,11 @@ class Timeout():
             
             self._update_dep()
             self._update_counter()
+            self._update_gui()
             
-            if self._app.meas.type == 'FCS':
-                self._app.dvc_dict['UM232'].read_TDC_data()
+            if self._app.error_dict['UM232'] is None:
+                if self._app.meas.type == 'FCS':
+                    self._app.dvc_dict['UM232'].read_TDC_data()
 
 class App():
     
@@ -193,6 +228,7 @@ class App():
                 gui_field = getattr(app.win_dict['settings'], val_dict['field'])
                 gui_field_value = getattr(gui_field, val_dict['access'])()
                 param_dict[key] = gui_field_value
+            
             return param_dict
         
         self.dvc_dict = {}
@@ -261,7 +297,7 @@ class App():
             if self.win_dict['camera'] is not None:
                 self.win_dict['camera'].close()
             
-            self.timeout_loop.stop_main()
+            self.timeout_loop.stop_timers()
             
             lights_out(self.win_dict['main'])
             self.win_dict['main'].depActualCurrSpinner.setValue(0)
@@ -295,6 +331,10 @@ class MainWin():
         self._app = app
         self._gui = gui
         
+        # status bar
+        self.statusBar = QStatusBar()
+        self._gui.setStatusBar(self.statusBar)
+        
         # intialize gui
         self._gui.actionLaser_Control.setChecked(True)
         self._gui.actionStepper_Stage_Control.setChecked(True)
@@ -304,9 +344,12 @@ class MainWin():
         self._gui.countsAvg.setValue(self._gui.countsAvgSlider.value())
         
         #connect signals and slots
+        # TODO: (low priority) make single function to control what these buttons can do (show docks, open errors if red)
         self._gui.ledExc.clicked.connect(self.show_laser_dock)
         self._gui.ledDep.clicked.connect(self.show_laser_dock)
         self._gui.ledShutter.clicked.connect(self.show_laser_dock)
+        self._gui.ledStage.clicked.connect(self.show_stage_dock)
+        
         self._gui.actionRestart.triggered.connect(self.restart)
     
     def close(self, event):
@@ -333,10 +376,9 @@ class MainWin():
             if self._app.dvc_dict[nick].state: # if managed to turn ON
                 gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
                 
-                if 'LED' in const.ICON_DICT[nick].keys():
-                    gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
-                    on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
-                    gui_led_object.setIcon(on_icon)
+                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
+                on_icon = QIcon(const.ICON_DICT[nick]['ICON'])
+                gui_led_object.setIcon(on_icon)
                     
                 self._app.log.update(F"{const.LOG_DICT[nick]} toggled ON",
                                             tag='verbose')
@@ -355,9 +397,8 @@ class MainWin():
             if not self._app.dvc_dict[nick].state: # if managed to turn OFF
                 gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
                 
-                if 'LED' in const.ICON_DICT[nick].keys():
-                    gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
-                    gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
+                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]['LED'])
+                gui_led_object.setIcon(QIcon(icon.LED_OFF)) 
                     
                 self._app.log.update(F"{const.LOG_DICT[nick]} toggled OFF",
                                             tag='verbose')
@@ -384,6 +425,7 @@ class MainWin():
         
         nick = 'STAGE'
         self._app.dvc_dict[nick].move(dir=dir, steps=steps)
+        
         self._app.log.update(F"{const.LOG_DICT[nick]} "
                                     F"moved {str(steps)} steps {str(dir)}",
                                     tag='verbose')
@@ -393,6 +435,7 @@ class MainWin():
         
         nick = 'STAGE'
         self._app.dvc_dict[nick].release()
+        
         self._app.log.update(F"{const.LOG_DICT[nick]} released",
                                     tag='verbose')
 
@@ -404,8 +447,18 @@ class MainWin():
             self._gui.laserDock.setVisible(True)
             self._gui.actionLaser_Control.setChecked(True)
     
+    def show_stage_dock(self):
+        '''
+        Make the laser dock visible (convenience)
+        '''
+        if not self._gui.stepperDock.isVisible():
+            self._gui.stepperDock.setVisible(True)
+            self._gui.actionStepper_Stage_Control.setChecked(True)
+    
     @err_chck({'TDC', 'UM232'})
     def toggle_FCS_meas(self):
+        
+        # TODO: somehow (not neccesarily here) allow stopping measurement or stop automatically if errors.
         
         if self._app.meas.type is None:
             self._app.meas = Measurement(self._app, type='FCS',
