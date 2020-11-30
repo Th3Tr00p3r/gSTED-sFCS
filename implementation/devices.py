@@ -30,11 +30,6 @@ class UM232(drivers.FTDI_Instrument):
         else:
             self.purge()
             self.close()
-        self.state = bool
-        
-    def purge_buffers(self):
-        
-        self.purge()
     
     def check_read_error(self):
         
@@ -122,6 +117,7 @@ class Camera():
         self.error_dict = error_dict
         self.video_timer = QTimer()
         self.video_timer.setInterval(100) # set to 100 ms
+        self.state = False
     
     @err_hndlr
     def toggle(self, bool):
@@ -254,6 +250,7 @@ class StepperStage():
     This device operates slowly and needs special care,
     and so its driver is within its own class (not inherited)
     '''
+    # TODO: (low priority) try to fit with VISA driver - try adding longer response time as option to driver
     
     def __init__(self, nick, param_dict, error_dict):
         

@@ -22,7 +22,22 @@ ICON_DICT = {'EXC_LASER': {'LED': 'ledExc',
                                          'SWITCH': 'depShutterOn',
                                          'ICON': icon.LED_GREEN
                                          },
-                   'STAGE': {'SWITCH': 'stageOn'}
+                   'STAGE': {'LED': 'ledStage',
+                                  'SWITCH': 'stageOn',
+                                  'ICON': icon.LED_GREEN
+                                  },
+                    'COUNTER': {'LED': 'ledCounter',
+                                      'ICON': icon.LED_GREEN
+                                  },
+                    'UM232': {'LED': 'ledUm232',
+                                   'ICON': icon.LED_GREEN
+                                  },
+                    'TDC': {'LED': 'ledTdc',
+                                'ICON': icon.LED_GREEN
+                                  },
+                    'CAMERA': {'LED': 'ledCam',
+                                  'ICON': icon.LED_GREEN
+                                  },
                     }
 
 # log
