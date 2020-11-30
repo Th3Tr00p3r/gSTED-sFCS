@@ -8,7 +8,7 @@ import nidaqmx
 from pyftdi.ftdi import Ftdi
 #from pyftdi.gpio import GpioSyncController
 import numpy as np
-from implementation.error_handler import driver_error_handler as err_hndlr
+from utilities.errors import driver_error_handler as err_hndlr
 
 class FTDI_Instrument():
     
@@ -157,7 +157,8 @@ class VISAInstrument():
             
             self._rsrc = self._inst.rm.open_resource(self._inst.address,
                                                                read_termination=self._inst.read_termination,
-                                                               write_termination=self._inst.write_termination)
+                                                               write_termination=self._inst.write_termination,
+                                                               open_timeout=3)
             self._rsrc.query_delay = 0.1
             return self._rsrc
         
