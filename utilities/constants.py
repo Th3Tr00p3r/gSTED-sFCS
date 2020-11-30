@@ -5,9 +5,6 @@ import gui.icons.icon_paths as icon
 
 # general
 TIMEOUT = 10
-EXIT_CODE_REBOOT = -123456789 # for restarting the application
-MIN_SHG_TEMP = 52
-COUNTER_BUFFER_ALLOC_SIZE = (1, )
 
 # icons
 ICON_DICT = {'EXC_LASER': {'LED': 'ledExc',
@@ -60,9 +57,11 @@ DEFAULT_SETTINGS_FILE_PATH = './settings/default_settings.csv'
 
 # sounds
 MEAS_COMPLETE_SOUND = './sounds/meas_complete.wav'
+#                        from PyQt5.QtMultimedia import QSound
+#                                if self.time_passed == self.duration_spinbox.value():
+#                                    QSound.play(const.MEAS_COMPLETE_SOUND);
 
 # devices
-#DEVICE_NICKS = {'COUNTER', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA'}
 DEVICE_NICKS = {'COUNTER', 'UM232', 'EXC_LASER', 'DEP_LASER', 'DEP_SHUTTER', 'STAGE', 'CAMERA',  'TDC'}
 
 DEVICE_ADDRESS_GUI_DICT = {'EXC_LASER': 'excTriggerExtChan',

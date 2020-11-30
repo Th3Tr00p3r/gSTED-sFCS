@@ -2,8 +2,8 @@
 GUI Module.
 '''
 
-import implementation.constants as const
-import implementation.logic as logic
+import utilities.constants as const
+import logic.windows as wins_imp
 
 from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtWidgets import (QMainWindow, QDialog, QWidget)
@@ -18,7 +18,7 @@ class MainWin(QMainWindow):
     def __init__(self, app, parent=None):
         super(MainWin, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
-        self.imp = logic.MainWin(self, app)
+        self.imp = wins_imp.MainWin(self, app)
 
     def closeEvent(self, event):
         
@@ -175,7 +175,7 @@ class ErrWin(QDialog):
     def __init__(self, app, parent=None):
         super(ErrWin,  self).__init__(parent)
         uic.loadUi(const.ERRORSWINDOW_UI_PATH, self)
-        self.imp = logic.ErrWin(self, app)
+        self.imp = wins_imp.ErrWin(self, app)
     
     @pyqtSlot(int)
     def on_errorSelectList_currentRowChanged(self, index):
@@ -188,7 +188,7 @@ class SettWin(QDialog):
     def __init__(self, app, parent=None):
         super(SettWin,  self).__init__(parent)
         uic.loadUi(const.SETTINGSWINDOW_UI_PATH, self)
-        self.imp = logic.SettWin(self, app)
+        self.imp = wins_imp.SettWin(self, app)
     
     def closeEvent(self, event):
     
@@ -217,7 +217,7 @@ class CamWin(QWidget):
         super(CamWin,  self).__init__(parent, Qt.WindowStaysOnTopHint)
         uic.loadUi(const.CAMERAWINDOW_UI_PATH, self)
         self.move(30, 180)
-        self.imp = logic.CamWin(self, app)
+        self.imp = wins_imp.CamWin(self, app)
 
     def closeEvent(self, event):
         
