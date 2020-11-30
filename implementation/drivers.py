@@ -65,7 +65,6 @@ class DAQmxInstrumentDO():
         self.nick = nick
         self._address = address
         self.error_dict = error_dict
-        self.state = False
         
         self.toggle(False)
         
