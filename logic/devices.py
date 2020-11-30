@@ -78,11 +78,6 @@ class Counter(drivers.DAQmxInstrumentCI):
             self._start()
         else:
             self._stop()
-        
-    
-    def toggle_update_ready(self, bool):
-        
-        self.update_ready = bool
     
     def count(self):
         
@@ -209,10 +204,6 @@ class DepletionLaser(drivers.VISAInstrument):
     def toggle(self, bool):
             
             self._write(F"setLDenable {int(bool)}")
-    
-    def toggle_update_ready(self, bool):
-        
-        self.update_ready = bool
     
     def get_SHG_temp(self):
         
