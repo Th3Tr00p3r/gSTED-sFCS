@@ -148,7 +148,6 @@ class Timeout():
                 
                 self._gui_update_ready = False
         
-        @err_chck({'COUNTER'})
         def _update_counter(self):
             
             nick = 'COUNTER'
