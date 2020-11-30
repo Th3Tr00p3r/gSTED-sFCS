@@ -33,6 +33,8 @@ class FTDI_Instrument():
         self.inst.set_latency_timer(self._param_dict['ltncy_tmr_val'])
         self.inst.set_flowctrl(self._param_dict['flow_ctrl'])
         self.eff_baud_rate = self.inst.set_baudrate(self._param_dict['baud_rate'])
+        
+        self.state = True
     
     @err_hndlr
     def read_bytes(self, bytes):
@@ -54,6 +56,7 @@ class FTDI_Instrument():
     def close(self):
         
         self.inst.close()
+        self.state = False
         
 class DAQmxInstrumentDO():
     
@@ -138,7 +141,7 @@ class VISAInstrument():
             task.write(cmnd)
         
         if cmnd.startswith('setLDenable'): # change state if toggled
-            self.state = int(cmnd[-1])
+            self.state = bool(int(cmnd[-1]))
     
     @err_hndlr
     def _query(self, cmnd):

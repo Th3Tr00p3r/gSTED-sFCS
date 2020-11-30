@@ -38,6 +38,9 @@ def driver_error_handler(func):
             except VisaIOError as exc:
                 dvc.error_dict[dvc.nick] = exc
                 
+                if dvc.nick == 'DEP_LASER':
+                    return -999
+                
                 if dvc.nick == 'STAGE':
                     return False
                     
@@ -46,6 +49,8 @@ def driver_error_handler(func):
                 
             except FtdiError as exc:
                 dvc.error_dict[dvc.nick] = exc
+                txt = F"{dvc.nick} cable disconnected."
+                Error(error_txt=txt, error_title='Error').display()
             
             except AttributeError as exc:
                 if dvc.nick == 'UM232':
@@ -54,8 +59,12 @@ def driver_error_handler(func):
                     raise
                 
             except OSError as exc:
+                
                 if dvc.nick == 'UM232':
                     dvc.error_dict[dvc.nick] = exc
+                    txt = F"Make sure {dvc.nick} cable is connected and restart"
+                    Error(error_txt=txt, error_title='Error').display()
+                    
                 else:
                     raise
             
@@ -117,10 +126,5 @@ def logic_error_handler(func):
             
         except FileNotFoundError as exc:
             Error(exc).display()
-        
-        except TypeError as exc:
-            Error(exc).display()
-            if hasattr(args[0], 'temp'):
-                args[0].temp = -999
         
     return wrapper_error_handler

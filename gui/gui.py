@@ -122,10 +122,9 @@ class MainWin(QMainWindow):
         self.logDock.setVisible(p0)
 
     @pyqtSlot()
-    def on_ledErrors_clicked(self):
+    def on_actionErrors_triggered(self):
         
         '''Show errors window'''
-        # TODO:
         
         self.imp.open_errwin()
         
