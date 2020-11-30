@@ -1,7 +1,7 @@
 '''
 Error Handeling
 '''
-from implementation.dialog import Error
+from utilities.dialog import Error
 from pyvisa.errors import VisaIOError
 from instrumental.drivers.cameras.uc480 import UC480Error
 from nidaqmx.errors import DaqError

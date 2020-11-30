@@ -2,13 +2,16 @@
 Devices Module.
 '''
 
-import implementation.drivers as drivers
-import implementation.logic as logic
-import numpy as np
-from implementation.error_handler import driver_error_handler as err_hndlr
-from instrumental.drivers.cameras.uc480 import UC480Error
 from PyQt5.QtCore import QTimer
-import implementation.constants as const
+
+import utilities.dialog as dialog
+from utilities.errors import driver_error_handler as err_hndlr
+import utilities.constants as const
+
+import logic.drivers as drivers
+
+import numpy as np
+from instrumental.drivers.cameras.uc480 import UC480Error
 
 class UM232(drivers.FTDI_Instrument):
     
@@ -185,6 +188,8 @@ class DepletionLaser(drivers.VISAInstrument):
     Control depletion laser through pyVISA
     '''
     
+    min_SHG_temp = 52
+    
     def __init__(self, nick, param_dict, error_dict):
         
         super().__init__(nick=nick,
@@ -230,7 +235,7 @@ class DepletionLaser(drivers.VISAInstrument):
             # then set the power
             self._write('Setpower 0 ' + str(value))
         else:
-            logic.Error(error_txt='Power out of range').display()
+            dialog.Error(error_txt='Power out of range').display()
     
     def set_current(self, value):
         
@@ -241,7 +246,7 @@ class DepletionLaser(drivers.VISAInstrument):
             # then set the current
             self._write('setLDcur 1 ' + str(value))
         else:
-            logic.Error(error_txt='Current out of range').display()
+            dialog.Error(error_txt='Current out of range').display()
     
 class StepperStage():
     

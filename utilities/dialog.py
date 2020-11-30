@@ -1,7 +1,7 @@
 import os
 import traceback
 import sys
-from PyQt5.QtWidgets import (QMessageBox)
+from PyQt5.QtWidgets import QMessageBox
 
 class UserDialog():
     

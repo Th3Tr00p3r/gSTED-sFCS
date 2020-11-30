@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-import implementation.constants as const
+import utilities.constants as const
 
 class Log():
     
