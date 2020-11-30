@@ -191,20 +191,18 @@ class MainWin():
         and change the counts display frequency to as low as needed
         (lower then the averaging frequency)
         '''
+
         self._gui.countsAvg.setValue(val)
         
-        curr_intrvl = self._app.dvc_dict['COUNTER'].update_time * 1000
+        val = val / 1000 # convert to seconds
+        
+        curr_intrvl = self._app.dvc_dict['COUNTER'].update_time
         
         if val > curr_intrvl:
-            self._app.timeout_loop.timer_dict['COUNTER'].setInterval(val)
+            self._app.timeout_loop._cntr_up.intrvl = val
+            
         else:
-            self._app.timeout_loop.timer_dict['COUNTER'].setInterval(curr_intrvl)
-    
-    def change_from_settings(self):
-        
-        pass
-#        self._gui.countsAvgSlider.setMinimum(
-#            self._app.win_dict['settings'].counterUpdateTime.value() * 1000)
+            self._app.timeout_loop._cntr_up.intrvl = curr_intrvl
     
 class SettWin():
     
@@ -314,7 +312,7 @@ class CamWin():
 
         self._cam.toggle(False)
         self._app.win_dict['main'].actionCamera_Control.setEnabled(True) # enable camera button again
-        self._app.timeout_loop.start_main() # for restarting main loop in case camwin closed while video ON
+        self._app.timeout_loop.start() # for restarting main loop in case camwin closed while video ON
         
         self._app.log.update('Camera connection closed',
                                     tag='verbose')
@@ -324,7 +322,7 @@ class CamWin():
     def toggle_video(self, bool):
         
         if bool: #turn On
-            self._app.timeout_loop.stop_main()
+            self._app.timeout_loop.stop()
             self._cam.toggle_video(True)
             
             self._gui.videoButton.setStyleSheet("background-color: "
@@ -337,7 +335,7 @@ class CamWin():
             
         else: #turn Off
             self._cam.toggle_video(False)
-            self._app.timeout_loop.start_main()
+            self._app.timeout_loop.start()
             
             self._gui.videoButton.setStyleSheet("background-color: "
                                                              "rgb(225, 225, 225); "

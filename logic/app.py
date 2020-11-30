@@ -5,10 +5,11 @@ Logic Module.
 # PyQt5 imports
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox
-#implementation imports
+# utilities imports
 import utilities.constants as const
 from utilities.log import Log
 from utilities.dialog import Question
+# logic imports
 import logic.devices as devices
 from logic.timeout import Timeout
 from logic.measurements import Measurement
@@ -29,8 +30,6 @@ class App():
         
         self.win_dict['settings'] = gui_module.SettWin(self)
         self.win_dict['settings'].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
-        
-        self.win_dict['main'].imp.change_from_settings()
         
         self.win_dict['errors'] = gui_module.ErrWin(self)
         self.win_dict['camera'] = None # instantiated on pressing camera button
@@ -137,7 +136,7 @@ class App():
             if self.win_dict['camera'] is not None:
                 self.win_dict['camera'].close()
             
-            self.timeout_loop.stop_timers()
+            self.timeout_loop.stop()
             
             lights_out(self.win_dict['main'])
             self.win_dict['main'].depActualCurrSpinner.setValue(0)
@@ -159,7 +158,7 @@ class App():
         pressed = Question(q_txt='Are you sure you want to quit?',
                                    q_title='Quitting Program').display()
         if pressed == QMessageBox.Yes:
-            self.timeout_loop.stop_main()
+            self.timeout_loop.stop()
             self.clean_up_app()
         else:
             event.ignore()
