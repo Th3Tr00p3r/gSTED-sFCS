@@ -9,7 +9,9 @@ from pyftdi.ftdi import FtdiError
 import functools
 
 def driver_error_handler(func):
-    
+    '''
+    decorator for clean handling of various known errors occuring in drivers.py
+    '''
     # TODO: possibly turn this into a class, and create subclasses as needed. also create one for logging
     
     @functools.wraps(func)
@@ -51,6 +53,8 @@ def driver_error_handler(func):
                 dvc.error_dict[dvc.nick] = exc
                 txt = F"{dvc.nick} cable disconnected."
                 Error(error_txt=txt, error_title='Error').display()
+                
+                return False
             
             except AttributeError as exc:
                 if dvc.nick == 'UM232':
@@ -73,12 +77,18 @@ def driver_error_handler(func):
             
         else:
             print(F"'{dvc.nick}' error. Ignoring '{func.__name__}()' call.")
-            # TODO: flash error LED
+            # TODO: (low priority) this should not happen - calls should be avoided if device is in error
             return False
                                                
     return wrapper_error_handler
 
 def error_checker(nick_set=None):
+    '''
+    decorator for clean handeling of GUI interactions with errorneous devices.
+    
+    nick_set - a set of all device nicks to check for errors
+        before attempting the decorated func()
+    '''
     
     def outer_wrapper(func):
     

@@ -36,10 +36,6 @@ class Measurement():
             
         self.log.update(F"{self.type} measurement stopped")
     
-    def toggle_update_ready(self, bool):
-        
-        self.update_ready = bool
-    
     def disp_ACF(self):
         
         print(F"Measurement Finished:\n"

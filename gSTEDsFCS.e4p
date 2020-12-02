@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-11-26, 16:23:06 -->
+<!-- Saved: 2020-11-30, 22:13:12 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -20,14 +20,17 @@
     <Source>gui/icons/icon_paths.py</Source>
     <Source>gui/icons/icons_rc.py</Source>
     <Source>gui/icons/icons_rc.py</Source>
-    <Source>implementation/__init__.py</Source>
-    <Source>implementation/constants.py</Source>
-    <Source>implementation/devices.py</Source>
-    <Source>implementation/dialog.py</Source>
-    <Source>implementation/drivers.py</Source>
-    <Source>implementation/error_handler.py</Source>
-    <Source>implementation/log.py</Source>
-    <Source>implementation/logic.py</Source>
+    <Source>logic/__init__.py</Source>
+    <Source>logic/app.py</Source>
+    <Source>logic/devices.py</Source>
+    <Source>logic/drivers.py</Source>
+    <Source>logic/measurements.py</Source>
+    <Source>logic/timeout.py</Source>
+    <Source>logic/windows.py</Source>
+    <Source>utilities/constants.py</Source>
+    <Source>utilities/dialog.py</Source>
+    <Source>utilities/errors.py</Source>
+    <Source>utilities/log.py</Source>
   </Sources>
   <Forms>
     <Form>gui/camerawindow.ui</Form>

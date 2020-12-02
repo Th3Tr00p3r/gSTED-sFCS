@@ -142,8 +142,9 @@ class Timeout():
         
         def _update_measurement(self):
             
+            meas = self._app.meas
+            
             if self._app.error_dict['UM232'] is None:
-                meas = self._app.meas
                 
                 if meas.type == 'FCS':
                     self._app.dvc_dict['UM232'].read_TDC_data()
@@ -164,6 +165,10 @@ class Timeout():
                             meas.prog_bar.setValue(prog)
                             
                         self._meas_up.just_updated()
+                
+            elif meas.type is not None: # case UM232 error while measuring
+                meas.stop()
+                self._app.win_dict['main'].startFcsMeasurementButton.setText('Start \nMeasurement')
         
         #MAIN
         def _main(self):
