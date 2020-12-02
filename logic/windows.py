@@ -150,8 +150,6 @@ class MainWin():
     @err_chck({'TDC', 'UM232'})
     def toggle_FCS_meas(self):
         
-        # TODO: somehow (not neccesarily here) allow stopping measurement or stop automatically if errors.
-        
         if self._app.meas.type is None:
             self._app.meas = Measurement(self._app, type='FCS',
                                                        duration_spinner=self._gui.measFCSDuration,
