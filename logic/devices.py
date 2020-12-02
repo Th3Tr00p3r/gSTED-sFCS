@@ -125,6 +125,7 @@ class Camera():
                 self._driver = drivers.UC480_Camera(reopen_policy='new')
             except:
                 raise UC480Error
+                
         elif hasattr(self, '_driver'):
             self.video_timer.stop() # in case video is ON
             self._driver.close()
@@ -179,9 +180,8 @@ class SimpleDO(drivers.DAQmxInstrumentDO):
                                error_dict=error_dict)
 
 class DepletionLaser(drivers.VISAInstrument):
-    '''
-    Control depletion laser through pyVISA
-    '''
+    
+    '''Control depletion laser through pyVISA'''
     
     min_SHG_temp = 52
     
@@ -219,23 +219,17 @@ class DepletionLaser(drivers.VISAInstrument):
     
     def set_power(self, value):
         
-        # check that current value is within range
-        if (value <= 1000) and (value >= 99):
-            # change the mode to current
-            self._write('Powerenable 1')
-            # then set the power
-            self._write('Setpower 0 ' + str(value))
+        if (value <= 1000) and (value >= 99): # check that current value is within range
+            self._write('Powerenable 1') # change the mode to power
+            self._write('Setpower 0 ' + str(value)) # then set the power
         else:
             dialog.Error(error_txt='Power out of range').display()
     
     def set_current(self, value):
         
-        # check that current value is within range
-        if (value <= 2500) and (value >= 1500):
-            # change the mode to current
-            self._write('Powerenable 0')
-            # then set the current
-            self._write('setLDcur 1 ' + str(value))
+        if (value <= 2500) and (value >= 1500): # check that current value is within range
+            self._write('Powerenable 0') # change the mode to current
+            self._write('setLDcur 1 ' + str(value)) # then set the current
         else:
             dialog.Error(error_txt='Current out of range').display()
     
