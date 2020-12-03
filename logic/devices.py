@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 """Devices Module."""
 
-from PyQt5.QtCore import QTimer
-
-import utilities.dialog as dialog
-from utilities.errors import driver_error_handler as err_hndlr
-import utilities.constants as const
-
 import logic.drivers as drivers
-
 import numpy as np
+import utilities.constants as const
+import utilities.dialog as dialog
 from instrumental.drivers.cameras.uc480 import UC480Error
+from PyQt5.QtCore import QTimer
+from utilities.errors import driver_error_handler as err_hndlr
 
 
 class UM232(drivers.FTDI_Instrument):
@@ -201,9 +198,7 @@ class SimpleDO(drivers.DAQmxInstrumentDO):
 
 
 class DepletionLaser(drivers.VISAInstrument):
-    """
-    Control depletion laser through pyVISA
-    """
+    """Control depletion laser through pyVISA"""
 
     min_SHG_temp = 52
 

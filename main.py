@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
-""" Main. """
+"""
+Main module.
+App object is instantiated which in turn loads the UI.
+
+"""
 
 import sys
-from PyQt5.QtWidgets import QApplication
+
 from logic.app import App
+from PyQt5.QtWidgets import QApplication
+
 import gui.icons  # this generates an icon resource file (see gui.py) as well as paths to all icons (see logic.py) # NOQA
 
 if __name__ == "__main__":

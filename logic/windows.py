@@ -1,25 +1,15 @@
 # -*- coding: utf-8 -*-
 """ GUI windows implementations module. """
 
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
-    QWidget,
-    QLineEdit,
-    QSpinBox,
-    QStatusBar,
-    QDoubleSpinBox,
-    QMessageBox,
-    QFileDialog,
-)
-
 import gui.gui as gui_module
 import gui.icons.icon_paths as icon
-
+import PyQt5.QtWidgets as QtWidgets
 import utilities.constants as const
-from utilities.dialog import Error, Question
-from utilities.errors import logic_error_handler as err_hndlr
-from utilities.errors import error_checker as err_chck
 from logic.measurements import Measurement
+from PyQt5.QtGui import QIcon
+from utilities.dialog import Error, Question
+from utilities.errors import error_checker as err_chck
+from utilities.errors import logic_error_handler as err_hndlr
 
 
 class MainWin:
@@ -32,7 +22,7 @@ class MainWin:
         self._gui = gui
 
         # status bar
-        self.statusBar = QStatusBar()
+        self.statusBar = QtWidgets.QSpinBox()
         self._gui.setStatusBar(self.statusBar)
 
         # intialize gui
@@ -63,7 +53,7 @@ class MainWin:
         pressed = Question(
             q_txt="Are you sure?", q_title="Restarting Program"
         ).display()
-        if pressed == QMessageBox.Yes:
+        if pressed == QtWidgets.QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
 
     @err_chck()
@@ -251,7 +241,7 @@ class SettWin:
             "Keep changes if made? "
             "(otherwise, revert to last loaded settings file.)"
         ).display()
-        if pressed == QMessageBox.No:
+        if pressed == QtWidgets.QMessageBox.No:
             self.read_csv(self._gui.settingsFileName.text())
 
     # public methods
@@ -261,10 +251,11 @@ class SettWin:
         Write all QLineEdit, QspinBox and QdoubleSpinBox
         of settings window to 'filepath' (csv).
         Show 'filepath' in 'settingsFileName' QLineEdit.
+
         """
         # TODO: add support for combo box index
 
-        filepath, _ = QFileDialog.getSaveFileName(
+        filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
             const.SETTINGS_FOLDER_PATH,
@@ -272,16 +263,16 @@ class SettWin:
         )
         import csv
 
-        self._gui.frame.findChild(QWidget, "settingsFileName").setText(
-            filepath
-        )
+        self._gui.frame.findChild(
+            QtWidgets.QWidget, "settingsFileName"
+        ).setText(filepath)
         with open(filepath, "w") as stream:
             # print("saving", filepath)
             writer = csv.writer(stream)
             # get all names of fields in settings window (for file saving/loading)
-            l1 = self._gui.frame.findChildren(QLineEdit)
-            l2 = self._gui.frame.findChildren(QSpinBox)
-            l3 = self._gui.frame.findChildren(QDoubleSpinBox)
+            l1 = self._gui.frame.findChildren(QtWidgets.QLineEdit)
+            l2 = self._gui.frame.findChildren(QtWidgets.QSpinBox)
+            l3 = self._gui.frame.findChildren(QtWidgets.QDoubleSpinBox)
             field_names = [
                 w.objectName()
                 for w in (l1 + l2 + l3)
@@ -290,19 +281,21 @@ class SettWin:
             ]  # perhaps better as for loop for readability
             # print(fieldNames)
             for i in range(len(field_names)):
-                widget = self._gui.frame.findChild(QWidget, field_names[i])
+                widget = self._gui.frame.findChild(
+                    QtWidgets.QWidget, field_names[i]
+                )
                 if hasattr(widget, "value"):  # spinner
                     rowdata = [
                         field_names[i],
                         self._gui.frame.findChild(
-                            QWidget, field_names[i]
+                            QtWidgets.QWidget, field_names[i]
                         ).value(),
                     ]
                 else:  # line edit
                     rowdata = [
                         field_names[i],
                         self._gui.frame.findChild(
-                            QWidget, field_names[i]
+                            QtWidgets.QWidget, field_names[i]
                         ).text(),
                     ]
                 writer.writerow(rowdata)
@@ -320,7 +313,7 @@ class SettWin:
         # TODO: add support for combo box index
 
         if not filepath:
-            filepath, _ = QFileDialog.getOpenFileName(
+            filepath, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
                 const.SETTINGS_FOLDER_PATH,
@@ -335,11 +328,13 @@ class SettWin:
             keep_default_na=False,
             error_bad_lines=False,
         )
-        self._gui.frame.findChild(QWidget, "settingsFileName").setText(
-            filepath
-        )
+        self._gui.frame.findChild(
+            QtWidgets.QWidget, "settingsFileName"
+        ).setText(filepath)
         for i in range(len(df)):
-            widget = self._gui.frame.findChild(QWidget, df.iloc[i, 0])
+            widget = self._gui.frame.findChild(
+                QtWidgets.QWidget, df.iloc[i, 0]
+            )
             if not widget == "nullptr":
                 if hasattr(widget, "value"):  # spinner
                     widget.setValue(float(df.iloc[i, 1]))
