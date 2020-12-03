@@ -1,25 +1,18 @@
 # -*- coding: utf-8 -*-
 """Logic Module."""
 
-# PyQt5 imports
+import time
+
+import gui.gui as gui_module
+import gui.icons.icon_paths as icon
+import logic.devices as devices
+import utilities.constants as const
+from logic.measurements import Measurement
+from logic.timeout import Timeout
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox
-
-# utilities imports
-import utilities.constants as const
-from utilities.log import Log
 from utilities.dialog import Question
-
-# logic imports
-import logic.devices as devices
-from logic.timeout import Timeout
-from logic.measurements import Measurement
-
-# GUI imports
-import gui.icons.icon_paths as icon
-import gui.gui as gui_module
-
-import time
+from utilities.log import Log
 
 
 class App:

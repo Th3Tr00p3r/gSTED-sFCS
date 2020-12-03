@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 """ GUI Module. """
 
-import utilities.constants as const
-import logic.windows as wins_imp
+from typing import NoReturn  # , Any
 
-from PyQt5.QtCore import pyqtSlot, Qt, QEvent
-from PyQt5.QtWidgets import QMainWindow, QDialog, QWidget
+import logic.windows as wins_imp
+import utilities.constants as const
 from PyQt5 import uic
+from PyQt5.QtCore import QEvent, Qt, pyqtSlot
+from PyQt5.QtWidgets import QDialog, QMainWindow, QWidget
 
 from gui.icons import icons_rc  # for initial icons loadout # NOQA
-
-from typing import NoReturn  # , Any
 
 
 class MainWin(QMainWindow):

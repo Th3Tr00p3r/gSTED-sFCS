@@ -2,11 +2,9 @@
 """Drivers Module."""
 
 from instrumental.drivers.cameras.uc480 import UC480_Camera  # NOQA
-import pyvisa as visa
 import nidaqmx
+import pyvisa as visa
 from pyftdi.ftdi import Ftdi
-
-# from pyftdi.gpio import GpioSyncController
 from utilities.errors import driver_error_handler as err_hndlr
 
 
