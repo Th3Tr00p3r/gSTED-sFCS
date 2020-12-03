@@ -38,17 +38,17 @@ Python-based software for our optical measurement system.
 
 - Python 3.8.6 (some dependencies may not support newer versions yet, e.g. QScintilla does not support python 3.9 yet)
 
-- [PyQt5]([PyQt5 · PyPI](https://pypi.org/project/PyQt5/)) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**)
+- [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**)
 
 - pandas - currently used only for reading the settings out of laziness (overkill)
 
 - matplotlib - used for plotting (currently only the camera, later the graphs)
 
-- [pyVISA]([PyVISA · PyPI](https://pypi.org/project/PyVISA/)) - communication with VISA-supported devices
+- [pyVISA](https://pypi.org/project/PyVISA/) - communication with VISA-supported devices
 
-- [nidaqmx]([nidaqmx · PyPI](https://pypi.org/project/nidaqmx/)) - communication with NI-DAQmx supported devices
+- [nidaqmx](https://pypi.org/project/nidaqmx/) - communication with NI-DAQmx supported devices
 
-- [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), [Instrumental-lib]([Instrumental-lib · PyPI](https://pypi.org/project/Instrumental-lib/)), [nicelib](https://pypi.org/project/NiceLib/),  - communication with DC480 cameras
+- [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), [Instrumental-lib](https://pypi.org/project/Instrumental-lib/), [nicelib](https://pypi.org/project/NiceLib/),  - communication with DC480 cameras
 
 - [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232, which is a usb port to the FPGA (TDC data)
 
