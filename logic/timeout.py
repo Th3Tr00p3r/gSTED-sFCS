@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """Timeout module."""
 
-from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QIcon
+import time
 
 import gui.icons.icon_paths as icon
 import utilities.constants as const
-
-import time
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QIcon
 
 
 class Updatable:

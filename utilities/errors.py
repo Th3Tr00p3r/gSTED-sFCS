@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """Error handeling."""
 
-from utilities.dialog import Error
-from pyvisa.errors import VisaIOError
+import functools
+
 from instrumental.drivers.cameras.uc480 import UC480Error
 from nidaqmx.errors import DaqError
 from pyftdi.ftdi import FtdiError
-import functools
+from pyvisa.errors import VisaIOError
+from utilities.dialog import Error
 
 
 def driver_error_handler(func):
