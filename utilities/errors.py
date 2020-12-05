@@ -64,9 +64,7 @@ def driver_error_handler(func):
 
                 if dvc.nick == "UM232":
                     dvc.error_dict[dvc.nick] = exc
-                    txt = (
-                        f"Make sure {dvc.nick} cable is connected and restart"
-                    )
+                    txt = f"Make sure {dvc.nick} cable is connected and restart"
                     Error(error_txt=txt, error_title="Error").display()
 
                 else:
@@ -112,9 +110,7 @@ def error_checker(nick_set=None):
 
                 if count > 0:
                     txt += '\nSee "error window" for details.'
-                    Error(
-                        error_txt=txt, error_title=f"Errors ({count})"
-                    ).display()
+                    Error(error_txt=txt, error_title=f"Errors ({count})").display()
 
                 else:
                     return func(self, *args, **kwargs)

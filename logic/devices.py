@@ -16,9 +16,7 @@ class UM232(drivers.FTDI_Instrument):
     def __init__(self, nick, param_dict, error_dict):
         """Doc."""
 
-        super().__init__(
-            nick=nick, param_dict=param_dict, error_dict=error_dict
-        )
+        super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self.init_data()
         self.toggle(True)
         self.check_read_error()
@@ -65,13 +63,10 @@ class Counter(drivers.DAQmxInstrumentCI):
     def __init__(self, nick, param_dict, error_dict):
         """Doc."""
 
-        super().__init__(
-            nick=nick, param_dict=param_dict, error_dict=error_dict
-        )
+        super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self.cont_count_buff = []
         self.counts = None
         self.update_time = param_dict["update_time"]
-        self.state = False
 
         self.toggle(True)  # turn ON right from the start
 
@@ -97,8 +92,7 @@ class Counter(drivers.DAQmxInstrumentCI):
 
         if start_idx > 0:
             return (
-                self.cont_count_buff[-1]
-                - self.cont_count_buff[-(intrvl_time_unts + 1)]
+                self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts + 1)]
             ) / avg_intrvl  # to have KHz
 
         else:  # TODO: get the most averaging possible if requested fails
@@ -192,9 +186,7 @@ class SimpleDO(drivers.DAQmxInstrumentDO):
     def __init__(self, nick, param_dict, error_dict):
         """Doc."""
 
-        super().__init__(
-            nick=nick, address=param_dict["addr"], error_dict=error_dict
-        )
+        super().__init__(nick=nick, address=param_dict["addr"], error_dict=error_dict)
 
 
 class DepletionLaser(drivers.VISAInstrument):

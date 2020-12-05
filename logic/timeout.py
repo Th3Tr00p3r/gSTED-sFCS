@@ -44,12 +44,8 @@ class Timeout:
         # init updateables
         self._gui_up = Updatable(intrvl=2)
         self._meas_up = Updatable(intrvl=1)
-        self._dep_up = Updatable(
-            intrvl=self._app.dvc_dict["DEP_LASER"].update_time
-        )
-        self._cntr_up = Updatable(
-            intrvl=self._app.dvc_dict["COUNTER"].update_time
-        )
+        self._dep_up = Updatable(intrvl=self._app.dvc_dict["DEP_LASER"].update_time)
+        self._cntr_up = Updatable(intrvl=self._app.dvc_dict["COUNTER"].update_time)
 
         self.start()
 
@@ -85,13 +81,9 @@ class Timeout:
             dep.get_SHG_temp()
             main_gui.depTemp.setValue(dep.temp)
             if dep.temp < dep.min_SHG_temp:
-                main_gui.depTemp.setStyleSheet(
-                    "background-color: red; color: white;"
-                )
+                main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
             else:
-                main_gui.depTemp.setStyleSheet(
-                    "background-color: white; color: black;"
-                )
+                main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
         def update_power(dep, main_gui):
             """Doc."""
@@ -106,19 +98,13 @@ class Timeout:
             main_gui.depActualCurrSpinner.setValue(dep.current)
 
         if (self._app.error_dict[nick] is None) and (self._dep_up.ready):
-            update_SHG_temp(
-                self._app.dvc_dict[nick], self._app.win_dict["main"]
-            )
+            update_SHG_temp(self._app.dvc_dict[nick], self._app.win_dict["main"])
 
             if (
                 self._app.dvc_dict[nick].state is True
             ):  # check current/power only if laser is ON
-                update_power(
-                    self._app.dvc_dict[nick], self._app.win_dict["main"]
-                )
-                update_current(
-                    self._app.dvc_dict[nick], self._app.win_dict["main"]
-                )
+                update_power(self._app.dvc_dict[nick], self._app.win_dict["main"])
+                update_current(self._app.dvc_dict[nick], self._app.win_dict["main"])
 
             self._dep_up.just_updated()
 
@@ -159,37 +145,35 @@ class Timeout:
             def are_last_n_ident(list, n):
                 """Doc."""
 
-                return len(set(list[-n:])) == 1
+                if len(list) > n:
+                    return len(set(list[-n:])) == 1
 
-            if are_last_n_ident(
-                self._app.dvc_dict["COUNTER"].cont_count_buff, 10
-            ):
+            if are_last_n_ident(self._app.dvc_dict["COUNTER"].cont_count_buff, 10):
                 self._app.error_dict["COUNTER"] = "Detector is disconnected"
             # -------------------------------------------------------------------------------------------------------------------------
 
             self._gui_up.just_updated()
 
     def _update_counter(self):
-        """Doc."""
+        """
+        Read new counts, and dump buffer overflow.
+        if update ready also average and show in GUI.
+
+        """
 
         nick = "COUNTER"
 
         if self._app.error_dict[nick] is None:
 
-            self._app.dvc_dict[nick].count()  # read new counts
+            self._app.dvc_dict[nick].count()
+            self._app.dvc_dict[nick].dump_buff_overflow()
 
             if self._cntr_up.ready:
                 avg_interval = self._app.win_dict["main"].countsAvg.value()
-                self._app.win_dict[
-                    "main"
-                ].countsSpinner.setValue(  # update avg counts in main GUI
+                self._app.win_dict["main"].countsSpinner.setValue(
                     self._app.dvc_dict[nick].average_counts(avg_interval)
                 )
                 self._cntr_up.just_updated()
-
-            self._app.dvc_dict[
-                nick
-            ].dump_buff_overflow()  # dump old counts beyond buffer size
 
     def _update_measurement(self):
         """Doc."""
@@ -213,11 +197,7 @@ class Timeout:
                         meas.time_passed = 1
 
                     if meas.prog_bar:
-                        prog = (
-                            meas.time_passed
-                            / meas.duration_spinner.value()
-                            * 100
-                        )
+                        prog = meas.time_passed / meas.duration_spinner.value() * 100
                         meas.prog_bar.setValue(prog)
 
                     self._meas_up.just_updated()

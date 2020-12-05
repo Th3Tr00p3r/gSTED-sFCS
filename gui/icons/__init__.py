@@ -8,12 +8,7 @@ import os
 def gen_icons_resource_file():
     """documentation."""
     header = (
-        "<!DOCTYPE RCC>"
-        + "\n"
-        + '<RCC version="1.0">'
-        + "\n"
-        + "<qresource>"
-        + "\n"
+        "<!DOCTYPE RCC>" + "\n" + '<RCC version="1.0">' + "\n" + "<qresource>" + "\n"
     )
     footer = "</qresource>" + "\n" + "</RCC>" + "\n"
 
