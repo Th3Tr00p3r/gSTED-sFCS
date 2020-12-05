@@ -22,19 +22,13 @@ class FTDI_Instrument:
     def open(self):
         """Doc."""
 
-        self.inst.open(
-            self._param_dict["vend_id"], self._param_dict["prod_id"]
-        )
-        self.inst.set_bitmode(
-            0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"])
-        )
+        self.inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
+        self.inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
         self.inst._usb_read_timeout = self._param_dict["read_timeout"]
         self.inst._usb_write_timeout = self._param_dict["read_timeout"]
         self.inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
         self.inst.set_flowctrl(self._param_dict["flow_ctrl"])
-        self.eff_baud_rate = self.inst.set_baudrate(
-            self._param_dict["baud_rate"]
-        )
+        self.eff_baud_rate = self.inst.set_baudrate(self._param_dict["baud_rate"])
 
         self.state = True
 

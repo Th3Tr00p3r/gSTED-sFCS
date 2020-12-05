@@ -2,11 +2,13 @@
 lextab.py
 yacctab.py
 Qudi paper.pdf
+gui/icons/icon_paths.py # auto-generated
+gui/icons/icons.qrc # auto-generated
 
 # Specific folders
 data/
 log/
-settings/
+# settings/
 
 # eric project folder (test) (idomich)
 .eric6project
