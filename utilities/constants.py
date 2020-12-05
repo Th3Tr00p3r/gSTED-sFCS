@@ -99,9 +99,7 @@ DEP_LASER_PARAM_GUI_DICT = {
     "addr": {"field": "depAddr", "access": "text"},
 }
 
-DEP_SHUTTER_PARAM_GUI_DICT = {
-    "addr": {"field": "depShutterAddr", "access": "text"}
-}
+DEP_SHUTTER_PARAM_GUI_DICT = {"addr": {"field": "depShutterAddr", "access": "text"}}
 
 STAGE_PARAM_GUI_DICT = {"addr": {"field": "arduinoAddr", "access": "text"}}
 

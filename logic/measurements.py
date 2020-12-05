@@ -7,9 +7,7 @@ class Measurement:
 
     # TODO: move timer to timeout_loop. this would mean all updates will be made from there too (progress bar etc.)
 
-    def __init__(
-        self, app, type=None, duration_spinner=None, prog_bar=None, log=None
-    ):
+    def __init__(self, app, type=None, duration_spinner=None, prog_bar=None, log=None):
         """Doc."""
 
         self._app = app

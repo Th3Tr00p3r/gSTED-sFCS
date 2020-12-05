@@ -22,7 +22,7 @@ class MainWin:
         self._gui = gui
 
         # status bar
-        self.statusBar = QtWidgets.QSpinBox()
+        self.statusBar = QtWidgets.QStatusBar()
         self._gui.setStatusBar(self.statusBar)
 
         # intialize gui
@@ -68,9 +68,7 @@ class MainWin:
             if self._app.dvc_dict[nick].state:  # if managed to turn ON
                 gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
 
-                gui_led_object = getattr(
-                    self._gui, const.ICON_DICT[nick]["LED"]
-                )
+                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]["LED"])
                 on_icon = QIcon(const.ICON_DICT[nick]["ICON"])
                 gui_led_object.setIcon(on_icon)
 
@@ -92,9 +90,7 @@ class MainWin:
             if not self._app.dvc_dict[nick].state:  # if managed to turn OFF
                 gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
 
-                gui_led_object = getattr(
-                    self._gui, const.ICON_DICT[nick]["LED"]
-                )
+                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]["LED"])
                 gui_led_object.setIcon(QIcon(icon.LED_OFF))
 
                 self._app.log.update(
@@ -238,8 +234,7 @@ class SettWin:
         # TODO: add check to see if changes were made, if not, don't ask user
 
         pressed = Question(
-            "Keep changes if made? "
-            "(otherwise, revert to last loaded settings file.)"
+            "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
         ).display()
         if pressed == QtWidgets.QMessageBox.No:
             self.read_csv(self._gui.settingsFileName.text())
@@ -263,9 +258,9 @@ class SettWin:
         )
         import csv
 
-        self._gui.frame.findChild(
-            QtWidgets.QWidget, "settingsFileName"
-        ).setText(filepath)
+        self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
+            filepath
+        )
         with open(filepath, "w") as stream:
             # print("saving", filepath)
             writer = csv.writer(stream)
@@ -281,9 +276,7 @@ class SettWin:
             ]  # perhaps better as for loop for readability
             # print(fieldNames)
             for i in range(len(field_names)):
-                widget = self._gui.frame.findChild(
-                    QtWidgets.QWidget, field_names[i]
-                )
+                widget = self._gui.frame.findChild(QtWidgets.QWidget, field_names[i])
                 if hasattr(widget, "value"):  # spinner
                     rowdata = [
                         field_names[i],
@@ -328,13 +321,11 @@ class SettWin:
             keep_default_na=False,
             error_bad_lines=False,
         )
-        self._gui.frame.findChild(
-            QtWidgets.QWidget, "settingsFileName"
-        ).setText(filepath)
+        self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
+            filepath
+        )
         for i in range(len(df)):
-            widget = self._gui.frame.findChild(
-                QtWidgets.QWidget, df.iloc[i, 0]
-            )
+            widget = self._gui.frame.findChild(QtWidgets.QWidget, df.iloc[i, 0])
             if not widget == "nullptr":
                 if hasattr(widget, "value"):  # spinner
                     widget.setValue(float(df.iloc[i, 1]))

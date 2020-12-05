@@ -27,14 +27,10 @@ class App:
         self.log = Log(self.win_dict["main"], dir_path="./log/")
 
         self.win_dict["settings"] = gui_module.SettWin(self)
-        self.win_dict["settings"].imp.read_csv(
-            const.DEFAULT_SETTINGS_FILE_PATH
-        )
+        self.win_dict["settings"].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
 
         self.win_dict["errors"] = gui_module.ErrWin(self)
-        self.win_dict[
-            "camera"
-        ] = None  # instantiated on pressing camera button
+        self.win_dict["camera"] = None  # instantiated on pressing camera button
 
         # initialize error dict
         self.init_errors()
@@ -66,9 +62,7 @@ class App:
             param_dict = {}
 
             for key, val_dict in gui_dict.items():
-                gui_field = getattr(
-                    app.win_dict["settings"], val_dict["field"]
-                )
+                gui_field = getattr(app.win_dict["settings"], val_dict["field"])
                 gui_field_value = getattr(gui_field, val_dict["access"])()
                 param_dict[key] = gui_field_value
 
@@ -79,14 +73,10 @@ class App:
             dvc_class = getattr(devices, const.DEVICE_CLASS_NAMES[nick])
 
             if nick in {"CAMERA"}:
-                self.dvc_dict[nick] = dvc_class(
-                    nick=nick, error_dict=self.error_dict
-                )
+                self.dvc_dict[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
 
             else:
-                param_dict = params_from_GUI(
-                    self, const.DVC_NICK_PARAMS_DICT[nick]
-                )
+                param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
                 self.dvc_dict[nick] = dvc_class(
                     nick=nick,
                     param_dict=param_dict,
