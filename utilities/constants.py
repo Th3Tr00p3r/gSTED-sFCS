@@ -37,6 +37,8 @@ LOG_DICT = {
     "DEP_LASER": "depletion laser",
     "DEP_SHUTTER": "depletion shutter",
     "STAGE": "stepper stage",
+    "CAMERA": "camera",
+    "TDC": "TDC",
 }
 
 # paths

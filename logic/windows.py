@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """ GUI windows implementations module. """
 
+import PyQt5.QtWidgets as QtWidgets
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from PyQt5.QtGui import QIcon
+
 import gui.gui as gui_module
 import gui.icons.icon_paths as icon
-import PyQt5.QtWidgets as QtWidgets
 import utilities.constants as const
 from logic.measurements import Measurement
-from PyQt5.QtGui import QIcon
 from utilities.dialog import Error, Question
 from utilities.errors import error_checker as err_chck
 from utilities.errors import logic_error_handler as err_hndlr
@@ -60,13 +63,17 @@ class MainWin:
     def dvc_toggle(self, nick):
         """Doc."""
 
-        gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]["SWITCH"])
+        if "SWITCH" in const.ICON_DICT[nick]:
+            gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]["SWITCH"])
+        else:
+            gui_switch_object = None
 
         if not self._app.dvc_dict[nick].state:  # switch ON
             self._app.dvc_dict[nick].toggle(True)
 
             if self._app.dvc_dict[nick].state:  # if managed to turn ON
-                gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
+                if gui_switch_object is not None:
+                    gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
 
                 gui_led_object = getattr(self._gui, const.ICON_DICT[nick]["LED"])
                 on_icon = QIcon(const.ICON_DICT[nick]["ICON"])
@@ -88,7 +95,8 @@ class MainWin:
             self._app.dvc_dict[nick].toggle(False)
 
             if not self._app.dvc_dict[nick].state:  # if managed to turn OFF
-                gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
+                if gui_switch_object is not None:
+                    gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
 
                 gui_led_object = getattr(self._gui, const.ICON_DICT[nick]["LED"])
                 gui_led_object.setIcon(QIcon(icon.LED_OFF))
@@ -345,11 +353,6 @@ class CamWin:
         self._gui = gui
 
         # add matplotlib-ready widget (canvas) for showing camera output
-        from matplotlib import pyplot as plt
-        from matplotlib.backends.backend_qt5agg import (
-            FigureCanvasQTAgg as FigureCanvas,
-        )
-
         self._gui.figure = plt.figure()
         self._gui.canvas = FigureCanvas(self._gui.figure)
         self._gui.gridLayout.addWidget(self._gui.canvas, 0, 1)
@@ -360,7 +363,8 @@ class CamWin:
         """Doc."""
 
         self._cam = self._app.dvc_dict["CAMERA"]
-        self._cam.toggle(True)
+        self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
+        #        self._cam.toggle(True)
         self._cam.video_timer.timeout.connect(self._video_timeout)
 
         self._app.log.update("Camera connection opened", tag="verbose")
@@ -368,10 +372,12 @@ class CamWin:
     def clean_up(self):
         """clean up before closing window"""
 
-        self._cam.toggle(False)
-        self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
         # for restarting main loop in case camwin closed while video ON
-        self._app.timeout_loop.start()
+        if self._cam.video_timer.isActive():
+            self._app.timeout_loop.start()
+
+        self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
+        self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
 
         self._app.log.update("Camera connection closed", tag="verbose")
 

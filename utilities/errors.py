@@ -7,6 +7,7 @@ from instrumental.drivers.cameras.uc480 import UC480Error
 from nidaqmx.errors import DaqError
 from pyftdi.ftdi import FtdiError
 from pyvisa.errors import VisaIOError
+
 from utilities.dialog import Error
 
 

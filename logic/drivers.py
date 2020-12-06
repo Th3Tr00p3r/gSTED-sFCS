@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """Drivers Module."""
 
-from instrumental.drivers.cameras.uc480 import UC480_Camera  # NOQA
 import nidaqmx
 import pyvisa as visa
+from instrumental.drivers.cameras.uc480 import UC480_Camera  # NOQA
 from pyftdi.ftdi import Ftdi
+
 from utilities.errors import driver_error_handler as err_hndlr
 
 
