@@ -113,7 +113,7 @@ class DAQmxInstrumentCI:
     #        chan.ci_dup_count_prevention = self._params['CI_dup_prvnt']
 
     @err_hndlr
-    def _start(self):
+    def start(self):
         """Doc."""
 
         self._task.start()
@@ -128,10 +128,10 @@ class DAQmxInstrumentCI:
         return counts
 
     @err_hndlr
-    def _stop(self):
+    def close(self):
         """Doc."""
 
-        self._task.stop()
+        self._task.close()
         self.state = False
 
 

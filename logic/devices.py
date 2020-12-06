@@ -74,9 +74,9 @@ class Counter(drivers.DAQmxInstrumentCI):
         """Doc."""
 
         if bool:
-            self._start()
+            self.start()
         else:
-            self._stop()
+            self.close()
 
     def count(self):
         """Doc."""
