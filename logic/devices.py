@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """Devices Module."""
 
-import logic.drivers as drivers
 import numpy as np
-import utilities.constants as const
-import utilities.dialog as dialog
 from instrumental.drivers.cameras.uc480 import UC480Error
 from PyQt5.QtCore import QTimer
+
+import logic.drivers as drivers
+import utilities.constants as const
+import utilities.dialog as dialog
 from utilities.errors import driver_error_handler as err_hndlr
 
 
@@ -56,9 +57,6 @@ class UM232(drivers.FTDI_Instrument):
 
 class Counter(drivers.DAQmxInstrumentCI):
     """Doc."""
-
-    # TODO: fix warning occuring sometimes during toggle (I think) -
-    # "Task of name "_unnamedTask<A>" was not explicitly closed before it was destructed. Resources on the task device may still be reserved."
 
     def __init__(self, nick, param_dict, error_dict):
         """Doc."""

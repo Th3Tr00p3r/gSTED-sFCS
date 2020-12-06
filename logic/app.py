@@ -3,14 +3,15 @@
 
 import time
 
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QMessageBox
+
 import gui.gui as gui_module
 import gui.icons.icon_paths as icon
 import logic.devices as devices
 import utilities.constants as const
 from logic.measurements import Measurement
 from logic.timeout import Timeout
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMessageBox
 from utilities.dialog import Question
 from utilities.log import Log
 
@@ -36,12 +37,17 @@ class App:
         self.init_errors()
         # initialize active devices
         self.init_devices()
+        self.win_dict["main"].ledUm232.setIcon(
+            QIcon(icon.LED_GREEN)
+        )  # either error or ON
+        self.win_dict["main"].ledCounter.setIcon(
+            QIcon(icon.LED_GREEN)
+        )  # either error or ON
         # initialize measurement
         self.meas = Measurement(self)
 
         # FINALLY
         self.win_dict["main"].show()
-
         # set up main timeout event
         self.timeout_loop = Timeout(self)
 
@@ -127,9 +133,9 @@ class App:
             gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
             gui.ledStage.setIcon(QIcon(icon.LED_OFF))
             gui.stageButtonsGroup.setEnabled(False)
-            gui.ledUm232.setIcon(QIcon(icon.LED_OFF))
+            gui.ledUm232.setIcon(QIcon(icon.LED_GREEN))  # either error or ON
             gui.ledTdc.setIcon(QIcon(icon.LED_OFF))
-            gui.ledCounter.setIcon(QIcon(icon.LED_OFF))
+            gui.ledCounter.setIcon(QIcon(icon.LED_GREEN))  # either error or ON
             gui.ledCam.setIcon(QIcon(icon.LED_OFF))
 
         if self.meas.type is not None:

@@ -3,10 +3,11 @@
 
 import time
 
-import gui.icons.icon_paths as icon
-import utilities.constants as const
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
+
+import gui.icons.icon_paths as icon
+import utilities.constants as const
 
 
 class Updatable:
@@ -124,29 +125,13 @@ class Timeout:
                     red_led = QIcon(icon.LED_RED)
                     gui_led_object.setIcon(red_led)
 
-                elif self._app.dvc_dict[nick].state is True:  # case ON
-                    gui_led_object = getattr(
-                        self._app.win_dict["main"],
-                        const.ICON_DICT[nick]["LED"],
-                    )
-                    on_icon = QIcon(const.ICON_DICT[nick]["ICON"])
-                    gui_led_object.setIcon(on_icon)
-
-                else:  # case OFF
-                    gui_led_object = getattr(
-                        self._app.win_dict["main"],
-                        const.ICON_DICT[nick]["LED"],
-                    )
-                    off_led = QIcon(icon.LED_OFF)
-                    gui_led_object.setIcon(off_led)
-
             # TODO: decide whether to move the following to a new update function or change this function's name
             # -------------------------------------------------------------------------------------------------------------------------
-            def are_last_n_ident(list, n):
-                """Doc."""
+            def are_last_n_ident(lst, n):
+                """Check if the last n elements of a list are identical"""
 
-                if len(list) > n:
-                    return len(set(list[-n:])) == 1
+                if len(lst) > n:
+                    return len(set(lst[-n:])) == 1
 
             if are_last_n_ident(self._app.dvc_dict["COUNTER"].cont_count_buff, 10):
                 self._app.error_dict["COUNTER"] = "Detector is disconnected"

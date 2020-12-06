@@ -3,12 +3,12 @@
 
 from typing import NoReturn  # , Any
 
-import logic.windows as wins_imp
-import utilities.constants as const
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QDialog, QMainWindow, QWidget
 
+import logic.windows as wins_imp
+import utilities.constants as const
 from gui.icons import icons_rc  # for initial icons loadout # NOQA
 
 
