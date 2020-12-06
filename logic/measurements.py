@@ -21,7 +21,8 @@ class Measurement:
     def start(self):
         """Doc."""
 
-        self._app.dvc_dict["TDC"].toggle(True)
+        self._app.win_dict["main"].imp.dvc_toggle("TDC")
+        #        self._app.dvc_dict["TDC"].toggle(True)
         self.log.update(f"{self.type} measurement started")
 
     def stop(self):
@@ -29,7 +30,8 @@ class Measurement:
 
         self.type = None
 
-        self._app.dvc_dict["TDC"].toggle(False)
+        self._app.win_dict["main"].imp.dvc_toggle("TDC")
+        #        self._app.dvc_dict["TDC"].toggle(False)
 
         if self.prog_bar:
             self.prog_bar.setValue(0)
