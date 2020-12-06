@@ -5,12 +5,12 @@ Qudi paper.pdf
 gui/icons/icon_paths.py # auto-generated
 gui/icons/icons.qrc # auto-generated
 
-# Specific folders
+# Specific folders (idomich)
 data/
 log/
 # settings/
 
-# eric project folder (test) (idomich)
+# eric project folder (idomich)
 .eric6project
 
 # Byte-compiled / optimized / DLL files
