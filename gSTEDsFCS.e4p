@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-11-30, 22:13:12 -->
+<!-- Saved: 2020-12-07, 15:42:14 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -13,7 +13,6 @@
   <Email></Email>
   <Eol index="0"/>
   <Sources>
-    <Source>gSTEDsFCS.py</Source>
     <Source>gui/__init__.py</Source>
     <Source>gui/gui.py</Source>
     <Source>gui/icons/__init__.py</Source>
@@ -27,6 +26,7 @@
     <Source>logic/measurements.py</Source>
     <Source>logic/timeout.py</Source>
     <Source>logic/windows.py</Source>
+    <Source>main.py</Source>
     <Source>utilities/constants.py</Source>
     <Source>utilities/dialog.py</Source>
     <Source>utilities/errors.py</Source>
@@ -41,7 +41,7 @@
   <Resources>
     <Resource>gui/icons/icons.qrc</Resource>
   </Resources>
-  <MainScript>gSTEDsFCS.py</MainScript>
+  <MainScript>main.py</MainScript>
   <Vcs>
     <VcsType>Git</VcsType>
     <VcsOptions>
