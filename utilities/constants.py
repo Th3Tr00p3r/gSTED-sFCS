@@ -4,7 +4,7 @@
 import gui.icons.icon_paths as icon
 
 # general
-TIMEOUT = 10
+TIMEOUT = 10  # ms
 
 # icons
 ICON_DICT = {
