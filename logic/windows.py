@@ -63,7 +63,7 @@ class MainWin:
     def dvc_toggle(self, nick):
         """Doc."""
 
-        if "SWITCH" in const.ICON_DICT[nick]:
+        if "SWITCH" in const.ICON_DICT[nick]:  # if device has a switch
             gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]["SWITCH"])
         else:
             gui_switch_object = None

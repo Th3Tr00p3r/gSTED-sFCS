@@ -9,6 +9,8 @@ from PyQt5.QtGui import QIcon
 import gui.icons.icon_paths as icon
 import utilities.constants as const
 
+# import asyncio
+
 
 class Updatable:
     """Doc."""
@@ -70,7 +72,7 @@ class Timeout:
         self._timer.start()
         self._app.log.update("starting main timer.", tag="verbose")
 
-    def _update_dep(self):
+    async def _update_dep(self):
         """Update depletion laser GUI"""
 
         nick = "DEP_LASER"
@@ -197,6 +199,7 @@ class Timeout:
     def _main(self):
         """Doc."""
 
+        #        await asyncio.gather(
         self._check_readiness()
         self._update_dep()
         self._update_counter()

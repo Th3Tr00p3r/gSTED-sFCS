@@ -29,21 +29,23 @@ class FTDI_Instrument:
         self.inst._usb_write_timeout = self._param_dict["read_timeout"]
         self.inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
         self.inst.set_flowctrl(self._param_dict["flow_ctrl"])
-        self.eff_baud_rate = self.inst.set_baudrate(self._param_dict["baud_rate"])
+        self.eff_baud_rate = self.inst.set_baudrate(
+            self._param_dict["baud_rate"], constrain=True
+        )
 
         self.state = True
 
     @err_hndlr
-    def read_bytes(self, bytes):
+    def read_bytes(self, n_bytes):
         """Doc."""
 
-        return self.inst.read_data_bytes(bytes)
+        return self.inst.read_data_bytes(n_bytes)
 
     @err_hndlr
     def is_read_error(self):
         """Doc."""
 
-        # return bool(self.inst.get_cts() ^ self.inst.get_cd())
+        #        return bool(self.inst.get_cts() ^ self.inst.get_cd())
         pass
 
     @err_hndlr

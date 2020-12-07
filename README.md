@@ -34,6 +34,8 @@ Python-based software for our optical measurement system.
 
 - `./settings/default_settings.csv` - default setting file, initial values for all GUI forms.
 
+- `.pre-commit-config.yaml`, `.flake8`, `pyproject.toml` - these are configuration files for git pre-commit hooks (stuff done before commiting). They enforce better code quality (and let us focus on the content).
+
 ## Dependencies/Imports:
 
 - Python 3.8.6 (some dependencies may not support newer versions yet, e.g. QScintilla does not support python 3.9 yet)

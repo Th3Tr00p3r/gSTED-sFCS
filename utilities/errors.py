@@ -19,66 +19,66 @@ def driver_error_handler(func):
     def wrapper_error_handler(dvc, *args, **kwargs):
         """Doc."""
 
-        if dvc.error_dict[dvc.nick] is None:  # if there's no errors
-            try:
-                return func(dvc, *args, **kwargs)
+        #        if dvc.error_dict[dvc.nick] is None:  # if there's no errors
+        try:
+            return func(dvc, *args, **kwargs)
 
-            except ValueError:
-                if dvc.nick == "DEP_LASER":
-                    return -999
+        except ValueError:
+            if dvc.nick == "DEP_LASER":
+                return -999
 
-                elif dvc.nick == "DEP_SHUTTER":
-                    return False
-
-                else:
-                    raise
-
-            except DaqError as exc:
-                dvc.error_dict[dvc.nick] = exc
-
-                if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
-                    return False
-
-            except VisaIOError as exc:
-                dvc.error_dict[dvc.nick] = exc
-
-                if dvc.nick == "DEP_LASER":
-                    return -999
-
-                if dvc.nick == "STAGE":
-                    return False
-
-            except FtdiError as exc:
-                dvc.error_dict[dvc.nick] = exc
-                txt = f"{dvc.nick} cable disconnected."
-                Error(error_txt=txt, error_title="Error").display()
-
+            elif dvc.nick == "DEP_SHUTTER":
                 return False
 
-            except AttributeError as exc:
-                if dvc.nick == "UM232":
-                    dvc.error_dict[dvc.nick] = exc
-                else:
-                    raise
+            else:
+                raise
 
-            except OSError as exc:
+        except DaqError as exc:
+            dvc.error_dict[dvc.nick] = exc
 
-                if dvc.nick == "UM232":
-                    dvc.error_dict[dvc.nick] = exc
-                    txt = f"Make sure {dvc.nick} cable is connected and restart"
-                    Error(error_txt=txt, error_title="Error").display()
+            if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
+                return False
 
-                else:
-                    raise
+        except VisaIOError as exc:
+            dvc.error_dict[dvc.nick] = exc
 
-            except UC480Error as exc:
-                dvc.error_dict[dvc.nick] = exc
+            if dvc.nick == "DEP_LASER":
+                return -999
 
-        else:
-            print(f"'{dvc.nick}' error. Ignoring '{func.__name__}()' call.")
-            # TODO: (low priority) this should not happen -
-            # calls should be avoided if device is in error
+            if dvc.nick == "STAGE":
+                return False
+
+        except FtdiError as exc:
+            dvc.error_dict[dvc.nick] = exc
+            txt = f"{dvc.nick} cable disconnected."
+            Error(error_txt=txt, error_title="Error").display()
+
             return False
+
+        except AttributeError as exc:
+            if dvc.nick == "UM232":
+                dvc.error_dict[dvc.nick] = exc
+            else:
+                raise
+
+        except OSError as exc:
+
+            if dvc.nick == "UM232":
+                dvc.error_dict[dvc.nick] = exc
+                txt = f"Make sure {dvc.nick} cable is connected and restart"
+                Error(error_txt=txt, error_title="Error").display()
+
+            else:
+                raise
+
+        except UC480Error as exc:
+            dvc.error_dict[dvc.nick] = exc
+
+    #        else:
+    #            print(f"'{dvc.nick}' error. Ignoring '{func.__name__}()' call.")
+    #            # TODO: (low priority) this should not happen -
+    #            # calls should be avoided if device is in error
+    #            return False
 
     return wrapper_error_handler
 
