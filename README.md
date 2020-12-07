@@ -52,7 +52,7 @@ Python-based software for our optical measurement system.
 
 - [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), [Instrumental-lib](https://pypi.org/project/Instrumental-lib/), [nicelib](https://pypi.org/project/NiceLib/),  - communication with DC480 cameras
 
-- [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232, which is a usb port to the FPGA (TDC data)
+- [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232, which is a usb port to the FPGA (TDC data). See installation details for windows in link (Zadig)
 
 ## Installing Eric IDE on Windows:
 

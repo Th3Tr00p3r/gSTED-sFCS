@@ -72,7 +72,7 @@ class Timeout:
         self._timer.start()
         self._app.log.update("starting main timer.", tag="verbose")
 
-    async def _update_dep(self):
+    def _update_dep(self):
         """Update depletion laser GUI"""
 
         nick = "DEP_LASER"
