@@ -33,16 +33,17 @@ class App:
         self.win_dict["errors"] = gui_module.ErrWin(self)
         self.win_dict["camera"] = None  # instantiated on pressing camera button
 
-        # initialize error dict
-        self.init_errors()
-        # initialize active devices
-        self.init_devices()
         self.win_dict["main"].ledUm232.setIcon(
             QIcon(icon.LED_GREEN)
         )  # either error or ON
         self.win_dict["main"].ledCounter.setIcon(
             QIcon(icon.LED_GREEN)
         )  # either error or ON
+
+        # initialize error dict
+        self.init_errors()
+        # initialize active devices
+        self.init_devices()
         # initialize measurement
         self.meas = Measurement(self)
 
@@ -103,8 +104,8 @@ class App:
             """Doc."""
 
             for nick in const.DEVICE_NICKS:
-                if not self.error_dict[nick]:
-                    app.dvc_dict[nick].toggle(False)
+                #                if not self.error_dict[nick]:
+                app.dvc_dict[nick].toggle(False)
 
         def close_all_wins(app):
             """Doc."""
@@ -116,10 +117,8 @@ class App:
                         "camera",
                     }:  # dialogs close with reject()
                         self.win_dict[win_key].reject()
-                    else:
-                        self.win_dict[
-                            win_key
-                        ].close()  # mainwindows and widgets close with close()
+                    else:  # mainwindows and widgets close with close()
+                        self.win_dict[win_key].close()
 
         def lights_out(gui):
             """turn OFF all device switch/LED icons"""
@@ -157,7 +156,7 @@ class App:
 
             self.init_errors()
             self.init_devices()
-            time.sleep(0.1)  # needed to avoid error with main timeout
+            time.sleep(0.2)  # needed to avoid error with main timeout
             self.timeout_loop = Timeout(self)
             self.log.update("restarting application.", tag="verbose")
 
