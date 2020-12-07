@@ -13,8 +13,8 @@ from utilities.dialog import Error
 
 def driver_error_handler(func):
     """decorator for clean handling of various known errors occuring in drivers.py."""
-    # TODO: possibly turn this into a class, and create subclasses as needed. also create one for logging
-
+    # TODO: decide what to do with multiple errors - make a list (could explode?) or leave only the first?
+    
     @functools.wraps(func)
     def wrapper_error_handler(dvc, *args, **kwargs):
         """Doc."""
@@ -23,12 +23,15 @@ def driver_error_handler(func):
         try:
             return func(dvc, *args, **kwargs)
 
-        except ValueError:
+        except ValueError as exc:
             if dvc.nick == "DEP_LASER":
                 return -999
 
             elif dvc.nick == "DEP_SHUTTER":
                 return False
+            
+            elif dvc.nick == "UM232":
+                dvc.error_dict[dvc.nick] = exc
 
             else:
                 raise
