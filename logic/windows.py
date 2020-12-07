@@ -382,7 +382,8 @@ class CamWin:
         self._app.log.update("Camera connection closed", tag="verbose")
 
         return None
-
+    
+    @err_chck({"CAMERA"})
     def toggle_video(self, bool):
         """Doc."""
 
@@ -407,7 +408,8 @@ class CamWin:
             self._gui.videoButton.setText("Start Video")
 
             self._app.log.update("Camera video mode OFF", tag="verbose")
-
+    
+    @err_chck({"CAMERA"})
     def shoot(self):
         """Doc."""
 
@@ -416,7 +418,6 @@ class CamWin:
 
         self._app.log.update("Camera photo taken", tag="verbose")
 
-    # private methods
     def _imshow(self, img):
         """Plot image"""
 
