@@ -203,7 +203,7 @@ class DepletionLaser(drivers.VISAInstrument):
             write_termination="\r",
         )
         self.update_time = param_dict["update_time"]
-        self.state = False
+#        self.state = False
 
         self.toggle(False)
         self.set_current(1500)
@@ -272,6 +272,7 @@ class StepperStage:
         self.error_dict = error_dict
         self.rm = drivers.visa.ResourceManager()
 
+        self.toggle(True)
         self.toggle(False)
 
     @err_hndlr

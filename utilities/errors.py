@@ -25,7 +25,10 @@ def driver_error_handler(func):
 
         except ValueError as exc:
             if dvc.nick == "DEP_LASER":
-                return -999
+                if not hasattr(dvc, "state"): # initial toggle error
+                    dvc.error_dict[dvc.nick] = exc
+                else:
+                    return -999
 
             elif dvc.nick == "DEP_SHUTTER":
                 return False
