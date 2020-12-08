@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 """ User dialog module. """
 
-import os
-import sys
-import traceback
-
 from PyQt5.QtWidgets import QMessageBox
 
 
@@ -43,28 +39,23 @@ class UserDialog:
 class Error(UserDialog):
     """Doc."""
 
-    def __init__(self, exc=None, error_txt="", error_title=""):
+    def __init__(
+        self, exc_type="", exc_msg="", exc_tb="", custom_txt="", custom_title=""
+    ):
         """Doc."""
 
-        if exc:
-            self.exc_type, _, self.tb = sys.exc_info()
-            self.error_type = self.exc_type.__name__
-            self.fname = os.path.split(self.tb.tb_frame.f_code.co_filename)[1]
-            self.lineno = self.tb.tb_lineno
+        if exc_type:
             super().__init__(
                 msg_icon=QMessageBox.Critical,
-                msg_title=self.error_type + ": " + error_txt,
-                msg_text=str(exc),
-                msg_inf=("module: {}" + "\n" + "line: {}").format(
-                    self.fname, self.lineno
-                ),
-                msg_det="\n".join(traceback.format_tb(self.tb)),
+                msg_title=f"{exc_type}: {custom_title}",
+                msg_text=exc_msg,
+                msg_det=exc_tb,
             )
         else:
             super().__init__(
                 msg_icon=QMessageBox.Critical,
-                msg_title=error_title,
-                msg_text=error_txt,
+                msg_title=custom_title,
+                msg_text=custom_txt,
             )
 
 

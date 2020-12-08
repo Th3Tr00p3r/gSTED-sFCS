@@ -30,7 +30,6 @@ class App:
         self.win_dict["settings"] = gui_module.SettWin(self)
         self.win_dict["settings"].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
 
-        self.win_dict["errors"] = gui_module.ErrWin(self)
         self.win_dict["camera"] = None  # instantiated on pressing camera button
 
         self.win_dict["main"].ledUm232.setIcon(
