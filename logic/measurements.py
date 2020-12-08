@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Measurements Module."""
 
+import logging
+
 
 class Measurement:
     """Doc."""
@@ -22,7 +24,7 @@ class Measurement:
         """Doc."""
 
         self._app.win_dict["main"].imp.dvc_toggle("TDC")
-        self.log.update(f"{self.type} measurement started")
+        logging.info(f"{self.type} measurement started")
 
     def stop(self):
         """Doc."""
@@ -34,7 +36,7 @@ class Measurement:
         if self.prog_bar:
             self.prog_bar.setValue(0)
 
-        self.log.update(f"{self.type} measurement stopped")
+        logging.info(f"{self.type} measurement stopped")
 
     def disp_ACF(self):
         """Doc."""

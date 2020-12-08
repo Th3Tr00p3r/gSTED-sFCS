@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Timeout module."""
 
+import logging
 import time
 
 from PyQt5.QtCore import QTimer
@@ -64,13 +65,13 @@ class Timeout:
         """Doc."""
 
         self._timer.stop()
-        self._app.log.update("stopping main timer.", tag="verbose")
+        logging.debug("Stopping main timer.")
 
     def start(self):
         """Doc."""
 
         self._timer.start()
-        self._app.log.update("starting main timer.", tag="verbose")
+        logging.debug("Starting main timer.")
 
     def _update_dep(self):
         """Update depletion laser GUI"""
