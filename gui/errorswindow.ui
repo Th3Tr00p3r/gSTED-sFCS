@@ -51,11 +51,51 @@
               <enum>QListView::Fixed</enum>
              </property>
              <property name="currentRow">
-              <number>0</number>
+              <number>-1</number>
              </property>
              <property name="sortingEnabled">
               <bool>false</bool>
              </property>
+             <item>
+              <property name="text">
+               <string>Camera</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Counter</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Depletion Laser</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Excitation Laser</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Other</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Shutter</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Stage</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>TDC</string>
+              </property>
+             </item>
              <item>
               <property name="text">
                <string>UM232</string>
@@ -77,16 +117,6 @@
                  <blue>0</blue>
                 </color>
                </brush>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Depletion Laser VISA</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Miscellaneous</string>
               </property>
              </item>
             </widget>
