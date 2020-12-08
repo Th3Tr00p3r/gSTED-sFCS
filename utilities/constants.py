@@ -6,41 +6,6 @@ import gui.icons.icon_paths as icon
 # general
 TIMEOUT = 10  # ms
 
-# icons
-ICON_DICT = {
-    "EXC_LASER": {
-        "LED": "ledExc",
-        "SWITCH": "excOnButton",
-        "ICON": icon.LED_BLUE,
-    },
-    "DEP_LASER": {
-        "LED": "ledDep",
-        "SWITCH": "depEmissionOn",
-        "ICON": icon.LED_ORANGE,
-    },
-    "DEP_SHUTTER": {
-        "LED": "ledShutter",
-        "SWITCH": "depShutterOn",
-        "ICON": icon.LED_GREEN,
-    },
-    "STAGE": {"LED": "ledStage", "SWITCH": "stageOn", "ICON": icon.LED_GREEN},
-    "COUNTER": {"LED": "ledCounter", "ICON": icon.LED_GREEN},
-    "UM232": {"LED": "ledUm232", "ICON": icon.LED_GREEN},
-    "TDC": {"LED": "ledTdc", "ICON": icon.LED_GREEN},
-    "CAMERA": {"LED": "ledCam", "ICON": icon.LED_GREEN},
-}
-
-# log
-LOG_VERBOSITY = {"always", "verbose"}
-LOG_DICT = {
-    "EXC_LASER": "excitation laser",
-    "DEP_LASER": "depletion laser",
-    "DEP_SHUTTER": "depletion shutter",
-    "STAGE": "stepper stage",
-    "CAMERA": "camera",
-    "TDC": "TDC",
-}
-
 # paths
 MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
 SETTINGSWINDOW_UI_PATH = "./gui/settingswindow.ui"
@@ -57,7 +22,57 @@ MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
 #                                if self.time_passed == self.duration_spinbox.value():
 #                                    QSound.play(const.MEAS_COMPLETE_SOUND);
 
+# log
+LOG_VERBOSITY = {"always", "verbose"}
+
 # devices
+DVC_LED_NAME = {
+    "EXC_LASER": "ledExc",
+    "DEP_LASER": "ledDep",
+    "DEP_SHUTTER": "ledShutter",
+    "STAGE": "ledStage",
+    "COUNTER": "ledCounter",
+    "UM232": "ledUm232",
+    "TDC": "ledTdc",
+    "CAMERA": "ledCam",
+}
+
+ICON_DICT = {
+    "EXC_LASER": {
+        "LED": DVC_LED_NAME["EXC_LASER"],
+        "SWITCH": "excOnButton",
+        "ICON": icon.LED_BLUE,
+    },
+    "DEP_LASER": {
+        "LED": DVC_LED_NAME["DEP_LASER"],
+        "SWITCH": "depEmissionOn",
+        "ICON": icon.LED_ORANGE,
+    },
+    "DEP_SHUTTER": {
+        "LED": DVC_LED_NAME["DEP_SHUTTER"],
+        "SWITCH": "depShutterOn",
+        "ICON": icon.LED_GREEN,
+    },
+    "STAGE": {
+        "LED": DVC_LED_NAME["STAGE"],
+        "SWITCH": "stageOn",
+        "ICON": icon.LED_GREEN,
+    },
+    "COUNTER": {"LED": DVC_LED_NAME["COUNTER"], "ICON": icon.LED_GREEN},
+    "UM232": {"LED": DVC_LED_NAME["UM232"], "ICON": icon.LED_GREEN},
+    "TDC": {"LED": DVC_LED_NAME["TDC"], "ICON": icon.LED_GREEN},
+    "CAMERA": {"LED": DVC_LED_NAME["CAMERA"], "ICON": icon.LED_GREEN},
+}
+
+DVC_LOG_DICT = {
+    "EXC_LASER": "Excitation Laser",
+    "DEP_LASER": "Depletion Laser",
+    "DEP_SHUTTER": "Shutter",
+    "STAGE": "Stage",
+    "CAMERA": "Camera",
+    "TDC": "TDC",
+}
+
 DEVICE_NICKS = {
     "COUNTER",
     "UM232",
@@ -75,7 +90,7 @@ DEVICE_ADDRESS_GUI_DICT = {
     "DEP_SHUTTER": "depShutterChan",
     "STAGE": "arduinoChan",
 }
-# device classes
+
 DEVICE_CLASS_NAMES = {
     "EXC_LASER": "SimpleDO",
     "TDC": "SimpleDO",

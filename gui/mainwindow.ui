@@ -5910,7 +5910,6 @@ interval
    </attribute>
    <addaction name="actionRestart"/>
    <addaction name="actionSettings"/>
-   <addaction name="actionErrors"/>
    <addaction name="separator"/>
    <addaction name="actionLaser_Control"/>
    <addaction name="actionStepper_Stage_Control"/>
@@ -7218,21 +7217,6 @@ Settings</string>
    </property>
    <property name="toolTip">
     <string>log</string>
-   </property>
-  </action>
-  <action name="actionErrors">
-   <property name="icon">
-    <iconset resource="icons/icons.qrc">
-     <normaloff>:/led_red.png</normaloff>:/led_red.png</iconset>
-   </property>
-   <property name="text">
-    <string>Errors</string>
-   </property>
-   <property name="toolTip">
-    <string>errors</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+E</string>
    </property>
   </action>
  </widget>

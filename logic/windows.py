@@ -36,15 +36,6 @@ class MainWin:
 
         self._gui.countsAvg.setValue(self._gui.countsAvgSlider.value())
 
-        # connect signals and slots
-        # TODO: (low priority) make single function to control
-        # what these buttons can do (show docks, open errors if red)
-        self._gui.ledExc.clicked.connect(self.show_laser_dock)
-        self._gui.ledDep.clicked.connect(self.show_laser_dock)
-        self._gui.ledShutter.clicked.connect(self.show_laser_dock)
-        self._gui.ledStage.clicked.connect(self.show_stage_dock)
-        self._gui.actionRestart.triggered.connect(self.restart)
-
     def close(self, event):
         """Doc."""
 
@@ -80,7 +71,7 @@ class MainWin:
                 gui_led_object.setIcon(on_icon)
 
                 self._app.log.update(
-                    f"{const.LOG_DICT[nick]} toggled ON", tag="verbose"
+                    f"{const.DVC_LOG_DICT[nick]} toggled ON", tag="verbose"
                 )
 
                 if nick == "STAGE":
@@ -102,7 +93,7 @@ class MainWin:
                 gui_led_object.setIcon(QIcon(icon.LED_OFF))
 
                 self._app.log.update(
-                    f"{const.LOG_DICT[nick]} toggled OFF", tag="verbose"
+                    f"{const.DVC_LOG_DICT[nick]} toggled OFF", tag="verbose"
                 )
 
                 if nick in {
@@ -112,6 +103,26 @@ class MainWin:
                     self._gui.depActualPowerSpinner.setValue(0)
 
                 return False
+
+    def led_clicked(self, led_obj_name):
+        """Doc."""
+
+        def get_key(dct, val):
+            """
+            Return (first) matching key
+            if value is found in dict, else return None
+
+            """
+
+            for key, value in dct.items():
+                if value == val:
+                    return key
+            return None
+
+        nick = get_key(const.DVC_LED_NAME, led_obj_name)
+        err_dict = self._app.error_dict[nick]
+        if err_dict is not None:
+            Error(**err_dict, custom_title=const.DVC_LOG_DICT[nick]).display()
 
     @err_chck({"DEP_LASER"})
     def dep_sett_apply(self):
@@ -200,12 +211,6 @@ class MainWin:
         self._app.win_dict["camera"] = gui_module.CamWin(app=self._app)
         self._app.win_dict["camera"].show()
         self._app.win_dict["camera"].activateWindow()
-
-    def open_errwin(self):
-        """Doc."""
-
-        self._app.win_dict["errors"].show()
-        self._app.win_dict["errors"].activateWindow()
 
     def cnts_avg_sldr_changed(self, val):
         """
@@ -382,7 +387,7 @@ class CamWin:
         self._app.log.update("Camera connection closed", tag="verbose")
 
         return None
-    
+
     @err_chck({"CAMERA"})
     def toggle_video(self, bool):
         """Doc."""
@@ -408,7 +413,7 @@ class CamWin:
             self._gui.videoButton.setText("Start Video")
 
             self._app.log.update("Camera video mode OFF", tag="verbose")
-    
+
     @err_chck({"CAMERA"})
     def shoot(self):
         """Doc."""
@@ -431,15 +436,3 @@ class CamWin:
 
         img = self._cam.latest_frame()
         self._imshow(img)
-
-
-class ErrWin:
-    """Doc."""
-
-    # TODO:
-
-    def __init__(self, gui, app):
-        """Doc."""
-
-        self._app = app
-        self._gui = gui
