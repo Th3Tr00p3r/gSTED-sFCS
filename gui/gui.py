@@ -28,6 +28,12 @@ class MainWin(QMainWindow):
         self.imp.close(event)
 
     @pyqtSlot()
+    def on_actionRestart_triggered(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.restart()
+
+    @pyqtSlot()
     def on_startFcsMeasurementButton_released(self) -> NoReturn:
         """Begin FCS Measurement."""
 
@@ -111,17 +117,63 @@ class MainWin(QMainWindow):
 
         self.logDock.setVisible(p0)
 
-    @pyqtSlot()
-    def on_actionErrors_triggered(self) -> NoReturn:
-        """Show errors window"""
-
-        self.imp.open_errwin()
-
     @pyqtSlot(int)
     def on_countsAvgSlider_valueChanged(self, val: int) -> NoReturn:
         """Doc."""
 
         self.imp.cnts_avg_sldr_changed(val)
+
+    # -----------------------------------------------------------------------
+    # LEDS
+    # -----------------------------------------------------------------------
+
+    @pyqtSlot()
+    def on_ledExc_clicked(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.led_clicked(str(self.sender().objectName()))
+
+    @pyqtSlot()
+    def on_ledDep_clicked(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.led_clicked(str(self.sender().objectName()))
+
+    @pyqtSlot()
+    def on_ledShutter_clicked(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.led_clicked(str(self.sender().objectName()))
+
+    @pyqtSlot()
+    def on_ledStage_clicked(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.led_clicked(str(self.sender().objectName()))
+
+    @pyqtSlot()
+    def on_ledCounter_clicked(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.led_clicked(str(self.sender().objectName()))
+
+    @pyqtSlot()
+    def on_ledUm232_clicked(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.led_clicked(str(self.sender().objectName()))
+
+    @pyqtSlot()
+    def on_ledTdc_clicked(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.led_clicked(str(self.sender().objectName()))
+
+    @pyqtSlot()
+    def on_ledCam_clicked(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.led_clicked(str(self.sender().objectName()))
 
     # -----------------------------------------------------------------------
     # Stepper Stage Dock
@@ -162,24 +214,6 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.release_stage()
-
-
-class ErrWin(QDialog):
-    """ Documentation. """
-
-    # TODO: when error occures, change appropriate list items background
-    # to red, font to white
-
-    def __init__(self, app, parent=None) -> NoReturn:
-        super(ErrWin, self).__init__(parent)
-        uic.loadUi(const.ERRORSWINDOW_UI_PATH, self)
-        self.imp = wins_imp.ErrWin(self, app)
-
-    @pyqtSlot(int)
-    def on_errorSelectList_currentRowChanged(self, index: int) -> NoReturn:
-        """Doc."""
-
-        self.errorDetailsStacked.setCurrentIndex(index)
 
 
 class SettWin(QDialog):
