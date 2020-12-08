@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """ GUI windows implementations module. """
 
+import logging
+
 import PyQt5.QtWidgets as QtWidgets
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -70,9 +72,7 @@ class MainWin:
                 on_icon = QIcon(const.ICON_DICT[nick]["ICON"])
                 gui_led_object.setIcon(on_icon)
 
-                self._app.log.update(
-                    f"{const.DVC_LOG_DICT[nick]} toggled ON", tag="verbose"
-                )
+                logging.debug(f"{const.DVC_LOG_DICT[nick]} toggled ON")
 
                 if nick == "STAGE":
                     self._gui.stageButtonsGroup.setEnabled(True)
@@ -92,9 +92,7 @@ class MainWin:
                 gui_led_object = getattr(self._gui, const.ICON_DICT[nick]["LED"])
                 gui_led_object.setIcon(QIcon(icon.LED_OFF))
 
-                self._app.log.update(
-                    f"{const.DVC_LOG_DICT[nick]} toggled OFF", tag="verbose"
-                )
+                logging.debug(f"{const.DVC_LOG_DICT[nick]} toggled OFF")
 
                 if nick in {
                     "DEP_LASER"
@@ -142,11 +140,7 @@ class MainWin:
 
         nick = "STAGE"
         self._app.dvc_dict[nick].move(dir=dir, steps=steps)
-
-        self._app.log.update(
-            f"{const.LOG_DICT[nick]} " f"moved {str(steps)} steps {str(dir)}",
-            tag="verbose",
-        )
+        logging.info(f"{const.LOG_DICT[nick]} moved {str(steps)} steps {str(dir)}")
 
     @err_chck({"STAGE"})
     def release_stage(self):
@@ -154,8 +148,7 @@ class MainWin:
 
         nick = "STAGE"
         self._app.dvc_dict[nick].release()
-
-        self._app.log.update(f"{const.LOG_DICT[nick]} released", tag="verbose")
+        logging.info(f"{const.LOG_DICT[nick]} released")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -306,7 +299,7 @@ class SettWin:
                     ]
                 writer.writerow(rowdata)
 
-        self._app.log.update(f"Settings file saved as: '{filepath}'")
+        logging.debug(f"Settings file saved as: '{filepath}'")
 
     @err_hndlr
     def read_csv(self, filepath=""):
@@ -345,7 +338,7 @@ class SettWin:
                 elif hasattr(widget, "text"):  # line edit
                     widget.setText(df.iloc[i, 1])
 
-        self._app.log.update(f"Settings file loaded: '{filepath}'")
+        logging.debug(f"Settings file loaded: '{filepath}'")
 
 
 class CamWin:
@@ -371,8 +364,7 @@ class CamWin:
         self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
         #        self._cam.toggle(True)
         self._cam.video_timer.timeout.connect(self._video_timeout)
-
-        self._app.log.update("Camera connection opened", tag="verbose")
+        logging.debug("Camera connection opened")
 
     def clean_up(self):
         """clean up before closing window"""
@@ -383,8 +375,7 @@ class CamWin:
 
         self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
         self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
-
-        self._app.log.update("Camera connection closed", tag="verbose")
+        logging.debug("Camera connection closed")
 
         return None
 
@@ -400,8 +391,7 @@ class CamWin:
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Video ON")
-
-            self._app.log.update("Camera video mode ON", tag="verbose")
+            logging.debug("Camera video mode ON")
 
         else:  # turn Off
             self._cam.toggle_video(False)
@@ -411,8 +401,7 @@ class CamWin:
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Start Video")
-
-            self._app.log.update("Camera video mode OFF", tag="verbose")
+            logging.debug("Camera video mode OFF")
 
     @err_chck({"CAMERA"})
     def shoot(self):
@@ -420,8 +409,7 @@ class CamWin:
 
         img = self._cam.shoot()
         self._imshow(img)
-
-        self._app.log.update("Camera photo taken", tag="verbose")
+        logging.debug("Camera photo taken")
 
     def _imshow(self, img):
         """Plot image"""

@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """Logic Module."""
 
+import logging
+import logging.config
 import time
 
+import yaml
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox
 
@@ -21,6 +24,9 @@ class App:
 
     def __init__(self):
         """Doc."""
+
+        # init logging
+        self.config_logging()
 
         # init windows
         self.win_dict = {}
@@ -50,6 +56,13 @@ class App:
         self.win_dict["main"].show()
         # set up main timeout event
         self.timeout_loop = Timeout(self)
+
+    def config_logging(self):
+        """Doc."""
+
+        with open("logging_config.yaml", "r") as f:
+            config = yaml.safe_load(f.read())
+            logging.config.dictConfig(config)
 
     def init_devices(self):
         """
@@ -157,11 +170,12 @@ class App:
             self.init_devices()
             time.sleep(0.2)  # needed to avoid error with main timeout
             self.timeout_loop = Timeout(self)
-            self.log.update("restarting application.", tag="verbose")
+
+            logging.info("Restarting application.")
 
         else:
             close_all_wins(self)
-            self.log.update("Quitting Application.")
+            logging.info("Quitting application.")
 
     def exit_app(self, event):
         """Doc."""

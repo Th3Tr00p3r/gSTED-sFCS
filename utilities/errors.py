@@ -2,6 +2,7 @@
 """Error handeling."""
 
 import functools
+import logging
 import sys
 import traceback
 
@@ -10,6 +11,7 @@ from nidaqmx.errors import DaqError
 from pyftdi.ftdi import FtdiError
 from pyvisa.errors import VisaIOError
 
+import utilities.constants as const
 from utilities.dialog import Error
 
 
@@ -38,26 +40,34 @@ def driver_error_handler(func):
             if dvc.nick == "DEP_LASER":
                 if not hasattr(dvc, "state"):  # initial toggle error
                     dvc.error_dict[dvc.nick] = build_err_msg(exc)
+                    logging.exception(f"{const.DVC_LOG_DICT[dvc.nick]} not responding")
                 else:
+                    logging.warning(
+                        f"{const.DVC_LOG_DICT[dvc.nick]} didn't respond to query"
+                    )
                     return -999
 
             elif dvc.nick == "DEP_SHUTTER":
+                logging.exception(f"{const.DVC_LOG_DICT[dvc.nick]} ???")
                 return False
 
             elif dvc.nick == "UM232":
                 dvc.error_dict[dvc.nick] = build_err_msg(exc)
-
+                logging.exception(f"{const.DVC_LOG_DICT[dvc.nick]} is offline")
             else:
                 raise exc
 
         except DaqError as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
+            logging.exception(f"{const.DVC_LOG_DICT[dvc.nick]} is offline")
 
             if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
                 return False
 
         except VisaIOError as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
+            # TODO: make sure this is logged only once when failing (stop calling queries with error...)
+            logging.exception(f"{const.DVC_LOG_DICT[dvc.nick]} is offline")
 
             if dvc.nick == "DEP_LASER":
                 return -999
@@ -68,6 +78,7 @@ def driver_error_handler(func):
         except (AttributeError, OSError, FtdiError) as exc:
             if dvc.nick == "UM232":
                 dvc.error_dict[dvc.nick] = build_err_msg(exc)
+                logging.exception(f"{const.DVC_LOG_DICT[dvc.nick]} is offline")
                 return False
 
             else:
@@ -75,6 +86,7 @@ def driver_error_handler(func):
 
         except UC480Error as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
+            logging.exception(f"{const.DVC_LOG_DICT[dvc.nick]} is offline")
 
     return wrapper_error_handler
 
