@@ -16,7 +16,6 @@ import utilities.constants as const
 from logic.measurements import Measurement
 from logic.timeout import Timeout
 from utilities.dialog import Question
-from utilities.log import Log
 
 
 class App:
@@ -27,11 +26,11 @@ class App:
 
         # init logging
         self.config_logging()
+        logging.info("Application Started")
 
         # init windows
         self.win_dict = {}
         self.win_dict["main"] = gui_module.MainWin(self)
-        self.log = Log(self.win_dict["main"], dir_path="./log/")
 
         self.win_dict["settings"] = gui_module.SettWin(self)
         self.win_dict["settings"].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)

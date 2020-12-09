@@ -111,12 +111,6 @@ class MainWin(QMainWindow):
 
         self.imp.open_camwin()
 
-    @pyqtSlot(bool)
-    def on_actionLog_toggled(self, p0: bool) -> NoReturn:
-        """Show/hide log dock"""
-
-        self.logDock.setVisible(p0)
-
     @pyqtSlot(int)
     def on_countsAvgSlider_valueChanged(self, val: int) -> NoReturn:
         """Doc."""
