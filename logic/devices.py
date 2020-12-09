@@ -93,8 +93,7 @@ class Counter(drivers.DAQmxInstrumentCI):
                 self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts + 1)]
             ) / avg_intrvl  # to have KHz
 
-        else:  # TODO: get the most averaging possible if requested fails
-            print("TEST TEST TEST: start_idx < 0")
+        else:  # TODO: (low priority) get the most averaging possible if requested fails
             return 0
 
     def dump_buff_overflow(self):
@@ -203,11 +202,10 @@ class DepletionLaser(drivers.VISAInstrument):
             write_termination="\r",
         )
         self.update_time = param_dict["update_time"]
-#        self.state = False
 
-        self.toggle(False)
-        self.set_current(1500)
-        self.get_SHG_temp()
+        if self.toggle(False) is True:
+            self.set_current(1500)
+            self.get_SHG_temp()
 
     def toggle(self, bool):
         """Doc."""
