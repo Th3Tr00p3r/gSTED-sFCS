@@ -159,14 +159,20 @@ class VISAInstrument:
         self.rm = visa.ResourceManager()
 
     @err_hndlr
-    def _write(self, cmnd):
-        """Doc."""
+    def _write(self, cmnd: str) -> bool:
+        """
+        Sends a command to the VISA instrument.
+        Returns True if no errors occured.
+
+        """
 
         with VISAInstrument.Task(self) as task:
             task.write(cmnd)
 
         if cmnd.startswith("setLDenable"):  # change state if toggled
             self.state = bool(int(cmnd[-1]))
+
+        return True
 
     @err_hndlr
     def _query(self, cmnd):

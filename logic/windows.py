@@ -34,7 +34,6 @@ class MainWin:
         self._gui.actionLaser_Control.setChecked(True)
         self._gui.actionStepper_Stage_Control.setChecked(True)
         self._gui.stageButtonsGroup.setEnabled(False)
-        self._gui.actionLog.setChecked(True)
 
         self._gui.countsAvg.setValue(self._gui.countsAvgSlider.value())
 
@@ -176,7 +175,6 @@ class MainWin:
                 type="FCS",
                 duration_spinner=self._gui.measFCSDuration,
                 prog_bar=self._gui.FCSprogressBar,
-                log=self._app.log,
             )
             self._app.meas.start()
             self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")

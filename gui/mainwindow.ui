@@ -5913,7 +5913,6 @@ interval
    <addaction name="separator"/>
    <addaction name="actionLaser_Control"/>
    <addaction name="actionStepper_Stage_Control"/>
-   <addaction name="actionLog"/>
    <addaction name="separator"/>
    <addaction name="actionCamera_Control"/>
   </widget>
@@ -7086,55 +7085,6 @@ Settings</string>
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="logDock">
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="minimumSize">
-    <size>
-     <width>300</width>
-     <height>200</height>
-    </size>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>600</width>
-     <height>9999</height>
-    </size>
-   </property>
-   <property name="features">
-    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetVerticalTitleBar</set>
-   </property>
-   <property name="allowedAreas">
-    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
-   </property>
-   <property name="windowTitle">
-    <string>Log</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_4">
-    <layout class="QGridLayout" name="gridLayout_7">
-     <item row="0" column="0">
-      <widget class="QPlainTextEdit" name="logText">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-       <property name="placeholderText">
-        <string>Log File</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-  </widget>
   <action name="actionRestart">
    <property name="icon">
     <iconset resource="icons/icons.qrc">
@@ -7202,21 +7152,6 @@ Settings</string>
    </property>
    <property name="toolTip">
     <string>camera control</string>
-   </property>
-  </action>
-  <action name="actionLog">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="icons/icons.qrc">
-     <normaloff>:/log.png</normaloff>:/log.png</iconset>
-   </property>
-   <property name="text">
-    <string>Log</string>
-   </property>
-   <property name="toolTip">
-    <string>log</string>
    </property>
   </action>
  </widget>
