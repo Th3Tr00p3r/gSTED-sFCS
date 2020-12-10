@@ -8,7 +8,6 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtGui import QIcon
 
-import gui.gui as gui_module
 import gui.icons.icon_paths as icon
 import utilities.constants as const
 from logic.measurements import Measurement
@@ -199,9 +198,9 @@ class MainWin:
         """Doc."""
 
         self._gui.actionCamera_Control.setEnabled(False)
-        self._app.win_dict["camera"] = gui_module.CamWin(app=self._app)
         self._app.win_dict["camera"].show()
         self._app.win_dict["camera"].activateWindow()
+        self._app.win_dict["camera"].imp.init_cam()
 
     def cnts_avg_sldr_changed(self, val):
         """
@@ -352,8 +351,6 @@ class CamWin:
         self._gui.figure = plt.figure()
         self._gui.canvas = FigureCanvas(self._gui.figure)
         self._gui.gridLayout.addWidget(self._gui.canvas, 0, 1)
-
-        self.init_cam()
 
     def init_cam(self):
         """Doc."""
