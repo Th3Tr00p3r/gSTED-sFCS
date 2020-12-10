@@ -5,8 +5,6 @@ import asyncio
 
 import numpy as np
 from instrumental.drivers.cameras.uc480 import UC480Error
-from PyQt5.QtCore import QTimer
-
 import logic.drivers as drivers
 import utilities.constants as const
 import utilities.dialog as dialog
@@ -172,7 +170,15 @@ class Camera:
         #            self.video_timer.stop()
 
         self.video_state = bool
+    
+    async def _vidshow(self):
+        """Doc."""
 
+        while self.vid_state is True:
+            img = self._latest_frame()
+            self._imshow(img)
+            await asyncio.sleep(const.CAM_VID_INTRVL)
+    
     @err_hndlr
     def _latest_frame(self):
         """Doc."""
@@ -188,14 +194,6 @@ class Camera:
         ax = self._gui.figure.add_subplot(111)
         ax.imshow(img)
         self._gui.canvas.draw()
-
-    async def _vidshow(self):
-        """Doc."""
-
-        while self.vid_state is True:
-            img = self._latest_frame()
-            self._imshow(img)
-            await asyncio.sleep(const.CAM_VID_INTRVL)
 
 
 class SimpleDO(drivers.DAQmxInstrumentDO):

@@ -41,18 +41,18 @@ def driver_error_handler(func):
                 if not hasattr(dvc, "state"):  # initial toggle error
                     dvc.error_dict[dvc.nick] = build_err_msg(exc)
                     logging.error(
-                        f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}("{args[0]}") call',
+                        f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
                         exc_info=False,
                     )
                 else:
                     logging.warning(
-                        f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}("{args[0]}") call'
+                        f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
                     )
                     return -999
 
             elif dvc.nick == "DEP_SHUTTER":
                 logging.error(
-                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}("{args[0]}")',
+                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
                     exc_info=False,
                 )
                 return False
@@ -60,7 +60,7 @@ def driver_error_handler(func):
             elif dvc.nick == "UM232":
                 dvc.error_dict[dvc.nick] = build_err_msg(exc)
                 logging.error(
-                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}("{args[0]}")',
+                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
                     exc_info=False,
                 )
             else:
@@ -69,7 +69,7 @@ def driver_error_handler(func):
         except DaqError as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
             logging.error(
-                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}("{args[0]}")',
+                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
                 exc_info=False,
             )
 
@@ -79,7 +79,7 @@ def driver_error_handler(func):
         except VisaIOError as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
             logging.error(
-                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}("{args[0]}")',
+                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
                 exc_info=False,
             )
 
@@ -93,7 +93,7 @@ def driver_error_handler(func):
             if dvc.nick == "UM232":
                 dvc.error_dict[dvc.nick] = build_err_msg(exc)
                 logging.error(
-                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}("{args[0]}")',
+                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
                     exc_info=False,
                 )
                 return False
@@ -104,7 +104,7 @@ def driver_error_handler(func):
         except UC480Error as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
             logging.error(
-                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}("{args[0]}")',
+                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
                 exc_info=False,
             )
 
