@@ -95,7 +95,7 @@ class App:
             dvc_class = getattr(devices, const.DEVICE_CLASS_NAMES[nick])
 
             if nick in {"CAMERA"}:
-                self.dvc_dict[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
+                self.dvc_dict[nick] = dvc_class(nick=nick, error_dict=self.error_dict, app=self, gui=self.win_dict["camera"])
 
             else:
                 param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])

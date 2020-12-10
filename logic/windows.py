@@ -363,10 +363,6 @@ class CamWin:
     def clean_up(self):
         """clean up before closing window"""
 
-        # for restarting main loop in case camwin closed while video ON
-        if self._cam.video_timer.isActive():
-            self._app.timeout_loop.start()
-
         self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
         self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
         logging.debug("Camera connection closed")
