@@ -357,8 +357,7 @@ class CamWin:
 
         self._cam = self._app.dvc_dict["CAMERA"]
         self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
-        #        self._cam.toggle(True)
-        self._cam.video_timer.timeout.connect(self._video_timeout)
+        #        self._cam.video_timer.timeout.connect(self._video_timeout)
         logging.debug("Camera connection opened")
 
     def clean_up(self):
@@ -379,8 +378,8 @@ class CamWin:
         """Doc."""
 
         if bool:  # turn On
-            self._app.timeout_loop.stop()
-            self._cam.toggle_video(True)
+            #            self._app.timeout_loop.stop()
+            self._app.loop.create_task(self._cam.toggle_video(True))
 
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
@@ -389,8 +388,8 @@ class CamWin:
             logging.debug("Camera video mode ON")
 
         else:  # turn Off
-            self._cam.toggle_video(False)
-            self._app.timeout_loop.start()
+            self._app.loop.create_task(self._cam.toggle_video(True))
+            #            self._app.timeout_loop.start()
 
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
@@ -405,17 +404,3 @@ class CamWin:
         img = self._cam.shoot()
         self._imshow(img)
         logging.debug("Camera photo taken")
-
-    def _imshow(self, img):
-        """Plot image"""
-
-        self._gui.figure.clear()
-        ax = self._gui.figure.add_subplot(111)
-        ax.imshow(img)
-        self._gui.canvas.draw()
-
-    def _video_timeout(self):
-        """Doc."""
-
-        img = self._cam.latest_frame()
-        self._imshow(img)

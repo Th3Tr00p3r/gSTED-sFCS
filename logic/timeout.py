@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 """Timeout module."""
 
+import asyncio
 import logging
 import time
 
-from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
 
 import gui.icons.icon_paths as icon
 import utilities.constants as const
-
-# import asyncio
 
 
 class Updatable:
@@ -41,9 +39,9 @@ class Timeout:
 
         self._app = app
 
-        self._timer = QTimer()
-        self._timer.setInterval(const.TIMEOUT)
-        self._timer.timeout.connect(self._main)
+        #        self._timer = QTimer()
+        #        self._timer.setInterval(const.TIMEOUT)
+        #        self._timer.timeout.connect(self._main)
 
         # init updateables
         self._gui_up = Updatable(intrvl=2)
@@ -52,6 +50,19 @@ class Timeout:
         self._cntr_up = Updatable(intrvl=self._app.dvc_dict["COUNTER"].update_time)
 
         self.start()
+
+    # MAIN
+    async def _main(self):
+        """Doc."""
+
+        while True:
+            self._check_readiness()
+            self._update_dep()
+            self._update_counter()
+            self._update_gui()
+            self._update_measurement()
+
+            await asyncio.sleep(const.TIMEOUT)
 
     def _check_readiness(self):
         """Doc."""
@@ -64,13 +75,13 @@ class Timeout:
     def stop(self):
         """Doc."""
 
-        self._timer.stop()
+        #        self._timer.stop()
         logging.debug("Stopping main timer.")
 
     def start(self):
         """Doc."""
 
-        self._timer.start()
+        self._app.loop.create_task(self._main())
         logging.debug("Starting main timer.")
 
     def _update_dep(self):
@@ -195,14 +206,3 @@ class Timeout:
             self._app.win_dict["main"].startFcsMeasurementButton.setText(
                 "Start \nMeasurement"
             )
-
-    # MAIN
-    def _main(self):
-        """Doc."""
-
-        #        await asyncio.gather(
-        self._check_readiness()
-        self._update_dep()
-        self._update_counter()
-        self._update_gui()
-        self._update_measurement()
