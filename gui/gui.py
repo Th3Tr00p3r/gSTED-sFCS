@@ -11,6 +11,8 @@ import logic.windows as wins_imp
 import utilities.constants as const
 from gui.icons import icons_rc  # for initial icons loadout # NOQA
 
+# from asyncqt import asyncSlot
+
 
 class MainWin(QMainWindow):
     """Doc."""

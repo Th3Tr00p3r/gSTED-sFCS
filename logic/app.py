@@ -21,7 +21,7 @@ from utilities.dialog import Question
 class App:
     """Doc."""
 
-    def __init__(self):
+    def __init__(self, loop):
         """Doc."""
 
         # init logging
@@ -55,7 +55,9 @@ class App:
 
         # FINALLY
         self.win_dict["main"].show()
+
         # set up main timeout event
+        self.loop = loop
         self.timeout_loop = Timeout(self)
 
     def config_logging(self):

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Devices Module."""
 
+import asyncio
+
 import numpy as np
 from instrumental.drivers.cameras.uc480 import UC480Error
 from PyQt5.QtCore import QTimer
@@ -111,13 +113,15 @@ class Camera:
 
     # TODO: create driver class and move _driver and error handeling there
 
-    def __init__(self, nick, error_dict):
+    def __init__(self, nick, error_dict, app, gui):
         """Doc."""
 
         self.nick = nick
         self.error_dict = error_dict
-        self.video_timer = QTimer()
-        self.video_timer.setInterval(100)  # set to 100 ms
+        #        self.video_timer = QTimer()
+        #        self.video_timer.setInterval(200)  # set to 200 ms
+        self._app = app
+        self._gui = gui
         self.state = False
 
     @err_hndlr
@@ -155,26 +159,43 @@ class Camera:
         return img
 
     @err_hndlr
-    def toggle_video(self, bool):
+    async def toggle_video(self, bool):
         """Doc."""
 
         if bool:
             self._driver.start_live_video()
-            self.video_timer.start()
+            #            self.video_timer.start()
+            await self._vidshow()
 
         else:
             self._driver.stop_live_video()
-            self.video_timer.stop()
+        #            self.video_timer.stop()
 
         self.video_state = bool
 
     @err_hndlr
-    def latest_frame(self):
+    def _latest_frame(self):
         """Doc."""
 
         frame_ready = self._driver.wait_for_frame(timeout="0 ms")
         if frame_ready:
             return self._driver.latest_frame(copy=False)
+
+    def _imshow(self, img):
+        """Plot image"""
+
+        self._gui.figure.clear()
+        ax = self._gui.figure.add_subplot(111)
+        ax.imshow(img)
+        self._gui.canvas.draw()
+
+    async def _vidshow(self):
+        """Doc."""
+
+        while self.vid_state is True:
+            img = self._latest_frame()
+            self._imshow(img)
+            await asyncio.sleep(const.CAM_VID_INTRVL)
 
 
 class SimpleDO(drivers.DAQmxInstrumentDO):
