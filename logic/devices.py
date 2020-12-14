@@ -5,7 +5,6 @@ import asyncio
 
 import numpy as np
 from instrumental.drivers.cameras.uc480 import UC480Error
-from PyQt5.QtCore import QTimer
 
 import logic.drivers as drivers
 import utilities.constants as const
@@ -91,9 +90,10 @@ class Counter(drivers.DAQmxInstrumentCI):
         start_idx = len(self.cont_count_buff) - intrvl_time_unts
 
         if start_idx > 0:
-            return (
+            avg_cnt_rate = (
                 self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts + 1)]
-            ) / avg_intrvl  # to have KHz
+            ) / avg_intrvl
+            return avg_cnt_rate / 1000  # Hz -> KHz
 
         else:  # TODO: (low priority) get the most averaging possible if requested fails
             return 0
@@ -118,8 +118,6 @@ class Camera:
 
         self.nick = nick
         self.error_dict = error_dict
-        #        self.video_timer = QTimer()
-        #        self.video_timer.setInterval(200)  # set to 200 ms
         self._app = app
         self._gui = gui
         self.state = False
@@ -134,7 +132,7 @@ class Camera:
             except Exception:
                 raise UC480Error
         elif hasattr(self, "_driver"):
-            self.video_timer.stop()  # in case video is ON
+            self.vid_state = False
             self._driver.close()
         self.state = bool
 
@@ -145,18 +143,11 @@ class Camera:
         self._driver.set_auto_exposure(bool)
 
     @err_hndlr
-    def shoot(self):
+    async def shoot(self):
         """Doc."""
 
-        if self.video_timer.isActive():
-            self.toggle_video(False)
-            img = self._driver.grab_image()
-            self.toggle_video(True)
-
-        else:
-            img = self._driver.grab_image()
-
-        return img
+        img = self._driver.grab_image()
+        self._imshow(img)
 
     @err_hndlr
     async def toggle_video(self, bool):
@@ -164,14 +155,12 @@ class Camera:
 
         if bool:
             self._driver.start_live_video()
-            #            self.video_timer.start()
             await self._vidshow()
 
         else:
             self._driver.stop_live_video()
-        #            self.video_timer.stop()
 
-        self.video_state = bool
+        self.vid_state = bool
 
     @err_hndlr
     def _latest_frame(self):
