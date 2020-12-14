@@ -4,7 +4,6 @@
 import asyncio
 
 import numpy as np
-from instrumental.drivers.cameras.uc480 import UC480Error
 
 import logic.drivers as drivers
 import utilities.constants as const
@@ -108,67 +107,38 @@ class Counter(drivers.DAQmxInstrumentCI):
             self.cont_count_buff = cnts_arr1D[-buff_sz:]
 
 
-class Camera:
+class Camera(drivers.UC480Instrument):
     """Doc."""
-
-    # TODO: create driver class and move _driver and error handeling there
 
     def __init__(self, nick, error_dict, app, gui):
         """Doc."""
 
-        self.nick = nick
-        self.error_dict = error_dict
+        super().__init__(nick=nick, error_dict=error_dict)
         self._app = app
         self._gui = gui
         self.state = False
 
-    @err_hndlr
     def toggle(self, bool):
         """Doc."""
 
         if bool:
-            try:  # this is due to bad error handeling in instrumental-lib...
-                self._driver = drivers.UC480_Camera(reopen_policy="new")
-            except Exception:
-                raise UC480Error
-        elif hasattr(self, "_driver"):
-            self.vid_state = False
-            self._driver.close()
+            self.init_cam()
+        else:
+            self.close_cam()
         self.state = bool
 
-    @err_hndlr
-    def set_auto_exposure(self, bool):
+    def shoot(self):
         """Doc."""
 
-        self._driver.set_auto_exposure(bool)
-
-    @err_hndlr
-    async def shoot(self):
-        """Doc."""
-
-        img = self._driver.grab_image()
+        img = self.grab_image()
         self._imshow(img)
 
-    @err_hndlr
-    async def toggle_video(self, bool):
+    def toggle_video(self, bool):
         """Doc."""
 
+        self.toggle_vid(bool)
         if bool:
-            self._driver.start_live_video()
-            await self._vidshow()
-
-        else:
-            self._driver.stop_live_video()
-
-        self.vid_state = bool
-
-    @err_hndlr
-    def _latest_frame(self):
-        """Doc."""
-
-        frame_ready = self._driver.wait_for_frame(timeout="0 ms")
-        if frame_ready:
-            return self._driver.latest_frame(copy=False)
+            self._app.loop.create_task(self._vidshow())
 
     def _imshow(self, img):
         """Plot image"""
@@ -182,7 +152,7 @@ class Camera:
         """Doc."""
 
         while self.vid_state is True:
-            img = self._latest_frame()
+            img = self.get_latest_frame()
             self._imshow(img)
             await asyncio.sleep(const.CAM_VID_INTRVL)
 

@@ -115,9 +115,8 @@ class Timeout:
                 if are_last_n_ident(self._app.dvc_dict["COUNTER"].cont_count_buff, 10):
                     self._app.error_dict["COUNTER"] = "Detector is disconnected"
 
-            await asyncio.sleep(
-                self._gui_updt_intrvl
-            )  # TODO: using same interval as for GUI update - should I?
+            # TODO: using same interval as for GUI update - should I?
+            await asyncio.sleep(self._gui_updt_intrvl)
 
     async def _update_dep(self):
         """Update depletion laser GUI"""
@@ -155,9 +154,8 @@ class Timeout:
                         self._app.dvc_dict[nick], self._app.win_dict["main"]
                     )
 
-                    if (
-                        self._app.dvc_dict[nick].state is True
-                    ):  # check current/power only if laser is ON
+                    # check current/power only if laser is ON
+                    if self._app.dvc_dict[nick].state is True:
                         update_power(
                             self._app.dvc_dict[nick], self._app.win_dict["main"]
                         )
