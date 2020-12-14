@@ -374,27 +374,30 @@ class CamWin:
         """Doc."""
 
         if bool:  # turn On
-            self._app.loop.create_task(self._cam.toggle_video(True))
-
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Video ON")
+
+            self._app.timeout_loop.pause()
+            self._cam.toggle_video(True)
+
             logging.debug("Camera video mode ON")
 
         else:  # turn Off
-            self._app.loop.create_task(self._cam.toggle_video(True))
-            #            self._app.timeout_loop.start()
-
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Start Video")
+
+            self._app.timeout_loop.resume()
+            self._cam.toggle_video(False)
+
             logging.debug("Camera video mode OFF")
 
     @err_chck({"CAMERA"})
     def shoot(self):
         """Doc."""
 
-        self._app.loop.create_task(self._cam.shoot())
-        logging.debug("Camera photo taken")
+        self._cam.shoot()
+        logging.info("Camera photo taken")
