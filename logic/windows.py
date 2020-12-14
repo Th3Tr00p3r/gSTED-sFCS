@@ -217,10 +217,10 @@ class MainWin:
         curr_intrvl = self._app.dvc_dict["COUNTER"].update_time
 
         if val > curr_intrvl:
-            self._app.timeout_loop._cntr_up.intrvl = val
+            self._app.timeout_loop._cnts_updt_intrvl = val
 
         else:
-            self._app.timeout_loop._cntr_up.intrvl = curr_intrvl
+            self._app.timeout_loop._cnts_updt_intrvl = curr_intrvl
 
 
 class SettWin:
@@ -363,10 +363,6 @@ class CamWin:
     def clean_up(self):
         """clean up before closing window"""
 
-        # for restarting main loop in case camwin closed while video ON
-        if self._cam.video_timer.isActive():
-            self._app.timeout_loop.start()
-
         self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
         self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
         logging.debug("Camera connection closed")
@@ -378,7 +374,6 @@ class CamWin:
         """Doc."""
 
         if bool:  # turn On
-            #            self._app.timeout_loop.stop()
             self._app.loop.create_task(self._cam.toggle_video(True))
 
             self._gui.videoButton.setStyleSheet(
@@ -401,6 +396,5 @@ class CamWin:
     def shoot(self):
         """Doc."""
 
-        img = self._cam.shoot()
-        self._imshow(img)
+        self._app.loop.create_task(self._cam.shoot())
         logging.debug("Camera photo taken")

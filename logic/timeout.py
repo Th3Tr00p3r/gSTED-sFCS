@@ -3,32 +3,11 @@
 
 import asyncio
 import logging
-import time
 
 from PyQt5.QtGui import QIcon
 
 import gui.icons.icon_paths as icon
 import utilities.constants as const
-
-
-class Updatable:
-    """Doc."""
-
-    def __init__(self, intrvl):
-        self.ready = True
-        self.intrvl = intrvl
-
-        self.last = time.perf_counter()
-
-    def is_ready(self):
-
-        if time.perf_counter() > (self.last + self.intrvl):
-            self.ready = True
-
-    def just_updated(self):
-
-        self.last = time.perf_counter()
-        self.ready = False
 
 
 class Timeout:
@@ -39,52 +18,108 @@ class Timeout:
 
         self._app = app
 
-        #        self._timer = QTimer()
-        #        self._timer.setInterval(const.TIMEOUT)
-        #        self._timer.timeout.connect(self._main)
-
         # init updateables
-        self._gui_up = Updatable(intrvl=2)
-        self._meas_up = Updatable(intrvl=1)
-        self._dep_up = Updatable(intrvl=self._app.dvc_dict["DEP_LASER"].update_time)
-        self._cntr_up = Updatable(intrvl=self._app.dvc_dict["COUNTER"].update_time)
-
-        self.start()
+        self._gui_updt_intrvl = 2
+        self._meas_updt_intrvl = 1
+        self._dep_updt_intrvl = self._app.dvc_dict["DEP_LASER"].update_time
+        self._cnts_updt_intrvl = self._app.dvc_dict["COUNTER"].update_time
 
     # MAIN
     async def _main(self):
         """Doc."""
 
-        while True:
-            self._check_readiness()
-            self._update_dep()
-            self._update_counter()
-            self._update_gui()
-            self._update_measurement()
-
-            await asyncio.sleep(const.TIMEOUT)
-
-    def _check_readiness(self):
-        """Doc."""
-
-        self._gui_up.is_ready()
-        self._meas_up.is_ready()
-        self._dep_up.is_ready()
-        self._cntr_up.is_ready()
-
-    def stop(self):
-        """Doc."""
-
-        #        self._timer.stop()
-        logging.debug("Stopping main timer.")
+        await asyncio.gather(
+            self._cntr_read(),  # TODO: move all counter-related into single function?
+            self._update_avg_counts(),  # TODO: move all counter-related into single function?
+            self._check_cntr_err(),  # TODO: move all counter-related into single function?
+            self._update_dep(),
+            self._update_gui(),
+            self._update_measurement(),
+        )
+        logging.debug("_main function exited")
 
     def start(self):
         """Doc."""
 
+        self.running = True
+        self.not_finished = True
         self._app.loop.create_task(self._main())
         logging.debug("Starting main timer.")
 
-    def _update_dep(self):
+    async def finish(self):
+        """Doc."""
+
+        self.not_finished = False
+        await asyncio.sleep(0.1)
+
+    def pause(self):
+        """Doc."""
+
+        self.running = False
+        logging.debug("Stopping main timer.")
+
+    def resume(self):
+        """Doc."""
+
+        self.running = True
+        logging.debug("Resuming main timer.")
+
+    async def _cntr_read(self):
+        """Doc."""
+
+        nick = "COUNTER"
+
+        while self.not_finished:
+
+            if self.running:
+                if self._app.error_dict[nick] is None:
+
+                    self._app.dvc_dict[nick].count()
+                    self._app.dvc_dict[nick].dump_buff_overflow()
+
+            await asyncio.sleep(const.TIMEOUT)
+
+    async def _update_avg_counts(self):
+        """
+        Read new counts, and dump buffer overflow.
+        if update ready also average and show in GUI.
+
+        """
+
+        nick = "COUNTER"
+
+        while self.not_finished:
+
+            if self.running:
+                if self._app.error_dict[nick] is None:
+                    avg_interval = (
+                        self._app.win_dict["main"].countsAvg.value() / 1000
+                    )  # to get seconds
+                    avg_counts = self._app.dvc_dict[nick].average_counts(avg_interval)
+                    self._app.win_dict["main"].countsSpinner.setValue(avg_counts)
+
+            await asyncio.sleep(self._cnts_updt_intrvl)
+
+    async def _check_cntr_err(self):
+        """Doc."""
+
+        def are_last_n_ident(lst, n):
+            """Check if the last n elements of a list are identical"""
+
+            if len(lst) > n:
+                return len(set(lst[-n:])) == 1
+
+        while self.not_finished:
+
+            if self.running:
+                if are_last_n_ident(self._app.dvc_dict["COUNTER"].cont_count_buff, 10):
+                    self._app.error_dict["COUNTER"] = "Detector is disconnected"
+
+            await asyncio.sleep(
+                self._gui_updt_intrvl
+            )  # TODO: using same interval as for GUI update - should I?
+
+    async def _update_dep(self):
         """Update depletion laser GUI"""
 
         nick = "DEP_LASER"
@@ -112,97 +147,79 @@ class Timeout:
             dep.get_current()
             main_gui.depActualCurrSpinner.setValue(dep.current)
 
-        if (self._app.error_dict[nick] is None) and (self._dep_up.ready):
-            update_SHG_temp(self._app.dvc_dict[nick], self._app.win_dict["main"])
+        while self.not_finished:
 
-            if (
-                self._app.dvc_dict[nick].state is True
-            ):  # check current/power only if laser is ON
-                update_power(self._app.dvc_dict[nick], self._app.win_dict["main"])
-                update_current(self._app.dvc_dict[nick], self._app.win_dict["main"])
+            if self.running:
+                if self._app.error_dict[nick] is None:
+                    update_SHG_temp(
+                        self._app.dvc_dict[nick], self._app.win_dict["main"]
+                    )
 
-            self._dep_up.just_updated()
+                    if (
+                        self._app.dvc_dict[nick].state is True
+                    ):  # check current/power only if laser is ON
+                        update_power(
+                            self._app.dvc_dict[nick], self._app.win_dict["main"]
+                        )
+                        update_current(
+                            self._app.dvc_dict[nick], self._app.win_dict["main"]
+                        )
 
-    def _update_gui(self):
+            await asyncio.sleep(self._dep_updt_intrvl)
+
+    async def _update_gui(self):
         """Doc."""
         # TODO: update error GUI according to errors in 'error_dict'
 
-        if self._gui_up.ready is True:
+        while self.not_finished:
 
-            for nick in self._app.dvc_dict.keys():
+            if self.running:
 
-                if self._app.error_dict[nick] is not None:  # case ERROR
-                    gui_led_object = getattr(
-                        self._app.win_dict["main"],
-                        const.ICON_DICT[nick]["LED"],
-                    )
-                    red_led = QIcon(icon.LED_RED)
-                    gui_led_object.setIcon(red_led)
+                for nick in self._app.dvc_dict.keys():
 
-            # TODO: decide whether to move the following to a new update function or change this function's name
-            # -------------------------------------------------------------------------------------------------------------------------
-            def are_last_n_ident(lst, n):
-                """Check if the last n elements of a list are identical"""
+                    if self._app.error_dict[nick] is not None:  # case ERROR
+                        gui_led_object = getattr(
+                            self._app.win_dict["main"],
+                            const.ICON_DICT[nick]["LED"],
+                        )
+                        red_led = QIcon(icon.LED_RED)
+                        gui_led_object.setIcon(red_led)
 
-                if len(lst) > n:
-                    return len(set(lst[-n:])) == 1
+            await asyncio.sleep(self._gui_updt_intrvl)
 
-            if are_last_n_ident(self._app.dvc_dict["COUNTER"].cont_count_buff, 10):
-                self._app.error_dict["COUNTER"] = "Detector is disconnected"
-            # -------------------------------------------------------------------------------------------------------------------------
-
-            self._gui_up.just_updated()
-
-    def _update_counter(self):
-        """
-        Read new counts, and dump buffer overflow.
-        if update ready also average and show in GUI.
-
-        """
-
-        nick = "COUNTER"
-
-        if self._app.error_dict[nick] is None:
-
-            self._app.dvc_dict[nick].count()
-            self._app.dvc_dict[nick].dump_buff_overflow()
-
-            if self._cntr_up.ready:
-                avg_interval = self._app.win_dict["main"].countsAvg.value()
-                self._app.win_dict["main"].countsSpinner.setValue(
-                    self._app.dvc_dict[nick].average_counts(avg_interval)
-                )
-                self._cntr_up.just_updated()
-
-    def _update_measurement(self):
+    async def _update_measurement(self):
         """Doc."""
 
-        meas = self._app.meas
+        while self.not_finished:
 
-        if self._app.error_dict["UM232"] is None:
+            if self.running:
 
-            if meas.type == "FCS":
-                self._app.dvc_dict["UM232"].read_TDC_data()
+                meas = self._app.meas
 
-                if self._meas_up.ready:
+                if self._app.error_dict["UM232"] is None:
 
-                    if meas.time_passed < meas.duration_spinner.value():
-                        meas.time_passed += 1
+                    if meas.type == "FCS":
+                        self._app.dvc_dict["UM232"].read_TDC_data()
 
-                    else:  # timer finished
-                        meas.disp_ACF()
-                        self._app.dvc_dict["UM232"].init_data()
-                        self._app.dvc_dict["UM232"].purge()
-                        meas.time_passed = 1
+                        if meas.time_passed < meas.duration_spinner.value():
+                            meas.time_passed += 1
 
-                    if meas.prog_bar:
-                        prog = meas.time_passed / meas.duration_spinner.value() * 100
-                        meas.prog_bar.setValue(prog)
+                        else:  # timer finished
+                            meas.disp_ACF()
+                            self._app.dvc_dict["UM232"].init_data()
+                            self._app.dvc_dict["UM232"].purge()
+                            meas.time_passed = 1
 
-                    self._meas_up.just_updated()
+                        if meas.prog_bar:
+                            prog = (
+                                meas.time_passed / meas.duration_spinner.value() * 100
+                            )
+                            meas.prog_bar.setValue(prog)
 
-        elif meas.type is not None:  # case UM232 error while measuring
-            meas.stop()
-            self._app.win_dict["main"].startFcsMeasurementButton.setText(
-                "Start \nMeasurement"
-            )
+                elif meas.type is not None:  # case UM232 error while measuring
+                    meas.stop()
+                    self._app.win_dict["main"].startFcsMeasurementButton.setText(
+                        "Start \nMeasurement"
+                    )
+
+            await asyncio.sleep(self._meas_updt_intrvl)
