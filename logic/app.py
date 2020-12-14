@@ -3,7 +3,6 @@
 
 import logging
 import logging.config
-import time
 
 import yaml
 from PyQt5.QtGui import QIcon
@@ -59,6 +58,7 @@ class App:
         # set up main timeout event
         self.loop = loop
         self.timeout_loop = Timeout(self)
+        self.timeout_loop.start()
 
     def config_logging(self):
         """Doc."""
@@ -95,7 +95,12 @@ class App:
             dvc_class = getattr(devices, const.DEVICE_CLASS_NAMES[nick])
 
             if nick in {"CAMERA"}:
-                self.dvc_dict[nick] = dvc_class(nick=nick, error_dict=self.error_dict)
+                self.dvc_dict[nick] = dvc_class(
+                    nick=nick,
+                    error_dict=self.error_dict,
+                    app=self,
+                    gui=self.win_dict["camera"],
+                )
 
             else:
                 param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
@@ -113,7 +118,7 @@ class App:
             self.error_dict[nick] = None
 
     def clean_up_app(self, restart=False):
-        """Close all devices and secondary windows before closing/restarting application."""
+        """Doc."""
 
         def close_all_dvcs(app):
             """Doc."""
@@ -163,7 +168,7 @@ class App:
             if self.win_dict["camera"] is not None:
                 self.win_dict["camera"].close()
 
-            self.timeout_loop.stop()
+            self.timeout_loop.pause()
 
             lights_out(self.win_dict["main"])
             self.win_dict["main"].depActualCurrSpinner.setValue(0)
@@ -171,12 +176,13 @@ class App:
 
             self.init_errors()
             self.init_devices()
-            time.sleep(0.2)  # needed to avoid error with main timeout
-            self.timeout_loop = Timeout(self)
+
+            self.timeout_loop.resume()
 
             logging.info("Restarting application.")
 
         else:
+            self.loop.create_task(self.timeout_loop.finish())
             close_all_wins(self)
             logging.info("Quitting application.")
 
@@ -187,7 +193,6 @@ class App:
             q_txt="Are you sure you want to quit?", q_title="Quitting Program"
         ).display()
         if pressed == QMessageBox.Yes:
-            self.timeout_loop.stop()
             self.clean_up_app()
         else:
             event.ignore()

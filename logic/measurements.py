@@ -29,6 +29,7 @@ class Measurement:
     def stop(self):
         """Doc."""
 
+        meas_name = self.type
         self.type = None
 
         self._app.win_dict["main"].imp.dvc_toggle("TDC")
@@ -36,7 +37,7 @@ class Measurement:
         if self.prog_bar:
             self.prog_bar.setValue(0)
 
-        logging.info(f"{self.type} measurement stopped")
+        logging.info(f"{meas_name} measurement stopped")
 
     def disp_ACF(self):
         """Doc."""
