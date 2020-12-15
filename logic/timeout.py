@@ -18,7 +18,7 @@ class Timeout:
 
         self._app = app
 
-        # init updateables
+        # init update intervals
         self._gui_updt_intrvl = 2
         self._meas_updt_intrvl = 1
         self._dep_updt_intrvl = self._app.dvc_dict["DEP_LASER"].update_time
@@ -50,7 +50,6 @@ class Timeout:
         """Doc."""
 
         self.not_finished = False
-        await asyncio.sleep(0.1)
 
     def pause(self):
         """Doc."""
@@ -61,8 +60,9 @@ class Timeout:
     def resume(self):
         """Doc."""
 
-        self.running = True
-        logging.debug("Resuming main timer.")
+        if not self.running:
+            self.running = True
+            logging.debug("Resuming main timer.")
 
     async def _cntr_read(self):
         """Doc."""
