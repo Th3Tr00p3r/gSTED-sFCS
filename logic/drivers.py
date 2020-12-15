@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Drivers Module."""
 
+import asyncio
+
 import nidaqmx
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
@@ -30,7 +32,8 @@ class UC480Instrument:
     def close_cam(self):
         """Doc."""
 
-        self._inst.close()
+        if self._inst is not None:
+            self._inst.close()
 
     @err_hndlr
     def grab_image(self):
@@ -39,14 +42,17 @@ class UC480Instrument:
         return self._inst.grab_image()
 
     @err_hndlr
-    def toggle_vid(self, bool):
+    async def toggle_vid(self, bool):
         """Doc."""
+
+        self.vid_state = bool
+
+        await asyncio.sleep(0.2)
 
         if bool:
             self._inst.start_live_video()
         else:
             self._inst.stop_live_video()
-        self.vid_state = bool
 
     @err_hndlr
     def get_latest_frame(self):

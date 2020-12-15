@@ -92,6 +92,7 @@ class Counter(drivers.DAQmxInstrumentCI):
             avg_cnt_rate = (
                 self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts + 1)]
             ) / avg_intrvl
+
             return avg_cnt_rate / 1000  # Hz -> KHz
 
         else:  # TODO: (low priority) get the most averaging possible if requested fails
@@ -136,7 +137,8 @@ class Camera(drivers.UC480Instrument):
     def toggle_video(self, bool):
         """Doc."""
 
-        self.toggle_vid(bool)
+        self._app.loop.create_task(self.toggle_vid(bool))
+
         if bool:
             self._app.loop.create_task(self._vidshow())
 
