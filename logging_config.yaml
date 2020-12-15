@@ -1,7 +1,7 @@
 version: 1
 formatters:
   console_frmt:
-    format: '%(asctime)s - [%(levelname)s] - "%(message)s (%(filename)s: %(lineno)s)"'
+    format: '%(asctime)s - [%(levelname)s] - %(message)s (%(filename)s: %(lineno)s)'
     datefmt: "[%H:%M:%S]"
   debug_file_frmt:
     format: '%(asctime)s - [%(levelname)-8s] - %(message)s (%(filename)s: %(lineno)s)'
@@ -19,14 +19,14 @@ handlers:
     class: logging.handlers.TimedRotatingFileHandler
     level: DEBUG
     formatter: debug_file_frmt
-    filename: ./log/debug
+    filename: "./log/debug.log"
     backupCount: 10
     when: 'D'
   log_file:
     class: logging.handlers.TimedRotatingFileHandler
     level: INFO
     formatter: log_file_frmt
-    filename: ./log/log
+    filename: "./log/log.log"
     backupCount: 10
     when: 'D'
 root:
