@@ -2,6 +2,7 @@
 """Devices Module."""
 
 import asyncio
+import time
 
 import numpy as np
 
@@ -63,8 +64,14 @@ class Counter(drivers.DAQmxInstrumentCI):
 
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self.cont_count_buff = []
-        self.counts = None
+        self.counts = None  # this is for scans where the counts are actually used.
         self.update_time = param_dict["update_time"]
+
+        # TEST -----------------------------------------------------
+        self.last_avg_time = time.perf_counter()
+
+        self.num_reads_since_avg = 0
+        # ------------------------------------------------------------
 
         self.toggle(True)  # turn ON right from the start
 
@@ -81,20 +88,28 @@ class Counter(drivers.DAQmxInstrumentCI):
 
         counts = self.read()
         self.cont_count_buff.append(counts)
+        self.num_reads_since_avg += 1
 
     def average_counts(self, avg_intrvl):
         """Doc."""
 
-        intrvl_time_unts = int(avg_intrvl / const.TIMEOUT)
-        start_idx = len(self.cont_count_buff) - intrvl_time_unts
+        actual_intrvl = time.perf_counter() - self.last_avg_time
+        start_idx = len(self.cont_count_buff) - self.num_reads_since_avg
 
         if start_idx > 0:
             avg_cnt_rate = (
-                self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts + 1)]
-            ) / avg_intrvl
+                self.cont_count_buff[-1]
+                - self.cont_count_buff[-(self.num_reads_since_avg + 1)]
+            ) / actual_intrvl
+
+            self.num_reads_since_avg = 0
+            self.last_avg_time = time.perf_counter()
+
             return avg_cnt_rate / 1000  # Hz -> KHz
 
-        else:  # TODO: (low priority) get the most averaging possible if requested fails
+        else:
+            self.num_reads_since_avg = 0
+            self.last_avg_time = time.perf_counter()
             return 0
 
     def dump_buff_overflow(self):
@@ -136,10 +151,12 @@ class Camera(drivers.UC480Instrument):
     def toggle_video(self, bool):
         """Doc."""
 
-        self.toggle_vid(bool)
+        self._app.loop.create_task(self.toggle_vid(bool))
+
         if bool:
             self._app.loop.create_task(self._vidshow())
 
+    @err_hndlr
     def _imshow(self, img):
         """Plot image"""
 
