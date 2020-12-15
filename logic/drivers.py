@@ -3,10 +3,58 @@
 
 import nidaqmx
 import pyvisa as visa
-from instrumental.drivers.cameras.uc480 import UC480_Camera  # NOQA
+from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from pyftdi.ftdi import Ftdi
 
 from utilities.errors import driver_error_handler as err_hndlr
+
+
+class UC480Instrument:
+    """Doc."""
+
+    def __init__(self, nick, error_dict):
+        self.nick = nick
+        self.error_dict = error_dict
+        self._inst = None
+
+    @err_hndlr
+    def init_cam(self):
+        """Doc."""
+
+        try:  # this is due to bad error handeling in instrumental-lib...
+            self._inst = UC480_Camera(reopen_policy="new")
+        except Exception:
+            raise UC480Error
+
+    @err_hndlr
+    def close_cam(self):
+        """Doc."""
+
+        self._inst.close()
+
+    @err_hndlr
+    def grab_image(self):
+        """Doc."""
+
+        return self._inst.grab_image()
+
+    @err_hndlr
+    def toggle_vid(self, bool):
+        """Doc."""
+
+        if bool:
+            self._inst.start_live_video()
+        else:
+            self._inst.stop_live_video()
+        self.vid_state = bool
+
+    @err_hndlr
+    def get_latest_frame(self):
+        """Doc."""
+
+        frame_ready = self._inst.wait_for_frame(timeout="0 ms")
+        if frame_ready:
+            return self._inst.latest_frame(copy=False)
 
 
 class FTDI_Instrument:
@@ -17,19 +65,19 @@ class FTDI_Instrument:
         self.nick = nick
         self._param_dict = param_dict
         self.error_dict = error_dict
-        self.inst = Ftdi()
+        self._inst = Ftdi()
 
     @err_hndlr
     def open(self):
         """Doc."""
 
-        self.inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
-        self.inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
-        self.inst._usb_read_timeout = self._param_dict["read_timeout"]
-        self.inst._usb_write_timeout = self._param_dict["read_timeout"]
-        self.inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
-        self.inst.set_flowctrl(self._param_dict["flow_ctrl"])
-        self.eff_baud_rate = self.inst.set_baudrate(
+        self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
+        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
+        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
+        self._inst._usb_write_timeout = self._param_dict["read_timeout"]
+        self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
+        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
+        self.eff_baud_rate = self._inst.set_baudrate(
             self._param_dict["baud_rate"], constrain=True
         )
 
@@ -39,26 +87,26 @@ class FTDI_Instrument:
     def read_bytes(self, n_bytes):
         """Doc."""
 
-        return self.inst.read_data_bytes(n_bytes)
+        return self._inst.read_data_bytes(n_bytes)
 
     @err_hndlr
     def is_read_error(self):
         """Doc."""
 
-        #        return bool(self.inst.get_cts() ^ self.inst.get_cd())
+        #        return bool(self._inst.get_cts() ^ self._inst.get_cd())
         pass
 
     @err_hndlr
     def purge(self):
         """Doc."""
 
-        self.inst.purge_buffers()
+        self._inst.purge_buffers()
 
     @err_hndlr
     def close(self):
         """Doc."""
 
-        self.inst.close()
+        self._inst.close()
         self.state = False
 
 
@@ -112,8 +160,6 @@ class DAQmxInstrumentCI:
             count_direction=nidaqmx.constants.CountDirection.COUNT_UP,
         )
         chan.ci_count_edges_term = self._param_dict["CI_cnt_edges_term"]
-
-    #        chan.ci_dup_count_prevention = self._params['CI_dup_prvnt']
 
     @err_hndlr
     def start(self):
