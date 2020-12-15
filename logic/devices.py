@@ -2,9 +2,9 @@
 """Devices Module."""
 
 import asyncio
+import time
 
 import numpy as np
-from instrumental.drivers.cameras.uc480 import UC480Error
 import logic.drivers as drivers
 import utilities.constants as const
 import utilities.dialog as dialog
@@ -63,8 +63,14 @@ class Counter(drivers.DAQmxInstrumentCI):
 
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self.cont_count_buff = []
-        self.counts = None
+        self.counts = None  # this is for scans where the counts are actually used.
         self.update_time = param_dict["update_time"]
+
+        # TEST -----------------------------------------------------
+        self.last_avg_time = time.perf_counter()
+
+        self.num_reads_since_avg = 0
+        # ------------------------------------------------------------
 
         self.toggle(True)  # turn ON right from the start
 
@@ -81,19 +87,28 @@ class Counter(drivers.DAQmxInstrumentCI):
 
         counts = self.read()
         self.cont_count_buff.append(counts)
+        self.num_reads_since_avg += 1
 
     def average_counts(self, avg_intrvl):
         """Doc."""
 
-        intrvl_time_unts = int(avg_intrvl / const.TIMEOUT)
-        start_idx = len(self.cont_count_buff) - intrvl_time_unts
+        actual_intrvl = time.perf_counter() - self.last_avg_time
+        start_idx = len(self.cont_count_buff) - self.num_reads_since_avg
 
         if start_idx > 0:
-            return (
-                self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts + 1)]
-            ) / avg_intrvl  # to have KHz
+            avg_cnt_rate = (
+                self.cont_count_buff[-1]
+                - self.cont_count_buff[-(self.num_reads_since_avg + 1)]
+            ) / actual_intrvl
 
-        else:  # TODO: (low priority) get the most averaging possible if requested fails
+            self.num_reads_since_avg = 0
+            self.last_avg_time = time.perf_counter()
+
+            return avg_cnt_rate / 1000  # Hz -> KHz
+
+        else:
+            self.num_reads_since_avg = 0
+            self.last_avg_time = time.perf_counter()
             return 0
 
     def dump_buff_overflow(self):
@@ -106,73 +121,39 @@ class Counter(drivers.DAQmxInstrumentCI):
             self.cont_count_buff = cnts_arr1D[-buff_sz:]
 
 
-class Camera:
+class Camera(drivers.UC480Instrument):
     """Doc."""
-
-    # TODO: create driver class and move _driver and error handeling there
 
     def __init__(self, nick, error_dict, app, gui):
         """Doc."""
 
-        self.nick = nick
-        self.error_dict = error_dict
-        #        self.video_timer = QTimer()
-        #        self.video_timer.setInterval(200)  # set to 200 ms
+        super().__init__(nick=nick, error_dict=error_dict)
         self._app = app
         self._gui = gui
         self.state = False
 
-    @err_hndlr
     def toggle(self, bool):
         """Doc."""
 
         if bool:
-            try:  # this is due to bad error handeling in instrumental-lib...
-                self._driver = drivers.UC480_Camera(reopen_policy="new")
-            except Exception:
-                raise UC480Error
-        elif hasattr(self, "_driver"):
-            self.video_timer.stop()  # in case video is ON
-            self._driver.close()
+            self.init_cam()
+        else:
+            self.close_cam()
         self.state = bool
 
-    @err_hndlr
-    def set_auto_exposure(self, bool):
-        """Doc."""
-
-        self._driver.set_auto_exposure(bool)
-
-    @err_hndlr
     def shoot(self):
         """Doc."""
 
-        if self.video_timer.isActive():
-            self.toggle_video(False)
-            img = self._driver.grab_image()
-            self.toggle_video(True)
+        img = self.grab_image()
+        self._imshow(img)
 
-        else:
-            img = self._driver.grab_image()
-
-        return img
-
-    @err_hndlr
-    async def toggle_video(self, bool):
+    def toggle_video(self, bool):
         """Doc."""
+
+        self._app.loop.create_task(self.toggle_vid(bool))
 
         if bool:
-            self._driver.start_live_video()
-            #            self.video_timer.start()
-            await self._vidshow()
-
-        else:
-            self._driver.stop_live_video()
-        #            self.video_timer.stop()
-
-        self.video_state = bool
-    
-    async def _vidshow(self):
-        """Doc."""
+            self._app.loop.create_task(self._vidshow())
 
         while self.vid_state is True:
             img = self._latest_frame()
@@ -180,13 +161,6 @@ class Camera:
             await asyncio.sleep(const.CAM_VID_INTRVL)
     
     @err_hndlr
-    def _latest_frame(self):
-        """Doc."""
-
-        frame_ready = self._driver.wait_for_frame(timeout="0 ms")
-        if frame_ready:
-            return self._driver.latest_frame(copy=False)
-
     def _imshow(self, img):
         """Plot image"""
 
@@ -195,6 +169,13 @@ class Camera:
         ax.imshow(img)
         self._gui.canvas.draw()
 
+    async def _vidshow(self):
+        """Doc."""
+
+        while self.vid_state is True:
+            img = self.get_latest_frame()
+            self._imshow(img)
+            await asyncio.sleep(const.CAM_VID_INTRVL)
 
 class SimpleDO(drivers.DAQmxInstrumentDO):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""

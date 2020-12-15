@@ -217,10 +217,10 @@ class MainWin:
         curr_intrvl = self._app.dvc_dict["COUNTER"].update_time
 
         if val > curr_intrvl:
-            self._app.timeout_loop._cntr_up.intrvl = val
+            self._app.timeout_loop._cnts_updt_intrvl = val
 
         else:
-            self._app.timeout_loop._cntr_up.intrvl = curr_intrvl
+            self._app.timeout_loop._cnts_updt_intrvl = curr_intrvl
 
 
 class SettWin:
@@ -346,6 +346,7 @@ class CamWin:
 
         self._app = app
         self._gui = gui
+        self._cam = None
 
         # add matplotlib-ready widget (canvas) for showing camera output
         self._gui.figure = plt.figure()
@@ -362,7 +363,9 @@ class CamWin:
 
     def clean_up(self):
         """clean up before closing window"""
-
+        
+        #        if self._cam.vid_state is True:
+        self.toggle_video(False)
         self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
         self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
         logging.debug("Camera connection closed")
@@ -374,29 +377,30 @@ class CamWin:
         """Doc."""
 
         if bool:  # turn On
-            #            self._app.timeout_loop.stop()
-            self._app.loop.create_task(self._cam.toggle_video(True))
-
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Video ON")
+
+            self._app.timeout_loop.pause()
+            self._cam.toggle_video(True)
+
             logging.debug("Camera video mode ON")
 
-        else:  # turn Off
-            self._app.loop.create_task(self._cam.toggle_video(True))
-            #            self._app.timeout_loop.start()
-
+        elif self._cam is not None:  # turn Off
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Start Video")
+
+            self._cam.toggle_video(False)
+            self._app.timeout_loop.resume()
+
             logging.debug("Camera video mode OFF")
 
     @err_chck({"CAMERA"})
     def shoot(self):
         """Doc."""
 
-        img = self._cam.shoot()
-        self._imshow(img)
-        logging.debug("Camera photo taken")
+        self._cam.shoot()
+        logging.info("Camera photo taken")

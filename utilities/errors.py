@@ -25,8 +25,19 @@ def build_err_msg(exc: Exception) -> str:
     return dict(exc_type=exc_type, exc_msg=str(exc), exc_tb=frmtd_tb[0])
 
 
+def log_str(nick: str, func_name: str, args) -> str:
+    """Doc."""
+
+    if isinstance(args, tuple):
+        return f'{const.DVC_LOG_DICT[nick]} didn\'t respond to {func_name}("{args[0]}") call'
+    else:
+        return (
+            f'{const.DVC_LOG_DICT[nick]} didn\'t respond to {func_name}("{args}") call'
+        )
+
+
 def driver_error_handler(func):
-    """decorator for clean handling of various known errors occuring in drivers.py."""
+    """decorator for clean handling of various known device errors."""
     # TODO: decide what to do with multiple errors - make a list (could explode?) or leave only the first?
 
     @functools.wraps(func)
@@ -41,61 +52,48 @@ def driver_error_handler(func):
                 if not hasattr(dvc, "state"):  # initial toggle error
                     dvc.error_dict[dvc.nick] = build_err_msg(exc)
                     logging.error(
-                        f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
-                        exc_info=False,
+                        log_str(dvc.nick, func.__name__, args), exc_info=False
                     )
                 else:
-                    logging.warning(
-                        f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
-                    )
+                    logging.warning(log_str(dvc.nick, func.__name__, args))
                     return -999
 
-            elif dvc.nick == "DEP_SHUTTER":
-                logging.error(
-                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
-                    exc_info=False,
-                )
+            elif dvc.nick in {"DEP_SHUTTER", "UM232"}:
+                dvc.error_dict[dvc.nick] = build_err_msg(exc)
+                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
                 return False
 
-            elif dvc.nick == "UM232":
-                dvc.error_dict[dvc.nick] = build_err_msg(exc)
-                logging.error(
-                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
-                    exc_info=False,
-                )
             else:
                 raise exc
 
         except DaqError as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
-            logging.error(
-                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
-                exc_info=False,
-            )
+            logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
 
             if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
                 return False
 
         except VisaIOError as exc:
-            dvc.error_dict[dvc.nick] = build_err_msg(exc)
-            logging.error(
-                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
-                exc_info=False,
-            )
-
+            
             if dvc.nick == "DEP_LASER":
+                dvc.error_dict[dvc.nick] = build_err_msg(exc)
+                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
                 return -999
 
             if dvc.nick == "STAGE":
+                dvc.error_dict[dvc.nick] = build_err_msg(exc)
+                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
                 return False
 
+            else:
+                raise
+
         except (AttributeError, OSError, FtdiError) as exc:
+            
             if dvc.nick == "UM232":
                 dvc.error_dict[dvc.nick] = build_err_msg(exc)
-                logging.error(
-                    f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
-                    exc_info=False,
-                )
+                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
+                
                 return False
 
             else:
@@ -103,10 +101,11 @@ def driver_error_handler(func):
 
         except UC480Error as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
-            logging.error(
-                f'{const.DVC_LOG_DICT[dvc.nick]} didn\'t respond to {func.__name__}({args[0] if args != () else ""})',
-                exc_info=False,
-            )
+            logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
+
+        except TypeError:
+            if dvc.nick == "CAMERA":
+                logging.warning(log_str(dvc.nick, func.__name__, args))
 
     return wrapper_error_handler
 
