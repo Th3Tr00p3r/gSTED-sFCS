@@ -58,7 +58,7 @@ class UC480Instrument:
     def get_latest_frame(self):
         """Doc."""
 
-        frame_ready = self._inst.wait_for_frame(timeout="0 ms")
+        frame_ready = self._inst.wait_for_frame(timeout="200 ms")
         if frame_ready:
             return self._inst.latest_frame(copy=False)
 
