@@ -90,7 +90,7 @@ class Counter(drivers.DAQmxInstrumentCI):
         self.cont_count_buff.append(counts)
         self.num_reads_since_avg += 1
 
-    def average_counts(self, avg_intrvl):
+    def average_counts(self):
         """Doc."""
 
         actual_intrvl = time.perf_counter() - self.last_avg_time
@@ -132,6 +132,7 @@ class Camera(drivers.UC480Instrument):
         self._app = app
         self._gui = gui
         self.state = False
+        self.vid_state = False
 
     def toggle(self, bool):
         """Doc."""
@@ -142,11 +143,17 @@ class Camera(drivers.UC480Instrument):
             self.close_cam()
         self.state = bool
 
-    def shoot(self):
+    async def shoot(self):
         """Doc."""
 
-        img = self.grab_image()
-        self._imshow(img)
+        if self.vid_state is False:
+            img = self.grab_image()
+            self._imshow(img)
+        else:
+            await self.toggle_vid(False)
+            img = self.grab_image()
+            self._imshow(img)
+            await asyncio.gather(self.toggle_vid(True), self._vidshow())
 
     def toggle_video(self, bool):
         """Doc."""

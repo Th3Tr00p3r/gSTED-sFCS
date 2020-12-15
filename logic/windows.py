@@ -202,25 +202,12 @@ class MainWin:
         self._app.win_dict["camera"].activateWindow()
         self._app.win_dict["camera"].imp.init_cam()
 
+    @err_chck({"COUNTER"})
     def cnts_avg_sldr_changed(self, val):
-        """
-        Set the spinner to show the value of the slider,
-        and change the counts display frequency to as low as needed
-        (lower then the averaging frequency)
-
-        """
+        """Doc."""
 
         self._gui.countsAvg.setValue(val)
-
-        val = val / 1000  # convert to seconds
-
-        curr_intrvl = self._app.dvc_dict["COUNTER"].update_time
-
-        if val > curr_intrvl:
-            self._app.timeout_loop._cnts_updt_intrvl = val
-
-        else:
-            self._app.timeout_loop._cnts_updt_intrvl = curr_intrvl
+        self._app.timeout_loop._cnts_updt_intrvl = val / 1000  # convert to seconds
 
 
 class SettWin:
@@ -382,7 +369,6 @@ class CamWin:
             )
             self._gui.videoButton.setText("Video ON")
 
-            self._app.timeout_loop.pause()
             self._cam.toggle_video(True)
 
             logging.debug("Camera video mode ON")
@@ -394,7 +380,6 @@ class CamWin:
             self._gui.videoButton.setText("Start Video")
 
             self._cam.toggle_video(False)
-            self._app.timeout_loop.resume()
 
             logging.debug("Camera video mode OFF")
 
@@ -402,5 +387,5 @@ class CamWin:
     def shoot(self):
         """Doc."""
 
-        self._cam.shoot()
+        self._app.loop.create_task(self._cam.shoot())
         logging.info("Camera photo taken")

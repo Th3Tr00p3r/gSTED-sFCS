@@ -92,10 +92,7 @@ class Timeout:
 
             if self.running:
                 if self._app.error_dict[nick] is None:
-                    avg_interval = (
-                        self._app.win_dict["main"].countsAvg.value() / 1000
-                    )  # to get seconds
-                    avg_counts = self._app.dvc_dict[nick].average_counts(avg_interval)
+                    avg_counts = self._app.dvc_dict[nick].average_counts()
                     self._app.win_dict["main"].countsSpinner.setValue(avg_counts)
 
             await asyncio.sleep(self._cnts_updt_intrvl)
