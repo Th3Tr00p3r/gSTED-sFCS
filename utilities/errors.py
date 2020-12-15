@@ -30,10 +30,6 @@ def log_str(nick: str, func_name: str, args) -> str:
 
     if isinstance(args, tuple):
         return f'{const.DVC_LOG_DICT[nick]} didn\'t respond to {func_name}("{args[0]}") call'
-    else:
-        return (
-            f'{const.DVC_LOG_DICT[nick]} didn\'t respond to {func_name}("{args}") call'
-        )
 
 
 def driver_error_handler(func):
