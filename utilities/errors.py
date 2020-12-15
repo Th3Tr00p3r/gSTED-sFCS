@@ -37,7 +37,7 @@ def log_str(nick: str, func_name: str, args) -> str:
 
 
 def driver_error_handler(func):
-    """decorator for clean handling of various known errors occuring in drivers.py."""
+    """decorator for clean handling of various known device errors."""
     # TODO: decide what to do with multiple errors - make a list (could explode?) or leave only the first?
 
     @functools.wraps(func)
