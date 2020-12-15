@@ -85,12 +85,12 @@ class Counter(drivers.DAQmxInstrumentCI):
     def average_counts(self, avg_intrvl):
         """Doc."""
 
-        intrvl_time_unts = int(avg_intrvl / const.TIMEOUT)
-        start_idx = len(self.cont_count_buff) - intrvl_time_unts
+        num_reads = int(avg_intrvl / const.TIMEOUT)
+        start_idx = len(self.cont_count_buff) - num_reads
 
         if start_idx > 0:
             avg_cnt_rate = (
-                self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts + 1)]
+                self.cont_count_buff[-1] - self.cont_count_buff[-(num_reads + 1)]
             ) / avg_intrvl
 
             return avg_cnt_rate / 1000  # Hz -> KHz
@@ -142,6 +142,7 @@ class Camera(drivers.UC480Instrument):
         if bool:
             self._app.loop.create_task(self._vidshow())
 
+    @err_hndlr
     def _imshow(self, img):
         """Plot image"""
 

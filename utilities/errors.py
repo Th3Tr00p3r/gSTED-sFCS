@@ -58,13 +58,11 @@ def driver_error_handler(func):
                     logging.warning(log_str(dvc.nick, func.__name__, args))
                     return -999
 
-            elif dvc.nick == "DEP_SHUTTER":
+            elif dvc.nick in {"DEP_SHUTTER", "UM232"}:
+                dvc.error_dict[dvc.nick] = build_err_msg(exc)
                 logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
                 return False
 
-            elif dvc.nick == "UM232":
-                dvc.error_dict[dvc.nick] = build_err_msg(exc)
-                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
             else:
                 raise exc
 
@@ -76,14 +74,18 @@ def driver_error_handler(func):
                 return False
 
         except VisaIOError as exc:
-            dvc.error_dict[dvc.nick] = build_err_msg(exc)
-            logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
-
             if dvc.nick == "DEP_LASER":
+                dvc.error_dict[dvc.nick] = build_err_msg(exc)
+                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
                 return -999
 
             if dvc.nick == "STAGE":
+                dvc.error_dict[dvc.nick] = build_err_msg(exc)
+                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
                 return False
+
+            else:
+                raise
 
         except (AttributeError, OSError, FtdiError) as exc:
             if dvc.nick == "UM232":
@@ -97,6 +99,10 @@ def driver_error_handler(func):
         except UC480Error as exc:
             dvc.error_dict[dvc.nick] = build_err_msg(exc)
             logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
+
+        except TypeError:
+            if dvc.nick == "CAMERA":
+                logging.warning(log_str(dvc.nick, func.__name__, args))
 
     return wrapper_error_handler
 
