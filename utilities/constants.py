@@ -5,7 +5,7 @@ import gui.icons.icon_paths as icon
 
 # general
 TIMEOUT = 0.010  # seconds (10 ms)
-CAM_VID_INTRVL = 0.500  # seconds (200 ms)
+CAM_VID_INTRVL = 0.200  # seconds (200 ms)
 
 
 # paths
