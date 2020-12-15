@@ -5128,23 +5128,11 @@ Measurement</string>
               <property name="buttonSymbols">
                <enum>QAbstractSpinBox::NoButtons</enum>
               </property>
-              <property name="prefix">
-               <string/>
-              </property>
-              <property name="suffix">
-               <string/>
-              </property>
               <property name="decimals">
                <number>2</number>
               </property>
-              <property name="minimum">
-               <double>0.000000000000000</double>
-              </property>
               <property name="maximum">
                <double>9999.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>1.000000000000000</double>
               </property>
              </widget>
             </item>
@@ -5172,7 +5160,7 @@ Measurement</string>
                <enum>Qt::LeftToRight</enum>
               </property>
               <property name="text">
-               <string>Average Count Rate (KHz)</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Count Rate (KHz)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>

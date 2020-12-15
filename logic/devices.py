@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Devices Module."""
 
-import asyncio
-
 import numpy as np
+from instrumental.drivers.cameras.uc480 import UC480Error
+from PyQt5.QtCore import QTimer
 
 import logic.drivers as drivers
 import utilities.constants as const
@@ -89,10 +89,9 @@ class Counter(drivers.DAQmxInstrumentCI):
         start_idx = len(self.cont_count_buff) - intrvl_time_unts
 
         if start_idx > 0:
-            avg_cnt_rate = (
+            return (
                 self.cont_count_buff[-1] - self.cont_count_buff[-(intrvl_time_unts + 1)]
-            ) / avg_intrvl
-            return avg_cnt_rate / 1000  # Hz -> KHz
+            ) / avg_intrvl  # to have KHz
 
         else:  # TODO: (low priority) get the most averaging possible if requested fails
             return 0
@@ -107,54 +106,75 @@ class Counter(drivers.DAQmxInstrumentCI):
             self.cont_count_buff = cnts_arr1D[-buff_sz:]
 
 
-class Camera(drivers.UC480Instrument):
+class Camera:
     """Doc."""
 
-    def __init__(self, nick, error_dict, app, gui):
+    # TODO: create driver class and move _driver and error handeling there
+
+    def __init__(self, nick, error_dict):
         """Doc."""
 
-        super().__init__(nick=nick, error_dict=error_dict)
-        self._app = app
-        self._gui = gui
+        self.nick = nick
+        self.error_dict = error_dict
+        self.video_timer = QTimer()
+        self.video_timer.setInterval(100)  # set to 100 ms
         self.state = False
 
+    @err_hndlr
     def toggle(self, bool):
         """Doc."""
 
         if bool:
-            self.init_cam()
-        else:
-            self.close_cam()
+            try:  # this is due to bad error handeling in instrumental-lib...
+                self._driver = drivers.UC480_Camera(reopen_policy="new")
+            except Exception:
+                raise UC480Error
+        elif hasattr(self, "_driver"):
+            self.video_timer.stop()  # in case video is ON
+            self._driver.close()
         self.state = bool
 
+    @err_hndlr
+    def set_auto_exposure(self, bool):
+        """Doc."""
+
+        self._driver.set_auto_exposure(bool)
+
+    @err_hndlr
     def shoot(self):
         """Doc."""
 
-        img = self.grab_image()
-        self._imshow(img)
+        if self.video_timer.isActive():
+            self.toggle_video(False)
+            img = self._driver.grab_image()
+            self.toggle_video(True)
 
+        else:
+            img = self._driver.grab_image()
+
+        return img
+
+    @err_hndlr
     def toggle_video(self, bool):
         """Doc."""
 
-        self.toggle_vid(bool)
         if bool:
-            self._app.loop.create_task(self._vidshow())
+            self._driver.start_live_video()
+            self.video_timer.start()
 
-    def _imshow(self, img):
-        """Plot image"""
+        else:
+            self._driver.stop_live_video()
+            self.video_timer.stop()
 
-        self._gui.figure.clear()
-        ax = self._gui.figure.add_subplot(111)
-        ax.imshow(img)
-        self._gui.canvas.draw()
+        self.video_state = bool
 
-    async def _vidshow(self):
+    @err_hndlr
+    def latest_frame(self):
         """Doc."""
 
-        while self.vid_state is True:
-            img = self.get_latest_frame()
-            self._imshow(img)
-            await asyncio.sleep(const.CAM_VID_INTRVL)
+        frame_ready = self._driver.wait_for_frame(timeout="0 ms")
+        if frame_ready:
+            return self._driver.latest_frame(copy=False)
 
 
 class SimpleDO(drivers.DAQmxInstrumentDO):
