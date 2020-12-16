@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """Error handeling."""
 
+import asyncio
 import functools
 import logging
 import sys
 import traceback
+from typing import Callable
 
 from instrumental.drivers.cameras.uc480 import UC480Error
 from nidaqmx.errors import DaqError
@@ -15,7 +17,14 @@ import utilities.constants as const
 from utilities.dialog import Error
 
 
-def build_err_msg(exc: Exception) -> str:
+class CounterError(Exception):
+    """Doc."""
+
+    def __init__(self, msg):
+        super().__init__(msg)
+
+
+def build_err_dict(exc: Exception) -> str:
     """Doc."""
 
     exc_type, _, tb = sys.exc_info()
@@ -25,85 +34,108 @@ def build_err_msg(exc: Exception) -> str:
     return dict(exc_type=exc_type, exc_msg=str(exc), exc_tb=frmtd_tb[0])
 
 
-def log_str(nick: str, func_name: str, args) -> str:
+def log_str(nick: str, func_name: str, arg) -> str:
     """Doc."""
 
-    if isinstance(args, tuple):
-        return f'{const.DVC_LOG_DICT[nick]} didn\'t respond to {func_name}("{args[0]}") call'
+    return f'{const.DVC_LOG_DICT[nick]} didn\'t respond to {func_name}("{arg}") call'
 
 
-def driver_error_handler(func):
+def resolve_dvc_exc(exc: Exception, func: Callable, arg: str, dvc) -> int:
+    """Decides what to do with caught, device-related exceptions"""
+
+    if isinstance(exc, ValueError):
+        if dvc.nick == "DEP_LASER":
+            if not hasattr(dvc, "state"):  # initial toggle error
+                dvc.error_dict[dvc.nick] = build_err_dict(exc)
+                logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            else:
+                logging.warning(log_str(dvc.nick, func.__name__, arg))
+                return -999
+
+        elif dvc.nick in {"DEP_SHUTTER", "UM232"}:
+            dvc.error_dict[dvc.nick] = build_err_dict(exc)
+            logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            return 0
+
+        else:
+            raise exc
+
+    elif isinstance(exc, DaqError):
+        dvc.error_dict[dvc.nick] = build_err_dict(exc)
+        logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+
+        if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
+            return 0
+
+    elif isinstance(exc, VisaIOError):
+        if dvc.nick == "DEP_LASER":
+            dvc.error_dict[dvc.nick] = build_err_dict(exc)
+            logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            return -999
+
+        if dvc.nick == "STAGE":
+            dvc.error_dict[dvc.nick] = build_err_dict(exc)
+            logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            return 0
+
+        else:
+            raise
+
+    elif isinstance(exc, (AttributeError, OSError, FtdiError)):
+        if dvc.nick == "UM232":
+            dvc.error_dict[dvc.nick] = build_err_dict(exc)
+            logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            return 0
+
+        else:
+            raise exc
+
+    elif isinstance(exc, UC480Error):
+        dvc.error_dict[dvc.nick] = build_err_dict(exc)
+        logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+
+    elif isinstance(exc, TypeError):
+        if dvc.nick == "CAMERA":
+            logging.warning(log_str(dvc.nick, func.__name__, arg))
+
+    else:
+        raise exc
+
+
+def dvc_err_hndlr(func):
     """decorator for clean handling of various known device errors."""
     # TODO: decide what to do with multiple errors - make a list (could explode?) or leave only the first?
 
-    @functools.wraps(func)
-    def wrapper_error_handler(dvc, *args, **kwargs):
-        """Doc."""
+    if asyncio.iscoroutinefunction(func):
 
-        try:
-            return func(dvc, *args, **kwargs)
+        @functools.wraps(func)
+        async def wrapper(dvc, *args, **kwargs):
+            """Doc."""
 
-        except ValueError as exc:
-            if dvc.nick == "DEP_LASER":
-                if not hasattr(dvc, "state"):  # initial toggle error
-                    dvc.error_dict[dvc.nick] = build_err_msg(exc)
-                    logging.error(
-                        log_str(dvc.nick, func.__name__, args), exc_info=False
-                    )
-                else:
-                    logging.warning(log_str(dvc.nick, func.__name__, args))
-                    return -999
+            try:
+                return await func(dvc, *args, **kwargs)
 
-            elif dvc.nick in {"DEP_SHUTTER", "UM232"}:
-                dvc.error_dict[dvc.nick] = build_err_msg(exc)
-                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
-                return False
+            except Exception as exc:
+                first_arg, *_ = args
+                return resolve_dvc_exc(exc, func, first_arg, dvc)
 
-            else:
-                raise exc
+    else:
 
-        except DaqError as exc:
-            dvc.error_dict[dvc.nick] = build_err_msg(exc)
-            logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
+        @functools.wraps(func)
+        def wrapper(dvc, *args, **kwargs):
+            """Doc."""
 
-            if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
-                return False
+            try:
+                return func(dvc, *args, **kwargs)
 
-        except VisaIOError as exc:
-            if dvc.nick == "DEP_LASER":
-                dvc.error_dict[dvc.nick] = build_err_msg(exc)
-                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
-                return -999
+            except Exception as exc:
+                first_arg, *_ = args
+                return resolve_dvc_exc(exc, func, first_arg, dvc)
 
-            if dvc.nick == "STAGE":
-                dvc.error_dict[dvc.nick] = build_err_msg(exc)
-                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
-                return False
-
-            else:
-                raise
-
-        except (AttributeError, OSError, FtdiError) as exc:
-            if dvc.nick == "UM232":
-                dvc.error_dict[dvc.nick] = build_err_msg(exc)
-                logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
-                return False
-
-            else:
-                raise exc
-
-        except UC480Error as exc:
-            dvc.error_dict[dvc.nick] = build_err_msg(exc)
-            logging.error(log_str(dvc.nick, func.__name__, args), exc_info=False)
-
-        except TypeError:
-            if dvc.nick == "CAMERA":
-                logging.warning(log_str(dvc.nick, func.__name__, args))
-
-    return wrapper_error_handler
+    return wrapper
 
 
-def error_checker(nick_set=None):
+def error_checker(nick_set: set = None) -> Callable:
     """
     Decorator for clean handeling of GUI interactions with errorneous devices.
     Checks for errors in devices associated with 'func' and shows error box
@@ -164,6 +196,6 @@ def logic_error_handler(func):
             return func(*args, **kwargs)
 
         except FileNotFoundError as exc:
-            Error(**build_err_msg(exc)).display()
+            Error(**build_err_dict(exc)).display()
 
     return wrapper_error_handler

@@ -177,6 +177,7 @@ class App:
             self.init_errors()
             self.init_devices()
 
+            self.timeout_loop.init_intrvls()
             self.timeout_loop.resume()
 
             logging.info("Restarting application.")

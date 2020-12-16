@@ -73,6 +73,7 @@ DVC_LOG_DICT = {
     "STAGE": "Stage",
     "CAMERA": "Camera",
     "TDC": "TDC",
+    "COUNTER": "Counter",
 }
 
 DEVICE_NICKS = {
