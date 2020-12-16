@@ -5,10 +5,11 @@ import asyncio
 import time
 
 import numpy as np
+
 import logic.drivers as drivers
 import utilities.constants as const
 import utilities.dialog as dialog
-from utilities.errors import driver_error_handler as err_hndlr
+from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
 class UM232(drivers.FTDI_Instrument):
@@ -65,12 +66,8 @@ class Counter(drivers.DAQmxInstrumentCI):
         self.cont_count_buff = []
         self.counts = None  # this is for scans where the counts are actually used.
         self.update_time = param_dict["update_time"]
-
-        # TEST -----------------------------------------------------
         self.last_avg_time = time.perf_counter()
-
         self.num_reads_since_avg = 0
-        # ------------------------------------------------------------
 
         self.toggle(True)  # turn ON right from the start
 
@@ -89,7 +86,7 @@ class Counter(drivers.DAQmxInstrumentCI):
         self.cont_count_buff.append(counts)
         self.num_reads_since_avg += 1
 
-    def average_counts(self, avg_intrvl):
+    def average_counts(self):
         """Doc."""
 
         actual_intrvl = time.perf_counter() - self.last_avg_time
@@ -103,6 +100,10 @@ class Counter(drivers.DAQmxInstrumentCI):
 
             self.num_reads_since_avg = 0
             self.last_avg_time = time.perf_counter()
+
+            #            # TEST ----------------------------------------------------------------------------------------
+            #            print(f'')
+            #            # -----------------------------------------------------------------------------------------------
 
             return avg_cnt_rate / 1000  # Hz -> KHz
 
@@ -131,6 +132,7 @@ class Camera(drivers.UC480Instrument):
         self._app = app
         self._gui = gui
         self.state = False
+        self.vid_state = False
 
     def toggle(self, bool):
         """Doc."""
@@ -141,16 +143,22 @@ class Camera(drivers.UC480Instrument):
             self.close_cam()
         self.state = bool
 
-    def shoot(self):
+    async def shoot(self):
         """Doc."""
 
-        img = self.grab_image()
-        self._imshow(img)
+        if self.vid_state is False:
+            img = self.grab_image()
+            self._imshow(img)
+        else:
+            await self.toggle_vid(False)
+            img = self.grab_image()
+            self._imshow(img)
+            await asyncio.gather(self.toggle_vid(True), self._vidshow())
 
     def toggle_video(self, bool):
         """Doc."""
 
-        self._app.loop.create_task(self.toggle_vid(bool))
+        self.toggle_vid(bool)
 
         if bool:
             self._app.loop.create_task(self._vidshow())
@@ -159,7 +167,7 @@ class Camera(drivers.UC480Instrument):
             img = self._latest_frame()
             self._imshow(img)
             await asyncio.sleep(const.CAM_VID_INTRVL)
-    
+
     @err_hndlr
     def _imshow(self, img):
         """Plot image"""
@@ -176,6 +184,7 @@ class Camera(drivers.UC480Instrument):
             img = self.get_latest_frame()
             self._imshow(img)
             await asyncio.sleep(const.CAM_VID_INTRVL)
+
 
 class SimpleDO(drivers.DAQmxInstrumentDO):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
@@ -212,20 +221,20 @@ class DepletionLaser(drivers.VISAInstrument):
 
         self._write(f"setLDenable {int(bool)}")
 
-    def get_SHG_temp(self):
+    async def get_SHG_temp(self):
         """Doc."""
 
-        self.temp = self._query("SHGtemp")
+        self.temp = await self._aquery("SHGtemp")
 
-    def get_current(self):
+    async def get_current(self):
         """Doc."""
 
-        self.current = self._query("LDcurrent 1")
+        self.current = await self._aquery("LDcurrent 1")
 
-    def get_power(self):
+    async def get_power(self):
         """Doc."""
 
-        self.power = self._query("Power 0")
+        self.power = await self._aquery("Power 0")
 
     def set_power(self, value):
         """Doc."""
