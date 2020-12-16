@@ -138,7 +138,7 @@ class MainWin:
 
         nick = "STAGE"
         self._app.dvc_dict[nick].move(dir=dir, steps=steps)
-        logging.info(f"{const.LOG_DICT[nick]} moved {str(steps)} steps {str(dir)}")
+        logging.info(f"{const.DVC_LOG_DICT[nick]} moved {str(steps)} steps {str(dir)}")
 
     @err_chck({"STAGE"})
     def release_stage(self):
@@ -146,7 +146,7 @@ class MainWin:
 
         nick = "STAGE"
         self._app.dvc_dict[nick].release()
-        logging.info(f"{const.LOG_DICT[nick]} released")
+        logging.info(f"{const.DVC_LOG_DICT[nick]} released")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""

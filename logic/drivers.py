@@ -8,7 +8,7 @@ import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from pyftdi.ftdi import Ftdi
 
-from utilities.errors import driver_error_handler as err_hndlr
+from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
 class UC480Instrument:
@@ -221,10 +221,20 @@ class VISAInstrument:
         with VISAInstrument.Task(self) as task:
             task.write(cmnd)
 
-        if cmnd.startswith("setLDenable"):  # change state if toggled
+        if cmnd.startswith("setLDenable"):  # change state if toggle is performed
             self.state = bool(int(cmnd[-1]))
 
         return True
+
+    @err_hndlr
+    async def _aquery(self, cmnd) -> float:
+        """Doc."""
+
+        with VISAInstrument.Task(self) as task:
+            task.write(cmnd)
+            await asyncio.sleep(0.1)
+            ans = task.read()
+            return float(ans)
 
     @err_hndlr
     def _query(self, cmnd):

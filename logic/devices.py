@@ -9,7 +9,7 @@ import numpy as np
 import logic.drivers as drivers
 import utilities.constants as const
 import utilities.dialog as dialog
-from utilities.errors import driver_error_handler as err_hndlr
+from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
 class UM232(drivers.FTDI_Instrument):
@@ -66,12 +66,8 @@ class Counter(drivers.DAQmxInstrumentCI):
         self.cont_count_buff = []
         self.counts = None  # this is for scans where the counts are actually used.
         self.update_time = param_dict["update_time"]
-
-        # TEST -----------------------------------------------------
         self.last_avg_time = time.perf_counter()
-
         self.num_reads_since_avg = 0
-        # ------------------------------------------------------------
 
         self.toggle(True)  # turn ON right from the start
 
@@ -104,6 +100,10 @@ class Counter(drivers.DAQmxInstrumentCI):
 
             self.num_reads_since_avg = 0
             self.last_avg_time = time.perf_counter()
+
+            #            # TEST ----------------------------------------------------------------------------------------
+            #            print(f'')
+            #            # -----------------------------------------------------------------------------------------------
 
             return avg_cnt_rate / 1000  # Hz -> KHz
 
@@ -216,20 +216,20 @@ class DepletionLaser(drivers.VISAInstrument):
 
         self._write(f"setLDenable {int(bool)}")
 
-    def get_SHG_temp(self):
+    async def get_SHG_temp(self):
         """Doc."""
 
-        self.temp = self._query("SHGtemp")
+        self.temp = await self._aquery("SHGtemp")
 
-    def get_current(self):
+    async def get_current(self):
         """Doc."""
 
-        self.current = self._query("LDcurrent 1")
+        self.current = await self._aquery("LDcurrent 1")
 
-    def get_power(self):
+    async def get_power(self):
         """Doc."""
 
-        self.power = self._query("Power 0")
+        self.power = await self._aquery("Power 0")
 
     def set_power(self, value):
         """Doc."""
