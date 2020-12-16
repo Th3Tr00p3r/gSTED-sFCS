@@ -351,13 +351,12 @@ class CamWin:
     def clean_up(self):
         """clean up before closing window"""
 
-        #        if self._cam.vid_state is True:
-        self.toggle_video(False)
-        self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
-        self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
-        logging.debug("Camera connection closed")
-
-        return None
+        if self._cam is not None:
+            self.toggle_video(False)
+            self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
+            self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
+            self._cam = None
+            logging.debug("Camera connection closed")
 
     @err_chck({"CAMERA"})
     def toggle_video(self, bool):
