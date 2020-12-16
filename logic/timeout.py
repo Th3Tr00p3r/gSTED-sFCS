@@ -2,12 +2,15 @@
 """Timeout module."""
 
 import asyncio
+
+# import concurrent.futures
 import logging
 
 from PyQt5.QtGui import QIcon
 
 import gui.icons.icon_paths as icon
 import utilities.constants as const
+import utilities.errors as errors
 
 
 class Timeout:
@@ -18,11 +21,16 @@ class Timeout:
 
         self._app = app
 
-        # init update intervals
+        self.init_intrvls()
+
+    def init_intrvls(self):
+        """Doc."""
+
         self._gui_updt_intrvl = 2
         self._meas_updt_intrvl = 1
         self._dep_updt_intrvl = self._app.dvc_dict["DEP_LASER"].update_time
         self._cnts_updt_intrvl = self._app.dvc_dict["COUNTER"].update_time
+        self._cntr_chck_intrvl = 3
 
     # MAIN
     async def _main(self):
@@ -30,8 +38,8 @@ class Timeout:
 
         await asyncio.gather(
             self._cntr_read(),  # TODO: move all counter-related into single function?
-            self._update_avg_counts(),  # TODO: move all counter-related into single function?
-            self._check_cntr_err(),  # TODO: move all counter-related into single function?
+            self._update_avg_counts(),
+            self._check_cntr_err(),
             self._update_dep(),
             self._update_gui(),
             self._update_measurement(),
@@ -92,10 +100,7 @@ class Timeout:
 
             if self.running:
                 if self._app.error_dict[nick] is None:
-                    avg_interval = (
-                        self._app.win_dict["main"].countsAvg.value() / 1000
-                    )  # to get seconds
-                    avg_counts = self._app.dvc_dict[nick].average_counts(avg_interval)
+                    avg_counts = self._app.dvc_dict[nick].average_counts()
                     self._app.win_dict["main"].countsSpinner.setValue(avg_counts)
 
             await asyncio.sleep(self._cnts_updt_intrvl)
@@ -112,56 +117,73 @@ class Timeout:
         while self.not_finished:
 
             if self.running:
-                if are_last_n_ident(self._app.dvc_dict["COUNTER"].cont_count_buff, 10):
-                    self._app.error_dict["COUNTER"] = "Detector is disconnected"
+                try:
+                    if are_last_n_ident(
+                        self._app.dvc_dict["COUNTER"].cont_count_buff, 10
+                    ):
+                        raise errors.CounterError("Detector is disconnected")
+                except errors.CounterError as exc:
+                    self._app.error_dict["COUNTER"] = errors.build_err_dict(exc)
+                    logging.error("Detector is disconnected", exc_info=False)
+                    self._cntr_chck_intrvl = 999
 
             # TODO: using same interval as for GUI update - should I?
-            await asyncio.sleep(self._gui_updt_intrvl)
+            await asyncio.sleep(self._cntr_chck_intrvl)
 
     async def _update_dep(self):
         """Update depletion laser GUI"""
 
         nick = "DEP_LASER"
 
-        def update_SHG_temp(dep, main_gui):
+        async def update_SHG_temp(dep_dvc, main_gui):
             """Doc."""
             # TODO: fix None type when turning off dep laser while app running
 
-            dep.get_SHG_temp()
-            main_gui.depTemp.setValue(dep.temp)
-            if dep.temp < dep.min_SHG_temp:
+            await dep_dvc.get_SHG_temp()
+            main_gui.depTemp.setValue(dep_dvc.temp)
+            if dep_dvc.temp < dep_dvc.min_SHG_temp:
                 main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
             else:
                 main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
-        def update_power(dep, main_gui):
+        async def update_power(dep_dvc, main_gui):
             """Doc."""
 
-            dep.get_power()
-            main_gui.depActualPowerSpinner.setValue(dep.power)
+            await dep_dvc.get_power()
+            main_gui.depActualPowerSpinner.setValue(dep_dvc.power)
 
-        def update_current(dep, main_gui):
+        async def update_current(dep_dvc, main_gui):
             """Doc."""
 
-            dep.get_current()
-            main_gui.depActualCurrSpinner.setValue(dep.current)
+            await dep_dvc.get_current()
+            main_gui.depActualCurrSpinner.setValue(dep_dvc.current)
+
+        async def update_props(dep_err_dict, dep_dvc, main_gui):
+            """Doc."""
+
+            if dep_err_dict is None:
+                await update_SHG_temp(dep_dvc, main_gui)
+
+                # check current/power only if laser is ON
+                if dep_dvc.state is True:
+                    await update_power(dep_dvc, main_gui)
+                    await update_current(dep_dvc, main_gui)
 
         while self.not_finished:
 
             if self.running:
-                if self._app.error_dict[nick] is None:
-                    update_SHG_temp(
-                        self._app.dvc_dict[nick], self._app.win_dict["main"]
-                    )
-
-                    # check current/power only if laser is ON
-                    if self._app.dvc_dict[nick].state is True:
-                        update_power(
-                            self._app.dvc_dict[nick], self._app.win_dict["main"]
-                        )
-                        update_current(
-                            self._app.dvc_dict[nick], self._app.win_dict["main"]
-                        )
+                await update_props(
+                    self._app.error_dict[nick],
+                    self._app.dvc_dict[nick],
+                    self._app.win_dict["main"],
+                )
+            #                with concurrent.futures.ThreadPoolExecutor() as pool:
+            #                    result = await self._app.loop.run_in_executor(
+            #                        pool, update_props(
+            #                            self._app.error_dict[nick], self._app.dvc_dict[nick], self._app.win_dict["main"]
+            #                            )
+            #                    )
+            #                    print(result)
 
             await asyncio.sleep(self._dep_updt_intrvl)
 

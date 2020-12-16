@@ -138,7 +138,7 @@ class MainWin:
 
         nick = "STAGE"
         self._app.dvc_dict[nick].move(dir=dir, steps=steps)
-        logging.info(f"{const.LOG_DICT[nick]} moved {str(steps)} steps {str(dir)}")
+        logging.info(f"{const.DVC_LOG_DICT[nick]} moved {str(steps)} steps {str(dir)}")
 
     @err_chck({"STAGE"})
     def release_stage(self):
@@ -146,7 +146,7 @@ class MainWin:
 
         nick = "STAGE"
         self._app.dvc_dict[nick].release()
-        logging.info(f"{const.LOG_DICT[nick]} released")
+        logging.info(f"{const.DVC_LOG_DICT[nick]} released")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -202,25 +202,12 @@ class MainWin:
         self._app.win_dict["camera"].activateWindow()
         self._app.win_dict["camera"].imp.init_cam()
 
+    @err_chck({"COUNTER"})
     def cnts_avg_sldr_changed(self, val):
-        """
-        Set the spinner to show the value of the slider,
-        and change the counts display frequency to as low as needed
-        (lower then the averaging frequency)
-
-        """
+        """Doc."""
 
         self._gui.countsAvg.setValue(val)
-
-        val = val / 1000  # convert to seconds
-
-        curr_intrvl = self._app.dvc_dict["COUNTER"].update_time
-
-        if val > curr_intrvl:
-            self._app.timeout_loop._cnts_updt_intrvl = val
-
-        else:
-            self._app.timeout_loop._cnts_updt_intrvl = curr_intrvl
+        self._app.timeout_loop._cnts_updt_intrvl = val / 1000  # convert to seconds
 
 
 class SettWin:
@@ -363,14 +350,13 @@ class CamWin:
 
     def clean_up(self):
         """clean up before closing window"""
-        
-        #        if self._cam.vid_state is True:
-        self.toggle_video(False)
-        self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
-        self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
-        logging.debug("Camera connection closed")
 
-        return None
+        if self._cam is not None:
+            self.toggle_video(False)
+            self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
+            self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
+            self._cam = None
+            logging.debug("Camera connection closed")
 
     @err_chck({"CAMERA"})
     def toggle_video(self, bool):
@@ -382,7 +368,6 @@ class CamWin:
             )
             self._gui.videoButton.setText("Video ON")
 
-            self._app.timeout_loop.pause()
             self._cam.toggle_video(True)
 
             logging.debug("Camera video mode ON")
@@ -394,7 +379,6 @@ class CamWin:
             self._gui.videoButton.setText("Start Video")
 
             self._cam.toggle_video(False)
-            self._app.timeout_loop.resume()
 
             logging.debug("Camera video mode OFF")
 
@@ -402,5 +386,5 @@ class CamWin:
     def shoot(self):
         """Doc."""
 
-        self._cam.shoot()
+        self._app.loop.create_task(self._cam.shoot())
         logging.info("Camera photo taken")
