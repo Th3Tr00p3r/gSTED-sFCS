@@ -42,12 +42,10 @@ class UC480Instrument:
         return self._inst.grab_image()
 
     @err_hndlr
-    async def toggle_vid(self, bool):
+    def toggle_vid(self, bool):
         """Doc."""
 
         self.vid_state = bool
-
-        await asyncio.sleep(0.2)
 
         if bool:
             self._inst.start_live_video()
