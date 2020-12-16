@@ -157,13 +157,12 @@ class App:
             gui.ledCounter.setIcon(QIcon(icon.LED_GREEN))  # either error or ON
             gui.ledCam.setIcon(QIcon(icon.LED_OFF))
 
-        if self.meas.type is not None:
-            if self.meas.type == "FCS":
-                self.win_dict["main"].imp.toggle_FCS_meas()
-
-        close_all_dvcs(self)
-
         if restart:
+            if self.meas.type is not None:
+                if self.meas.type == "FCS":
+                    self.win_dict["main"].imp.toggle_FCS_meas()
+
+            close_all_dvcs(self)
 
             if self.win_dict["camera"] is not None:
                 self.win_dict["camera"].close()
@@ -184,7 +183,12 @@ class App:
 
         else:
             self.loop.create_task(self.timeout_loop.finish())
+            if self.meas.type is not None:
+                if self.meas.type == "FCS":
+                    self.win_dict["main"].imp.toggle_FCS_meas()
+
             close_all_wins(self)
+            close_all_dvcs(self)
             logging.info("Quitting application.")
 
     def exit_app(self, event):

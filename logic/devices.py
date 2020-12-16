@@ -158,7 +158,7 @@ class Camera(drivers.UC480Instrument):
     def toggle_video(self, bool):
         """Doc."""
 
-        self._app.loop.create_task(self.toggle_vid(bool))
+        self.toggle_vid(bool)
 
         if bool:
             self._app.loop.create_task(self._vidshow())
