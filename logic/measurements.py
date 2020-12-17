@@ -31,6 +31,7 @@ class Measurement:
         self.type = None
 
         self._app.win_dict["main"].imp.dvc_toggle("TDC")
+        self._app.dvc_dict["UM232"].purge()
 
         if self.prog_bar:
             self.prog_bar.setValue(0)
