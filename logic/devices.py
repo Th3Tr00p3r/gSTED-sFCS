@@ -43,9 +43,8 @@ class UM232(drivers.FTDI_Instrument):
         """Doc."""
 
         read_bytes = self.read_bytes(self._param_dict["n_bytes"])
-        if isinstance(read_bytes, list):  # check for error
-            self.tot_bytes += len(read_bytes)
-            self.data = np.append(self.data, read_bytes)
+        self.tot_bytes += len(read_bytes)
+        self.data = np.append(self.data, read_bytes)
 
         self.check_read_error()
 
