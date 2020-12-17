@@ -113,7 +113,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
 
 def dvc_err_hndlr(func) -> Callable:
     """Decorator for clean handling of various known device errors."""
-    # TODO: decide what to do with multiple errors - make a list (could explode?) or leave only the first?
+    # TODO: (low priority) decide what to do with multiple errors - make a list (could explode?) or leave only the first?
 
     if asyncio.iscoroutinefunction(func):
 
