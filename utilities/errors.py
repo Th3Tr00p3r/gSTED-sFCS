@@ -34,27 +34,38 @@ def build_err_dict(exc: Exception) -> str:
     return dict(exc_type=exc_type, exc_msg=str(exc), exc_tb=frmtd_tb[0])
 
 
-def log_str(nick: str, func_name: str, arg) -> str:
+def log_str(nick: str, func_name: str, cmnd: str) -> str:
     """Doc."""
 
-    return f'{const.DVC_LOG_DICT[nick]} didn\'t respond to {func_name}("{arg}") call'
+    return f"{const.DVC_LOG_DICT[nick]} didn't respond to {func_name}({cmnd}) call"
 
 
-def resolve_dvc_exc(exc: Exception, func: Callable, arg: str, dvc) -> int:
+def parse_args(args: tuple) -> str:
+    """Doc."""
+
+    if args == ():
+        cmnd = ""
+    else:
+        cmnd, *_ = args
+        cmnd = '"' + str(cmnd) + '"'
+    return cmnd
+
+
+def resolve_dvc_exc(exc: Exception, func: Callable, cmnd: str, dvc) -> int:
     """Decides what to do with caught, device-related exceptions"""
 
     if isinstance(exc, ValueError):
         if dvc.nick == "DEP_LASER":
             if not hasattr(dvc, "state"):  # initial toggle error
                 dvc.error_dict[dvc.nick] = build_err_dict(exc)
-                logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+                logging.error(log_str(dvc.nick, func.__name__, cmnd), exc_info=False)
             else:
-                logging.warning(log_str(dvc.nick, func.__name__, arg))
+                logging.warning(log_str(dvc.nick, func.__name__, cmnd))
                 return -999
 
         elif dvc.nick in {"DEP_SHUTTER", "UM232"}:
             dvc.error_dict[dvc.nick] = build_err_dict(exc)
-            logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            logging.error(log_str(dvc.nick, func.__name__, cmnd), exc_info=False)
             return 0
 
         else:
@@ -62,7 +73,7 @@ def resolve_dvc_exc(exc: Exception, func: Callable, arg: str, dvc) -> int:
 
     elif isinstance(exc, DaqError):
         dvc.error_dict[dvc.nick] = build_err_dict(exc)
-        logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+        logging.error(log_str(dvc.nick, func.__name__, cmnd), exc_info=False)
 
         if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
             return 0
@@ -70,12 +81,12 @@ def resolve_dvc_exc(exc: Exception, func: Callable, arg: str, dvc) -> int:
     elif isinstance(exc, VisaIOError):
         if dvc.nick == "DEP_LASER":
             dvc.error_dict[dvc.nick] = build_err_dict(exc)
-            logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            logging.error(log_str(dvc.nick, func.__name__, cmnd), exc_info=False)
             return -999
 
         if dvc.nick == "STAGE":
             dvc.error_dict[dvc.nick] = build_err_dict(exc)
-            logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            logging.error(log_str(dvc.nick, func.__name__, cmnd), exc_info=False)
             return 0
 
         else:
@@ -84,7 +95,7 @@ def resolve_dvc_exc(exc: Exception, func: Callable, arg: str, dvc) -> int:
     elif isinstance(exc, (AttributeError, OSError, FtdiError)):
         if dvc.nick == "UM232":
             dvc.error_dict[dvc.nick] = build_err_dict(exc)
-            logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+            logging.error(log_str(dvc.nick, func.__name__, cmnd), exc_info=False)
             return 0
 
         else:
@@ -92,18 +103,18 @@ def resolve_dvc_exc(exc: Exception, func: Callable, arg: str, dvc) -> int:
 
     elif isinstance(exc, UC480Error):
         dvc.error_dict[dvc.nick] = build_err_dict(exc)
-        logging.error(log_str(dvc.nick, func.__name__, arg), exc_info=False)
+        logging.error(log_str(dvc.nick, func.__name__, cmnd), exc_info=False)
 
     elif isinstance(exc, TypeError):
         if dvc.nick == "CAMERA":
-            logging.warning(log_str(dvc.nick, func.__name__, arg))
+            logging.warning(log_str(dvc.nick, func.__name__, cmnd))
 
     else:
         raise exc
 
 
 def dvc_err_hndlr(func):
-    """decorator for clean handling of various known device errors."""
+    """Decorator for clean handling of various known device errors."""
     # TODO: decide what to do with multiple errors - make a list (could explode?) or leave only the first?
 
     if asyncio.iscoroutinefunction(func):
@@ -116,8 +127,8 @@ def dvc_err_hndlr(func):
                 return await func(dvc, *args, **kwargs)
 
             except Exception as exc:
-                first_arg, *_ = args
-                return resolve_dvc_exc(exc, func, first_arg, dvc)
+                cmnd = parse_args(args)
+                return resolve_dvc_exc(exc, func, cmnd, dvc)
 
     else:
 
@@ -129,8 +140,8 @@ def dvc_err_hndlr(func):
                 return func(dvc, *args, **kwargs)
 
             except Exception as exc:
-                first_arg, *_ = args
-                return resolve_dvc_exc(exc, func, first_arg, dvc)
+                cmnd = parse_args(args)
+                return resolve_dvc_exc(exc, func, cmnd, dvc)
 
     return wrapper
 
