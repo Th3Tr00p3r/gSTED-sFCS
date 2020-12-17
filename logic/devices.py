@@ -167,7 +167,7 @@ class Camera(drivers.UC480Instrument):
         """Doc."""
 
         while self.vid_state is True:
-            img = self._latest_frame()
+            img = self.get_latest_frame()
             self._imshow(img)
             await asyncio.sleep(const.CAM_VID_INTRVL)
 

@@ -56,7 +56,7 @@ class UC480Instrument:
     def get_latest_frame(self):
         """Doc."""
 
-        frame_ready = self._inst.wait_for_frame(timeout="200 ms")
+        frame_ready = self._inst.wait_for_frame(timeout="0 ms")
         if frame_ready:
             return self._inst.latest_frame(copy=False)
 
@@ -176,9 +176,7 @@ class DAQmxInstrumentCI:
     def read(self):
         """Doc."""
 
-        counts = self._task.read(number_of_samples_per_channel=-1)[0]
-
-        return counts
+        return self._task.read(number_of_samples_per_channel=-1)[0]
 
     @err_hndlr
     def close(self):
