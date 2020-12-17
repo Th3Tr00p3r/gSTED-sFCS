@@ -156,7 +156,6 @@ class Timeout:
 
         async def update_SHG_temp(dep_dvc, main_gui):
             """Doc."""
-            # TODO: fix None type when turning off dep laser while app running
 
             await dep_dvc.get_SHG_temp()
             main_gui.depTemp.setValue(dep_dvc.temp)
@@ -208,7 +207,6 @@ class Timeout:
 
     async def _update_gui(self):
         """Doc."""
-        # TODO: update error GUI according to errors in 'error_dict'
 
         while self.not_finished:
 

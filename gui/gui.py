@@ -74,7 +74,6 @@ class MainWin(QMainWindow):
     @pyqtSlot()
     def on_depApplySettings_released(self) -> NoReturn:
         """Apply current/power mode and value"""
-        # TODO: causes fatal error when pressed if there is DEP ERROR, fix it
 
         self.imp.dep_sett_apply()
 
