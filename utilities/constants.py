@@ -5,7 +5,7 @@ import gui.icons.icon_paths as icon
 
 # general
 TIMEOUT = 0.010  # seconds (10 ms)
-CAM_VID_INTRVL = 0.200  # seconds (200 ms)
+CAM_VID_INTRVL = 0.300  # seconds (300 ms)
 
 
 # paths
@@ -23,9 +23,6 @@ MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
 #                        from PyQt5.QtMultimedia import QSound
 #                                if self.time_passed == self.duration_spinbox.value():
 #                                    QSound.play(const.MEAS_COMPLETE_SOUND);
-
-# log
-LOG_VERBOSITY = {"always", "verbose"}
 
 # devices
 DVC_LED_NAME = {

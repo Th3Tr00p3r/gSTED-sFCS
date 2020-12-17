@@ -2,6 +2,8 @@
 """Timeout module."""
 
 import asyncio
+import collections
+import itertools as it
 
 # import concurrent.futures
 import logging
@@ -111,10 +113,30 @@ class Timeout:
         def are_last_n_ident(lst, n):
             """Check if the last n elements of a list are identical"""
 
-            if len(lst) > n:
-                return len(set(lst[-n:])) == 1
+            def tail(n, iterable):
+                """
+                Return an iterator over the last n items.
+                (https://docs.python.org/3.8/library/itertools.html?highlight=itertools#itertools-recipes)
+
+                tail(3, 'ABCDEFG') --> E F G
+                """
+
+                return iter(collections.deque(iterable, maxlen=n))
+
+            def all_equal(iterable):
+                """
+                Returns True if all the elements are equal to each other
+                (https://docs.python.org/3.8/library/itertools.html?highlight=itertools#itertools-recipes)
+                """
+
+                g = it.groupby(iterable)
+                return next(g, True) and not next(g, False)
+
+            return all_equal(tail(n, lst))
 
         while self.not_finished:
+
+            await asyncio.sleep(self._cntr_chck_intrvl)
 
             if self.running:
                 try:
@@ -126,9 +148,6 @@ class Timeout:
                     self._app.error_dict["COUNTER"] = errors.build_err_dict(exc)
                     logging.error("Detector is disconnected", exc_info=False)
                     self._cntr_chck_intrvl = 999
-
-            # TODO: using same interval as for GUI update - should I?
-            await asyncio.sleep(self._cntr_chck_intrvl)
 
     async def _update_dep(self):
         """Update depletion laser GUI"""
@@ -224,7 +243,7 @@ class Timeout:
                         if meas.time_passed < meas.duration_spinner.value():
                             meas.time_passed += 1
 
-                        else:  # timer finished
+                        else:  # measurement finished
                             meas.disp_ACF()
                             self._app.dvc_dict["UM232"].init_data()
                             self._app.dvc_dict["UM232"].purge()
