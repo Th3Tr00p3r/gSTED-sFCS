@@ -207,9 +207,10 @@ class DepletionLaser(drivers.VISAInstrument):
         )
         self.update_time = param_dict["update_time"]
 
-        if self.toggle(False) is True:
+        self.toggle(False)
+
+        if self.state is False:
             self.set_current(1500)
-            self.get_SHG_temp()
 
     def toggle(self, bool):
         """Doc."""
