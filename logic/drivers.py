@@ -220,9 +220,8 @@ class VISAInstrument:
             task.write(cmnd)
 
         if cmnd.startswith("setLDenable"):  # change state if toggle is performed
-            self.state = bool(int(cmnd[-1]))
-
-        return True
+            *_, toggle_val = cmnd
+            self.state = bool(int(toggle_val))
 
     @err_hndlr
     async def _aquery(self, cmnd) -> float:
@@ -256,6 +255,7 @@ class VISAInstrument:
                 self._inst.address,
                 read_termination=self._inst.read_termination,
                 write_termination=self._inst.write_termination,
+                timeout=3,
                 open_timeout=3,
             )
             self._rsrc.query_delay = 0.1
