@@ -163,6 +163,9 @@ class Camera(drivers.UC480Instrument):
         if bool:
             self._app.loop.create_task(self._vidshow())
 
+    async def _vidshow(self):
+        """Doc."""
+
         while self.vid_state is True:
             img = self._latest_frame()
             self._imshow(img)
@@ -176,14 +179,6 @@ class Camera(drivers.UC480Instrument):
         ax = self._gui.figure.add_subplot(111)
         ax.imshow(img)
         self._gui.canvas.draw()
-
-    async def _vidshow(self):
-        """Doc."""
-
-        while self.vid_state is True:
-            img = self.get_latest_frame()
-            self._imshow(img)
-            await asyncio.sleep(const.CAM_VID_INTRVL)
 
 
 class SimpleDO(drivers.DAQmxInstrumentDO):
