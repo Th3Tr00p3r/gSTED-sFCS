@@ -41,7 +41,7 @@ def parse_args(args: tuple) -> str:
         cmnd = ""
     else:
         cmnd, *_ = args
-        cmnd = '"' + str(cmnd) + '"'
+        cmnd = "'" + str(cmnd) + "'"
     return cmnd
 
 

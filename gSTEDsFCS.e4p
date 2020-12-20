@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-12-09, 13:20:54 -->
+<!-- Saved: 2020-12-20, 09:40:24 -->
 <!-- Copyright (C) 2020 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -16,7 +16,6 @@
     <Source>gui/__init__.py</Source>
     <Source>gui/gui.py</Source>
     <Source>gui/icons/__init__.py</Source>
-    <Source>gui/icons/icon_paths.py</Source>
     <Source>gui/icons/icons_rc.py</Source>
     <Source>gui/icons/icons_rc.py</Source>
     <Source>logic/__init__.py</Source>
