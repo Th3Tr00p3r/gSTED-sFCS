@@ -7,6 +7,7 @@ import nidaqmx
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from pyftdi.ftdi import Ftdi
+from pyftdi.usbtools import UsbTools
 
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
@@ -75,10 +76,20 @@ class FTDI_Instrument:
     def open(self):
         """Doc."""
 
+        UsbTools.flush_cache()
+
+        #        self._inst.open_bitbang(
+        #            vendor=self._param_dict["vend_id"],
+        #            product=self._param_dict["prod_id"],
+        #            latency=self._param_dict["ltncy_tmr_val"],
+        #            baudrate = 256000,
+        #            sync=True)
+        #        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
+        #        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
+
         self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
         self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
         self._inst._usb_read_timeout = self._param_dict["read_timeout"]
-        self._inst._usb_write_timeout = self._param_dict["read_timeout"]
         self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
         self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
         self.eff_baud_rate = self._inst.set_baudrate(
@@ -87,11 +98,10 @@ class FTDI_Instrument:
 
         self.state = True
 
-    @err_hndlr
-    def read_bytes(self, n_bytes):
+    def read(self):
         """Doc."""
 
-        return self._inst.read_data_bytes(n_bytes)
+        return self._inst.read_data_bytes(4096)  # self._param_dict["n_bytes"])
 
     @err_hndlr
     def is_read_error(self):
@@ -104,7 +114,7 @@ class FTDI_Instrument:
     def purge(self):
         """Doc."""
 
-        self._inst.purge_buffers()
+        self._inst.purge_rx_buffer()
 
     @err_hndlr
     def close(self):

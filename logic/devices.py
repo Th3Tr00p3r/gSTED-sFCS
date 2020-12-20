@@ -39,10 +39,18 @@ class UM232(drivers.FTDI_Instrument):
         if self.is_read_error():
             self.error_dict[self.nick] = "read error"
 
+    @err_hndlr
     def read_TDC_data(self):
         """Doc."""
 
-        read_bytes = self.read_bytes(self._param_dict["n_bytes"])
+        read_bytes = self.read()
+
+        # TEST ------------------------------------------------------------------
+        #        if len(read_bytes):
+        #            print(list(read_bytes))
+        #        print("# bytes read:", len(read_bytes))
+        # -------------------------------------------------------------------------
+
         self.tot_bytes += len(read_bytes)
         self.data = np.append(self.data, read_bytes)
 
@@ -205,6 +213,7 @@ class DepletionLaser(drivers.VISAInstrument):
             write_termination="\r",
         )
         self.update_time = param_dict["update_time"]
+        self.state = None
 
         self.toggle(False)
 
