@@ -1,4 +1,3 @@
-arduinoAddr,COM3
 AOXchannel,Dev3/ao0
 AOYchannel,Dev3/ao1
 AOZchannel,Dev3/ao2
@@ -33,6 +32,7 @@ TDCaddress,Dev3/port0/line12
 TDCdataVersion,7bytes noreset
 pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
+arduinoAddr,COM3
 um232FlowControl,hw
 um232DeviceDescription,UM232H
 um232BitMode,SYNCFF
@@ -48,7 +48,7 @@ pixelClockHighTicks,2
 pixelClockFreq,4000
 um232VendID,1027
 um232BaudRate,256000
-um232ReadTimeout,10
+um232ReadTimeout,0
 um232ProdID,24596
 um232latencyTimerVal,2
 um232nBytes,512000

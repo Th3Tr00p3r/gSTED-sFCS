@@ -39,7 +39,7 @@ class Timeout:
         """Doc."""
 
         await asyncio.gather(
-            self._cntr_read(),  # TODO: move all counter-related into single function?
+            self._timeout(),
             self._update_avg_counts(),
             self._check_cntr_err(),
             self._update_dep(),
@@ -74,18 +74,20 @@ class Timeout:
             self.running = True
             logging.debug("Resuming main timer.")
 
-    async def _cntr_read(self):
+    async def _timeout(self):
         """Doc."""
-
-        nick = "COUNTER"
 
         while self.not_finished:
 
             if self.running:
-                if self._app.error_dict[nick] is None:
 
-                    self._app.dvc_dict[nick].count()
-                    self._app.dvc_dict[nick].dump_buff_overflow()
+                if self._app.error_dict["COUNTER"] is None:
+                    self._app.dvc_dict["COUNTER"].count()
+                    self._app.dvc_dict["COUNTER"].dump_buff_overflow()
+
+                if self._app.error_dict["UM232"] is None:
+                    if self._app.meas.type is not None:
+                        self._app.dvc_dict["UM232"].read_TDC_data()
 
             await asyncio.sleep(const.TIMEOUT)
 
@@ -236,7 +238,6 @@ class Timeout:
                 if self._app.error_dict["UM232"] is None:
 
                     if meas.type == "FCS":
-                        self._app.dvc_dict["UM232"].read_TDC_data()
 
                         if meas.time_passed < meas.duration_spinner.value():
                             meas.time_passed += 1
