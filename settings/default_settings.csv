@@ -1,3 +1,14 @@
+arduinoAddr,COM3
+counterPixelClockAddress,Dev1/Ctr0
+pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
+counterTriggerAddress,Dev3/port1/line0
+counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
+counterPhotonCounter,Dev3/ctr1
+counterCIcountEdgesTerm,/Dev3/PFI8
+TDCaddress,Dev3/port0/line12
+TDCdataVersion,7bytes noreset
+pixelClockCounterAddress,Dev3/ctr0
+pixelClockSrcOfTicks,/Dev3/PFI3
 AOXchannel,Dev3/ao0
 AOYchannel,Dev3/ao1
 AOZchannel,Dev3/ao2
@@ -22,22 +33,9 @@ solDataPath,./data/solution measurements
 imgDataPath,./data/image measurements
 camDataPath,./data/camera photos
 logDataPath,./log/
-counterPixelClockAddress,Dev1/Ctr0
-pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
-counterTriggerAddress,Dev3/port1/line0
-counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
-counterPhotonCounter,Dev3/ctr1
-counterCIcountEdgesTerm,/Dev3/PFI8
-TDCaddress,Dev3/port0/line12
-TDCdataVersion,7bytes noreset
-pixelClockCounterAddress,Dev3/ctr0
-pixelClockSrcOfTicks,/Dev3/PFI3
-arduinoAddr,COM3
 um232FlowControl,hw
 um232DeviceDescription,UM232H
 um232BitMode,SYNCFF
-AIclkDivSpinner,100
-depUpdateTime,2
 counterBufferSizeSpinner,2000
 TDClaserFreq,10
 TDCFPGAFreq,400
@@ -46,10 +44,12 @@ TDCversion,3
 pixelClockLowTicks,10
 pixelClockHighTicks,2
 pixelClockFreq,4000
+AIclkDivSpinner,100
+depUpdateTime,2
 um232VendID,1027
-um232BaudRate,256000
+um232BaudRate,102400
 um232ReadTimeout,0
 um232ProdID,24596
 um232latencyTimerVal,2
-um232nBytes,512000
+um232nBytes,4096
 counterUpdateTime,0.2

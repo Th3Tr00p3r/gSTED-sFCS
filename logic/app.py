@@ -91,8 +91,8 @@ class App:
             return param_dict
 
         self.dvc_dict = {}
-        for nick in const.DEVICE_NICKS:
-            dvc_class = getattr(devices, const.DEVICE_CLASS_NAMES[nick])
+        for nick in const.DEVICE_NICKS - {"COUNTER"}:
+            dvc_class = getattr(devices, const.DVC_CLASS_NAMES[nick])
 
             if nick in {"CAMERA"}:
                 self.dvc_dict[nick] = dvc_class(
@@ -101,7 +101,6 @@ class App:
                     app=self,
                     gui=self.win_dict["camera"],
                 )
-
             else:
                 param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
                 self.dvc_dict[nick] = dvc_class(
@@ -109,6 +108,16 @@ class App:
                     param_dict=param_dict,
                     error_dict=self.error_dict,
                 )
+
+        nick = "COUNTER"
+        dvc_class = getattr(devices, const.DVC_CLASS_NAMES[nick])
+        param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
+        self.dvc_dict[nick] = dvc_class(
+            nick=nick,
+            param_dict=param_dict,
+            error_dict=self.error_dict,
+            ai_task=self.dvc_dict["SCANNERS"].ai_task,
+        )
 
     def init_errors(self):
         """Doc."""
