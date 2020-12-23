@@ -34,6 +34,7 @@ DVC_LED_NAME = {
     "UM232": "ledUm232",
     "TDC": "ledTdc",
     "CAMERA": "ledCam",
+    "SCANNERS": "ledScn",
 }
 
 ICON_DICT = {
@@ -61,6 +62,7 @@ ICON_DICT = {
     "UM232": {"LED": DVC_LED_NAME["UM232"], "ICON": icon.LED_GREEN},
     "TDC": {"LED": DVC_LED_NAME["TDC"], "ICON": icon.LED_GREEN},
     "CAMERA": {"LED": DVC_LED_NAME["CAMERA"], "ICON": icon.LED_GREEN},
+    "SCANNERS": {"LED": DVC_LED_NAME["SCANNERS"], "ICON": icon.LED_GREEN},
 }
 
 DVC_LOG_DICT = {
@@ -72,6 +74,7 @@ DVC_LOG_DICT = {
     "TDC": "TDC",
     "COUNTER": "Counter",
     "UM232": "UM232",
+    "SCANNERS": "Scanners",
 }
 
 DEVICE_NICKS = {
@@ -83,16 +86,10 @@ DEVICE_NICKS = {
     "STAGE",
     "CAMERA",
     "TDC",
+    "SCANNERS",
 }
 
-DEVICE_ADDRESS_GUI_DICT = {
-    "EXC_LASER": "excTriggerExtChan",
-    "DEP_LASER": "depPort",
-    "DEP_SHUTTER": "depShutterChan",
-    "STAGE": "arduinoChan",
-}
-
-DEVICE_CLASS_NAMES = {
+DVC_CLASS_NAMES = {
     "EXC_LASER": "SimpleDO",
     "TDC": "SimpleDO",
     "DEP_SHUTTER": "SimpleDO",
@@ -101,6 +98,7 @@ DEVICE_CLASS_NAMES = {
     "COUNTER": "Counter",
     "UM232": "UM232",
     "CAMERA": "Camera",
+    "SCANNERS": "Scanners",
 }
 
 EXC_LASER_PARAM_GUI_DICT = {
@@ -175,6 +173,25 @@ PXL_CLK_PARAM_GUI_DICT = {
     "freq": {"field": "pixelClockFreq", "access": "value"},
 }
 
+SCANNERS_PARAM_GUI_DICT = {
+    "ai_x_addr": {"field": "AIXaddr", "access": "text"},
+    "ai_y_addr": {"field": "AIYaddr", "access": "text"},
+    "ai_z_addr": {"field": "AIZaddr", "access": "text"},
+    "ai_laser_mon_addr": {"field": "AIlaserMonAddr", "access": "text"},
+    "ai_clk_div": {"field": "AIclkDivSpinner", "access": "value"},
+    "ai_trg_src": {"field": "AItrigSrc", "access": "text"},
+    "ao_x_addr": {"field": "AOXaddr", "access": "text"},
+    "ao_y_addr": {"field": "AOYaddr", "access": "text"},
+    "ao_z_addr": {"field": "AOZaddr", "access": "text"},
+    "ao_int_x_addr": {"field": "AOXintAddr", "access": "text"},
+    "ao_int_y_addr": {"field": "AOYintAddr", "access": "text"},
+    "ao_int_z_addr": {"field": "AOZintAddr", "access": "text"},
+    "ao_dig_trg_src": {"field": "AOdigTrigSrc", "access": "text"},
+    "ao_trg_edge": {"field": "AOtriggerEdge", "access": "currentText"},
+    "ao_wf_type": {"field": "AOwfType", "access": "currentText"},
+}
+
+# TODO: There has to be a more elegant way to get the parameters from the settings window into the device classes.
 DVC_NICK_PARAMS_DICT = {
     "EXC_LASER": EXC_LASER_PARAM_GUI_DICT,
     "DEP_SHUTTER": DEP_SHUTTER_PARAM_GUI_DICT,
@@ -184,4 +201,5 @@ DVC_NICK_PARAMS_DICT = {
     "UM232": UM232_PARAM_GUI_DICT,
     "TDC": TDC_PARAM_GUI_DICT,
     "PXL_CLK": PXL_CLK_PARAM_GUI_DICT,
+    "SCANNERS": SCANNERS_PARAM_GUI_DICT,
 }

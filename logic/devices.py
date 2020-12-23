@@ -12,6 +12,29 @@ import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
+class Scanners(drivers.DAQmxInstrumentAIO):
+    """
+    Scanners encompasses all analog focal point positioning devices
+    (X: x_galvo, Y: y_galvo, Z: z_piezo)
+
+    """
+
+    def __init__(self, nick, param_dict, error_dict):
+        """Doc."""
+
+        super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
+
+        self.toggle(True)  # turn ON right from the start
+
+    def toggle(self, bool):
+        """Doc."""
+
+        if bool:
+            self.start_ai()
+        else:
+            self.close_ai()
+
+
 class UM232(drivers.FTDI_Instrument):
     """Doc."""
 
@@ -21,7 +44,6 @@ class UM232(drivers.FTDI_Instrument):
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self.init_data()
         self.toggle(True)
-        self.check_read_error()
 
     def toggle(self, bool):
         """Doc."""
@@ -32,12 +54,6 @@ class UM232(drivers.FTDI_Instrument):
         else:
             self.purge()
             self.close()
-
-    def check_read_error(self):
-        """Doc."""
-
-        if self.is_read_error():
-            self.error_dict[self.nick] = "read error"
 
     @err_hndlr
     def read_TDC_data(self):
@@ -54,8 +70,6 @@ class UM232(drivers.FTDI_Instrument):
         self.tot_bytes += len(read_bytes)
         self.data = np.append(self.data, read_bytes)
 
-        self.check_read_error()
-
     def init_data(self):
         """Doc."""
 
@@ -66,10 +80,12 @@ class UM232(drivers.FTDI_Instrument):
 class Counter(drivers.DAQmxInstrumentCI):
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict, error_dict, ai_task):
         """Doc."""
 
-        super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
+        super().__init__(
+            nick=nick, param_dict=param_dict, error_dict=error_dict, ai_task=ai_task
+        )
         self.cont_count_buff = []
         self.counts = None  # this is for scans where the counts are actually used.
         self.update_time = param_dict["update_time"]
@@ -195,6 +211,13 @@ class SimpleDO(drivers.DAQmxInstrumentDO):
         """Doc."""
 
         super().__init__(nick=nick, address=param_dict["addr"], error_dict=error_dict)
+
+        self.toggle(False)
+
+    def toggle(self, bool):
+        """Doc."""
+
+        self.write(bool)
 
 
 class DepletionLaser(drivers.VISAInstrument):

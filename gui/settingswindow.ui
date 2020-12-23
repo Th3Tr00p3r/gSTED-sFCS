@@ -103,7 +103,7 @@
          </font>
         </property>
         <property name="currentIndex">
-         <number>3</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="paths">
          <attribute name="title">
@@ -642,7 +642,7 @@
         </widget>
         <widget class="QWidget" name="ao_ai">
          <attribute name="title">
-          <string>AO/AI</string>
+          <string>Scanners</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_21">
           <item row="0" column="0">
@@ -668,12 +668,12 @@
                         </size>
                        </property>
                        <property name="text">
-                        <string>AOX Physical Channel</string>
+                        <string>AOX Physical Address</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="AOXchannel">
+                      <widget class="QLineEdit" name="AOXaddr">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -697,12 +697,12 @@
                         </size>
                        </property>
                        <property name="text">
-                        <string>AOY Physical Channel</string>
+                        <string>AOY Physical Address</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="AOYchannel">
+                      <widget class="QLineEdit" name="AOYaddr">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -726,12 +726,12 @@
                         </size>
                        </property>
                        <property name="text">
-                        <string>AOZ Physical Channel</string>
+                        <string>AOZ Physical Address</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="AOZchannel">
+                      <widget class="QLineEdit" name="AOZaddr">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -747,89 +747,93 @@
                   </layout>
                  </item>
                  <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_53">
+                  <layout class="QHBoxLayout" name="horizontalLayout_6">
                    <item>
-                    <widget class="QLabel" name="label_49">
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>AOX Internal Physical Channel</string>
-                     </property>
-                    </widget>
+                    <layout class="QVBoxLayout" name="verticalLayout_53">
+                     <item>
+                      <widget class="QLabel" name="label_49">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>AOX Internal Address</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="AOXintAddr">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>Dev3/_ao0_vs_aognd</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </item>
                    <item>
-                    <widget class="QLineEdit" name="AOXintChan">
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>Dev3/_ao0_vs_aognd</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_54">
-                   <item>
-                    <widget class="QLabel" name="label_50">
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>AOY Internal Physical Channel</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="AOYintChan">
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>Dev3/_ao1_vs_aognd</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_55">
-                   <item>
-                    <widget class="QLabel" name="label_51">
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>AOZ Internal Physical Channel</string>
-                     </property>
-                    </widget>
+                    <layout class="QVBoxLayout" name="verticalLayout_54">
+                     <item>
+                      <widget class="QLabel" name="label_50">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>AOY Internal Address</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="AOYintAddr">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>Dev3/_ao1_vs_aognd</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </item>
                    <item>
-                    <widget class="QLineEdit" name="AOZintChan">
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>Dev3/_ao2_vs_aognd</string>
-                     </property>
-                    </widget>
+                    <layout class="QVBoxLayout" name="verticalLayout_55">
+                     <item>
+                      <widget class="QLabel" name="label_51">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>AOZ Internal Address</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="AOZintAddr">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>Dev3/_ao2_vs_aognd</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </item>
                   </layout>
                  </item>
@@ -954,41 +958,6 @@
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_67">
                  <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_60">
-                   <item>
-                    <widget class="QLabel" name="label_54">
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>Physical Channels</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="AIchans">
-                     <property name="minimumSize">
-                      <size>
-                       <width>240</width>
-                       <height>0</height>
-                      </size>
-                     </property>
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>Dev3/ai23, Dev3/ai7, Dev3/ai9, Dev3/ai3</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
                   <layout class="QVBoxLayout" name="verticalLayout_61">
                    <item>
                     <widget class="QLabel" name="label_55">
@@ -1068,12 +1037,12 @@
                         </size>
                        </property>
                        <property name="text">
-                        <string>AIX Physical Channel</string>
+                        <string>AIX Address</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="AIXchannel">
+                      <widget class="QLineEdit" name="AIXaddr">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -1097,12 +1066,12 @@
                         </size>
                        </property>
                        <property name="text">
-                        <string>AIY Physical Channel</string>
+                        <string>AIY Address</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="AIYchannel">
+                      <widget class="QLineEdit" name="AIYaddr">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -1126,12 +1095,12 @@
                         </size>
                        </property>
                        <property name="text">
-                        <string>AIZ Physical Channel</string>
+                        <string>AIZ Address</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="AIZchannel">
+                      <widget class="QLineEdit" name="AIZaddr">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -1162,7 +1131,7 @@
                     </widget>
                    </item>
                    <item>
-                    <widget class="QLineEdit" name="AIlaserMon">
+                    <widget class="QLineEdit" name="AIlaserMonAddr">
                      <property name="font">
                       <font>
                        <pointsize>8</pointsize>
@@ -2068,7 +2037,7 @@
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>999999</number>
+                 <number>999999999</number>
                 </property>
                 <property name="value">
                  <number>256000</number>
@@ -2104,6 +2073,9 @@
                 </property>
                 <property name="buttonSymbols">
                  <enum>QAbstractSpinBox::NoButtons</enum>
+                </property>
+                <property name="maximum">
+                 <number>999999</number>
                 </property>
                 <property name="value">
                  <number>10</number>
