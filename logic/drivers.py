@@ -101,7 +101,7 @@ class FTDI_Instrument:
     def read(self):
         """Doc."""
 
-        return self._inst.read_data_bytes(4096)  # self._param_dict["n_bytes"])
+        return self._inst.read_data_bytes(self._param_dict["n_bytes"])
 
     @err_hndlr
     def is_read_error(self):
@@ -124,6 +124,95 @@ class FTDI_Instrument:
         self.state = False
 
 
+class DAQmxInstrumentAIO:
+    """Doc."""
+
+    def __init__(self, nick, param_dict, error_dict):
+
+        self.nick = nick
+        self._param_dict = param_dict
+        self.error_dict = error_dict
+
+        self._init_ai_task()
+
+    @err_hndlr
+    def _init_ai_task(self):
+        """Doc."""
+
+        self.ai_task = nidaqmx.Task(new_task_name="ai task")
+
+        # x-galvo
+        self.ai_task.ai_channels.add_ai_voltage_chan(
+            physical_channel=self._param_dict["ai_x_addr"],
+            name_to_assign_to_channel="aix",
+            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+            min_val=-5.0,
+            max_val=5.0,
+        )
+
+        # x-galvo
+        self.ai_task.ai_channels.add_ai_voltage_chan(
+            physical_channel=self._param_dict["ai_y_addr"],
+            name_to_assign_to_channel="aiy",
+            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+            min_val=-5.0,
+            max_val=5.0,
+        )
+
+        # z-piezo
+        self.ai_task.ai_channels.add_ai_voltage_chan(
+            physical_channel=self._param_dict["ai_z_addr"],
+            name_to_assign_to_channel="aiz",
+            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+            min_val=0.0,
+            max_val=10.0,
+        )
+
+        self.ai_task.timing.cfg_samp_clk_timing(
+            # source is unspecified - uses onboard clock (see https://nidaqmx-python.readthedocs.io/en/latest/timing.html#nidaqmx._task_modules.timing.Timing.cfg_samp_clk_timing)
+            rate=1000,  # TODO: value taken from PID settings in LabVIEW. turn this into a constant later
+            sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
+            samps_per_chan=1000,  # TODO: value taken from PID settings in LabVIEW. turn this into a constant later
+        )
+
+    @err_hndlr
+    def start_ai(self):
+        """Doc."""
+
+        self.ai_task.start()
+        self.ai_state = True
+
+    @err_hndlr
+    def close_ai(self):
+        """Doc."""
+
+        self.ai_task.close()
+        self.ai_state = False
+
+    @err_hndlr
+    def read(self):
+        """Doc."""
+
+        pass
+
+    #        self.ai_task.read()
+
+    @err_hndlr
+    def write(self, axis, vltg):
+        """Doc."""
+
+        if axis in {"x", "y"}:
+            limits = {"min_val": -5.0, "max_val": 5.0}
+        else:
+            limits = {"min_val": 0.0, "max_val": 10.0}
+
+        with nidaqmx.Task() as task:
+            task.ao_channels.add_ao_voltage_chan(
+                self._param_dict[f"ao_{axis}_addr"], **limits
+            )
+            task.write(vltg)
+
+
 class DAQmxInstrumentDO:
     """Doc."""
 
@@ -133,10 +222,8 @@ class DAQmxInstrumentDO:
         self._address = address
         self.error_dict = error_dict
 
-        self.toggle(False)
-
     @err_hndlr
-    def _write(self, bool):
+    def write(self, bool):
         """Doc."""
 
         with nidaqmx.Task() as task:
@@ -145,27 +232,25 @@ class DAQmxInstrumentDO:
 
         self.state = bool
 
-    def toggle(self, bool):
-        """Doc."""
-
-        self._write(bool)
-
 
 class DAQmxInstrumentCI:
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict, error_dict, ai_task):
         """Doc."""
 
         self.nick = nick
         self._param_dict = param_dict
         self.error_dict = error_dict
-        self._task = nidaqmx.Task()
-        self._init_chan()
+        self.ai_task = ai_task
+
+        self._init_task()
 
     @err_hndlr
-    def _init_chan(self):
+    def _init_task(self):
         """Doc."""
+
+        self._task = nidaqmx.Task("ci task")
 
         chan = self._task.ci_channels.add_ci_count_edges_chan(
             counter=self._param_dict["photon_cntr"],
@@ -174,6 +259,13 @@ class DAQmxInstrumentCI:
             count_direction=nidaqmx.constants.CountDirection.COUNT_UP,
         )
         chan.ci_count_edges_term = self._param_dict["CI_cnt_edges_term"]
+
+        self._task.timing.cfg_samp_clk_timing(
+            rate=self.ai_task.timing.samp_clk_rate,
+            source=self.ai_task.timing.samp_clk_term,
+            sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
+            samps_per_chan=self._param_dict["buff_sz"],
+        )
 
     @err_hndlr
     def start(self):
@@ -186,7 +278,9 @@ class DAQmxInstrumentCI:
     def read(self):
         """Doc."""
 
-        return self._task.read(number_of_samples_per_channel=-1)[0]
+        return self._task.read(
+            number_of_samples_per_channel=nidaqmx.constants.READ_ALL_AVAILABLE,
+        )[0]
 
     @err_hndlr
     def close(self):
