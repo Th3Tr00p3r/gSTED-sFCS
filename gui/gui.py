@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """ GUI Module. """
 
-from typing import NoReturn  # , Any
+from typing import NoReturn
 
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
@@ -23,6 +23,29 @@ class MainWin(QMainWindow):
         super(MainWin, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
         self.imp = wins_imp.MainWin(self, app)
+
+        # connecting signals & slots
+        self.xAoSpinner.valueChanged.connect(self.AoSpinners_value_changed)
+        self.yAoSpinner.valueChanged.connect(self.AoSpinners_value_changed)
+        self.zAoSpinner.valueChanged.connect(self.AoSpinners_value_changed)
+
+        self.axisMoveUp.released.connect(lambda: self.axisMove_released(1))
+        self.axisMoveDown.released.connect(lambda: self.axisMove_released(-1))
+
+        self.ledExc.clicked.connect(self.leds_clicked)
+        self.ledDep.clicked.connect(self.leds_clicked)
+        self.ledShutter.clicked.connect(self.leds_clicked)
+        self.ledStage.clicked.connect(self.leds_clicked)
+        self.ledCounter.clicked.connect(self.leds_clicked)
+        self.ledUm232.clicked.connect(self.leds_clicked)
+        self.ledTdc.clicked.connect(self.leds_clicked)
+        self.ledCam.clicked.connect(self.leds_clicked)
+        self.ledScn.clicked.connect(self.leds_clicked)
+
+        self.stageUp.released.connect(lambda: self.stageMove_released("UP"))
+        self.stageDown.released.connect(lambda: self.stageMove_released("DOWN"))
+        self.stageLeft.released.connect(lambda: self.stageMove_released("LEFT"))
+        self.stageRight.released.connect(lambda: self.stageMove_released("RIGHT"))
 
     def closeEvent(self, event: QEvent) -> NoReturn:
         """Doc."""
@@ -122,53 +145,30 @@ class MainWin(QMainWindow):
     # LEDS
     # -----------------------------------------------------------------------
 
-    @pyqtSlot()
-    def on_ledExc_clicked(self) -> NoReturn:
+    def leds_clicked(self) -> NoReturn:
         """Doc."""
 
         self.imp.led_clicked(str(self.sender().objectName()))
 
-    @pyqtSlot()
-    def on_ledDep_clicked(self) -> NoReturn:
-        """Doc."""
-
-        self.imp.led_clicked(str(self.sender().objectName()))
+    # -----------------------------------------------------------------------
+    # Position Control
+    # -----------------------------------------------------------------------
 
     @pyqtSlot()
-    def on_ledShutter_clicked(self) -> NoReturn:
+    def on_goToOrgButton_released(self) -> NoReturn:
         """Doc."""
 
-        self.imp.led_clicked(str(self.sender().objectName()))
+        self.imp.go_to_origin()
 
-    @pyqtSlot()
-    def on_ledStage_clicked(self) -> NoReturn:
+    def AoSpinners_value_changed(self, _) -> NoReturn:
         """Doc."""
 
-        self.imp.led_clicked(str(self.sender().objectName()))
+        self.imp.move_scanners_to()
 
-    @pyqtSlot()
-    def on_ledCounter_clicked(self) -> NoReturn:
+    def axisMove_released(self, sign: int) -> NoReturn:
         """Doc."""
 
-        self.imp.led_clicked(str(self.sender().objectName()))
-
-    @pyqtSlot()
-    def on_ledUm232_clicked(self) -> NoReturn:
-        """Doc."""
-
-        self.imp.led_clicked(str(self.sender().objectName()))
-
-    @pyqtSlot()
-    def on_ledTdc_clicked(self) -> NoReturn:
-        """Doc."""
-
-        self.imp.led_clicked(str(self.sender().objectName()))
-
-    @pyqtSlot()
-    def on_ledCam_clicked(self) -> NoReturn:
-        """Doc."""
-
-        self.imp.led_clicked(str(self.sender().objectName()))
+        self.imp.displace_scanner_axis(sign)
 
     # -----------------------------------------------------------------------
     # Stepper Stage Dock
@@ -180,29 +180,10 @@ class MainWin(QMainWindow):
 
         self.imp.dvc_toggle("STAGE")
 
-    @pyqtSlot()
-    def on_stageUp_released(self) -> NoReturn:
+    def stageMove_released(self, dir: str) -> NoReturn:
         """Doc."""
 
-        self.imp.move_stage(dir="UP", steps=self.stageSteps.value())
-
-    @pyqtSlot()
-    def on_stageDown_released(self) -> NoReturn:
-        """Doc."""
-
-        self.imp.move_stage(dir="DOWN", steps=self.stageSteps.value())
-
-    @pyqtSlot()
-    def on_stageLeft_released(self) -> NoReturn:
-        """Doc."""
-
-        self.imp.move_stage(dir="LEFT", steps=self.stageSteps.value())
-
-    @pyqtSlot()
-    def on_stageRight_released(self) -> NoReturn:
-        """Doc."""
-
-        self.imp.move_stage(dir="RIGHT", steps=self.stageSteps.value())
+        self.imp.move_stage(dir=dir, steps=self.stageSteps.value())
 
     @pyqtSlot()
     def on_stageRelease_released(self) -> NoReturn:

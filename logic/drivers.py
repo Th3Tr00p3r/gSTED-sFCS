@@ -190,7 +190,7 @@ class DAQmxInstrumentAIO:
         self.ai_state = False
 
     @err_hndlr
-    def read(self):
+    def read(self, ai_addrs: iter, limits: iter):
         """Doc."""
 
         pass
@@ -198,19 +198,14 @@ class DAQmxInstrumentAIO:
     #        self.ai_task.read()
 
     @err_hndlr
-    def write(self, axis, vltg):
+    async def write(self, ao_addrs: iter, vals: iter, limits: iter):
         """Doc."""
 
-        if axis in {"x", "y"}:
-            limits = {"min_val": -5.0, "max_val": 5.0}
-        else:
-            limits = {"min_val": 0.0, "max_val": 10.0}
-
         with nidaqmx.Task() as task:
-            task.ao_channels.add_ao_voltage_chan(
-                self._param_dict[f"ao_{axis}_addr"], **limits
-            )
-            task.write(vltg)
+            for (ao_addr, limits) in zip(ao_addrs, limits):
+                task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
+            task.write(vals, timeout=self.ao_timeout)
+            await asyncio.sleep(self.ao_timeout)
 
 
 class DAQmxInstrumentDO:

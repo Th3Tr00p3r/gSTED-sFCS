@@ -5,8 +5,7 @@ import gui.icons.icon_paths as icon
 
 # general
 TIMEOUT = 0.010  # seconds (10 ms)
-CAM_VID_INTRVL = 0.300  # seconds (300 ms)
-
+ORIGIN = (0.0, 0.0, 5.0)
 
 # paths
 MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
@@ -77,17 +76,17 @@ DVC_LOG_DICT = {
     "SCANNERS": "Scanners",
 }
 
-DEVICE_NICKS = {
-    "COUNTER",
-    "UM232",
+DEVICE_NICKS = [
     "EXC_LASER",
-    "DEP_LASER",
     "DEP_SHUTTER",
-    "STAGE",
-    "CAMERA",
     "TDC",
+    "DEP_LASER",
+    "STAGE",
+    "UM232",
+    "CAMERA",
     "SCANNERS",
-}
+    "COUNTER",
+]
 
 DVC_CLASS_NAMES = {
     "EXC_LASER": "SimpleDO",
@@ -191,6 +190,8 @@ SCANNERS_PARAM_GUI_DICT = {
     "ao_wf_type": {"field": "AOwfType", "access": "currentText"},
 }
 
+CAMERA_PARAM_GUI_DICT = {"vid_intrvl": {"field": "uc480VidIntrvl", "access": "value"}}
+
 # TODO: There has to be a more elegant way to get the parameters from the settings window into the device classes.
 DVC_NICK_PARAMS_DICT = {
     "EXC_LASER": EXC_LASER_PARAM_GUI_DICT,
@@ -202,4 +203,20 @@ DVC_NICK_PARAMS_DICT = {
     "TDC": TDC_PARAM_GUI_DICT,
     "PXL_CLK": PXL_CLK_PARAM_GUI_DICT,
     "SCANNERS": SCANNERS_PARAM_GUI_DICT,
+    "CAMERA": CAMERA_PARAM_GUI_DICT,
+}
+
+DVC_X_ARGS_DICT = {
+    "EXC_LASER": [],
+    "DEP_SHUTTER": [],
+    "DEP_LASER": [],
+    "STAGE": [],
+    "COUNTER": ['app.dvc_dict["SCANNERS"].ai_task'],
+    "UM232": [],
+    "TDC": [],
+    "PXL_CLK": [],
+    "SCANNERS": [
+        '(app.win_dict["main"].xAoSpinner.value(), app.win_dict["main"].yAoSpinner.value(), app.win_dict["main"].zAoSpinner.value())'
+    ],
+    "CAMERA": ["app.loop", 'app.win_dict["camera"]'],
 }
