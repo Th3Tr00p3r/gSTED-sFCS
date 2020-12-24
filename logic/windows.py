@@ -2,6 +2,7 @@
 """ GUI windows implementations module. """
 
 import logging
+from typing import NoReturn
 
 import PyQt5.QtWidgets as QtWidgets
 from matplotlib import pyplot as plt
@@ -132,8 +133,49 @@ class MainWin:
             val = self._gui.depPowSpinner.value()
             self._app.dvc_dict[nick].set_power(val)
 
+    @err_chck({"SCANNERS"})
+    def move_scanners_to(self) -> NoReturn:
+        """Doc."""
+
+        pos_vltgs = (
+            self._gui.xAoSpinner.value(),
+            self._gui.yAoSpinner.value(),
+            self._gui.zAoSpinner.value(),
+        )
+
+        nick = "SCANNERS"
+        self._app.loop.create_task(self._app.dvc_dict[nick].move_to_pos(pos_vltgs))
+        logging.debug(f"{const.DVC_LOG_DICT[nick]} were moved to {str(pos_vltgs)} V")
+
+    @err_chck({"SCANNERS"})
+    def go_to_origin(self) -> NoReturn:
+        """Doc."""
+
+        (x_org, y_org, z_org) = const.ORIGIN
+
+        self._gui.xAoSpinner.setValue(x_org)
+        self._gui.yAoSpinner.setValue(y_org)
+        self._gui.zAoSpinner.setValue(z_org)
+
+    @err_chck({"SCANNERS"})
+    def displace_scanner_axis(self, sign: int) -> NoReturn:
+        """Doc."""
+
+        axis = self._gui.axisCombox.currentText()
+        um_V_RATIO = getattr(self._app.win_dict["settings"], axis + "Conv").value()
+        um_disp = sign * self._gui.axisMoveSpinner.value()
+        delta_vltg = um_disp / um_V_RATIO
+
+        nick = "SCANNERS"
+        self._app.loop.create_task(
+            self._app.dvc_dict[nick].displace_axis(axis, delta_vltg)
+        )
+        logging.debug(
+            f"{const.DVC_LOG_DICT[nick]}({axis}) was displaced {str(um_disp)} um"
+        )
+
     @err_chck({"STAGE"})
-    def move_stage(self, dir, steps):
+    def move_stage(self, dir: str, steps: int):
         """Doc."""
 
         nick = "STAGE"
