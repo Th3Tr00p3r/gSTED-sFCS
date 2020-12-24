@@ -170,9 +170,9 @@ class DAQmxInstrumentAIO:
 
         self.ai_task.timing.cfg_samp_clk_timing(
             # source is unspecified - uses onboard clock (see https://nidaqmx-python.readthedocs.io/en/latest/timing.html#nidaqmx._task_modules.timing.Timing.cfg_samp_clk_timing)
-            rate=1000,  # TODO: value taken from PID settings in LabVIEW. turn this into a constant later
+            rate=self.ai_clk_rate,  # TODO - move these to settings -> param_dict
             sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
-            samps_per_chan=1000,  # TODO: value taken from PID settings in LabVIEW. turn this into a constant later
+            samps_per_chan=self.buff_sz,  # TODO - move these to settings -> param_dict
         )
 
     @err_hndlr
@@ -190,12 +190,11 @@ class DAQmxInstrumentAIO:
         self.ai_state = False
 
     @err_hndlr
-    def read(self, ai_addrs: iter, limits: iter):
+    def read(self):
         """Doc."""
 
-        pass
-
-    #        self.ai_task.read()
+        # TODO: possibly switch to multiple samples (read buffer) as in labview, to have the option to plot and compare to AO (which also needs to be adapted to save its values in a buffer)
+        return self.ai_task.read(number_of_samples_per_channel=1)
 
     @err_hndlr
     async def write(self, ao_addrs: iter, vals: iter, limits: iter):

@@ -11,8 +11,10 @@ from typing import Callable
 from instrumental.drivers.cameras.uc480 import UC480Error
 from nidaqmx.errors import DaqError
 from pyftdi.ftdi import FtdiError
+from PyQt5.QtGui import QIcon
 from pyvisa.errors import VisaIOError
 
+import gui.icons.icon_paths as icon
 import utilities.constants as const
 from utilities.dialog import Error
 
@@ -51,64 +53,64 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
     log_str = (
         f"{const.DVC_LOG_DICT[dvc.nick]} didn't respond to {func_name}({cmnd}) call"
     )
+    lvl = "ERROR"
 
     if isinstance(exc, ValueError):
         if dvc.nick == "DEP_LASER":
             if dvc.state is None:  # initial toggle error
-                dvc.error_dict[dvc.nick] = build_err_dict(exc)
-                logging.error(log_str, exc_info=False)
+                result = 0
             else:
-                logging.warning(log_str)
-                return -999
+                lvl = "WARNING"
+                result = -999
 
         elif dvc.nick in {"DEP_SHUTTER", "UM232"}:
-            dvc.error_dict[dvc.nick] = build_err_dict(exc)
-            logging.error(log_str, exc_info=False)
-            return 0
-
+            result = 0
         else:
             raise exc
 
     elif isinstance(exc, DaqError):
-        dvc.error_dict[dvc.nick] = build_err_dict(exc)
-        logging.error(log_str, exc_info=False)
-
         if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
-            return 0
+            result = 0
+        else:
+            raise exc
 
     elif isinstance(exc, VisaIOError):
         if dvc.nick == "DEP_LASER":
-            dvc.error_dict[dvc.nick] = build_err_dict(exc)
-            logging.error(log_str, exc_info=False)
-            return -999
+            result = -999
 
-        if dvc.nick == "STAGE":
-            dvc.error_dict[dvc.nick] = build_err_dict(exc)
-            logging.error(log_str, exc_info=False)
-            return 0
-
+        elif dvc.nick == "STAGE":
+            result = 0
         else:
-            raise
+            raise exc
 
     elif isinstance(exc, (AttributeError, OSError, FtdiError)):
         if dvc.nick == "UM232":
-            dvc.error_dict[dvc.nick] = build_err_dict(exc)
-            logging.error(log_str, exc_info=False)
-            return 0
-
+            result = 0
         else:
             raise exc
 
     elif isinstance(exc, UC480Error):
-        dvc.error_dict[dvc.nick] = build_err_dict(exc)
-        logging.error(log_str, exc_info=False)
+        result = 0
 
     elif isinstance(exc, TypeError):
         if dvc.nick == "CAMERA":
-            logging.warning(log_str)
+            lvl = "WARNING"
+            result = 0
+        else:
+            raise exc
 
     else:
         raise exc
+
+    if lvl == "ERROR":
+        dvc.error_dict[dvc.nick] = build_err_dict(exc)
+        dvc.led.setIcon(QIcon(icon.LED_RED))
+        logging.error(log_str, exc_info=False)
+
+    else:  # "WARNING"
+        logging.warning(log_str)
+
+    return result
 
 
 def dvc_err_hndlr(func) -> Callable:

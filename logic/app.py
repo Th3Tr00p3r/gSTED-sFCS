@@ -97,17 +97,14 @@ class App:
         for nick in const.DEVICE_NICKS:
             dvc_class = getattr(devices, const.DVC_CLASS_NAMES[nick])
             param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
+            led = getattr(self.win_dict["main"], const.ICON_DICT[nick]["LED"])
             x_args = extra_args(self, const.DVC_X_ARGS_DICT[nick])
             if x_args:
                 self.dvc_dict[nick] = dvc_class(
-                    nick, param_dict, self.error_dict, *x_args
+                    nick, param_dict, self.error_dict, led, *x_args
                 )
             else:
-                self.dvc_dict[nick] = dvc_class(
-                    nick,
-                    param_dict,
-                    self.error_dict,
-                )
+                self.dvc_dict[nick] = dvc_class(nick, param_dict, self.error_dict, led)
 
     def init_errors(self):
         """Doc."""

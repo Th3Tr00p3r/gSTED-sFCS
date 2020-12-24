@@ -25,9 +25,9 @@ class MainWin(QMainWindow):
         self.imp = wins_imp.MainWin(self, app)
 
         # connecting signals & slots
-        self.xAoSpinner.valueChanged.connect(self.AoSpinners_value_changed)
-        self.yAoSpinner.valueChanged.connect(self.AoSpinners_value_changed)
-        self.zAoSpinner.valueChanged.connect(self.AoSpinners_value_changed)
+        self.xAoV.valueChanged.connect(self.AoV_value_changed)
+        self.yAoV.valueChanged.connect(self.AoV_value_changed)
+        self.zAoV.valueChanged.connect(self.AoV_value_changed)
 
         self.axisMoveUp.released.connect(lambda: self.axisMove_released(1))
         self.axisMoveDown.released.connect(lambda: self.axisMove_released(-1))
@@ -169,7 +169,7 @@ class MainWin(QMainWindow):
 
         self.imp.go_to_origin(which_axes)
 
-    def AoSpinners_value_changed(self, _) -> NoReturn:
+    def AoV_value_changed(self, _) -> NoReturn:
         """Doc."""
 
         self.imp.move_scanners_to()

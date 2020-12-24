@@ -8,9 +8,6 @@ import itertools as it
 # import concurrent.futures
 import logging
 
-from PyQt5.QtGui import QIcon
-
-import gui.icons.icon_paths as icon
 import utilities.constants as const
 import utilities.errors as errors
 
@@ -23,16 +20,13 @@ class Timeout:
 
         self._app = app
 
-        self.init_intrvls()
-
-    def init_intrvls(self):
-        """Doc."""
-
-        self._gui_updt_intrvl = 2
-        self._meas_updt_intrvl = 1
-        self._dep_updt_intrvl = self._app.dvc_dict["DEP_LASER"].update_time
-        self._cnts_updt_intrvl = self._app.dvc_dict["COUNTER"].update_time
-        self._cntr_chck_intrvl = 3
+        self.updt_intrvl = {
+            "gui": 0.2,
+            "meas": 1,
+            "dep": self._app.dvc_dict["DEP_LASER"].update_time,
+            "cntr_avg": self._app.dvc_dict["COUNTER"].update_time,
+            "cntr_chck": 3,
+        }
 
     # MAIN
     async def _main(self):
@@ -85,8 +79,8 @@ class Timeout:
                     self._app.dvc_dict["COUNTER"].count()
                     self._app.dvc_dict["COUNTER"].dump_buff_overflow()
 
-                if self._app.error_dict["UM232"] is None:
-                    if self._app.meas.type is not None:
+                if self._app.meas.type is not None:
+                    if self._app.error_dict["UM232"] is None:
                         self._app.dvc_dict["UM232"].read_TDC_data()
 
             await asyncio.sleep(const.TIMEOUT)
@@ -107,7 +101,7 @@ class Timeout:
                     avg_counts = self._app.dvc_dict[nick].average_counts()
                     self._app.win_dict["main"].countsSpinner.setValue(avg_counts)
 
-            await asyncio.sleep(self._cnts_updt_intrvl)
+            await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
     async def _check_cntr_err(self):
         """Doc."""
@@ -138,7 +132,7 @@ class Timeout:
 
         while self.not_finished:
 
-            await asyncio.sleep(self._cntr_chck_intrvl)
+            await asyncio.sleep(self.updt_intrvl["cntr_chck"])
 
             if self.running:
                 try:
@@ -197,6 +191,8 @@ class Timeout:
                     self._app.dvc_dict[nick],
                     self._app.win_dict["main"],
                 )
+
+            # TODO: try this sometime:
             #                with concurrent.futures.ThreadPoolExecutor() as pool:
             #                    result = await self._app.loop.run_in_executor(
             #                        pool, update_props(
@@ -205,8 +201,9 @@ class Timeout:
             #                    )
             #                    print(result)
 
-            await asyncio.sleep(self._dep_updt_intrvl)
+            await asyncio.sleep(self.updt_intrvl["dep"])
 
+    # TODO: this is a waste of compute. this can be done just once when the exception is raised (in errors.py?)
     async def _update_gui(self):
         """Doc."""
 
@@ -214,17 +211,14 @@ class Timeout:
 
             if self.running:
 
-                for nick in self._app.dvc_dict.keys():
+                if self._app.error_dict["SCANNERS"] is None:
+                    self._app.dvc_dict["SCANNERS"].get_last_ai()
+                    ((x_ai,), (y_ai,), (z_ai,)) = self._app.dvc_dict["SCANNERS"].last_ai
+                    self._app.win_dict["main"].xAiV.setValue(x_ai)
+                    self._app.win_dict["main"].yAiV.setValue(y_ai)
+                    self._app.win_dict["main"].zAiV.setValue(z_ai)
 
-                    if self._app.error_dict[nick] is not None:  # case ERROR
-                        gui_led_object = getattr(
-                            self._app.win_dict["main"],
-                            const.ICON_DICT[nick]["LED"],
-                        )
-                        red_led = QIcon(icon.LED_RED)
-                        gui_led_object.setIcon(red_led)
-
-            await asyncio.sleep(self._gui_updt_intrvl)
+            await asyncio.sleep(self.updt_intrvl["gui"])
 
     async def _update_measurement(self):
         """Doc."""
@@ -260,4 +254,4 @@ class Timeout:
                         "Start \nMeasurement"
                     )
 
-            await asyncio.sleep(self._meas_updt_intrvl)
+            await asyncio.sleep(self.updt_intrvl["meas"])
