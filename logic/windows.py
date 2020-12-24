@@ -147,31 +147,30 @@ class MainWin:
         self._app.loop.create_task(self._app.dvc_dict[nick].move_to_pos(pos_vltgs))
         logging.debug(f"{const.DVC_LOG_DICT[nick]} were moved to {str(pos_vltgs)} V")
 
-    @err_chck({"SCANNERS"})
-    def go_to_origin(self) -> NoReturn:
+    def go_to_origin(self, which_axes: dict) -> NoReturn:
         """Doc."""
 
-        (x_org, y_org, z_org) = const.ORIGIN
+        for axis, is_chosen, org_axis_vltg in zip(
+            which_axes.keys(), which_axes.values(), const.ORIGIN
+        ):
+            if is_chosen:
+                getattr(self._gui, f"{axis}AoSpinner").setValue(org_axis_vltg)
 
-        self._gui.xAoSpinner.setValue(x_org)
-        self._gui.yAoSpinner.setValue(y_org)
-        self._gui.zAoSpinner.setValue(z_org)
+        logging.debug(f"{const.DVC_LOG_DICT['SCANNERS']} sent to origin {which_axes}")
 
-    @err_chck({"SCANNERS"})
     def displace_scanner_axis(self, sign: int) -> NoReturn:
         """Doc."""
 
         axis = self._gui.axisCombox.currentText()
-        um_V_RATIO = getattr(self._app.win_dict["settings"], axis + "Conv").value()
+        current_vltg = getattr(self._gui, f"{axis}AoSpinner").value()
         um_disp = sign * self._gui.axisMoveSpinner.value()
+        um_V_RATIO = getattr(self._app.win_dict["settings"], axis + "Conv").value()
         delta_vltg = um_disp / um_V_RATIO
 
-        nick = "SCANNERS"
-        self._app.loop.create_task(
-            self._app.dvc_dict[nick].displace_axis(axis, delta_vltg)
-        )
+        getattr(self._gui, f"{axis}AoSpinner").setValue(current_vltg + delta_vltg)
+
         logging.debug(
-            f"{const.DVC_LOG_DICT[nick]}({axis}) was displaced {str(um_disp)} um"
+            f"{const.DVC_LOG_DICT['SCANNERS']}({axis}) was displaced {str(um_disp)} um"
         )
 
     @err_chck({"STAGE"})
