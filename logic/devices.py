@@ -3,6 +3,7 @@
 
 import asyncio
 import time
+from typing import NoReturn
 
 import numpy as np
 
@@ -23,11 +24,19 @@ class Scanners(drivers.DAQmxInstrumentAIO):
     z_limits = {"min_val": 0.0, "max_val": 10.0}
     ao_timeout = 0.003  # 3 ms
 
-    def __init__(self, nick, param_dict, error_dict, init_pos_vltgs):
+    # TODO - move these to settings -> param_dict
+    buff_sz = 1000
+    ai_clk_rate = 1000
+
+    def __init__(self, nick, param_dict, error_dict, led, init_pos_vltgs):
+        self.led = led
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
 
-        self.ai_pos_vltg_dict = {"x": None, "y": None, "z": None}
-        self.ao_pos_vltg_dict = dict(zip(("x", "y", "z"), init_pos_vltgs))
+        self.last_ai = None
+        self.last_ao = init_pos_vltgs
+        # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
+        self.ao_buffer = []
+        self.ai_buffer = []
 
         self.toggle(True)  # turn ON right from the start
 
@@ -38,6 +47,11 @@ class Scanners(drivers.DAQmxInstrumentAIO):
             self.start_ai()
         else:
             self.close_ai()
+
+    def get_last_ai(self) -> NoReturn:
+        """Doc."""
+
+        self.last_ai = self.read()
 
     async def move_to_pos(self, pos_vltgs: iter):
         """
@@ -50,22 +64,31 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         ao_addrs = []
         limits = []
         vltgs = []
-        for axis, curr_axis_vltg, new_axis_vltg in zip(
-            self.ao_pos_vltg_dict.keys(), self.ao_pos_vltg_dict.values(), pos_vltgs
-        ):
+        axes = ("x", "y", "z")
+        for axis, curr_axis_vltg, new_axis_vltg in zip(axes, self.last_ao, pos_vltgs):
             if new_axis_vltg != curr_axis_vltg:
                 ao_addrs.append(self._param_dict[f"ao_{axis}_addr"])
                 limits.append(getattr(self, f"{axis}_limits"))
                 vltgs.append(new_axis_vltg)
-                self.ao_pos_vltg_dict[axis] = new_axis_vltg
+
+        self.last_ao = pos_vltgs
 
         await self.write(ao_addrs, vltgs, limits)
+
+    def dump_buff_overflow(self):
+        """Doc."""
+
+        if len(self.ao_buffer) > self.buff_sz:
+            self.ao_buffer = self.ao_buffer[-self.buff_sz :]
+        if len(self.ai_buffer) > self.buff_sz:
+            self.ai_buffer = self.ai_buffer[-self.buff_sz :]
 
 
 class UM232(drivers.FTDI_Instrument):
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict, error_dict, led):
+        self.led = led
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self.init_data()
         self.toggle(True)
@@ -105,7 +128,8 @@ class UM232(drivers.FTDI_Instrument):
 class Counter(drivers.DAQmxInstrumentCI):
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict, ai_task):
+    def __init__(self, nick, param_dict, error_dict, led, ai_task):
+        self.led = led
         super().__init__(
             nick=nick, param_dict=param_dict, error_dict=error_dict, ai_task=ai_task
         )
@@ -171,7 +195,8 @@ class Counter(drivers.DAQmxInstrumentCI):
 class Camera(drivers.UC480Instrument):
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict, loop, gui):
+    def __init__(self, nick, param_dict, error_dict, led, loop, gui):
+        self.led = led
         super().__init__(nick=nick, error_dict=error_dict)
         self._loop = loop
         self._gui = gui
@@ -228,7 +253,8 @@ class Camera(drivers.UC480Instrument):
 class SimpleDO(drivers.DAQmxInstrumentDO):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict, error_dict, led):
+        self.led = led
         super().__init__(nick=nick, address=param_dict["addr"], error_dict=error_dict)
 
         self.toggle(False)
@@ -244,7 +270,8 @@ class DepletionLaser(drivers.VISAInstrument):
 
     min_SHG_temp = 52
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict, error_dict, led):
+        self.led = led
         super().__init__(
             nick=nick,
             address=param_dict["addr"],
@@ -315,7 +342,8 @@ class StepperStage:
 
     # TODO: (low priority) try to fit with VISA driver - try adding longer response time as option to driver
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict, error_dict, led):
+        self.led = led
         self.nick = nick
         self.address = param_dict["addr"]
         self.error_dict = error_dict

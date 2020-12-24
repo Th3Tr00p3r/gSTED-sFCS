@@ -138,9 +138,9 @@ class MainWin:
         """Doc."""
 
         pos_vltgs = (
-            self._gui.xAoSpinner.value(),
-            self._gui.yAoSpinner.value(),
-            self._gui.zAoSpinner.value(),
+            self._gui.xAoV.value(),
+            self._gui.yAoV.value(),
+            self._gui.zAoV.value(),
         )
 
         nick = "SCANNERS"
@@ -154,7 +154,7 @@ class MainWin:
             which_axes.keys(), which_axes.values(), const.ORIGIN
         ):
             if is_chosen:
-                getattr(self._gui, f"{axis}AoSpinner").setValue(org_axis_vltg)
+                getattr(self._gui, f"{axis}AoV").setValue(org_axis_vltg)
 
         logging.debug(f"{const.DVC_LOG_DICT['SCANNERS']} sent to origin {which_axes}")
 
@@ -162,12 +162,12 @@ class MainWin:
         """Doc."""
 
         axis = self._gui.axisCombox.currentText()
-        current_vltg = getattr(self._gui, f"{axis}AoSpinner").value()
+        current_vltg = getattr(self._gui, f"{axis}AoV").value()
         um_disp = sign * self._gui.axisMoveSpinner.value()
         um_V_RATIO = getattr(self._app.win_dict["settings"], axis + "Conv").value()
         delta_vltg = um_disp / um_V_RATIO
 
-        getattr(self._gui, f"{axis}AoSpinner").setValue(current_vltg + delta_vltg)
+        getattr(self._gui, f"{axis}AoV").setValue(current_vltg + delta_vltg)
 
         logging.debug(
             f"{const.DVC_LOG_DICT['SCANNERS']}({axis}) was displaced {str(um_disp)} um"
@@ -246,7 +246,9 @@ class MainWin:
         """Doc."""
 
         self._gui.countsAvg.setValue(val)
-        self._app.timeout_loop._cnts_updt_intrvl = val / 1000  # convert to seconds
+        self._app.timeout_loop.updt_intrvl["cntr_avg"] = (
+            val / 1000
+        )  # convert to seconds
 
 
 class SettWin:
