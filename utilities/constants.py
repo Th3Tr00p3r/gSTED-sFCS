@@ -216,7 +216,7 @@ DVC_X_ARGS_DICT = {
     "TDC": [],
     "PXL_CLK": [],
     "SCANNERS": [
-        '(app.win_dict["main"].xAoSpinner.value(), app.win_dict["main"].yAoSpinner.value(), app.win_dict["main"].zAoSpinner.value())'
+        '(app.win_dict["main"].xAoV.value(), app.win_dict["main"].yAoV.value(), app.win_dict["main"].zAoV.value())'
     ],
     "CAMERA": ["app.loop", 'app.win_dict["camera"]'],
 }
