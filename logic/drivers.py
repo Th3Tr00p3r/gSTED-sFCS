@@ -296,7 +296,6 @@ class VISAInstrument:
         read_termination="",
         write_termination="",
     ):
-        """Doc."""
 
         self.nick = nick
         self.address = address
@@ -340,18 +339,18 @@ class VISAInstrument:
     class Task:
         """Doc."""
 
-        def __init__(self, inst):
+        def __init__(self, dvc):
             """Doc."""
 
-            self._inst = inst
+            self._dvc = dvc
 
         def __enter__(self):
             """Doc."""
 
-            self._rsrc = self._inst.rm.open_resource(
-                self._inst.address,
-                read_termination=self._inst.read_termination,
-                write_termination=self._inst.write_termination,
+            self._rsrc = self._dvc.rm.open_resource(
+                self._dvc.address,
+                read_termination=self._dvc.read_termination,
+                write_termination=self._dvc.write_termination,
                 timeout=3,
                 open_timeout=3,
             )
