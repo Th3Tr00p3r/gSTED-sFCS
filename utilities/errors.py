@@ -54,7 +54,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
 
     if isinstance(exc, ValueError):
         if dvc.nick == "DEP_LASER":
-            if not hasattr(dvc, "state"):  # initial toggle error
+            if dvc.state is None:  # initial toggle error
                 dvc.error_dict[dvc.nick] = build_err_dict(exc)
                 logging.error(log_str, exc_info=False)
             else:
