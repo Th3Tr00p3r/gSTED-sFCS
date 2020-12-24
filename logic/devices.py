@@ -7,7 +7,6 @@ import time
 import numpy as np
 
 import logic.drivers as drivers
-import utilities.constants as const
 import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
@@ -19,10 +18,16 @@ class Scanners(drivers.DAQmxInstrumentAIO):
 
     """
 
-    def __init__(self, nick, param_dict, error_dict):
-        """Doc."""
+    x_limits = {"min_val": -5.0, "max_val": 5.0}
+    y_limits = {"min_val": -5.0, "max_val": 5.0}
+    z_limits = {"min_val": 0.0, "max_val": 10.0}
+    ao_timeout = 0.003  # 3 ms
 
+    def __init__(self, nick, param_dict, error_dict, init_pos_vltgs):
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
+
+        self.ai_pos_vltg_dict = {"x": None, "y": None, "z": None}
+        self.ao_pos_vltg_dict = dict(zip(("x", "y", "z"), init_pos_vltgs))
 
         self.toggle(True)  # turn ON right from the start
 
@@ -34,13 +39,46 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         else:
             self.close_ai()
 
+    async def move_to_pos(self, pos_vltgs: iter):
+        """
+        Finds out which AO voltages were changed,
+        and writes those voltages to the relevant scanners with
+        the relevant limits.
+
+        """
+
+        ao_addrs = []
+        limits = []
+        vltgs = []
+        for axis, curr_axis_vltg, new_axis_vltg in zip(
+            self.ao_pos_vltg_dict.keys(), self.ao_pos_vltg_dict.values(), pos_vltgs
+        ):
+            if new_axis_vltg != curr_axis_vltg:
+                ao_addrs.append(self._param_dict[f"ao_{axis}_addr"])
+                limits.append(getattr(self, f"{axis}_limits"))
+                vltgs.append(new_axis_vltg)
+
+        await self.write(ao_addrs, vltgs, limits)
+
+    async def displace_axis(self, axis: str, disp_vltg: float):
+        """
+        Displaces single axis from current position
+        by adding a displacement voltage (+/-) to the
+        current voltage.
+
+        """
+
+        ao_addr = self._param_dict[f"ao_{axis}_addr"]
+        new_pos_vltg = self.ao_pos_vltg_dict[axis] + disp_vltg
+        limits = getattr(self, f"{axis}_limits")
+
+        await self.write(list(ao_addr), list(new_pos_vltg), list(limits))
+
 
 class UM232(drivers.FTDI_Instrument):
     """Doc."""
 
     def __init__(self, nick, param_dict, error_dict):
-        """Doc."""
-
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self.init_data()
         self.toggle(True)
@@ -81,8 +119,6 @@ class Counter(drivers.DAQmxInstrumentCI):
     """Doc."""
 
     def __init__(self, nick, param_dict, error_dict, ai_task):
-        """Doc."""
-
         super().__init__(
             nick=nick, param_dict=param_dict, error_dict=error_dict, ai_task=ai_task
         )
@@ -148,11 +184,9 @@ class Counter(drivers.DAQmxInstrumentCI):
 class Camera(drivers.UC480Instrument):
     """Doc."""
 
-    def __init__(self, nick, error_dict, app, gui):
-        """Doc."""
-
+    def __init__(self, nick, param_dict, error_dict, loop, gui):
         super().__init__(nick=nick, error_dict=error_dict)
-        self._app = app
+        self._loop = loop
         self._gui = gui
         self.state = False
         self.vid_state = False
@@ -184,7 +218,7 @@ class Camera(drivers.UC480Instrument):
         self.toggle_vid(bool)
 
         if bool:
-            self._app.loop.create_task(self._vidshow())
+            self._loop.create_task(self._vidshow())
 
     async def _vidshow(self):
         """Doc."""
@@ -192,7 +226,7 @@ class Camera(drivers.UC480Instrument):
         while self.vid_state is True:
             img = self.get_latest_frame()
             self._imshow(img)
-            await asyncio.sleep(const.CAM_VID_INTRVL)
+            await asyncio.sleep(self.param_dict["vid_intrvl"])
 
     @err_hndlr
     def _imshow(self, img):
@@ -208,8 +242,6 @@ class SimpleDO(drivers.DAQmxInstrumentDO):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
     def __init__(self, nick, param_dict, error_dict):
-        """Doc."""
-
         super().__init__(nick=nick, address=param_dict["addr"], error_dict=error_dict)
 
         self.toggle(False)
@@ -226,8 +258,6 @@ class DepletionLaser(drivers.VISAInstrument):
     min_SHG_temp = 52
 
     def __init__(self, nick, param_dict, error_dict):
-        """Doc."""
-
         super().__init__(
             nick=nick,
             address=param_dict["addr"],
@@ -299,8 +329,6 @@ class StepperStage:
     # TODO: (low priority) try to fit with VISA driver - try adding longer response time as option to driver
 
     def __init__(self, nick, param_dict, error_dict):
-        """Doc."""
-
         self.nick = nick
         self.address = param_dict["addr"]
         self.error_dict = error_dict

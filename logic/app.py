@@ -23,6 +23,8 @@ class App:
     def __init__(self, loop):
         """Doc."""
 
+        self.loop = loop
+
         # init logging
         self.config_logging()
         logging.info("Application Started")
@@ -38,25 +40,18 @@ class App:
             self
         )  # instantiated on pressing camera button
 
-        self.win_dict["main"].ledUm232.setIcon(
-            QIcon(icon.LED_GREEN)
-        )  # either error or ON
-        self.win_dict["main"].ledCounter.setIcon(
-            QIcon(icon.LED_GREEN)
-        )  # either error or ON
+        # either error or ON
+        self.win_dict["main"].ledUm232.setIcon(QIcon(icon.LED_GREEN))
+        self.win_dict["main"].ledCounter.setIcon(QIcon(icon.LED_GREEN))
 
-        # initialize error dict
         self.init_errors()
-        # initialize active devices
         self.init_devices()
-        # initialize measurement
         self.meas = Measurement(self)
 
         # FINALLY
         self.win_dict["main"].show()
 
         # set up main timeout event
-        self.loop = loop
         self.timeout_loop = Timeout(self)
         self.timeout_loop.start()
 
@@ -77,47 +72,42 @@ class App:
         def params_from_GUI(app, gui_dict):
             """
             Get counter parameters from settings GUI
-            using a dictionary predefined in constants.py
+            using a dictionary predefined in constants.py.
 
             """
 
             param_dict = {}
-
             for key, val_dict in gui_dict.items():
                 gui_field = getattr(app.win_dict["settings"], val_dict["field"])
                 gui_field_value = getattr(gui_field, val_dict["access"])()
                 param_dict[key] = gui_field_value
-
             return param_dict
 
-        self.dvc_dict = {}
-        for nick in const.DEVICE_NICKS - {"COUNTER"}:
-            dvc_class = getattr(devices, const.DVC_CLASS_NAMES[nick])
+        def extra_args(app, x_args: list) -> list:
+            """Doc."""
 
-            if nick in {"CAMERA"}:
+            args = []
+            if x_args:
+                for var_str in x_args:
+                    args.append(eval(var_str))
+
+            return args
+
+        self.dvc_dict = {}
+        for nick in const.DEVICE_NICKS:
+            dvc_class = getattr(devices, const.DVC_CLASS_NAMES[nick])
+            param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
+            x_args = extra_args(self, const.DVC_X_ARGS_DICT[nick])
+            if x_args:
                 self.dvc_dict[nick] = dvc_class(
-                    nick=nick,
-                    error_dict=self.error_dict,
-                    app=self,
-                    gui=self.win_dict["camera"],
+                    nick, param_dict, self.error_dict, *x_args
                 )
             else:
-                param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
                 self.dvc_dict[nick] = dvc_class(
-                    nick=nick,
-                    param_dict=param_dict,
-                    error_dict=self.error_dict,
+                    nick,
+                    param_dict,
+                    self.error_dict,
                 )
-
-        nick = "COUNTER"
-        dvc_class = getattr(devices, const.DVC_CLASS_NAMES[nick])
-        param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
-        self.dvc_dict[nick] = dvc_class(
-            nick=nick,
-            param_dict=param_dict,
-            error_dict=self.error_dict,
-            ai_task=self.dvc_dict["SCANNERS"].ai_task,
-        )
 
     def init_errors(self):
         """Doc."""
