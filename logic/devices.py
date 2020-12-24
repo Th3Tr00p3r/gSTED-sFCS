@@ -41,9 +41,9 @@ class Scanners(drivers.DAQmxInstrumentAIO):
 
     async def move_to_pos(self, pos_vltgs: iter):
         """
-        Finds out which AO voltages were changed,
-        and writes those voltages to the relevant scanners with
-        the relevant limits.
+        Finds out which AO voltages need to be changed,
+        writes those voltages to the relevant scanners with
+        the relevant limits, and saves the changed AO voltages.
 
         """
 
@@ -57,22 +57,9 @@ class Scanners(drivers.DAQmxInstrumentAIO):
                 ao_addrs.append(self._param_dict[f"ao_{axis}_addr"])
                 limits.append(getattr(self, f"{axis}_limits"))
                 vltgs.append(new_axis_vltg)
+                self.ao_pos_vltg_dict[axis] = new_axis_vltg
 
         await self.write(ao_addrs, vltgs, limits)
-
-    async def displace_axis(self, axis: str, disp_vltg: float):
-        """
-        Displaces single axis from current position
-        by adding a displacement voltage (+/-) to the
-        current voltage.
-
-        """
-
-        ao_addr = self._param_dict[f"ao_{axis}_addr"]
-        new_pos_vltg = self.ao_pos_vltg_dict[axis] + disp_vltg
-        limits = getattr(self, f"{axis}_limits")
-
-        await self.write(list(ao_addr), list(new_pos_vltg), list(limits))
 
 
 class UM232(drivers.FTDI_Instrument):

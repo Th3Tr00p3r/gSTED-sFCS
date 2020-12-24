@@ -155,6 +155,7 @@ class App:
             gui.ledTdc.setIcon(QIcon(icon.LED_OFF))
             gui.ledCounter.setIcon(QIcon(icon.LED_GREEN))  # either error or ON
             gui.ledCam.setIcon(QIcon(icon.LED_OFF))
+            gui.ledScn.setIcon(QIcon(icon.LED_OFF))
 
         if restart:
             if self.meas.type is not None:

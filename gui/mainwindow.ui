@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -843,6 +843,9 @@
                          <height>30</height>
                         </size>
                        </property>
+                       <property name="decimals">
+                        <number>5</number>
+                       </property>
                        <property name="minimum">
                         <double>-5.000000000000000</double>
                        </property>
@@ -906,6 +909,12 @@
                          <height>30</height>
                         </size>
                        </property>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::UpDownArrows</enum>
+                       </property>
+                       <property name="decimals">
+                        <number>5</number>
+                       </property>
                        <property name="maximum">
                         <double>10.000000000000000</double>
                        </property>
@@ -949,6 +958,9 @@
                          <width>999</width>
                          <height>30</height>
                         </size>
+                       </property>
+                       <property name="decimals">
+                        <number>5</number>
                        </property>
                        <property name="minimum">
                         <double>-5.000000000000000</double>
@@ -1427,23 +1439,63 @@
                    </item>
                   </layout>
                  </item>
-                 <item row="0" column="0" alignment="Qt::AlignHCenter">
-                  <widget class="QPushButton" name="goToOrgButton">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                   <property name="font">
-                    <font>
-                     <pointsize>10</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>Go to Origin</string>
-                   </property>
-                  </widget>
+                 <item row="0" column="0">
+                  <layout class="QHBoxLayout" name="horizontalLayout_13">
+                   <item>
+                    <widget class="QPushButton" name="goToOrg">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>40</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>Go to Origin</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="goToOrgXY">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>40</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>Origin XY</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="goToOrgZ">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>40</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>10</pointsize>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>Origin Z</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </item>
                 </layout>
                </widget>
@@ -7312,7 +7364,6 @@ Settings</string>
   <tabstop>startImgScanButton</tabstop>
   <tabstop>currLine</tabstop>
   <tabstop>currPlane</tabstop>
-  <tabstop>goToOrgButton</tabstop>
   <tabstop>xAoSpinner</tabstop>
   <tabstop>xAi</tabstop>
   <tabstop>xPos</tabstop>

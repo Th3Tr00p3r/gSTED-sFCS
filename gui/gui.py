@@ -32,6 +32,16 @@ class MainWin(QMainWindow):
         self.axisMoveUp.released.connect(lambda: self.axisMove_released(1))
         self.axisMoveDown.released.connect(lambda: self.axisMove_released(-1))
 
+        self.goToOrg.released.connect(
+            lambda: self.origin_released({"x": True, "y": True, "z": True})
+        )
+        self.goToOrgXY.released.connect(
+            lambda: self.origin_released({"x": True, "y": True, "z": False})
+        )
+        self.goToOrgZ.released.connect(
+            lambda: self.origin_released({"x": False, "y": False, "z": True})
+        )
+
         self.ledExc.clicked.connect(self.leds_clicked)
         self.ledDep.clicked.connect(self.leds_clicked)
         self.ledShutter.clicked.connect(self.leds_clicked)
@@ -154,11 +164,10 @@ class MainWin(QMainWindow):
     # Position Control
     # -----------------------------------------------------------------------
 
-    @pyqtSlot()
-    def on_goToOrgButton_released(self) -> NoReturn:
+    def origin_released(self, which_axes: dict) -> NoReturn:
         """Doc."""
 
-        self.imp.go_to_origin()
+        self.imp.go_to_origin(which_axes)
 
     def AoSpinners_value_changed(self, _) -> NoReturn:
         """Doc."""
