@@ -80,10 +80,10 @@ class Timeout:
                     if self._app.error_dict["UM232"] is None:
                         self._app.dvc_dict["UM232"].read_TDC_data()
 
-            #                # AI
-            #                if self._app.error_dict["SCANNERS"] is None:
-            #                    self._app.dvc_dict["SCANNERS"].fill_ai_buff()
-            #                    self._app.dvc_dict["COUNTER"].dump_buff_overflow()
+                # AI
+                if self._app.error_dict["SCANNERS"] is None:
+                    self._app.dvc_dict["SCANNERS"].fill_ai_buff()
+                    self._app.dvc_dict["COUNTER"].dump_buff_overflow()
 
             await asyncio.sleep(const.TIMEOUT)
 
@@ -93,13 +93,14 @@ class Timeout:
         while self.not_finished:
 
             if self.running:
-                pass
-            #                # AI
-            #                if self._app.error_dict["SCANNERS"] is None:
-            #                    *_, ((x_ai,), (y_ai,), (z_ai,)) = self._app.dvc_dict["SCANNERS"].ai_buffer
-            #                    self._app.win_dict["main"].xAiV.setValue(x_ai)
-            #                    self._app.win_dict["main"].yAiV.setValue(y_ai)
-            #                    self._app.win_dict["main"].zAiV.setValue(z_ai)
+                # AI
+                if self._app.error_dict["SCANNERS"] is None:
+                    (x_ai, y_ai, z_ai) = tuple(
+                        self._app.dvc_dict["SCANNERS"].ai_buffer[:, -1]
+                    )
+                    self._app.win_dict["main"].xAiV.setValue(x_ai)
+                    self._app.win_dict["main"].yAiV.setValue(y_ai)
+                    self._app.win_dict["main"].zAiV.setValue(z_ai)
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
