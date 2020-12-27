@@ -4,8 +4,10 @@
 import asyncio
 
 import nidaqmx
+import numpy as np
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
+from nidaqmx.stream_readers import CounterReader
 from pyftdi.ftdi import Ftdi
 from pyftdi.usbtools import UsbTools
 
@@ -194,7 +196,9 @@ class DAQmxInstrumentAIO:
         """Doc."""
 
         # TODO: possibly switch to multiple samples (read buffer) as in labview, to have the option to plot and compare to AO (which also needs to be adapted to save its values in a buffer)
-        return self.ai_task.read(number_of_samples_per_channel=1)
+        return self.ai_task.read(
+            number_of_samples_per_channel=nidaqmx.constants.READ_ALL_AVAILABLE
+        )
 
     @err_hndlr
     async def write(self, ao_addrs: iter, vals: iter, limits: iter):
@@ -237,6 +241,7 @@ class DAQmxInstrumentCI:
         self._param_dict = param_dict
         self.error_dict = error_dict
         self.ai_task = ai_task
+        self.read_buffer = np.zeros(shape=(5000,), dtype="uint32")
 
         self._init_task()
 
@@ -260,6 +265,8 @@ class DAQmxInstrumentCI:
             sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
             samps_per_chan=self._param_dict["buff_sz"],
         )
+        self._task.stream_reader = CounterReader(self._task.in_stream)
+        self._task.stream_reader.verify_array_shape = False
 
     @err_hndlr
     def start(self):
@@ -272,9 +279,16 @@ class DAQmxInstrumentCI:
     def read(self):
         """Doc."""
 
-        return self._task.read(
+        num_samp_read = self._task.stream_reader.read_many_sample_uint32(
+            self.read_buffer,
             number_of_samples_per_channel=nidaqmx.constants.READ_ALL_AVAILABLE,
-        )[0]
+        )
+        #        print(self.read_buffer[:num_samp_read])
+        return num_samp_read
+
+    #        return self._task.read(
+    #            number_of_samples_per_channel=nidaqmx.constants.READ_ALL_AVAILABLE,
+    #        )[0]
 
     @err_hndlr
     def close(self):
