@@ -154,11 +154,11 @@ class Counter(drivers.DAQmxInstrumentCI):
     def count(self):
         """Doc."""
 
-        samps_read = self.read()
+        num_samps_read = self.read()
         self.cont_count_buff = np.append(
-            self.cont_count_buff, self.read_buffer[:samps_read]
+            self.cont_count_buff, self.read_buffer[:num_samps_read]
         )
-        self.num_reads_since_avg += samps_read
+        self.num_reads_since_avg += num_samps_read
 
     def average_counts(self):
         """Doc."""
@@ -174,10 +174,6 @@ class Counter(drivers.DAQmxInstrumentCI):
 
             self.num_reads_since_avg = 0
             self.last_avg_time = time.perf_counter()
-
-            #            # TEST ----------------------------------------------------------------------------------------
-            #            print(f'')
-            #            # -----------------------------------------------------------------------------------------------
 
             return avg_cnt_rate / 1000  # Hz -> KHz
 
