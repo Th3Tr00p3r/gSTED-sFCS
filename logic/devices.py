@@ -13,78 +13,6 @@ import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
-class Scanners(drivers.DAQmxInstrumentAIO):
-    """
-    Scanners encompasses all analog focal point positioning devices
-    (X: x_galvo, Y: y_galvo, Z: z_piezo)
-
-    """
-
-    x_limits = {"min_val": -5.0, "max_val": 5.0}
-    y_limits = {"min_val": -5.0, "max_val": 5.0}
-    z_limits = {"min_val": 0.0, "max_val": 10.0}
-    ao_timeout = 0.003  # 3 ms
-
-    # TODO - move these to settings -> param_dict
-    buff_sz = 1000
-    ai_clk_rate = 1000
-
-    def __init__(self, nick, param_dict, error_dict, led, init_pos_vltgs):
-        self.led = led
-        super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
-
-        self.last_ai = None
-        self.last_ao = init_pos_vltgs
-        # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
-        self.ao_buffer = []
-        self.ai_buffer = np.empty(shape=(0, 0))
-
-        self.toggle(True)  # turn ON right from the start
-
-    def toggle(self, bool):
-        """Doc."""
-
-        if bool:
-            self.start_ai()
-        else:
-            self.close_ai()
-
-    def fill_ai_buff(self) -> NoReturn:
-        """Doc."""
-
-        self.ai_buffer.append(self.read())
-
-    async def move_to_pos(self, pos_vltgs: iter):
-        """
-        Finds out which AO voltages need to be changed,
-        writes those voltages to the relevant scanners with
-        the relevant limits, and saves the changed AO voltages.
-
-        """
-
-        ao_addrs = []
-        limits = []
-        vltgs = []
-        axes = ("x", "y", "z")
-        for axis, curr_axis_vltg, new_axis_vltg in zip(axes, self.last_ao, pos_vltgs):
-            if new_axis_vltg != curr_axis_vltg:
-                ao_addrs.append(self._param_dict[f"ao_{axis}_addr"])
-                limits.append(getattr(self, f"{axis}_limits"))
-                vltgs.append(new_axis_vltg)
-
-        self.last_ao = pos_vltgs
-
-        await self.write(ao_addrs, vltgs, limits)
-
-    def dump_buff_overflow(self):
-        """Doc."""
-
-        if len(self.ao_buffer) > self.buff_sz:
-            self.ao_buffer = self.ao_buffer[-self.buff_sz :]
-        if len(self.ai_buffer) > self.buff_sz:
-            self.ai_buffer = self.ai_buffer[-self.buff_sz :]
-
-
 class UM232(drivers.FTDI_Instrument):
     """Doc."""
 
@@ -124,6 +52,81 @@ class UM232(drivers.FTDI_Instrument):
 
         self.data = np.empty(shape=(0,))
         self.tot_bytes = 0
+
+
+class Scanners(drivers.DAQmxInstrumentAIO):
+    """
+    Scanners encompasses all analog focal point positioning devices
+    (X: x_galvo, Y: y_galvo, Z: z_piezo)
+
+    """
+
+    x_limits = {"min_val": -5.0, "max_val": 5.0}
+    y_limits = {"min_val": -5.0, "max_val": 5.0}
+    z_limits = {"min_val": 0.0, "max_val": 10.0}
+    ao_timeout = 0.003  # 3 ms
+
+    # TODO - move these to settings -> param_dict
+    buff_sz = 1000
+    ai_clk_rate = 1000
+
+    def __init__(self, nick, param_dict, error_dict, led, init_pos_vltgs):
+        self.led = led
+        super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
+
+        self.last_ai = None
+        self.last_ao = init_pos_vltgs
+        # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
+        self.ao_buffer = []
+        self.ai_buffer = np.empty(shape=(3, 0))
+
+        self.toggle(True)  # turn ON right from the start
+
+    def toggle(self, bool):
+        """Doc."""
+
+        if bool:
+            self.start_ai()
+        else:
+            self.close_ai()
+
+    def fill_ai_buff(self) -> NoReturn:
+        """Doc."""
+
+        num_samps_read = self.read()
+        self.ai_buffer = np.concatenate(
+            (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
+        )
+
+    async def move_to_pos(self, pos_vltgs: iter):
+        """
+        Finds out which AO voltages need to be changed,
+        writes those voltages to the relevant scanners with
+        the relevant limits, and saves the changed AO voltages.
+
+        """
+
+        ao_addrs = []
+        limits = []
+        vltgs = []
+        axes = ("x", "y", "z")
+        for axis, curr_axis_vltg, new_axis_vltg in zip(axes, self.last_ao, pos_vltgs):
+            if new_axis_vltg != curr_axis_vltg:
+                ao_addrs.append(self._param_dict[f"ao_{axis}_addr"])
+                limits.append(getattr(self, f"{axis}_limits"))
+                vltgs.append(new_axis_vltg)
+
+        self.last_ao = pos_vltgs
+
+        await self.write(ao_addrs, vltgs, limits)
+
+    def dump_buff_overflow(self):
+        """Doc."""
+
+        if len(self.ao_buffer) > self.buff_sz:
+            self.ao_buffer = self.ao_buffer[-self.buff_sz :]
+        if len(self.ai_buffer) > self.buff_sz:
+            self.ai_buffer = self.ai_buffer[-self.buff_sz :]
 
 
 class Counter(drivers.DAQmxInstrumentCI):

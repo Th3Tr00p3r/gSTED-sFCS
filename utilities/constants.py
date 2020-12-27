@@ -25,8 +25,6 @@ MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
 
 # devices
 DEP_CMND_DICT = {
-    "ON": "setLDenable 1",
-    "OFF": "setLDenable 0",
     "tmp": "SHGtemp",
     "curr": "LDcurrent 1",
     "pow": "Power 0",
