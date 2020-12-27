@@ -24,6 +24,14 @@ MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
 #                                    QSound.play(const.MEAS_COMPLETE_SOUND);
 
 # devices
+DEP_CMND_DICT = {
+    "ON": "setLDenable 1",
+    "OFF": "setLDenable 0",
+    "tmp": "SHGtemp",
+    "curr": "LDcurrent 1",
+    "pow": "Power 0",
+}
+
 DVC_LED_NAME = {
     "EXC_LASER": "ledExc",
     "DEP_LASER": "ledDep",

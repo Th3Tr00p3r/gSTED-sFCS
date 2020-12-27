@@ -153,8 +153,7 @@ class Timeout:
         async def update_SHG_temp(dep_dvc, main_gui):
             """Doc."""
 
-            await dep_dvc.get_SHG_temp()
-            main_gui.depTemp.setValue(dep_dvc.temp)
+            main_gui.depTemp.setValue(await dep_dvc.get_prop("tmp"))
             if dep_dvc.temp < dep_dvc.min_SHG_temp:
                 main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
             else:
@@ -163,14 +162,12 @@ class Timeout:
         async def update_power(dep_dvc, main_gui):
             """Doc."""
 
-            await dep_dvc.get_power()
-            main_gui.depActualPowerSpinner.setValue(dep_dvc.power)
+            main_gui.depActualPowerSpinner.setValue(await dep_dvc.get_prop("pow"))
 
         async def update_current(dep_dvc, main_gui):
             """Doc."""
 
-            await dep_dvc.get_current()
-            main_gui.depActualCurrSpinner.setValue(dep_dvc.current)
+            main_gui.depActualCurrSpinner.setValue(await dep_dvc.get_prop("curr"))
 
         async def update_props(dep_err_dict, dep_dvc, main_gui):
             """Doc."""
