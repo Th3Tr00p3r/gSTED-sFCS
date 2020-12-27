@@ -156,13 +156,14 @@ class DAQmxInstrumentAIO:
     def read(self):
         """Doc."""
 
-        # TODO: possibly switch to multiple samples (read buffer) as in labview, to have the option to plot and compare to AO (which also needs to be adapted to save its values in a buffer)
+        #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
+        #        num_samps_read = self.ai_task.sr.read_many_sample(
+        #            self.read_buffer,
+        #            number_of_samples_per_channel=READ_ALL_AVAILABLE,
+        #        )
+        #        return num_samps_read
 
-        num_samps_read = self.ai_task.sr.read_many_sample(
-            self.read_buffer,
-            number_of_samples_per_channel=READ_ALL_AVAILABLE,
-        )
-        return num_samps_read
+        return self.ai_task.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
 
     @err_hndlr
     async def write(self, ao_addrs: iter, vals: iter, limits: iter):

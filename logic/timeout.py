@@ -83,7 +83,7 @@ class Timeout:
                 # AI
                 if self._app.error_dict["SCANNERS"] is None:
                     self._app.dvc_dict["SCANNERS"].fill_ai_buff()
-                    self._app.dvc_dict["COUNTER"].dump_buff_overflow()
+                    self._app.dvc_dict["SCANNERS"].dump_buff_overflow()
 
             await asyncio.sleep(const.TIMEOUT)
 

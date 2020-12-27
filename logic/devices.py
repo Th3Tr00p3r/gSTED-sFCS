@@ -77,7 +77,7 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         self.last_ai = None
         self.last_ao = init_pos_vltgs
         # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
-        self.ao_buffer = []
+        self.ao_buffer = np.empty(shape=(3, 0))
         self.ai_buffer = np.empty(shape=(3, 0))
 
         self.toggle(True)  # turn ON right from the start
@@ -93,10 +93,13 @@ class Scanners(drivers.DAQmxInstrumentAIO):
     def fill_ai_buff(self) -> NoReturn:
         """Doc."""
 
-        num_samps_read = self.read()
-        self.ai_buffer = np.concatenate(
-            (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
-        )
+        #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
+        #        num_samps_read = self.read()
+        #        self.ai_buffer = np.concatenate(
+        #            (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
+        #        )
+
+        self.ai_buffer = np.concatenate((self.ai_buffer, self.read()), axis=1)
 
     async def move_to_pos(self, pos_vltgs: iter):
         """
@@ -123,10 +126,10 @@ class Scanners(drivers.DAQmxInstrumentAIO):
     def dump_buff_overflow(self):
         """Doc."""
 
-        if len(self.ao_buffer) > self.buff_sz:
-            self.ao_buffer = self.ao_buffer[-self.buff_sz :]
-        if len(self.ai_buffer) > self.buff_sz:
-            self.ai_buffer = self.ai_buffer[-self.buff_sz :]
+        if max(self.ao_buffer.shape) > self.buff_sz:
+            self.ao_buffer = self.ao_buffer[:, -self.buff_sz :]
+        if max(self.ai_buffer.shape) > self.buff_sz:
+            self.ai_buffer = self.ai_buffer[:, -self.buff_sz :]
 
 
 class Counter(drivers.DAQmxInstrumentCI):
