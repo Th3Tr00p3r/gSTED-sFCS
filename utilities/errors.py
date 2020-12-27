@@ -69,7 +69,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
             raise exc
 
     elif isinstance(exc, DaqError):
-        if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC"}:
+        if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC", "COUNTER"}:
             result = 0
         else:
             raise exc

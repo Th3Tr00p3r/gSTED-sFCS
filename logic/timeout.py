@@ -2,14 +2,11 @@
 """Timeout module."""
 
 import asyncio
-import collections
-import itertools as it
 
 # import concurrent.futures
 import logging
 
 import utilities.constants as const
-import utilities.errors as errors
 
 
 class Timeout:
@@ -35,7 +32,6 @@ class Timeout:
         await asyncio.gather(
             self._timeout(),
             self._update_avg_counts(),
-            self._check_cntr_err(),
             self._update_dep(),
             self._update_gui(),
             self._update_measurement(),
@@ -74,16 +70,38 @@ class Timeout:
         while self.not_finished:
 
             if self.running:
-
+                # COUNTER
                 if self._app.error_dict["COUNTER"] is None:
                     self._app.dvc_dict["COUNTER"].count()
                     self._app.dvc_dict["COUNTER"].dump_buff_overflow()
 
+                # UM232
                 if self._app.meas.type is not None:
                     if self._app.error_dict["UM232"] is None:
                         self._app.dvc_dict["UM232"].read_TDC_data()
 
+            #                # AI
+            #                if self._app.error_dict["SCANNERS"] is None:
+            #                    self._app.dvc_dict["SCANNERS"].fill_ai_buff()
+            #                    self._app.dvc_dict["COUNTER"].dump_buff_overflow()
+
             await asyncio.sleep(const.TIMEOUT)
+
+    async def _update_gui(self):
+        """Doc."""
+
+        while self.not_finished:
+
+            if self.running:
+                pass
+            #                # AI
+            #                if self._app.error_dict["SCANNERS"] is None:
+            #                    *_, ((x_ai,), (y_ai,), (z_ai,)) = self._app.dvc_dict["SCANNERS"].ai_buffer
+            #                    self._app.win_dict["main"].xAiV.setValue(x_ai)
+            #                    self._app.win_dict["main"].yAiV.setValue(y_ai)
+            #                    self._app.win_dict["main"].zAiV.setValue(z_ai)
+
+            await asyncio.sleep(self.updt_intrvl["gui"])
 
     async def _update_avg_counts(self):
         """
@@ -102,48 +120,6 @@ class Timeout:
                     self._app.win_dict["main"].countsSpinner.setValue(avg_counts)
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
-
-    async def _check_cntr_err(self):
-        """Doc."""
-
-        def are_last_n_ident(lst, n):
-            """Check if the last n elements of a list are identical"""
-
-            def tail(n, iterable):
-                """
-                Return an iterator over the last n items.
-                (https://docs.python.org/3.8/library/itertools.html?highlight=itertools#itertools-recipes)
-
-                tail(3, 'ABCDEFG') --> E F G
-                """
-
-                return iter(collections.deque(iterable, maxlen=n))
-
-            def all_equal(iterable):
-                """
-                Returns True if all the elements are equal to each other
-                (https://docs.python.org/3.8/library/itertools.html?highlight=itertools#itertools-recipes)
-                """
-
-                g = it.groupby(iterable)
-                return next(g, True) and not next(g, False)
-
-            return all_equal(tail(n, lst))
-
-        while self.not_finished:
-
-            await asyncio.sleep(self.updt_intrvl["cntr_chck"])
-
-            if self.running:
-                try:
-                    if are_last_n_ident(
-                        self._app.dvc_dict["COUNTER"].cont_count_buff, 10
-                    ):
-                        raise errors.CounterError("Detector is disconnected")
-                except errors.CounterError as exc:
-                    self._app.error_dict["COUNTER"] = errors.build_err_dict(exc)
-                    logging.error("Detector is disconnected", exc_info=False)
-                    self._cntr_chck_intrvl = 999
 
     async def _update_dep(self):
         """Update depletion laser GUI"""
@@ -199,23 +175,6 @@ class Timeout:
             #                    print(result)
 
             await asyncio.sleep(self.updt_intrvl["dep"])
-
-    # TODO: this is a waste of compute. this can be done just once when the exception is raised (in errors.py?)
-    async def _update_gui(self):
-        """Doc."""
-
-        while self.not_finished:
-
-            if self.running:
-
-                if self._app.error_dict["SCANNERS"] is None:
-                    self._app.dvc_dict["SCANNERS"].get_last_ai()
-                    ((x_ai,), (y_ai,), (z_ai,)) = self._app.dvc_dict["SCANNERS"].last_ai
-                    self._app.win_dict["main"].xAiV.setValue(x_ai)
-                    self._app.win_dict["main"].yAiV.setValue(y_ai)
-                    self._app.win_dict["main"].zAiV.setValue(z_ai)
-
-            await asyncio.sleep(self.updt_intrvl["gui"])
 
     async def _update_measurement(self):
         """Doc."""
