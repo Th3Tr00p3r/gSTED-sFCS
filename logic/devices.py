@@ -8,6 +8,7 @@ from typing import NoReturn
 import numpy as np
 
 import logic.drivers as drivers
+import utilities.constants as const
 import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
@@ -292,20 +293,10 @@ class DepletionLaser(drivers.VISAInstrument):
 
         self._write(f"setLDenable {int(bool)}")
 
-    async def get_SHG_temp(self):
+    async def get_prop(self, prop):
         """Doc."""
 
-        self.temp = await self._aquery("SHGtemp")
-
-    async def get_current(self):
-        """Doc."""
-
-        self.current = await self._aquery("LDcurrent 1")
-
-    async def get_power(self):
-        """Doc."""
-
-        self.power = await self._aquery("Power 0")
+        return await self._aquery(const.DEP_CMND_DICT[prop])
 
     def set_power(self, value):
         """Doc."""
