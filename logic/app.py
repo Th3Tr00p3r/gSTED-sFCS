@@ -120,8 +120,11 @@ class App:
             """Doc."""
 
             for nick in const.DEVICE_NICKS:
-                #                if not self.error_dict[nick]:
-                app.dvc_dict[nick].toggle(False)
+                if nick in {"DEP_LASER"}:
+                    if not self.error_dict[nick]:
+                        app.dvc_dict[nick].toggle(False)
+                else:
+                    app.dvc_dict[nick].toggle(False)
 
         def close_all_wins(app):
             """Doc."""
@@ -154,7 +157,7 @@ class App:
             gui.ledCam.setIcon(QIcon(icon.LED_OFF))
             gui.ledScn.setIcon(QIcon(icon.LED_OFF))
 
-        if restart:
+        if restart:  # restarting
             if self.meas.type is not None:
                 if self.meas.type == "FCS":
                     self.win_dict["main"].imp.toggle_FCS_meas()
@@ -177,8 +180,10 @@ class App:
 
             logging.info("Restarting application.")
 
-        else:
-            self.loop.create_task(self.timeout_loop.finish())
+        else:  # exiting
+            self.loop.create_task(
+                self.timeout_loop.finish()
+            )  # TODO: shouldn't this be 'await'ed instead?
             if self.meas.type is not None:
                 if self.meas.type == "FCS":
                     self.win_dict["main"].imp.toggle_FCS_meas()

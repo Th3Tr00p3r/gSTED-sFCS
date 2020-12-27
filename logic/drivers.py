@@ -14,61 +14,11 @@ from nidaqmx.constants import (
     Edge,
     TerminalConfiguration,
 )
-from nidaqmx.stream_readers import CounterReader
+from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 from pyftdi.ftdi import Ftdi
 from pyftdi.usbtools import UsbTools
 
 from utilities.errors import dvc_err_hndlr as err_hndlr
-
-
-class UC480Instrument:
-    """Doc."""
-
-    def __init__(self, nick, error_dict):
-        self.nick = nick
-        self.error_dict = error_dict
-        self._inst = None
-
-    @err_hndlr
-    def init_cam(self):
-        """Doc."""
-
-        try:  # this is due to bad error handeling in instrumental-lib...
-            self._inst = UC480_Camera(reopen_policy="new")
-        except Exception:
-            raise UC480Error(msg="Camera disconnected")
-
-    @err_hndlr
-    def close_cam(self):
-        """Doc."""
-
-        if self._inst is not None:
-            self._inst.close()
-
-    @err_hndlr
-    def grab_image(self):
-        """Doc."""
-
-        return self._inst.grab_image()
-
-    @err_hndlr
-    def toggle_vid(self, bool):
-        """Doc."""
-
-        self.vid_state = bool
-
-        if bool:
-            self._inst.start_live_video()
-        else:
-            self._inst.stop_live_video()
-
-    @err_hndlr
-    def get_latest_frame(self):
-        """Doc."""
-
-        frame_ready = self._inst.wait_for_frame(timeout="0 ms")
-        if frame_ready:
-            return self._inst.latest_frame(copy=False)
 
 
 class FTDI_Instrument:
@@ -141,6 +91,7 @@ class DAQmxInstrumentAIO:
         self.nick = nick
         self._param_dict = param_dict
         self.error_dict = error_dict
+        self.read_buffer = np.zeros(shape=(3, 5000), dtype=np.double)
 
         self._init_ai_task()
 
@@ -184,6 +135,9 @@ class DAQmxInstrumentAIO:
             samps_per_chan=self.buff_sz,  # TODO - move these to settings -> param_dict
         )
 
+        self.ai_task.sr = AnalogMultiChannelReader(self.ai_task.in_stream)
+        self.ai_task.sr.verify_array_shape = False
+
     @err_hndlr
     def start_ai(self):
         """Doc."""
@@ -203,7 +157,12 @@ class DAQmxInstrumentAIO:
         """Doc."""
 
         # TODO: possibly switch to multiple samples (read buffer) as in labview, to have the option to plot and compare to AO (which also needs to be adapted to save its values in a buffer)
-        return self.ai_task.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
+
+        num_samps_read = self.ai_task.sr.read_many_sample(
+            self.read_buffer,
+            number_of_samples_per_channel=READ_ALL_AVAILABLE,
+        )
+        return num_samps_read
 
     @err_hndlr
     async def write(self, ao_addrs: iter, vals: iter, limits: iter):
@@ -216,26 +175,6 @@ class DAQmxInstrumentAIO:
             await asyncio.sleep(self.ao_timeout)
 
 
-class DAQmxInstrumentDO:
-    """Doc."""
-
-    def __init__(self, nick, address, error_dict):
-
-        self.nick = nick
-        self._address = address
-        self.error_dict = error_dict
-
-    @err_hndlr
-    def write(self, bool):
-        """Doc."""
-
-        with nidaqmx.Task() as task:
-            task.do_channels.add_do_chan(self._address)
-            task.write(bool)
-
-        self.state = bool
-
-
 class DAQmxInstrumentCI:
     """Doc."""
 
@@ -246,7 +185,7 @@ class DAQmxInstrumentCI:
         self._param_dict = param_dict
         self.error_dict = error_dict
         self.ai_task = ai_task
-        self.read_buffer = np.zeros(shape=(5000,), dtype="uint32")
+        self.read_buffer = np.zeros(shape=(5000,), dtype=np.uint32)
 
         self._init_task()
 
@@ -296,6 +235,26 @@ class DAQmxInstrumentCI:
 
         self._task.close()
         self.state = False
+
+
+class DAQmxInstrumentDO:
+    """Doc."""
+
+    def __init__(self, nick, address, error_dict):
+
+        self.nick = nick
+        self._address = address
+        self.error_dict = error_dict
+
+    @err_hndlr
+    def write(self, bool):
+        """Doc."""
+
+        with nidaqmx.Task() as task:
+            task.do_channels.add_do_chan(self._address)
+            task.write(bool)
+
+        self.state = bool
 
 
 class VISAInstrument:
@@ -374,3 +333,53 @@ class VISAInstrument:
             """Doc."""
 
             self._rsrc.close()
+
+
+class UC480Instrument:
+    """Doc."""
+
+    def __init__(self, nick, error_dict):
+        self.nick = nick
+        self.error_dict = error_dict
+        self._inst = None
+
+    @err_hndlr
+    def init_cam(self):
+        """Doc."""
+
+        try:  # this is due to bad error handeling in instrumental-lib...
+            self._inst = UC480_Camera(reopen_policy="new")
+        except Exception:
+            raise UC480Error(msg="Camera disconnected")
+
+    @err_hndlr
+    def close_cam(self):
+        """Doc."""
+
+        if self._inst is not None:
+            self._inst.close()
+
+    @err_hndlr
+    def grab_image(self):
+        """Doc."""
+
+        return self._inst.grab_image()
+
+    @err_hndlr
+    def toggle_vid(self, bool):
+        """Doc."""
+
+        self.vid_state = bool
+
+        if bool:
+            self._inst.start_live_video()
+        else:
+            self._inst.stop_live_video()
+
+    @err_hndlr
+    def get_latest_frame(self):
+        """Doc."""
+
+        frame_ready = self._inst.wait_for_frame(timeout="0 ms")
+        if frame_ready:
+            return self._inst.latest_frame(copy=False)
