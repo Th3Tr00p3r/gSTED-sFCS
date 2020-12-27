@@ -1,27 +1,19 @@
 arduinoAddr,COM3
-counterPixelClockAddress,Dev1/Ctr0
-pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
-counterTriggerAddress,Dev3/port1/line0
-counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
-counterPhotonCounter,Dev3/ctr1
-counterCIcountEdgesTerm,/Dev3/PFI8
-TDCaddress,Dev3/port0/line12
-TDCdataVersion,7bytes noreset
-pixelClockCounterAddress,Dev3/ctr0
-pixelClockSrcOfTicks,/Dev3/PFI3
-AOXchannel,Dev3/ao0
-AOYchannel,Dev3/ao1
-AOZchannel,Dev3/ao2
-AOXintChan,Dev3/_ao0_vs_aognd
-AOYintChan,Dev3/_ao1_vs_aognd
-AOZintChan,Dev3/_ao2_vs_aognd
+um232FlowControl,hw
+um232DeviceDescription,UM232H
+um232BitMode,SYNCFF
+AOXaddr,Dev3/ao0
+AOYaddr,Dev3/ao1
+AOZaddr,Dev3/ao2
+AOXintAddr,Dev3/_ao0_vs_aognd
+AOYintAddr,Dev3/_ao1_vs_aognd
+AOZintAddr,Dev3/_ao2_vs_aognd
 AOdigTrigSrc,/Dev3/PFI0
-AIchans,"Dev3/ai23, Dev3/ai7, Dev3/ai9, Dev3/ai3"
 AItrigSrc,/Dev3/PFI0
-AIXchannel,Dev3/ai23
-AIYchannel,Dev3/ai7
-AIZchannel,Dev3/ai9
-AIlaserMon,Dev3/ai3
+AIXaddr,Dev3/ai23
+AIYaddr,Dev3/ai7
+AIZaddr,Dev3/ai9
+AIlaserMonAddr,Dev3/ai3
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
@@ -33,10 +25,25 @@ solDataPath,./data/solution measurements
 imgDataPath,./data/image measurements
 camDataPath,./data/camera photos
 logDataPath,./log/
-um232FlowControl,hw
-um232DeviceDescription,UM232H
-um232BitMode,SYNCFF
-counterBufferSizeSpinner,2000
+counterPixelClockAddress,Dev1/Ctr0
+pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
+counterTriggerAddress,Dev3/port1/line0
+counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
+counterPhotonCounter,Dev3/ctr1
+counterCIcountEdgesTerm,/Dev3/PFI8
+TDCaddress,Dev3/port0/line12
+TDCdataVersion,7bytes noreset
+pixelClockCounterAddress,Dev3/ctr0
+pixelClockSrcOfTicks,/Dev3/PFI3
+um232VendID,1027
+um232BaudRate,102400
+um232ReadTimeout,0
+um232ProdID,24596
+um232latencyTimerVal,2
+um232nBytes,4096
+AIclkDivSpinner,100
+depUpdateTime,2
+counterBufferSizeSpinner,10000
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCpixelClockFreq,4
@@ -44,12 +51,8 @@ TDCversion,3
 pixelClockLowTicks,10
 pixelClockHighTicks,2
 pixelClockFreq,4000
-AIclkDivSpinner,100
-depUpdateTime,2
-um232VendID,1027
-um232BaudRate,102400
-um232ReadTimeout,0
-um232ProdID,24596
-um232latencyTimerVal,2
-um232nBytes,4096
+uc480VidIntrvl,0.3
+xConv,68.0
+yConv,78.0
+zConv,10.0
 counterUpdateTime,0.2

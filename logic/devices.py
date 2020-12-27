@@ -37,7 +37,7 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         self.last_ao = init_pos_vltgs
         # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
         self.ao_buffer = []
-        self.ai_buffer = []
+        self.ai_buffer = np.empty(shape=(0, 0))
 
         self.toggle(True)  # turn ON right from the start
 
@@ -49,10 +49,10 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         else:
             self.close_ai()
 
-    def get_last_ai(self) -> NoReturn:
+    def fill_ai_buff(self) -> NoReturn:
         """Doc."""
 
-        self.last_ai = self.read()
+        self.ai_buffer.append(self.read())
 
     async def move_to_pos(self, pos_vltgs: iter):
         """
@@ -134,7 +134,8 @@ class Counter(drivers.DAQmxInstrumentCI):
         super().__init__(
             nick=nick, param_dict=param_dict, error_dict=error_dict, ai_task=ai_task
         )
-        self.cont_count_buff = []
+        #        self.cont_count_buff = []
+        self.cont_count_buff = np.empty(shape=(0,))
         self.counts = None  # this is for scans where the counts are actually used.
         self.update_time = param_dict["update_time"]
         self.last_avg_time = time.perf_counter()
@@ -153,9 +154,11 @@ class Counter(drivers.DAQmxInstrumentCI):
     def count(self):
         """Doc."""
 
-        counts = self.read()
-        self.cont_count_buff.append(counts)
-        self.num_reads_since_avg += 1
+        samps_read = self.read()
+        self.cont_count_buff = np.append(
+            self.cont_count_buff, self.read_buffer[:samps_read]
+        )
+        self.num_reads_since_avg += samps_read
 
     def average_counts(self):
         """Doc."""
@@ -186,11 +189,8 @@ class Counter(drivers.DAQmxInstrumentCI):
     def dump_buff_overflow(self):
         """Doc."""
 
-        buff_sz = self._param_dict["buff_sz"]
-        cnts_arr1D = self.cont_count_buff
-
-        if len(cnts_arr1D) > buff_sz:
-            self.cont_count_buff = cnts_arr1D[-buff_sz:]
+        if len(self.cont_count_buff) > self._param_dict["buff_sz"]:
+            self.cont_count_buff = self.cont_count_buff[-self._param_dict["buff_sz"] :]
 
 
 class Camera(drivers.UC480Instrument):
