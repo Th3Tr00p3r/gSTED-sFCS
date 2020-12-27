@@ -7,6 +7,13 @@ import nidaqmx
 import numpy as np
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
+from nidaqmx.constants import (
+    READ_ALL_AVAILABLE,
+    AcquisitionType,
+    CountDirection,
+    Edge,
+    TerminalConfiguration,
+)
 from nidaqmx.stream_readers import CounterReader
 from pyftdi.ftdi import Ftdi
 from pyftdi.usbtools import UsbTools
@@ -147,7 +154,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_x_addr"],
             name_to_assign_to_channel="aix",
-            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+            terminal_config=TerminalConfiguration.DIFFERENTIAL,
             min_val=-5.0,
             max_val=5.0,
         )
@@ -156,7 +163,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_y_addr"],
             name_to_assign_to_channel="aiy",
-            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+            terminal_config=TerminalConfiguration.DIFFERENTIAL,
             min_val=-5.0,
             max_val=5.0,
         )
@@ -165,7 +172,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_z_addr"],
             name_to_assign_to_channel="aiz",
-            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+            terminal_config=TerminalConfiguration.RSE,
             min_val=0.0,
             max_val=10.0,
         )
@@ -173,7 +180,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.timing.cfg_samp_clk_timing(
             # source is unspecified - uses onboard clock (see https://nidaqmx-python.readthedocs.io/en/latest/timing.html#nidaqmx._task_modules.timing.Timing.cfg_samp_clk_timing)
             rate=self.ai_clk_rate,  # TODO - move these to settings -> param_dict
-            sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
+            sample_mode=AcquisitionType.CONTINUOUS,
             samps_per_chan=self.buff_sz,  # TODO - move these to settings -> param_dict
         )
 
@@ -196,9 +203,7 @@ class DAQmxInstrumentAIO:
         """Doc."""
 
         # TODO: possibly switch to multiple samples (read buffer) as in labview, to have the option to plot and compare to AO (which also needs to be adapted to save its values in a buffer)
-        return self.ai_task.read(
-            number_of_samples_per_channel=nidaqmx.constants.READ_ALL_AVAILABLE
-        )
+        return self.ai_task.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
 
     @err_hndlr
     async def write(self, ao_addrs: iter, vals: iter, limits: iter):
@@ -253,20 +258,20 @@ class DAQmxInstrumentCI:
 
         chan = self._task.ci_channels.add_ci_count_edges_chan(
             counter=self._param_dict["photon_cntr"],
-            edge=nidaqmx.constants.Edge.RISING,
+            edge=Edge.RISING,
             initial_count=0,
-            count_direction=nidaqmx.constants.CountDirection.COUNT_UP,
+            count_direction=CountDirection.COUNT_UP,
         )
         chan.ci_count_edges_term = self._param_dict["CI_cnt_edges_term"]
 
         self._task.timing.cfg_samp_clk_timing(
             rate=self.ai_task.timing.samp_clk_rate,
             source=self.ai_task.timing.samp_clk_term,
-            sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
+            sample_mode=AcquisitionType.CONTINUOUS,
             samps_per_chan=self._param_dict["buff_sz"],
         )
-        self._task.stream_reader = CounterReader(self._task.in_stream)
-        self._task.stream_reader.verify_array_shape = False
+        self._task.sr = CounterReader(self._task.in_stream)
+        self._task.sr.verify_array_shape = False
 
     @err_hndlr
     def start(self):
@@ -279,16 +284,11 @@ class DAQmxInstrumentCI:
     def read(self):
         """Doc."""
 
-        num_samp_read = self._task.stream_reader.read_many_sample_uint32(
+        num_samps_read = self._task.sr.read_many_sample_uint32(
             self.read_buffer,
-            number_of_samples_per_channel=nidaqmx.constants.READ_ALL_AVAILABLE,
+            number_of_samples_per_channel=READ_ALL_AVAILABLE,
         )
-        #        print(self.read_buffer[:num_samp_read])
-        return num_samp_read
-
-    #        return self._task.read(
-    #            number_of_samples_per_channel=nidaqmx.constants.READ_ALL_AVAILABLE,
-    #        )[0]
+        return num_samps_read
 
     @err_hndlr
     def close(self):
