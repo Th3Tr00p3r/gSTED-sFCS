@@ -113,7 +113,7 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         vltgs = []
         axes = ("x", "y", "z")
         for axis, curr_axis_vltg, new_axis_vltg in zip(axes, self.last_ao, pos_vltgs):
-            if new_axis_vltg != curr_axis_vltg:
+            if 1:  # new_axis_vltg != curr_axis_vltg:
                 ao_addrs.append(self._param_dict[f"ao_{axis}_addr"])
                 limits.append(getattr(self, f"{axis}_limits"))
                 vltgs.append(new_axis_vltg)
