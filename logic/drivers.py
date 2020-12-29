@@ -118,7 +118,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_y_addr"],
             name_to_assign_to_channel="aiy",
-            terminal_config=TerminalConfiguration.RSE,  # DIFFERENTIAL,
+            terminal_config=TerminalConfiguration.RSE,
             min_val=-5.0,
             max_val=5.0,
         )
@@ -177,7 +177,7 @@ class DAQmxInstrumentAIO:
             for (ao_addr, limits) in zip(ao_addrs, limits):
                 task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
             task.write(vals, timeout=self.ao_timeout)
-            #            task.wait_until_done()
+            # TODO: add task.timing for finite samples - it works without it, but I could try to see if it changes anything
             await asyncio.sleep(self.ao_timeout)
 
 
