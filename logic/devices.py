@@ -199,7 +199,7 @@ class Camera(drivers.UC480Instrument):
 
     def __init__(self, nick, param_dict, error_dict, led, loop, gui):
         self.led = led
-        super().__init__(nick=nick, error_dict=error_dict)
+        super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self._loop = loop
         self._gui = gui
         self.state = False

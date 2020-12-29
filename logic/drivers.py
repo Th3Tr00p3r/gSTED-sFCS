@@ -344,8 +344,9 @@ class VISAInstrument:
 class UC480Instrument:
     """Doc."""
 
-    def __init__(self, nick, error_dict):
+    def __init__(self, nick, param_dict, error_dict):
         self.nick = nick
+        self.param_dict = param_dict
         self.error_dict = error_dict
         self._inst = None
 

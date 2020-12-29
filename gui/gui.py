@@ -23,6 +23,7 @@ class MainWin(QMainWindow):
         super(MainWin, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
         self.imp = wins_imp.MainWin(self, app)
+        self._loop = app.loop
 
         self.axisMoveUp.released.connect(lambda: self.axisMove_released(1))
         self.axisMoveDown.released.connect(lambda: self.axisMove_released(-1))
@@ -138,7 +139,7 @@ class MainWin(QMainWindow):
         """Instantiate 'CameraWindow' object and show it"""
         # TODO: add support for 2nd camera
 
-        self.imp.open_camwin()
+        self._loop.create_task(self.imp.open_camwin())
 
     @pyqtSlot(int)
     def on_countsAvgSlider_valueChanged(self, val: int) -> NoReturn:
