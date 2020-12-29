@@ -160,36 +160,73 @@ def error_checker(nick_set: set = None) -> Callable:
     def outer_wrapper(func) -> Callable:
         """Doc."""
 
-        @functools.wraps(func)
-        def inner_wrapper(self, *args, **kwargs):
-            """Doc."""
+        if asyncio.iscoroutinefunction(func):
 
-            if nick_set is not None:
-                count = 0
-                txt = ""
-                for nick in nick_set:
+            @functools.wraps(func)
+            async def inner_wrapper(self, *args, **kwargs):
+                """Doc."""
+
+                if nick_set is not None:
+                    count = 0
+                    txt = ""
+                    for nick in nick_set:
+
+                        if self._app.error_dict[nick] is not None:
+                            txt += f"{nick} error.\n"
+                            count += 1
+
+                    if count > 0:
+                        txt += "\nClick relevant LED for details."
+                        Error(
+                            custom_txt=txt, custom_title=f"Errors ({count})"
+                        ).display()
+
+                    else:
+                        return await func(self, *args, **kwargs)
+
+                else:
+                    nick = args[0]
                     err_msg = self._app.error_dict[nick]
 
                     if err_msg is not None:
-                        txt += f"{nick} error.\n"
-                        count += 1
+                        txt = f"{nick} error.\n\nClick relevant LED for details."
+                        Error(custom_txt=txt).display()
+                    else:
+                        return await func(self, *args, **kwargs)
 
-                if count > 0:
-                    txt += "\nClick relevant LED for details."
-                    Error(custom_txt=txt, custom_title=f"Errors ({count})").display()
+        else:
+
+            @functools.wraps(func)
+            def inner_wrapper(self, *args, **kwargs):
+                """Doc."""
+
+                if nick_set is not None:
+                    count = 0
+                    txt = ""
+                    for nick in nick_set:
+
+                        if self._app.error_dict[nick] is not None:
+                            txt += f"{nick} error.\n"
+                            count += 1
+
+                    if count > 0:
+                        txt += "\nClick relevant LED for details."
+                        Error(
+                            custom_txt=txt, custom_title=f"Errors ({count})"
+                        ).display()
+
+                    else:
+                        return func(self, *args, **kwargs)
 
                 else:
-                    return func(self, *args, **kwargs)
+                    nick = args[0]
+                    err_msg = self._app.error_dict[nick]
 
-            else:
-                nick = args[0]
-                err_msg = self._app.error_dict[nick]
-
-                if err_msg is not None:
-                    txt = f"{nick} error.\n\nClick relevant LED for details."
-                    Error(custom_txt=txt).display()
-                else:
-                    return func(self, *args, **kwargs)
+                    if err_msg is not None:
+                        txt = f"{nick} error.\n\nClick relevant LED for details."
+                        Error(custom_txt=txt).display()
+                    else:
+                        return func(self, *args, **kwargs)
 
         return inner_wrapper
 

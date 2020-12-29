@@ -10,7 +10,7 @@ Python-based software for our optical measurement system.
 
 2. Signals/slots (similar to callbacks) are coded as methods for the classes that are named after the windows (`MainWindow`, `SettingsWindow`, etc.).
 
-3. Finally, when running the project (`gSTEDsFCS.py`), a `MainWindow()` object is instantiated and the window is shown on screen.
+3. Finally, when running the project (`main.py`), a `MainWindow()` object is instantiated and the window is shown on screen.
 
 #### <u>Implemetation</u>
 
@@ -18,7 +18,7 @@ Python-based software for our optical measurement system.
 
 #### <u>Physical Device Control</u>
 
-1. The `devices.py` module contains a high-level API for communicating with the instruments, some of the classes being subclassed from the more general `drivers.py`, where existing packages (pyVISA, nidaqmx, instrumental etc.) are also imported.
+1. The `devices.py` module contains a high-level API for communicating with the instruments, subclassed from the more general `drivers.py`, where existing packages (pyVISA, nidaqmx, instrumental etc.) are imported.
 
 ## What's here/Noteworthy files:
 
@@ -56,7 +56,7 @@ Python-based software for our optical measurement system.
 
 ## Installing Eric IDE on Windows:
 
-Eric IDE is notoriously complicated to install properly. I've tries to make it easier with the following steps (assuming Python is installed and added to PATH):
+Eric IDE is notoriously complicated to install properly. I've tried to make it easier with the following steps (assuming Python is installed and added to PATH):
 
 1. [Download](https://sourceforge.net/projects/eric-ide/) Eric IDE distribution and extract to temporary folder.
 
