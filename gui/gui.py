@@ -24,11 +24,6 @@ class MainWin(QMainWindow):
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
         self.imp = wins_imp.MainWin(self, app)
 
-        # connecting signals & slots
-        self.xAoV.valueChanged.connect(self.AoV_value_changed)
-        self.yAoV.valueChanged.connect(self.AoV_value_changed)
-        self.zAoV.valueChanged.connect(self.AoV_value_changed)
-
         self.axisMoveUp.released.connect(lambda: self.axisMove_released(1))
         self.axisMoveDown.released.connect(lambda: self.axisMove_released(-1))
 
@@ -169,10 +164,11 @@ class MainWin(QMainWindow):
 
         self.imp.go_to_origin(which_axes)
 
-    def AoV_value_changed(self, _) -> NoReturn:
+    @pyqtSlot()
+    def on_goTo_released(self) -> NoReturn:
         """Doc."""
 
-        self.imp.move_scanners_to()
+        self.imp.move_scanners()
 
     def axisMove_released(self, sign: int) -> NoReturn:
         """Doc."""

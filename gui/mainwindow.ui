@@ -829,142 +829,6 @@
                      <property name="spacing">
                       <number>0</number>
                      </property>
-                     <item row="3" column="0">
-                      <widget class="QLabel" name="label_10">
-                       <property name="font">
-                        <font>
-                         <pointsize>10</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Z</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="3">
-                      <widget class="QLabel" name="label_16">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>80</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>AI (V)</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QLabel" name="label_7">
-                       <property name="font">
-                        <font>
-                         <pointsize>10</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>X</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="1">
-                      <widget class="QLabel" name="label_11">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string>AO (V)</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="1">
-                      <widget class="QDoubleSpinBox" name="yAoV">
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-5.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>5.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="0">
-                      <widget class="QLabel" name="label_9">
-                       <property name="font">
-                        <font>
-                         <pointsize>10</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Y</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="1">
-                      <widget class="QDoubleSpinBox" name="zAoV">
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::UpDownArrows</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="maximum">
-                        <double>10.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
                      <item row="1" column="1">
                       <widget class="QDoubleSpinBox" name="xAoV">
                        <property name="sizePolicy">
@@ -1002,67 +866,8 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="0" column="2">
-                      <widget class="QLabel" name="label_12">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string>AO (um)</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="3">
-                      <widget class="QDoubleSpinBox" name="xAiV">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-5.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>5.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="3">
-                      <widget class="QDoubleSpinBox" name="yAiV">
+                     <item row="2" column="1">
+                      <widget class="QDoubleSpinBox" name="yAoV">
                        <property name="minimumSize">
                         <size>
                          <width>60</width>
@@ -1074,89 +879,6 @@
                          <width>999</width>
                          <height>30</height>
                         </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-5.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>5.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="3">
-                      <widget class="QDoubleSpinBox" name="zAiV">
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="maximum">
-                        <double>10.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="2">
-                      <widget class="QDoubleSpinBox" name="xAoUm">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
                        </property>
                        <property name="decimals">
                         <number>5</number>
@@ -1212,6 +934,30 @@
                        </property>
                       </widget>
                      </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="label_7">
+                       <property name="font">
+                        <font>
+                         <pointsize>10</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>X</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="0">
+                      <widget class="QLabel" name="label_10">
+                       <property name="font">
+                        <font>
+                         <pointsize>10</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>Z</string>
+                       </property>
+                      </widget>
+                     </item>
                      <item row="3" column="2">
                       <widget class="QDoubleSpinBox" name="zAoUm">
                        <property name="minimumSize">
@@ -1246,27 +992,27 @@
                        </property>
                       </widget>
                      </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QGridLayout" name="gridLayout_9">
-                     <property name="spacing">
-                      <number>0</number>
-                     </property>
-                     <item row="1" column="0">
-                      <widget class="QLabel" name="label_14">
+                     <item row="0" column="2">
+                      <widget class="QLabel" name="label_12">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
                        <property name="text">
-                        <string>Move (um)</string>
+                        <string>Disp. from
+Origin (um)</string>
                        </property>
                        <property name="alignment">
-                        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                        <set>Qt::AlignCenter</set>
                        </property>
                       </widget>
                      </item>
-                     <item row="1" column="2" alignment="Qt::AlignHCenter">
-                      <widget class="QToolButton" name="axisMoveDown">
+                     <item row="1" column="3">
+                      <widget class="QDoubleSpinBox" name="xAiV">
                        <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
@@ -1279,37 +1025,259 @@
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>100</width>
-                         <height>100</height>
+                         <width>999</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="readOnly">
+                        <bool>true</bool>
+                       </property>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
+                       </property>
+                       <property name="decimals">
+                        <number>5</number>
+                       </property>
+                       <property name="minimum">
+                        <double>-5.000000000000000</double>
+                       </property>
+                       <property name="maximum">
+                        <double>5.000000000000000</double>
+                       </property>
+                       <property name="singleStep">
+                        <double>0.010000000000000</double>
+                       </property>
+                       <property name="stepType">
+                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLabel" name="label_11">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="text">
+                        <string>AO (V)</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="3">
+                      <widget class="QLabel" name="label_16">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>80</width>
+                         <height>20</height>
                         </size>
                        </property>
                        <property name="text">
-                        <string>...</string>
-                       </property>
-                       <property name="shortcut">
-                        <string>Shift+Up</string>
-                       </property>
-                       <property name="popupMode">
-                        <enum>QToolButton::DelayedPopup</enum>
-                       </property>
-                       <property name="autoRaise">
-                        <bool>false</bool>
-                       </property>
-                       <property name="arrowType">
-                        <enum>Qt::DownArrow</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="0">
-                      <widget class="QLabel" name="label_15">
-                       <property name="text">
-                        <string>Axis</string>
+                        <string>AI (V)</string>
                        </property>
                        <property name="alignment">
-                        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                        <set>Qt::AlignCenter</set>
                        </property>
                       </widget>
                      </item>
+                     <item row="3" column="3">
+                      <widget class="QDoubleSpinBox" name="zAiV">
+                       <property name="minimumSize">
+                        <size>
+                         <width>60</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>999</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="readOnly">
+                        <bool>true</bool>
+                       </property>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
+                       </property>
+                       <property name="decimals">
+                        <number>5</number>
+                       </property>
+                       <property name="maximum">
+                        <double>10.000000000000000</double>
+                       </property>
+                       <property name="singleStep">
+                        <double>0.010000000000000</double>
+                       </property>
+                       <property name="stepType">
+                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="1">
+                      <widget class="QDoubleSpinBox" name="zAoV">
+                       <property name="minimumSize">
+                        <size>
+                         <width>60</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>999</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::UpDownArrows</enum>
+                       </property>
+                       <property name="decimals">
+                        <number>5</number>
+                       </property>
+                       <property name="maximum">
+                        <double>10.000000000000000</double>
+                       </property>
+                       <property name="singleStep">
+                        <double>0.010000000000000</double>
+                       </property>
+                       <property name="stepType">
+                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="3">
+                      <widget class="QDoubleSpinBox" name="yAiV">
+                       <property name="minimumSize">
+                        <size>
+                         <width>60</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>999</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="readOnly">
+                        <bool>true</bool>
+                       </property>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
+                       </property>
+                       <property name="decimals">
+                        <number>5</number>
+                       </property>
+                       <property name="minimum">
+                        <double>-5.000000000000000</double>
+                       </property>
+                       <property name="maximum">
+                        <double>5.000000000000000</double>
+                       </property>
+                       <property name="singleStep">
+                        <double>0.010000000000000</double>
+                       </property>
+                       <property name="stepType">
+                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="2">
+                      <widget class="QDoubleSpinBox" name="xAoUm">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>999</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="readOnly">
+                        <bool>true</bool>
+                       </property>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
+                       </property>
+                       <property name="decimals">
+                        <number>5</number>
+                       </property>
+                       <property name="minimum">
+                        <double>-5.000000000000000</double>
+                       </property>
+                       <property name="maximum">
+                        <double>5.000000000000000</double>
+                       </property>
+                       <property name="singleStep">
+                        <double>0.010000000000000</double>
+                       </property>
+                       <property name="stepType">
+                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="QLabel" name="label_9">
+                       <property name="font">
+                        <font>
+                         <pointsize>10</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>Y</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="4" rowspan="3">
+                      <widget class="QPushButton" name="goTo">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>10</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>Go</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QGridLayout" name="gridLayout_9">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
                      <item row="0" column="2" alignment="Qt::AlignHCenter">
                       <widget class="QToolButton" name="axisMoveUp">
                        <property name="sizePolicy">
@@ -1349,6 +1317,43 @@
                        </property>
                        <property name="arrowType">
                         <enum>Qt::UpArrow</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="2" alignment="Qt::AlignHCenter">
+                      <widget class="QToolButton" name="axisMoveDown">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>100</width>
+                         <height>100</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>...</string>
+                       </property>
+                       <property name="shortcut">
+                        <string>Shift+Up</string>
+                       </property>
+                       <property name="popupMode">
+                        <enum>QToolButton::DelayedPopup</enum>
+                       </property>
+                       <property name="autoRaise">
+                        <bool>false</bool>
+                       </property>
+                       <property name="arrowType">
+                        <enum>Qt::DownArrow</enum>
                        </property>
                       </widget>
                      </item>
@@ -1534,6 +1539,26 @@
                          <string>z</string>
                         </property>
                        </item>
+                      </widget>
+                     </item>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label_15">
+                       <property name="text">
+                        <string>Axis</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="label_14">
+                       <property name="text">
+                        <string>Move (um)</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                       </property>
                       </widget>
                      </item>
                      <item row="1" column="1" alignment="Qt::AlignHCenter">
@@ -7487,9 +7512,6 @@ Settings</string>
   <tabstop>startImgScanButton</tabstop>
   <tabstop>currLine</tabstop>
   <tabstop>currPlane</tabstop>
-  <tabstop>xAoV</tabstop>
-  <tabstop>yAoV</tabstop>
-  <tabstop>zAoV</tabstop>
   <tabstop>axisCombox</tabstop>
   <tabstop>axisMoveSpinner</tabstop>
   <tabstop>axisMoveUp</tabstop>

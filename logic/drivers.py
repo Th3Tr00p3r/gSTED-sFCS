@@ -2,6 +2,7 @@
 """Drivers Module."""
 
 import asyncio
+from typing import NoReturn
 
 import nidaqmx
 import numpy as np
@@ -37,6 +38,7 @@ class FTDI_Instrument:
 
         UsbTools.flush_cache()
 
+        #        # TODO: This is another way of opening the device (probably not needed)
         #        self._inst.open_bitbang(
         #            vendor=self._param_dict["vend_id"],
         #            product=self._param_dict["prod_id"],
@@ -86,12 +88,14 @@ class FTDI_Instrument:
 class DAQmxInstrumentAIO:
     """Doc."""
 
+    ao_timeout = 0.1  # TODO: decide what this value should be
+    read_buffer = np.zeros(shape=(3, 1000), dtype=np.double)
+
     def __init__(self, nick, param_dict, error_dict):
 
         self.nick = nick
         self._param_dict = param_dict
         self.error_dict = error_dict
-        self.read_buffer = np.zeros(shape=(3, 5000), dtype=np.double)
 
         self._init_ai_task()
 
@@ -105,7 +109,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_x_addr"],
             name_to_assign_to_channel="aix",
-            terminal_config=TerminalConfiguration.DIFFERENTIAL,
+            terminal_config=TerminalConfiguration.RSE,
             min_val=-5.0,
             max_val=5.0,
         )
@@ -114,7 +118,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_y_addr"],
             name_to_assign_to_channel="aiy",
-            terminal_config=TerminalConfiguration.DIFFERENTIAL,
+            terminal_config=TerminalConfiguration.RSE,  # DIFFERENTIAL,
             min_val=-5.0,
             max_val=5.0,
         )
@@ -135,8 +139,8 @@ class DAQmxInstrumentAIO:
             samps_per_chan=self.buff_sz,  # TODO - move these to settings -> param_dict
         )
 
-        self.ai_task.sr = AnalogMultiChannelReader(self.ai_task.in_stream)
-        self.ai_task.sr.verify_array_shape = False
+        self.sreader = AnalogMultiChannelReader(self.ai_task.in_stream)
+        self.sreader.verify_array_shape = False
 
     @err_hndlr
     def start_ai(self):
@@ -157,7 +161,7 @@ class DAQmxInstrumentAIO:
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
-        #        num_samps_read = self.ai_task.sr.read_many_sample(
+        #        num_samps_read = self.sreader.read_many_sample(
         #            self.read_buffer,
         #            number_of_samples_per_channel=READ_ALL_AVAILABLE,
         #        )
@@ -166,13 +170,14 @@ class DAQmxInstrumentAIO:
         return self.ai_task.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
 
     @err_hndlr
-    async def write(self, ao_addrs: iter, vals: iter, limits: iter):
+    async def write(self, ao_addrs: iter, vals: iter, limits: iter) -> NoReturn:
         """Doc."""
 
         with nidaqmx.Task() as task:
             for (ao_addr, limits) in zip(ao_addrs, limits):
                 task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
             task.write(vals, timeout=self.ao_timeout)
+            #            task.wait_until_done()
             await asyncio.sleep(self.ao_timeout)
 
 

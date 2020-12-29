@@ -64,7 +64,6 @@ class Scanners(drivers.DAQmxInstrumentAIO):
     x_limits = {"min_val": -5.0, "max_val": 5.0}
     y_limits = {"min_val": -5.0, "max_val": 5.0}
     z_limits = {"min_val": 0.0, "max_val": 10.0}
-    ao_timeout = 0.003  # 3 ms
 
     # TODO - move these to settings -> param_dict
     buff_sz = 1000
@@ -96,7 +95,7 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
         #        num_samps_read = self.read()
         #        self.ai_buffer = np.concatenate(
-        #            (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
+        #        (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
         #        )
 
         self.ai_buffer = np.concatenate((self.ai_buffer, self.read()), axis=1)

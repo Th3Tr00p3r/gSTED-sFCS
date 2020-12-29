@@ -134,7 +134,7 @@ class MainWin:
             self._app.dvc_dict[nick].set_power(val)
 
     @err_chck({"SCANNERS"})
-    def move_scanners_to(self) -> NoReturn:
+    def move_scanners(self) -> NoReturn:
         """Doc."""
 
         pos_vltgs = (
@@ -156,6 +156,8 @@ class MainWin:
             if is_chosen:
                 getattr(self._gui, f"{axis}AoV").setValue(org_axis_vltg)
 
+        self.move_scanners()
+
         logging.debug(f"{const.DVC_LOG_DICT['SCANNERS']} sent to origin {which_axes}")
 
     def displace_scanner_axis(self, sign: int) -> NoReturn:
@@ -168,6 +170,8 @@ class MainWin:
         delta_vltg = um_disp / um_V_RATIO
 
         getattr(self._gui, f"{axis}AoV").setValue(current_vltg + delta_vltg)
+
+        self.move_scanners()
 
         logging.debug(
             f"{const.DVC_LOG_DICT['SCANNERS']}({axis}) was displaced {str(um_disp)} um"
