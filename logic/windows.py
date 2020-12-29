@@ -237,7 +237,9 @@ class MainWin:
         self._app.win_dict["settings"].activateWindow()
 
     @err_chck({"CAMERA"})
-    def open_camwin(self):
+    async def open_camwin(self):
+        # TODO: simply making this func async doesn't help. the blocking function here is really 'UC480_Camera(reopen_policy="new")'
+        # from 'drivers.py', and I can't yet see a way to make it async (since I don't wan't to touch the API) I should try threading for this.
         """Doc."""
 
         self._gui.actionCamera_Control.setEnabled(False)
