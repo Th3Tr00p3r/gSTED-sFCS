@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1231</width>
-    <height>904</height>
+    <width>1236</width>
+    <height>910</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -921,10 +921,10 @@
                         <number>5</number>
                        </property>
                        <property name="minimum">
-                        <double>-5.000000000000000</double>
+                        <double>-999999.000000000000000</double>
                        </property>
                        <property name="maximum">
-                        <double>5.000000000000000</double>
+                        <double>999999.000000000000000</double>
                        </property>
                        <property name="singleStep">
                         <double>0.010000000000000</double>
@@ -981,14 +981,20 @@
                        <property name="decimals">
                         <number>5</number>
                        </property>
+                       <property name="minimum">
+                        <double>-999999.000000000000000</double>
+                       </property>
                        <property name="maximum">
-                        <double>10.000000000000000</double>
+                        <double>999999.000000000000000</double>
                        </property>
                        <property name="singleStep">
                         <double>0.010000000000000</double>
                        </property>
                        <property name="stepType">
                         <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+                       </property>
+                       <property name="value">
+                        <double>5.000000000000000</double>
                        </property>
                       </widget>
                      </item>
@@ -1222,10 +1228,10 @@ Origin (um)</string>
                         <number>5</number>
                        </property>
                        <property name="minimum">
-                        <double>-5.000000000000000</double>
+                        <double>-999999.000000000000000</double>
                        </property>
                        <property name="maximum">
-                        <double>5.000000000000000</double>
+                        <double>999999.000000000000000</double>
                        </property>
                        <property name="singleStep">
                         <double>0.010000000000000</double>
@@ -1603,7 +1609,7 @@ Origin (um)</string>
                       </font>
                      </property>
                      <property name="text">
-                      <string>Go to Origin</string>
+                      <string>Origin</string>
                      </property>
                     </widget>
                    </item>
@@ -4597,13 +4603,13 @@ Measurement</string>
                        </property>
                        <property name="minimumSize">
                         <size>
-                         <width>110</width>
+                         <width>140</width>
                          <height>0</height>
                         </size>
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>110</width>
+                         <width>140</width>
                          <height>30</height>
                         </size>
                        </property>
@@ -4690,13 +4696,13 @@ Measurement</string>
                        </property>
                        <property name="minimumSize">
                         <size>
-                         <width>110</width>
+                         <width>140</width>
                          <height>0</height>
                         </size>
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>110</width>
+                         <width>140</width>
                          <height>30</height>
                         </size>
                        </property>

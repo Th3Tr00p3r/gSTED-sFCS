@@ -166,7 +166,12 @@ class MainWin:
         axis = self._gui.axisCombox.currentText()
         current_vltg = getattr(self._gui, f"{axis}AoV").value()
         um_disp = sign * self._gui.axisMoveSpinner.value()
-        um_V_RATIO = getattr(self._app.win_dict["settings"], axis + "Conv").value()
+        # test - self._app.dvc_dict["SCANNERS"].um_V_ratio
+
+        um_V_RATIO = dict(
+            zip(("x", "y", "z"), self._app.dvc_dict["SCANNERS"].um_V_ratio)
+        )[axis]
+
         delta_vltg = um_disp / um_V_RATIO
 
         getattr(self._gui, f"{axis}AoV").setValue(current_vltg + delta_vltg)

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>700</width>
-    <height>580</height>
+    <height>700</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -19,13 +19,13 @@
   <property name="minimumSize">
    <size>
     <width>700</width>
-    <height>580</height>
+    <height>700</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>700</width>
-    <height>580</height>
+    <height>700</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -41,7 +41,7 @@
      <x>10</x>
      <y>10</y>
      <width>680</width>
-     <height>560</height>
+     <height>680</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -53,13 +53,13 @@
    <property name="minimumSize">
     <size>
      <width>680</width>
-     <height>560</height>
+     <height>680</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
      <width>680</width>
-     <height>560</height>
+     <height>680</height>
     </size>
    </property>
    <property name="frameShape">
@@ -103,7 +103,7 @@
          </font>
         </property>
         <property name="currentIndex">
-         <number>3</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="paths">
          <attribute name="title">
@@ -1363,7 +1363,10 @@
          </attribute>
          <layout class="QGridLayout" name="gridLayout_20">
           <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_17" rowstretch="1,1000" columnstretch="1,100">
+           <layout class="QGridLayout" name="gridLayout_17" rowstretch="1,1000" columnstretch="1,1000">
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <item row="0" column="0">
              <layout class="QHBoxLayout" name="horizontalLayout_4">
               <item>
@@ -1718,6 +1721,12 @@
                <layout class="QVBoxLayout" name="verticalLayout_83">
                 <item>
                  <widget class="QGroupBox" name="groupBox_12">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="title">
                    <string>TDC</string>
                   </property>
@@ -1829,6 +1838,12 @@
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -1905,6 +1920,12 @@
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -1931,6 +1952,12 @@
                 </item>
                 <item>
                  <widget class="QGroupBox" name="groupBox_13">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="title">
                    <string>Pixel Clock Parameters</string>
                   </property>
@@ -2051,6 +2078,12 @@
                      </item>
                      <item>
                       <widget class="QLineEdit" name="pixelClockSrcOfTicks">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -2076,6 +2109,12 @@
                       <widget class="QSpinBox" name="pixelClockFreq">
                        <property name="enabled">
                         <bool>true</bool>
+                       </property>
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
                        </property>
                        <property name="font">
                         <font>
