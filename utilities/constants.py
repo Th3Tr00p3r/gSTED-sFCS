@@ -226,7 +226,8 @@ DVC_X_ARGS_DICT = {
     "TDC": [],
     "PXL_CLK": [],
     "SCANNERS": [
-        '(app.win_dict["main"].xAoV.value(), app.win_dict["main"].yAoV.value(), app.win_dict["main"].zAoV.value())'
+        '(app.win_dict["main"].xAoV.value(), app.win_dict["main"].yAoV.value(), app.win_dict["main"].zAoV.value())',
+        '(app.win_dict["settings"].xConv.value(), app.win_dict["settings"].yConv.value(), app.win_dict["settings"].zConv.value())',
     ],
     "CAMERA": ["app.loop", 'app.win_dict["camera"]'],
 }

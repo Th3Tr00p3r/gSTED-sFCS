@@ -90,17 +90,35 @@ class Timeout:
     async def _update_gui(self):
         """Doc."""
 
+        def updt_scn_pos(app):
+            """Doc."""
+
+            if self._app.error_dict["SCANNERS"] is None:
+                (x_ai, y_ai, z_ai) = tuple(
+                    self._app.dvc_dict["SCANNERS"].ai_buffer[:, -1]
+                )
+
+                (x_um, y_um, z_um) = tuple(
+                    (axis_vltg - axis_org) * axis_ratio
+                    for axis_vltg, axis_ratio, axis_org in zip(
+                        (x_ai, y_ai, z_ai),
+                        self._app.dvc_dict["SCANNERS"].um_V_ratio,
+                        const.ORIGIN,
+                    )
+                )
+
+                self._app.win_dict["main"].xAiV.setValue(x_ai)
+                self._app.win_dict["main"].yAiV.setValue(y_ai)
+                self._app.win_dict["main"].zAiV.setValue(z_ai)
+
+                self._app.win_dict["main"].xAoUm.setValue(x_um)
+                self._app.win_dict["main"].yAoUm.setValue(y_um)
+                self._app.win_dict["main"].zAoUm.setValue(z_um)
+
         while self.not_finished:
 
             if self.running:
-                # AI
-                if self._app.error_dict["SCANNERS"] is None:
-                    (x_ai, y_ai, z_ai) = tuple(
-                        self._app.dvc_dict["SCANNERS"].ai_buffer[:, -1]
-                    )
-                    self._app.win_dict["main"].xAiV.setValue(x_ai)
-                    self._app.win_dict["main"].yAiV.setValue(y_ai)
-                    self._app.win_dict["main"].zAiV.setValue(z_ai)
+                updt_scn_pos(self._app)
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
