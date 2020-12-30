@@ -69,12 +69,13 @@ class Scanners(drivers.DAQmxInstrumentAIO):
     buff_sz = 1000
     ai_clk_rate = 1000
 
-    def __init__(self, nick, param_dict, error_dict, led, init_pos_vltgs):
+    def __init__(self, nick, param_dict, error_dict, led, init_pos_vltgs, um_V_ratio):
         self.led = led
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
 
         self.last_ai = None
         self.last_ao = init_pos_vltgs
+        self.um_V_ratio = um_V_ratio
         # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
         self.ao_buffer = np.empty(shape=(3, 0))
         self.ai_buffer = np.empty(shape=(3, 0))
@@ -108,19 +109,33 @@ class Scanners(drivers.DAQmxInstrumentAIO):
 
         """
 
-        ao_addrs = []
+        ao_addresses = []
         limits = []
         vltgs = []
         axes = ("x", "y", "z")
         for axis, curr_axis_vltg, new_axis_vltg in zip(axes, self.last_ao, pos_vltgs):
-            if 1:  # new_axis_vltg != curr_axis_vltg:
-                ao_addrs.append(self._param_dict[f"ao_{axis}_addr"])
+            if axis in {"x", "y"}:  # Differential Voltage [-5,5]
+                ao_addresses.append(
+                    [
+                        self._param_dict[f"ao_{axis}_p_addr"],
+                        self._param_dict[f"ao_{axis}_n_addr"],
+                    ]
+                )
+                limits.append(getattr(self, f"{axis}_limits"))
+                vltgs += [new_axis_vltg, -new_axis_vltg]
+            else:  # RSE Voltage [0,10]
+                ao_addresses.append(self._param_dict[f"ao_{axis}_addr"])
                 limits.append(getattr(self, f"{axis}_limits"))
                 vltgs.append(new_axis_vltg)
 
         self.last_ao = pos_vltgs
 
-        await self.write(ao_addrs, vltgs, limits)
+        *ao_xy_addresses, ao_z_addr = ao_addresses
+        *xy_vltgs, z_vltg = vltgs
+        *xy_limits, z_limits = limits
+
+        await self.write(ao_xy_addresses, xy_vltgs, xy_limits)
+        await self.write([ao_z_addr], [z_vltg], [z_limits])
 
     def dump_buff_overflow(self):
         """Doc."""

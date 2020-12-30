@@ -16,6 +16,7 @@ from nidaqmx.constants import (
     TerminalConfiguration,
 )
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
+from nidaqmx.utils import flatten_channel_string
 from pyftdi.ftdi import Ftdi
 from pyftdi.usbtools import UsbTools
 
@@ -170,11 +171,34 @@ class DAQmxInstrumentAIO:
         return self.ai_task.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
 
     @err_hndlr
-    async def write(self, ao_addrs: iter, vals: iter, limits: iter) -> NoReturn:
+    async def write(self, ao_addresses: iter, vals: iter, limits: iter) -> NoReturn:
         """Doc."""
 
-        with nidaqmx.Task() as task:
-            for (ao_addr, limits) in zip(ao_addrs, limits):
+        def flatten_lists(suspected_iter: iter) -> list:
+            """
+            Accepts a list (or other iterable) containing strings or lists of strings,
+            and converts the lists of strings into NI-DAQmx-readable
+            comma delimited strings, not affecting any 'unlisted' strings.
+
+            a_list = ['foo', ['bar', 'baz']]
+            flatten_lists(a_list)
+            >>> ['foo', 'bar, baz']
+            """
+
+            result_list_of_strs = []
+            for str_or_list_of_strs in suspected_iter:
+                if isinstance(str_or_list_of_strs, list):  # case list
+                    result_list_of_strs.append(
+                        flatten_channel_string(str_or_list_of_strs)
+                    )
+                else:  # case string
+                    result_list_of_strs.append(str_or_list_of_strs)
+            return result_list_of_strs
+
+        ao_addresses = flatten_lists(ao_addresses)
+
+        with nidaqmx.Task(new_task_name="ao task") as task:
+            for (ao_addr, limits) in zip(ao_addresses, limits):
                 task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
             task.write(vals, timeout=self.ao_timeout)
             # TODO: add task.timing for finite samples - it works without it, but I could try to see if it changes anything
