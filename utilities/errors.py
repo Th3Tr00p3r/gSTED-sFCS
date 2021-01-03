@@ -31,9 +31,9 @@ def build_err_dict(exc: Exception) -> str:
 
     exc_type, _, tb = sys.exc_info()
     exc_type = exc_type.__name__
-    frmtd_tb = ("\n".join(traceback.format_tb(tb)),)
+    frmtd_tb = "\n".join(traceback.format_tb(tb))
 
-    return dict(exc_type=exc_type, exc_msg=str(exc), exc_tb=frmtd_tb[0])
+    return dict(exc_type=exc_type, exc_msg=str(exc), exc_tb=frmtd_tb)
 
 
 def parse_args(args: tuple) -> str:
