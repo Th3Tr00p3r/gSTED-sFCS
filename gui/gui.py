@@ -18,16 +18,14 @@ class MainWin(QMainWindow):
     """Doc."""
 
     def __init__(self, app, parent: None = None) -> NoReturn:
-        """Doc."""
-
         super(MainWin, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
         self.imp = wins_imp.MainWin(self, app)
         self._loop = app.loop
 
+        # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.axisMove_released(1))
         self.axisMoveDown.released.connect(lambda: self.axisMove_released(-1))
-
         self.goToOrg.released.connect(
             lambda: self.origin_released({"x": True, "y": True, "z": True})
         )
@@ -38,6 +36,7 @@ class MainWin(QMainWindow):
             lambda: self.origin_released({"x": False, "y": False, "z": True})
         )
 
+        # Device LEDs
         self.ledExc.clicked.connect(self.leds_clicked)
         self.ledDep.clicked.connect(self.leds_clicked)
         self.ledShutter.clicked.connect(self.leds_clicked)
@@ -48,10 +47,22 @@ class MainWin(QMainWindow):
         self.ledCam.clicked.connect(self.leds_clicked)
         self.ledScn.clicked.connect(self.leds_clicked)
 
+        # Stage
         self.stageUp.released.connect(lambda: self.stageMove_released("UP"))
         self.stageDown.released.connect(lambda: self.stageMove_released("DOWN"))
         self.stageLeft.released.connect(lambda: self.stageMove_released("LEFT"))
         self.stageRight.released.connect(lambda: self.stageMove_released("RIGHT"))
+
+        # Device Toggling
+        self.excOnButton.released.connect(
+            lambda: self.device_toggle_button_released("EXC_LASER")
+        )
+        self.depEmissionOn.released.connect(
+            lambda: self.device_toggle_button_released("DEP_LASER")
+        )
+        self.depShutterOn.released.connect(
+            lambda: self.device_toggle_button_released("DEP_SHUTTER")
+        )
 
     def closeEvent(self, event: QEvent) -> NoReturn:
         """Doc."""
@@ -70,23 +81,10 @@ class MainWin(QMainWindow):
 
         self.imp.toggle_FCS_meas()
 
-    @pyqtSlot()
-    def on_excOnButton_released(self) -> NoReturn:
-        """Turn excitation laser On/Off."""
+    def device_toggle_button_released(self, dvc_nick: str) -> NoReturn:
+        """Turn devices On/Off."""
 
-        self.imp.dvc_toggle("EXC_LASER")
-
-    @pyqtSlot()
-    def on_depEmissionOn_released(self) -> NoReturn:
-        """Turn depletion laser On/Off"""
-
-        self.imp.dvc_toggle("DEP_LASER")
-
-    @pyqtSlot()
-    def on_depShutterOn_released(self) -> NoReturn:
-        """Turn depletion physical shutter On/Off"""
-
-        self.imp.dvc_toggle("DEP_SHUTTER")
+        self.imp.dvc_toggle(dvc_nick)
 
     @pyqtSlot()
     def on_powModeRadio_released(self) -> NoReturn:
@@ -253,6 +251,7 @@ class CamWin(QWidget):
     @pyqtSlot()
     def on_videoButton_released(self) -> NoReturn:
         """Doc."""
+        # TODO: make this one line - move the descision making to implementation
 
         if self.videoButton.text() == "Start Video":
             self.imp.toggle_video(True)
