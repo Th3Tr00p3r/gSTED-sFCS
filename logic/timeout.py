@@ -3,7 +3,6 @@
 
 import asyncio
 import logging
-import time
 
 import utilities.constants as const
 
@@ -19,14 +18,9 @@ class Timeout:
         # initial intervals (some changed during run)
         self.updt_intrvl = {
             "gui": 0.2,
-            "meas": 0.5,
             "dep": self._app.dvc_dict["DEP_LASER"].update_time,
             "cntr_avg": self._app.dvc_dict["COUNTER"].update_time,
         }
-
-        # TEST TEST TEST - THREADING-------------
-        self.mock_buffer = []
-        # ----------------------------------------------------
 
     # MAIN
     async def _main(self):
@@ -37,7 +31,6 @@ class Timeout:
             self._update_avg_counts(),
             self._update_dep(),
             self._update_gui(),
-            self._update_measurement(),
         )
         logging.debug("_main function exited")
 
@@ -78,12 +71,6 @@ class Timeout:
                     self._app.dvc_dict["COUNTER"].count()
                     self._app.dvc_dict["COUNTER"].dump_buff_overflow()
 
-                # UM232
-                if self._app.meas.type is not None:
-                    if self._app.error_dict["UM232"] is None:
-                        #                        self._app.dvc_dict["UM232"].read_TDC_data()
-                        pass
-
                 # AI
                 if self._app.error_dict["SCANNERS"] is None:
                     self._app.dvc_dict["SCANNERS"].fill_ai_buff()
@@ -120,10 +107,28 @@ class Timeout:
                 self._app.win_dict["main"].yAoUm.setValue(y_um)
                 self._app.win_dict["main"].zAoUm.setValue(z_um)
 
+        def updt_fcs_progbar(meas):
+            """Doc."""
+
+            if (
+                (self._app.error_dict["UM232"] is None)
+                and (meas.type == "FCS")
+                and meas.is_running
+            ):
+                if meas.prog_bar:
+                    meas.prog_bar.setValue(
+                        meas.time_passed / meas.duration_spinner.value() * 100
+                    )
+
         while self.not_finished:
 
             if self.running:
+
+                # SCANNERS
                 updt_scn_pos(self._app)
+
+                # FCS progress bar
+                updt_fcs_progbar(self._app.meas)
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
@@ -190,46 +195,3 @@ class Timeout:
                 )
 
             await asyncio.sleep(self.updt_intrvl["dep"])
-
-    async def _update_measurement(self):
-        """Doc."""
-
-        while self.not_finished:
-
-            if self.running:
-
-                meas = self._app.meas
-
-                if self._app.error_dict["UM232"] is None:
-
-                    if meas.type == "FCS":
-
-                        time_passed = (
-                            time.perf_counter() - meas.start_time
-                        )  # meas started
-                        print(f"time_passed:{time_passed}")  # TESTESTEST
-
-                        if (
-                            time_passed
-                            >= (meas.duration_spinner.value() - const.FCS_DURATION_EPS)
-                        ) and not meas.intrvl_done:
-                            meas.disp_ACF()
-                            self._app.dvc_dict["UM232"].init_data()
-                            self._app.dvc_dict["UM232"].purge()
-                            meas.intrvl_done = True
-
-                        if meas.prog_bar:
-                            meas.prog_bar.setValue(
-                                time_passed / meas.duration_spinner.value() * 100
-                            )
-
-                elif meas.type is not None:  # case UM232 error while measuring
-                    meas.stop()
-                    print(
-                        "ERROR DURING MEASUREMENT"
-                    )  # TODO: this should be displayed to user
-                    self._app.win_dict["main"].startFcsMeasurementButton.setText(
-                        "Start \nMeasurement"
-                    )
-
-            await asyncio.sleep(self.updt_intrvl["meas"])

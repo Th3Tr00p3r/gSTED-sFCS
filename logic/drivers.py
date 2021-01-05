@@ -6,6 +6,7 @@ from typing import NoReturn
 
 import nidaqmx
 import numpy as np
+import pylibftdi.device  # TODO: get rid of it when possible # NOQA
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from nidaqmx.constants import (
@@ -19,7 +20,6 @@ from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 from nidaqmx.utils import flatten_channel_string
 from pyftdi.ftdi import Ftdi
 from pyftdi.usbtools import UsbTools
-from pylibftdi.device import Device
 
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
@@ -33,9 +33,9 @@ class FTDI_Instrument:
         self._param_dict = param_dict
         self.error_dict = error_dict
 
-        #        self._inst = Ftdi()
+        self._inst = Ftdi()
 
-        self._inst = Device(mode="b", lazy_open=True)
+    #        self._inst = pylibftdi.device.Device(mode="b", lazy_open=True)
 
     @err_hndlr
     def open(self):
@@ -53,36 +53,58 @@ class FTDI_Instrument:
         #        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
         #        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
 
-        #        self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
-        #        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
-        #        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
-        #        self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
-        #        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
-        #        self.eff_baud_rate = self._inst.set_baudrate(
-        #            self._param_dict["baud_rate"], constrain=True
-        #        )
+        self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
+        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
+        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
+        self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
+        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
+        self.eff_baud_rate = self._inst.set_baudrate(
+            self._param_dict["baud_rate"], constrain=True
+        )
 
-        self._inst.open()
-        self._inst.ftdi_fn.ftdi_set_bitmode(0, "BITMODE_SYNCFF")
+        #        self._inst.open()
+        #        self._inst.ftdi_fn.ftdi_set_bitmode(0, "BITMODE_SYNCFF")
 
         self.state = True
 
+    @err_hndlr
     def read(self):
         """Doc."""
 
-        return np.frombuffer(
-            self._inst.read(self._param_dict["n_bytes"]), dtype=np.uint8
-        )
+        #        return np.frombuffer(
+        #            self._inst.read(self._param_dict["n_bytes"]), dtype=np.uint8
+        #        )
 
-    #        return self._inst.read_data_bytes(self._param_dict["n_bytes"])
+        return self._inst.read_data_bytes(self._param_dict["n_bytes"])
+
+    #    @err_hndlr
+    #    def read_stream(self, duration_gui_obj):
+    #        """Doc."""
+    #
+    #        start_time = time.perf_counter()
+    #
+    #        def callback():
+    #            """Doc."""
+    #
+    #            time_passed = time.perf_counter() - start_time
+    #            print(f"callback called! {time_passed/duration_gui_obj.value()*100}% done.")
+    #
+    #            return 1
+    #
+    #        self._inst.ftdi_fn.ftdi_readstream(
+    #            callback=callback,
+    #            userdata=None,
+    #            packetsPerTransfer=1,
+    #            numTransfers=1
+    #        )
 
     @err_hndlr
     def purge(self):
         """Doc."""
 
-        self._inst.flush_input()
+        #        self._inst.flush_input()
 
-    #        self._inst.purge_rx_buffer()
+        self._inst.purge_rx_buffer()
 
     @err_hndlr
     def close(self):
