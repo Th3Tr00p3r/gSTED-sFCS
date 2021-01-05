@@ -33,7 +33,7 @@ class UM232(drivers.FTDI_Instrument):
             self.close()
 
     @err_hndlr
-    def read_TDC_data(self):
+    def read_TDC(self):
         """Doc."""
 
         read_bytes = self.read()
@@ -46,6 +46,17 @@ class UM232(drivers.FTDI_Instrument):
 
         self.tot_bytes += len(read_bytes)
         self.data = np.append(self.data, read_bytes)
+
+    def stream_read_TDC(self, meas):
+        """Doc."""
+
+        while meas.time_passed < meas.duration_spinner.value() and meas.is_running:
+
+            self.data = np.append(self.data, self.read())
+            meas.time_passed = time.perf_counter() - meas.start_time
+        #            print(f"time passed: {meas.time_passed}") # TODO: progress bar shluld run smoothly if read isn't jerky
+
+        self.tot_bytes = len(self.data)
 
     def init_data(self):
         """Doc."""
