@@ -149,6 +149,9 @@ class Scanners(drivers.DAQmxInstrumentAIO):
 class Counter(drivers.DAQmxInstrumentCI):
     """Doc."""
 
+    # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
+    # PREVIOUSLY DONE IN TIMEOUT
+
     def __init__(self, nick, param_dict, error_dict, led, ai_task):
         self.led = led
         super().__init__(

@@ -51,7 +51,7 @@ AIclkDivSpinner,100
 depUpdateTime,10
 um232VendID,1027
 um232BaudRate,5000000
-um232ReadTimeout,10
+um232ReadTimeout,0
 um232ProdID,24596
 um232latencyTimerVal,2
 um232nBytes,512000
