@@ -6,6 +6,8 @@ import gui.icons.icon_paths as icon
 # general
 TIMEOUT = 0.010  # seconds (10 ms)
 ORIGIN = (0.0, 0.0, 5.0)
+FCS_DURATION_EPS = 0.02  # used to compensate for lack of synchronization between
+# FPGA readout in measurement.py and measurement interval in timeout.py
 
 # paths
 MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"

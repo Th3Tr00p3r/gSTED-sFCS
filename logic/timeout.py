@@ -2,9 +2,8 @@
 """Timeout module."""
 
 import asyncio
-
-# import concurrent.futures
 import logging
+import time
 
 import utilities.constants as const
 
@@ -17,13 +16,17 @@ class Timeout:
 
         self._app = app
 
+        # initial intervals (some changed during run)
         self.updt_intrvl = {
             "gui": 0.2,
-            "meas": 1,
+            "meas": 0.5,
             "dep": self._app.dvc_dict["DEP_LASER"].update_time,
             "cntr_avg": self._app.dvc_dict["COUNTER"].update_time,
-            "cntr_chck": 3,
         }
+
+        # TEST TEST TEST - THREADING-------------
+        self.mock_buffer = []
+        # ----------------------------------------------------
 
     # MAIN
     async def _main(self):
@@ -78,7 +81,8 @@ class Timeout:
                 # UM232
                 if self._app.meas.type is not None:
                     if self._app.error_dict["UM232"] is None:
-                        self._app.dvc_dict["UM232"].read_TDC_data()
+                        #                        self._app.dvc_dict["UM232"].read_TDC_data()
+                        pass
 
                 # AI
                 if self._app.error_dict["SCANNERS"] is None:
@@ -94,6 +98,7 @@ class Timeout:
             """Doc."""
 
             if self._app.error_dict["SCANNERS"] is None:
+
                 (x_ai, y_ai, z_ai) = tuple(
                     self._app.dvc_dict["SCANNERS"].ai_buffer[:, -1]
                 )
@@ -184,15 +189,6 @@ class Timeout:
                     self._app.win_dict["main"],
                 )
 
-            # TODO: try this sometime:
-            #                with concurrent.futures.ThreadPoolExecutor() as pool:
-            #                    result = await self._app.loop.run_in_executor(
-            #                        pool, update_props(
-            #                            self._app.error_dict[nick], self._app.dvc_dict[nick], self._app.win_dict["main"]
-            #                            )
-            #                    )
-            #                    print(result)
-
             await asyncio.sleep(self.updt_intrvl["dep"])
 
     async def _update_measurement(self):
@@ -208,23 +204,30 @@ class Timeout:
 
                     if meas.type == "FCS":
 
-                        if meas.time_passed < meas.duration_spinner.value():
-                            meas.time_passed += 1
+                        time_passed = (
+                            time.perf_counter() - meas.start_time
+                        )  # meas started
+                        print(f"time_passed:{time_passed}")  # TESTESTEST
 
-                        else:  # measurement finished
+                        if (
+                            time_passed
+                            >= (meas.duration_spinner.value() - const.FCS_DURATION_EPS)
+                        ) and not meas.intrvl_done:
                             meas.disp_ACF()
                             self._app.dvc_dict["UM232"].init_data()
                             self._app.dvc_dict["UM232"].purge()
-                            meas.time_passed = 1
+                            meas.intrvl_done = True
 
                         if meas.prog_bar:
-                            prog = (
-                                meas.time_passed / meas.duration_spinner.value() * 100
+                            meas.prog_bar.setValue(
+                                time_passed / meas.duration_spinner.value() * 100
                             )
-                            meas.prog_bar.setValue(prog)
 
                 elif meas.type is not None:  # case UM232 error while measuring
                     meas.stop()
+                    print(
+                        "ERROR DURING MEASUREMENT"
+                    )  # TODO: this should be displayed to user
                     self._app.win_dict["main"].startFcsMeasurementButton.setText(
                         "Start \nMeasurement"
                     )

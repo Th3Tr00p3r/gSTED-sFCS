@@ -16,6 +16,8 @@ from utilities.dialog import Error, Question
 from utilities.errors import error_checker as err_chck
 from utilities.errors import logic_error_handler as err_hndlr
 
+# TODO: None of the following should be classes. Notice that they don't have any attributes, therefore their state cannot change and thus Objects have no meaning. Instead, the methods should be functions in seperate modules, perhaps under a
+
 
 class MainWin:
     """Doc."""
@@ -54,6 +56,7 @@ class MainWin:
     @err_chck()
     def dvc_toggle(self, nick):
         """Doc."""
+        # TODO: see if this function can be made much shorter by combining ON/OFF
 
         if "SWITCH" in const.ICON_DICT[nick]:  # if device has a switch
             gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]["SWITCH"])
@@ -223,7 +226,7 @@ class MainWin:
                 duration_spinner=self._gui.measFCSDuration,
                 prog_bar=self._gui.FCSprogressBar,
             )
-            self._app.meas.start()
+            self._app.loop.create_task(self._app.meas.start())
             self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
         elif self._app.meas.type == "FCS":
             self._app.meas.stop()

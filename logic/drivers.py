@@ -19,6 +19,7 @@ from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 from nidaqmx.utils import flatten_channel_string
 from pyftdi.ftdi import Ftdi
 from pyftdi.usbtools import UsbTools
+from pylibftdi.device import Device
 
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
@@ -31,7 +32,10 @@ class FTDI_Instrument:
         self.nick = nick
         self._param_dict = param_dict
         self.error_dict = error_dict
-        self._inst = Ftdi()
+
+        #        self._inst = Ftdi()
+
+        self._inst = Device(mode="b", lazy_open=True)
 
     @err_hndlr
     def open(self):
@@ -44,39 +48,41 @@ class FTDI_Instrument:
         #            vendor=self._param_dict["vend_id"],
         #            product=self._param_dict["prod_id"],
         #            latency=self._param_dict["ltncy_tmr_val"],
-        #            baudrate = 256000,
+        #            baudrate = self._param_dict["baud_rate"],
         #            sync=True)
         #        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
         #        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
 
-        self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
-        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
-        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
-        self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
-        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
-        self.eff_baud_rate = self._inst.set_baudrate(
-            self._param_dict["baud_rate"], constrain=True
-        )
+        #        self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
+        #        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
+        #        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
+        #        self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
+        #        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
+        #        self.eff_baud_rate = self._inst.set_baudrate(
+        #            self._param_dict["baud_rate"], constrain=True
+        #        )
+
+        self._inst.open()
+        self._inst.ftdi_fn.ftdi_set_bitmode(0, "BITMODE_SYNCFF")
 
         self.state = True
 
     def read(self):
         """Doc."""
 
-        return self._inst.read_data_bytes(self._param_dict["n_bytes"])
+        return np.frombuffer(
+            self._inst.read(self._param_dict["n_bytes"]), dtype=np.uint8
+        )
 
-    @err_hndlr
-    def is_read_error(self):
-        """Doc."""
-
-        #        return bool(self._inst.get_cts() ^ self._inst.get_cd())
-        pass
+    #        return self._inst.read_data_bytes(self._param_dict["n_bytes"])
 
     @err_hndlr
     def purge(self):
         """Doc."""
 
-        self._inst.purge_rx_buffer()
+        self._inst.flush_input()
+
+    #        self._inst.purge_rx_buffer()
 
     @err_hndlr
     def close(self):
@@ -84,6 +90,13 @@ class FTDI_Instrument:
 
         self._inst.close()
         self.state = False
+
+    @err_hndlr
+    def is_read_error(self):
+        """Doc."""
+
+        #        return bool(self._inst.get_cts() ^ self._inst.get_cd())
+        pass
 
 
 class DAQmxInstrumentAIO:
@@ -215,7 +228,7 @@ class DAQmxInstrumentCI:
         self._param_dict = param_dict
         self.error_dict = error_dict
         self.ai_task = ai_task
-        self.read_buffer = np.zeros(shape=(5000,), dtype=np.uint32)
+        self.read_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
 
         self._init_task()
 
@@ -253,11 +266,10 @@ class DAQmxInstrumentCI:
     def read(self):
         """Doc."""
 
-        num_samps_read = self._task.sr.read_many_sample_uint32(
+        return self._task.sr.read_many_sample_uint32(
             self.read_buffer,
             number_of_samples_per_channel=READ_ALL_AVAILABLE,
         )
-        return num_samps_read
 
     @err_hndlr
     def close(self):

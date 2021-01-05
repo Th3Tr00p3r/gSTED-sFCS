@@ -112,6 +112,9 @@
          <layout class="QGridLayout" name="gridLayout_2">
           <item row="0" column="0">
            <layout class="QVBoxLayout" name="verticalLayout_5">
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_9">
               <item>
@@ -253,6 +256,9 @@
          <layout class="QGridLayout" name="gridLayout_10">
           <item row="0" column="0">
            <layout class="QVBoxLayout" name="verticalLayout_12">
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <item>
              <widget class="QGroupBox" name="groupBox">
               <property name="sizePolicy">
@@ -265,6 +271,9 @@
                <string>Excitation Laser</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_12">
+               <property name="spacing">
+                <number>0</number>
+               </property>
                <item row="0" column="0">
                 <layout class="QVBoxLayout" name="verticalLayout_19">
                  <item>
@@ -303,6 +312,9 @@
                   <string>Trigger</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_7">
+                  <property name="spacing">
+                   <number>0</number>
+                  </property>
                   <item row="0" column="0">
                    <layout class="QVBoxLayout" name="verticalLayout_6">
                     <item>
@@ -458,6 +470,9 @@
                <string>Depletion Laser</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_8">
+               <property name="spacing">
+                <number>0</number>
+               </property>
                <item row="0" column="0">
                 <layout class="QVBoxLayout" name="verticalLayout_30">
                  <item>
@@ -683,6 +698,9 @@
                 <layout class="QVBoxLayout" name="verticalLayout_60">
                  <item>
                   <layout class="QHBoxLayout" name="horizontalLayout_9">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
                    <item>
                     <layout class="QVBoxLayout" name="verticalLayout_51">
                      <item>
@@ -810,6 +828,9 @@
                  </item>
                  <item>
                   <layout class="QHBoxLayout" name="horizontalLayout_10">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
                    <item>
                     <layout class="QVBoxLayout" name="verticalLayout_87">
                      <item>
@@ -1122,6 +1143,9 @@
                    </item>
                    <item>
                     <layout class="QHBoxLayout" name="horizontalLayout_11">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
                      <item>
                       <layout class="QVBoxLayout" name="verticalLayout_96">
                        <item>
@@ -1465,12 +1489,18 @@
                       <string>Constants</string>
                      </property>
                      <layout class="QGridLayout" name="gridLayout_19">
+                      <property name="spacing">
+                       <number>0</number>
+                      </property>
                       <item row="0" column="0">
                        <widget class="QGroupBox" name="groupBox_9">
                         <property name="title">
-                         <string>Pixel Click Counter Config</string>
+                         <string>Pixel Clock Config</string>
                         </property>
                         <layout class="QVBoxLayout" name="verticalLayout_22">
+                         <property name="spacing">
+                          <number>0</number>
+                         </property>
                          <item>
                           <layout class="QVBoxLayout" name="verticalLayout_42">
                            <item>
@@ -1538,6 +1568,9 @@
                          <string>Trigger</string>
                         </property>
                         <layout class="QVBoxLayout" name="verticalLayout_25">
+                         <property name="spacing">
+                          <number>0</number>
+                         </property>
                          <item>
                           <layout class="QVBoxLayout" name="verticalLayout_23">
                            <item>
@@ -1641,6 +1674,9 @@
                          <string>Count Edges</string>
                         </property>
                         <layout class="QVBoxLayout" name="verticalLayout_31">
+                         <property name="spacing">
+                          <number>0</number>
+                         </property>
                          <item>
                           <layout class="QVBoxLayout" name="verticalLayout_26">
                            <item>
@@ -1731,6 +1767,9 @@
                    <string>TDC</string>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_15">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
                    <item row="0" column="0" colspan="2">
                     <layout class="QVBoxLayout" name="verticalLayout_43">
                      <item>
@@ -1962,6 +2001,9 @@
                    <string>Pixel Clock Parameters</string>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_16">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
                    <item row="0" column="0">
                     <layout class="QVBoxLayout" name="verticalLayout_50">
                      <item>
@@ -2187,6 +2229,9 @@
          <layout class="QGridLayout" name="gridLayout_9">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <item row="0" column="0">
              <layout class="QVBoxLayout" name="verticalLayout_75">
               <item>
