@@ -11,8 +11,6 @@ import logic.windows as wins_imp
 import utilities.constants as const
 from gui.icons import icons_rc  # for initial icons loadout # NOQA
 
-# from asyncqt import asyncSlot
-
 
 class MainWin(QMainWindow):
     """Doc."""
@@ -224,6 +222,13 @@ class SettWin(QDialog):
         # TODO: add all forms in main window too
 
         self.imp.read_csv()
+
+
+#    @pyqtSlot()
+#    def on_confirmButton_released(self) -> NoReturn:
+#        """Doc."""
+#        # TODO: return to this after taking care of windows.py (needs the restart function which isn't a SettWin() method)
+#        self.imp.
 
 
 class CamWin(QWidget):
