@@ -264,6 +264,11 @@ class MainWin:
             val / 1000
         )  # convert to seconds
 
+    def cycle_port(self):
+        """Doc."""
+
+        self._app.dvc_dict["UM232"].hard_reset()
+
 
 class SettWin:
     """Doc."""
