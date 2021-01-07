@@ -85,7 +85,7 @@
      <number>3</number>
     </property>
     <item row="2" column="0">
-     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0">
+     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="20,4">
       <property name="spacing">
        <number>0</number>
       </property>

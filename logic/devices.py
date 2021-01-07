@@ -50,18 +50,24 @@ class UM232(drivers.FTDI_Instrument):
     def stream_read_TDC(self, meas):
         """Doc."""
 
+        self.resume_input()
+
+        self.get_status()  # TEST
+
         while meas.time_passed < meas.duration_spinner.value() and meas.is_running:
 
             self.data = np.append(self.data, self.read())
             meas.time_passed = time.perf_counter() - meas.start_time
-        #            print(f"time passed: {meas.time_passed}") # TODO: progress bar shluld run smoothly if read isn't jerky
+        #            time.sleep(0.01)
 
+        self.pause_input()
+        self.purge()
         self.tot_bytes = len(self.data)
 
     def init_data(self):
         """Doc."""
 
-        self.data = np.empty(shape=(0,))
+        self.data = np.empty(shape=(0,), dtype=np.uint8)
         self.tot_bytes = 0
 
 
@@ -88,8 +94,8 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         self.last_ao = init_pos_vltgs
         self.um_V_ratio = um_V_ratio
         # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
-        self.ao_buffer = np.empty(shape=(3, 0))
-        self.ai_buffer = np.empty(shape=(3, 0))
+        self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
+        self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
 
         self.toggle(True)  # turn ON right from the start
 

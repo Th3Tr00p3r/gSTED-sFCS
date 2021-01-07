@@ -8,6 +8,7 @@ import sys
 import traceback
 from typing import Callable
 
+from ftd2xx import DeviceError
 from instrumental.drivers.cameras.uc480 import UC480Error
 from nidaqmx.errors import DaqError
 from pyftdi.ftdi import FtdiError
@@ -95,6 +96,12 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
     elif isinstance(exc, TypeError):
         if dvc.nick == "CAMERA":
             lvl = "WARNING"
+            result = 0
+        else:
+            raise exc
+
+    elif isinstance(exc, DeviceError):
+        if dvc.nick == "UM232":
             result = 0
         else:
             raise exc
