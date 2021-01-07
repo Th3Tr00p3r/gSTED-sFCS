@@ -4,9 +4,9 @@
 import asyncio
 from typing import NoReturn
 
+import ftd2xx as ftd  # NOQA
 import nidaqmx
 import numpy as np
-import pylibftdi.device  # TODO: get rid of it when possible # NOQA
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from nidaqmx.constants import (
@@ -18,8 +18,8 @@ from nidaqmx.constants import (
 )
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 from nidaqmx.utils import flatten_channel_string
-from pyftdi.ftdi import Ftdi
-from pyftdi.usbtools import UsbTools
+from pyftdi.ftdi import Ftdi  # NOQA
+from pyftdi.usbtools import UsbTools  # NOQA
 
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
@@ -35,35 +35,34 @@ class FTDI_Instrument:
 
         self._inst = Ftdi()
 
-    #        self._inst = pylibftdi.device.Device(mode="b", lazy_open=True)
-
     @err_hndlr
     def open(self):
         """Doc."""
 
         UsbTools.flush_cache()
 
-        #        # TODO: This is another way of opening the device (probably not needed)
-        #        self._inst.open_bitbang(
-        #            vendor=self._param_dict["vend_id"],
-        #            product=self._param_dict["prod_id"],
-        #            latency=self._param_dict["ltncy_tmr_val"],
-        #            baudrate = self._param_dict["baud_rate"],
-        #            sync=True)
+        #        self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
+        #        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
         #        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
+        #        self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
         #        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
+        #        self.eff_baud_rate = self._inst.set_baudrate(
+        #            self._param_dict["baud_rate"], constrain=True
+        #        )
 
-        self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
-        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
-        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
-        self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
-        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
-        self.eff_baud_rate = self._inst.set_baudrate(
-            self._param_dict["baud_rate"], constrain=True
-        )
+        self._inst = ftd.open(0)
+        self.um232_details = self._inst.getDeviceInfo()
 
-        #        self._inst.open()
-        #        self._inst.ftdi_fn.ftdi_set_bitmode(0, "BITMODE_SYNCFF")
+        SYNCFF = 0x40
+        self._inst.setBitMode(SYNCFF, True)
+        self._inst.setTimeouts(read=10, write=10)
+        self._inst.setLatencyTimer(2)
+        RTS_CTS = 0x0100
+        self._inst.setFlowControl(RTS_CTS)
+        self._inst.setUSBParameters(in_tx_size=256000)
+
+        self._inst.stopInTask()
+        self.purge()
 
         self.state = True
 
@@ -71,40 +70,32 @@ class FTDI_Instrument:
     def read(self):
         """Doc."""
 
-        #        return np.frombuffer(
-        #            self._inst.read(self._param_dict["n_bytes"]), dtype=np.uint8
-        #        )
+        #        return self._inst.read_data_bytes(self._param_dict["n_bytes"])
 
-        return self._inst.read_data_bytes(self._param_dict["n_bytes"])
+        return np.frombuffer(
+            self._inst.read(self._param_dict["n_bytes"]), dtype=np.uint8
+        )
 
-    #    @err_hndlr
-    #    def read_stream(self, duration_gui_obj):
-    #        """Doc."""
-    #
-    #        start_time = time.perf_counter()
-    #
-    #        def callback():
-    #            """Doc."""
-    #
-    #            time_passed = time.perf_counter() - start_time
-    #            print(f"callback called! {time_passed/duration_gui_obj.value()*100}% done.")
-    #
-    #            return 1
-    #
-    #        self._inst.ftdi_fn.ftdi_readstream(
-    #            callback=callback,
-    #            userdata=None,
-    #            packetsPerTransfer=1,
-    #            numTransfers=1
-    #        )
+    @err_hndlr
+    def pause_input(self):
+        """Doc."""
+
+        self._inst.stopInTask()
+
+    @err_hndlr
+    def resume_input(self):
+        """Doc."""
+
+        self._inst.restartInTask()
 
     @err_hndlr
     def purge(self):
         """Doc."""
 
-        #        self._inst.flush_input()
+        #        self._inst.purge_rx_buffer()
 
-        self._inst.purge_rx_buffer()
+        FT_PURGE_RX = 1
+        self._inst.purge(FT_PURGE_RX)
 
     @err_hndlr
     def close(self):
@@ -114,11 +105,16 @@ class FTDI_Instrument:
         self.state = False
 
     @err_hndlr
-    def is_read_error(self):
+    def get_status(self):
         """Doc."""
 
-        #        return bool(self._inst.get_cts() ^ self._inst.get_cd())
-        pass
+        status = self._inst.getModemStatus()
+
+        line_status = hex((status >> 8) & 0x000000FF)
+        modem_status = hex(status & 0x000000FF)
+
+        # TODO: add dict to translate status into string
+        print(f"line_status: {line_status}\nmodem_status: {modem_status}")  # TEST
 
 
 class DAQmxInstrumentAIO:
