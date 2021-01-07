@@ -143,6 +143,12 @@ class MainWin(QMainWindow):
 
         self.imp.cnts_avg_sldr_changed(val)
 
+    @pyqtSlot()
+    def on_cyclePort_released(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.cycle_port()
+
     # -----------------------------------------------------------------------
     # LEDS
     # -----------------------------------------------------------------------

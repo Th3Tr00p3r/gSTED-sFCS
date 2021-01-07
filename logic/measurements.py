@@ -21,7 +21,7 @@ class Measurement:
     async def start(self):
         """Doc."""
 
-        self._app.dvc_dict["UM232"].purge()
+        self._app.dvc_dict["UM232"].purge()  # TODO: is this needed?
         self._app.win_dict["main"].imp.dvc_toggle("TDC")
         self.is_running = True
 

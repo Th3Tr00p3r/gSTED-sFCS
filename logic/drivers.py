@@ -33,7 +33,7 @@ class FTDI_Instrument:
         self._param_dict = param_dict
         self.error_dict = error_dict
 
-        self._inst = Ftdi()
+    #        self._inst = Ftdi()
 
     @err_hndlr
     def open(self):
@@ -50,19 +50,26 @@ class FTDI_Instrument:
         #            self._param_dict["baud_rate"], constrain=True
         #        )
 
-        self._inst = ftd.open(0)
+        OPEN_BY_DESCRIPTION = 2
+        self._inst = ftd.openEx(b"UM232H", OPEN_BY_DESCRIPTION)
         self.um232_details = self._inst.getDeviceInfo()
 
-        SYNCFF = 0x40
-        self._inst.setBitMode(SYNCFF, True)
-        self._inst.setTimeouts(read=10, write=10)
-        self._inst.setLatencyTimer(2)
-        RTS_CTS = 0x0100
-        self._inst.setFlowControl(RTS_CTS)
-        self._inst.setUSBParameters(in_tx_size=256000)
+        #        self._inst.resetDevice()
+        #        self._inst.resetPort()
 
-        self._inst.stopInTask()
-        self.purge()
+        FT_BITMODE_SYNC_FIFO = 0x40
+        #        FT_BITMODE_SYNC_BITBANG = 0x04
+        #        FT_BITMODE_ASYNC_BITBANG = 0x01
+        self._inst.setBitMode(FT_BITMODE_SYNC_FIFO, True)
+        self._inst.setTimeouts(read=1, write=1)
+        self._inst.setLatencyTimer(2)
+        #        FT_FLOW_NONE = 0x0000
+        FT_FLOW_RTS_CTS = 0x0100
+        #        FT_FLOW_DTR_DSR = 0x0200
+        self._inst.setFlowControl(FT_FLOW_RTS_CTS)
+        self._inst.setUSBParameters(
+            in_tx_size=64000
+        )  # 64000 should be max, but isn't according to testing with getQueueStatus() during stream_read
 
         self.state = True
 
@@ -72,9 +79,9 @@ class FTDI_Instrument:
 
         #        return self._inst.read_data_bytes(self._param_dict["n_bytes"])
 
-        return np.frombuffer(
-            self._inst.read(self._param_dict["n_bytes"]), dtype=np.uint8
-        )
+        read_bytes = self._inst.read(self._param_dict["n_bytes"])
+        #        read_bytes = self._inst.read(1)
+        return np.frombuffer(read_bytes, dtype=np.uint8)
 
     @err_hndlr
     def pause_input(self):
@@ -113,8 +120,20 @@ class FTDI_Instrument:
         line_status = hex((status >> 8) & 0x000000FF)
         modem_status = hex(status & 0x000000FF)
 
-        # TODO: add dict to translate status into string
+        # TODO: add dict to translate status into string (bit field?)
         print(f"line_status: {line_status}\nmodem_status: {modem_status}")  # TEST
+
+    @err_hndlr
+    def reset_dvc(self):
+        """Doc."""
+
+        self._inst.resetDevice()
+
+    @err_hndlr
+    def cycle_port(self):
+        """Doc."""
+
+        self._inst.cyclePort()
 
 
 class DAQmxInstrumentAIO:
