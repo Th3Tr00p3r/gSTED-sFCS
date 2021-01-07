@@ -50,17 +50,23 @@ class UM232(drivers.FTDI_Instrument):
     def stream_read_TDC(self, meas):
         """Doc."""
 
-        self.resume_input()
-
         self.get_status()  # TEST
 
         while meas.time_passed < meas.duration_spinner.value() and meas.is_running:
 
-            self.data = np.append(self.data, self.read())
-            meas.time_passed = time.perf_counter() - meas.start_time
-        #            time.sleep(0.01)
+            print(f"pre-read # of bytes: {self._inst.getQueueStatus()}")  # TEST
 
-        self.pause_input()
+            if (
+                self._inst.getQueueStatus() > 0
+            ):  # TODO: move function to drivers,py, don't use _inst here
+                self.data = np.append(self.data, self.read())
+            #                self.purge() # TEST
+
+            #            print(f"post-read # of bytes: {self._inst.getQueueStatus()}") # TEST
+
+            time.sleep(0.01)
+            meas.time_passed = time.perf_counter() - meas.start_time
+
         self.purge()
         self.tot_bytes = len(self.data)
 
@@ -69,6 +75,16 @@ class UM232(drivers.FTDI_Instrument):
 
         self.data = np.empty(shape=(0,), dtype=np.uint8)
         self.tot_bytes = 0
+
+    def hard_reset(self):
+        """Doc."""
+
+        self.reset_dvc()
+        time.sleep(0.1)
+        self.cycle_port()
+        self.close()
+        time.sleep(0.3)
+        self.open()
 
 
 class Scanners(drivers.DAQmxInstrumentAIO):

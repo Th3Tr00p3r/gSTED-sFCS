@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1236</width>
-    <height>910</height>
+    <height>918</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -7431,6 +7431,46 @@ Settings</string>
       </widget>
      </item>
     </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="um232Dock">
+   <property name="minimumSize">
+    <size>
+     <width>300</width>
+     <height>308</height>
+    </size>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>300</width>
+     <height>308</height>
+    </size>
+   </property>
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetVerticalTitleBar</set>
+   </property>
+   <property name="windowTitle">
+    <string>UM232</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3">
+    <widget class="QPushButton" name="cyclePort">
+     <property name="geometry">
+      <rect>
+       <x>100</x>
+       <y>120</y>
+       <width>75</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Cycle Port
+and
+Re-initialize</string>
+     </property>
+    </widget>
    </widget>
   </widget>
   <action name="actionRestart">
