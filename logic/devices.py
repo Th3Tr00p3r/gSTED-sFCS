@@ -54,20 +54,25 @@ class UM232(drivers.FTDI_Instrument):
 
         while meas.time_passed < meas.duration_spinner.value() and meas.is_running:
 
-            print(f"pre-read # of bytes: {self._inst.getQueueStatus()}")  # TEST
+            # ftd2xx ---------------------------------------------------------------
+            #
+            #            print(f"pre-read # of bytes: {self._inst.getQueueStatus()}")  # TEST
+            #
+            #            if (
+            #                self._inst.getQueueStatus() > 0
+            #            ):  # TODO: move function to drivers,py, don't use _inst here
+            #                self.data = np.append(self.data, self.read())
+            # ------------------------------------------------------------------------
 
-            if (
-                self._inst.getQueueStatus() > 0
-            ):  # TODO: move function to drivers,py, don't use _inst here
-                self.data = np.append(self.data, self.read())
-            #                self.purge() # TEST
+            # pyftdi ----------------------------------------------------------------
+            bytes = self.read()
+            print(f"# Bytes read: {len(bytes)}")  # TEST
+            self.data = np.append(self.data, bytes)
+            # ------------------------------------------------------------------------
 
-            #            print(f"post-read # of bytes: {self._inst.getQueueStatus()}") # TEST
-
-            time.sleep(0.01)
+            #            time.sleep(0.01)
             meas.time_passed = time.perf_counter() - meas.start_time
 
-        self.purge()
         self.tot_bytes = len(self.data)
 
     def init_data(self):
