@@ -69,11 +69,13 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
         else:
             raise exc
 
-    elif isinstance(exc, DaqError):
-        if dvc.nick in {"EXC_LASER", "DEP_SHUTTER", "TDC", "COUNTER"}:
-            result = 0
-        else:
-            raise exc
+    elif isinstance(exc, DaqError) and dvc.nick in {
+        "EXC_LASER",
+        "DEP_SHUTTER",
+        "TDC",
+        "COUNTER",
+    }:
+        result = 0
 
     elif isinstance(exc, VisaIOError):
         if dvc.nick == "DEP_LASER":
@@ -84,33 +86,27 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
         else:
             raise exc
 
-    elif isinstance(exc, (AttributeError, OSError, FtdiError)):
-        if dvc.nick == "UM232":
-            result = 0
-        else:
-            raise exc
-
-    elif isinstance(exc, UC480Error):
+    elif isinstance(exc, (AttributeError, OSError, FtdiError)) and dvc.nick == "UM232":
         result = 0
 
-    elif isinstance(exc, TypeError):
-        if dvc.nick == "CAMERA":
-            lvl = "WARNING"
-            result = 0
-        else:
-            raise exc
+    elif isinstance(exc, UC480Error) and dvc.nick == "CAMERA":
+        result = 0
 
-    elif isinstance(exc, DeviceError):
-        if dvc.nick == "UM232":
-            result = 0
-        else:
-            raise exc
+    elif isinstance(exc, TypeError) and dvc.nick == "CAMERA":
+        lvl = "WARNING"
+        result = 0
+
+    elif isinstance(exc, DeviceError) and dvc.nick == "UM232":
+        result = 0
 
     else:
         raise exc
 
     if lvl == "ERROR":
-        dvc.error_dict[dvc.nick] = build_err_dict(exc)
+
+        if dvc.error_dict[dvc.nick] is None:  # keep only first error
+            dvc.error_dict[dvc.nick] = build_err_dict(exc)
+
         dvc.led.setIcon(QIcon(icon.LED_RED))
         logging.error(log_str, exc_info=False)
 
