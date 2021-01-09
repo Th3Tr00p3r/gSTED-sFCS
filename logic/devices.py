@@ -32,45 +32,14 @@ class UM232(drivers.FTDI_Instrument):
             self.purge()
             self.close()
 
-    @err_hndlr
-    def read_TDC(self):
-        """Doc."""
-
-        read_bytes = self.read()
-
-        # TEST ------------------------------------------------------------------
-        #        if len(read_bytes):
-        #            print(list(read_bytes))
-        #        print("# bytes read:", len(read_bytes))
-        # -------------------------------------------------------------------------
-
-        self.tot_bytes += len(read_bytes)
-        self.data = np.append(self.data, read_bytes)
-
     def stream_read_TDC(self, meas):
         """Doc."""
 
-        self.get_status()  # TEST
-
         while meas.time_passed < meas.duration_spinner.value() and meas.is_running:
+            read_bytes = self.read()
+            #            print(f"# Bytes read: {len(read_bytes)}")  # TEST
+            self.data = np.append(self.data, read_bytes)
 
-            # ftd2xx ---------------------------------------------------------------
-            #
-            #            print(f"pre-read # of bytes: {self._inst.getQueueStatus()}")  # TEST
-            #
-            #            if (
-            #                self._inst.getQueueStatus() > 0
-            #            ):  # TODO: move function to drivers,py, don't use _inst here
-            #                self.data = np.append(self.data, self.read())
-            # ------------------------------------------------------------------------
-
-            # pyftdi ----------------------------------------------------------------
-            bytes = self.read()
-            print(f"# Bytes read: {len(bytes)}")  # TEST
-            self.data = np.append(self.data, bytes)
-            # ------------------------------------------------------------------------
-
-            #            time.sleep(0.01)
             meas.time_passed = time.perf_counter() - meas.start_time
 
         self.tot_bytes = len(self.data)
@@ -85,8 +54,6 @@ class UM232(drivers.FTDI_Instrument):
         """Doc."""
 
         self.reset_dvc()
-        time.sleep(0.1)
-        self.cycle_port()
         self.close()
         time.sleep(0.3)
         self.open()

@@ -154,10 +154,7 @@ COUNTER_PARAM_GUI_DICT = {
 UM232_PARAM_GUI_DICT = {
     "vend_id": {"field": "um232VendID", "access": "value"},
     "prod_id": {"field": "um232ProdID", "access": "value"},
-    "dvc_dscrp": {"field": "um232DeviceDescription", "access": "text"},
     "ltncy_tmr_val": {"field": "um232latencyTimerVal", "access": "value"},
-    "baud_rate": {"field": "um232BaudRate", "access": "value"},
-    "read_timeout": {"field": "um232ReadTimeout", "access": "value"},
     "flow_ctrl": {"field": "um232FlowControl", "access": "text"},
     "bit_mode": {"field": "um232BitMode", "access": "text"},
     "n_bytes": {"field": "um232nBytes", "access": "value"},
