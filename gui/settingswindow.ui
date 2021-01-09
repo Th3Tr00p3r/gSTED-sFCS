@@ -85,7 +85,7 @@
      <number>3</number>
     </property>
     <item row="2" column="0">
-     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="20,4">
+     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,4">
       <property name="spacing">
        <number>0</number>
       </property>
@@ -103,7 +103,7 @@
          </font>
         </property>
         <property name="currentIndex">
-         <number>4</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="paths">
          <attribute name="title">
@@ -2229,13 +2229,16 @@
          <layout class="QGridLayout" name="gridLayout_9">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
-            <property name="spacing">
-             <number>0</number>
-            </property>
             <item row="0" column="0">
-             <layout class="QVBoxLayout" name="verticalLayout_75">
+             <layout class="QVBoxLayout" name="verticalLayout_10">
               <item>
                <widget class="QLabel" name="label_66">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="text">
                  <string>Vendor ID</string>
                 </property>
@@ -2245,6 +2248,12 @@
                <widget class="QSpinBox" name="um232VendID">
                 <property name="enabled">
                  <bool>true</bool>
+                </property>
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
                 </property>
                 <property name="font">
                  <font>
@@ -2271,16 +2280,16 @@
              </layout>
             </item>
             <item row="0" column="1">
-             <layout class="QVBoxLayout" name="verticalLayout_77">
+             <layout class="QVBoxLayout" name="verticalLayout_76">
               <item>
-               <widget class="QLabel" name="label_68">
+               <widget class="QLabel" name="label_67">
                 <property name="text">
-                 <string>Baud Rate</string>
+                 <string>Latency Timer (ms)</string>
                 </property>
                </widget>
               </item>
               <item>
-               <widget class="QSpinBox" name="um232BaudRate">
+               <widget class="QSpinBox" name="um232latencyTimerVal">
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
@@ -2299,48 +2308,28 @@
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>999999999</number>
+                 <number>300</number>
                 </property>
                 <property name="value">
-                 <number>256000</number>
+                 <number>6</number>
                 </property>
                </widget>
               </item>
              </layout>
             </item>
-            <item row="0" column="2" colspan="2">
-             <layout class="QVBoxLayout" name="verticalLayout_78">
+            <item row="0" column="2">
+             <layout class="QVBoxLayout" name="verticalLayout_79">
               <item>
-               <widget class="QLabel" name="label_69">
+               <widget class="QLabel" name="label_70">
                 <property name="text">
-                 <string>Read Timeout (ms)</string>
+                 <string>Flow Control</string>
                 </property>
                </widget>
               </item>
               <item>
-               <widget class="QSpinBox" name="um232ReadTimeout">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="font">
-                 <font>
-                  <pointsize>8</pointsize>
-                 </font>
-                </property>
-                <property name="wrapping">
-                 <bool>false</bool>
-                </property>
-                <property name="readOnly">
-                 <bool>false</bool>
-                </property>
-                <property name="buttonSymbols">
-                 <enum>QAbstractSpinBox::NoButtons</enum>
-                </property>
-                <property name="maximum">
-                 <number>999999</number>
-                </property>
-                <property name="value">
-                 <number>10</number>
+               <widget class="QLineEdit" name="um232FlowControl">
+                <property name="text">
+                 <string>hw</string>
                 </property>
                </widget>
               </item>
@@ -2385,91 +2374,6 @@
              </layout>
             </item>
             <item row="1" column="1">
-             <layout class="QVBoxLayout" name="verticalLayout_76">
-              <item>
-               <widget class="QLabel" name="label_67">
-                <property name="text">
-                 <string>Latency Timer Value</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBox" name="um232latencyTimerVal">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="font">
-                 <font>
-                  <pointsize>8</pointsize>
-                 </font>
-                </property>
-                <property name="wrapping">
-                 <bool>false</bool>
-                </property>
-                <property name="readOnly">
-                 <bool>false</bool>
-                </property>
-                <property name="buttonSymbols">
-                 <enum>QAbstractSpinBox::NoButtons</enum>
-                </property>
-                <property name="maximum">
-                 <number>300</number>
-                </property>
-                <property name="value">
-                 <number>2</number>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item row="1" column="2" colspan="2">
-             <layout class="QVBoxLayout" name="verticalLayout_79">
-              <item>
-               <widget class="QLabel" name="label_70">
-                <property name="text">
-                 <string>Flow Control</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="um232FlowControl">
-                <property name="text">
-                 <string>hw</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item row="2" column="0">
-             <layout class="QVBoxLayout" name="verticalLayout_82">
-              <item>
-               <widget class="QLabel" name="label_73">
-                <property name="text">
-                 <string>Device Description</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="um232DeviceDescription">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="font">
-                 <font>
-                  <pointsize>8</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>UM232H</string>
-                </property>
-                <property name="readOnly">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item row="2" column="1" colspan="2">
              <layout class="QVBoxLayout" name="verticalLayout_80">
               <item>
                <widget class="QLabel" name="label_71">
@@ -2487,7 +2391,7 @@
               </item>
              </layout>
             </item>
-            <item row="2" column="3">
+            <item row="1" column="2">
              <layout class="QVBoxLayout" name="verticalLayout_85">
               <item>
                <widget class="QLabel" name="label_75">
@@ -2519,7 +2423,7 @@
                  <number>999999999</number>
                 </property>
                 <property name="value">
-                 <number>512000</number>
+                 <number>64000</number>
                 </property>
                </widget>
               </item>

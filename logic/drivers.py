@@ -2,12 +2,11 @@
 """Drivers Module."""
 
 import asyncio
+from array import array
 from typing import NoReturn
 
-import ftd2xx as ftd  # NOQA
 import nidaqmx
 import numpy as np
-import pyftdi.serialext  # NOQA
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from nidaqmx.constants import (
@@ -19,8 +18,8 @@ from nidaqmx.constants import (
 )
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 from nidaqmx.utils import flatten_channel_string
-from pyftdi.ftdi import Ftdi  # NOQA
-from pyftdi.usbtools import UsbTools  # NOQA
+from pyftdi.ftdi import Ftdi, FtdiError
+from pyftdi.usbtools import UsbTools
 
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
@@ -34,65 +33,19 @@ class FTDI_Instrument:
         self._param_dict = param_dict
         self.error_dict = error_dict
 
-        # pyftdi ----------------------------------------------------------------
         self._inst = Ftdi()  # URL - ftdi://ftdi:232h:FT3TG15/1
-
-    #        print(self._inst.show_devices()) # TEST
-    # -------------------------------------------------------------------------
-
-    # pyftdi - UART --------------------------------------------------------
-    #        self.url = 'ftdi://ftdi:232h:FT3TG15/1'
-    # -------------------------------------------------------------------------
 
     @err_hndlr
     def open(self):
         """Doc."""
 
-        # pyftdi - UART --------------------------------------------------------
-        #        self._inst = pyftdi.serialext.serial_for_url(self.url, baudrate=5000000, timeout=0.01, rtscts=True)
-        #        print(f"UART Baudrate: {self._inst.baudrate}")
-        # -------------------------------------------------------------------------
-
-        # pyftdi ----------------------------------------------------------------
         UsbTools.flush_cache()
 
         self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
         self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
-        self._inst._usb_read_timeout = self._param_dict["read_timeout"]
         self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
         self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
-        self._inst.read_data_set_chunksize(64000)
-        self.eff_baud_rate = self._inst.set_baudrate(
-            self._param_dict["baud_rate"], constrain=True
-        )
-
-        # TODO: move these to new UM232 dock
-        print(f"read chunksize: {self._inst.read_data_get_chunksize()}")  # TEST
-        print(f"fifo sizes: {self._inst.fifo_sizes}")  # TEST
-        print(f"Baudrate: {self._inst.baudrate}")  # TEST
-        print(f"timeouts (read, write) in ms: {self._inst.timeouts}")  # TEST
-        print(f"bytes to read: {self._param_dict['n_bytes']}")  # TEST
-        # -------------------------------------------------------------------------
-
-        # ftd2xx -----------------------------------------------------------------
-        #        OPEN_BY_DESCRIPTION = 2
-        #        self._inst = ftd.openEx(b"UM232H", OPEN_BY_DESCRIPTION)
-        #        self.um232_details = self._inst.getDeviceInfo()
-        #
-        #        FT_BITMODE_SYNC_FIFO = 0x40
-        #        #        FT_BITMODE_SYNC_BITBANG = 0x04
-        #        #        FT_BITMODE_ASYNC_BITBANG = 0x01
-        #        self._inst.setBitMode(FT_BITMODE_SYNC_FIFO, True)
-        #        self._inst.setTimeouts(read=1, write=1)
-        #        self._inst.setLatencyTimer(2)
-        #        #        FT_FLOW_NONE = 0x0000
-        #        FT_FLOW_RTS_CTS = 0x0100
-        #        #        FT_FLOW_DTR_DSR = 0x0200
-        #        self._inst.setFlowControl(FT_FLOW_RTS_CTS)
-        #        self._inst.setUSBParameters(
-        #            in_tx_size=64000
-        #        )  # 64000 should be max, but isn't according to testing with getQueueStatus() during stream_read
-        # -------------------------------------------------------------------------
+        self._inst.read_data_set_chunksize(self._param_dict["n_bytes"])
 
         self.state = True
 
@@ -100,52 +53,20 @@ class FTDI_Instrument:
     def read(self):
         """Doc."""
 
-        # pyftdi ----------------------------------------------------------------
-        read_bytes = self._inst._read()
-        #        read_bytes = self._inst.read_data_bytes(size=self._param_dict["n_bytes"], attempt=0)
-        return read_bytes
-        # -----------------------------------------------------------------------
+        read_bytes = self._inst._usb_dev.read(
+            self._inst._out_ep,
+            self._inst._readbuffer_chunksize,
+        )
 
-        # pyftdi - UART --------------------------------------------------------
+        self.check_status(read_bytes[:2])
 
-    #        read_bytes = self._inst.read(1024)
-    #        return np.frombuffer(read_bytes, dtype=np.uint8)
-    # -------------------------------------------------------------------------
-
-    # ftd2xx -----------------------------------------------------------------
-    #        read_bytes = self._inst.read(self._param_dict["n_bytes"])
-    #        return np.frombuffer(read_bytes, dtype=np.uint8)
-    # -----------------------------------------------------------------------
-
-    @err_hndlr
-    def pause_input(self):
-        """Doc."""
-
-        self._inst.stopInTask()
-
-    @err_hndlr
-    def resume_input(self):
-        """Doc."""
-
-        self._inst.restartInTask()
+        return read_bytes[2:]
 
     @err_hndlr
     def purge(self):
         """Doc."""
 
-        # pyftdi -----------------------------------------------------------------
         self._inst.purge_rx_buffer()
-        # -------------------------------------------------------------------------
-
-        # pyftdi - UART --------------------------------------------------------
-
-    #        self._inst.reset_input_buffer()
-    # -------------------------------------------------------------------------
-
-    # ftd2xx -----------------------------------------------------------------
-    #        FT_PURGE_RX = 1
-    #        self._inst.purge(FT_PURGE_RX)
-    # -------------------------------------------------------------------------
 
     @err_hndlr
     def close(self):
@@ -155,38 +76,18 @@ class FTDI_Instrument:
         self.state = False
 
     @err_hndlr
-    def get_status(self):
-        """Doc."""
-
-        # pyftdi -----------------------------------------------------------------
-        print(f"modem status: {self._inst.modem_status()}")
-        # -------------------------------------------------------------------------
-
-        # pyftdi - UART --------------------------------------------------------
-
-    #        pass
-    # -------------------------------------------------------------------------
-
-    # ftd2xx -----------------------------------------------------------------
-    #        status = self._inst.getModemStatus()
-    #        line_status = hex((status >> 8) & 0x000000FF)
-    #        modem_status = hex(status & 0x000000FF)
-    #
-    #        # TODO: add dict to translate status into string (bit field?)
-    #        print(f"line_status: {line_status}\nmodem_status: {modem_status}")  # TEST
-    # -------------------------------------------------------------------------
-
-    @err_hndlr
     def reset_dvc(self):
         """Doc."""
 
-        self._inst.resetDevice()
+        self._inst.reset(usb_reset=True)
 
     @err_hndlr
-    def cycle_port(self):
+    def check_status(self, status: array) -> NoReturn:
         """Doc."""
 
-        self._inst.cyclePort()
+        if status[1] & self._inst.ERROR_BITS[1]:
+            s = " ".join(self._inst.decode_modem_status(status, True)).title()
+            raise FtdiError(f"FTDI error: {status[0]:02x}:{ status[1]:02x} {s}")
 
 
 class DAQmxInstrumentAIO:
