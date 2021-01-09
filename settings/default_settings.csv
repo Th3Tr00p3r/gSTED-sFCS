@@ -53,7 +53,7 @@ um232VendID,1027
 um232BaudRate,5000000
 um232ReadTimeout,0
 um232ProdID,24596
-um232latencyTimerVal,16
+um232latencyTimerVal,6
 um232nBytes,512000
 uc480VidIntrvl,0.3
 counterUpdateTime,0.2

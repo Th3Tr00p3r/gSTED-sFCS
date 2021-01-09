@@ -64,16 +64,14 @@ class App:
 
     def init_devices(self):
         """
-        goes through a list of device nicknames,
+        Goes through a list of device nicknames,
         instantiating a driver object for each device.
-
         """
 
         def params_from_GUI(app, gui_dict):
             """
             Get counter parameters from settings GUI
             using a dictionary predefined in constants.py.
-
             """
 
             param_dict = {}
@@ -84,7 +82,11 @@ class App:
             return param_dict
 
         def extra_args(app, x_args: list) -> list:
-            """Doc."""
+            """
+            Add additional parameters to device using a dictionary
+            predefined in constants.py.
+            """
+            # TODO: this function uses eval(), there should be a better way to refactor this code
 
             args = []
             if x_args:
