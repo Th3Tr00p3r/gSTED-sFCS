@@ -400,12 +400,10 @@ class UC480Instrument:
         return self._inst.grab_image()
 
     @err_hndlr
-    def toggle_vid(self, bool):
+    def toggle_vid(self, state):
         """Doc."""
 
-        self.vid_state = bool
-
-        if bool:
+        if state is True:
             self._inst.start_live_video()
         else:
             self._inst.stop_live_video()
