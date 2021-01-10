@@ -122,10 +122,7 @@ class App:
             """Doc."""
 
             for nick in const.DEVICE_NICKS:
-                if nick in {"DEP_LASER"}:
-                    if not self.error_dict[nick]:
-                        app.dvc_dict[nick].toggle(False)
-                else:
+                if not self.error_dict[nick]:
                     app.dvc_dict[nick].toggle(False)
 
         def close_all_wins(app):
@@ -160,14 +157,15 @@ class App:
             gui.ledScn.setIcon(QIcon(icon.LED_OFF))
 
         if restart:  # restarting
+
+            if self.win_dict["camera"] is not None:
+                self.win_dict["camera"].close()
+
             if self.meas.type is not None:
                 if self.meas.type == "FCS":
                     self.win_dict["main"].imp.toggle_FCS_meas()
 
             close_all_dvcs(self)
-
-            if self.win_dict["camera"] is not None:
-                self.win_dict["camera"].close()
 
             self.timeout_loop.pause()
 

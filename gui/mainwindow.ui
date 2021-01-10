@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1236</width>
-    <height>918</height>
+    <height>920</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -7456,7 +7456,7 @@ Settings</string>
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
-    <widget class="QPushButton" name="cyclePort">
+    <widget class="QPushButton" name="resetUm232">
      <property name="geometry">
       <rect>
        <x>100</x>
@@ -7466,9 +7466,7 @@ Settings</string>
       </rect>
      </property>
      <property name="text">
-      <string>Cycle Port
-and
-Re-initialize</string>
+      <string>Reset</string>
      </property>
     </widget>
    </widget>

@@ -50,7 +50,7 @@ class UM232(drivers.FTDI_Instrument):
         self.data = np.empty(shape=(0,), dtype=np.uint8)
         self.tot_bytes = 0
 
-    def hard_reset(self):
+    def reset(self):
         """Doc."""
 
         self.reset_dvc()
@@ -241,29 +241,43 @@ class Camera(drivers.UC480Instrument):
         """Doc."""
 
         if self.vid_state is False:
-            img = self.grab_image()
+            img = await self._loop.run_in_executor(None, self.grab_image)
             self._imshow(img)
         else:
-            await self.toggle_vid(False)
-            img = self.grab_image()
+            self.toggle_video(False)
+            img = await self._loop.run_in_executor(None, self.grab_image)
             self._imshow(img)
-            await asyncio.gather(self.toggle_vid(True), self._vidshow())
+            self.toggle_video(True)
 
-    def toggle_video(self, bool):
+    def toggle_video(self, new_state):
         """Doc."""
 
-        self.toggle_vid(bool)
+        async def helper(self):
+            """
+            This is a workaround -
+            loop.run_in_executor() must be awaited, but toggle_video needs to be
+            a regular function to keep the rest of the code as it is. by creating this
+            async helper function I can make it work. A lambda would be better here
+            but there's no async lambda yet.
+            """
 
-        if bool:
-            self._loop.create_task(self._vidshow())
+            await self._loop.run_in_executor(None, self._vidshow)
 
-    async def _vidshow(self):
+        if self.vid_state != new_state:
+            self.toggle_vid(new_state)
+            self.vid_state = new_state
+
+        if new_state is True:
+            self._loop.create_task(helper(self))
+
+    def _vidshow(self):
         """Doc."""
 
         while self.vid_state is True:
             img = self.get_latest_frame()
-            self._imshow(img)
-            await asyncio.sleep(self.param_dict["vid_intrvl"])
+            if img is not None:
+                self._imshow(img)
+            time.sleep(self.param_dict["vid_intrvl"])
 
     @err_hndlr
     def _imshow(self, img):
