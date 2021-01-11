@@ -78,9 +78,15 @@ class MainWin(QMainWindow):
 
     @pyqtSlot()
     def on_startFcsMeasurementButton_released(self) -> NoReturn:
-        """Begin FCS Measurement."""
+        """Begin/end FCS measurement."""
 
         self.imp.toggle_FCS_meas()
+
+    @pyqtSlot()
+    def on_startSolScan_released(self) -> NoReturn:
+        """Begin/end SFCS measurement."""
+
+        self.imp.toggle_SFCSSolution_meas()
 
     def device_toggle_button_released(self, dvc_nick: str) -> NoReturn:
         """Turn devices On/Off."""

@@ -11,7 +11,7 @@ from PyQt5.QtGui import QIcon
 
 import gui.icons.icon_paths as icon
 import utilities.constants as const
-from logic.measurements import Measurement
+from logic.measurements import FCSMeasurement, SFCSSolutionMeasurement
 from utilities.dialog import Error, Question
 from utilities.errors import error_checker as err_chck
 from utilities.errors import logic_error_handler as err_hndlr
@@ -220,9 +220,8 @@ class MainWin:
         """Doc."""
 
         if self._app.meas.type is None:
-            self._app.meas = Measurement(
+            self._app.meas = FCSMeasurement(
                 self._app,
-                type="FCS",
                 duration_spinner=self._gui.measFCSDuration,
                 prog_bar=self._gui.FCSprogressBar,
             )
@@ -231,6 +230,28 @@ class MainWin:
         elif self._app.meas.type == "FCS":
             self._app.meas.stop()
             self._gui.startFcsMeasurementButton.setText("Start \nMeasurement")
+        else:
+            error_txt = (
+                f"Another type of measurement "
+                f"({self._app.meas.type}) is currently running."
+            )
+            Error(error_txt=error_txt).display()
+
+    @err_chck({"TDC", "UM232"})
+    def toggle_SFCSSolution_meas(self):
+        """Doc."""
+
+        if self._app.meas.type is None:
+            self._app.meas = SFCSSolutionMeasurement(
+                self._app,
+                duration_spinner=self._gui.solScanDuration,
+                prog_bar=self._gui.solScanProgressBar,
+            )
+            self._app.loop.create_task(self._app.meas.start())
+            self._gui.startSolScan.setText("Stop \nScan")
+        elif self._app.meas.type == "SFCSSolution":
+            self._app.meas.stop()
+            self._gui.startSolScan.setText("Start \nScan")
         else:
             error_txt = (
                 f"Another type of measurement "
