@@ -35,20 +35,23 @@ class UM232(drivers.FTDI_Instrument):
     def stream_read_TDC(self, meas):
         """Doc."""
 
-        while meas.time_passed < meas.duration_spinner.value() and meas.is_running:
+        while (
+            meas.time_passed < meas.duration_spinner.value() * meas.duration_multiplier
+            and meas.is_running
+        ):
             read_bytes = self.read()
             #            print(f"# Bytes read: {len(read_bytes)}")  # TEST
             self.data = np.append(self.data, read_bytes)
 
             meas.time_passed = time.perf_counter() - meas.start_time
 
-        self.tot_bytes = len(self.data)
+        self.tot_bytes_read = len(self.data)
 
     def init_data(self):
         """Doc."""
 
         self.data = np.empty(shape=(0,), dtype=np.uint8)
-        self.tot_bytes = 0
+        self.tot_bytes_read = 0
 
     def reset(self):
         """Doc."""
@@ -220,6 +223,8 @@ class Counter(drivers.DAQmxInstrumentCI):
 class Camera(drivers.UC480Instrument):
     """Doc."""
 
+    # TODO: test during UM232 reading. could be that pyUSB/pyftdi interferes with the uc480
+
     def __init__(self, nick, param_dict, error_dict, led, loop, gui):
         self.led = led
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
@@ -241,11 +246,12 @@ class Camera(drivers.UC480Instrument):
         """Doc."""
 
         if self.vid_state is False:
-            img = await self._loop.run_in_executor(None, self.grab_image)
+            img = self.grab_image()
             self._imshow(img)
         else:
             self.toggle_video(False)
-            img = await self._loop.run_in_executor(None, self.grab_image)
+            await asyncio.sleep(0.2)
+            img = self.grab_image()
             self._imshow(img)
             self.toggle_video(True)
 
