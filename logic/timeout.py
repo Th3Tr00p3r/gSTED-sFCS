@@ -112,12 +112,14 @@ class Timeout:
 
             if (
                 (self._app.error_dict["UM232"] is None)
-                and (meas.type == "FCS")
+                and meas.type in {"FCS", "SFCSSolution"}
                 and meas.is_running
             ):
                 if meas.prog_bar:
                     meas.prog_bar.setValue(
-                        meas.time_passed / meas.duration_spinner.value() * 100
+                        meas.time_passed
+                        / (meas.duration_spinner.value() * meas.duration_multiplier)
+                        * 100
                     )
 
         while self.not_finished:

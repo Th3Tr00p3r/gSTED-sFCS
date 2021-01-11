@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -3504,7 +3504,7 @@ Pattern</string>
                      <item>
                       <widget class="QLabel" name="label_55">
                        <property name="text">
-                        <string>Duration (minutes)</string>
+                        <string>Duration (mins)</string>
                        </property>
                       </widget>
                      </item>
@@ -3514,7 +3514,7 @@ Pattern</string>
                         <number>0</number>
                        </property>
                        <item>
-                        <widget class="QSpinBox" name="measTimeSpinBox_2">
+                        <widget class="QDoubleSpinBox" name="solScanDuration">
                          <property name="minimumSize">
                           <size>
                            <width>60</width>
@@ -3532,11 +3532,20 @@ Pattern</string>
                            <pointsize>10</pointsize>
                           </font>
                          </property>
-                         <property name="alignment">
-                          <set>Qt::AlignCenter</set>
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>999.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.500000000000000</double>
                          </property>
                          <property name="value">
-                          <number>10</number>
+                          <double>1.000000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -3556,7 +3565,7 @@ Pattern</string>
                       </spacer>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="startSolScanButton">
+                      <widget class="QPushButton" name="startSolScan">
                        <property name="minimumSize">
                         <size>
                          <width>200</width>
@@ -4241,7 +4250,7 @@ Pattern</string>
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="solScanFileSize_3">
+                        <widget class="QLineEdit" name="solScanFileNo">
                          <property name="enabled">
                           <bool>false</bool>
                          </property>
@@ -4311,7 +4320,7 @@ Pattern</string>
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="solScanFileSize_2">
+                        <widget class="QLineEdit" name="solScanBytesRead">
                          <property name="enabled">
                           <bool>false</bool>
                          </property>
@@ -7586,13 +7595,12 @@ Settings</string>
   <tabstop>solNumLines</tabstop>
   <tabstop>solTotPointsPerLine_2</tabstop>
   <tabstop>solScanPatternGraphicsView</tabstop>
-  <tabstop>measTimeSpinBox_2</tabstop>
-  <tabstop>startSolScanButton</tabstop>
+  <tabstop>startSolScan</tabstop>
   <tabstop>measTimeTimeEdit_3</tabstop>
   <tabstop>measTimeTimeEdit_4</tabstop>
-  <tabstop>solScanFileSize_3</tabstop>
+  <tabstop>solScanFileNo</tabstop>
   <tabstop>solScanFileSize</tabstop>
-  <tabstop>solScanFileSize_2</tabstop>
+  <tabstop>solScanBytesRead</tabstop>
   <tabstop>solScanFilename</tabstop>
   <tabstop>measFCSDuration</tabstop>
   <tabstop>startFcsMeasurementButton</tabstop>
