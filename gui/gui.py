@@ -43,7 +43,7 @@ class MainWin(QMainWindow):
         self.ledShutter.clicked.connect(self.leds_clicked)
         self.ledStage.clicked.connect(self.leds_clicked)
         self.ledCounter.clicked.connect(self.leds_clicked)
-        self.ledUm232.clicked.connect(self.leds_clicked)
+        self.ledUm232h.clicked.connect(self.leds_clicked)
         self.ledTdc.clicked.connect(self.leds_clicked)
         self.ledCam.clicked.connect(self.leds_clicked)
         self.ledScn.clicked.connect(self.leds_clicked)

@@ -215,14 +215,14 @@ class MainWin:
             self._gui.stepperDock.setVisible(True)
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
-    @err_chck({"TDC", "UM232"})
+    @err_chck({"TDC", "UM232H"})
     def toggle_FCS_meas(self):
         """Doc."""
 
         if self._app.meas.type is None:
             self._app.meas = FCSMeasurement(
                 self._app,
-                duration_spinner=self._gui.measFCSDuration,
+                duration_gui=self._gui.measFCSDuration,
                 prog_bar=self._gui.FCSprogressBar,
             )
             self._app.loop.create_task(self._app.meas.start())
@@ -237,15 +237,17 @@ class MainWin:
             )
             Error(error_txt=error_txt).display()
 
-    @err_chck({"TDC", "UM232"})
+    @err_chck({"TDC", "UM232H"})
     def toggle_SFCSSolution_meas(self):
         """Doc."""
 
         if self._app.meas.type is None:
             self._app.meas = SFCSSolutionMeasurement(
                 self._app,
-                duration_spinner=self._gui.solScanDuration,
+                duration_gui=self._gui.solScanDuration,
                 prog_bar=self._gui.solScanProgressBar,
+                start_time_gui=self._gui.solScanStartTime,
+                end_time_gui=self._gui.solScanEndTime,
             )
             self._app.loop.create_task(self._app.meas.start())
             self._gui.startSolScan.setText("Stop \nScan")
@@ -262,8 +264,8 @@ class MainWin:
     def open_settwin(self):
         """Doc."""
 
-        self._app.win_dict["settings"].show()
-        self._app.win_dict["settings"].activateWindow()
+        self._app.gui_dict["settings"].show()
+        self._app.gui_dict["settings"].activateWindow()
 
     @err_chck({"CAMERA"})
     async def open_camwin(self):
@@ -272,9 +274,9 @@ class MainWin:
         """Doc."""
 
         self._gui.actionCamera_Control.setEnabled(False)
-        self._app.win_dict["camera"].show()
-        self._app.win_dict["camera"].activateWindow()
-        self._app.win_dict["camera"].imp.init_cam()
+        self._app.gui_dict["camera"].show()
+        self._app.gui_dict["camera"].activateWindow()
+        self._app.gui_dict["camera"].imp.init_cam()
 
     @err_chck({"COUNTER"})
     def cnts_avg_sldr_changed(self, val):
@@ -288,7 +290,7 @@ class MainWin:
     def reset(self):
         """Doc."""
 
-        self._app.dvc_dict["UM232"].reset()
+        self._app.dvc_dict["UM232H"].reset()
 
 
 class SettWin:
@@ -425,7 +427,7 @@ class CamWin:
         """Doc."""
 
         self._cam = self._app.dvc_dict["CAMERA"]
-        self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
+        self._app.gui_dict["main"].imp.dvc_toggle("CAMERA")
         #        self._cam.video_timer.timeout.connect(self._video_timeout)
         logging.debug("Camera connection opened")
 
@@ -434,8 +436,8 @@ class CamWin:
 
         if self._cam is not None:
             self.toggle_video(False)
-            self._app.win_dict["main"].imp.dvc_toggle("CAMERA")
-            self._app.win_dict["main"].actionCamera_Control.setEnabled(True)
+            self._app.gui_dict["main"].imp.dvc_toggle("CAMERA")
+            self._app.gui_dict["main"].actionCamera_Control.setEnabled(True)
             self._cam = None
             logging.debug("Camera connection closed")
 
