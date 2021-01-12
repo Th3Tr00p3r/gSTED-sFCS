@@ -61,7 +61,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
                 lvl = "WARNING"
                 result = -999
 
-        elif dvc.nick in {"DEP_SHUTTER", "UM232"}:
+        elif dvc.nick in {"DEP_SHUTTER", "UM232H"}:
             result = 0
         else:
             raise exc
@@ -83,7 +83,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
         else:
             raise exc
 
-    elif isinstance(exc, (AttributeError, OSError, FtdiError)) and dvc.nick == "UM232":
+    elif isinstance(exc, (AttributeError, OSError, FtdiError)) and dvc.nick == "UM232H":
         result = 0
 
     elif isinstance(exc, UC480Error) and dvc.nick == "CAMERA":
@@ -93,7 +93,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
         lvl = "WARNING"
         result = 0
 
-    elif isinstance(exc, DeviceError) and dvc.nick == "UM232":
+    elif isinstance(exc, DeviceError) and dvc.nick == "UM232H":
         result = 0
 
     else:
