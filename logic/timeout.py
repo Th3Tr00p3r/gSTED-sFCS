@@ -99,26 +99,26 @@ class Timeout:
                     )
                 )
 
-                self._app.win_dict["main"].xAiV.setValue(x_ai)
-                self._app.win_dict["main"].yAiV.setValue(y_ai)
-                self._app.win_dict["main"].zAiV.setValue(z_ai)
+                self._app.gui_dict["main"].xAiV.setValue(x_ai)
+                self._app.gui_dict["main"].yAiV.setValue(y_ai)
+                self._app.gui_dict["main"].zAiV.setValue(z_ai)
 
-                self._app.win_dict["main"].xAoUm.setValue(x_um)
-                self._app.win_dict["main"].yAoUm.setValue(y_um)
-                self._app.win_dict["main"].zAoUm.setValue(z_um)
+                self._app.gui_dict["main"].xAoUm.setValue(x_um)
+                self._app.gui_dict["main"].yAoUm.setValue(y_um)
+                self._app.gui_dict["main"].zAoUm.setValue(z_um)
 
         def updt_fcs_progbar(meas):
             """Doc."""
 
             if (
-                (self._app.error_dict["UM232"] is None)
+                (self._app.error_dict["UM232H"] is None)
                 and meas.type in {"FCS", "SFCSSolution"}
                 and meas.is_running
             ):
-                if meas.prog_bar:
+                if hasattr(meas, "prog_bar"):
                     meas.prog_bar.setValue(
                         meas.time_passed
-                        / (meas.duration_spinner.value() * meas.duration_multiplier)
+                        / (meas.duration_gui.value() * meas.duration_multiplier)
                         * 100
                     )
 
@@ -148,7 +148,7 @@ class Timeout:
             if self.running:
                 if self._app.error_dict[nick] is None:
                     avg_counts = self._app.dvc_dict[nick].average_counts()
-                    self._app.win_dict["main"].countsSpinner.setValue(avg_counts)
+                    self._app.gui_dict["main"].countsSpinner.setValue(avg_counts)
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
@@ -193,7 +193,7 @@ class Timeout:
                 await update_props(
                     self._app.error_dict[nick],
                     self._app.dvc_dict[nick],
-                    self._app.win_dict["main"],
+                    self._app.gui_dict["main"],
                 )
 
             await asyncio.sleep(self.updt_intrvl["dep"])

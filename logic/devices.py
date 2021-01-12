@@ -13,7 +13,7 @@ import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
-class UM232(drivers.FTDI_Instrument):
+class UM232H(drivers.FTDI_Instrument):
     """Doc."""
 
     def __init__(self, nick, param_dict, error_dict, led):
@@ -36,7 +36,7 @@ class UM232(drivers.FTDI_Instrument):
         """Doc."""
 
         while (
-            meas.time_passed < meas.duration_spinner.value() * meas.duration_multiplier
+            meas.time_passed < meas.duration_gui.value() * meas.duration_multiplier
             and meas.is_running
         ):
             read_bytes = self.read()
@@ -223,7 +223,7 @@ class Counter(drivers.DAQmxInstrumentCI):
 class Camera(drivers.UC480Instrument):
     """Doc."""
 
-    # TODO: test during UM232 reading. could be that pyUSB/pyftdi interferes with the uc480
+    # TODO: test during UM232H reading. could be that pyUSB/pyftdi interferes with the uc480
 
     def __init__(self, nick, param_dict, error_dict, led, loop, gui):
         self.led = led

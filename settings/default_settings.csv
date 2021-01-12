@@ -1,4 +1,6 @@
 arduinoAddr,COM3
+um232FlowControl,hw
+um232BitMode,SYNCFF
 counterPixelClockAddress,Dev1/Ctr0
 pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
 counterTriggerAddress,Dev3/port1/line0
@@ -32,13 +34,14 @@ excAddr,Dev3/port0/line21
 depMod,MPB
 depAddr,COM7
 depShutterAddr,Dev3/port0/line11
-solDataPath,./data/solution measurements
-imgDataPath,./data/image measurements
-camDataPath,./data/camera photos
+solDataPath,./data/solution measurements/
+imgDataPath,./data/image measurements/
+camDataPath,./data/camera photos/
 logDataPath,./log/
-um232FlowControl,hw
-um232DeviceDescription,UM232H
-um232BitMode,SYNCFF
+um232VendID,1027
+um232latencyTimerVal,6
+um232ProdID,24596
+um232nBytes,512000
 counterBufferSizeSpinner,10000
 TDClaserFreq,10
 TDCFPGAFreq,400
@@ -49,12 +52,6 @@ pixelClockHighTicks,2
 pixelClockFreq,4000
 AIclkDivSpinner,100
 depUpdateTime,10
-um232VendID,1027
-um232BaudRate,5000000
-um232ReadTimeout,0
-um232ProdID,24596
-um232latencyTimerVal,6
-um232nBytes,512000
 uc480VidIntrvl,0.3
 counterUpdateTime,0.2
 xConv,68.0

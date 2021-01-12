@@ -3545,7 +3545,7 @@ Pattern</string>
                           <double>0.500000000000000</double>
                          </property>
                          <property name="value">
-                          <double>1.000000000000000</double>
+                          <double>0.100000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -3628,7 +3628,7 @@ Pattern</string>
                         </widget>
                        </item>
                        <item>
-                        <widget class="QTimeEdit" name="measTimeTimeEdit_3">
+                        <widget class="QTimeEdit" name="solScanStartTime">
                          <property name="enabled">
                           <bool>true</bool>
                          </property>
@@ -3700,7 +3700,7 @@ Pattern</string>
                         </widget>
                        </item>
                        <item alignment="Qt::AlignRight">
-                        <widget class="QTimeEdit" name="measTimeTimeEdit_4">
+                        <widget class="QTimeEdit" name="solScanEndTime">
                          <property name="enabled">
                           <bool>true</bool>
                          </property>
@@ -4228,7 +4228,7 @@ Pattern</string>
                     </widget>
                    </item>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_33">
+                    <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="1,1,1">
                      <property name="spacing">
                       <number>0</number>
                      </property>
@@ -4237,7 +4237,7 @@ Pattern</string>
                        <property name="spacing">
                         <number>0</number>
                        </property>
-                       <item>
+                       <item alignment="Qt::AlignHCenter">
                         <widget class="QLabel" name="label_60">
                          <property name="font">
                           <font>
@@ -4249,10 +4249,19 @@ Pattern</string>
                          </property>
                         </widget>
                        </item>
-                       <item>
-                        <widget class="QLineEdit" name="solScanFileNo">
-                         <property name="enabled">
-                          <bool>false</bool>
+                       <item alignment="Qt::AlignHCenter">
+                        <widget class="QSpinBox" name="solScanFileNo">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>30</height>
+                          </size>
                          </property>
                          <property name="maximumSize">
                           <size>
@@ -4260,8 +4269,20 @@ Pattern</string>
                            <height>30</height>
                           </size>
                          </property>
-                         <property name="placeholderText">
-                          <string>#</string>
+                         <property name="readOnly">
+                          <bool>true</bool>
+                         </property>
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="suffix">
+                          <string/>
+                         </property>
+                         <property name="prefix">
+                          <string/>
+                         </property>
+                         <property name="value">
+                          <number>1</number>
                          </property>
                         </widget>
                        </item>
@@ -4272,7 +4293,7 @@ Pattern</string>
                        <property name="spacing">
                         <number>0</number>
                        </property>
-                       <item>
+                       <item alignment="Qt::AlignHCenter">
                         <widget class="QLabel" name="label_58">
                          <property name="font">
                           <font>
@@ -4284,10 +4305,13 @@ Pattern</string>
                          </property>
                         </widget>
                        </item>
-                       <item>
-                        <widget class="QLineEdit" name="solScanFileSize">
-                         <property name="enabled">
-                          <bool>false</bool>
+                       <item alignment="Qt::AlignHCenter">
+                        <widget class="QDoubleSpinBox" name="solScanFileSize">
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>30</height>
+                          </size>
                          </property>
                          <property name="maximumSize">
                           <size>
@@ -4295,8 +4319,14 @@ Pattern</string>
                            <height>30</height>
                           </size>
                          </property>
-                         <property name="placeholderText">
-                          <string>#</string>
+                         <property name="readOnly">
+                          <bool>true</bool>
+                         </property>
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="maximum">
+                          <double>9999.000000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -4307,7 +4337,7 @@ Pattern</string>
                        <property name="spacing">
                         <number>0</number>
                        </property>
-                       <item>
+                       <item alignment="Qt::AlignHCenter">
                         <widget class="QLabel" name="label_59">
                          <property name="font">
                           <font>
@@ -4319,10 +4349,16 @@ Pattern</string>
                          </property>
                         </widget>
                        </item>
-                       <item>
-                        <widget class="QLineEdit" name="solScanBytesRead">
+                       <item alignment="Qt::AlignHCenter">
+                        <widget class="QDoubleSpinBox" name="solScanBytesRead1">
                          <property name="enabled">
-                          <bool>false</bool>
+                          <bool>true</bool>
+                         </property>
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>30</height>
+                          </size>
                          </property>
                          <property name="maximumSize">
                           <size>
@@ -4330,8 +4366,14 @@ Pattern</string>
                            <height>30</height>
                           </size>
                          </property>
-                         <property name="placeholderText">
-                          <string>#</string>
+                         <property name="readOnly">
+                          <bool>true</bool>
+                         </property>
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="maximum">
+                          <double>9999.000000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -4377,12 +4419,12 @@ Pattern</string>
                    <item>
                     <widget class="QLabel" name="label_37">
                      <property name="text">
-                      <string>File Name</string>
+                      <string>File Template</string>
                      </property>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QLineEdit" name="solScanFilename">
+                    <widget class="QLineEdit" name="solScanFileTemplate">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                        <horstretch>0</horstretch>
@@ -4401,8 +4443,11 @@ Pattern</string>
                        <height>30</height>
                       </size>
                      </property>
+                     <property name="text">
+                      <string>solScan</string>
+                     </property>
                      <property name="placeholderText">
-                      <string>Filename</string>
+                      <string>File Template</string>
                      </property>
                     </widget>
                    </item>
@@ -5583,7 +5628,7 @@ interval
                </sizepolicy>
               </property>
               <property name="text">
-               <string>UM232</string>
+               <string>UM232H</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
@@ -5591,7 +5636,7 @@ interval
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="ledUm232">
+             <widget class="QPushButton" name="ledUm232h">
               <property name="enabled">
                <bool>true</bool>
               </property>
@@ -7596,12 +7641,9 @@ Settings</string>
   <tabstop>solTotPointsPerLine_2</tabstop>
   <tabstop>solScanPatternGraphicsView</tabstop>
   <tabstop>startSolScan</tabstop>
-  <tabstop>measTimeTimeEdit_3</tabstop>
-  <tabstop>measTimeTimeEdit_4</tabstop>
-  <tabstop>solScanFileNo</tabstop>
-  <tabstop>solScanFileSize</tabstop>
-  <tabstop>solScanBytesRead</tabstop>
-  <tabstop>solScanFilename</tabstop>
+  <tabstop>solScanStartTime</tabstop>
+  <tabstop>solScanEndTime</tabstop>
+  <tabstop>solScanFileTemplate</tabstop>
   <tabstop>measFCSDuration</tabstop>
   <tabstop>startFcsMeasurementButton</tabstop>
   <tabstop>lineEdit</tabstop>
