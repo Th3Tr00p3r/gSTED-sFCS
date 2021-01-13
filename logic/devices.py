@@ -372,10 +372,7 @@ class StepperStage:
     Control stepper stage through Arduino chip using PyVISA.
     This device operates slowly and needs special care,
     and so its driver is within its own class (not inherited)
-
     """
-
-    # TODO: (low priority) try to fit with VISA driver - try adding longer response time as option to driver
 
     def __init__(self, nick, param_dict, error_dict, led):
         self.led = led
