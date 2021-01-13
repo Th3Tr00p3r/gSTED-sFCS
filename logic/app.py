@@ -193,12 +193,10 @@ class App:
             logging.info("Restarting application.")
 
         else:  # exiting
-            self.loop.create_task(
-                self.timeout_loop.finish()
-            )  # TODO: shouldn't this be 'await'ed instead?
+            self.timeout_loop.finish()
+
             if self.meas.type is not None:
-                if self.meas.type == "FCS":
-                    self.gui_dict["main"].imp.toggle_FCS_meas()
+                self.gui_dict["main"].imp.toggle_meas(self.meas.type)
 
             close_all_wins(self)
             close_all_dvcs(self)
