@@ -18,9 +18,6 @@ class MainWin(QMainWindow):
     def __init__(self, app, parent: None = None) -> NoReturn:
         super(MainWin, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
-        self.move(
-            650, 20
-        )  # TODO: remove line when done debugging (used to allow view of CLI
         self.imp = wins_imp.MainWin(self, app)
         self._loop = app.loop
 
@@ -80,13 +77,13 @@ class MainWin(QMainWindow):
     def on_startFcsMeasurementButton_released(self) -> NoReturn:
         """Begin/end FCS measurement."""
 
-        self.imp.toggle_FCS_meas()
+        self.imp.toggle_meas("FCS")
 
     @pyqtSlot()
     def on_startSolScan_released(self) -> NoReturn:
         """Begin/end SFCS measurement."""
 
-        self.imp.toggle_SFCSSolution_meas()
+        self.imp.toggle_meas("SFCSSolution")
 
     def device_toggle_button_released(self, dvc_nick: str) -> NoReturn:
         """Turn devices On/Off."""
@@ -271,9 +268,5 @@ class CamWin(QWidget):
     @pyqtSlot()
     def on_videoButton_released(self) -> NoReturn:
         """Doc."""
-        # TODO: make this one line - move the descision making to implementation
 
-        if self.videoButton.text() == "Start Video":
-            self.imp.toggle_video(True)
-        else:
-            self.imp.toggle_video(False)
+        self.imp.toggle_video()

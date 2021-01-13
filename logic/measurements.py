@@ -82,7 +82,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.start_time_gui = start_time_gui
         self.end_time_gui = end_time_gui
 
-        self.file_no_gui = app.gui_dict["main"].solScanFileNo
+        self.file_num_gui = app.gui_dict["main"].solScanFileNo
         self.data_dvc = app.dvc_dict["UM232H"]
         self.save_path = app.gui_dict["settings"].solDataPath.text()
         self.file_template = app.gui_dict["main"].solScanFileTemplate.text()
@@ -95,7 +95,7 @@ class SFCSSolutionMeasurement(Measurement):
         ) -> Tuple[datetime.time, datetime.time]:
             """
             Given a duration in seconds, returns a tuple (current_time, end_time)
-            in datetime.time format, where end_time is start_time + duration_in_seconds.
+            in datetime.time format, where end_time is current_time + duration_in_seconds.
             """
 
             duration_in_seconds = int(duration_in_seconds)
@@ -148,14 +148,14 @@ class SFCSSolutionMeasurement(Measurement):
             self.data_dvc.data,
             self.save_path,
             self.file_template,
-            self.file_no_gui.value(),
+            self.file_num_gui.value(),
             self.laser_config,
         )
 
         self._app.dvc_dict["UM232H"].init_data()
 
         if self.is_running:  # if not manually stopped
-            self._app.gui_dict["main"].imp.toggle_SFCSSolution_meas()
+            self._app.gui_dict["main"].imp.toggle_meas(self.type)
 
 
 class FCSMeasurement(Measurement):

@@ -56,7 +56,6 @@ class MainWin:
     @err_chck()
     def dvc_toggle(self, nick):
         """Doc."""
-        # TODO: see if this function can be made much shorter by combining ON/OFF
 
         if "SWITCH" in const.ICON_DICT[nick]:  # if device has a switch
             gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]["SWITCH"])
@@ -108,16 +107,11 @@ class MainWin:
         """Doc."""
 
         def get_key(dct, val):
-            """
-            Return (first) matching key
-            if value is found in dict, else return None
-
-            """
+            """ Return first matching 'key' to value 'val' """
 
             for key, value in dct.items():
                 if value == val:
                     return key
-            return None
 
         nick = get_key(const.DVC_LED_NAME, led_obj_name)
         err_dict = self._app.error_dict[nick]
@@ -216,50 +210,48 @@ class MainWin:
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
     @err_chck({"TDC", "UM232H"})
-    def toggle_FCS_meas(self):
+    def toggle_meas(self, type):
         """Doc."""
 
-        if self._app.meas.type is None:
-            self._app.meas = FCSMeasurement(
-                self._app,
-                duration_gui=self._gui.measFCSDuration,
-                prog_bar=self._gui.FCSprogressBar,
-            )
-            self._app.loop.create_task(self._app.meas.start())
-            self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
-        elif self._app.meas.type == "FCS":
-            self._app.meas.stop()
-            self._gui.startFcsMeasurementButton.setText("Start \nMeasurement")
-        else:
-            error_txt = (
-                f"Another type of measurement "
-                f"({self._app.meas.type}) is currently running."
-            )
-            Error(error_txt=error_txt).display()
+        current_type = self._app.meas.type
+        if current_type is None:  # no meas running
 
-    @err_chck({"TDC", "UM232H"})
-    def toggle_SFCSSolution_meas(self):
-        """Doc."""
+            if type == "FCS":
+                self._app.meas = FCSMeasurement(
+                    self._app,
+                    duration_gui=self._gui.measFCSDuration,
+                    prog_bar=self._gui.FCSprogressBar,
+                )
+                self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
 
-        if self._app.meas.type is None:
-            self._app.meas = SFCSSolutionMeasurement(
-                self._app,
-                duration_gui=self._gui.solScanDuration,
-                prog_bar=self._gui.solScanProgressBar,
-                start_time_gui=self._gui.solScanStartTime,
-                end_time_gui=self._gui.solScanEndTime,
-            )
+            elif type == "SFCSSolution":
+                self._app.meas = SFCSSolutionMeasurement(
+                    self._app,
+                    duration_gui=self._gui.solScanDuration,
+                    prog_bar=self._gui.solScanProgressBar,
+                    start_time_gui=self._gui.solScanStartTime,
+                    end_time_gui=self._gui.solScanEndTime,
+                )
+                self._gui.startSolScan.setText("Stop \nScan")
+
             self._app.loop.create_task(self._app.meas.start())
-            self._gui.startSolScan.setText("Stop \nScan")
-        elif self._app.meas.type == "SFCSSolution":
+
+        elif current_type == type:  # manual shutdown
+
+            if type == "FCS":
+                self._gui.startFcsMeasurementButton.setText("Start \nMeasurement")
+
+            elif type == "SFCSSolution":
+                self._gui.startSolScan.setText("Start \nScan")
+
             self._app.meas.stop()
-            self._gui.startSolScan.setText("Start \nScan")
-        else:
-            error_txt = (
+
+        else:  # other meas running
+            txt = (
                 f"Another type of measurement "
-                f"({self._app.meas.type}) is currently running."
+                f"({current_type}) is currently running."
             )
-            Error(error_txt=error_txt).display()
+            Error(custom_txt=txt).display()
 
     def open_settwin(self):
         """Doc."""
@@ -435,17 +427,17 @@ class CamWin:
         """clean up before closing window"""
 
         if self._cam is not None:
-            self.toggle_video(False)
+            self.toggle_video()
             self._app.gui_dict["main"].imp.dvc_toggle("CAMERA")
             self._app.gui_dict["main"].actionCamera_Control.setEnabled(True)
             self._cam = None
             logging.debug("Camera connection closed")
 
     @err_chck({"CAMERA"})
-    def toggle_video(self, bool):
+    def toggle_video(self):
         """Doc."""
 
-        if bool:  # turn On
+        if self._cam.vid_state is False:  # turn On
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
             )

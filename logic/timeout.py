@@ -42,7 +42,7 @@ class Timeout:
         self._app.loop.create_task(self._main())
         logging.debug("Starting main timer.")
 
-    async def finish(self):
+    def finish(self):
         """Doc."""
 
         self.not_finished = False
