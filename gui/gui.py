@@ -18,6 +18,7 @@ class MainWin(QMainWindow):
     def __init__(self, app, parent: None = None) -> NoReturn:
         super(MainWin, self).__init__(parent)
         uic.loadUi(const.MAINWINDOW_UI_PATH, self)
+        self.move(600, 30)
         self.imp = wins_imp.MainWin(self, app)
         self._loop = app.loop
 
