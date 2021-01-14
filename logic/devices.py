@@ -3,6 +3,7 @@
 
 import asyncio
 import time
+from array import array
 from typing import NoReturn
 
 import numpy as np
@@ -41,16 +42,15 @@ class UM232H(drivers.FTDI_Instrument):
         ):
             read_bytes = self.read()
             #            print(f"# Bytes read: {len(read_bytes)}")  # TEST
-            self.data = np.append(self.data, read_bytes)
+            self.data.extend(read_bytes)
+            self.tot_bytes_read += len(read_bytes)
 
             meas.time_passed = time.perf_counter() - meas.start_time
-
-        self.tot_bytes_read = len(self.data)
 
     def init_data(self):
         """Doc."""
 
-        self.data = np.empty(shape=(0,), dtype=np.uint8)
+        self.data = array("B")
         self.tot_bytes_read = 0
 
     def reset(self):

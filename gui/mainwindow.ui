@@ -899,6 +899,9 @@
                      </item>
                      <item row="2" column="2">
                       <widget class="QDoubleSpinBox" name="yAoUm">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="minimumSize">
                         <size>
                          <width>60</width>
@@ -960,6 +963,9 @@
                      </item>
                      <item row="3" column="2">
                       <widget class="QDoubleSpinBox" name="zAoUm">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="minimumSize">
                         <size>
                          <width>60</width>
@@ -1017,6 +1023,9 @@ Origin (um)</string>
                      </item>
                      <item row="1" column="3">
                       <widget class="QDoubleSpinBox" name="xAiV">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                          <horstretch>0</horstretch>
@@ -1098,6 +1107,9 @@ Origin (um)</string>
                      </item>
                      <item row="3" column="3">
                       <widget class="QDoubleSpinBox" name="zAiV">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="minimumSize">
                         <size>
                          <width>60</width>
@@ -1163,6 +1175,9 @@ Origin (um)</string>
                      </item>
                      <item row="2" column="3">
                       <widget class="QDoubleSpinBox" name="yAiV">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="minimumSize">
                         <size>
                          <width>60</width>
@@ -1200,6 +1215,9 @@ Origin (um)</string>
                      </item>
                      <item row="1" column="2">
                       <widget class="QDoubleSpinBox" name="xAoUm">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                          <horstretch>0</horstretch>
@@ -1967,7 +1985,7 @@ to Scan</string>
                        <item>
                         <widget class="QLineEdit" name="lineEdit_16">
                          <property name="enabled">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                          <property name="text">
                           <string/>
@@ -3424,6 +3442,9 @@ Pattern</string>
                 </item>
                 <item>
                  <widget class="QGraphicsView" name="solScanPatternGraphicsView">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                     <horstretch>0</horstretch>
@@ -3479,6 +3500,200 @@ Pattern</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_24">
                  <item row="0" column="0">
+                  <widget class="QGroupBox" name="groupBox">
+                   <property name="title">
+                    <string>Save Interval Calibration</string>
+                   </property>
+                   <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,0">
+                    <item row="0" column="0">
+                     <layout class="QVBoxLayout" name="verticalLayout_10">
+                      <item>
+                       <widget class="QLabel" name="label_62">
+                        <property name="font">
+                         <font>
+                          <pointsize>7</pointsize>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>File
+Size (Mb)</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="solScanMaxFileSize">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>30</height>
+                         </size>
+                        </property>
+                        <property name="readOnly">
+                         <bool>false</bool>
+                        </property>
+                        <property name="buttonSymbols">
+                         <enum>QAbstractSpinBox::UpDownArrows</enum>
+                        </property>
+                        <property name="decimals">
+                         <number>1</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.100000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1000.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>1.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item row="0" column="1">
+                     <layout class="QVBoxLayout" name="verticalLayout_11">
+                      <item>
+                       <widget class="QLabel" name="label_63">
+                        <property name="font">
+                         <font>
+                          <pointsize>7</pointsize>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>Calibration
+Time (s)</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="solScanCalTime">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>30</height>
+                         </size>
+                        </property>
+                        <property name="readOnly">
+                         <bool>false</bool>
+                        </property>
+                        <property name="buttonSymbols">
+                         <enum>QAbstractSpinBox::UpDownArrows</enum>
+                        </property>
+                        <property name="decimals">
+                         <number>1</number>
+                        </property>
+                        <property name="minimum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>30.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>3.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item row="0" column="2">
+                     <layout class="QVBoxLayout" name="verticalLayout_21">
+                      <item>
+                       <widget class="QLabel" name="label_69">
+                        <property name="font">
+                         <font>
+                          <pointsize>7</pointsize>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>Calibrated Save Interval (mins)</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QDoubleSpinBox" name="solScanCalIntrvl">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>30</height>
+                         </size>
+                        </property>
+                        <property name="readOnly">
+                         <bool>true</bool>
+                        </property>
+                        <property name="buttonSymbols">
+                         <enum>QAbstractSpinBox::NoButtons</enum>
+                        </property>
+                        <property name="suffix">
+                         <string/>
+                        </property>
+                        <property name="decimals">
+                         <number>4</number>
+                        </property>
+                        <property name="minimum">
+                         <double>-999.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>999.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>-999.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
                   <layout class="QVBoxLayout" name="verticalLayout_53" stretch="0,0,0,0,0,1">
                    <property name="spacing">
                     <number>0</number>
@@ -3542,10 +3757,10 @@ Pattern</string>
                           <double>999.000000000000000</double>
                          </property>
                          <property name="singleStep">
-                          <double>0.500000000000000</double>
+                          <double>1.000000000000000</double>
                          </property>
                          <property name="value">
-                          <double>0.100000000000000</double>
+                          <double>1.000000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -3566,6 +3781,9 @@ Pattern</string>
                      </item>
                      <item>
                       <widget class="QPushButton" name="startSolScan">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
                        <property name="minimumSize">
                         <size>
                          <width>200</width>
@@ -3630,7 +3848,7 @@ Pattern</string>
                        <item>
                         <widget class="QTimeEdit" name="solScanStartTime">
                          <property name="enabled">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
@@ -3702,7 +3920,7 @@ Pattern</string>
                        <item alignment="Qt::AlignRight">
                         <widget class="QTimeEdit" name="solScanEndTime">
                          <property name="enabled">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -4228,156 +4446,157 @@ Pattern</string>
                     </widget>
                    </item>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="1,1,1">
+                    <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="1,0,1">
                      <property name="spacing">
                       <number>0</number>
                      </property>
                      <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_57">
-                       <property name="spacing">
-                        <number>0</number>
+                      <spacer name="horizontalSpacer_29">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
                        </property>
-                       <item alignment="Qt::AlignHCenter">
-                        <widget class="QLabel" name="label_60">
-                         <property name="font">
-                          <font>
-                           <pointsize>7</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>File No.</string>
-                         </property>
-                        </widget>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_14">
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_57">
+                         <item>
+                          <widget class="QLabel" name="label_60">
+                           <property name="font">
+                            <font>
+                             <pointsize>7</pointsize>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>File No.</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QSpinBox" name="solScanFileNo">
+                           <property name="enabled">
+                            <bool>false</bool>
+                           </property>
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="minimumSize">
+                            <size>
+                             <width>60</width>
+                             <height>30</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>60</width>
+                             <height>30</height>
+                            </size>
+                           </property>
+                           <property name="readOnly">
+                            <bool>true</bool>
+                           </property>
+                           <property name="buttonSymbols">
+                            <enum>QAbstractSpinBox::NoButtons</enum>
+                           </property>
+                           <property name="suffix">
+                            <string/>
+                           </property>
+                           <property name="prefix">
+                            <string/>
+                           </property>
+                           <property name="value">
+                            <number>1</number>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
-                        <widget class="QSpinBox" name="solScanFileNo">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="minimumSize">
-                          <size>
-                           <width>60</width>
-                           <height>30</height>
-                          </size>
-                         </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>60</width>
-                           <height>30</height>
-                          </size>
-                         </property>
-                         <property name="readOnly">
-                          <bool>true</bool>
-                         </property>
-                         <property name="buttonSymbols">
-                          <enum>QAbstractSpinBox::NoButtons</enum>
-                         </property>
-                         <property name="suffix">
-                          <string/>
-                         </property>
-                         <property name="prefix">
-                          <string/>
-                         </property>
-                         <property name="value">
-                          <number>1</number>
-                         </property>
-                        </widget>
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_60">
+                         <item>
+                          <widget class="QLabel" name="label_70">
+                           <property name="font">
+                            <font>
+                             <pointsize>7</pointsize>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>Out of</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QSpinBox" name="solScanTotalFiles">
+                           <property name="enabled">
+                            <bool>false</bool>
+                           </property>
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="minimumSize">
+                            <size>
+                             <width>60</width>
+                             <height>30</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>60</width>
+                             <height>30</height>
+                            </size>
+                           </property>
+                           <property name="readOnly">
+                            <bool>true</bool>
+                           </property>
+                           <property name="buttonSymbols">
+                            <enum>QAbstractSpinBox::NoButtons</enum>
+                           </property>
+                           <property name="suffix">
+                            <string/>
+                           </property>
+                           <property name="prefix">
+                            <string/>
+                           </property>
+                           <property name="minimum">
+                            <number>-9999</number>
+                           </property>
+                           <property name="maximum">
+                            <number>9999</number>
+                           </property>
+                           <property name="value">
+                            <number>1</number>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
                       </layout>
                      </item>
                      <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_55">
-                       <property name="spacing">
-                        <number>0</number>
+                      <spacer name="horizontalSpacer_28">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
                        </property>
-                       <item alignment="Qt::AlignHCenter">
-                        <widget class="QLabel" name="label_58">
-                         <property name="font">
-                          <font>
-                           <pointsize>7</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>File Size (Mb)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item alignment="Qt::AlignHCenter">
-                        <widget class="QDoubleSpinBox" name="solScanFileSize">
-                         <property name="minimumSize">
-                          <size>
-                           <width>60</width>
-                           <height>30</height>
-                          </size>
-                         </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>60</width>
-                           <height>30</height>
-                          </size>
-                         </property>
-                         <property name="readOnly">
-                          <bool>true</bool>
-                         </property>
-                         <property name="buttonSymbols">
-                          <enum>QAbstractSpinBox::NoButtons</enum>
-                         </property>
-                         <property name="maximum">
-                          <double>9999.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_56">
-                       <property name="spacing">
-                        <number>0</number>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
                        </property>
-                       <item alignment="Qt::AlignHCenter">
-                        <widget class="QLabel" name="label_59">
-                         <property name="font">
-                          <font>
-                           <pointsize>7</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Bytes Read (Mb)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item alignment="Qt::AlignHCenter">
-                        <widget class="QDoubleSpinBox" name="solScanBytesRead1">
-                         <property name="enabled">
-                          <bool>true</bool>
-                         </property>
-                         <property name="minimumSize">
-                          <size>
-                           <width>60</width>
-                           <height>30</height>
-                          </size>
-                         </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>60</width>
-                           <height>30</height>
-                          </size>
-                         </property>
-                         <property name="readOnly">
-                          <bool>true</bool>
-                         </property>
-                         <property name="buttonSymbols">
-                          <enum>QAbstractSpinBox::NoButtons</enum>
-                         </property>
-                         <property name="maximum">
-                          <double>9999.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
+                      </spacer>
                      </item>
                     </layout>
                    </item>
@@ -4692,6 +4911,9 @@ Measurement</string>
                      </item>
                      <item>
                       <widget class="QLineEdit" name="lineEdit">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                          <horstretch>0</horstretch>
@@ -4785,6 +5007,9 @@ Measurement</string>
                      </item>
                      <item>
                       <widget class="QLineEdit" name="lineEdit_2">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                          <horstretch>0</horstretch>
@@ -5365,6 +5590,9 @@ Measurement</string>
             </property>
             <item>
              <widget class="QLineEdit" name="lastActionLineEdit">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>

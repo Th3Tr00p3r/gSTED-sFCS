@@ -227,12 +227,14 @@ class MainWin:
             elif type == "SFCSSolution":
                 self._app.meas = SFCSSolutionMeasurement(
                     self._app,
-                    duration_gui=self._gui.solScanDuration,
+                    duration_gui=self._gui.solScanCalIntrvl,  # TODO: is this clear enough? using file duration here instead of total
                     prog_bar=self._gui.solScanProgressBar,
-                    start_time_gui=self._gui.solScanStartTime,
-                    end_time_gui=self._gui.solScanEndTime,
                 )
                 self._gui.startSolScan.setText("Stop \nScan")
+                self._gui.solScanMaxFileSize.setEnabled(False)
+                self._gui.solScanCalTime.setEnabled(False)
+                self._gui.solScanDuration.setEnabled(False)
+                self._gui.solScanFileTemplate.setEnabled(False)
 
             self._app.loop.create_task(self._app.meas.start())
 
@@ -243,6 +245,10 @@ class MainWin:
 
             elif type == "SFCSSolution":
                 self._gui.startSolScan.setText("Start \nScan")
+                self._gui.solScanMaxFileSize.setEnabled(True)
+                self._gui.solScanCalTime.setEnabled(True)
+                self._gui.solScanDuration.setEnabled(True)
+                self._gui.solScanFileTemplate.setEnabled(True)
 
             self._app.meas.stop()
 
