@@ -115,12 +115,28 @@ class Timeout:
                 and meas.type in {"FCS", "SFCSSolution"}
                 and meas.is_running
             ):
-                if hasattr(meas, "prog_bar"):
-                    meas.prog_bar.setValue(
+                if meas.type == "FCS":
+                    progress = (
                         meas.time_passed
                         / (meas.duration_gui.value() * meas.duration_multiplier)
                         * 100
                     )
+                elif meas.type == "SFCSSolution":
+                    if not meas.cal:
+                        progress = (
+                            (meas.total_time_passed + meas.time_passed)
+                            / (
+                                meas.total_duration_gui.value()
+                                * meas.duration_multiplier
+                            )
+                            * 100
+                        )
+                    else:
+                        progress = 0
+                meas.prog_bar.setValue(progress)
+
+        def updt_bytes_read(app):
+            """Doc."""
 
         while self.not_finished:
 
