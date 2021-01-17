@@ -3562,7 +3562,7 @@ Size (Mb)</string>
                          <double>0.100000000000000</double>
                         </property>
                         <property name="value">
-                         <double>1.000000000000000</double>
+                         <double>5.000000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -3760,7 +3760,7 @@ Time (s)</string>
                           <double>1.000000000000000</double>
                          </property>
                          <property name="value">
-                          <double>1.000000000000000</double>
+                          <double>10.000000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -5584,31 +5584,19 @@ Measurement</string>
            <number>0</number>
           </property>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_7" stretch="10,2">
+           <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,2">
             <property name="spacing">
              <number>0</number>
             </property>
             <item>
-             <widget class="QLineEdit" name="lastActionLineEdit">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
+             <widget class="QPlainTextEdit" name="lastAction">
               <property name="font">
                <font>
-                <pointsize>16</pointsize>
+                <pointsize>10</pointsize>
                </font>
               </property>
               <property name="readOnly">
                <bool>true</bool>
-              </property>
-              <property name="placeholderText">
-               <string>Current State</string>
               </property>
              </widget>
             </item>
@@ -5621,7 +5609,7 @@ Measurement</string>
                </sizepolicy>
               </property>
               <property name="text">
-               <string>Current State</string>
+               <string>Recent Log</string>
               </property>
              </widget>
             </item>

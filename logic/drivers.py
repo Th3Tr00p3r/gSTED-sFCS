@@ -172,7 +172,10 @@ class DAQmxInstrumentAIO:
         #        )
         #        return num_samps_read
 
-        return self.ai_task.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
+        read_samples = self.ai_task.read(
+            number_of_samples_per_channel=READ_ALL_AVAILABLE
+        )
+        return read_samples
 
     @err_hndlr
     async def write(self, ao_addresses: iter, vals: iter, limits: iter) -> NoReturn:
@@ -325,7 +328,7 @@ class VISAInstrument:
             self.state = bool(int(toggle_val))
 
     @err_hndlr
-    async def _aquery(self, cmnd) -> float:
+    async def _aquery(self, cmnd: str) -> float:
         """Doc."""
 
         with VISAInstrument.Task(self) as task:
@@ -335,7 +338,7 @@ class VISAInstrument:
             return float(ans)
 
     @err_hndlr
-    def _query(self, cmnd):
+    def _query(self, cmnd: str) -> float:
         """Doc."""
 
         with VISAInstrument.Task(self) as task:
