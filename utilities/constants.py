@@ -5,9 +5,7 @@ import gui.icons.icon_paths as icon
 
 # general
 TIMEOUT = 0.010  # seconds (10 ms)
-ORIGIN = (0.0, 0.0, 5.0)
-FCS_DURATION_EPS = 0.02  # used to compensate for lack of synchronization between
-# FPGA readout in measurement.py and measurement interval in timeout.py
+ORIGIN = (0.0, 0.0, 5.0)  # TODO: move to settings (scanners)
 
 # paths
 MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
@@ -19,18 +17,13 @@ LOGWINDOW_UI_PATH = "./gui/logwindow.ui"
 SETTINGS_FOLDER_PATH = "./settings/"
 DEFAULT_SETTINGS_FILE_PATH = "./settings/default_settings.csv"
 
+LOG_FOLDER_PATH = "./log/"
+
 # sounds
 MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
 #                        from PyQt5.QtMultimedia import QSound
 #                                if self.time_passed == self.duration_spinbox.value():
 #                                    QSound.play(const.MEAS_COMPLETE_SOUND);
-
-# devices
-DEP_CMND_DICT = {
-    "tmp": "SHGtemp",
-    "curr": "LDcurrent 1",
-    "pow": "Power 0",
-}
 
 DVC_LED_NAME = {
     "EXC_LASER": "ledExc",

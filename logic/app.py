@@ -174,8 +174,7 @@ class App:
                 self.gui_dict["camera"].close()
 
             if self.meas.type is not None:
-                if self.meas.type == "FCS":
-                    self.gui_dict["main"].imp.toggle_FCS_meas()
+                self.gui_dict["main"].imp.toggle_meas(self.meas.type)
 
             close_all_dvcs(self)
 

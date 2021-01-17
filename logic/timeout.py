@@ -3,6 +3,8 @@
 
 import asyncio
 import logging
+import os
+import time
 
 import utilities.constants as const
 
@@ -15,7 +17,7 @@ class Timeout:
 
         self._app = app
 
-        # initial intervals (some changed during run)
+        # initial intervals (some change during run)
         self.updt_intrvl = {
             "gui": 0.2,
             "dep": self._app.dvc_dict["DEP_LASER"].update_time,
@@ -27,9 +29,10 @@ class Timeout:
         """Doc."""
 
         await asyncio.gather(
-            self._timeout(),
+            self._updt_CI_and_AI(),
             self._update_avg_counts(),
-            self._update_dep(),
+            self._app.loop.run_in_executor(None, self._update_dep),
+            self._updt_current_state(),
             self._update_gui(),
         )
         logging.debug("_main function exited")
@@ -60,11 +63,44 @@ class Timeout:
             self.running = True
             logging.debug("Resuming main timer.")
 
-    async def _timeout(self):
+    async def _updt_current_state(self):
         """Doc."""
 
-        while self.not_finished:
+        now_timestamp = time.strftime("%H:%M:%S", time.localtime())
+        buffer = [f"[{now_timestamp}] Application Started"]
+        buffer_sz = 5
 
+        # ------------------------------------------------------------------------------------------------------
+        # https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python
+        while self.not_finished:
+            if self.running:
+                with open(const.LOG_FOLDER_PATH + "log", "rb") as f:
+                    f.seek(-2, os.SEEK_END)
+                    while f.read(1) != b"\n":
+                        f.seek(-2, os.SEEK_CUR)
+                    last_line = f.readline().decode()
+                # ------------------------------------------------------------------------------------------------------
+
+                if last_line.find("INFO") != -1:
+                    last_line = (
+                        last_line[12:23] + last_line[38:]
+                    )  # TODO: explain these indices
+
+                    if last_line != buffer[0]:
+                        buffer.insert(0, last_line)
+                        if len(buffer) > buffer_sz:
+                            buffer.pop()
+
+                        text = "".join(buffer)
+                        self._app.gui_dict["main"].lastAction.setPlainText(text)
+
+                await asyncio.sleep(0.3)
+
+    async def _updt_CI_and_AI(self):
+        """Doc."""
+        # TODO: (later, if anything slows down) consider running in thread (see _updt_dep in this module)
+
+        while self.not_finished:
             if self.running:
                 # COUNTER
                 if self._app.error_dict["COUNTER"] is None:
@@ -107,7 +143,7 @@ class Timeout:
                 self._app.gui_dict["main"].yAoUm.setValue(y_um)
                 self._app.gui_dict["main"].zAoUm.setValue(z_um)
 
-        def updt_fcs_progbar(meas):
+        def updt_meas_progbar(meas):
             """Doc."""
 
             if (
@@ -135,18 +171,14 @@ class Timeout:
                         progress = 0
                 meas.prog_bar.setValue(progress)
 
-        def updt_bytes_read(app):
-            """Doc."""
-
         while self.not_finished:
-
             if self.running:
 
                 # SCANNERS
                 updt_scn_pos(self._app)
 
-                # FCS progress bar
-                updt_fcs_progbar(self._app.meas)
+                # Measurement progress bar
+                updt_meas_progbar(self._app.meas)
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
@@ -160,7 +192,6 @@ class Timeout:
         nick = "COUNTER"
 
         while self.not_finished:
-
             if self.running:
                 if self._app.error_dict[nick] is None:
                     avg_counts = self._app.dvc_dict[nick].average_counts()
@@ -168,48 +199,48 @@ class Timeout:
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
-    async def _update_dep(self):
+    def _update_dep(self):
         """Update depletion laser GUI"""
 
         nick = "DEP_LASER"
 
-        async def update_SHG_temp(dep_dvc, main_gui):
+        def update_SHG_temp(dep_dvc, main_gui):
             """Doc."""
 
-            main_gui.depTemp.setValue(await dep_dvc.get_prop("tmp"))
-            if dep_dvc.temp < dep_dvc.min_SHG_temp:
+            temp = dep_dvc.get_prop("temp")
+            main_gui.depTemp.setValue(temp)
+            if temp < dep_dvc.min_SHG_temp:
                 main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
             else:
                 main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
-        async def update_power(dep_dvc, main_gui):
+        def update_power(dep_dvc, main_gui):
             """Doc."""
 
-            main_gui.depActualPowerSpinner.setValue(await dep_dvc.get_prop("pow"))
+            main_gui.depActualPowerSpinner.setValue(dep_dvc.get_prop("pow"))
 
-        async def update_current(dep_dvc, main_gui):
+        def update_current(dep_dvc, main_gui):
             """Doc."""
 
-            main_gui.depActualCurrSpinner.setValue(await dep_dvc.get_prop("curr"))
+            main_gui.depActualCurrSpinner.setValue(dep_dvc.get_prop("curr"))
 
-        async def update_props(dep_err_dict, dep_dvc, main_gui):
+        def update_props(dep_err_dict, dep_dvc, main_gui):
             """Doc."""
 
             if dep_err_dict is None:
-                await update_SHG_temp(dep_dvc, main_gui)
+                update_SHG_temp(dep_dvc, main_gui)
 
                 # check current/power only if laser is ON
                 if dep_dvc.state is True:
-                    await update_power(dep_dvc, main_gui)
-                    await update_current(dep_dvc, main_gui)
+                    update_power(dep_dvc, main_gui)
+                    update_current(dep_dvc, main_gui)
 
         while self.not_finished:
-
             if self.running:
-                await update_props(
+                update_props(
                     self._app.error_dict[nick],
                     self._app.dvc_dict[nick],
                     self._app.gui_dict["main"],
                 )
 
-            await asyncio.sleep(self.updt_intrvl["dep"])
+            time.sleep(self.updt_intrvl["dep"])
