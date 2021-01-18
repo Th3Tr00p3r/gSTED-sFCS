@@ -16,6 +16,8 @@ LOGWINDOW_UI_PATH = "./gui/logwindow.ui"
 
 SETTINGS_FOLDER_PATH = "./settings/"
 DEFAULT_SETTINGS_FILE_PATH = "./settings/default_settings.csv"
+LOADOUT_FOLDER_PATH = "./settings/loadouts/"
+DEFAULT_LOADOUT_FILE_PATH = "./settings/loadouts/default_loadout.csv"
 
 LOG_FOLDER_PATH = "./log/"
 
@@ -175,7 +177,7 @@ SCANNERS_PARAM_GUI_DICT = {
     "ai_y_addr": {"field": "AIYaddr", "access": "text"},
     "ai_z_addr": {"field": "AIZaddr", "access": "text"},
     "ai_laser_mon_addr": {"field": "AIlaserMonAddr", "access": "text"},
-    "ai_clk_div": {"field": "AIclkDivSpinner", "access": "value"},
+    "ai_clk_div": {"field": "AIclkDiv", "access": "value"},
     "ai_trg_src": {"field": "AItrigSrc", "access": "text"},
     "ao_x_p_addr": {"field": "AOXaddrP", "access": "text"},
     "ao_x_n_addr": {"field": "AOXaddrN", "access": "text"},
