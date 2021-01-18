@@ -222,8 +222,6 @@ class Counter(drivers.DAQmxInstrumentCI):
 class Camera(drivers.UC480Instrument):
     """Doc."""
 
-    # TODO: test during UM232H reading. could be that pyUSB/pyftdi interferes with the uc480
-
     def __init__(self, nick, param_dict, error_dict, led, loop, gui):
         self.led = led
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)

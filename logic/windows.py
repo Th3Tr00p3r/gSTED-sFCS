@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """ GUI windows implementations module. """
 
+import csv
 import logging
 from typing import NoReturn
 
+import pandas as pd
 import PyQt5.QtWidgets as QtWidgets
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -15,6 +17,61 @@ from logic.measurements import FCSMeasurement, SFCSSolutionMeasurement
 from utilities.dialog import Error, Question
 from utilities.errors import error_checker as err_chck
 from utilities.errors import logic_error_handler as err_hndlr
+
+
+def gui_to_csv(gui_parent, file_path):
+    """Doc."""
+
+    with open(file_path, "w") as f:
+        # get all names of fields in settings window as lists (for file saving/loading)
+        l1 = gui_parent.findChildren(QtWidgets.QLineEdit)
+        l2 = gui_parent.findChildren(QtWidgets.QSpinBox)
+        l3 = gui_parent.findChildren(QtWidgets.QDoubleSpinBox)
+        l4 = gui_parent.findChildren(QtWidgets.QComboBox)
+        children_list = l1 + l2 + l3 + l4
+
+        obj_names = []
+        for child in children_list:
+            if not child.objectName() == "qt_spinbox_lineedit":
+                if hasattr(child, "currentIndex"):  # QComboBox
+                    obj_names.append(child.objectName())
+                elif not child.isReadOnly():  # QSpinBox, QLineEdit
+                    obj_names.append(child.objectName())
+
+        writer = csv.writer(f)
+        for i in range(len(obj_names)):
+            child = gui_parent.findChild(QtWidgets.QWidget, obj_names[i])
+            if hasattr(child, "value"):  # QSpinBox
+                val = child.value()
+            elif hasattr(child, "currentIndex"):  # QComboBox
+                val = child.currentIndex()
+            else:  # QLineEdit
+                val = child.text()
+            writer.writerow([obj_names[i], val])
+
+
+def csv_to_gui(file_path, gui_parent):
+    """Doc."""
+
+    df = pd.read_csv(
+        file_path,
+        header=None,
+        delimiter=",",
+        keep_default_na=False,
+        error_bad_lines=False,
+    )
+
+    for i in range(len(df)):
+        obj_name, obj_val = df.iloc[i, 0], df.iloc[i, 1]
+        child = gui_parent.findChild(QtWidgets.QWidget, obj_name)
+        if not child == "nullptr":
+            if hasattr(child, "value"):  # QSpinBox
+                child.setValue(float(obj_val))
+            elif hasattr(child, "currentIndex"):  # QComboBox
+                child.setCurrentIndex(int(obj_val))
+            elif hasattr(child, "text"):  # QLineEdit
+                child.setText(obj_val)
+
 
 # TODO: None of the following should be classes. Notice that they don't have any attributes, therefore their state cannot change and thus Objects have no meaning. Instead, the methods should be functions in seperate modules, perhaps under a
 
@@ -52,6 +109,35 @@ class MainWin:
         ).display()
         if pressed == QtWidgets.QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
+
+    @err_hndlr
+    def save(self):
+        """Doc."""
+
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self._gui,
+            "Save Settings",
+            const.LOADOUT_FOLDER_PATH,
+            "CSV Files(*.csv *.txt)",
+        )
+
+        gui_to_csv(self._gui, file_path)
+        logging.debug(f"Loadout saved as: '{file_path}'")
+
+    @err_hndlr
+    def load(self, file_path=""):
+        """Doc."""
+
+        if not file_path:
+            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self._gui,
+                "Load Settings",
+                const.LOADOUT_FOLDER_PATH,
+                "CSV Files(*.csv *.txt)",
+            )
+
+        csv_to_gui(file_path, self._gui)
+        logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chck()
     def dvc_toggle(self, nick):
@@ -267,7 +353,7 @@ class MainWin:
 
     @err_chck({"CAMERA"})
     async def open_camwin(self):
-        # TODO: simply making this func async doesn't help. the blocking function here is really 'UC480_Camera(reopen_policy="new")'
+        # TODO: simply making this func async doesn't help. the blocking function here is 'UC480_Camera(reopen_policy="new")'
         # from 'drivers.py', and I can't yet see a way to make it async (since I don't want to touch the API) I should try threading for this.
         """Doc."""
 
@@ -308,102 +394,51 @@ class SettWin:
             "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
         ).display()
         if pressed == QtWidgets.QMessageBox.No:
-            self.read_csv(self._gui.settingsFileName.text())
+            self.load(self._gui.settingsFileName.text())
 
-    # public methods
     @err_hndlr
-    def write_csv(self):
+    def save(self):
         """
         Write all QLineEdit, QspinBox and QdoubleSpinBox
-        of settings window to 'filepath' (csv).
-        Show 'filepath' in 'settingsFileName' QLineEdit.
-
+        of settings window to 'file_path' (csv).
+        Show 'file_path' in 'settingsFileName' QLineEdit.
         """
-        # TODO: add support for combo box index
 
-        filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
             const.SETTINGS_FOLDER_PATH,
             "CSV Files(*.csv *.txt)",
         )
-        import csv
-
         self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
-            filepath
+            file_path
         )
-        with open(filepath, "w") as stream:
-            # print("saving", filepath)
-            writer = csv.writer(stream)
-            # get all names of fields in settings window (for file saving/loading)
-            l1 = self._gui.frame.findChildren(QtWidgets.QLineEdit)
-            l2 = self._gui.frame.findChildren(QtWidgets.QSpinBox)
-            l3 = self._gui.frame.findChildren(QtWidgets.QDoubleSpinBox)
-            field_names = [
-                w.objectName()
-                for w in (l1 + l2 + l3)
-                if (not w.objectName() == "qt_spinbox_lineedit")
-                and (not w.objectName() == "settingsFileName")
-            ]  # perhaps better as for loop for readability
-            # print(fieldNames)
-            for i in range(len(field_names)):
-                widget = self._gui.frame.findChild(QtWidgets.QWidget, field_names[i])
-                if hasattr(widget, "value"):  # spinner
-                    rowdata = [
-                        field_names[i],
-                        self._gui.frame.findChild(
-                            QtWidgets.QWidget, field_names[i]
-                        ).value(),
-                    ]
-                else:  # line edit
-                    rowdata = [
-                        field_names[i],
-                        self._gui.frame.findChild(
-                            QtWidgets.QWidget, field_names[i]
-                        ).text(),
-                    ]
-                writer.writerow(rowdata)
-
-        logging.debug(f"Settings file saved as: '{filepath}'")
+        gui_to_csv(self._gui.frame, file_path)
+        logging.debug(f"Settings file saved as: '{file_path}'")
 
     @err_hndlr
-    def read_csv(self, filepath=""):
+    def load(self, file_path=""):
         """
-        Read 'filepath' (csv) and write to matching QLineEdit,
+        Read 'file_path' (csv) and write to matching QLineEdit,
         QspinBox and QdoubleSpinBox of settings window.
-        Show 'filepath' in 'settingsFileName' QLineEdit.
-
+        Show 'file_path' in 'settingsFileName' QLineEdit.
         """
-        # TODO: add support for combo box index
 
-        if not filepath:
-            filepath, _ = QtWidgets.QFileDialog.getOpenFileName(
+        if not file_path:
+            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
                 const.SETTINGS_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
-        import pandas as pd
 
-        df = pd.read_csv(
-            filepath,
-            header=None,
-            delimiter=",",
-            keep_default_na=False,
-            error_bad_lines=False,
-        )
         self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
-            filepath
+            file_path
         )
-        for i in range(len(df)):
-            widget = self._gui.frame.findChild(QtWidgets.QWidget, df.iloc[i, 0])
-            if not widget == "nullptr":
-                if hasattr(widget, "value"):  # spinner
-                    widget.setValue(float(df.iloc[i, 1]))
-                elif hasattr(widget, "text"):  # line edit
-                    widget.setText(df.iloc[i, 1])
 
-        logging.debug(f"Settings file loaded: '{filepath}'")
+        csv_to_gui(file_path, self._gui.frame)
+
+        logging.debug(f"Settings file loaded: '{file_path}'")
 
 
 class CamWin:

@@ -3051,6 +3051,9 @@ background-repeat: no-repeat;</string>
                                  <height>30</height>
                                 </size>
                                </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -3082,6 +3085,9 @@ background-repeat: no-repeat;</string>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
+                               </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
                                </property>
                               </widget>
                              </item>
@@ -3115,6 +3121,9 @@ background-repeat: no-repeat;</string>
                                  <height>30</height>
                                 </size>
                                </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -3147,6 +3156,9 @@ background-repeat: no-repeat;</string>
                                  <height>30</height>
                                 </size>
                                </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -3178,6 +3190,9 @@ background-repeat: no-repeat;</string>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
+                               </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
                                </property>
                               </widget>
                              </item>
@@ -6527,6 +6542,8 @@ interval
     <bool>false</bool>
    </attribute>
    <addaction name="actionRestart"/>
+   <addaction name="actionSaveLoadout"/>
+   <addaction name="actionLoadLoadout"/>
    <addaction name="actionSettings"/>
    <addaction name="separator"/>
    <addaction name="actionLaser_Control"/>
@@ -6716,141 +6733,6 @@ interval
         <set>Qt::AlignCenter</set>
        </property>
        <layout class="QGridLayout" name="gridLayout_6">
-        <item row="1" column="1" rowspan="2">
-         <widget class="QPushButton" name="depApplySettings">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>100</width>
-            <height>60</height>
-           </size>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>8</pointsize>
-           </font>
-          </property>
-          <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">background-color: rgb(225, 225, 225);</string>
-          </property>
-          <property name="text">
-           <string>Apply 
-Settings</string>
-          </property>
-          <property name="autoDefault">
-           <bool>false</bool>
-          </property>
-          <property name="default">
-           <bool>false</bool>
-          </property>
-          <property name="flat">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <layout class="QHBoxLayout" name="horizontalLayout_37">
-          <property name="spacing">
-           <number>0</number>
-          </property>
-          <item>
-           <spacer name="horizontalSpacer_25">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QLabel" name="depShutLabel_2">
-            <property name="minimumSize">
-             <size>
-              <width>40</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>Shutter</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="depShutterOn">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>30</width>
-              <height>30</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>30</width>
-              <height>30</height>
-             </size>
-            </property>
-            <property name="font">
-             <font>
-              <pointsize>8</pointsize>
-             </font>
-            </property>
-            <property name="styleSheet">
-             <string notr="true">background-color: rgb(225, 225, 225);</string>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="icon">
-             <iconset resource="icons/icons.qrc">
-              <normaloff>:/switch_off.png</normaloff>
-              <normalon>:/switch_on.png</normalon>
-              <selectedoff>:/switch_off.png</selectedoff>
-              <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>32</width>
-              <height>32</height>
-             </size>
-            </property>
-            <property name="flat">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer_24">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </item>
         <item row="1" column="0">
          <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="0,0,0,0">
           <property name="spacing">
@@ -7088,6 +6970,141 @@ Settings</string>
           </item>
          </layout>
         </item>
+        <item row="1" column="1" rowspan="2">
+         <widget class="QPushButton" name="depApplySettings">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>60</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>8</pointsize>
+           </font>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::StrongFocus</enum>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(225, 225, 225);</string>
+          </property>
+          <property name="text">
+           <string>Apply 
+Settings</string>
+          </property>
+          <property name="autoDefault">
+           <bool>false</bool>
+          </property>
+          <property name="default">
+           <bool>false</bool>
+          </property>
+          <property name="flat">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <layout class="QHBoxLayout" name="horizontalLayout_37">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <item>
+           <spacer name="horizontalSpacer_25">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="depShutLabel_2">
+            <property name="minimumSize">
+             <size>
+              <width>40</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Shutter</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="depShutterOn">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>30</width>
+              <height>30</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>30</width>
+              <height>30</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>8</pointsize>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: rgb(225, 225, 225);</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="icons/icons.qrc">
+              <normaloff>:/switch_off.png</normaloff>
+              <normalon>:/switch_on.png</normalon>
+              <selectedoff>:/switch_off.png</selectedoff>
+              <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>32</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_24">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
         <item row="0" column="0" colspan="2">
          <widget class="QGroupBox" name="groupBox_2">
           <property name="title">
@@ -7095,24 +7112,28 @@ Settings</string>
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_9">
            <item>
-            <widget class="QRadioButton" name="currModeRadio">
-             <property name="text">
-              <string>Current</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-             <property name="autoExclusive">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QRadioButton" name="powModeRadio">
-             <property name="text">
-              <string>Power</string>
-             </property>
-            </widget>
+            <layout class="QVBoxLayout" name="verticalLayout_20">
+             <item>
+              <widget class="QRadioButton" name="currModeRadio">
+               <property name="text">
+                <string>Current</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+               <property name="autoExclusive">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="powModeRadio">
+               <property name="text">
+                <string>Power</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item>
             <widget class="QStackedWidget" name="depModeStacked">
@@ -7132,7 +7153,7 @@ Settings</string>
               <number>0</number>
              </property>
              <widget class="QWidget" name="current_3">
-              <layout class="QHBoxLayout" name="horizontalLayout_22">
+              <layout class="QHBoxLayout" name="horizontalLayout_15">
                <item>
                 <widget class="QSpinBox" name="depCurrSpinner">
                  <property name="sizePolicy">
@@ -7808,6 +7829,36 @@ Settings</string>
    </property>
    <property name="toolTip">
     <string>camera control</string>
+   </property>
+  </action>
+  <action name="actionSaveLoadout">
+   <property name="icon">
+    <iconset resource="icons/icons.qrc">
+     <normaloff>:/save_as.png</normaloff>:/save_as.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save Loadout</string>
+   </property>
+   <property name="toolTip">
+    <string>save loadout</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionLoadLoadout">
+   <property name="icon">
+    <iconset resource="icons/icons.qrc">
+     <normaloff>:/load.png</normaloff>:/load.png</iconset>
+   </property>
+   <property name="text">
+    <string>Load Loadout</string>
+   </property>
+   <property name="toolTip">
+    <string>load loadout</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
    </property>
   </action>
  </widget>

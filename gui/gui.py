@@ -75,6 +75,18 @@ class MainWin(QMainWindow):
         self.imp.restart()
 
     @pyqtSlot()
+    def on_actionLoadLoadout_triggered(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.load()
+
+    @pyqtSlot()
+    def on_actionSaveLoadout_triggered(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.save()
+
+    @pyqtSlot()
     def on_startFcsMeasurementButton_released(self) -> NoReturn:
         """Begin/end FCS measurement."""
 
@@ -227,21 +239,20 @@ class SettWin(QDialog):
         """Save settings as .csv"""
         # TODO: add all forms in main window too
 
-        self.imp.write_csv()
+        self.imp.save()
 
     @pyqtSlot()
     def on_loadButton_released(self) -> NoReturn:
         """load settings .csv file"""
-        # TODO: add all forms in main window too
 
-        self.imp.read_csv()
+        self.imp.load()
 
 
+# TODO: Decide what this button does
 #    @pyqtSlot()
 #    def on_confirmButton_released(self) -> NoReturn:
 #        """Doc."""
-#        # TODO: return to this after taking care of windows.py (needs the restart function which isn't a SettWin() method)
-#        self.imp.
+#
 
 
 class CamWin(QWidget):
