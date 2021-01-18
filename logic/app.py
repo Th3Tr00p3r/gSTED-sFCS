@@ -34,9 +34,10 @@ class App:
         # init windows
         self.gui_dict = {}
         self.gui_dict["main"] = gui_module.MainWin(self)
+        self.gui_dict["main"].imp.load(const.DEFAULT_LOADOUT_FILE_PATH)
 
         self.gui_dict["settings"] = gui_module.SettWin(self)
-        self.gui_dict["settings"].imp.read_csv(const.DEFAULT_SETTINGS_FILE_PATH)
+        self.gui_dict["settings"].imp.load(const.DEFAULT_SETTINGS_FILE_PATH)
 
         self.gui_dict["camera"] = gui_module.CamWin(
             self
