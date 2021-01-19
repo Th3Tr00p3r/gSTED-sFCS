@@ -5,6 +5,8 @@ import asyncio
 import logging
 import os
 import time
+from collections import deque
+from typing import NoReturn
 
 import utilities.constants as const
 from utilities.errors import logic_error_handler as err_hndlr
@@ -13,7 +15,7 @@ from utilities.errors import logic_error_handler as err_hndlr
 class Timeout:
     """Doc."""
 
-    def __init__(self, app):
+    def __init__(self, app) -> NoReturn:
         """Doc."""
 
         self._app = app
@@ -26,7 +28,7 @@ class Timeout:
         }
 
     # MAIN
-    async def _main(self):
+    async def _main(self) -> NoReturn:
         """Doc."""
 
         await asyncio.gather(
@@ -38,7 +40,7 @@ class Timeout:
         )
         logging.debug("_main function exited")
 
-    def start(self):
+    def start(self) -> NoReturn:
         """Doc."""
 
         self.running = True
@@ -46,25 +48,25 @@ class Timeout:
         self._app.loop.create_task(self._main())
         logging.debug("Starting main timer.")
 
-    def finish(self):
+    def finish(self) -> NoReturn:
         """Doc."""
 
         self.not_finished = False
 
-    def pause(self):
+    def pause(self) -> NoReturn:
         """Doc."""
 
         self.running = False
         logging.debug("Stopping main timer.")
 
-    def resume(self):
+    def resume(self) -> NoReturn:
         """Doc."""
 
         if not self.running:
             self.running = True
             logging.debug("Resuming main timer.")
 
-    async def _updt_current_state(self):
+    async def _updt_current_state(self) -> NoReturn:
         """Doc."""
 
         @err_hndlr
@@ -82,8 +84,10 @@ class Timeout:
             return last_line
 
         now_timestamp = time.strftime("%H:%M:%S", time.localtime())
-        buffer = [f"[{now_timestamp}] Application Started"]
-        buffer_sz = 5
+        first_line = f"[{now_timestamp}] Application Started"
+        buffer_deque = deque(
+            [first_line], maxlen=5
+        )  # TODO: decide where to control the size
 
         while self.not_finished:
             if self.running:
@@ -95,17 +99,15 @@ class Timeout:
                         last_line[12:23] + last_line[38:]
                     )  # TODO: explain these indices (see log file) or use regular expression instead
 
-                    if last_line != buffer[0]:
-                        buffer.insert(0, last_line)
-                        if len(buffer) > buffer_sz:
-                            buffer.pop()
+                    if last_line != buffer_deque[0]:
+                        buffer_deque.appendleft(last_line)
 
-                        text = "".join(buffer)
+                        text = "".join(buffer_deque)
                         self._app.gui_dict["main"].lastAction.setPlainText(text)
 
                 await asyncio.sleep(0.3)
 
-    async def _updt_CI_and_AI(self):
+    async def _updt_CI_and_AI(self) -> NoReturn:
         """Doc."""
         # TODO: (later, if anything slows down) consider running in thread (see _updt_dep in this module)
 
@@ -123,7 +125,7 @@ class Timeout:
 
             await asyncio.sleep(const.TIMEOUT)
 
-    async def _update_gui(self):
+    async def _update_gui(self) -> NoReturn:
         """Doc."""
 
         def updt_scn_pos(app):
@@ -152,7 +154,7 @@ class Timeout:
                 self._app.gui_dict["main"].yAoUm.setValue(y_um)
                 self._app.gui_dict["main"].zAoUm.setValue(z_um)
 
-        def updt_meas_progbar(meas):
+        def updt_meas_progbar(meas) -> NoReturn:
             """Doc."""
 
             if (
@@ -191,7 +193,7 @@ class Timeout:
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
-    async def _update_avg_counts(self):
+    async def _update_avg_counts(self) -> NoReturn:
         """
         Read new counts, and dump buffer overflow.
         if update ready also average and show in GUI.
@@ -208,12 +210,12 @@ class Timeout:
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
-    def _update_dep(self):
+    def _update_dep(self) -> NoReturn:
         """Update depletion laser GUI"""
 
         nick = "DEP_LASER"
 
-        def update_SHG_temp(dep_dvc, main_gui):
+        def update_SHG_temp(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
 
             temp = dep_dvc.get_prop("temp")
@@ -223,17 +225,17 @@ class Timeout:
             else:
                 main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
-        def update_power(dep_dvc, main_gui):
+        def update_power(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
 
             main_gui.depActualPowerSpinner.setValue(dep_dvc.get_prop("pow"))
 
-        def update_current(dep_dvc, main_gui):
+        def update_current(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
 
             main_gui.depActualCurrSpinner.setValue(dep_dvc.get_prop("curr"))
 
-        def update_props(dep_err_dict, dep_dvc, main_gui):
+        def update_props(dep_err_dict, dep_dvc, main_gui) -> NoReturn:
             """Doc."""
 
             if dep_err_dict is None:
