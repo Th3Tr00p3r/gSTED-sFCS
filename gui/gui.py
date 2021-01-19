@@ -237,7 +237,6 @@ class SettWin(QDialog):
     @pyqtSlot()
     def on_saveButton_released(self) -> NoReturn:
         """Save settings as .csv"""
-        # TODO: add all forms in main window too
 
         self.imp.save()
 
