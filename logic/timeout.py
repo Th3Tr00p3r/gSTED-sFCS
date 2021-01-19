@@ -7,6 +7,7 @@ import os
 import time
 
 import utilities.constants as const
+from utilities.errors import logic_error_handler as err_hndlr
 
 
 class Timeout:
@@ -66,25 +67,33 @@ class Timeout:
     async def _updt_current_state(self):
         """Doc."""
 
+        @err_hndlr
+        def get_last_line(file_path) -> str:
+            """
+            Return the last line of a text file.
+            (https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python)
+            """
+
+            with open(file_path, "rb") as f:
+                f.seek(-2, os.SEEK_END)
+                while f.read(1) != b"\n":
+                    f.seek(-2, os.SEEK_CUR)
+                last_line = f.readline().decode()
+            return last_line
+
         now_timestamp = time.strftime("%H:%M:%S", time.localtime())
         buffer = [f"[{now_timestamp}] Application Started"]
         buffer_sz = 5
 
-        # ------------------------------------------------------------------------------------------------------
-        # https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python
         while self.not_finished:
             if self.running:
-                with open(const.LOG_FOLDER_PATH + "log", "rb") as f:
-                    f.seek(-2, os.SEEK_END)
-                    while f.read(1) != b"\n":
-                        f.seek(-2, os.SEEK_CUR)
-                    last_line = f.readline().decode()
-                # ------------------------------------------------------------------------------------------------------
+
+                last_line = get_last_line(const.LOG_FOLDER_PATH + "log")
 
                 if last_line.find("INFO") != -1:
                     last_line = (
                         last_line[12:23] + last_line[38:]
-                    )  # TODO: explain these indices
+                    )  # TODO: explain these indices (see log file) or use regular expression instead
 
                     if last_line != buffer[0]:
                         buffer.insert(0, last_line)

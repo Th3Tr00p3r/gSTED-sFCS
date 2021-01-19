@@ -444,6 +444,8 @@ class SettWin:
 class CamWin:
     """Doc."""
 
+    # TODO:  Try to have the whole camera window operate in a thread
+
     def __init__(self, gui, app):
         """Doc."""
 
