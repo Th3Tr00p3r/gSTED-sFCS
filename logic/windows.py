@@ -116,7 +116,7 @@ class MainWin:
 
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self._gui,
-            "Save Settings",
+            "Save Loadout",
             const.LOADOUT_FOLDER_PATH,
             "CSV Files(*.csv *.txt)",
         )
@@ -131,7 +131,7 @@ class MainWin:
         if not file_path:
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self._gui,
-                "Load Settings",
+                "Load Loadout",
                 const.LOADOUT_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
