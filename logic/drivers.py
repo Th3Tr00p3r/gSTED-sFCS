@@ -5,17 +5,10 @@ import asyncio
 from array import array
 from typing import NoReturn
 
-import nidaqmx
+import nidaqmx as ni
 import numpy as np
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
-from nidaqmx.constants import (
-    READ_ALL_AVAILABLE,
-    AcquisitionType,
-    CountDirection,
-    Edge,
-    TerminalConfiguration,
-)
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 from nidaqmx.utils import flatten_channel_string
 from pyftdi.ftdi import Ftdi, FtdiError
@@ -108,13 +101,13 @@ class DAQmxInstrumentAIO:
     def _init_ai_task(self):
         """Doc."""
 
-        self.ai_task = nidaqmx.Task(new_task_name="ai task")
+        self.ai_task = ni.Task(new_task_name="ai task")
 
         # x-galvo
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_x_addr"],
             name_to_assign_to_channel="aix",
-            terminal_config=TerminalConfiguration.RSE,
+            terminal_config=ni.constants.TerminalConfiguration.RSE,
             min_val=-5.0,
             max_val=5.0,
         )
@@ -123,7 +116,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_y_addr"],
             name_to_assign_to_channel="aiy",
-            terminal_config=TerminalConfiguration.RSE,
+            terminal_config=ni.constants.TerminalConfiguration.RSE,
             min_val=-5.0,
             max_val=5.0,
         )
@@ -132,7 +125,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.ai_channels.add_ai_voltage_chan(
             physical_channel=self._param_dict["ai_z_addr"],
             name_to_assign_to_channel="aiz",
-            terminal_config=TerminalConfiguration.RSE,
+            terminal_config=ni.constants.TerminalConfiguration.RSE,
             min_val=0.0,
             max_val=10.0,
         )
@@ -140,7 +133,7 @@ class DAQmxInstrumentAIO:
         self.ai_task.timing.cfg_samp_clk_timing(
             # source is unspecified - uses onboard clock (see https://nidaqmx-python.readthedocs.io/en/latest/timing.html#nidaqmx._task_modules.timing.Timing.cfg_samp_clk_timing)
             rate=self.ai_clk_rate,  # TODO - move these to settings -> param_dict
-            sample_mode=AcquisitionType.CONTINUOUS,
+            sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
             samps_per_chan=self.buff_sz,  # TODO - move these to settings -> param_dict
         )
 
@@ -173,7 +166,7 @@ class DAQmxInstrumentAIO:
         #        return num_samps_read
 
         read_samples = self.ai_task.read(
-            number_of_samples_per_channel=READ_ALL_AVAILABLE
+            number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE
         )
         return read_samples
 
@@ -204,7 +197,7 @@ class DAQmxInstrumentAIO:
 
         ao_addresses = flatten_lists(ao_addresses)
 
-        with nidaqmx.Task(new_task_name="ao task") as task:
+        with ni.Task(new_task_name="ao task") as task:
             for (ao_addr, limits) in zip(ao_addresses, limits):
                 task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
             task.write(vals, timeout=self.ao_timeout)
@@ -230,20 +223,20 @@ class DAQmxInstrumentCI:
     def _init_task(self):
         """Doc."""
 
-        self._task = nidaqmx.Task("ci task")
+        self._task = ni.Task("ci task")
 
         chan = self._task.ci_channels.add_ci_count_edges_chan(
             counter=self._param_dict["photon_cntr"],
-            edge=Edge.RISING,
+            edge=ni.constants.Edge.RISING,
             initial_count=0,
-            count_direction=CountDirection.COUNT_UP,
+            count_direction=ni.constants.CountDirection.COUNT_UP,
         )
         chan.ci_count_edges_term = self._param_dict["CI_cnt_edges_term"]
 
         self._task.timing.cfg_samp_clk_timing(
             rate=self.ai_task.timing.samp_clk_rate,
             source=self.ai_task.timing.samp_clk_term,
-            sample_mode=AcquisitionType.CONTINUOUS,
+            sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
             samps_per_chan=self._param_dict["buff_sz"],
         )
         self._task.sr = CounterReader(self._task.in_stream)
@@ -258,11 +251,15 @@ class DAQmxInstrumentCI:
 
     @err_hndlr
     def read(self):
-        """Doc."""
+        """
+         Reads all available samples on board into self.read_buffer
+         (1D NumPy array, overwritten each read), and returns the
+        number of samples read.
+        """
 
         return self._task.sr.read_many_sample_uint32(
             self.read_buffer,
-            number_of_samples_per_channel=READ_ALL_AVAILABLE,
+            number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
 
     @err_hndlr
@@ -286,7 +283,7 @@ class DAQmxInstrumentDO:
     def write(self, bool):
         """Doc."""
 
-        with nidaqmx.Task() as task:
+        with ni.Task() as task:
             task.do_channels.add_do_chan(self._address)
             task.write(bool)
 
