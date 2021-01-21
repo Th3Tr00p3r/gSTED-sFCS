@@ -83,15 +83,15 @@ class App:
 
         def params_from_GUI(app: App, param_widgets: consts.ParamWidgets):
             """
-            Get device parameters from settings GUI
-            using a ParamWidgets class defined in constants.py.
+            Get constant device parameters from GUI
+            using ParamWidgets objects defined in constants.py.
             """
 
-            gui_parent = app.gui_dict["settings"]
-            return {
-                param_name: widget_access.access(gui_parent)
-                for param_name, widget_access in vars(param_widgets).items()
-            }
+            param_dict = {}
+            for param_name, widget_access in vars(param_widgets).items():
+                parent_gui = app.gui_dict[widget_access.gui_parent_name]
+                param_dict[param_name] = widget_access.access(parent_gui=parent_gui)
+            return param_dict
 
         def extra_args(app, x_args: list) -> list:
             """
@@ -112,12 +112,16 @@ class App:
             DVC_CONSTS = getattr(consts, nick)
             dvc_class = getattr(devices, DVC_CONSTS.cls_name)
             param_dict = params_from_GUI(self, DVC_CONSTS.param_widgets)
+
+            gui_parent_name = DVC_CONSTS.led_widget.gui_parent_name
             led_widget = DVC_CONSTS.led_widget.hold_obj(
-                parent_gui=self.gui_dict["main"]
+                parent_gui=self.gui_dict[gui_parent_name]
             )
+
             if DVC_CONSTS.switch_widget is not None:
+                gui_parent_name = DVC_CONSTS.switch_widget.gui_parent_name
                 switch_widget = DVC_CONSTS.switch_widget.hold_obj(
-                    parent_gui=self.gui_dict["main"]
+                    parent_gui=self.gui_dict[gui_parent_name]
                 )
             else:
                 switch_widget = None
