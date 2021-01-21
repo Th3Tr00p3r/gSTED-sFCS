@@ -16,7 +16,7 @@ from PyQt5.QtGui import QIcon
 from pyvisa.errors import VisaIOError
 
 import gui.icons.icon_paths as icon
-import utilities.constants as const
+import utilities.constants as consts
 from utilities.dialog import Error
 
 
@@ -48,9 +48,8 @@ def parse_args(args: tuple) -> str:
 def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
     """Decides what to do with caught, device-related exceptions"""
 
-    log_str = (
-        f"{const.DVC_LOG_DICT[dvc.nick]} didn't respond to {func_name}({cmnd}) call"
-    )
+    dvc_log_ref = getattr(consts, dvc.nick).log_ref
+    log_str = f"{dvc_log_ref} didn't respond to {func_name}({cmnd}) call"
     lvl = "ERROR"
 
     if isinstance(exc, ValueError):
@@ -71,6 +70,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
         "DEP_SHUTTER",
         "TDC",
         "COUNTER",
+        "SCANNERS",
     }:
         result = 0
 
@@ -104,7 +104,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
         if dvc.error_dict[dvc.nick] is None:  # keep only first error
             dvc.error_dict[dvc.nick] = build_err_dict(exc)
 
-        dvc.led.setIcon(QIcon(icon.LED_RED))
+        dvc.led_widget.access(arg=QIcon(icon.LED_RED))
         logging.error(log_str, exc_info=False)
 
     else:  # "WARNING"

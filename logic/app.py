@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QMessageBox
 import gui.gui as gui_module
 import gui.icons.icon_paths as icon
 import logic.devices as devices
-import utilities.constants as const
+import utilities.constants as consts
 from logic.measurements import Measurement
 from logic.timeout import Timeout
 from utilities.dialog import Question
@@ -34,10 +34,10 @@ class App:
         # init windows
         self.gui_dict = {}
         self.gui_dict["main"] = gui_module.MainWin(self)
-        self.gui_dict["main"].imp.load(const.DEFAULT_LOADOUT_FILE_PATH)
+        self.gui_dict["main"].imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
 
         self.gui_dict["settings"] = gui_module.SettWin(self)
-        self.gui_dict["settings"].imp.load(const.DEFAULT_SETTINGS_FILE_PATH)
+        self.gui_dict["settings"].imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
 
         self.gui_dict["camera"] = gui_module.CamWin(
             self
@@ -81,18 +81,17 @@ class App:
         instantiating a driver object for each device.
         """
 
-        def params_from_GUI(app, gui_dict):
+        def params_from_GUI(app: App, param_widgets: consts.ParamWidgets):
             """
-            Get counter parameters from settings GUI
-            using a dictionary predefined in constants.py.
+            Get device parameters from settings GUI
+            using a ParamWidgets class defined in constants.py.
             """
 
-            param_dict = {}
-            for key, val_dict in gui_dict.items():
-                gui_field = getattr(app.gui_dict["settings"], val_dict["field"])
-                gui_field_value = getattr(gui_field, val_dict["access"])()
-                param_dict[key] = gui_field_value
-            return param_dict
+            gui_parent = app.gui_dict["settings"]
+            return {
+                param_name: widget_access.access(gui_parent)
+                for param_name, widget_access in vars(param_widgets).items()
+            }
 
         def extra_args(app, x_args: list) -> list:
             """
@@ -109,23 +108,39 @@ class App:
             return args
 
         self.dvc_dict = {}
-        for nick in const.DEVICE_NICKS:
-            dvc_class = getattr(devices, const.DVC_CLASS_NAMES[nick])
-            param_dict = params_from_GUI(self, const.DVC_NICK_PARAMS_DICT[nick])
-            led = getattr(self.gui_dict["main"], const.ICON_DICT[nick]["LED"])
-            x_args = extra_args(self, const.DVC_X_ARGS_DICT[nick])
-            if x_args:
-                self.dvc_dict[nick] = dvc_class(
-                    nick, param_dict, self.error_dict, led, *x_args
+        for nick in consts.DVC_NICKS_TUPLE:
+            DVC_CONSTS = getattr(consts, nick)
+            dvc_class = getattr(devices, DVC_CONSTS.cls_name)
+            param_dict = params_from_GUI(self, DVC_CONSTS.param_widgets)
+            led_widget = DVC_CONSTS.led_widget.hold_obj(
+                parent_gui=self.gui_dict["main"]
+            )
+            if DVC_CONSTS.switch_widget is not None:
+                switch_widget = DVC_CONSTS.switch_widget.hold_obj(
+                    parent_gui=self.gui_dict["main"]
                 )
             else:
-                self.dvc_dict[nick] = dvc_class(nick, param_dict, self.error_dict, led)
+                switch_widget = None
+            x_args = extra_args(self, DVC_CONSTS.cls_xtra_args)
+            if x_args:
+                self.dvc_dict[nick] = dvc_class(
+                    nick,
+                    param_dict,
+                    self.error_dict,
+                    led_widget,
+                    switch_widget,
+                    *x_args,
+                )
+            else:
+                self.dvc_dict[nick] = dvc_class(
+                    nick, param_dict, self.error_dict, led_widget, switch_widget
+                )
 
     def init_errors(self):
         """Doc."""
 
         self.error_dict = {}
-        for nick in const.DEVICE_NICKS:
+        for nick in consts.DVC_NICKS_TUPLE:
             self.error_dict[nick] = None
 
     def clean_up_app(self, restart=False):
@@ -134,7 +149,7 @@ class App:
         def close_all_dvcs(app):
             """Doc."""
 
-            for nick in const.DEVICE_NICKS:
+            for nick in consts.DVC_NICKS_TUPLE:
                 if not self.error_dict[nick]:
                     app.dvc_dict[nick].toggle(False)
 
