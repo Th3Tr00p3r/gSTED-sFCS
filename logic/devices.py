@@ -12,6 +12,8 @@ import logic.drivers as drivers
 import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
+# TODO: instead of having a param_dict, use the init method of device classes to turn the param_dict into regular attributes (and change the rest of the app code as needed)
+
 
 class UM232H(drivers.FTDI_Instrument):
     """Doc."""
