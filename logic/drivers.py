@@ -23,7 +23,7 @@ class FTDI_Instrument:
     def __init__(self, nick, param_dict, error_dict):
 
         self.nick = nick
-        self._param_dict = param_dict
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = error_dict
 
         self._inst = Ftdi()  # URL - ftdi://ftdi:232h:FT3TG15/1
@@ -34,11 +34,11 @@ class FTDI_Instrument:
 
         UsbTools.flush_cache()
 
-        self._inst.open(self._param_dict["vend_id"], self._param_dict["prod_id"])
-        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self._param_dict["bit_mode"]))
-        self._inst.set_latency_timer(self._param_dict["ltncy_tmr_val"])
-        self._inst.set_flowctrl(self._param_dict["flow_ctrl"])
-        self._inst.read_data_set_chunksize(self._param_dict["n_bytes"])
+        self._inst.open(self.vend_id, self.prod_id)
+        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self.bit_mode))
+        self._inst.set_latency_timer(self.ltncy_tmr_val)
+        self._inst.set_flowctrl(self.flow_ctrl)
+        self._inst.read_data_set_chunksize(self.n_bytes)
 
         self.state = True
 
@@ -92,7 +92,7 @@ class DAQmxInstrumentAIO:
     def __init__(self, nick, param_dict, error_dict):
 
         self.nick = nick
-        self._param_dict = param_dict
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = error_dict
 
         self._init_ai_task()
@@ -105,7 +105,7 @@ class DAQmxInstrumentAIO:
 
         # x-galvo
         self.ai_task.ai_channels.add_ai_voltage_chan(
-            physical_channel=self._param_dict["ai_x_addr"],
+            physical_channel=self.ai_x_addr,
             name_to_assign_to_channel="aix",
             terminal_config=ni.constants.TerminalConfiguration.RSE,
             min_val=-5.0,
@@ -114,7 +114,7 @@ class DAQmxInstrumentAIO:
 
         # x-galvo
         self.ai_task.ai_channels.add_ai_voltage_chan(
-            physical_channel=self._param_dict["ai_y_addr"],
+            physical_channel=self.ai_y_addr,
             name_to_assign_to_channel="aiy",
             terminal_config=ni.constants.TerminalConfiguration.RSE,
             min_val=-5.0,
@@ -123,7 +123,7 @@ class DAQmxInstrumentAIO:
 
         # z-piezo
         self.ai_task.ai_channels.add_ai_voltage_chan(
-            physical_channel=self._param_dict["ai_z_addr"],
+            physical_channel=self.ai_z_addr,
             name_to_assign_to_channel="aiz",
             terminal_config=ni.constants.TerminalConfiguration.RSE,
             min_val=0.0,
@@ -184,6 +184,7 @@ class DAQmxInstrumentAIO:
             flatten_lists(a_list)
             >>> ['foo', 'bar, baz']
             """
+            # TODO: this is avoidable - instead, change the settings GUI to have the address strings already in this format, and make the neccesary changes
 
             result_list_of_strs = []
             for str_or_list_of_strs in suspected_iter:
@@ -212,7 +213,7 @@ class DAQmxInstrumentCI:
         """Doc."""
 
         self.nick = nick
-        self._param_dict = param_dict
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = error_dict
         self.ai_task = ai_task
         self.read_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
@@ -226,18 +227,18 @@ class DAQmxInstrumentCI:
         self._task = ni.Task("ci task")
 
         chan = self._task.ci_channels.add_ci_count_edges_chan(
-            counter=self._param_dict["photon_cntr"],
+            counter=self.address,
             edge=ni.constants.Edge.RISING,
             initial_count=0,
             count_direction=ni.constants.CountDirection.COUNT_UP,
         )
-        chan.ci_count_edges_term = self._param_dict["CI_cnt_edges_term"]
+        chan.ci_count_edges_term = self.CI_cnt_edges_term
 
         self._task.timing.cfg_samp_clk_timing(
             rate=self.ai_task.timing.samp_clk_rate,
             source=self.ai_task.timing.samp_clk_term,
             sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
-            samps_per_chan=self._param_dict["buff_sz"],
+            samps_per_chan=len(self.read_buffer),
         )
         self._task.sr = CounterReader(self._task.in_stream)
         self._task.sr.verify_array_shape = False
@@ -273,10 +274,10 @@ class DAQmxInstrumentCI:
 class DAQmxInstrumentDO:
     """Doc."""
 
-    def __init__(self, nick, address, error_dict):
+    def __init__(self, nick, param_dict, error_dict):
 
         self.nick = nick
-        self._address = address
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = error_dict
 
     @err_hndlr
@@ -284,7 +285,7 @@ class DAQmxInstrumentDO:
         """Doc."""
 
         with ni.Task() as task:
-            task.do_channels.add_do_chan(self._address)
+            task.do_channels.add_do_chan(self.address)
             task.write(bool)
 
         self.state = bool
@@ -296,14 +297,14 @@ class VISAInstrument:
     def __init__(
         self,
         nick,
-        address,
+        param_dict,
         error_dict,
         read_termination="",
         write_termination="",
     ):
 
         self.nick = nick
-        self.address = address
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = error_dict
         self.read_termination = read_termination
         self.write_termination = write_termination
@@ -373,7 +374,7 @@ class UC480Instrument:
 
     def __init__(self, nick, param_dict, error_dict):
         self.nick = nick
-        self.param_dict = param_dict
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = error_dict
         self._inst = None
 
