@@ -12,8 +12,6 @@ import logic.drivers as drivers
 import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
-# TODO: instead of having a param_dict, use the init method of device classes to turn the param_dict into regular attributes (and change the rest of the app code as needed)
-
 
 class UM232H(drivers.FTDI_Instrument):
     """Doc."""
@@ -75,27 +73,18 @@ class Scanners(drivers.DAQmxInstrumentAIO):
     y_limits = {"min_val": -5.0, "max_val": 5.0}
     z_limits = {"min_val": 0.0, "max_val": 10.0}
 
-    # TODO - move these to settings -> param_dict
     buff_sz = 1000
     ai_clk_rate = 1000
 
-    def __init__(
-        self,
-        nick,
-        param_dict,
-        error_dict,
-        led_widget,
-        switch_widget,
-        init_pos_vltgs,
-        um_V_ratio,
-    ):
+    def __init__(self, nick, param_dict, error_dict, led_widget, switch_widget):
         self.led_widget = led_widget
         self.switch_widget = switch_widget
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
 
         self.last_ai = None
-        self.last_ao = init_pos_vltgs
-        self.um_V_ratio = um_V_ratio
+        self.last_ao = (self.ao_x_init_vltg, self.ao_y_init_vltg, self.ao_z_init_vltg)
+        self.um_V_ratio = (self.x_conv_const, self.y_conv_const, self.z_conv_const)
+
         # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
         self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
         self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
@@ -137,14 +126,14 @@ class Scanners(drivers.DAQmxInstrumentAIO):
             if axis in {"x", "y"}:  # Differential Voltage [-5,5]
                 ao_addresses.append(
                     [
-                        self._param_dict[f"ao_{axis}_p_addr"],
-                        self._param_dict[f"ao_{axis}_n_addr"],
+                        getattr(self, f"ao_{axis}_p_addr"),
+                        getattr(self, f"ao_{axis}_n_addr"),
                     ]
                 )
                 limits.append(getattr(self, f"{axis}_limits"))
                 vltgs += [new_axis_vltg, -new_axis_vltg]
             else:  # RSE Voltage [0,10]
-                ao_addresses.append(self._param_dict[f"ao_{axis}_addr"])
+                ao_addresses.append(getattr(self, f"ao_{axis}_addr"))
                 limits.append(getattr(self, f"{axis}_limits"))
                 vltgs.append(new_axis_vltg)
 
@@ -172,6 +161,9 @@ class Counter(drivers.DAQmxInstrumentCI):
     # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
     # PREVIOUSLY DONE IN TIMEOUT
 
+    update_time = 0.2
+    buff_sz = 10000
+
     def __init__(
         self, nick, param_dict, error_dict, led_widget, switch_widget, ai_task
     ):
@@ -183,7 +175,6 @@ class Counter(drivers.DAQmxInstrumentCI):
         #        self.cont_count_buff = []
         self.cont_count_buff = np.empty(shape=(0,))
         self.counts = None  # this is for scans where the counts are actually used.
-        self.update_time = param_dict["update_time"]
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
 
@@ -231,8 +222,8 @@ class Counter(drivers.DAQmxInstrumentCI):
     def dump_buff_overflow(self):
         """Doc."""
 
-        if len(self.cont_count_buff) > self._param_dict["buff_sz"]:
-            self.cont_count_buff = self.cont_count_buff[-self._param_dict["buff_sz"] :]
+        if len(self.cont_count_buff) > self.buff_sz:
+            self.cont_count_buff = self.cont_count_buff[-self.buff_sz :]
 
 
 class Camera(drivers.UC480Instrument):
@@ -248,6 +239,7 @@ class Camera(drivers.UC480Instrument):
         self._gui = gui
         self.state = False
         self.vid_state = False
+        self.vid_intrvl = 0.3
 
     def toggle(self, bool):
         """Doc."""
@@ -299,7 +291,7 @@ class Camera(drivers.UC480Instrument):
             img = self.get_latest_frame()
             if img is not None:
                 self._imshow(img)
-            time.sleep(self.param_dict["vid_intrvl"])
+            time.sleep(self.vid_intrvl)
 
     @err_hndlr
     def _imshow(self, img):
@@ -317,7 +309,7 @@ class SimpleDO(drivers.DAQmxInstrumentDO):
     def __init__(self, nick, param_dict, error_dict, led_widget, switch_widget):
         self.led_widget = led_widget
         self.switch_widget = switch_widget
-        super().__init__(nick=nick, address=param_dict["addr"], error_dict=error_dict)
+        super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
 
         self.toggle(False)
 
@@ -337,12 +329,12 @@ class DepletionLaser(drivers.VISAInstrument):
         self.switch_widget = switch_widget
         super().__init__(
             nick=nick,
-            address=param_dict["addr"],
+            param_dict=param_dict,
             error_dict=error_dict,
             read_termination="\r",
             write_termination="\r",
         )
-        self.update_time = param_dict["update_time"]
+        self.update_time = 1
         self.state = None
 
         self.toggle(False)
@@ -402,7 +394,7 @@ class StepperStage:
         self.led_widget = led_widget
         self.switch_widget = switch_widget
         self.nick = nick
-        self.address = param_dict["addr"]
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = error_dict
         self.rm = drivers.visa.ResourceManager()
 
