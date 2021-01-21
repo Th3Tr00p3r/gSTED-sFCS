@@ -2791,6 +2791,12 @@ background-repeat: no-repeat;</string>
                                  <height>30</height>
                                 </size>
                                </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>999</number>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -2820,6 +2826,9 @@ background-repeat: no-repeat;</string>
                                  <height>30</height>
                                 </size>
                                </property>
+                               <property name="maximum">
+                                <number>99999999</number>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -2848,6 +2857,9 @@ background-repeat: no-repeat;</string>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
+                               </property>
+                               <property name="maximum">
+                                <number>180</number>
                                </property>
                               </widget>
                              </item>
@@ -2919,6 +2931,12 @@ background-repeat: no-repeat;</string>
                                  <height>30</height>
                                 </size>
                                </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>100</number>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -2954,6 +2972,12 @@ background-repeat: no-repeat;</string>
                                  <height>30</height>
                                 </size>
                                </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>99999</number>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -2983,6 +3007,12 @@ background-repeat: no-repeat;</string>
                                  <height>30</height>
                                 </size>
                                </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>99999</number>
+                               </property>
                               </widget>
                              </item>
                             </layout>
@@ -3011,6 +3041,12 @@ background-repeat: no-repeat;</string>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
+                               </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>9999</number>
                                </property>
                               </widget>
                              </item>

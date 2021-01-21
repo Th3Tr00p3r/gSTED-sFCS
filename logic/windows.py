@@ -12,7 +12,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtGui import QIcon
 
 import gui.icons.icon_paths as icon
-import utilities.constants as const
+import utilities.constants as consts
 from logic.measurements import FCSMeasurement, SFCSSolutionMeasurement
 from utilities.dialog import Error, Question
 from utilities.errors import error_checker as err_chck
@@ -117,7 +117,7 @@ class MainWin:
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self._gui,
             "Save Loadout",
-            const.LOADOUT_FOLDER_PATH,
+            consts.LOADOUT_FOLDER_PATH,
             "CSV Files(*.csv *.txt)",
         )
 
@@ -132,7 +132,7 @@ class MainWin:
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Loadout",
-                const.LOADOUT_FOLDER_PATH,
+                consts.LOADOUT_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
 
@@ -143,66 +143,65 @@ class MainWin:
     def dvc_toggle(self, nick):
         """Doc."""
 
-        if "SWITCH" in const.ICON_DICT[nick]:  # if device has a switch
-            gui_switch_object = getattr(self._gui, const.ICON_DICT[nick]["SWITCH"])
-        else:
-            gui_switch_object = None
+        DVC_CONSTS = getattr(consts, nick)
 
         if not self._app.dvc_dict[nick].state:  # switch ON
             self._app.dvc_dict[nick].toggle(True)
 
             if self._app.dvc_dict[nick].state:  # if managed to turn ON
-                if gui_switch_object is not None:
-                    gui_switch_object.setIcon(QIcon(icon.SWITCH_ON))
+                if DVC_CONSTS.switch_widget is not None:
+                    DVC_CONSTS.switch_widget.access(arg=QIcon(icon.SWITCH_ON))
 
-                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]["LED"])
-                on_icon = QIcon(const.ICON_DICT[nick]["ICON"])
-                gui_led_object.setIcon(on_icon)
+                on_icon = QIcon(DVC_CONSTS.led_icon_path)
+                DVC_CONSTS.led_widget.access(arg=on_icon)
 
-                logging.debug(f"{const.DVC_LOG_DICT[nick]} toggled ON")
+                logging.debug(f"{DVC_CONSTS.log_ref} toggled ON")
 
                 if nick == "STAGE":
                     self._gui.stageButtonsGroup.setEnabled(True)
 
-                return True
-
-            else:
-                return False
+        #                return True
+        #
+        #            else:
+        #                return False
 
         else:  # switch OFF
             self._app.dvc_dict[nick].toggle(False)
 
             if not self._app.dvc_dict[nick].state:  # if managed to turn OFF
-                if gui_switch_object is not None:
-                    gui_switch_object.setIcon(QIcon(icon.SWITCH_OFF))
+                if DVC_CONSTS.switch_widget is not None:
+                    DVC_CONSTS.switch_widget.access(arg=QIcon(icon.SWITCH_OFF))
 
-                gui_led_object = getattr(self._gui, const.ICON_DICT[nick]["LED"])
-                gui_led_object.setIcon(QIcon(icon.LED_OFF))
+                DVC_CONSTS.led_widget.access(arg=QIcon(icon.LED_OFF))
 
-                logging.debug(f"{const.DVC_LOG_DICT[nick]} toggled OFF")
+                logging.debug(f"{DVC_CONSTS.log_ref} toggled OFF")
 
-                if nick in {
-                    "DEP_LASER"
-                }:  # set curr/pow values to zero when depletion is turned OFF
+                if nick == "STAGE":
+                    self._gui.stageButtonsGroup.setEnabled(False)
+
+                # set curr/pow values to zero when depletion is turned OFF
+                if nick == "DEP_LASER":
                     self._gui.depActualCurrSpinner.setValue(0)
                     self._gui.depActualPowerSpinner.setValue(0)
 
-                return False
+    #                return False
 
     def led_clicked(self, led_obj_name):
         """Doc."""
 
-        def get_key(dct, val):
-            """ Return first matching 'key' to value 'val' """
+        def dvc_nick_from_led_name(led_obj_name) -> str:
+            """Doc."""
 
-            for key, value in dct.items():
-                if value == val:
-                    return key
+            led_to_nick_dict = {
+                getattr(consts, dvc_nick).led_widget.obj_name: dvc_nick
+                for dvc_nick in consts.DVC_NICKS_TUPLE
+            }
+            return led_to_nick_dict[led_obj_name]
 
-        nick = get_key(const.DVC_LED_NAME, led_obj_name)
-        err_dict = self._app.error_dict[nick]
+        dvc_nick = dvc_nick_from_led_name(led_obj_name)
+        err_dict = self._app.error_dict[dvc_nick]
         if err_dict is not None:
-            Error(**err_dict, custom_title=const.DVC_LOG_DICT[nick]).display()
+            Error(**err_dict, custom_title=getattr(consts, dvc_nick).log_ref).display()
 
     @err_chck({"DEP_LASER"})
     def dep_sett_apply(self):
@@ -228,20 +227,24 @@ class MainWin:
 
         nick = "SCANNERS"
         self._app.loop.create_task(self._app.dvc_dict[nick].move_to_pos(pos_vltgs))
-        logging.debug(f"{const.DVC_LOG_DICT[nick]} were moved to {str(pos_vltgs)} V")
+        logging.debug(
+            f"{getattr(consts, nick).log_ref} were moved to {str(pos_vltgs)} V"
+        )
 
     def go_to_origin(self, which_axes: dict) -> NoReturn:
         """Doc."""
 
         for axis, is_chosen, org_axis_vltg in zip(
-            which_axes.keys(), which_axes.values(), const.ORIGIN
+            which_axes.keys(), which_axes.values(), consts.ORIGIN
         ):
             if is_chosen:
                 getattr(self._gui, f"{axis}AoV").setValue(org_axis_vltg)
 
         self.move_scanners()
 
-        logging.debug(f"{const.DVC_LOG_DICT['SCANNERS']} sent to origin {which_axes}")
+        logging.debug(
+            f"{getattr(consts, 'SCANNERS').log_ref} sent to origin {which_axes}"
+        )
 
     def displace_scanner_axis(self, sign: int) -> NoReturn:
         """Doc."""
@@ -262,7 +265,7 @@ class MainWin:
         self.move_scanners()
 
         logging.debug(
-            f"{const.DVC_LOG_DICT['SCANNERS']}({axis}) was displaced {str(um_disp)} um"
+            f"{getattr(consts, 'SCANNERS').log_ref}({axis}) was displaced {str(um_disp)} um"
         )
 
     @err_chck({"STAGE"})
@@ -271,7 +274,9 @@ class MainWin:
 
         nick = "STAGE"
         self._app.dvc_dict[nick].move(dir=dir, steps=steps)
-        logging.info(f"{const.DVC_LOG_DICT[nick]} moved {str(steps)} steps {str(dir)}")
+        logging.info(
+            f"{getattr(consts, nick).log_ref} moved {str(steps)} steps {str(dir)}"
+        )
 
     @err_chck({"STAGE"})
     def release_stage(self):
@@ -279,7 +284,7 @@ class MainWin:
 
         nick = "STAGE"
         self._app.dvc_dict[nick].release()
-        logging.info(f"{const.DVC_LOG_DICT[nick]} released")
+        logging.info(f"{getattr(consts, nick).log_ref} released")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -407,7 +412,7 @@ class SettWin:
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
-            const.SETTINGS_FOLDER_PATH,
+            consts.SETTINGS_FOLDER_PATH,
             "CSV Files(*.csv *.txt)",
         )
         self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
@@ -428,7 +433,7 @@ class SettWin:
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
-                const.SETTINGS_FOLDER_PATH,
+                consts.SETTINGS_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
 

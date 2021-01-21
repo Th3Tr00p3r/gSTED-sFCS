@@ -8,7 +8,7 @@ import time
 from collections import deque
 from typing import NoReturn
 
-import utilities.constants as const
+import utilities.constants as consts
 from utilities.errors import logic_error_handler as err_hndlr
 
 
@@ -92,7 +92,7 @@ class Timeout:
         while self.not_finished:
             if self.running:
 
-                last_line = get_last_line(const.LOG_FOLDER_PATH + "log")
+                last_line = get_last_line(consts.LOG_FOLDER_PATH + "log")
 
                 if last_line.find("INFO") != -1:
                     last_line = (
@@ -123,7 +123,7 @@ class Timeout:
                     self._app.dvc_dict["SCANNERS"].fill_ai_buff()
                     self._app.dvc_dict["SCANNERS"].dump_buff_overflow()
 
-            await asyncio.sleep(const.TIMEOUT)
+            await asyncio.sleep(consts.TIMEOUT)
 
     async def _update_gui(self) -> NoReturn:
         """Doc."""
@@ -142,7 +142,7 @@ class Timeout:
                     for axis_vltg, axis_ratio, axis_org in zip(
                         (x_ai, y_ai, z_ai),
                         self._app.dvc_dict["SCANNERS"].um_V_ratio,
-                        const.ORIGIN,
+                        consts.ORIGIN,
                     )
                 )
 

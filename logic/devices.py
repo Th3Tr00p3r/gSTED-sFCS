@@ -16,8 +16,9 @@ from utilities.errors import dvc_err_hndlr as err_hndlr
 class UM232H(drivers.FTDI_Instrument):
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict, led):
-        self.led = led
+    def __init__(self, nick, param_dict, error_dict, led_widget, switch_widget):
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self.init_data()
         self.toggle(True)
@@ -76,8 +77,18 @@ class Scanners(drivers.DAQmxInstrumentAIO):
     buff_sz = 1000
     ai_clk_rate = 1000
 
-    def __init__(self, nick, param_dict, error_dict, led, init_pos_vltgs, um_V_ratio):
-        self.led = led
+    def __init__(
+        self,
+        nick,
+        param_dict,
+        error_dict,
+        led_widget,
+        switch_widget,
+        init_pos_vltgs,
+        um_V_ratio,
+    ):
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
 
         self.last_ai = None
@@ -159,8 +170,11 @@ class Counter(drivers.DAQmxInstrumentCI):
     # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
     # PREVIOUSLY DONE IN TIMEOUT
 
-    def __init__(self, nick, param_dict, error_dict, led, ai_task):
-        self.led = led
+    def __init__(
+        self, nick, param_dict, error_dict, led_widget, switch_widget, ai_task
+    ):
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
         super().__init__(
             nick=nick, param_dict=param_dict, error_dict=error_dict, ai_task=ai_task
         )
@@ -222,8 +236,11 @@ class Counter(drivers.DAQmxInstrumentCI):
 class Camera(drivers.UC480Instrument):
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict, led, loop, gui):
-        self.led = led
+    def __init__(
+        self, nick, param_dict, error_dict, led_widget, switch_widget, loop, gui
+    ):
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
         super().__init__(nick=nick, param_dict=param_dict, error_dict=error_dict)
         self._loop = loop
         self._gui = gui
@@ -295,8 +312,9 @@ class Camera(drivers.UC480Instrument):
 class SimpleDO(drivers.DAQmxInstrumentDO):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
-    def __init__(self, nick, param_dict, error_dict, led):
-        self.led = led
+    def __init__(self, nick, param_dict, error_dict, led_widget, switch_widget):
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
         super().__init__(nick=nick, address=param_dict["addr"], error_dict=error_dict)
 
         self.toggle(False)
@@ -312,8 +330,9 @@ class DepletionLaser(drivers.VISAInstrument):
 
     min_SHG_temp = 52
 
-    def __init__(self, nick, param_dict, error_dict, led):
-        self.led = led
+    def __init__(self, nick, param_dict, error_dict, led_widget, switch_widget):
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
         super().__init__(
             nick=nick,
             address=param_dict["addr"],
@@ -377,8 +396,9 @@ class StepperStage:
     and so its driver is within its own class (not inherited)
     """
 
-    def __init__(self, nick, param_dict, error_dict, led):
-        self.led = led
+    def __init__(self, nick, param_dict, error_dict, led_widget, switch_widget):
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
         self.nick = nick
         self.address = param_dict["addr"]
         self.error_dict = error_dict
