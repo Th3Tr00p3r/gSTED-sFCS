@@ -47,12 +47,13 @@ DVC_NICKS_TUPLE = (
 )
 
 
-@dataclass
 class QtWidgetAccess:
-
-    obj_name: str
-    method_name: str
-    gui_parent_name: str = "settings"
+    def __init__(
+        self, obj_name: str, method_name: str, gui_parent_name: str = "settings"
+    ):
+        self.obj_name = obj_name
+        self.method_name = method_name
+        self.gui_parent_name = gui_parent_name
 
     def hold_obj(self, parent_gui) -> QtWidgetAccess:
         """Save the actual widget object as an attribute"""
@@ -83,7 +84,6 @@ class ParamWidgets:
 @dataclass
 class DeviceAttrs:
 
-    nick: str
     cls_name: str
     log_ref: str
     led_widget: QtWidgetAccess
@@ -94,7 +94,6 @@ class DeviceAttrs:
 
 
 EXC_LASER = DeviceAttrs(
-    nick="EXC_LASER",
     cls_name="SimpleDO",
     log_ref="Excitation Laser",
     led_widget=QtWidgetAccess("ledExc", "setIcon", "main"),
@@ -105,12 +104,11 @@ EXC_LASER = DeviceAttrs(
         trg_src=QtWidgetAccess("excTriggerSrc", "currentText"),
         ext_trg_addr=QtWidgetAccess("excTriggerExtAddr", "text"),
         int_trg_addr=QtWidgetAccess("excTriggerIntAddr", "text"),
-        addr=QtWidgetAccess("excAddr", "text"),
+        address=QtWidgetAccess("excAddr", "text"),
     ),
 )
 
 DEP_LASER = DeviceAttrs(
-    nick="DEP_LASER",
     cls_name="DepletionLaser",
     log_ref="Depletion Laser",
     led_widget=QtWidgetAccess("ledDep", "setIcon", "main"),
@@ -118,40 +116,34 @@ DEP_LASER = DeviceAttrs(
     switch_widget=QtWidgetAccess("depEmissionOn", "setIcon", "main"),
     param_widgets=ParamWidgets(
         model=QtWidgetAccess("depMod", "text"),
-        update_time=QtWidgetAccess("depUpdateTime", "value"),
-        addr=QtWidgetAccess("depAddr", "text"),
+        address=QtWidgetAccess("depAddr", "text"),
     ),
 )
 
 DEP_SHUTTER = DeviceAttrs(
-    nick="DEP_SHUTTER",
     cls_name="SimpleDO",
     log_ref="Shutter",
     led_widget=QtWidgetAccess("ledShutter", "setIcon", "main"),
     switch_widget=QtWidgetAccess("depShutterOn", "setIcon", "main"),
     param_widgets=ParamWidgets(
-        addr=QtWidgetAccess("depShutterAddr", "text"),
+        address=QtWidgetAccess("depShutterAddr", "text"),
     ),
 )
 
 STAGE = DeviceAttrs(
-    nick="STAGE",
     cls_name="StepperStage",
     log_ref="Stage",
     led_widget=QtWidgetAccess("ledStage", "setIcon", "main"),
     switch_widget=QtWidgetAccess("stageOn", "setIcon", "main"),
-    param_widgets=ParamWidgets(addr=QtWidgetAccess("arduinoAddr", "text")),
+    param_widgets=ParamWidgets(address=QtWidgetAccess("arduinoAddr", "text")),
 )
 
 COUNTER = DeviceAttrs(
-    nick="COUNTER",
     cls_name="Counter",
     cls_xtra_args=['app.dvc_dict["SCANNERS"].ai_task'],
     log_ref="Counter",
     led_widget=QtWidgetAccess("ledCounter", "setIcon", "main"),
     param_widgets=ParamWidgets(
-        buff_sz=QtWidgetAccess("counterBufferSizeSpinner", "value"),
-        update_time=QtWidgetAccess("counterUpdateTime", "value"),
         pxl_clk=QtWidgetAccess("counterPixelClockAddress", "text"),
         pxl_clk_output=QtWidgetAccess("pixelClockCounterIntOutputAddress", "text"),
         trggr=QtWidgetAccess("counterTriggerAddress", "text"),
@@ -159,14 +151,13 @@ COUNTER = DeviceAttrs(
             "counterTriggerArmStartDigEdgeSrc", "text"
         ),
         trggr_edge=QtWidgetAccess("counterTriggerEdge", "currentText"),
-        photon_cntr=QtWidgetAccess("counterPhotonCounter", "text"),
+        address=QtWidgetAccess("counterAddress", "text"),
         CI_cnt_edges_term=QtWidgetAccess("counterCIcountEdgesTerm", "text"),
         CI_dup_prvnt=QtWidgetAccess("counterCIdupCountPrevention", "isChecked"),
     ),
 )
 
 UM232H = DeviceAttrs(
-    nick="UM232H",
     cls_name="UM232H",
     log_ref="UM232H",
     led_widget=QtWidgetAccess("ledUm232h", "setIcon", "main"),
@@ -181,12 +172,11 @@ UM232H = DeviceAttrs(
 )
 
 TDC = DeviceAttrs(
-    nick="TDC",
     cls_name="SimpleDO",
     log_ref="TDC",
     led_widget=QtWidgetAccess("ledTdc", "setIcon", "main"),
     param_widgets=ParamWidgets(
-        addr=QtWidgetAccess("TDCaddress", "text"),
+        address=QtWidgetAccess("TDCaddress", "text"),
         data_vrsn=QtWidgetAccess("TDCdataVersion", "text"),
         laser_freq=QtWidgetAccess("TDClaserFreq", "value"),
         fpga_freq=QtWidgetAccess("TDCFPGAFreq", "value"),
@@ -196,28 +186,27 @@ TDC = DeviceAttrs(
 )
 
 CAMERA = DeviceAttrs(
-    nick="CAMERA",
     cls_name="Camera",
     cls_xtra_args=["app.loop", 'app.gui_dict["camera"]'],
     log_ref="Camera",
     led_widget=QtWidgetAccess("ledCam", "setIcon", "main"),
     param_widgets=ParamWidgets(
-        model=QtWidgetAccess("uc480VidIntrvl", "value"),
+        model=QtWidgetAccess("uc480PlaceHolder", "value"),
     ),
 )
 
 # TODO: combine P&N addresses in one string, will save in parameters
-# TODO: turn gui-related xtra args into regular parameters (param_widgets)
 SCANNERS = DeviceAttrs(
-    nick="SCANNERS",
     cls_name="Scanners",
-    cls_xtra_args=[
-        '(app.gui_dict["main"].xAoV.value(), app.gui_dict["main"].yAoV.value(), app.gui_dict["main"].zAoV.value())',
-        '(app.gui_dict["settings"].xConv.value(), app.gui_dict["settings"].yConv.value(), app.gui_dict["settings"].zConv.value())',
-    ],
     log_ref="Scanners",
     led_widget=QtWidgetAccess("ledScn", "setIcon", "main"),
     param_widgets=ParamWidgets(
+        ao_x_init_vltg=QtWidgetAccess("xAoV", "value", "main"),
+        ao_y_init_vltg=QtWidgetAccess("yAoV", "value", "main"),
+        ao_z_init_vltg=QtWidgetAccess("zAoV", "value", "main"),
+        x_conv_const=QtWidgetAccess("xConv", "value"),
+        y_conv_const=QtWidgetAccess("yConv", "value"),
+        z_conv_const=QtWidgetAccess("zConv", "value"),
         ai_x_addr=QtWidgetAccess("AIXaddr", "text"),
         ai_y_addr=QtWidgetAccess("AIYaddr", "text"),
         ai_z_addr=QtWidgetAccess("AIZaddr", "text"),
@@ -241,7 +230,6 @@ SCANNERS = DeviceAttrs(
 )
 
 # PXL_CLK = DeviceAttrs(
-#    nick="PXL_CLK",
 #    cls_name="PixelClock",
 #    log_ref="Pixel Clock",
 #    led_widget=QtWidgetAccess("ledPxlClk", "setIcon", "main"),
