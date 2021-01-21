@@ -114,7 +114,7 @@ class SFCSSolutionMeasurement(Measurement):
             return (curr_time, end_time)
 
         def disp_ACF(data_dvc):
-            """Doc."""
+            """Placeholder for calculating and presenting the ACF"""
 
             print(
                 f"Measurement Finished:\n"
@@ -159,6 +159,10 @@ class SFCSSolutionMeasurement(Measurement):
         self.cal = False
         bps = self.data_dvc.tot_bytes_read / self.time_passed
         self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
+
+        if self.save_intrvl > self.total_duration_gui.value():
+            self.save_intrvl = self.total_duration_gui.value()
+
         self.duration_gui = self._app.gui_dict["main"].solScanCalIntrvl
         self.duration_gui.setValue(self.save_intrvl)
         self.duration_multiplier = saved_dur_mul
