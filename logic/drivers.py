@@ -10,7 +10,6 @@ import numpy as np
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
-from nidaqmx.utils import flatten_channel_string
 from pyftdi.ftdi import Ftdi, FtdiError
 from pyftdi.usbtools import UsbTools
 
@@ -173,30 +172,6 @@ class DAQmxInstrumentAIO:
     @err_hndlr
     async def write(self, ao_addresses: iter, vals: iter, limits: iter) -> NoReturn:
         """Doc."""
-
-        def flatten_lists(suspected_iter: iter) -> list:
-            """
-            Accepts a list (or other iterable) containing strings or lists of strings,
-            and converts the lists of strings into NI-DAQmx-readable
-            comma delimited strings, not affecting any 'unlisted' strings.
-
-            a_list = ['foo', ['bar', 'baz']]
-            flatten_lists(a_list)
-            >>> ['foo', 'bar, baz']
-            """
-            # TODO: this is avoidable - instead, change the settings GUI to have the address strings already in this format, and make the neccesary changes
-
-            result_list_of_strs = []
-            for str_or_list_of_strs in suspected_iter:
-                if isinstance(str_or_list_of_strs, list):  # case list
-                    result_list_of_strs.append(
-                        flatten_channel_string(str_or_list_of_strs)
-                    )
-                else:  # case string
-                    result_list_of_strs.append(str_or_list_of_strs)
-            return result_list_of_strs
-
-        ao_addresses = flatten_lists(ao_addresses)
 
         with ni.Task(new_task_name="ao task") as task:
             for (ao_addr, limits) in zip(ao_addresses, limits):

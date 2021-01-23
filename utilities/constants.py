@@ -195,7 +195,6 @@ CAMERA = DeviceAttrs(
     ),
 )
 
-# TODO: combine P&N addresses in one string, will save in parameters
 SCANNERS = DeviceAttrs(
     cls_name="Scanners",
     log_ref="Scanners",
@@ -213,15 +212,11 @@ SCANNERS = DeviceAttrs(
         ai_laser_mon_addr=QtWidgetAccess("AIlaserMonAddr", "text"),
         ai_clk_div=QtWidgetAccess("AIclkDiv", "value"),
         ai_trg_src=QtWidgetAccess("AItrigSrc", "text"),
-        ao_x_p_addr=QtWidgetAccess("AOXaddrP", "text"),
-        ao_x_n_addr=QtWidgetAccess("AOXaddrN", "text"),
-        ao_y_p_addr=QtWidgetAccess("AOYaddrP", "text"),
-        ao_y_n_addr=QtWidgetAccess("AOYaddrN", "text"),
+        ao_x_addr=QtWidgetAccess("AOXaddr", "text"),
+        ao_y_addr=QtWidgetAccess("AOYaddr", "text"),
         ao_z_addr=QtWidgetAccess("AOZaddr", "text"),
-        ao_int_x_p_addr=QtWidgetAccess("AOXintAddrP", "text"),
-        ao_int_x_n_addr=QtWidgetAccess("AOXintAddrN", "text"),
-        ao_int_y_p_addr=QtWidgetAccess("AOYintAddrP", "text"),
-        ao_int_y_n_addr=QtWidgetAccess("AOYintAddrN", "text"),
+        ao_int_x_addr=QtWidgetAccess("AOXintAddr", "text"),
+        ao_int_y_addr=QtWidgetAccess("AOYintAddr", "text"),
         ao_int_z_addr=QtWidgetAccess("AOZintAddr", "text"),
         ao_dig_trg_src=QtWidgetAccess("AOdigTrigSrc", "text"),
         ao_trg_edge=QtWidgetAccess("AOtriggerEdge", "currentText"),
