@@ -89,7 +89,7 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
         self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
 
-        self.toggle(True)  # turn ON right from the start
+        self.toggle(True)
 
     def toggle(self, bool):
         """Doc."""
@@ -122,14 +122,9 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         limits = []
         vltgs = []
         axes = ("x", "y", "z")
-        for axis, curr_axis_vltg, new_axis_vltg in zip(axes, self.last_ao, pos_vltgs):
+        for axis, new_axis_vltg in zip(axes, pos_vltgs):
             if axis in {"x", "y"}:  # Differential Voltage [-5,5]
-                ao_addresses.append(
-                    [
-                        getattr(self, f"ao_{axis}_p_addr"),
-                        getattr(self, f"ao_{axis}_n_addr"),
-                    ]
-                )
+                ao_addresses.append(getattr(self, f"ao_{axis}_addr"))
                 limits.append(getattr(self, f"{axis}_limits"))
                 vltgs += [new_axis_vltg, -new_axis_vltg]
             else:  # RSE Voltage [0,10]
@@ -172,13 +167,13 @@ class Counter(drivers.DAQmxInstrumentCI):
         super().__init__(
             nick=nick, param_dict=param_dict, error_dict=error_dict, ai_task=ai_task
         )
-        #        self.cont_count_buff = []
+
         self.cont_count_buff = np.empty(shape=(0,))
         self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
 
-        self.toggle(True)  # turn ON right from the start
+        self.toggle(True)
 
     def toggle(self, bool):
         """Doc."""
@@ -229,6 +224,8 @@ class Counter(drivers.DAQmxInstrumentCI):
 class Camera(drivers.UC480Instrument):
     """Doc."""
 
+    vid_intrvl = 0.3
+
     def __init__(
         self, nick, param_dict, error_dict, led_widget, switch_widget, loop, gui
     ):
@@ -239,7 +236,6 @@ class Camera(drivers.UC480Instrument):
         self._gui = gui
         self.state = False
         self.vid_state = False
-        self.vid_intrvl = 0.3
 
     def toggle(self, bool):
         """Doc."""
