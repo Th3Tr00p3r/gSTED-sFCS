@@ -687,26 +687,14 @@
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_5">
                        <item>
-                        <widget class="QLineEdit" name="AOXaddrP">
+                        <widget class="QLineEdit" name="AOXaddr">
                          <property name="font">
                           <font>
                            <pointsize>8</pointsize>
                           </font>
                          </property>
                          <property name="text">
-                          <string>Dev3/ao2</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="AOXaddrN">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/ao3</string>
+                          <string>Dev3/ao2, Dev3/ao3</string>
                          </property>
                         </widget>
                        </item>
@@ -732,26 +720,14 @@
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_6">
                        <item>
-                        <widget class="QLineEdit" name="AOYaddrP">
+                        <widget class="QLineEdit" name="AOYaddr">
                          <property name="font">
                           <font>
                            <pointsize>8</pointsize>
                           </font>
                          </property>
                          <property name="text">
-                          <string>Dev3/ao0</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="AOYaddrN">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/ao1</string>
+                          <string>Dev3/ao0, Dev3/ao1</string>
                          </property>
                         </widget>
                        </item>
@@ -817,26 +793,14 @@
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_8">
                        <item>
-                        <widget class="QLineEdit" name="AOXintAddrP">
+                        <widget class="QLineEdit" name="AOXintAddr">
                          <property name="font">
                           <font>
                            <pointsize>8</pointsize>
                           </font>
                          </property>
                          <property name="text">
-                          <string>Dev3/_ao2_vs_aognd</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="AOXintAddrN">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/_ao3_vs_aognd</string>
+                          <string>Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd</string>
                          </property>
                         </widget>
                        </item>
@@ -862,26 +826,14 @@
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_12">
                        <item>
-                        <widget class="QLineEdit" name="AOYintAddrP">
+                        <widget class="QLineEdit" name="AOYintAddr">
                          <property name="font">
                           <font>
                            <pointsize>8</pointsize>
                           </font>
                          </property>
                          <property name="text">
-                          <string>Dev3/_ao0_vs_aognd</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="AOYintAddrN">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/_ao1_vs_aognd</string>
+                          <string>Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd</string>
                          </property>
                         </widget>
                        </item>
