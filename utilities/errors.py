@@ -101,8 +101,8 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
 
     if lvl == "ERROR":
 
-        if dvc.error_dict[dvc.nick] is None:  # keep only first error
-            dvc.error_dict[dvc.nick] = build_err_dict(exc)
+        if dvc.error_dict is None:  # keep only first error
+            dvc.error_dict = build_err_dict(exc)
 
         dvc.led_widget.access(arg=QIcon(icon.LED_RED))
         logging.error(log_str, exc_info=False)
@@ -170,7 +170,7 @@ def error_checker(nick_set: set = None) -> Callable:
                     txt = ""
                     for nick in nick_set:
 
-                        if self._app.error_dict[nick] is not None:
+                        if getattr(self._app.devices, nick).error_dict is not None:
                             txt += f"{nick} error.\n"
                             count += 1
 
@@ -185,7 +185,7 @@ def error_checker(nick_set: set = None) -> Callable:
 
                 else:
                     nick = args[0]
-                    err_msg = self._app.error_dict[nick]
+                    err_msg = getattr(self._app.devices, nick).error_dict
 
                     if err_msg is not None:
                         txt = f"{nick} error.\n\nClick relevant LED for details."
@@ -204,7 +204,7 @@ def error_checker(nick_set: set = None) -> Callable:
                     txt = ""
                     for nick in nick_set:
 
-                        if self._app.error_dict[nick] is not None:
+                        if getattr(self._app.devices, nick).error_dict is not None:
                             txt += f"{nick} error.\n"
                             count += 1
 
@@ -219,7 +219,7 @@ def error_checker(nick_set: set = None) -> Callable:
 
                 else:
                     nick = args[0]
-                    err_msg = self._app.error_dict[nick]
+                    err_msg = getattr(self._app.devices, nick).error_dict
 
                     if err_msg is not None:
                         txt = f"{nick} error.\n\nClick relevant LED for details."

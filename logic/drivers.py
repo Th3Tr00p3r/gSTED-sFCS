@@ -19,11 +19,11 @@ from utilities.errors import dvc_err_hndlr as err_hndlr
 class FTDI_Instrument:
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict):
 
         self.nick = nick
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = error_dict
+        self.error_dict = None
 
         self._inst = Ftdi()  # URL - ftdi://ftdi:232h:FT3TG15/1
 
@@ -88,11 +88,11 @@ class DAQmxInstrumentAIO:
     ao_timeout = 0.1  # TODO: decide what this value should be
     read_buffer = np.zeros(shape=(3, 1000), dtype=np.double)
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict):
 
         self.nick = nick
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = error_dict
+        self.error_dict = None
 
         self._init_ai_task()
 
@@ -184,12 +184,12 @@ class DAQmxInstrumentAIO:
 class DAQmxInstrumentCI:
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict, ai_task):
+    def __init__(self, nick, param_dict, ai_task):
         """Doc."""
 
         self.nick = nick
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = error_dict
+        self.error_dict = None
         self.ai_task = ai_task
         self.read_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
 
@@ -249,11 +249,11 @@ class DAQmxInstrumentCI:
 class DAQmxInstrumentDO:
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict):
 
         self.nick = nick
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = error_dict
+        self.error_dict = None
 
     @err_hndlr
     def write(self, bool):
@@ -273,14 +273,13 @@ class VISAInstrument:
         self,
         nick,
         param_dict,
-        error_dict,
         read_termination="",
         write_termination="",
     ):
 
         self.nick = nick
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = error_dict
+        self.error_dict = None
         self.read_termination = read_termination
         self.write_termination = write_termination
         self.rm = visa.ResourceManager()
@@ -347,10 +346,10 @@ class VISAInstrument:
 class UC480Instrument:
     """Doc."""
 
-    def __init__(self, nick, param_dict, error_dict):
+    def __init__(self, nick, param_dict):
         self.nick = nick
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = error_dict
+        self.error_dict = None
         self._inst = None
 
     @err_hndlr
