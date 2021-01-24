@@ -4,6 +4,7 @@
 import logging
 import logging.config
 import os
+from types import SimpleNamespace
 
 import yaml
 from PyQt5.QtGui import QIcon
@@ -107,7 +108,7 @@ class App:
 
             return args
 
-        self.dvc_dict = {}
+        self.devices = SimpleNamespace()
         for nick in consts.DVC_NICKS_TUPLE:
             DVC_CONSTS = getattr(consts, nick)
             dvc_class = getattr(devices, DVC_CONSTS.cls_name)
@@ -127,17 +128,25 @@ class App:
                 switch_widget = None
             x_args = extra_args(self, DVC_CONSTS.cls_xtra_args)
             if x_args:
-                self.dvc_dict[nick] = dvc_class(
+                setattr(
+                    self.devices,
                     nick,
-                    param_dict,
-                    self.error_dict,
-                    led_widget,
-                    switch_widget,
-                    *x_args,
+                    dvc_class(
+                        nick,
+                        param_dict,
+                        self.error_dict,
+                        led_widget,
+                        switch_widget,
+                        *x_args,
+                    ),
                 )
             else:
-                self.dvc_dict[nick] = dvc_class(
-                    nick, param_dict, self.error_dict, led_widget, switch_widget
+                setattr(
+                    self.devices,
+                    nick,
+                    dvc_class(
+                        nick, param_dict, self.error_dict, led_widget, switch_widget
+                    ),
                 )
 
     def init_errors(self):
@@ -155,7 +164,8 @@ class App:
 
             for nick in consts.DVC_NICKS_TUPLE:
                 if not self.error_dict[nick]:
-                    app.dvc_dict[nick].toggle(False)
+                    dvc = getattr(app.devices, nick)
+                    dvc.toggle(False)
 
         def close_all_wins(app):
             """Doc."""

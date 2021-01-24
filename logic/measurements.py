@@ -23,8 +23,8 @@ class Measurement:
         def get_laser_config(app):
             """Doc."""
 
-            exc_state = app.dvc_dict["EXC_LASER"].state
-            dep_state = app.dvc_dict["DEP_LASER"].state
+            exc_state = app.devices.EXC_LASER.state
+            dep_state = app.devices.DEP_LASER.state
 
             if exc_state and dep_state:
                 laser_config = "sted"
@@ -39,7 +39,7 @@ class Measurement:
 
         self._app = app
         self.type = type
-        self.data_dvc = app.dvc_dict["UM232H"]
+        self.data_dvc = app.devices.UM232H
         self.laser_config = get_laser_config(app)
         self.duration_gui = duration_gui
         self.duration_multiplier = duration_multiplier
@@ -49,7 +49,7 @@ class Measurement:
     async def start(self):
         """Doc."""
 
-        self._app.dvc_dict["UM232H"].purge()
+        self._app.devices.UM232H.purge()
         self._app.gui_dict["main"].imp.dvc_toggle("TDC")
         self.is_running = True
 
