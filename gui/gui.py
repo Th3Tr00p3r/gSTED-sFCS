@@ -133,6 +133,12 @@ class MainWin(QMainWindow):
 
         self.solScanParamsStacked.setCurrentIndex(index)
 
+    @pyqtSlot(str)
+    def on_imgScanPreset_currentTextChanged(self, curr_txt: str) -> NoReturn:
+        """Doc."""
+
+        self.imp.fill_img_scan_preset_gui(curr_txt)
+
     @pyqtSlot()
     def on_actionSettings_triggered(self) -> NoReturn:
         """Show settings window"""

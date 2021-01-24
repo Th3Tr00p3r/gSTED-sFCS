@@ -49,7 +49,6 @@ class FTDI_Instrument:
             self._inst._out_ep,
             self._inst._readbuffer_chunksize,
         )
-
         self.check_status(read_bytes[:2])
 
         return read_bytes[2:]

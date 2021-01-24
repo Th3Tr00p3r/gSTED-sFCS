@@ -8,11 +8,17 @@ from typing import List, Union
 
 import gui.icons.icon_paths as icon_path
 
+# ------------------------------
 # general
+# ------------------------------
+
 TIMEOUT = 0.010  # seconds (10 ms)
 ORIGIN = (0.0, 0.0, 5.0)  # TODO: move to settings (scanners)
 
-# paths
+# ------------------------------
+# Paths
+# ------------------------------
+
 MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
 SETTINGSWINDOW_UI_PATH = "./gui/settingswindow.ui"
 CAMERAWINDOW_UI_PATH = "./gui/camerawindow.ui"
@@ -26,13 +32,18 @@ DEFAULT_LOADOUT_FILE_PATH = "./settings/loadouts/default_loadout.csv"
 
 LOG_FOLDER_PATH = "./log/"
 
-# sounds
+# ------------------------------
+# Sounds
+# ------------------------------
+
 MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
 #                        from PyQt5.QtMultimedia import QSound
 #                                if self.time_passed == self.duration_spinbox.value():
 #                                    QSound.play(consts.MEAS_COMPLETE_SOUND);
 
+# ------------------------------
 # Devices
+# ------------------------------
 
 DVC_NICKS_TUPLE = (
     "EXC_LASER",
@@ -75,7 +86,7 @@ class QtWidgetAccess:
             return getattr(widget, self.method_name)()
 
 
-class ParamWidgets:
+class QtWidgetCollection:
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
             setattr(self, key, val)
@@ -87,7 +98,7 @@ class DeviceAttrs:
     cls_name: str
     log_ref: str
     led_widget: QtWidgetAccess
-    param_widgets: ParamWidgets
+    param_widgets: QtWidgetCollection
     cls_xtra_args: List[str] = field(default_factory=list)
     led_icon_path: str = icon_path.LED_GREEN
     switch_widget: QtWidgetAccess = None
@@ -99,7 +110,7 @@ EXC_LASER = DeviceAttrs(
     led_widget=QtWidgetAccess("ledExc", "setIcon", "main"),
     led_icon_path=icon_path.LED_BLUE,
     switch_widget=QtWidgetAccess("excOnButton", "setIcon", "main"),
-    param_widgets=ParamWidgets(
+    param_widgets=QtWidgetCollection(
         model=QtWidgetAccess("excMod", "text"),
         trg_src=QtWidgetAccess("excTriggerSrc", "currentText"),
         ext_trg_addr=QtWidgetAccess("excTriggerExtAddr", "text"),
@@ -114,7 +125,7 @@ DEP_LASER = DeviceAttrs(
     led_widget=QtWidgetAccess("ledDep", "setIcon", "main"),
     led_icon_path=icon_path.LED_ORANGE,
     switch_widget=QtWidgetAccess("depEmissionOn", "setIcon", "main"),
-    param_widgets=ParamWidgets(
+    param_widgets=QtWidgetCollection(
         model=QtWidgetAccess("depMod", "text"),
         address=QtWidgetAccess("depAddr", "text"),
     ),
@@ -125,7 +136,7 @@ DEP_SHUTTER = DeviceAttrs(
     log_ref="Shutter",
     led_widget=QtWidgetAccess("ledShutter", "setIcon", "main"),
     switch_widget=QtWidgetAccess("depShutterOn", "setIcon", "main"),
-    param_widgets=ParamWidgets(
+    param_widgets=QtWidgetCollection(
         address=QtWidgetAccess("depShutterAddr", "text"),
     ),
 )
@@ -135,7 +146,7 @@ STAGE = DeviceAttrs(
     log_ref="Stage",
     led_widget=QtWidgetAccess("ledStage", "setIcon", "main"),
     switch_widget=QtWidgetAccess("stageOn", "setIcon", "main"),
-    param_widgets=ParamWidgets(address=QtWidgetAccess("arduinoAddr", "text")),
+    param_widgets=QtWidgetCollection(address=QtWidgetAccess("arduinoAddr", "text")),
 )
 
 COUNTER = DeviceAttrs(
@@ -143,7 +154,7 @@ COUNTER = DeviceAttrs(
     cls_xtra_args=["app.devices.SCANNERS.ai_task"],
     log_ref="Counter",
     led_widget=QtWidgetAccess("ledCounter", "setIcon", "main"),
-    param_widgets=ParamWidgets(
+    param_widgets=QtWidgetCollection(
         pxl_clk=QtWidgetAccess("counterPixelClockAddress", "text"),
         pxl_clk_output=QtWidgetAccess("pixelClockCounterIntOutputAddress", "text"),
         trggr=QtWidgetAccess("counterTriggerAddress", "text"),
@@ -161,7 +172,7 @@ UM232H = DeviceAttrs(
     cls_name="UM232H",
     log_ref="UM232H",
     led_widget=QtWidgetAccess("ledUm232h", "setIcon", "main"),
-    param_widgets=ParamWidgets(
+    param_widgets=QtWidgetCollection(
         vend_id=QtWidgetAccess("um232VendID", "value"),
         prod_id=QtWidgetAccess("um232ProdID", "value"),
         ltncy_tmr_val=QtWidgetAccess("um232latencyTimerVal", "value"),
@@ -175,7 +186,7 @@ TDC = DeviceAttrs(
     cls_name="SimpleDO",
     log_ref="TDC",
     led_widget=QtWidgetAccess("ledTdc", "setIcon", "main"),
-    param_widgets=ParamWidgets(
+    param_widgets=QtWidgetCollection(
         address=QtWidgetAccess("TDCaddress", "text"),
         data_vrsn=QtWidgetAccess("TDCdataVersion", "text"),
         laser_freq=QtWidgetAccess("TDClaserFreq", "value"),
@@ -190,7 +201,7 @@ CAMERA = DeviceAttrs(
     cls_xtra_args=["app.loop", "app.gui.camera"],
     log_ref="Camera",
     led_widget=QtWidgetAccess("ledCam", "setIcon", "main"),
-    param_widgets=ParamWidgets(
+    param_widgets=QtWidgetCollection(
         model=QtWidgetAccess("uc480PlaceHolder", "value"),
     ),
 )
@@ -199,7 +210,7 @@ SCANNERS = DeviceAttrs(
     cls_name="Scanners",
     log_ref="Scanners",
     led_widget=QtWidgetAccess("ledScn", "setIcon", "main"),
-    param_widgets=ParamWidgets(
+    param_widgets=QtWidgetCollection(
         ao_x_init_vltg=QtWidgetAccess("xAoV", "value", "main"),
         ao_y_init_vltg=QtWidgetAccess("yAoV", "value", "main"),
         ao_z_init_vltg=QtWidgetAccess("zAoV", "value", "main"),
@@ -228,7 +239,7 @@ SCANNERS = DeviceAttrs(
 #    cls_name="PixelClock",
 #    log_ref="Pixel Clock",
 #    led_widget=QtWidgetAccess("ledPxlClk", "setIcon", "main"),
-#    param_widgets=ParamWidgets(
+#    param_widgets=QtWidgetCollection(
 #        low_ticks=QtWidgetAccess("pixelClockLowTicks", "value"),
 #        high_ticks=QtWidgetAccess("pixelClockHighTicks", "value"),
 #        cntr_addr=QtWidgetAccess("pixelClockCounterAddress", "text"),
@@ -236,3 +247,19 @@ SCANNERS = DeviceAttrs(
 #        freq=QtWidgetAccess("pixelClockFreq", "value")
 #    )
 # )
+
+# ----------------------------------------------
+# GUI presets
+# ----------------------------------------------
+
+IMG_SCN_PRESET_WIDGETS = QtWidgetCollection(
+    type=QtWidgetAccess("imgScanType", "setCurrentText", "main"),
+    dim1=QtWidgetAccess("imgScanDim1", "setValue", "main"),
+    dim2=QtWidgetAccess("imgScanDim2", "setValue", "main"),
+    n_lines=QtWidgetAccess("imgScanNumLines", "setValue", "main"),
+    pnts_per_line=QtWidgetAccess("imgScanPPLine", "setValue", "main"),
+    line_freq=QtWidgetAccess("imgScanLineFreq", "setValue", "main"),
+    lin_frac=QtWidgetAccess("imgScanLinFrac", "setValue", "main"),
+    n_planes=QtWidgetAccess("imgScanNumPlanes", "setValue", "main"),
+    z_step=QtWidgetAccess("imgScanZstep", "setValue", "main"),
+)

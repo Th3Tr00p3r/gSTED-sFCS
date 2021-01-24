@@ -370,6 +370,49 @@ class MainWin:
 
         self._app.devices.UM232H.reset()
 
+    def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
+        """Doc."""
+
+        def fill_widget_collection(
+            parent_gui, wdgt_coll: consts.QtWidgetCollection, attr_val_dict: dict
+        ) -> NoReturn:
+            """Doc."""
+
+            for attr, val in attr_val_dict.items():
+                wdgt = getattr(wdgt_coll, attr)
+                wdgt.access(parent_gui, val)
+
+        wdgt_keys = [
+            "type",
+            "dim1",
+            "dim2",
+            "n_lines",
+            "pnts_per_line",
+            "line_freq",
+            "lin_frac",
+            "n_planes",
+            "z_step",
+        ]
+        if curr_text == "Locate Plane - YZ Coarse":
+            wdgt_vals = ["YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10]
+        elif curr_text == "MFC - XY compartment":
+            wdgt_vals = [""]
+        elif curr_text == "GB -  XY Coarse":
+            wdgt_vals = ["XY", 15, 15, 80, 1000, 20, 0.9, 1, 10]
+        elif curr_text == "GB - XY bead area":
+            wdgt_vals = ["XY", 5, 5, 80, 1000, 20, 0.9, 1, 10]
+        elif curr_text == "GB - XY single bead":
+            wdgt_vals = [""]
+        elif curr_text == "GB - YZ single bead":
+            wdgt_vals = [""]
+
+        parent_gui = self._app.gui.main
+        fill_widget_collection(
+            parent_gui, consts.IMG_SCN_PRESET_WIDGETS, dict(zip(wdgt_keys, wdgt_vals))
+        )
+
+        logging.info(f"Image scan preset configuration chosen: '{curr_text}'")
+
 
 class SettWin:
     """Doc."""
