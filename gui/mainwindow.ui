@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -204,7 +204,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QComboBox" name="imgScanPresetCombox">
+                        <widget class="QComboBox" name="imgScanPreset">
                          <property name="palette">
                           <palette>
                            <active>
@@ -415,7 +415,7 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QComboBox" name="imgScanTypeCombox">
+                          <widget class="QComboBox" name="imgScanType">
                            <property name="styleSheet">
                             <string notr="true">background-color: rgb(255, 255, 255);</string>
                            </property>
@@ -456,9 +456,12 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QDoubleSpinBox" name="dim1Spinner">
+                          <widget class="QDoubleSpinBox" name="imgScanDim1">
                            <property name="decimals">
                             <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <double>9999999.000000000000000</double>
                            </property>
                           </widget>
                          </item>
@@ -482,9 +485,12 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QDoubleSpinBox" name="dim2Spinner">
+                          <widget class="QDoubleSpinBox" name="imgScanDim2">
                            <property name="decimals">
                             <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <double>999999.000000000000000</double>
                            </property>
                           </widget>
                          </item>
@@ -515,7 +521,11 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QSpinBox" name="numLinesSpinner"/>
+                          <widget class="QSpinBox" name="imgScanNumLines">
+                           <property name="maximum">
+                            <number>99999</number>
+                           </property>
+                          </widget>
                          </item>
                         </layout>
                        </item>
@@ -537,7 +547,11 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QSpinBox" name="ppLineSpinner"/>
+                          <widget class="QSpinBox" name="imgScanPPLine">
+                           <property name="maximum">
+                            <number>99999999</number>
+                           </property>
+                          </widget>
                          </item>
                         </layout>
                        </item>
@@ -559,7 +573,11 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QSpinBox" name="imgLineFreqSpinner"/>
+                          <widget class="QSpinBox" name="imgScanLineFreq">
+                           <property name="maximum">
+                            <number>9999999</number>
+                           </property>
+                          </widget>
                          </item>
                         </layout>
                        </item>
@@ -581,7 +599,7 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QDoubleSpinBox" name="imgLinFracSpinner">
+                          <widget class="QDoubleSpinBox" name="imgScanLinFrac">
                            <property name="decimals">
                             <number>2</number>
                            </property>
@@ -617,12 +635,15 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QSpinBox" name="numPlanesSpinner">
+                          <widget class="QSpinBox" name="imgScanNumPlanes">
                            <property name="minimumSize">
                             <size>
                              <width>60</width>
                              <height>0</height>
                             </size>
+                           </property>
+                           <property name="maximum">
+                            <number>999999</number>
                            </property>
                           </widget>
                          </item>
@@ -638,17 +659,20 @@
                             </font>
                            </property>
                            <property name="text">
-                            <string>Z step Size</string>
+                            <string>Z step (um)</string>
                            </property>
                           </widget>
                          </item>
                          <item>
-                          <widget class="QSpinBox" name="spinBox_11">
+                          <widget class="QSpinBox" name="imgScanZstep">
                            <property name="minimumSize">
                             <size>
                              <width>60</width>
                              <height>0</height>
                             </size>
+                           </property>
+                           <property name="maximum">
+                            <number>999999</number>
                            </property>
                           </widget>
                          </item>
@@ -7900,16 +7924,16 @@ Settings</string>
  </widget>
  <tabstops>
   <tabstop>tabWidget</tabstop>
-  <tabstop>imgScanPresetCombox</tabstop>
-  <tabstop>imgScanTypeCombox</tabstop>
-  <tabstop>dim1Spinner</tabstop>
-  <tabstop>dim2Spinner</tabstop>
-  <tabstop>numLinesSpinner</tabstop>
-  <tabstop>ppLineSpinner</tabstop>
-  <tabstop>imgLineFreqSpinner</tabstop>
-  <tabstop>imgLinFracSpinner</tabstop>
-  <tabstop>numPlanesSpinner</tabstop>
-  <tabstop>spinBox_11</tabstop>
+  <tabstop>imgScanPreset</tabstop>
+  <tabstop>imgScanType</tabstop>
+  <tabstop>imgScanDim1</tabstop>
+  <tabstop>imgScanDim2</tabstop>
+  <tabstop>imgScanNumLines</tabstop>
+  <tabstop>imgScanPPLine</tabstop>
+  <tabstop>imgScanLineFreq</tabstop>
+  <tabstop>imgScanLinFrac</tabstop>
+  <tabstop>imgScanNumPlanes</tabstop>
+  <tabstop>imgScanZstep</tabstop>
   <tabstop>startImgScanButton</tabstop>
   <tabstop>currLine</tabstop>
   <tabstop>currPlane</tabstop>
