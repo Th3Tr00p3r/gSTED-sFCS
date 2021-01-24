@@ -114,12 +114,12 @@ class Timeout:
         while self.not_finished:
             if self.running:
                 # COUNTER
-                if self._app.error_dict["COUNTER"] is None:
+                if self._app.devices.COUNTER.error_dict is None:
                     self._app.devices.COUNTER.count()
                     self._app.devices.COUNTER.dump_buff_overflow()
 
                 # AI
-                if self._app.error_dict["SCANNERS"] is None:
+                if self._app.devices.SCANNERS.error_dict is None:
                     self._app.devices.SCANNERS.fill_ai_buff()
                     self._app.devices.SCANNERS.dump_buff_overflow()
 
@@ -131,7 +131,7 @@ class Timeout:
         def updt_scn_pos(app):
             """Doc."""
 
-            if self._app.error_dict["SCANNERS"] is None:
+            if self._app.devices.SCANNERS.error_dict is None:
 
                 (x_ai, y_ai, z_ai) = tuple(self._app.devices.SCANNERS.ai_buffer[:, -1])
 
@@ -156,7 +156,7 @@ class Timeout:
             """Doc."""
 
             if (
-                (self._app.error_dict["UM232H"] is None)
+                (self._app.devices.UM232H.error_dict is None)
                 and meas.type in {"FCS", "SFCSSolution"}
                 and meas.is_running
             ):
@@ -198,11 +198,9 @@ class Timeout:
 
         """
 
-        nick = "COUNTER"
-
         while self.not_finished:
             if self.running:
-                if self._app.error_dict[nick] is None:
+                if self._app.devices.COUNTER.error_dict is None:
                     avg_counts = self._app.devices.COUNTER.average_counts()
                     self._app.gui.main.countsSpinner.setValue(avg_counts)
 
@@ -210,8 +208,6 @@ class Timeout:
 
     def _update_dep(self) -> NoReturn:
         """Update depletion laser GUI"""
-
-        nick = "DEP_LASER"
 
         def update_SHG_temp(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
@@ -247,7 +243,7 @@ class Timeout:
         while self.not_finished:
             if self.running:
                 update_props(
-                    self._app.error_dict[nick],
+                    self._app.devices.DEP_LASER.error_dict,
                     self._app.devices.DEP_LASER,
                     self._app.gui.main,
                 )
