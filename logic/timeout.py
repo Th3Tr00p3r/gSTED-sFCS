@@ -103,7 +103,7 @@ class Timeout:
                         buffer_deque.appendleft(last_line)
 
                         text = "".join(buffer_deque)
-                        self._app.gui_dict["main"].lastAction.setPlainText(text)
+                        self._app.gui.main.lastAction.setPlainText(text)
 
                 await asyncio.sleep(0.3)
 
@@ -144,13 +144,13 @@ class Timeout:
                     )
                 )
 
-                self._app.gui_dict["main"].xAiV.setValue(x_ai)
-                self._app.gui_dict["main"].yAiV.setValue(y_ai)
-                self._app.gui_dict["main"].zAiV.setValue(z_ai)
+                self._app.gui.main.xAiV.setValue(x_ai)
+                self._app.gui.main.yAiV.setValue(y_ai)
+                self._app.gui.main.zAiV.setValue(z_ai)
 
-                self._app.gui_dict["main"].xAoUm.setValue(x_um)
-                self._app.gui_dict["main"].yAoUm.setValue(y_um)
-                self._app.gui_dict["main"].zAoUm.setValue(z_um)
+                self._app.gui.main.xAoUm.setValue(x_um)
+                self._app.gui.main.yAoUm.setValue(y_um)
+                self._app.gui.main.zAoUm.setValue(z_um)
 
         def updt_meas_progbar(meas) -> NoReturn:
             """Doc."""
@@ -204,7 +204,7 @@ class Timeout:
             if self.running:
                 if self._app.error_dict[nick] is None:
                     avg_counts = self._app.devices.COUNTER.average_counts()
-                    self._app.gui_dict["main"].countsSpinner.setValue(avg_counts)
+                    self._app.gui.main.countsSpinner.setValue(avg_counts)
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
@@ -249,7 +249,7 @@ class Timeout:
                 update_props(
                     self._app.error_dict[nick],
                     self._app.devices.DEP_LASER,
-                    self._app.gui_dict["main"],
+                    self._app.gui.main,
                 )
 
             time.sleep(self.updt_intrvl["dep"])

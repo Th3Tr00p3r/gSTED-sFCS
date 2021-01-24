@@ -187,7 +187,7 @@ TDC = DeviceAttrs(
 
 CAMERA = DeviceAttrs(
     cls_name="Camera",
-    cls_xtra_args=["app.loop", 'app.gui_dict["camera"]'],
+    cls_xtra_args=["app.loop", "app.gui.camera"],
     log_ref="Camera",
     led_widget=QtWidgetAccess("ledCam", "setIcon", "main"),
     param_widgets=ParamWidgets(
