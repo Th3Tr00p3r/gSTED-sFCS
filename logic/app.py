@@ -34,6 +34,7 @@ class App:
 
         # init windows
         self.gui = SimpleNamespace()
+
         self.gui.main = gui_module.MainWin(self)
         self.gui.main.imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
 
@@ -80,7 +81,7 @@ class App:
         instantiating a driver object for each device.
         """
 
-        def params_from_GUI(app: App, param_widgets: consts.ParamWidgets):
+        def params_from_gui(app: App, param_widgets: consts.QtWidgetCollection):
             """
             Get constant device parameters from GUI
             using ParamWidgets objects defined in constants.py.
@@ -110,7 +111,7 @@ class App:
         for nick in consts.DVC_NICKS_TUPLE:
             DVC_CONSTS = getattr(consts, nick)
             dvc_class = getattr(devices, DVC_CONSTS.cls_name)
-            param_dict = params_from_GUI(self, DVC_CONSTS.param_widgets)
+            param_dict = params_from_gui(self, DVC_CONSTS.param_widgets)
 
             gui_parent_name = DVC_CONSTS.led_widget.gui_parent_name
             led_widget = DVC_CONSTS.led_widget.hold_obj(
@@ -159,12 +160,11 @@ class App:
             """Doc."""
 
             for win_key in vars(self.gui).keys():
-                if win_key not in {
-                    "main",
-                    "camera",
-                }:  # dialogs close with reject()
+                if win_key == "settings":
+                    # dialogs close with reject()
                     getattr(self.gui, win_key).reject()
-                else:  # mainwindows and widgets close with close()
+                else:
+                    # mainwindows and widgets close with close()
                     getattr(self.gui, win_key).close()
 
         def lights_out(gui):
@@ -201,7 +201,6 @@ class App:
             self.gui.main.depActualCurrSpinner.setValue(0)
             self.gui.main.depActualPowerSpinner.setValue(0)
 
-            self.init_errors()
             self.init_devices()
 
             self.timeout_loop.resume()
