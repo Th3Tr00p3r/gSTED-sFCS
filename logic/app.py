@@ -40,9 +40,8 @@ class App:
         self.gui.settings = gui_module.SettWin(self)
         self.gui.settings.imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
 
-        self.gui.camera = gui_module.CamWin(
-            self
-        )  # instantiated on pressing camera button
+        self.gui.camera = gui_module.CamWin(self)
+        # (instantiated on pressing camera button)
 
         # create neccessary data folders based on settings paths
         self.create_data_folders()
@@ -51,7 +50,6 @@ class App:
         self.gui.main.ledUm232h.setIcon(QIcon(icon.LED_GREEN))
         self.gui.main.ledCounter.setIcon(QIcon(icon.LED_GREEN))
 
-        self.init_errors()
         self.init_devices()
         self.meas = Measurement(app=self, type=None)
 
@@ -134,7 +132,6 @@ class App:
                     dvc_class(
                         nick,
                         param_dict,
-                        self.error_dict,
                         led_widget,
                         switch_widget,
                         *x_args,
@@ -144,17 +141,8 @@ class App:
                 setattr(
                     self.devices,
                     nick,
-                    dvc_class(
-                        nick, param_dict, self.error_dict, led_widget, switch_widget
-                    ),
+                    dvc_class(nick, param_dict, led_widget, switch_widget),
                 )
-
-    def init_errors(self):
-        """Doc."""
-
-        self.error_dict = {}
-        for nick in consts.DVC_NICKS_TUPLE:
-            self.error_dict[nick] = None
 
     def clean_up_app(self, restart=False):
         """Doc."""
@@ -163,8 +151,8 @@ class App:
             """Doc."""
 
             for nick in consts.DVC_NICKS_TUPLE:
-                if not self.error_dict[nick]:
-                    dvc = getattr(app.devices, nick)
+                dvc = getattr(app.devices, nick)
+                if not dvc.error_dict:
                     dvc.toggle(False)
 
         def close_all_wins(app):

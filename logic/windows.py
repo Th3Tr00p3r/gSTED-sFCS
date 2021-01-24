@@ -193,7 +193,7 @@ class MainWin:
             return led_to_nick_dict[led_obj_name]
 
         dvc_nick = dvc_nick_from_led_name(led_obj_name)
-        err_dict = self._app.error_dict[dvc_nick]
+        err_dict = getattr(self._app.devices, dvc_nick).error_dict
         if err_dict is not None:
             Error(**err_dict, custom_title=getattr(consts, dvc_nick).log_ref).display()
 
