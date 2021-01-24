@@ -50,7 +50,7 @@ class Measurement:
         """Doc."""
 
         self._app.devices.UM232H.purge()
-        self._app.gui_dict["main"].imp.dvc_toggle("TDC")
+        self._app.gui.main.imp.dvc_toggle("TDC")
         self.is_running = True
 
         logging.info(f"{self.type} measurement started")
@@ -61,7 +61,7 @@ class Measurement:
         """Doc."""
 
         self.is_running = False
-        self._app.gui_dict["main"].imp.dvc_toggle("TDC")
+        self._app.gui.main.imp.dvc_toggle("TDC")
 
         if hasattr(self, "prog_bar"):
             self.prog_bar.setValue(0)
@@ -82,17 +82,17 @@ class SFCSSolutionMeasurement(Measurement):
             duration_multiplier=60,
         )
         self.prog_bar = prog_bar
-        self.start_time_gui = app.gui_dict["main"].solScanStartTime
-        self.end_time_gui = app.gui_dict["main"].solScanEndTime
-        self.total_duration_gui = app.gui_dict["main"].solScanDuration
+        self.start_time_gui = app.gui.main.solScanStartTime
+        self.end_time_gui = app.gui.main.solScanEndTime
+        self.total_duration_gui = app.gui.main.solScanDuration
 
-        self.max_file_size = app.gui_dict["main"].solScanMaxFileSize.value()
-        self.cal_time = app.gui_dict["main"].solScanCalTime.value()
+        self.max_file_size = app.gui.main.solScanMaxFileSize.value()
+        self.cal_time = app.gui.main.solScanCalTime.value()
 
-        self.total_files_gui = app.gui_dict["main"].solScanTotalFiles
-        self.file_num_gui = app.gui_dict["main"].solScanFileNo
-        self.save_path = app.gui_dict["settings"].solDataPath.text()
-        self.file_template = app.gui_dict["main"].solScanFileTemplate.text()
+        self.total_files_gui = app.gui.main.solScanTotalFiles
+        self.file_num_gui = app.gui.main.solScanFileNo
+        self.save_path = app.gui.settings.solDataPath.text()
+        self.file_template = app.gui.main.solScanFileTemplate.text()
 
     async def run(self):
         """Doc."""
@@ -149,7 +149,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         # calibrating save-intervals
         saved_dur_mul = self.duration_multiplier
-        self.duration_gui = self._app.gui_dict["main"].solScanCalTime
+        self.duration_gui = self._app.gui.main.solScanCalTime
         self.duration_multiplier = 1  # in seconds
         self.start_time = time.perf_counter()
         self.time_passed = 0
@@ -163,7 +163,7 @@ class SFCSSolutionMeasurement(Measurement):
         if self.save_intrvl > self.total_duration_gui.value():
             self.save_intrvl = self.total_duration_gui.value()
 
-        self.duration_gui = self._app.gui_dict["main"].solScanCalIntrvl
+        self.duration_gui = self._app.gui.main.solScanCalIntrvl
         self.duration_gui.setValue(self.save_intrvl)
         self.duration_multiplier = saved_dur_mul
 
@@ -203,7 +203,7 @@ class SFCSSolutionMeasurement(Measurement):
                 break
 
         if self.is_running:  # if not manually stopped
-            self._app.gui_dict["main"].imp.toggle_meas(self.type)
+            self._app.gui.main.imp.toggle_meas(self.type)
 
 
 class FCSMeasurement(Measurement):

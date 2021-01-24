@@ -33,14 +33,14 @@ class App:
         logging.info("Application Started")
 
         # init windows
-        self.gui_dict = {}
-        self.gui_dict["main"] = gui_module.MainWin(self)
-        self.gui_dict["main"].imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
+        self.gui = SimpleNamespace()
+        self.gui.main = gui_module.MainWin(self)
+        self.gui.main.imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
 
-        self.gui_dict["settings"] = gui_module.SettWin(self)
-        self.gui_dict["settings"].imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
+        self.gui.settings = gui_module.SettWin(self)
+        self.gui.settings.imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
 
-        self.gui_dict["camera"] = gui_module.CamWin(
+        self.gui.camera = gui_module.CamWin(
             self
         )  # instantiated on pressing camera button
 
@@ -48,15 +48,15 @@ class App:
         self.create_data_folders()
 
         # either error or ON
-        self.gui_dict["main"].ledUm232h.setIcon(QIcon(icon.LED_GREEN))
-        self.gui_dict["main"].ledCounter.setIcon(QIcon(icon.LED_GREEN))
+        self.gui.main.ledUm232h.setIcon(QIcon(icon.LED_GREEN))
+        self.gui.main.ledCounter.setIcon(QIcon(icon.LED_GREEN))
 
         self.init_errors()
         self.init_devices()
         self.meas = Measurement(app=self, type=None)
 
         # FINALLY
-        self.gui_dict["main"].show()
+        self.gui.main.show()
 
         # set up main timeout event
         self.timeout_loop = Timeout(self)
@@ -73,7 +73,7 @@ class App:
         """Doc."""
 
         for gui_object_name in {"solDataPath", "imgDataPath", "camDataPath"}:
-            rel_path = getattr(self.gui_dict["settings"], gui_object_name).text()
+            rel_path = getattr(self.gui.settings, gui_object_name).text()
             os.makedirs(rel_path, exist_ok=True)
 
     def init_devices(self):
@@ -90,7 +90,7 @@ class App:
 
             param_dict = {}
             for param_name, widget_access in vars(param_widgets).items():
-                parent_gui = app.gui_dict[widget_access.gui_parent_name]
+                parent_gui = getattr(app.gui, widget_access.gui_parent_name)
                 param_dict[param_name] = widget_access.access(parent_gui=parent_gui)
             return param_dict
 
@@ -116,13 +116,13 @@ class App:
 
             gui_parent_name = DVC_CONSTS.led_widget.gui_parent_name
             led_widget = DVC_CONSTS.led_widget.hold_obj(
-                parent_gui=self.gui_dict[gui_parent_name]
+                parent_gui=getattr(self.gui, gui_parent_name)
             )
 
             if DVC_CONSTS.switch_widget is not None:
                 gui_parent_name = DVC_CONSTS.switch_widget.gui_parent_name
                 switch_widget = DVC_CONSTS.switch_widget.hold_obj(
-                    parent_gui=self.gui_dict[gui_parent_name]
+                    parent_gui=getattr(self.gui, gui_parent_name)
                 )
             else:
                 switch_widget = None
@@ -170,15 +170,14 @@ class App:
         def close_all_wins(app):
             """Doc."""
 
-            for win_key in self.gui_dict.keys():
-                if self.gui_dict[win_key] is not None:  # can happen for camwin
-                    if win_key not in {
-                        "main",
-                        "camera",
-                    }:  # dialogs close with reject()
-                        self.gui_dict[win_key].reject()
-                    else:  # mainwindows and widgets close with close()
-                        self.gui_dict[win_key].close()
+            for win_key in vars(self.gui).keys():
+                if win_key not in {
+                    "main",
+                    "camera",
+                }:  # dialogs close with reject()
+                    getattr(self.gui, win_key).reject()
+                else:  # mainwindows and widgets close with close()
+                    getattr(self.gui, win_key).close()
 
         def lights_out(gui):
             """turn OFF all device switch/LED icons"""
@@ -200,19 +199,19 @@ class App:
 
         if restart:  # restarting
 
-            if self.gui_dict["camera"] is not None:
-                self.gui_dict["camera"].close()
+            if self.gui.camera is not None:
+                self.gui.camera.close()
 
             if self.meas.type is not None:
-                self.gui_dict["main"].imp.toggle_meas(self.meas.type)
+                self.gui.main.imp.toggle_meas(self.meas.type)
 
             close_all_dvcs(self)
 
             self.timeout_loop.pause()
 
-            lights_out(self.gui_dict["main"])
-            self.gui_dict["main"].depActualCurrSpinner.setValue(0)
-            self.gui_dict["main"].depActualPowerSpinner.setValue(0)
+            lights_out(self.gui.main)
+            self.gui.main.depActualCurrSpinner.setValue(0)
+            self.gui.main.depActualPowerSpinner.setValue(0)
 
             self.init_errors()
             self.init_devices()
@@ -225,7 +224,7 @@ class App:
             self.timeout_loop.finish()
 
             if self.meas.type is not None:
-                self.gui_dict["main"].imp.toggle_meas(self.meas.type)
+                self.gui.main.imp.toggle_meas(self.meas.type)
 
             close_all_wins(self)
             close_all_dvcs(self)

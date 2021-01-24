@@ -342,8 +342,8 @@ class MainWin:
     def open_settwin(self):
         """Doc."""
 
-        self._app.gui_dict["settings"].show()
-        self._app.gui_dict["settings"].activateWindow()
+        self._app.gui.settings.show()
+        self._app.gui.settings.activateWindow()
 
     @err_chck({"CAMERA"})
     async def open_camwin(self):
@@ -352,9 +352,9 @@ class MainWin:
         """Doc."""
 
         self._gui.actionCamera_Control.setEnabled(False)
-        self._app.gui_dict["camera"].show()
-        self._app.gui_dict["camera"].activateWindow()
-        self._app.gui_dict["camera"].imp.init_cam()
+        self._app.gui.camera.show()
+        self._app.gui.camera.activateWindow()
+        self._app.gui.camera.imp.init_cam()
 
     @err_chck({"COUNTER"})
     def cnts_avg_sldr_changed(self, val):
@@ -456,7 +456,7 @@ class CamWin:
         """Doc."""
 
         self._cam = self._app.devices.CAMERA
-        self._app.gui_dict["main"].imp.dvc_toggle("CAMERA")
+        self._app.gui.main.imp.dvc_toggle("CAMERA")
         #        self._cam.video_timer.timeout.connect(self._video_timeout)
         logging.debug("Camera connection opened")
 
@@ -465,8 +465,8 @@ class CamWin:
 
         if self._cam is not None:
             self.toggle_video()
-            self._app.gui_dict["main"].imp.dvc_toggle("CAMERA")
-            self._app.gui_dict["main"].actionCamera_Control.setEnabled(True)
+            self._app.gui.main.imp.dvc_toggle("CAMERA")
+            self._app.gui.main.actionCamera_Control.setEnabled(True)
             self._cam = None
             logging.debug("Camera connection closed")
 
