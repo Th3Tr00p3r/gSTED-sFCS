@@ -143,12 +143,13 @@ class MainWin:
     def dvc_toggle(self, nick):
         """Doc."""
 
+        dvc = getattr(self._app.devices, nick)
         DVC_CONSTS = getattr(consts, nick)
 
-        if not self._app.dvc_dict[nick].state:  # switch ON
-            self._app.dvc_dict[nick].toggle(True)
+        if dvc.state is False:  # switch ON
+            dvc.toggle(True)
 
-            if self._app.dvc_dict[nick].state:  # if managed to turn ON
+            if dvc.state:  # if managed to turn ON
                 if DVC_CONSTS.switch_widget is not None:
                     DVC_CONSTS.switch_widget.access(arg=QIcon(icon.SWITCH_ON))
 
@@ -160,15 +161,10 @@ class MainWin:
                 if nick == "STAGE":
                     self._gui.stageButtonsGroup.setEnabled(True)
 
-        #                return True
-        #
-        #            else:
-        #                return False
-
         else:  # switch OFF
-            self._app.dvc_dict[nick].toggle(False)
+            dvc.toggle(False)
 
-            if not self._app.dvc_dict[nick].state:  # if managed to turn OFF
+            if not dvc.state:  # if managed to turn OFF
                 if DVC_CONSTS.switch_widget is not None:
                     DVC_CONSTS.switch_widget.access(arg=QIcon(icon.SWITCH_OFF))
 
@@ -183,8 +179,6 @@ class MainWin:
                 if nick == "DEP_LASER":
                     self._gui.depActualCurrSpinner.setValue(0)
                     self._gui.depActualPowerSpinner.setValue(0)
-
-    #                return False
 
     def led_clicked(self, led_obj_name):
         """Doc."""
@@ -207,13 +201,12 @@ class MainWin:
     def dep_sett_apply(self):
         """Doc."""
 
-        nick = "DEP_LASER"
         if self._gui.currModeRadio.isChecked():  # current mode
             val = self._gui.depCurrSpinner.value()
-            self._app.dvc_dict[nick].set_current(val)
+            self._app.devices.DEP_LASER.set_current(val)
         else:  # power mode
             val = self._gui.depPowSpinner.value()
-            self._app.dvc_dict[nick].set_power(val)
+            self._app.devices.DEP_LASER.set_power(val)
 
     @err_chck({"SCANNERS"})
     def move_scanners(self) -> NoReturn:
@@ -225,10 +218,9 @@ class MainWin:
             self._gui.zAoV.value(),
         )
 
-        nick = "SCANNERS"
-        self._app.loop.create_task(self._app.dvc_dict[nick].move_to_pos(pos_vltgs))
+        self._app.loop.create_task(self._app.devices.SCANNERS.move_to_pos(pos_vltgs))
         logging.debug(
-            f"{getattr(consts, nick).log_ref} were moved to {str(pos_vltgs)} V"
+            f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(pos_vltgs)} V"
         )
 
     def go_to_origin(self, which_axes: dict) -> NoReturn:
@@ -252,11 +244,10 @@ class MainWin:
         axis = self._gui.axisCombox.currentText()
         current_vltg = getattr(self._gui, f"{axis}AoV").value()
         um_disp = sign * self._gui.axisMoveSpinner.value()
-        # test - self._app.dvc_dict["SCANNERS"].um_V_ratio
 
-        um_V_RATIO = dict(
-            zip(("x", "y", "z"), self._app.dvc_dict["SCANNERS"].um_V_ratio)
-        )[axis]
+        um_V_RATIO = dict(zip(("x", "y", "z"), self._app.devices.SCANNERS.um_V_ratio))[
+            axis
+        ]
 
         delta_vltg = um_disp / um_V_RATIO
 
@@ -272,19 +263,17 @@ class MainWin:
     def move_stage(self, dir: str, steps: int):
         """Doc."""
 
-        nick = "STAGE"
-        self._app.dvc_dict[nick].move(dir=dir, steps=steps)
+        self._app.devices.STAGE.move(dir=dir, steps=steps)
         logging.info(
-            f"{getattr(consts, nick).log_ref} moved {str(steps)} steps {str(dir)}"
+            f"{getattr(consts, 'STAGE').log_ref} moved {str(steps)} steps {str(dir)}"
         )
 
     @err_chck({"STAGE"})
     def release_stage(self):
         """Doc."""
 
-        nick = "STAGE"
-        self._app.dvc_dict[nick].release()
-        logging.info(f"{getattr(consts, nick).log_ref} released")
+        self._app.devices.STAGE.release()
+        logging.info(f"{getattr(consts, 'STAGE').log_ref} released")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -379,7 +368,7 @@ class MainWin:
     def reset(self):
         """Doc."""
 
-        self._app.dvc_dict["UM232H"].reset()
+        self._app.devices.UM232H.reset()
 
 
 class SettWin:
@@ -466,7 +455,7 @@ class CamWin:
     def init_cam(self):
         """Doc."""
 
-        self._cam = self._app.dvc_dict["CAMERA"]
+        self._cam = self._app.devices.CAMERA
         self._app.gui_dict["main"].imp.dvc_toggle("CAMERA")
         #        self._cam.video_timer.timeout.connect(self._video_timeout)
         logging.debug("Camera connection opened")

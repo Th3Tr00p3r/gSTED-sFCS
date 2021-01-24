@@ -23,8 +23,8 @@ class Timeout:
         # initial intervals (some change during run)
         self.updt_intrvl = {
             "gui": 0.2,
-            "dep": self._app.dvc_dict["DEP_LASER"].update_time,
-            "cntr_avg": self._app.dvc_dict["COUNTER"].update_time,
+            "dep": self._app.devices.DEP_LASER.update_time,
+            "cntr_avg": self._app.devices.COUNTER.update_time,
         }
 
     # MAIN
@@ -115,13 +115,13 @@ class Timeout:
             if self.running:
                 # COUNTER
                 if self._app.error_dict["COUNTER"] is None:
-                    self._app.dvc_dict["COUNTER"].count()
-                    self._app.dvc_dict["COUNTER"].dump_buff_overflow()
+                    self._app.devices.COUNTER.count()
+                    self._app.devices.COUNTER.dump_buff_overflow()
 
                 # AI
                 if self._app.error_dict["SCANNERS"] is None:
-                    self._app.dvc_dict["SCANNERS"].fill_ai_buff()
-                    self._app.dvc_dict["SCANNERS"].dump_buff_overflow()
+                    self._app.devices.SCANNERS.fill_ai_buff()
+                    self._app.devices.SCANNERS.dump_buff_overflow()
 
             await asyncio.sleep(consts.TIMEOUT)
 
@@ -133,15 +133,13 @@ class Timeout:
 
             if self._app.error_dict["SCANNERS"] is None:
 
-                (x_ai, y_ai, z_ai) = tuple(
-                    self._app.dvc_dict["SCANNERS"].ai_buffer[:, -1]
-                )
+                (x_ai, y_ai, z_ai) = tuple(self._app.devices.SCANNERS.ai_buffer[:, -1])
 
                 (x_um, y_um, z_um) = tuple(
                     (axis_vltg - axis_org) * axis_ratio
                     for axis_vltg, axis_ratio, axis_org in zip(
                         (x_ai, y_ai, z_ai),
-                        self._app.dvc_dict["SCANNERS"].um_V_ratio,
+                        self._app.devices.SCANNERS.um_V_ratio,
                         consts.ORIGIN,
                     )
                 )
@@ -205,7 +203,7 @@ class Timeout:
         while self.not_finished:
             if self.running:
                 if self._app.error_dict[nick] is None:
-                    avg_counts = self._app.dvc_dict[nick].average_counts()
+                    avg_counts = self._app.devices.COUNTER.average_counts()
                     self._app.gui_dict["main"].countsSpinner.setValue(avg_counts)
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
@@ -250,7 +248,7 @@ class Timeout:
             if self.running:
                 update_props(
                     self._app.error_dict[nick],
-                    self._app.dvc_dict[nick],
+                    self._app.devices.DEP_LASER,
                     self._app.gui_dict["main"],
                 )
 
