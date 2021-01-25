@@ -1,77 +1,21 @@
 # -*- coding: utf-8 -*-
 """ GUI windows implementations module. """
 
-import csv
 import logging
 from typing import NoReturn
 
-import pandas as pd
 import PyQt5.QtWidgets as QtWidgets
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtGui import QIcon
 
 import gui.icons.icon_paths as icon
+import logic.measurements as meas
 import utilities.constants as consts
-from logic.measurements import FCSMeasurement, SFCSSolutionMeasurement
+import utilities.helper as helper
 from utilities.dialog import Error, Question
 from utilities.errors import error_checker as err_chck
 from utilities.errors import logic_error_handler as err_hndlr
-
-
-def gui_to_csv(gui_parent, file_path):
-    """Doc."""
-
-    with open(file_path, "w") as f:
-        # get all names of fields in settings window as lists (for file saving/loading)
-        l1 = gui_parent.findChildren(QtWidgets.QLineEdit)
-        l2 = gui_parent.findChildren(QtWidgets.QSpinBox)
-        l3 = gui_parent.findChildren(QtWidgets.QDoubleSpinBox)
-        l4 = gui_parent.findChildren(QtWidgets.QComboBox)
-        children_list = l1 + l2 + l3 + l4
-
-        obj_names = []
-        for child in children_list:
-            if not child.objectName() == "qt_spinbox_lineedit":
-                if hasattr(child, "currentIndex"):  # QComboBox
-                    obj_names.append(child.objectName())
-                elif not child.isReadOnly():  # QSpinBox, QLineEdit
-                    obj_names.append(child.objectName())
-
-        writer = csv.writer(f)
-        for i in range(len(obj_names)):
-            child = gui_parent.findChild(QtWidgets.QWidget, obj_names[i])
-            if hasattr(child, "value"):  # QSpinBox
-                val = child.value()
-            elif hasattr(child, "currentIndex"):  # QComboBox
-                val = child.currentIndex()
-            else:  # QLineEdit
-                val = child.text()
-            writer.writerow([obj_names[i], val])
-
-
-def csv_to_gui(file_path, gui_parent):
-    """Doc."""
-
-    df = pd.read_csv(
-        file_path,
-        header=None,
-        delimiter=",",
-        keep_default_na=False,
-        error_bad_lines=False,
-    )
-
-    for i in range(len(df)):
-        obj_name, obj_val = df.iloc[i, 0], df.iloc[i, 1]
-        child = gui_parent.findChild(QtWidgets.QWidget, obj_name)
-        if not child == "nullptr":
-            if hasattr(child, "value"):  # QSpinBox
-                child.setValue(float(obj_val))
-            elif hasattr(child, "currentIndex"):  # QComboBox
-                child.setCurrentIndex(int(obj_val))
-            elif hasattr(child, "text"):  # QLineEdit
-                child.setText(obj_val)
-
 
 # TODO: None of the following should be classes. Notice that they don't have any attributes, therefore their state cannot change and thus Objects have no meaning. Instead, the methods should be functions in seperate modules, perhaps under a
 
@@ -120,8 +64,8 @@ class MainWin:
             consts.LOADOUT_FOLDER_PATH,
             "CSV Files(*.csv *.txt)",
         )
+        helper.gui_to_csv(self._gui, file_path)
 
-        gui_to_csv(self._gui, file_path)
         logging.debug(f"Loadout saved as: '{file_path}'")
 
     @err_hndlr
@@ -135,8 +79,8 @@ class MainWin:
                 consts.LOADOUT_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
+        helper.csv_to_gui(file_path, self._gui)
 
-        csv_to_gui(file_path, self._gui)
         logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chck()
@@ -295,40 +239,56 @@ class MainWin:
 
         current_type = self._app.meas.type
         if current_type is None:  # no meas running
-
             if type == "FCS":
-                self._app.meas = FCSMeasurement(
+                self._app.meas = meas.FCSMeasurement(
                     self._app,
-                    duration_gui=self._gui.measFCSDuration,
-                    prog_bar=self._gui.FCSprogressBar,
+                    duration=self._gui.measFCSDuration.value(),
+                    prog_bar=helper.QtWidgetAccess(
+                        "FCSprogressBar", "setValue", "main"
+                    ).hold_obj(self._gui),
                 )
                 self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
 
             elif type == "SFCSSolution":
-                self._app.meas = SFCSSolutionMeasurement(
+                self._app.meas = meas.SFCSSolutionMeasurement(
                     self._app,
-                    duration_gui=self._gui.solScanCalIntrvl,  # TODO: is this clear enough? using file duration here instead of total
-                    prog_bar=self._gui.solScanProgressBar,
+                    duration=self._gui.solScanCalIntrvl.value(),  # TODO: is this clear enough? using file duration here instead of total
+                    prog_bar=helper.QtWidgetAccess(
+                        "solScanProgressBar", "setValue", "main"
+                    ).hold_obj(self._gui),
                 )
                 self._gui.startSolScan.setText("Stop \nScan")
+                # TODO: this can be set in one line as for stage in gui.py
                 self._gui.solScanMaxFileSize.setEnabled(False)
                 self._gui.solScanCalTime.setEnabled(False)
                 self._gui.solScanDuration.setEnabled(False)
                 self._gui.solScanFileTemplate.setEnabled(False)
 
+            elif type == "SFCSImage":
+                self._app.meas = meas.SFCSImageMeasurement(
+                    self._app,
+                    prog_bar=helper.QtWidgetAccess(
+                        "imgScanProgressBar", "setValue", "main"
+                    ).hold_obj(self._gui),
+                )
+                self._gui.startImgScan.setText("Stop \nScan")
+
             self._app.loop.create_task(self._app.meas.start())
 
         elif current_type == type:  # manual shutdown
-
             if type == "FCS":
                 self._gui.startFcsMeasurementButton.setText("Start \nMeasurement")
 
             elif type == "SFCSSolution":
                 self._gui.startSolScan.setText("Start \nScan")
+                # TODO: this can be set in one line as for stage in gui.py
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanCalTime.setEnabled(True)
                 self._gui.solScanDuration.setEnabled(True)
                 self._gui.solScanFileTemplate.setEnabled(True)
+
+            elif type == "SFCSImage":
+                self._gui.startImgScan.setText("Start \nScan")
 
             self._app.meas.stop()
 
@@ -338,6 +298,12 @@ class MainWin:
                 f"({current_type}) is currently running."
             )
             Error(custom_txt=txt).display()
+
+    def change_FCS_meas_dur(self, new_dur):
+        """Doc."""
+
+        if self._app.meas.type == "FCS":  # if FCS meas running
+            self._app.meas.duration = new_dur
 
     def open_settwin(self):
         """Doc."""
@@ -374,13 +340,12 @@ class MainWin:
         """Doc."""
 
         def fill_widget_collection(
-            parent_gui, wdgt_coll: consts.QtWidgetCollection, attr_val_dict: dict
+            parent_gui, wdgt_coll: consts.QtWidgetCollection, wdgt_val_dict: dict
         ) -> NoReturn:
             """Doc."""
 
-            for attr, val in attr_val_dict.items():
-                wdgt = getattr(wdgt_coll, attr)
-                wdgt.access(parent_gui, val)
+            for wdgt, val in wdgt_val_dict.items():
+                getattr(wdgt_coll, wdgt).access(parent_gui, val)
 
         wdgt_keys = [
             "type",
@@ -408,7 +373,7 @@ class MainWin:
 
         parent_gui = self._app.gui.main
         fill_widget_collection(
-            parent_gui, consts.IMG_SCN_PRESET_WIDGETS, dict(zip(wdgt_keys, wdgt_vals))
+            parent_gui, consts.IMG_SCN_WDGT_COLLCTN, dict(zip(wdgt_keys, wdgt_vals))
         )
 
         logging.info(f"Image scan preset configuration chosen: '{curr_text}'")
@@ -425,7 +390,9 @@ class SettWin:
 
     def clean_up(self):
         """Doc."""
-        # TODO: add check to see if changes were made, if not, don't ask user
+        # TODO: add check to see if changes were made, if not, don't ask user -
+        # can be done by 'saving' (only preparing the save list) the current form and 'loading' the last loaded file,
+        # comparing them and only asking if there are differences
 
         pressed = Question(
             "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
@@ -450,7 +417,7 @@ class SettWin:
         self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
             file_path
         )
-        gui_to_csv(self._gui.frame, file_path)
+        helper.gui_to_csv(self._gui.frame, file_path)
         logging.debug(f"Settings file saved as: '{file_path}'")
 
     @err_hndlr
@@ -473,7 +440,7 @@ class SettWin:
             file_path
         )
 
-        csv_to_gui(file_path, self._gui.frame)
+        helper.csv_to_gui(file_path, self._gui.frame)
 
         logging.debug(f"Settings file loaded: '{file_path}'")
 

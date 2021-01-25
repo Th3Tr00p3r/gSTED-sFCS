@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 """ Global constants. """
 
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from typing import List, Union
-
 import gui.icons.icon_paths as icon_path
+from utilities.helper import DeviceAttrs, QtWidgetAccess, QtWidgetCollection
 
 # ------------------------------
 # general
@@ -56,53 +52,6 @@ DVC_NICKS_TUPLE = (
     "SCANNERS",
     "COUNTER",
 )
-
-
-class QtWidgetAccess:
-    def __init__(
-        self, obj_name: str, method_name: str, gui_parent_name: str = "settings"
-    ):
-        self.obj_name = obj_name
-        self.method_name = method_name
-        self.gui_parent_name = gui_parent_name
-
-    def hold_obj(self, parent_gui) -> QtWidgetAccess:
-        """Save the actual widget object as an attribute"""
-
-        self.widget = getattr(parent_gui, self.obj_name)
-        return self
-
-    def access(self, parent_gui=None, arg=None) -> Union[int, float, str, None]:
-        """Get/set widget property"""
-
-        if hasattr(self, "widget"):
-            widget = self.widget
-        else:
-            widget = getattr(parent_gui, self.obj_name)
-
-        if self.method_name.find("set") != -1:
-            getattr(widget, self.method_name)(arg)
-        else:
-            return getattr(widget, self.method_name)()
-
-
-class QtWidgetCollection:
-    def __init__(self, **kwargs):
-        for key, val in kwargs.items():
-            setattr(self, key, val)
-
-
-@dataclass
-class DeviceAttrs:
-
-    cls_name: str
-    log_ref: str
-    led_widget: QtWidgetAccess
-    param_widgets: QtWidgetCollection
-    cls_xtra_args: List[str] = field(default_factory=list)
-    led_icon_path: str = icon_path.LED_GREEN
-    switch_widget: QtWidgetAccess = None
-
 
 EXC_LASER = DeviceAttrs(
     cls_name="SimpleDO",
@@ -252,7 +201,7 @@ SCANNERS = DeviceAttrs(
 # GUI presets
 # ----------------------------------------------
 
-IMG_SCN_PRESET_WIDGETS = QtWidgetCollection(
+IMG_SCN_WDGT_COLLCTN = QtWidgetCollection(
     type=QtWidgetAccess("imgScanType", "setCurrentText", "main"),
     dim1=QtWidgetAccess("imgScanDim1", "setValue", "main"),
     dim2=QtWidgetAccess("imgScanDim2", "setValue", "main"),

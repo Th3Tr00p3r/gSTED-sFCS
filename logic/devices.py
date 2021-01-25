@@ -35,9 +35,12 @@ class UM232H(drivers.FTDI_Instrument):
 
     def stream_read_TDC(self, meas):
         """Doc."""
+        # TODO: reading the duration_gui value each time makes no sense - instead, create a slot for the duration_gui
+        # which changes meas.duration if one is running, then you have it both ways: duration can be changed during measurement
+        # and no need for complicated code.
 
         while (
-            meas.time_passed < meas.duration_gui.value() * meas.duration_multiplier
+            meas.time_passed < meas.duration * meas.duration_multiplier
             and meas.is_running
         ):
             read_bytes = self.read()
