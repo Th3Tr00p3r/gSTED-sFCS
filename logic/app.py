@@ -169,6 +169,7 @@ class App:
 
         def lights_out(gui):
             """turn OFF all device switch/LED icons"""
+            # TODO: create a widget collection in constants and use it (less lines here)
 
             gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
             gui.ledExc.setIcon(QIcon(icon.LED_OFF))
