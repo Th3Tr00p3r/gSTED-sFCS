@@ -244,7 +244,7 @@ class MainWin:
                     self._app,
                     duration=self._gui.measFCSDuration.value(),
                     prog_bar=helper.QtWidgetAccess(
-                        "FCSprogressBar", "setValue", "main"
+                        "FCSprogressBar", "value", "main"
                     ).hold_obj(self._gui),
                 )
                 self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
@@ -254,7 +254,7 @@ class MainWin:
                     self._app,
                     duration=self._gui.solScanCalIntrvl.value(),  # TODO: is this clear enough? using file duration here instead of total
                     prog_bar=helper.QtWidgetAccess(
-                        "solScanProgressBar", "setValue", "main"
+                        "solScanProgressBar", "value", "main"
                     ).hold_obj(self._gui),
                 )
                 self._gui.startSolScan.setText("Stop \nScan")
@@ -268,7 +268,7 @@ class MainWin:
                 self._app.meas = meas.SFCSImageMeasurement(
                     self._app,
                     prog_bar=helper.QtWidgetAccess(
-                        "imgScanProgressBar", "setValue", "main"
+                        "imgScanProgressBar", "value", "main"
                     ).hold_obj(self._gui),
                 )
                 self._gui.startImgScan.setText("Stop \nScan")
@@ -339,15 +339,11 @@ class MainWin:
     def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
         """Doc."""
 
-        def fill_widget_collection(
-            parent_gui, wdgt_coll: consts.QtWidgetCollection, wdgt_val_dict: dict
-        ) -> NoReturn:
-            """Doc."""
-
-            for wdgt, val in wdgt_val_dict.items():
-                getattr(wdgt_coll, wdgt).access(parent_gui, val)
-
+        # TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
         wdgt_keys = [
+            "exc_mode",
+            "dep_mode",
+            "sted_mode",
             "type",
             "dim1",
             "dim2",
@@ -359,21 +355,20 @@ class MainWin:
             "z_step",
         ]
         if curr_text == "Locate Plane - YZ Coarse":
-            wdgt_vals = ["YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10]
+            wdgt_vals = [1, 0, 0, "YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10]
         elif curr_text == "MFC - XY compartment":
             wdgt_vals = [""]
         elif curr_text == "GB -  XY Coarse":
-            wdgt_vals = ["XY", 15, 15, 80, 1000, 20, 0.9, 1, 10]
+            wdgt_vals = [0, 1, 0, "XY", 15, 15, 80, 1000, 20, 0.9, 1, 10]
         elif curr_text == "GB - XY bead area":
-            wdgt_vals = ["XY", 5, 5, 80, 1000, 20, 0.9, 1, 10]
+            wdgt_vals = [1, 0, 0, "XY", 5, 5, 80, 1000, 20, 0.9, 1, 10]
         elif curr_text == "GB - XY single bead":
             wdgt_vals = [""]
         elif curr_text == "GB - YZ single bead":
             wdgt_vals = [""]
 
-        parent_gui = self._app.gui.main
-        fill_widget_collection(
-            parent_gui, consts.IMG_SCN_WDGT_COLLCTN, dict(zip(wdgt_keys, wdgt_vals))
+        consts.IMG_SCN_WDGT_COLLCTN.write_dict_to_gui(
+            self._app, dict(zip(wdgt_keys, wdgt_vals))
         )
 
         logging.info(f"Image scan preset configuration chosen: '{curr_text}'")

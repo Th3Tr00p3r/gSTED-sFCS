@@ -5,20 +5,21 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass, field
-from typing import List, Union
+from typing import List, NoReturn, Union
 
 import pandas as pd
 import PyQt5.QtWidgets as QtWidgets
 
 import gui.icons.icon_paths as icon_path
+import logic.app as app_module
 
 
 class QtWidgetAccess:
-    def __init__(
-        self, obj_name: str, method_name: str, gui_parent_name: str = "settings"
-    ):
+    def __init__(self, obj_name: str, getter: str, gui_parent_name: str = "settings"):
         self.obj_name = obj_name
-        self.method_name = method_name
+        self.getter = getter
+        first_char, *rest_of_str = self.getter
+        self.setter = "set" + first_char.upper() + "".join(rest_of_str)
         self.gui_parent_name = gui_parent_name
 
     def hold_obj(self, parent_gui) -> QtWidgetAccess:
@@ -30,21 +31,40 @@ class QtWidgetAccess:
     def access(self, parent_gui=None, arg=None) -> Union[int, float, str, None]:
         """Get/set widget property"""
 
-        if hasattr(self, "widget"):
+        if parent_gui is None:
             widget = self.widget
         else:
             widget = getattr(parent_gui, self.obj_name)
 
-        if self.method_name.find("set") != -1:
-            getattr(widget, self.method_name)(arg)
+        if arg is None:
+            return getattr(widget, self.getter)()
         else:
-            return getattr(widget, self.method_name)()
+            getattr(widget, self.setter)(arg)
 
 
 class QtWidgetCollection:
+    """Doc."""
+
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
             setattr(self, key, val)
+
+    def write_dict_to_gui(self, app: app_module.App, new_val_dict: dict) -> NoReturn:
+        """Fill widget collection with values from dict"""
+
+        for attr_name, val in new_val_dict.items():
+            wdgt = getattr(self, attr_name)
+            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+            wdgt.access(parent_gui, val)
+
+    def read_dict_from_gui(self, app: app_module.App) -> NoReturn:
+        """Read values from widget collection and return a dict"""
+
+        wdgt_val_dict = {}
+        for attr_name, wdgt in vars(self).items():
+            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+            wdgt_val_dict[attr_name] = wdgt.access(parent_gui)
+        return wdgt_val_dict
 
 
 @dataclass
@@ -92,6 +112,7 @@ def gui_to_csv(gui_parent, file_path):
 
 def csv_to_gui(file_path, gui_parent):
     """Doc."""
+    # TODO: add exception handeling for when a .ui file was changed since loadout was saved
 
     df = pd.read_csv(
         file_path,

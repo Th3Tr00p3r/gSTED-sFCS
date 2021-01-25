@@ -7,7 +7,6 @@ from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QDialog, QMainWindow, QWidget
 
-# TODO: see if 'import gui.icons' can work from here instead of in main.py (test by switching some icon in QDesigner)
 import gui.icons  # this generates an icon resource file (see gui.py) as well as paths to all icons (see logic.py) # NOQA
 import logic.windows as wins_imp
 import utilities.constants as consts
