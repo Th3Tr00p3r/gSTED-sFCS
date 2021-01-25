@@ -81,18 +81,6 @@ class App:
         instantiating a driver object for each device.
         """
 
-        def params_from_gui(app: App, param_widgets: consts.QtWidgetCollection):
-            """
-            Get constant device parameters from GUI
-            using ParamWidgets objects defined in constants.py.
-            """
-
-            param_dict = {}
-            for param_name, widget_access in vars(param_widgets).items():
-                parent_gui = getattr(app.gui, widget_access.gui_parent_name)
-                param_dict[param_name] = widget_access.access(parent_gui=parent_gui)
-            return param_dict
-
         def extra_args(app, x_args: list) -> list:
             """
             Add additional parameters to device using a dictionary
@@ -111,7 +99,7 @@ class App:
         for nick in consts.DVC_NICKS_TUPLE:
             DVC_CONSTS = getattr(consts, nick)
             dvc_class = getattr(devices, DVC_CONSTS.cls_name)
-            param_dict = params_from_gui(self, DVC_CONSTS.param_widgets)
+            param_dict = DVC_CONSTS.param_widgets.read_dict_from_gui(self)
 
             gui_parent_name = DVC_CONSTS.led_widget.gui_parent_name
             led_widget = DVC_CONSTS.led_widget.hold_obj(

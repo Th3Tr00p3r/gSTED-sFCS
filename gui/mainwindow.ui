@@ -119,9 +119,12 @@
                       <number>0</number>
                      </property>
                      <item>
-                      <widget class="QGroupBox" name="groupBox_5">
+                      <widget class="QGroupBox" name="imgScanMode">
                        <property name="title">
                         <string>Mode</string>
+                       </property>
+                       <property name="checkable">
+                        <bool>false</bool>
                        </property>
                        <layout class="QHBoxLayout" name="horizontalLayout_12">
                         <item>
@@ -138,7 +141,7 @@
                          </spacer>
                         </item>
                         <item>
-                         <widget class="QRadioButton" name="currModeRadio_2">
+                         <widget class="QRadioButton" name="imgScanModeExc">
                           <property name="text">
                            <string>Exc</string>
                           </property>
@@ -151,14 +154,17 @@
                          </widget>
                         </item>
                         <item>
-                         <widget class="QRadioButton" name="powModeRadio_2">
+                         <widget class="QRadioButton" name="imgScanModeDep">
                           <property name="text">
                            <string>Dep</string>
+                          </property>
+                          <property name="checked">
+                           <bool>false</bool>
                           </property>
                          </widget>
                         </item>
                         <item>
-                         <widget class="QRadioButton" name="currModeRadio_3">
+                         <widget class="QRadioButton" name="imgScanModeSted">
                           <property name="text">
                            <string>STED</string>
                           </property>
@@ -1228,9 +1234,21 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="currLine">
+                        <widget class="QSpinBox" name="currLine">
                          <property name="enabled">
                           <bool>false</bool>
+                         </property>
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="minimum">
+                          <number>-99999</number>
+                         </property>
+                         <property name="maximum">
+                          <number>999999</number>
+                         </property>
+                         <property name="value">
+                          <number>-1</number>
                          </property>
                         </widget>
                        </item>
@@ -1267,9 +1285,21 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="currPlane">
+                        <widget class="QSpinBox" name="currPlane">
                          <property name="enabled">
                           <bool>false</bool>
+                         </property>
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="minimum">
+                          <number>-99999</number>
+                         </property>
+                         <property name="maximum">
+                          <number>999999</number>
+                         </property>
+                         <property name="value">
+                          <number>-1</number>
                          </property>
                         </widget>
                        </item>
@@ -2855,7 +2885,7 @@ background-repeat: no-repeat;</string>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="solScanTypeCombox">
+                      <widget class="QComboBox" name="solScanType">
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                          <horstretch>0</horstretch>
@@ -3086,7 +3116,7 @@ background-repeat: no-repeat;</string>
                             </widget>
                            </item>
                            <item>
-                            <widget class="QComboBox" name="scanPresetCombox_5">
+                            <widget class="QComboBox" name="solAngScanPreset">
                              <property name="palette">
                               <palette>
                                <active>
@@ -3285,7 +3315,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="lineLenSpinner">
+                              <widget class="QSpinBox" name="lineLen">
                                <property name="sizePolicy">
                                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                  <horstretch>0</horstretch>
@@ -3326,7 +3356,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="AOsampFreqSpinner">
+                              <widget class="QSpinBox" name="aoSampFreq">
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
@@ -3358,7 +3388,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="angleSpinner">
+                              <widget class="QSpinBox" name="angle">
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
@@ -3390,7 +3420,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QDoubleSpinBox" name="solLinFracSpinner">
+                              <widget class="QDoubleSpinBox" name="solLinFrac">
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
@@ -3431,7 +3461,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="lineShiftSpinner">
+                              <widget class="QSpinBox" name="lineShift">
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
@@ -3466,7 +3496,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="angleSpinner_2">
+                              <widget class="QSpinBox" name="solAngScanSpeed">
                                <property name="minimumSize">
                                 <size>
                                  <width>50</width>
@@ -3507,7 +3537,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="angleSpinner_3">
+                              <widget class="QSpinBox" name="minNumLines">
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
@@ -3542,7 +3572,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="angleSpinner_4">
+                              <widget class="QSpinBox" name="maxScanFreq">
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
@@ -3779,7 +3809,7 @@ background-repeat: no-repeat;</string>
                             </widget>
                            </item>
                            <item>
-                            <widget class="QComboBox" name="scanPresetCombox_6">
+                            <widget class="QComboBox" name="solCircScanPreset">
                              <property name="palette">
                               <palette>
                                <active>
@@ -4137,12 +4167,12 @@ Size (Mb)</string>
                         </property>
                         <property name="text">
                          <string>Calibration
-Time (s)</string>
+Duration (s)</string>
                         </property>
                        </widget>
                       </item>
                       <item>
-                       <widget class="QDoubleSpinBox" name="solScanCalTime">
+                       <widget class="QDoubleSpinBox" name="solScanCalDur">
                         <property name="enabled">
                          <bool>true</bool>
                         </property>
@@ -4201,7 +4231,7 @@ Time (s)</string>
                        </widget>
                       </item>
                       <item>
-                       <widget class="QDoubleSpinBox" name="solScanCalIntrvl">
+                       <widget class="QDoubleSpinBox" name="solScanCalSaveIntrvl">
                         <property name="enabled">
                          <bool>false</bool>
                         </property>
@@ -8418,8 +8448,6 @@ Settings</string>
   <tabstop>imgScanNumPlanes</tabstop>
   <tabstop>imgScanZstep</tabstop>
   <tabstop>startImgScan</tabstop>
-  <tabstop>currLine</tabstop>
-  <tabstop>currPlane</tabstop>
   <tabstop>axisCombox</tabstop>
   <tabstop>axisMoveSpinner</tabstop>
   <tabstop>axisMoveUp</tabstop>
@@ -8434,16 +8462,16 @@ Settings</string>
   <tabstop>graphicsView</tabstop>
   <tabstop>lineEdit_16</tabstop>
   <tabstop>imgScanFileTemplate</tabstop>
-  <tabstop>solScanTypeCombox</tabstop>
-  <tabstop>scanPresetCombox_5</tabstop>
-  <tabstop>lineLenSpinner</tabstop>
-  <tabstop>AOsampFreqSpinner</tabstop>
-  <tabstop>angleSpinner</tabstop>
-  <tabstop>solLinFracSpinner</tabstop>
-  <tabstop>lineShiftSpinner</tabstop>
-  <tabstop>angleSpinner_2</tabstop>
-  <tabstop>angleSpinner_3</tabstop>
-  <tabstop>angleSpinner_4</tabstop>
+  <tabstop>solScanType</tabstop>
+  <tabstop>solAngScanPreset</tabstop>
+  <tabstop>lineLen</tabstop>
+  <tabstop>aoSampFreq</tabstop>
+  <tabstop>angle</tabstop>
+  <tabstop>solLinFrac</tabstop>
+  <tabstop>lineShift</tabstop>
+  <tabstop>solAngScanSpeed</tabstop>
+  <tabstop>minNumLines</tabstop>
+  <tabstop>maxScanFreq</tabstop>
   <tabstop>solPointsPerLine</tabstop>
   <tabstop>solTotPointsPerLine</tabstop>
   <tabstop>solAngActualSpeed</tabstop>
