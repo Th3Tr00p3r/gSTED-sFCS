@@ -163,22 +163,19 @@ class Timeout:
                 if meas.type == "FCS":
                     progress = (
                         meas.time_passed
-                        / (meas.duration_gui.value() * meas.duration_multiplier)
+                        / (meas.duration * meas.duration_multiplier)
                         * 100
                     )
                 elif meas.type == "SFCSSolution":
                     if not meas.cal:
                         progress = (
                             (meas.total_time_passed + meas.time_passed)
-                            / (
-                                meas.total_duration_gui.value()
-                                * meas.duration_multiplier
-                            )
+                            / (meas.total_duration * meas.duration_multiplier)
                             * 100
                         )
                     else:
                         progress = 0
-                meas.prog_bar.setValue(progress)
+                meas.prog_bar.access(arg=progress)
 
         while self.not_finished:
             if self.running:

@@ -88,6 +88,12 @@ class MainWin(QMainWindow):
 
         self.imp.save()
 
+    @pyqtSlot(int)
+    def on_measFCSDuration_valueChanged(self, int) -> NoReturn:
+        """Doc."""
+
+        self.imp.change_FCS_meas_dur(int)
+
     @pyqtSlot()
     def on_startFcsMeasurementButton_released(self) -> NoReturn:
         """Begin/end FCS measurement."""

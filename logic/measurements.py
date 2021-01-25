@@ -17,8 +17,8 @@ class Measurement:
         self,
         app,
         type,
-        duration_gui=None,
-        duration_multiplier=1,
+        duration=None,
+        duration_multiplier=None,
     ):
         def get_laser_config(app):
             """Doc."""
@@ -41,7 +41,7 @@ class Measurement:
         self.type = type
         self.data_dvc = app.devices.UM232H
         self.laser_config = get_laser_config(app)
-        self.duration_gui = duration_gui
+        self.duration = duration
         self.duration_multiplier = duration_multiplier
         self.start_time = None
         self.is_running = False
@@ -64,27 +64,59 @@ class Measurement:
         self._app.gui.main.imp.dvc_toggle("TDC")
 
         if hasattr(self, "prog_bar"):
-            self.prog_bar.setValue(0)
+            self.prog_bar.access(arg=0)
 
+        # TODO: need to distinguish stopped from finished - a finished flag?
         logging.info(f"{self.type} measurement stopped")
 
         self._app.meas.type = None
+
+        def save_data(self, file_name: str) -> NoReturn:
+            """Save measurement data as NumPy array (.npy), given filename"""
+
+            file_path = self.save_path + file_name + ".npy"
+            np_data = np.frombuffer(self.data_dvc.data, dtype=np.uint8)
+            with open(file_path, "wb") as f:
+                np.save(f, np_data)
+
+
+class SFCSImageMeasurement(Measurement):
+    """Doc."""
+
+    def __init__(self, app, prog_bar):
+        super().__init__(
+            app=app,
+            type="SFCSImage",
+        )
+        self.prog_bar = prog_bar
+        self.curr_plane_gui = app.gui.main.currPlane
+
+        self.save_path = app.gui.settings.imgDataPath.text()
+        self.file_template = app.gui.main.imgScanFileTemplate.text()
+
+    def build_filename(self, file_no: int) -> str:
+        return f"{self.file_template}_{self.laser_config}_{file_no}"
+
+    async def run(self):
+        """Doc."""
+
+        pass
 
 
 class SFCSSolutionMeasurement(Measurement):
     """Doc."""
 
-    def __init__(self, app, duration_gui, prog_bar):
+    def __init__(self, app, duration, prog_bar):
         super().__init__(
             app=app,
             type="SFCSSolution",
-            duration_gui=duration_gui,
+            duration=duration,
             duration_multiplier=60,
         )
         self.prog_bar = prog_bar
         self.start_time_gui = app.gui.main.solScanStartTime
         self.end_time_gui = app.gui.main.solScanEndTime
-        self.total_duration_gui = app.gui.main.solScanDuration
+        self.total_duration = app.gui.main.solScanDuration.value()
 
         self.max_file_size = app.gui.main.solScanMaxFileSize.value()
         self.cal_time = app.gui.main.solScanCalTime.value()
@@ -93,6 +125,9 @@ class SFCSSolutionMeasurement(Measurement):
         self.file_num_gui = app.gui.main.solScanFileNo
         self.save_path = app.gui.settings.solDataPath.text()
         self.file_template = app.gui.main.solScanFileTemplate.text()
+
+    def build_filename(self, file_no: int) -> str:
+        return f"{self.file_template}_{self.laser_config}_{file_no}"
 
     async def run(self):
         """Doc."""
@@ -122,34 +157,16 @@ class SFCSSolutionMeasurement(Measurement):
                 f"Total Bytes = {data_dvc.tot_bytes_read}\n"
             )
 
-        def save_data(
-            array_data,
-            dir_path: str,
-            file_template: str,
-            file_no: int,
-            laser_config: str,
-        ) -> NoReturn:
-            """Doc."""
-
-            file_name = f"{file_template}_{laser_config}_{file_no}"
-            file_format = ".npy"
-            file_path = dir_path + file_name + file_format
-
-            np_data = np.frombuffer(array_data, dtype=np.uint8)
-
-            with open(file_path, "wb") as f:
-                np.save(f, np_data)
-
         # initialize gui start/end times
         start_time, end_time = get_current_and_end_times(
-            self.total_duration_gui.value() * self.duration_multiplier
+            self.total_duration * self.duration_multiplier
         )
         self.start_time_gui.setTime(start_time)
         self.end_time_gui.setTime(end_time)
 
         # calibrating save-intervals
         saved_dur_mul = self.duration_multiplier
-        self.duration_gui = self._app.gui.main.solScanCalTime
+        self.duration = self._app.gui.main.solScanCalTime.value()
         self.duration_multiplier = 1  # in seconds
         self.start_time = time.perf_counter()
         self.time_passed = 0
@@ -160,15 +177,15 @@ class SFCSSolutionMeasurement(Measurement):
         bps = self.data_dvc.tot_bytes_read / self.time_passed
         self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
 
-        if self.save_intrvl > self.total_duration_gui.value():
-            self.save_intrvl = self.total_duration_gui.value()
+        if self.save_intrvl > self.total_duration:
+            self.save_intrvl = self.total_duration
 
-        self.duration_gui = self._app.gui.main.solScanCalIntrvl
-        self.duration_gui.setValue(self.save_intrvl)
+        self._app.gui.main.solScanCalIntrvl.setValue(self.save_intrvl)
+        self.duration = self.save_intrvl
         self.duration_multiplier = saved_dur_mul
 
         # determining number of files
-        num_files = int(math.ceil(self.total_duration_gui.value() / self.save_intrvl))
+        num_files = int(math.ceil(self.total_duration / self.save_intrvl))
         self.total_files_gui.setValue(num_files)
 
         self.total_time_passed = 0
@@ -189,13 +206,8 @@ class SFCSSolutionMeasurement(Measurement):
 
                 disp_ACF(self.data_dvc)
 
-                save_data(
-                    self.data_dvc.data,
-                    self.save_path,
-                    self.file_template,
-                    file_num,
-                    self.laser_config,
-                )
+                file_name = self.build_filename(file_num)
+                self.save_data(file_name)
 
                 self.data_dvc.init_data()
 
@@ -209,8 +221,8 @@ class SFCSSolutionMeasurement(Measurement):
 class FCSMeasurement(Measurement):
     """Repeated static FCS measurement, intended fo system calibration"""
 
-    def __init__(self, app, duration_gui, prog_bar):
-        super().__init__(app=app, type="FCS", duration_gui=duration_gui)
+    def __init__(self, app, duration, prog_bar):
+        super().__init__(app=app, type="FCS", duration=duration, duration_multiplier=1)
         self.prog_bar = prog_bar
 
     async def run(self):
@@ -226,7 +238,7 @@ class FCSMeasurement(Measurement):
             )
 
         while self.is_running:
-            #            await asyncio.to_thread(mock_io, self.duration_gui) # TODO: Try when upgrade to Python 3.9 is feasible
+            #            await asyncio.to_thread(mock_io, self.duration) # TODO: Try when upgrade to Python 3.9 is feasible
 
             self.start_time = time.perf_counter()
             self.time_passed = 0
