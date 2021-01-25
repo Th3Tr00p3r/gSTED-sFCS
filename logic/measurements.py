@@ -18,31 +18,12 @@ class Measurement:
         app,
         type,
         duration=None,
-        duration_multiplier=None,
     ):
-        def get_laser_config(app):
-            """Doc."""
-
-            exc_state = app.devices.EXC_LASER.state
-            dep_state = app.devices.DEP_LASER.state
-
-            if exc_state and dep_state:
-                laser_config = "sted"
-            elif exc_state:
-                laser_config = "exc"
-            elif dep_state:
-                laser_config = "dep"
-            else:
-                laser_config = "nolaser"
-
-            return laser_config
 
         self._app = app
         self.type = type
         self.data_dvc = app.devices.UM232H
-        self.laser_config = get_laser_config(app)
         self.duration = duration
-        self.duration_multiplier = duration_multiplier
         self.start_time = None
         self.is_running = False
 
@@ -71,13 +52,30 @@ class Measurement:
 
         self._app.meas.type = None
 
-        def save_data(self, file_name: str) -> NoReturn:
-            """Save measurement data as NumPy array (.npy), given filename"""
+    def save_data(self, file_name: str) -> NoReturn:
+        """Save measurement data as NumPy array (.npy), given filename"""
 
-            file_path = self.save_path + file_name + ".npy"
-            np_data = np.frombuffer(self.data_dvc.data, dtype=np.uint8)
-            with open(file_path, "wb") as f:
-                np.save(f, np_data)
+        file_path = self.save_path + file_name + ".npy"
+        np_data = np.frombuffer(self.data_dvc.data, dtype=np.uint8)
+        with open(file_path, "wb") as f:
+            np.save(f, np_data)
+
+    def get_laser_config(self):
+        """Doc."""
+
+        exc_state = self._app.devices.EXC_LASER.state
+        dep_state = self._app.devices.DEP_LASER.state
+
+        if exc_state and dep_state:
+            laser_config = "sted"
+        elif exc_state:
+            laser_config = "exc"
+        elif dep_state:
+            laser_config = "dep"
+        else:
+            laser_config = "nolaser"
+
+        return laser_config
 
 
 class SFCSImageMeasurement(Measurement):
@@ -111,9 +109,10 @@ class SFCSSolutionMeasurement(Measurement):
             app=app,
             type="SFCSSolution",
             duration=duration,
-            duration_multiplier=60,
         )
+        self.duration_multiplier = 60
         self.prog_bar = prog_bar
+        self.laser_config = self.get_laser_config()
         self.start_time_gui = app.gui.main.solScanStartTime
         self.end_time_gui = app.gui.main.solScanEndTime
         self.total_duration = app.gui.main.solScanDuration.value()
@@ -222,8 +221,9 @@ class FCSMeasurement(Measurement):
     """Repeated static FCS measurement, intended fo system calibration"""
 
     def __init__(self, app, duration, prog_bar):
-        super().__init__(app=app, type="FCS", duration=duration, duration_multiplier=1)
+        super().__init__(app=app, type="FCS", duration=duration)
         self.prog_bar = prog_bar
+        self.duration_multiplier = 1
 
     async def run(self):
         """Doc."""

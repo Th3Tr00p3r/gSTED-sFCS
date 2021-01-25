@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2020-12-20, 09:40:24 -->
-<!-- Copyright (C) 2020 idomic,  -->
+<!-- Saved: 2021-01-25, 21:34:01 -->
+<!-- Copyright (C) 2021 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
   <Hash>c44c4f29a6e008d4372597d4bc4266d897948644</Hash>
@@ -29,6 +29,7 @@
     <Source>utilities/constants.py</Source>
     <Source>utilities/dialog.py</Source>
     <Source>utilities/errors.py</Source>
+    <Source>utilities/helper.py</Source>
   </Sources>
   <Forms>
     <Form>gui/camerawindow.ui</Form>

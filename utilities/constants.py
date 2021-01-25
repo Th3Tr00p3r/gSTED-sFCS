@@ -5,7 +5,7 @@ import gui.icons.icon_paths as icon_path
 from utilities.helper import DeviceAttrs, QtWidgetAccess, QtWidgetCollection
 
 # ------------------------------
-# general
+# General
 # ------------------------------
 
 TIMEOUT = 0.010  # seconds (10 ms)
@@ -56,9 +56,9 @@ DVC_NICKS_TUPLE = (
 EXC_LASER = DeviceAttrs(
     cls_name="SimpleDO",
     log_ref="Excitation Laser",
-    led_widget=QtWidgetAccess("ledExc", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledExc", "icon", "main"),
     led_icon_path=icon_path.LED_BLUE,
-    switch_widget=QtWidgetAccess("excOnButton", "setIcon", "main"),
+    switch_widget=QtWidgetAccess("excOnButton", "icon", "main"),
     param_widgets=QtWidgetCollection(
         model=QtWidgetAccess("excMod", "text"),
         trg_src=QtWidgetAccess("excTriggerSrc", "currentText"),
@@ -71,9 +71,9 @@ EXC_LASER = DeviceAttrs(
 DEP_LASER = DeviceAttrs(
     cls_name="DepletionLaser",
     log_ref="Depletion Laser",
-    led_widget=QtWidgetAccess("ledDep", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledDep", "icon", "main"),
     led_icon_path=icon_path.LED_ORANGE,
-    switch_widget=QtWidgetAccess("depEmissionOn", "setIcon", "main"),
+    switch_widget=QtWidgetAccess("depEmissionOn", "icon", "main"),
     param_widgets=QtWidgetCollection(
         model=QtWidgetAccess("depMod", "text"),
         address=QtWidgetAccess("depAddr", "text"),
@@ -83,8 +83,8 @@ DEP_LASER = DeviceAttrs(
 DEP_SHUTTER = DeviceAttrs(
     cls_name="SimpleDO",
     log_ref="Shutter",
-    led_widget=QtWidgetAccess("ledShutter", "setIcon", "main"),
-    switch_widget=QtWidgetAccess("depShutterOn", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledShutter", "icon", "main"),
+    switch_widget=QtWidgetAccess("depShutterOn", "icon", "main"),
     param_widgets=QtWidgetCollection(
         address=QtWidgetAccess("depShutterAddr", "text"),
     ),
@@ -93,8 +93,8 @@ DEP_SHUTTER = DeviceAttrs(
 STAGE = DeviceAttrs(
     cls_name="StepperStage",
     log_ref="Stage",
-    led_widget=QtWidgetAccess("ledStage", "setIcon", "main"),
-    switch_widget=QtWidgetAccess("stageOn", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledStage", "icon", "main"),
+    switch_widget=QtWidgetAccess("stageOn", "icon", "main"),
     param_widgets=QtWidgetCollection(address=QtWidgetAccess("arduinoAddr", "text")),
 )
 
@@ -102,7 +102,7 @@ COUNTER = DeviceAttrs(
     cls_name="Counter",
     cls_xtra_args=["app.devices.SCANNERS.ai_task"],
     log_ref="Counter",
-    led_widget=QtWidgetAccess("ledCounter", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledCounter", "icon", "main"),
     param_widgets=QtWidgetCollection(
         pxl_clk=QtWidgetAccess("counterPixelClockAddress", "text"),
         pxl_clk_output=QtWidgetAccess("pixelClockCounterIntOutputAddress", "text"),
@@ -120,7 +120,7 @@ COUNTER = DeviceAttrs(
 UM232H = DeviceAttrs(
     cls_name="UM232H",
     log_ref="UM232H",
-    led_widget=QtWidgetAccess("ledUm232h", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledUm232h", "icon", "main"),
     param_widgets=QtWidgetCollection(
         vend_id=QtWidgetAccess("um232VendID", "value"),
         prod_id=QtWidgetAccess("um232ProdID", "value"),
@@ -134,7 +134,7 @@ UM232H = DeviceAttrs(
 TDC = DeviceAttrs(
     cls_name="SimpleDO",
     log_ref="TDC",
-    led_widget=QtWidgetAccess("ledTdc", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledTdc", "icon", "main"),
     param_widgets=QtWidgetCollection(
         address=QtWidgetAccess("TDCaddress", "text"),
         data_vrsn=QtWidgetAccess("TDCdataVersion", "text"),
@@ -149,7 +149,7 @@ CAMERA = DeviceAttrs(
     cls_name="Camera",
     cls_xtra_args=["app.loop", "app.gui.camera"],
     log_ref="Camera",
-    led_widget=QtWidgetAccess("ledCam", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledCam", "icon", "main"),
     param_widgets=QtWidgetCollection(
         model=QtWidgetAccess("uc480PlaceHolder", "value"),
     ),
@@ -158,7 +158,7 @@ CAMERA = DeviceAttrs(
 SCANNERS = DeviceAttrs(
     cls_name="Scanners",
     log_ref="Scanners",
-    led_widget=QtWidgetAccess("ledScn", "setIcon", "main"),
+    led_widget=QtWidgetAccess("ledScn", "icon", "main"),
     param_widgets=QtWidgetCollection(
         ao_x_init_vltg=QtWidgetAccess("xAoV", "value", "main"),
         ao_y_init_vltg=QtWidgetAccess("yAoV", "value", "main"),
@@ -187,7 +187,7 @@ SCANNERS = DeviceAttrs(
 # PXL_CLK = DeviceAttrs(
 #    cls_name="PixelClock",
 #    log_ref="Pixel Clock",
-#    led_widget=QtWidgetAccess("ledPxlClk", "setIcon", "main"),
+#    led_widget=QtWidgetAccess("ledPxlClk", "icon", "main"),
 #    param_widgets=QtWidgetCollection(
 #        low_ticks=QtWidgetAccess("pixelClockLowTicks", "value"),
 #        high_ticks=QtWidgetAccess("pixelClockHighTicks", "value"),
@@ -198,17 +198,49 @@ SCANNERS = DeviceAttrs(
 # )
 
 # ----------------------------------------------
-# GUI presets
+# Measurements
 # ----------------------------------------------
 
+SOL_ANG_SCN_WDGT_COLLCTN = QtWidgetCollection(
+    line_length=QtWidgetAccess("lineLen", "value", "main"),
+    ao_smplng_freq=QtWidgetAccess("aoSampFreq", "value", "main"),
+    angle=QtWidgetAccess("angle", "value", "main"),
+    lin_frac=QtWidgetAccess("solLinFrac", "value", "main"),
+    line_shift=QtWidgetAccess("lineShift", "value", "main"),
+    speed=QtWidgetAccess("solAngScanSpeed", "value", "main"),
+    min_lines=QtWidgetAccess("minNumLines", "value", "main"),
+    max_scn_freq=QtWidgetAccess("maxScanFreq", "value", "main"),
+)
+
+SOL_MEAS_WDGT_COLLCTN = QtWidgetCollection(
+    max_file_size=QtWidgetAccess("solScanMaxFileSize", "value", "main"),
+    cal_duration=QtWidgetAccess("solScanCalDur", "value", "main"),
+    cal_save_intrvl=QtWidgetAccess("solScanCalSaveIntrvl", "value", "main"),
+    duration=QtWidgetAccess("solScanDuration", "value", "main"),
+    start_time=QtWidgetAccess("solScanStartTime", "time", "main"),
+    end_time=QtWidgetAccess("solScanEndTime", "time", "main"),
+    file_no=QtWidgetAccess("solScanFileNo", "value", "main"),
+    total_files=QtWidgetAccess("solScanTotalFiles", "value", "main"),
+    file_template=QtWidgetAccess("solScanFileTemplate", "text", "main"),
+)
+
 IMG_SCN_WDGT_COLLCTN = QtWidgetCollection(
-    type=QtWidgetAccess("imgScanType", "setCurrentText", "main"),
-    dim1=QtWidgetAccess("imgScanDim1", "setValue", "main"),
-    dim2=QtWidgetAccess("imgScanDim2", "setValue", "main"),
-    n_lines=QtWidgetAccess("imgScanNumLines", "setValue", "main"),
-    pnts_per_line=QtWidgetAccess("imgScanPPLine", "setValue", "main"),
-    line_freq=QtWidgetAccess("imgScanLineFreq", "setValue", "main"),
-    lin_frac=QtWidgetAccess("imgScanLinFrac", "setValue", "main"),
-    n_planes=QtWidgetAccess("imgScanNumPlanes", "setValue", "main"),
-    z_step=QtWidgetAccess("imgScanZstep", "setValue", "main"),
+    exc_mode=QtWidgetAccess("imgScanModeExc", "checked", "main"),
+    dep_mode=QtWidgetAccess("imgScanModeDep", "checked", "main"),
+    sted_mode=QtWidgetAccess("imgScanModeSted", "checked", "main"),
+    type=QtWidgetAccess("imgScanType", "currentText", "main"),
+    dim1=QtWidgetAccess("imgScanDim1", "value", "main"),
+    dim2=QtWidgetAccess("imgScanDim2", "value", "main"),
+    n_lines=QtWidgetAccess("imgScanNumLines", "value", "main"),
+    pnts_per_line=QtWidgetAccess("imgScanPPLine", "value", "main"),
+    line_freq=QtWidgetAccess("imgScanLineFreq", "value", "main"),
+    lin_frac=QtWidgetAccess("imgScanLinFrac", "value", "main"),
+    n_planes=QtWidgetAccess("imgScanNumPlanes", "value", "main"),
+    z_step=QtWidgetAccess("imgScanZstep", "value", "main"),
+)
+
+IMG_MEAS_WDGT_COLLCTN = QtWidgetCollection(
+    file_template=QtWidgetAccess("imgScanFileTemplate", "text", "main"),
+    curr_line=QtWidgetAccess("currLine", "value", "main"),
+    curr_plane=QtWidgetAccess("currPlane", "value", "main"),
 )
