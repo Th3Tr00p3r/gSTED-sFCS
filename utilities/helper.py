@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass, field
-from typing import List, NoReturn, Union
+from typing import Dict, List, NoReturn, Union
 
 import pandas as pd
 import PyQt5.QtWidgets as QtWidgets
@@ -25,21 +25,19 @@ class QtWidgetAccess:
     def hold_obj(self, parent_gui) -> QtWidgetAccess:
         """Save the actual widget object as an attribute"""
 
-        self.widget = getattr(parent_gui, self.obj_name)
+        self.obj = getattr(parent_gui, self.obj_name)
         return self
 
-    def access(self, parent_gui=None, arg=None) -> Union[int, float, str, None]:
-        """Get/set widget property"""
+    def get(self, parent_gui=None) -> Union[int, float, str]:
+        """Get widget value"""
 
-        if parent_gui is None:
-            widget = self.widget
-        else:
-            widget = getattr(parent_gui, self.obj_name)
+        wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
+        return getattr(wdgt, self.getter)()
 
-        if arg is None:
-            return getattr(widget, self.getter)()
-        else:
-            getattr(widget, self.setter)(arg)
+    def set(self, arg, parent_gui=None) -> NoReturn:
+        """Set widget property"""
+        wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
+        getattr(wdgt, self.setter)(arg)
 
 
 class QtWidgetCollection:
@@ -55,16 +53,43 @@ class QtWidgetCollection:
         for attr_name, val in new_val_dict.items():
             wdgt = getattr(self, attr_name)
             parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-            wdgt.access(parent_gui, val)
+            wdgt.set(val, parent_gui)
 
-    def read_dict_from_gui(self, app: app_module.App) -> NoReturn:
-        """Read values from widget collection and return a dict"""
+    def read_dict_from_gui(
+        self, app: app_module.App
+    ) -> Dict[Union[int, float, str, QtWidgetAccess]]:
+        """
+        Read values from QtWidgetAccess objects, which are the attributes of self and return a dict.
+        If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
+        QtWidgetAccess object itself instead of the value (for getting/setting live values)
+        """
 
         wdgt_val_dict = {}
         for attr_name, wdgt in vars(self).items():
             parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-            wdgt_val_dict[attr_name] = wdgt.access(parent_gui)
+            if hasattr(wdgt, "obj"):
+                wdgt_val_dict[attr_name] = wdgt
+            else:
+                wdgt_val_dict[attr_name] = wdgt.get(parent_gui)
         return wdgt_val_dict
+
+    def hold_objects(
+        self, app: app_module.App, wdgt_name_list: List[str] = None, hold_all=False
+    ) -> QtWidgetCollection:
+        """Stores the actual GUI object in the listed, or all, widgets."""
+
+        if wdgt_name_list is not None:
+            for wdgt_name in wdgt_name_list:
+                wdgt = getattr(self, wdgt_name)
+                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                wdgt.hold_obj(parent_gui)
+
+        elif hold_all:
+            for wdgt in vars(self).values():
+                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                wdgt.hold_obj(parent_gui)
+
+        return self
 
 
 @dataclass
@@ -132,3 +157,12 @@ def csv_to_gui(file_path, gui_parent):
                 child.setCurrentIndex(int(obj_val))
             elif hasattr(child, "text"):  # QLineEdit
                 child.setText(obj_val)
+
+
+def deep_getattr(object, deep_name, default=None):
+    """Get deep attribute of object."""
+
+    deep_obj = object
+    for attr in deep_name.split("."):
+        deep_obj = getattr(deep_obj, attr)
+    return deep_obj

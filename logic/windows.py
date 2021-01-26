@@ -95,10 +95,10 @@ class MainWin:
 
             if dvc.state:  # if managed to turn ON
                 if DVC_CONSTS.switch_widget is not None:
-                    DVC_CONSTS.switch_widget.access(arg=QIcon(icon.SWITCH_ON))
+                    DVC_CONSTS.switch_widget.set(QIcon(icon.SWITCH_ON))
 
                 on_icon = QIcon(DVC_CONSTS.led_icon_path)
-                DVC_CONSTS.led_widget.access(arg=on_icon)
+                DVC_CONSTS.led_widget.set(on_icon)
 
                 logging.debug(f"{DVC_CONSTS.log_ref} toggled ON")
 
@@ -110,9 +110,9 @@ class MainWin:
 
             if not dvc.state:  # if managed to turn OFF
                 if DVC_CONSTS.switch_widget is not None:
-                    DVC_CONSTS.switch_widget.access(arg=QIcon(icon.SWITCH_OFF))
+                    DVC_CONSTS.switch_widget.set(QIcon(icon.SWITCH_OFF))
 
-                DVC_CONSTS.led_widget.access(arg=QIcon(icon.LED_OFF))
+                DVC_CONSTS.led_widget.set(QIcon(icon.LED_OFF))
 
                 logging.debug(f"{DVC_CONSTS.log_ref} toggled OFF")
 
@@ -242,34 +242,45 @@ class MainWin:
             if type == "FCS":
                 self._app.meas = meas.FCSMeasurement(
                     self._app,
-                    duration=self._gui.measFCSDuration.value(),
-                    prog_bar=helper.QtWidgetAccess(
-                        "FCSprogressBar", "value", "main"
-                    ).hold_obj(self._gui),
+                    **consts.FCS_MEAS_WDGT_COLL.hold_objects(
+                        self._app, ["prog_bar_wdgt", "g0_wdgt", "decay_time_wdgt"]
+                    ).read_dict_from_gui(self._app),
                 )
+
                 self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
 
             elif type == "SFCSSolution":
                 self._app.meas = meas.SFCSSolutionMeasurement(
                     self._app,
-                    duration=self._gui.solScanCalIntrvl.value(),  # TODO: is this clear enough? using file duration here instead of total
-                    prog_bar=helper.QtWidgetAccess(
-                        "solScanProgressBar", "value", "main"
-                    ).hold_obj(self._gui),
+                    **consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
+                    **consts.SOL_MEAS_WDGT_COLL.hold_objects(
+                        self._app,
+                        [
+                            "prog_bar_wdgt",
+                            "start_time_wdgt",
+                            "end_time_wdgt",
+                            "cal_save_intrvl_wdgt",
+                            "total_files_wdgt",
+                            "file_num_wdgt",
+                        ],
+                    ).read_dict_from_gui(self._app),
                 )
+
                 self._gui.startSolScan.setText("Stop \nScan")
                 # TODO: this can be set in one line as for stage in gui.py
                 self._gui.solScanMaxFileSize.setEnabled(False)
-                self._gui.solScanCalTime.setEnabled(False)
-                self._gui.solScanDuration.setEnabled(False)
+                self._gui.solScanCalDur.setEnabled(False)
+                self._gui.solScanTotalDur.setEnabled(False)
                 self._gui.solScanFileTemplate.setEnabled(False)
 
             elif type == "SFCSImage":
                 self._app.meas = meas.SFCSImageMeasurement(
                     self._app,
-                    prog_bar=helper.QtWidgetAccess(
-                        "imgScanProgressBar", "value", "main"
-                    ).hold_obj(self._gui),
+                    **consts.IMG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
+                    **consts.IMG_MEAS_WDGT_COLL.hold_objects(
+                        self._app,
+                        ["prog_bar_wdgt", "curr_line_wdgt", "curr_plane_wdgt"],
+                    ).read_dict_from_gui(self._app),
                 )
                 self._gui.startImgScan.setText("Stop \nScan")
 
@@ -283,8 +294,8 @@ class MainWin:
                 self._gui.startSolScan.setText("Start \nScan")
                 # TODO: this can be set in one line as for stage in gui.py
                 self._gui.solScanMaxFileSize.setEnabled(True)
-                self._gui.solScanCalTime.setEnabled(True)
-                self._gui.solScanDuration.setEnabled(True)
+                self._gui.solScanCalDur.setEnabled(True)
+                self._gui.solScanTotalDur.setEnabled(True)
                 self._gui.solScanFileTemplate.setEnabled(True)
 
             elif type == "SFCSImage":
@@ -367,7 +378,7 @@ class MainWin:
         elif curr_text == "GB - YZ single bead":
             wdgt_vals = [""]
 
-        consts.IMG_SCN_WDGT_COLLCTN.write_dict_to_gui(
+        consts.IMG_SCN_WDGT_COLL.write_dict_to_gui(
             self._app, dict(zip(wdgt_keys, wdgt_vals))
         )
 
