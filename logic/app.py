@@ -147,22 +147,11 @@ class App:
 
         def lights_out(gui):
             """turn OFF all device switch/LED icons"""
-            # TODO: create a widget collection in constants and use it (less lines here)
 
-            gui.excOnButton.setIcon(QIcon(icon.SWITCH_OFF))
-            gui.ledExc.setIcon(QIcon(icon.LED_OFF))
-            gui.depEmissionOn.setIcon(QIcon(icon.SWITCH_OFF))
-            gui.ledDep.setIcon(QIcon(icon.LED_OFF))
-            gui.depShutterOn.setIcon(QIcon(icon.SWITCH_OFF))
-            gui.ledShutter.setIcon(QIcon(icon.LED_OFF))
-            gui.stageOn.setIcon(QIcon(icon.SWITCH_OFF))
-            gui.ledStage.setIcon(QIcon(icon.LED_OFF))
+            led_list = [QIcon(icon.LED_OFF)] * 7 + [QIcon(icon.LED_GREEN)] * 2
+            consts.LED_COLL.write_to_gui(self, led_list)
+            consts.SWITCH_COLL.write_to_gui(self, QIcon(icon.SWITCH_OFF))
             gui.stageButtonsGroup.setEnabled(False)
-            gui.ledUm232h.setIcon(QIcon(icon.LED_GREEN))  # either error or ON
-            gui.ledTdc.setIcon(QIcon(icon.LED_OFF))
-            gui.ledCounter.setIcon(QIcon(icon.LED_GREEN))  # either error or ON
-            gui.ledCam.setIcon(QIcon(icon.LED_OFF))
-            gui.ledScn.setIcon(QIcon(icon.LED_OFF))
 
         if restart:  # restarting
 

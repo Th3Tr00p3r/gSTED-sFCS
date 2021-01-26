@@ -171,7 +171,7 @@ class MainWin:
         """Doc."""
 
         for axis, is_chosen, org_axis_vltg in zip(
-            which_axes.keys(), which_axes.values(), consts.ORIGIN
+            which_axes.keys(), which_axes.values(), self._app.devices.SCANNERS.origin
         ):
             if is_chosen:
                 getattr(self._gui, f"{axis}AoV").setValue(org_axis_vltg)
@@ -351,7 +351,6 @@ class MainWin:
         """Doc."""
 
         # TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
-        wdgt_keys = vars(consts.IMG_SCN_WDGT_COLL).keys()
         if curr_text == "Locate Plane - YZ Coarse":
             wdgt_vals = [1, 0, 0, "YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10]
         elif curr_text == "MFC - XY compartment":
@@ -365,9 +364,7 @@ class MainWin:
         elif curr_text == "GB - YZ single bead":
             wdgt_vals = [""]
 
-        consts.IMG_SCN_WDGT_COLL.write_dict_to_gui(
-            self._app, dict(zip(wdgt_keys, wdgt_vals))
-        )
+        consts.IMG_SCN_WDGT_COLL.write_to_gui(self._app, wdgt_vals)
 
         logging.info(f"Image scan preset configuration chosen: '{curr_text}'")
 

@@ -9,7 +9,25 @@ from utilities.helper import DeviceAttrs, QtWidgetAccess, QtWidgetCollection
 # ------------------------------
 
 TIMEOUT = 0.010  # seconds (10 ms)
-ORIGIN = (0.0, 0.0, 5.0)  # TODO: move to settings (scanners)
+
+LED_COLL = QtWidgetCollection(
+    exc=QtWidgetAccess("ledExc", "icon", "main"),
+    dep=QtWidgetAccess("ledDep", "icon", "main"),
+    shutter=QtWidgetAccess("ledShutter", "icon", "main"),
+    stage=QtWidgetAccess("ledStage", "icon", "main"),
+    tdc=QtWidgetAccess("ledTdc", "icon", "main"),
+    cam=QtWidgetAccess("ledCam", "icon", "main"),
+    scnrs=QtWidgetAccess("ledScn", "icon", "main"),
+    cntr=QtWidgetAccess("ledCounter", "icon", "main"),
+    um232=QtWidgetAccess("ledUm232h", "icon", "main"),
+)
+
+SWITCH_COLL = QtWidgetCollection(
+    exc=QtWidgetAccess("excOnButton", "icon", "main"),
+    dep=QtWidgetAccess("depEmissionOn", "icon", "main"),
+    shutter=QtWidgetAccess("depShutterOn", "icon", "main"),
+    stage=QtWidgetAccess("stageOn", "icon", "main"),
+)
 
 # ------------------------------
 # Paths
