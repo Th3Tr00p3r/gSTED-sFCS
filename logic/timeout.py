@@ -175,7 +175,7 @@ class Timeout:
                         )
                     else:
                         progress = 0
-                meas.prog_bar.access(arg=progress)
+                meas.prog_bar_wdgt.set(progress)
 
         while self.not_finished:
             if self.running:
