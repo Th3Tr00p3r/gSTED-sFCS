@@ -82,19 +82,6 @@ class App:
         instantiating a driver object for each device.
         """
 
-        def extra_args(app: App, x_args_list: list) -> list:
-            """
-            Add additional parameters to device using a dictionary
-            predefined in constants.py.
-            """
-
-            args = []
-            if x_args_list:
-                for deep_attr in x_args_list:
-                    args.append(helper.deep_getattr(app, deep_attr))
-
-            return args
-
         self.devices = SimpleNamespace()
         for nick in consts.DVC_NICKS_TUPLE:
             DVC_CONSTS = getattr(consts, nick)
@@ -113,8 +100,11 @@ class App:
                 )
             else:
                 switch_widget = None
-            x_args = extra_args(self, DVC_CONSTS.cls_xtra_args)
-            if x_args:
+            if DVC_CONSTS.cls_xtra_args is not None:
+                x_args = [
+                    helper.deep_getattr(self, deep_attr)
+                    for deep_attr in DVC_CONSTS.cls_xtra_args
+                ]
                 setattr(
                     self.devices,
                     nick,
