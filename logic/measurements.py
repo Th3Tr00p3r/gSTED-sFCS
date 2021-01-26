@@ -101,6 +101,7 @@ class SFCSSolutionMeasurement(Measurement):
 
     async def run(self):
         """Doc."""
+        # TODO: this needs refactoring - add more functions and clean up code
 
         def get_current_and_end_times(
             duration_in_seconds: Union[int, float]

@@ -267,7 +267,7 @@ class MainWin:
                 )
 
                 self._gui.startSolScan.setText("Stop \nScan")
-                # TODO: this can be set in one line as for stage in gui.py
+                # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(False)
                 self._gui.solScanCalDur.setEnabled(False)
                 self._gui.solScanTotalDur.setEnabled(False)
@@ -292,7 +292,7 @@ class MainWin:
 
             elif type == "SFCSSolution":
                 self._gui.startSolScan.setText("Start \nScan")
-                # TODO: this can be set in one line as for stage in gui.py
+                # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanCalDur.setEnabled(True)
                 self._gui.solScanTotalDur.setEnabled(True)
@@ -351,20 +351,7 @@ class MainWin:
         """Doc."""
 
         # TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
-        wdgt_keys = [
-            "exc_mode",
-            "dep_mode",
-            "sted_mode",
-            "type",
-            "dim1",
-            "dim2",
-            "n_lines",
-            "pnts_per_line",
-            "line_freq",
-            "lin_frac",
-            "n_planes",
-            "z_step",
-        ]
+        wdgt_keys = vars(consts.IMG_SCN_WDGT_COLL).keys()
         if curr_text == "Locate Plane - YZ Coarse":
             wdgt_vals = [1, 0, 0, "YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10]
         elif curr_text == "MFC - XY compartment":

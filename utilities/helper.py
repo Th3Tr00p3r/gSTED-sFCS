@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, NoReturn, Union
 
 import pandas as pd
@@ -99,7 +99,7 @@ class DeviceAttrs:
     log_ref: str
     led_widget: QtWidgetAccess
     param_widgets: QtWidgetCollection
-    cls_xtra_args: List[str] = field(default_factory=list)
+    cls_xtra_args: List[str] = None
     led_icon_path: str = icon_path.LED_GREEN
     switch_widget: QtWidgetAccess = None
 
@@ -160,7 +160,10 @@ def csv_to_gui(file_path, gui_parent):
 
 
 def deep_getattr(object, deep_name, default=None):
-    """Get deep attribute of object."""
+    """
+    Get deep attribute of object.
+    Example usage: a = deep_getattr(obj, "sobj.ssobj.a")
+    """
 
     deep_obj = object
     for attr in deep_name.split("."):
