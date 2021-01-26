@@ -14,6 +14,7 @@ import gui.gui as gui_module
 import gui.icons.icon_paths as icon
 import logic.devices as devices
 import utilities.constants as consts
+import utilities.helper as helper
 from logic.measurements import Measurement
 from logic.timeout import Timeout
 from utilities.dialog import Question
@@ -81,17 +82,16 @@ class App:
         instantiating a driver object for each device.
         """
 
-        def extra_args(app, x_args: list) -> list:
+        def extra_args(app: App, x_args_list: list) -> list:
             """
             Add additional parameters to device using a dictionary
             predefined in constants.py.
             """
-            # TODO: this function uses eval(), there should be a better way to refactor this code
 
             args = []
-            if x_args:
-                for var_str in x_args:
-                    args.append(eval(var_str))
+            if x_args_list:
+                for deep_attr in x_args_list:
+                    args.append(helper.deep_getattr(app, deep_attr))
 
             return args
 

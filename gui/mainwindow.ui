@@ -4317,7 +4317,7 @@ Duration (s)</string>
                         <number>0</number>
                        </property>
                        <item>
-                        <widget class="QDoubleSpinBox" name="solScanDuration">
+                        <widget class="QDoubleSpinBox" name="solScanTotalDur">
                          <property name="minimumSize">
                           <size>
                            <width>60</width>
@@ -4348,7 +4348,7 @@ Duration (s)</string>
                           <double>1.000000000000000</double>
                          </property>
                          <property name="value">
-                          <double>10.000000000000000</double>
+                          <double>0.100000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -5335,7 +5335,7 @@ Duration (s)</string>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QSpinBox" name="measFCSDuration">
+                  <widget class="QSpinBox" name="measFCSDur">
                    <property name="minimumSize">
                     <size>
                      <width>30</width>
@@ -5498,15 +5498,9 @@ Measurement</string>
                       </spacer>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="lineEdit">
+                      <widget class="QDoubleSpinBox" name="fcsG0">
                        <property name="enabled">
                         <bool>false</bool>
-                       </property>
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
                        </property>
                        <property name="minimumSize">
                         <size>
@@ -5525,8 +5519,11 @@ Measurement</string>
                          <pointsize>12</pointsize>
                         </font>
                        </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
+                       </property>
+                       <property name="maximum">
+                        <double>999999999.000000000000000</double>
                        </property>
                       </widget>
                      </item>
@@ -5594,15 +5591,9 @@ Measurement</string>
                       </spacer>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="lineEdit_2">
+                      <widget class="QDoubleSpinBox" name="fcsDecayTime">
                        <property name="enabled">
                         <bool>false</bool>
-                       </property>
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
                        </property>
                        <property name="minimumSize">
                         <size>
@@ -5621,8 +5612,11 @@ Measurement</string>
                          <pointsize>12</pointsize>
                         </font>
                        </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
+                       </property>
+                       <property name="maximum">
+                        <double>999999999.000000000000000</double>
                        </property>
                       </widget>
                      </item>
@@ -5672,7 +5666,7 @@ Measurement</string>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QProgressBar" name="FCSprogressBar">
+                  <widget class="QProgressBar" name="fcsProgressBar">
                    <property name="enabled">
                     <bool>true</bool>
                    </property>
@@ -8482,10 +8476,8 @@ Settings</string>
   <tabstop>solScanStartTime</tabstop>
   <tabstop>solScanEndTime</tabstop>
   <tabstop>solScanFileTemplate</tabstop>
-  <tabstop>measFCSDuration</tabstop>
+  <tabstop>measFCSDur</tabstop>
   <tabstop>startFcsMeasurementButton</tabstop>
-  <tabstop>lineEdit</tabstop>
-  <tabstop>lineEdit_2</tabstop>
   <tabstop>FCSgraphicsView</tabstop>
  </tabstops>
  <resources>

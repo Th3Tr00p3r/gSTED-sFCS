@@ -13,24 +13,18 @@ import numpy as np
 class Measurement:
     """Base class for measurements"""
 
-    def __init__(
-        self,
-        app,
-        type,
-        duration=None,
-    ):
+    def __init__(self, app, type, **kwargs):
 
         self._app = app
         self.type = type
+        [setattr(self, key, val) for key, val in kwargs.items()]
         self.data_dvc = app.devices.UM232H
-        self.duration = duration
-        self.start_time = None
         self.is_running = False
 
     async def start(self):
         """Doc."""
 
-        self._app.devices.UM232H.purge()
+        self.data_dvc.purge()
         self._app.gui.main.imp.dvc_toggle("TDC")
         self.is_running = True
 
@@ -43,9 +37,7 @@ class Measurement:
 
         self.is_running = False
         self._app.gui.main.imp.dvc_toggle("TDC")
-
-        if hasattr(self, "prog_bar"):
-            self.prog_bar.access(arg=0)
+        self.prog_bar_wdgt.set(0)
 
         # TODO: need to distinguish stopped from finished - a finished flag?
         logging.info(f"{self.type} measurement stopped")
@@ -81,13 +73,8 @@ class Measurement:
 class SFCSImageMeasurement(Measurement):
     """Doc."""
 
-    def __init__(self, app, prog_bar):
-        super().__init__(
-            app=app,
-            type="SFCSImage",
-        )
-        self.prog_bar = prog_bar
-        self.curr_plane_gui = app.gui.main.currPlane
+    def __init__(self, app, **kwargs):
+        super().__init__(app=app, type="SFCSImage", **kwargs)
 
         self.save_path = app.gui.settings.imgDataPath.text()
         self.file_template = app.gui.main.imgScanFileTemplate.text()
@@ -104,26 +91,10 @@ class SFCSImageMeasurement(Measurement):
 class SFCSSolutionMeasurement(Measurement):
     """Doc."""
 
-    def __init__(self, app, duration, prog_bar):
-        super().__init__(
-            app=app,
-            type="SFCSSolution",
-            duration=duration,
-        )
+    def __init__(self, app, **kwargs):
+        super().__init__(app=app, type="SFCSSolution", **kwargs)
         self.duration_multiplier = 60
-        self.prog_bar = prog_bar
         self.laser_config = self.get_laser_config()
-        self.start_time_gui = app.gui.main.solScanStartTime
-        self.end_time_gui = app.gui.main.solScanEndTime
-        self.total_duration = app.gui.main.solScanDuration.value()
-
-        self.max_file_size = app.gui.main.solScanMaxFileSize.value()
-        self.cal_time = app.gui.main.solScanCalTime.value()
-
-        self.total_files_gui = app.gui.main.solScanTotalFiles
-        self.file_num_gui = app.gui.main.solScanFileNo
-        self.save_path = app.gui.settings.solDataPath.text()
-        self.file_template = app.gui.main.solScanFileTemplate.text()
 
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{file_no}"
@@ -160,12 +131,12 @@ class SFCSSolutionMeasurement(Measurement):
         start_time, end_time = get_current_and_end_times(
             self.total_duration * self.duration_multiplier
         )
-        self.start_time_gui.setTime(start_time)
-        self.end_time_gui.setTime(end_time)
+        self.start_time_wdgt.set(start_time)
+        self.end_time_wdgt.set(end_time)
 
         # calibrating save-intervals
         saved_dur_mul = self.duration_multiplier
-        self.duration = self._app.gui.main.solScanCalTime.value()
+        self.duration = self.cal_duration
         self.duration_multiplier = 1  # in seconds
         self.start_time = time.perf_counter()
         self.time_passed = 0
@@ -179,13 +150,13 @@ class SFCSSolutionMeasurement(Measurement):
         if self.save_intrvl > self.total_duration:
             self.save_intrvl = self.total_duration
 
-        self._app.gui.main.solScanCalIntrvl.setValue(self.save_intrvl)
+        self.cal_save_intrvl_wdgt.set(self.save_intrvl)
         self.duration = self.save_intrvl
         self.duration_multiplier = saved_dur_mul
 
         # determining number of files
         num_files = int(math.ceil(self.total_duration / self.save_intrvl))
-        self.total_files_gui.setValue(num_files)
+        self.total_files_wdgt.set(num_files)
 
         self.total_time_passed = 0
         logging.info(f"Running {self.type} measurement")
@@ -193,7 +164,7 @@ class SFCSSolutionMeasurement(Measurement):
 
             if self.is_running:
 
-                self.file_num_gui.setValue(file_num)
+                self.file_num_wdgt.set(file_num)
 
                 self.start_time = time.perf_counter()
                 self.time_passed = 0
@@ -220,9 +191,8 @@ class SFCSSolutionMeasurement(Measurement):
 class FCSMeasurement(Measurement):
     """Repeated static FCS measurement, intended fo system calibration"""
 
-    def __init__(self, app, duration, prog_bar):
-        super().__init__(app=app, type="FCS", duration=duration)
-        self.prog_bar = prog_bar
+    def __init__(self, app, **kwargs):
+        super().__init__(app=app, type="FCS", **kwargs)
         self.duration_multiplier = 1
 
     async def run(self):

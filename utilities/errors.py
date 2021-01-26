@@ -104,7 +104,7 @@ def resolve_dvc_exc(exc: Exception, func_name: str, cmnd: str, dvc) -> int:
         if dvc.error_dict is None:  # keep only first error
             dvc.error_dict = build_err_dict(exc)
 
-        dvc.led_widget.access(arg=QIcon(icon.LED_RED))
+        dvc.led_widget.set(QIcon(icon.LED_RED))
         logging.error(log_str, exc_info=False)
 
     else:  # "WARNING"

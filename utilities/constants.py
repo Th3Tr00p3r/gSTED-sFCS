@@ -100,7 +100,7 @@ STAGE = DeviceAttrs(
 
 COUNTER = DeviceAttrs(
     cls_name="Counter",
-    cls_xtra_args=["app.devices.SCANNERS.ai_task"],
+    cls_xtra_args=["devices.SCANNERS.ai_task"],
     log_ref="Counter",
     led_widget=QtWidgetAccess("ledCounter", "icon", "main"),
     param_widgets=QtWidgetCollection(
@@ -147,7 +147,7 @@ TDC = DeviceAttrs(
 
 CAMERA = DeviceAttrs(
     cls_name="Camera",
-    cls_xtra_args=["app.loop", "app.gui.camera"],
+    cls_xtra_args=["loop", "gui.camera"],
     log_ref="Camera",
     led_widget=QtWidgetAccess("ledCam", "icon", "main"),
     param_widgets=QtWidgetCollection(
@@ -201,7 +201,14 @@ SCANNERS = DeviceAttrs(
 # Measurements
 # ----------------------------------------------
 
-SOL_ANG_SCN_WDGT_COLLCTN = QtWidgetCollection(
+FCS_MEAS_WDGT_COLL = QtWidgetCollection(
+    duration=QtWidgetAccess("measFCSDur", "value", "main"),
+    g0_wdgt=QtWidgetAccess("fcsG0", "value", "main"),
+    decay_time_wdgt=QtWidgetAccess("fcsDecayTime", "value", "main"),
+    prog_bar_wdgt=QtWidgetAccess("fcsProgressBar", "value", "main"),
+)
+
+SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
     line_length=QtWidgetAccess("lineLen", "value", "main"),
     ao_smplng_freq=QtWidgetAccess("aoSampFreq", "value", "main"),
     angle=QtWidgetAccess("angle", "value", "main"),
@@ -212,19 +219,21 @@ SOL_ANG_SCN_WDGT_COLLCTN = QtWidgetCollection(
     max_scn_freq=QtWidgetAccess("maxScanFreq", "value", "main"),
 )
 
-SOL_MEAS_WDGT_COLLCTN = QtWidgetCollection(
+SOL_MEAS_WDGT_COLL = QtWidgetCollection(
+    file_template=QtWidgetAccess("solScanFileTemplate", "text", "main"),
+    save_path=QtWidgetAccess("solDataPath", "text", "settings"),
     max_file_size=QtWidgetAccess("solScanMaxFileSize", "value", "main"),
     cal_duration=QtWidgetAccess("solScanCalDur", "value", "main"),
-    cal_save_intrvl=QtWidgetAccess("solScanCalSaveIntrvl", "value", "main"),
-    duration=QtWidgetAccess("solScanDuration", "value", "main"),
-    start_time=QtWidgetAccess("solScanStartTime", "time", "main"),
-    end_time=QtWidgetAccess("solScanEndTime", "time", "main"),
-    file_no=QtWidgetAccess("solScanFileNo", "value", "main"),
-    total_files=QtWidgetAccess("solScanTotalFiles", "value", "main"),
-    file_template=QtWidgetAccess("solScanFileTemplate", "text", "main"),
+    total_duration=QtWidgetAccess("solScanTotalDur", "value", "main"),
+    cal_save_intrvl_wdgt=QtWidgetAccess("solScanCalSaveIntrvl", "value", "main"),
+    prog_bar_wdgt=QtWidgetAccess("solScanProgressBar", "value", "main"),
+    start_time_wdgt=QtWidgetAccess("solScanStartTime", "time", "main"),
+    end_time_wdgt=QtWidgetAccess("solScanEndTime", "time", "main"),
+    file_num_wdgt=QtWidgetAccess("solScanFileNo", "value", "main"),
+    total_files_wdgt=QtWidgetAccess("solScanTotalFiles", "value", "main"),
 )
 
-IMG_SCN_WDGT_COLLCTN = QtWidgetCollection(
+IMG_SCN_WDGT_COLL = QtWidgetCollection(
     exc_mode=QtWidgetAccess("imgScanModeExc", "checked", "main"),
     dep_mode=QtWidgetAccess("imgScanModeDep", "checked", "main"),
     sted_mode=QtWidgetAccess("imgScanModeSted", "checked", "main"),
@@ -239,8 +248,9 @@ IMG_SCN_WDGT_COLLCTN = QtWidgetCollection(
     z_step=QtWidgetAccess("imgScanZstep", "value", "main"),
 )
 
-IMG_MEAS_WDGT_COLLCTN = QtWidgetCollection(
+IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     file_template=QtWidgetAccess("imgScanFileTemplate", "text", "main"),
-    curr_line=QtWidgetAccess("currLine", "value", "main"),
-    curr_plane=QtWidgetAccess("currPlane", "value", "main"),
+    prog_bar_wdgt=QtWidgetAccess("imgScanProgressBar", "value", "main"),
+    curr_line_wdgt=QtWidgetAccess("currLine", "value", "main"),
+    curr_plane_wdgt=QtWidgetAccess("currPlane", "value", "main"),
 )
