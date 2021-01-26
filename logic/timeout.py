@@ -85,9 +85,9 @@ class Timeout:
 
         now_timestamp = time.strftime("%H:%M:%S", time.localtime())
         first_line = f"[{now_timestamp}] Application Started"
-        buffer_deque = deque(
-            [first_line], maxlen=5
-        )  # TODO: decide where to control the size
+
+        # TODO: decide where to control the size
+        buffer_deque = deque([first_line], maxlen=5)
 
         while self.not_finished:
             if self.running:
@@ -140,7 +140,7 @@ class Timeout:
                     for axis_vltg, axis_ratio, axis_org in zip(
                         (x_ai, y_ai, z_ai),
                         self._app.devices.SCANNERS.um_V_ratio,
-                        consts.ORIGIN,
+                        self._app.devices.SCANNERS.origin,
                     )
                 )
 

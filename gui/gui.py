@@ -165,7 +165,6 @@ class MainWin(QMainWindow):
     @pyqtSlot()
     def on_actionCamera_Control_triggered(self) -> NoReturn:
         """Instantiate 'CameraWindow' object and show it"""
-        # TODO: add support for 2nd camera
 
         self._loop.create_task(self.imp.open_camwin())
 

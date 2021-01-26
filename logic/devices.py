@@ -69,6 +69,8 @@ class Scanners(drivers.DAQmxInstrumentAIO):
 
     """
 
+    origin = (0.0, 0.0, 5.0)
+
     x_limits = {"min_val": -5.0, "max_val": 5.0}
     y_limits = {"min_val": -5.0, "max_val": 5.0}
     z_limits = {"min_val": 0.0, "max_val": 10.0}

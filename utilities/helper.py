@@ -47,13 +47,24 @@ class QtWidgetCollection:
         for key, val in kwargs.items():
             setattr(self, key, val)
 
-    def write_dict_to_gui(self, app: app_module.App, new_val_dict: dict) -> NoReturn:
-        """Fill widget collection with values from dict"""
+    def write_to_gui(self, app: app_module.App, new_vals) -> NoReturn:
+        """
+        Fill widget collection with values from dict/list, or a single value for all.
+        if new_vals is a list, the values will be inserted in the order of vars(self).keys().
+        """
 
-        for attr_name, val in new_val_dict.items():
-            wdgt = getattr(self, attr_name)
-            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-            wdgt.set(val, parent_gui)
+        if isinstance(new_vals, list):
+            new_vals = dict(zip(vars(self).keys(), new_vals))
+
+        if isinstance(new_vals, dict):
+            for attr_name, val in new_vals.items():
+                wdgt = getattr(self, attr_name)
+                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                wdgt.set(val, parent_gui)
+        else:
+            for wdgt in vars(self).values():
+                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                wdgt.set(new_vals, parent_gui)
 
     def read_dict_from_gui(
         self, app: app_module.App
