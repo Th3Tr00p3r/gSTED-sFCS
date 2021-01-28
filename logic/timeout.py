@@ -199,7 +199,7 @@ class Timeout:
             if self.running:
                 if self._app.devices.COUNTER.error_dict is None:
                     avg_counts = self._app.devices.COUNTER.average_counts()
-                    self._app.gui.main.countsSpinner.setValue(avg_counts)
+                    self._app.gui.main.counts.setValue(avg_counts)
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
@@ -219,12 +219,12 @@ class Timeout:
         def update_power(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
 
-            main_gui.depActualPowerSpinner.setValue(dep_dvc.get_prop("pow"))
+            main_gui.depActualPow.setValue(dep_dvc.get_prop("pow"))
 
         def update_current(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
 
-            main_gui.depActualCurrSpinner.setValue(dep_dvc.get_prop("curr"))
+            main_gui.depActualCurr.setValue(dep_dvc.get_prop("curr"))
 
         def update_props(dep_err_dict, dep_dvc, main_gui) -> NoReturn:
             """Doc."""
