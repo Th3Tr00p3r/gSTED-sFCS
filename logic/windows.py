@@ -121,8 +121,8 @@ class MainWin:
 
                 # set curr/pow values to zero when depletion is turned OFF
                 if nick == "DEP_LASER":
-                    self._gui.depActualCurrSpinner.setValue(0)
-                    self._gui.depActualPowerSpinner.setValue(0)
+                    self._gui.depActualCurr.setValue(0)
+                    self._gui.depActualPow.setValue(0)
 
     def led_clicked(self, led_obj_name):
         """Doc."""
@@ -145,11 +145,11 @@ class MainWin:
     def dep_sett_apply(self):
         """Doc."""
 
-        if self._gui.currModeRadio.isChecked():  # current mode
-            val = self._gui.depCurrSpinner.value()
+        if self._gui.currMode.isChecked():  # current mode
+            val = self._gui.depCurr.value()
             self._app.devices.DEP_LASER.set_current(val)
         else:  # power mode
-            val = self._gui.depPowSpinner.value()
+            val = self._gui.depPow.value()
             self._app.devices.DEP_LASER.set_power(val)
 
     @err_chck({"SCANNERS"})
@@ -185,9 +185,9 @@ class MainWin:
     def displace_scanner_axis(self, sign: int) -> NoReturn:
         """Doc."""
 
-        axis = self._gui.axisCombox.currentText()
+        axis = self._gui.axis.currentText()
         current_vltg = getattr(self._gui, f"{axis}AoV").value()
-        um_disp = sign * self._gui.axisMoveSpinner.value()
+        um_disp = sign * self._gui.axisMove.value()
 
         um_V_RATIO = dict(zip(("x", "y", "z"), self._app.devices.SCANNERS.um_V_ratio))[
             axis
@@ -350,6 +350,7 @@ class MainWin:
     def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
         """Doc."""
 
+        # TODO: use this function at app •init to have the default value loaded
         # TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
         if curr_text == "Locate Plane - YZ Coarse":
             wdgt_vals = [1, 0, 0, "YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10]
@@ -380,15 +381,19 @@ class SettWin:
 
     def clean_up(self):
         """Doc."""
-        # TODO: add check to see if changes were made, if not, don't ask user -
-        # can be done by 'saving' (only preparing the save list) the current form and 'loading' the last loaded file,
-        # comparing them and only asking if there are differences
 
-        pressed = Question(
-            "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
-        ).display()
-        if pressed == QtWidgets.QMessageBox.No:
-            self.load(self._gui.settingsFileName.text())
+        curr_file_path = self._gui.settingsFileName.text()
+
+        current_state = helper.wdgt_children_as_row_list(self._gui)
+        last_loaded_state = helper.csv_rows_as_list(curr_file_path)
+
+        if current_state != last_loaded_state:
+            pressed = Question(
+                "Keep changes if made? "
+                "(otherwise, revert to last loaded settings file.)"
+            ).display()
+            if pressed == QtWidgets.QMessageBox.No:
+                self.load(self._gui.settingsFileName.text())
 
     @err_hndlr
     def save(self):

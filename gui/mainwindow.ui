@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1236</width>
-    <height>920</height>
+    <height>956</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -20,7 +20,7 @@
    <string>gSTED-sFCS Measurement Program</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QGridLayout" name="gridLayout_8">
+   <layout class="QGridLayout" name="gridLayout_7">
     <item row="0" column="0">
      <layout class="QVBoxLayout" name="verticalLayout_72" stretch="1,0">
       <property name="spacing">
@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -457,7 +457,7 @@
                             </font>
                            </property>
                            <property name="text">
-                            <string>Dimension 1 (um)</string>
+                            <string>Dim 1 (um)</string>
                            </property>
                           </widget>
                          </item>
@@ -486,7 +486,7 @@
                             </font>
                            </property>
                            <property name="text">
-                            <string>Dimension 2 (um)</string>
+                            <string>Dim 2 (um)</string>
                            </property>
                           </widget>
                          </item>
@@ -1322,885 +1322,18 @@
                    </item>
                   </layout>
                  </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="posControlGroup">
-                <property name="minimumSize">
-                 <size>
-                  <width>260</width>
-                  <height>270</height>
-                 </size>
-                </property>
-                <property name="title">
-                 <string>Position Control</string>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_10">
-                 <property name="leftMargin">
-                  <number>1</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>5</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>1</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>1</number>
-                 </property>
-                 <property name="spacing">
-                  <number>3</number>
-                 </property>
                  <item row="1" column="0">
-                  <layout class="QVBoxLayout" name="verticalLayout_12">
-                   <property name="spacing">
-                    <number>0</number>
+                  <spacer name="verticalSpacer_8">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
                    </property>
-                   <item>
-                    <layout class="QGridLayout" name="gridLayout_3">
-                     <property name="spacing">
-                      <number>0</number>
-                     </property>
-                     <item row="1" column="1">
-                      <widget class="QDoubleSpinBox" name="xAoV">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-5.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>5.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="1">
-                      <widget class="QDoubleSpinBox" name="yAoV">
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-5.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>5.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="2">
-                      <widget class="QDoubleSpinBox" name="yAoUm">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-999999.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>999999.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QLabel" name="label_7">
-                       <property name="font">
-                        <font>
-                         <pointsize>10</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>X</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="0">
-                      <widget class="QLabel" name="label_10">
-                       <property name="font">
-                        <font>
-                         <pointsize>10</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Z</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="2">
-                      <widget class="QDoubleSpinBox" name="zAoUm">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-999999.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>999999.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                       <property name="value">
-                        <double>5.000000000000000</double>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="2">
-                      <widget class="QLabel" name="label_12">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string>Disp. from
-Origin (um)</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="3">
-                      <widget class="QDoubleSpinBox" name="xAiV">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-5.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>5.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="1">
-                      <widget class="QLabel" name="label_11">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string>AO (V)</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="3">
-                      <widget class="QLabel" name="label_16">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>80</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>AI (V)</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="3">
-                      <widget class="QDoubleSpinBox" name="zAiV">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="maximum">
-                        <double>10.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="1">
-                      <widget class="QDoubleSpinBox" name="zAoV">
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::UpDownArrows</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="maximum">
-                        <double>10.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="3">
-                      <widget class="QDoubleSpinBox" name="yAiV">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>60</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-5.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>5.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="2">
-                      <widget class="QDoubleSpinBox" name="xAoUm">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>999</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="readOnly">
-                        <bool>true</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="decimals">
-                        <number>5</number>
-                       </property>
-                       <property name="minimum">
-                        <double>-999999.000000000000000</double>
-                       </property>
-                       <property name="maximum">
-                        <double>999999.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                       <property name="stepType">
-                        <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="0">
-                      <widget class="QLabel" name="label_9">
-                       <property name="font">
-                        <font>
-                         <pointsize>10</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Y</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="4" rowspan="3">
-                      <widget class="QPushButton" name="goTo">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>10</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Go</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QGridLayout" name="gridLayout_9">
-                     <property name="spacing">
-                      <number>0</number>
-                     </property>
-                     <item row="0" column="2" alignment="Qt::AlignHCenter">
-                      <widget class="QToolButton" name="axisMoveUp">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>100</width>
-                         <height>100</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>19</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>...</string>
-                       </property>
-                       <property name="shortcut">
-                        <string>Shift+Up</string>
-                       </property>
-                       <property name="popupMode">
-                        <enum>QToolButton::DelayedPopup</enum>
-                       </property>
-                       <property name="autoRaise">
-                        <bool>false</bool>
-                       </property>
-                       <property name="arrowType">
-                        <enum>Qt::UpArrow</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="2" alignment="Qt::AlignHCenter">
-                      <widget class="QToolButton" name="axisMoveDown">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>100</width>
-                         <height>100</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>...</string>
-                       </property>
-                       <property name="shortcut">
-                        <string>Shift+Up</string>
-                       </property>
-                       <property name="popupMode">
-                        <enum>QToolButton::DelayedPopup</enum>
-                       </property>
-                       <property name="autoRaise">
-                        <bool>false</bool>
-                       </property>
-                       <property name="arrowType">
-                        <enum>Qt::DownArrow</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="1" alignment="Qt::AlignHCenter">
-                      <widget class="QComboBox" name="axisCombox">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>40</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="palette">
-                        <palette>
-                         <active>
-                          <colorrole role="Button">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Base">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Window">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Highlight">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="HighlightedText">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>0</red>
-                             <green>0</green>
-                             <blue>0</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                         </active>
-                         <inactive>
-                          <colorrole role="Button">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Base">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Window">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Highlight">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="HighlightedText">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>0</red>
-                             <green>0</green>
-                             <blue>0</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                         </inactive>
-                         <disabled>
-                          <colorrole role="Button">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Base">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Window">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>255</red>
-                             <green>255</green>
-                             <blue>255</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="Highlight">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>0</red>
-                             <green>120</green>
-                             <blue>215</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="HighlightedText">
-                           <brush brushstyle="SolidPattern">
-                            <color alpha="255">
-                             <red>0</red>
-                             <green>0</green>
-                             <blue>0</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                         </disabled>
-                        </palette>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>11</pointsize>
-                        </font>
-                       </property>
-                       <property name="styleSheet">
-                        <string notr="true">background-color: rgb(255, 255, 255);</string>
-                       </property>
-                       <item>
-                        <property name="text">
-                         <string>x</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>y</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>z</string>
-                        </property>
-                       </item>
-                      </widget>
-                     </item>
-                     <item row="0" column="0">
-                      <widget class="QLabel" name="label_15">
-                       <property name="text">
-                        <string>Axis</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QLabel" name="label_14">
-                       <property name="text">
-                        <string>Move (um)</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="1" alignment="Qt::AlignHCenter">
-                      <widget class="QDoubleSpinBox" name="axisMoveSpinner">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>60</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="maximum">
-                        <double>100.000000000000000</double>
-                       </property>
-                       <property name="singleStep">
-                        <double>0.010000000000000</double>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="0" column="0">
-                  <layout class="QHBoxLayout" name="horizontalLayout_13">
-                   <item>
-                    <widget class="QPushButton" name="goToOrg">
-                     <property name="minimumSize">
-                      <size>
-                       <width>0</width>
-                       <height>40</height>
-                      </size>
-                     </property>
-                     <property name="font">
-                      <font>
-                       <pointsize>10</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>Origin</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QPushButton" name="goToOrgXY">
-                     <property name="minimumSize">
-                      <size>
-                       <width>0</width>
-                       <height>40</height>
-                      </size>
-                     </property>
-                     <property name="font">
-                      <font>
-                       <pointsize>10</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>Origin XY</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QPushButton" name="goToOrgZ">
-                     <property name="minimumSize">
-                      <size>
-                       <width>0</width>
-                       <height>40</height>
-                      </size>
-                     </property>
-                     <property name="font">
-                      <font>
-                       <pointsize>10</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>Origin Z</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
                  </item>
                 </layout>
                </widget>
@@ -6153,6 +5286,24 @@ Measurement</string>
           </item>
          </layout>
         </widget>
+        <widget class="QWidget" name="tab_2">
+         <attribute name="title">
+          <string>Debugging</string>
+         </attribute>
+         <widget class="QPushButton" name="resetUm232">
+          <property name="geometry">
+           <rect>
+            <x>90</x>
+            <y>80</y>
+            <width>75</width>
+            <height>61</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>UM232H Reset</string>
+          </property>
+         </widget>
+        </widget>
        </widget>
       </item>
       <item>
@@ -6216,7 +5367,7 @@ Measurement</string>
              <number>0</number>
             </property>
             <item>
-             <widget class="QDoubleSpinBox" name="countsSpinner">
+             <widget class="QDoubleSpinBox" name="counts">
               <property name="minimumSize">
                <size>
                 <width>120</width>
@@ -6439,7 +5590,7 @@ interval
                <bool>true</bool>
               </property>
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -6658,7 +5809,7 @@ interval
                <bool>true</bool>
               </property>
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -6731,7 +5882,7 @@ interval
                <bool>true</bool>
               </property>
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -6804,7 +5955,7 @@ interval
                <bool>true</bool>
               </property>
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -6877,7 +6028,7 @@ interval
                <bool>true</bool>
               </property>
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -7023,7 +6174,7 @@ interval
                <bool>true</bool>
               </property>
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -7119,12 +6270,6 @@ interval
    <addaction name="actionCamera_Control"/>
   </widget>
   <widget class="QDockWidget" name="laserDock">
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
    <property name="minimumSize">
     <size>
      <width>300</width>
@@ -7140,9 +6285,6 @@ interval
    <property name="features">
     <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetVerticalTitleBar</set>
    </property>
-   <property name="allowedAreas">
-    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
-   </property>
    <property name="windowTitle">
     <string>Laser Control</string>
    </property>
@@ -7150,9 +6292,9 @@ interval
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QVBoxLayout" name="verticalLayout_4">
-     <item>
-      <widget class="QGroupBox" name="groupBox_6">
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="0">
+      <widget class="QGroupBox" name="groupBox_10">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>
@@ -7173,9 +6315,9 @@ interval
        <property name="alignment">
         <set>Qt::AlignCenter</set>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <layout class="QHBoxLayout" name="horizontalLayout_36">
         <item>
-         <spacer name="horizontalSpacer_11">
+         <spacer name="horizontalSpacer_46">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -7188,7 +6330,7 @@ interval
          </spacer>
         </item>
         <item>
-         <widget class="QLabel" name="label_6">
+         <widget class="QLabel" name="label_24">
           <property name="text">
            <string>Emission</string>
           </property>
@@ -7256,7 +6398,7 @@ interval
          </widget>
         </item>
         <item>
-         <spacer name="horizontalSpacer_10">
+         <spacer name="horizontalSpacer_47">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -7271,8 +6413,8 @@ interval
        </layout>
       </widget>
      </item>
-     <item>
-      <widget class="QGroupBox" name="groupBox_7">
+     <item row="1" column="0">
+      <widget class="QGroupBox" name="groupBox_11">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>
@@ -7299,14 +6441,14 @@ interval
        <property name="alignment">
         <set>Qt::AlignCenter</set>
        </property>
-       <layout class="QGridLayout" name="gridLayout_6">
+       <layout class="QGridLayout" name="gridLayout_15">
         <item row="1" column="0">
-         <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="0,0,0,0">
+         <layout class="QHBoxLayout" name="horizontalLayout_37" stretch="0,0,0,0">
           <property name="spacing">
            <number>0</number>
           </property>
           <item>
-           <spacer name="horizontalSpacer_23">
+           <spacer name="horizontalSpacer_48">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -7319,7 +6461,7 @@ interval
            </spacer>
           </item>
           <item>
-           <widget class="QLabel" name="depEmLabel_2">
+           <widget class="QLabel" name="depEmLabel_5">
             <property name="minimumSize">
              <size>
               <width>40</width>
@@ -7381,7 +6523,7 @@ interval
            </widget>
           </item>
           <item>
-           <spacer name="horizontalSpacer_22">
+           <spacer name="horizontalSpacer_49">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -7396,17 +6538,17 @@ interval
          </layout>
         </item>
         <item row="3" column="0" colspan="2">
-         <layout class="QHBoxLayout" name="horizontalLayout_38">
+         <layout class="QHBoxLayout" name="horizontalLayout_45">
           <property name="spacing">
            <number>0</number>
           </property>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_63">
+           <layout class="QVBoxLayout" name="verticalLayout_81">
             <property name="spacing">
              <number>0</number>
             </property>
             <item>
-             <widget class="QLabel" name="label_72">
+             <widget class="QLabel" name="label_79">
               <property name="minimumSize">
                <size>
                 <width>60</width>
@@ -7424,7 +6566,7 @@ interval
              </widget>
             </item>
             <item>
-             <widget class="QDoubleSpinBox" name="depActualCurrSpinner">
+             <widget class="QDoubleSpinBox" name="depActualCurr">
               <property name="enabled">
                <bool>true</bool>
               </property>
@@ -7448,12 +6590,12 @@ interval
            </layout>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_64">
+           <layout class="QVBoxLayout" name="verticalLayout_82">
             <property name="spacing">
              <number>0</number>
             </property>
             <item>
-             <widget class="QLabel" name="label_73">
+             <widget class="QLabel" name="label_80">
               <property name="minimumSize">
                <size>
                 <width>60</width>
@@ -7471,7 +6613,7 @@ interval
              </widget>
             </item>
             <item>
-             <widget class="QDoubleSpinBox" name="depActualPowerSpinner">
+             <widget class="QDoubleSpinBox" name="depActualPow">
               <property name="styleSheet">
                <string notr="true">background-color: rgb(255, 255, 255);</string>
               </property>
@@ -7492,12 +6634,12 @@ interval
            </layout>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_65">
+           <layout class="QVBoxLayout" name="verticalLayout_83">
             <property name="spacing">
              <number>0</number>
             </property>
             <item>
-             <widget class="QLabel" name="label_74">
+             <widget class="QLabel" name="label_81">
               <property name="minimumSize">
                <size>
                 <width>60</width>
@@ -7578,12 +6720,12 @@ Settings</string>
          </widget>
         </item>
         <item row="2" column="0">
-         <layout class="QHBoxLayout" name="horizontalLayout_37">
+         <layout class="QHBoxLayout" name="horizontalLayout_46">
           <property name="spacing">
            <number>0</number>
           </property>
           <item>
-           <spacer name="horizontalSpacer_25">
+           <spacer name="horizontalSpacer_50">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -7596,7 +6738,7 @@ Settings</string>
            </spacer>
           </item>
           <item>
-           <widget class="QLabel" name="depShutLabel_2">
+           <widget class="QLabel" name="depShutLabel_4">
             <property name="minimumSize">
              <size>
               <width>40</width>
@@ -7658,7 +6800,7 @@ Settings</string>
            </widget>
           </item>
           <item>
-           <spacer name="horizontalSpacer_24">
+           <spacer name="horizontalSpacer_51">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -7673,15 +6815,15 @@ Settings</string>
          </layout>
         </item>
         <item row="0" column="0" colspan="2">
-         <widget class="QGroupBox" name="groupBox_2">
+         <widget class="QGroupBox" name="groupBox_6">
           <property name="title">
            <string>Mode</string>
           </property>
-          <layout class="QHBoxLayout" name="horizontalLayout_9">
+          <layout class="QHBoxLayout" name="horizontalLayout_38">
            <item>
-            <layout class="QVBoxLayout" name="verticalLayout_20">
+            <layout class="QVBoxLayout" name="verticalLayout_55">
              <item>
-              <widget class="QRadioButton" name="currModeRadio">
+              <widget class="QRadioButton" name="currMode">
                <property name="text">
                 <string>Current</string>
                </property>
@@ -7694,7 +6836,7 @@ Settings</string>
               </widget>
              </item>
              <item>
-              <widget class="QRadioButton" name="powModeRadio">
+              <widget class="QRadioButton" name="powMode">
                <property name="text">
                 <string>Power</string>
                </property>
@@ -7719,10 +6861,10 @@ Settings</string>
              <property name="currentIndex">
               <number>0</number>
              </property>
-             <widget class="QWidget" name="current_3">
-              <layout class="QHBoxLayout" name="horizontalLayout_15">
+             <widget class="QWidget" name="current_5">
+              <layout class="QHBoxLayout" name="horizontalLayout_47">
                <item>
-                <widget class="QSpinBox" name="depCurrSpinner">
+                <widget class="QSpinBox" name="depCurr">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
@@ -7756,7 +6898,7 @@ Settings</string>
                 </widget>
                </item>
                <item>
-                <widget class="QLabel" name="label_67">
+                <widget class="QLabel" name="label_72">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
@@ -7776,10 +6918,10 @@ Settings</string>
                </item>
               </layout>
              </widget>
-             <widget class="QWidget" name="power_3">
-              <layout class="QHBoxLayout" name="horizontalLayout_36">
+             <widget class="QWidget" name="power_5">
+              <layout class="QHBoxLayout" name="horizontalLayout_48">
                <item>
-                <widget class="QSpinBox" name="depPowSpinner">
+                <widget class="QSpinBox" name="depPow">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
@@ -7816,7 +6958,7 @@ Settings</string>
                 </widget>
                </item>
                <item>
-                <widget class="QLabel" name="label_68">
+                <widget class="QLabel" name="label_90">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
@@ -7853,49 +6995,914 @@ Settings</string>
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="stepperDock">
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
+  <widget class="QDockWidget" name="posDock">
    <property name="minimumSize">
     <size>
      <width>300</width>
-     <height>210</height>
+     <height>308</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
      <width>300</width>
-     <height>210</height>
+     <height>308</height>
     </size>
-   </property>
-   <property name="layoutDirection">
-    <enum>Qt::LeftToRight</enum>
    </property>
    <property name="features">
     <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetVerticalTitleBar</set>
    </property>
-   <property name="allowedAreas">
-    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
-   </property>
    <property name="windowTitle">
-    <string>Stepper Stage Control</string>
+    <string>Position Control</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
-    <layout class="QHBoxLayout" name="horizontalLayout_7">
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout_6" stretch="0,0,1,0,0,0">
+    <layout class="QGridLayout" name="gridLayout_3">
+     <item row="0" column="0">
+      <layout class="QVBoxLayout" name="verticalLayout_20">
        <property name="spacing">
         <number>0</number>
        </property>
        <item>
-        <spacer name="verticalSpacer_6">
+        <layout class="QGridLayout" name="gridLayout_4">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <item row="1" column="1">
+          <widget class="QDoubleSpinBox" name="xAoV">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>-5.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>5.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QDoubleSpinBox" name="yAoV">
+           <property name="minimumSize">
+            <size>
+             <width>60</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>-5.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>5.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="2">
+          <widget class="QDoubleSpinBox" name="yAoUm">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>60</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::NoButtons</enum>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>-999999.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>999999.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_26">
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>X</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_33">
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>Z</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="2">
+          <widget class="QDoubleSpinBox" name="zAoUm">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>60</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::NoButtons</enum>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>-999999.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>999999.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+           <property name="value">
+            <double>5.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QLabel" name="label_58">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Disp. from
+Origin (um)</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="3">
+          <widget class="QDoubleSpinBox" name="xAiV">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::NoButtons</enum>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>-5.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>5.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_59">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>AO (V)</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="3">
+          <widget class="QLabel" name="label_64">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>80</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>AI (V)</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="3">
+          <widget class="QDoubleSpinBox" name="zAiV">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>60</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::NoButtons</enum>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="maximum">
+            <double>10.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QDoubleSpinBox" name="zAoV">
+           <property name="minimumSize">
+            <size>
+             <width>60</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::UpDownArrows</enum>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="maximum">
+            <double>10.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="3">
+          <widget class="QDoubleSpinBox" name="yAiV">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>60</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::NoButtons</enum>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>-5.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>5.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QDoubleSpinBox" name="xAoUm">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>999</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::NoButtons</enum>
+           </property>
+           <property name="decimals">
+            <number>5</number>
+           </property>
+           <property name="minimum">
+            <double>-999999.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>999999.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="stepType">
+            <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_67">
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>Y</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="4" rowspan="3">
+          <widget class="QPushButton" name="goTo">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>Go</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QGridLayout" name="gridLayout_31">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <item row="0" column="2" alignment="Qt::AlignHCenter">
+          <widget class="QToolButton" name="axisMoveUp">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>100</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>19</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="shortcut">
+            <string>Shift+Up</string>
+           </property>
+           <property name="popupMode">
+            <enum>QToolButton::DelayedPopup</enum>
+           </property>
+           <property name="autoRaise">
+            <bool>false</bool>
+           </property>
+           <property name="arrowType">
+            <enum>Qt::UpArrow</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2" alignment="Qt::AlignHCenter">
+          <widget class="QToolButton" name="axisMoveDown">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>100</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="shortcut">
+            <string>Shift+Up</string>
+           </property>
+           <property name="popupMode">
+            <enum>QToolButton::DelayedPopup</enum>
+           </property>
+           <property name="autoRaise">
+            <bool>false</bool>
+           </property>
+           <property name="arrowType">
+            <enum>Qt::DownArrow</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1" alignment="Qt::AlignHCenter">
+          <widget class="QComboBox" name="axis">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>40</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="palette">
+            <palette>
+             <active>
+              <colorrole role="Button">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Base">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Window">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Highlight">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="HighlightedText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </active>
+             <inactive>
+              <colorrole role="Button">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Base">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Window">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Highlight">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="HighlightedText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </inactive>
+             <disabled>
+              <colorrole role="Button">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Base">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Window">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Highlight">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>120</green>
+                 <blue>215</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="HighlightedText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </disabled>
+            </palette>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(255, 255, 255);</string>
+           </property>
+           <item>
+            <property name="text">
+             <string>x</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>y</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>z</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_68">
+           <property name="text">
+            <string>Axis</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_73">
+           <property name="text">
+            <string>Move (um)</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1" alignment="Qt::AlignHCenter">
+          <widget class="QDoubleSpinBox" name="axisMove">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>60</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="maximum">
+            <double>100.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </item>
+     <item row="1" column="0">
+      <layout class="QHBoxLayout" name="horizontalLayout_15">
+       <item>
+        <widget class="QPushButton" name="goToOrg">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>40</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Origin</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="goToOrgXY">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>40</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Origin XY</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="goToOrgZ">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>40</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Origin Z</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="stepperDock">
+   <property name="minimumSize">
+    <size>
+     <width>300</width>
+     <height>220</height>
+    </size>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>300</width>
+     <height>220</height>
+    </size>
+   </property>
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetVerticalTitleBar</set>
+   </property>
+   <property name="windowTitle">
+    <string>Stage Control</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3">
+    <layout class="QGridLayout" name="gridLayout_6">
+     <item row="0" column="0">
+      <layout class="QVBoxLayout" name="verticalLayout_56" stretch="0,0,1,0,0,0">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <spacer name="verticalSpacer_9">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
@@ -7908,12 +7915,12 @@ Settings</string>
         </spacer>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_40" stretch="1,0">
+        <layout class="QHBoxLayout" name="horizontalLayout_49" stretch="1,0">
          <property name="spacing">
           <number>0</number>
          </property>
          <item>
-          <widget class="QLabel" name="depEmLabel_3">
+          <widget class="QLabel" name="depEmLabel_6">
            <property name="minimumSize">
             <size>
              <width>40</width>
@@ -7992,7 +7999,7 @@ Settings</string>
         </layout>
        </item>
        <item>
-        <spacer name="verticalSpacer_3">
+        <spacer name="verticalSpacer_10">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
@@ -8005,7 +8012,7 @@ Settings</string>
         </spacer>
        </item>
        <item>
-        <widget class="QLabel" name="label_5">
+        <widget class="QLabel" name="label_74">
          <property name="font">
           <font>
            <pointsize>10</pointsize>
@@ -8056,7 +8063,7 @@ Settings</string>
         </widget>
        </item>
        <item>
-        <spacer name="verticalSpacer_4">
+        <spacer name="verticalSpacer_11">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
@@ -8070,7 +8077,7 @@ Settings</string>
        </item>
       </layout>
      </item>
-     <item>
+     <item row="0" column="1">
       <widget class="QGroupBox" name="stageButtonsGroup">
        <property name="enabled">
         <bool>true</bool>
@@ -8081,9 +8088,9 @@ Settings</string>
        <property name="checkable">
         <bool>false</bool>
        </property>
-       <layout class="QGridLayout" name="gridLayout_4">
+       <layout class="QGridLayout" name="gridLayout_33">
         <item row="0" column="0">
-         <layout class="QGridLayout" name="gridLayout_2">
+         <layout class="QGridLayout" name="gridLayout_34">
           <property name="spacing">
            <number>0</number>
           </property>
@@ -8291,44 +8298,6 @@ Settings</string>
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="um232Dock">
-   <property name="minimumSize">
-    <size>
-     <width>300</width>
-     <height>308</height>
-    </size>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>300</width>
-     <height>308</height>
-    </size>
-   </property>
-   <property name="features">
-    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetVerticalTitleBar</set>
-   </property>
-   <property name="windowTitle">
-    <string>UM232</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_3">
-    <widget class="QPushButton" name="resetUm232">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>120</y>
-       <width>75</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Reset</string>
-     </property>
-    </widget>
-   </widget>
-  </widget>
   <action name="actionRestart">
    <property name="icon">
     <iconset resource="icons/icons.qrc">
@@ -8442,10 +8411,6 @@ Settings</string>
   <tabstop>imgScanNumPlanes</tabstop>
   <tabstop>imgScanZstep</tabstop>
   <tabstop>startImgScan</tabstop>
-  <tabstop>axisCombox</tabstop>
-  <tabstop>axisMoveSpinner</tabstop>
-  <tabstop>axisMoveUp</tabstop>
-  <tabstop>axisMoveDown</tabstop>
   <tabstop>planeShowCombox</tabstop>
   <tabstop>imgShowCombox</tabstop>
   <tabstop>selectROI</tabstop>

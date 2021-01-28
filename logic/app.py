@@ -166,8 +166,8 @@ class App:
             self.timeout_loop.pause()
 
             lights_out(self.gui.main)
-            self.gui.main.depActualCurrSpinner.setValue(0)
-            self.gui.main.depActualPowerSpinner.setValue(0)
+            self.gui.main.depActualCurr.setValue(0)
+            self.gui.main.depActualPow.setValue(0)
 
             self.init_devices()
 
