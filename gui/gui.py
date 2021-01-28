@@ -111,13 +111,13 @@ class MainWin(QMainWindow):
         self.imp.dvc_toggle(dvc_nick)
 
     @pyqtSlot()
-    def on_powModeRadio_released(self) -> NoReturn:
+    def on_powMode_released(self) -> NoReturn:
         """Switch between power/current depletion laser settings"""
 
         self.depModeStacked.setCurrentIndex(1)
 
     @pyqtSlot()
-    def on_currModeRadio_released(self) -> NoReturn:
+    def on_currMode_released(self) -> NoReturn:
         """Switch between power/current depletion laser settings"""
 
         self.depModeStacked.setCurrentIndex(0)

@@ -7,7 +7,6 @@ import csv
 from dataclasses import dataclass
 from typing import Dict, List, NoReturn, Union
 
-import pandas as pd
 import PyQt5.QtWidgets as QtWidgets
 
 import gui.icons.icon_paths as icon_path
@@ -115,59 +114,67 @@ class DeviceAttrs:
     switch_widget: QtWidgetAccess = None
 
 
-def gui_to_csv(gui_parent, file_path):
+def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
     """Doc."""
 
-    with open(file_path, "w") as f:
-        # get all names of fields in settings window as lists (for file saving/loading)
-        l1 = gui_parent.findChildren(QtWidgets.QLineEdit)
-        l2 = gui_parent.findChildren(QtWidgets.QSpinBox)
-        l3 = gui_parent.findChildren(QtWidgets.QDoubleSpinBox)
-        l4 = gui_parent.findChildren(QtWidgets.QComboBox)
-        children_list = l1 + l2 + l3 + l4
+    l1 = parent_wdgt.findChildren(QtWidgets.QLineEdit)
+    l2 = parent_wdgt.findChildren(QtWidgets.QSpinBox)
+    l3 = parent_wdgt.findChildren(QtWidgets.QDoubleSpinBox)
+    l4 = parent_wdgt.findChildren(QtWidgets.QComboBox)
+    children_list = l1 + l2 + l3 + l4
 
-        obj_names = []
-        for child in children_list:
-            if not child.objectName() == "qt_spinbox_lineedit":
-                if hasattr(child, "currentIndex"):  # QComboBox
-                    obj_names.append(child.objectName())
-                elif not child.isReadOnly():  # QSpinBox, QLineEdit
-                    obj_names.append(child.objectName())
+    rows = []
+    for child in children_list:
+        if not child.objectName() == "qt_spinbox_lineedit":
+            # if QComboBox or QSpinBox/QLineEdit (combobox doesn't have readonly property)
+            if hasattr(child, "currentIndex") or not child.isReadOnly():
+                if hasattr(child, "value"):  # QSpinBox
+                    val = child.value()
+                elif hasattr(child, "currentIndex"):  # QComboBox
+                    val = child.currentIndex()
+                else:  # QLineEdit
+                    val = child.text()
+                rows.append([child.objectName(), str(val)])
+    return rows
 
+
+def gui_to_csv(parent_wdgt, file_path):
+    """Doc."""
+
+    rows = wdgt_children_as_row_list(parent_wdgt)
+
+    with open(file_path, "w", newline="") as f:
         writer = csv.writer(f)
-        for i in range(len(obj_names)):
-            child = gui_parent.findChild(QtWidgets.QWidget, obj_names[i])
-            if hasattr(child, "value"):  # QSpinBox
-                val = child.value()
-            elif hasattr(child, "currentIndex"):  # QComboBox
-                val = child.currentIndex()
-            else:  # QLineEdit
-                val = child.text()
-            writer.writerow([obj_names[i], val])
+        writer.writerows(rows)
+
+
+def csv_rows_as_list(file_path) -> List[tuple]:
+    """Doc."""
+
+    rows = []
+    with open(file_path, "r", newline="") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            rows.append(row)
+    return rows
 
 
 def csv_to_gui(file_path, gui_parent):
     """Doc."""
     # TODO: add exception handeling for when a .ui file was changed since loadout was saved
 
-    df = pd.read_csv(
-        file_path,
-        header=None,
-        delimiter=",",
-        keep_default_na=False,
-        error_bad_lines=False,
-    )
+    rows = csv_rows_as_list(file_path)
 
-    for i in range(len(df)):
-        obj_name, obj_val = df.iloc[i, 0], df.iloc[i, 1]
-        child = gui_parent.findChild(QtWidgets.QWidget, obj_name)
+    for row in rows:
+        wdgt_name, val = row
+        child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
         if not child == "nullptr":
             if hasattr(child, "value"):  # QSpinBox
-                child.setValue(float(obj_val))
+                child.setValue(float(val))
             elif hasattr(child, "currentIndex"):  # QComboBox
-                child.setCurrentIndex(int(obj_val))
+                child.setCurrentIndex(int(val))
             elif hasattr(child, "text"):  # QLineEdit
-                child.setText(obj_val)
+                child.setText(val)
 
 
 def deep_getattr(object, deep_name, default=None):
