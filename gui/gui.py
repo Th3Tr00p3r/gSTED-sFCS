@@ -236,6 +236,7 @@ class SettWin(QDialog):
 
     def __init__(self, app, parent=None) -> NoReturn:
         """Doc."""
+        # TODO: lock app access while settings window is open
 
         super(SettWin, self).__init__(parent)
         uic.loadUi(consts.SETTINGSWINDOW_UI_PATH, self)
@@ -259,7 +260,7 @@ class SettWin(QDialog):
         self.imp.load()
 
 
-# TODO: Decide what this button does
+# TODO: This button should exit with the current settings without saving and notify to user (for doing single-use stuff)
 #    @pyqtSlot()
 #    def on_confirmButton_released(self) -> NoReturn:
 #        """Doc."""

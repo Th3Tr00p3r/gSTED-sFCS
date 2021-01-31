@@ -6,7 +6,6 @@ from array import array
 from typing import NoReturn
 
 import nidaqmx as ni
-import numpy as np
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
@@ -14,6 +13,8 @@ from pyftdi.ftdi import Ftdi, FtdiError
 from pyftdi.usbtools import UsbTools
 
 from utilities.errors import dvc_err_hndlr as err_hndlr
+
+# TODO: Unite all NI drivers
 
 
 class FTDI_Instrument:
@@ -81,22 +82,31 @@ class FTDI_Instrument:
             raise FtdiError(f"FTDI error: {status[0]:02x}:{ status[1]:02x} {s}")
 
 
-class DAQmxInstrumentAIO:
+class NIDAQmxInstrument:
     """Doc."""
 
-    ao_timeout = 0.1  # TODO: decide what this value should be
-    read_buffer = np.zeros(shape=(3, 1000), dtype=np.double)
-
-    def __init__(self, nick, param_dict):
+    def __init__(self, nick, param_dict, **kwargs):
 
         self.nick = nick
-        [setattr(self, key, val) for key, val in param_dict.items()]
+        [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
         self.error_dict = None
 
-        self._init_ai_task()
+    @err_hndlr
+    def start_task(self, task):
+        """Doc."""
+
+        getattr(self, task).start()
+        self.state = True
 
     @err_hndlr
-    def _init_ai_task(self):
+    def close_task(self, task):
+        """Doc."""
+
+        getattr(self, task).close()
+        self.state = False
+
+    @err_hndlr
+    def init_ai_task(self):
         """Doc."""
 
         self.ai_task = ni.Task(new_task_name="ai task")
@@ -132,33 +142,42 @@ class DAQmxInstrumentAIO:
             # source is unspecified - uses onboard clock (see https://nidaqmx-python.readthedocs.io/en/latest/timing.html#nidaqmx._task_modules.timing.Timing.cfg_samp_clk_timing)
             rate=self.ai_clk_rate,  # TODO - move these to settings -> param_dict
             sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
-            samps_per_chan=self.buff_sz,  # TODO - move these to settings -> param_dict
+            samps_per_chan=self.ai_buff_sz,  # TODO - move these to settings -> param_dict
         )
 
         self.sreader = AnalogMultiChannelReader(self.ai_task.in_stream)
         self.sreader.verify_array_shape = False
 
     @err_hndlr
-    def start_ai(self):
+    def init_ci_task(self, ai_task):
         """Doc."""
 
-        self.ai_task.start()
-        self.ai_state = True
+        self.ci_task = ni.Task("ci task")
+
+        chan = self.ci_task.ci_channels.add_ci_count_edges_chan(
+            counter=self.address,
+            edge=ni.constants.Edge.RISING,
+            initial_count=0,
+            count_direction=ni.constants.CountDirection.COUNT_UP,
+        )
+        chan.ci_count_edges_term = self.CI_cnt_edges_term
+
+        self.ci_task.timing.cfg_samp_clk_timing(
+            rate=ai_task.timing.samp_clk_rate,
+            source=ai_task.timing.samp_clk_term,
+            sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
+            samps_per_chan=len(self.ci_buffer),
+        )
+        self.ci_task.sr = CounterReader(self.ci_task.in_stream)
+        self.ci_task.sr.verify_array_shape = False
 
     @err_hndlr
-    def close_ai(self):
-        """Doc."""
-
-        self.ai_task.close()
-        self.ai_state = False
-
-    @err_hndlr
-    def read(self):
+    def analog_read(self):
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
         #        num_samps_read = self.sreader.read_many_sample(
-        #            self.read_buffer,
+        #            self.ai_buffer,
         #            number_of_samples_per_channel=READ_ALL_AVAILABLE,
         #        )
         #        return num_samps_read
@@ -169,7 +188,9 @@ class DAQmxInstrumentAIO:
         return read_samples
 
     @err_hndlr
-    async def write(self, ao_addresses: iter, vals: iter, limits: iter) -> NoReturn:
+    async def analog_write(
+        self, ao_addresses: iter, vals: iter, limits: iter
+    ) -> NoReturn:
         """Doc."""
 
         with ni.Task(new_task_name="ao task") as task:
@@ -179,89 +200,26 @@ class DAQmxInstrumentAIO:
             # TODO: add task.timing for finite samples - it works without it, but I could try to see if it changes anything
             await asyncio.sleep(self.ao_timeout)
 
-
-class DAQmxInstrumentCI:
-    """Doc."""
-
-    def __init__(self, nick, param_dict, ai_task):
-        """Doc."""
-
-        self.nick = nick
-        [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = None
-        self.ai_task = ai_task
-        self.read_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
-
-        self._init_task()
-
     @err_hndlr
-    def _init_task(self):
-        """Doc."""
-
-        self._task = ni.Task("ci task")
-
-        chan = self._task.ci_channels.add_ci_count_edges_chan(
-            counter=self.address,
-            edge=ni.constants.Edge.RISING,
-            initial_count=0,
-            count_direction=ni.constants.CountDirection.COUNT_UP,
-        )
-        chan.ci_count_edges_term = self.CI_cnt_edges_term
-
-        self._task.timing.cfg_samp_clk_timing(
-            rate=self.ai_task.timing.samp_clk_rate,
-            source=self.ai_task.timing.samp_clk_term,
-            sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
-            samps_per_chan=len(self.read_buffer),
-        )
-        self._task.sr = CounterReader(self._task.in_stream)
-        self._task.sr.verify_array_shape = False
-
-    @err_hndlr
-    def start(self):
-        """Doc."""
-
-        self._task.start()
-        self.state = True
-
-    @err_hndlr
-    def read(self):
+    def counter_read(self):
         """
-         Reads all available samples on board into self.read_buffer
+         Reads all available samples on board into self.ci_buffer
          (1D NumPy array, overwritten each read), and returns the
         number of samples read.
         """
 
-        return self._task.sr.read_many_sample_uint32(
-            self.read_buffer,
+        return self.ci_task.sr.read_many_sample_uint32(
+            self.ci_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
 
     @err_hndlr
-    def close(self):
-        """Doc."""
-
-        self._task.close()
-        self.state = False
-
-
-class DAQmxInstrumentDO:
-    """Doc."""
-
-    def __init__(self, nick, param_dict):
-
-        self.nick = nick
-        [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = None
-
-    @err_hndlr
-    def write(self, bool):
+    def digital_write(self, bool):
         """Doc."""
 
         with ni.Task() as task:
             task.do_channels.add_do_chan(self.address)
             task.write(bool)
-
         self.state = bool
 
 
@@ -346,6 +304,7 @@ class UC480Instrument:
     """Doc."""
 
     def __init__(self, nick, param_dict):
+
         self.nick = nick
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
