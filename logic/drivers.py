@@ -17,7 +17,7 @@ from utilities.errors import dvc_err_hndlr as err_hndlr
 # TODO: Unite all NI drivers
 
 
-class FTDI_Instrument:
+class FtdiInstrument:
     """Doc."""
 
     def __init__(self, nick, param_dict):
@@ -88,8 +88,8 @@ class NIDAQmxInstrument:
     def __init__(self, nick, param_dict, **kwargs):
 
         self.nick = nick
-        [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
         self.error_dict = None
+        [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
 
     @err_hndlr
     def start_task(self, task):
@@ -106,10 +106,10 @@ class NIDAQmxInstrument:
         self.state = False
 
     @err_hndlr
-    def init_ai_task(self):
+    def create_ai_task(self, type: str):
         """Doc."""
 
-        self.ai_task = ni.Task(new_task_name="ai task")
+        self.ai_task = ni.Task(new_task_name=f"{type} AI")
 
         # x-galvo
         self.ai_task.ai_channels.add_ai_voltage_chan(
@@ -149,10 +149,10 @@ class NIDAQmxInstrument:
         self.sreader.verify_array_shape = False
 
     @err_hndlr
-    def init_ci_task(self, ai_task):
+    def create_ci_task(self, ai_task, type: str):
         """Doc."""
 
-        self.ci_task = ni.Task("ci task")
+        self.ci_task = ni.Task(new_task_name=f"{type} CI")
 
         chan = self.ci_task.ci_channels.add_ci_count_edges_chan(
             counter=self.address,
@@ -223,7 +223,7 @@ class NIDAQmxInstrument:
         self.state = bool
 
 
-class VISAInstrument:
+class VisaInstrument:
     """Doc."""
 
     def __init__(
@@ -235,8 +235,8 @@ class VISAInstrument:
     ):
 
         self.nick = nick
-        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.read_termination = read_termination
         self.write_termination = write_termination
         self.rm = visa.ResourceManager()
@@ -249,7 +249,7 @@ class VISAInstrument:
 
         """
 
-        with VISAInstrument.Task(self) as task:
+        with self.Task(self) as task:
             task.write(cmnd)
 
         if cmnd.startswith("setLDenable"):  # change state if toggle is performed
@@ -260,7 +260,7 @@ class VISAInstrument:
     async def _aquery(self, cmnd: str) -> float:
         """Doc."""
 
-        with VISAInstrument.Task(self) as task:
+        with self.Task(self) as task:
             task.write(cmnd)
             await asyncio.sleep(0.1)
             ans = task.read()
@@ -270,7 +270,7 @@ class VISAInstrument:
     def _query(self, cmnd: str) -> float:
         """Doc."""
 
-        with VISAInstrument.Task(self) as task:
+        with self.Task(self) as task:
             return float(task.query(cmnd))
 
     class Task:
@@ -306,8 +306,8 @@ class UC480Instrument:
     def __init__(self, nick, param_dict):
 
         self.nick = nick
-        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self._inst = None
 
     @err_hndlr

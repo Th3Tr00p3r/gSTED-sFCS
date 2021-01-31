@@ -23,8 +23,8 @@ class Timeout:
         # initial intervals (some change during run)
         self.updt_intrvl = {
             "gui": 0.2,
-            "dep": self._app.devices.DEP_LASER.update_time,
-            "cntr_avg": self._app.devices.COUNTER.update_time,
+            "dep": self._app.devices.DEP_LASER.updt_time,
+            "cntr_avg": self._app.devices.COUNTER.updt_time,
         }
 
     # MAIN

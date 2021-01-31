@@ -12,10 +12,28 @@ import logic.drivers as drivers
 import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
-# class PixelClock(drivers.
+
+class PixelClock(drivers.NIDAQmxInstrument):
+    """Doc."""
+
+    #    ci_buff_sz = 10000
+    #    ci_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
+
+    def __init__(self, nick, param_dict, led_widget, switch_widget, ai_task):
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
+        super().__init__(nick=nick, param_dict=param_dict, ci_buffer=self.ci_buffer)
+
+        self.cont_count_buff = np.empty(shape=(0,))
+        self.counts = None  # this is for scans where the counts are actually used.
+        self.last_avg_time = time.perf_counter()
+        self.num_reads_since_avg = 0
+        self.create_co_task(ai_task, type="Continuous")
+
+        self.toggle(True)
 
 
-class UM232H(drivers.FTDI_Instrument):
+class UM232H(drivers.FtdiInstrument):
     """Doc."""
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
@@ -95,7 +113,7 @@ class Scanners(drivers.NIDAQmxInstrument):
         # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
         self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
         self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
-        self.init_ai_task()
+        self.create_ai_task("Continuous")
 
         self.toggle(True)
 
@@ -162,11 +180,9 @@ class Counter(drivers.NIDAQmxInstrument):
     """Doc."""
 
     # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
-    # PREVIOUSLY DONE IN TIMEOUT
 
-    update_time = 0.2
+    updt_time = 0.2
     ci_buff_sz = 10000
-    # TODO: move ci_buffer to Counter in devices.py, send here as kwarg for uniting NI drivers
     ci_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
 
     def __init__(self, nick, param_dict, led_widget, switch_widget, ai_task):
@@ -178,7 +194,7 @@ class Counter(drivers.NIDAQmxInstrument):
         self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
-        self.init_ci_task(ai_task)
+        self.create_ci_task(ai_task, type="Continuous")
 
         self.toggle(True)
 
@@ -320,7 +336,7 @@ class SimpleDO(drivers.NIDAQmxInstrument):
         self.digital_write(bool)
 
 
-class DepletionLaser(drivers.VISAInstrument):
+class DepletionLaser(drivers.VisaInstrument):
     """Control depletion laser through pyVISA"""
 
     min_SHG_temp = 52
@@ -334,7 +350,7 @@ class DepletionLaser(drivers.VISAInstrument):
             read_termination="\r",
             write_termination="\r",
         )
-        self.update_time = 1
+        self.updt_time = 1
         self.state = None
 
         self.toggle(False)
