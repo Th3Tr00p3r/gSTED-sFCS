@@ -80,10 +80,11 @@ class SFCSImageMeasurement(Measurement):
         self.file_template = app.gui.main.imgScanFileTemplate.text()
 
     def build_filename(self, file_no: int) -> str:
-        return f"{self.file_template}_{self.laser_config}_{file_no}"
+        return f"{self.file_template}_{self.laser_config}_{self.scn_type}_{file_no}"
 
     async def run(self):
         """Doc."""
+        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
 
         pass
 
@@ -102,6 +103,7 @@ class SFCSSolutionMeasurement(Measurement):
     async def run(self):
         """Doc."""
         # TODO: this needs refactoring - add more functions and clean up code
+        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
 
         def get_current_and_end_times(
             duration_in_seconds: Union[int, float]
