@@ -164,14 +164,14 @@ class Timeout:
                     progress = (
                         meas.time_passed
                         / (meas.duration * meas.duration_multiplier)
-                        * 100
+                        * meas.prog_bar_wdgt.obj.maximum()
                     )
                 elif meas.type == "SFCSSolution":
                     if not meas.cal:
                         progress = (
                             (meas.total_time_passed + meas.time_passed)
                             / (meas.total_duration * meas.duration_multiplier)
-                            * 100
+                            * meas.prog_bar_wdgt.obj.maximum()
                         )
                     else:
                         progress = 0

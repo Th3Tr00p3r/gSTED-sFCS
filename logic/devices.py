@@ -12,6 +12,8 @@ import logic.drivers as drivers
 import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
+# class PixelClock(drivers.
+
 
 class UM232H(drivers.FTDI_Instrument):
     """Doc."""
@@ -62,7 +64,7 @@ class UM232H(drivers.FTDI_Instrument):
         self.open()
 
 
-class Scanners(drivers.DAQmxInstrumentAIO):
+class Scanners(drivers.NIDAQmxInstrument):
     """
     Scanners encompasses all analog focal point positioning devices
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
@@ -75,13 +77,16 @@ class Scanners(drivers.DAQmxInstrumentAIO):
     y_limits = {"min_val": -5.0, "max_val": 5.0}
     z_limits = {"min_val": 0.0, "max_val": 10.0}
 
-    buff_sz = 1000
-    ai_clk_rate = 1000
-
     def __init__(self, nick, param_dict, led_widget, switch_widget):
         self.led_widget = led_widget
         self.switch_widget = switch_widget
-        super().__init__(nick=nick, param_dict=param_dict)
+        super().__init__(
+            nick=nick,
+            param_dict=param_dict,
+            ao_timeout=0.1,
+            ai_clk_rate=1000,
+            ai_buff_sz=1000,
+        )  # , ai_buffer=np.zeros(shape=(3, 1000), dtype=np.double))
 
         self.last_ai = None
         self.last_ao = (self.ao_x_init_vltg, self.ao_y_init_vltg, self.ao_z_init_vltg)
@@ -90,6 +95,7 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
         self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
         self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
+        self.init_ai_task()
 
         self.toggle(True)
 
@@ -97,9 +103,9 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         """Doc."""
 
         if bool:
-            self.start_ai()
+            self.start_task("ai_task")
         else:
-            self.close_ai()
+            self.close_task("ai_task")
 
     def fill_ai_buff(self) -> NoReturn:
         """Doc."""
@@ -110,7 +116,7 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         #        (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
         #        )
 
-        self.ai_buffer = np.concatenate((self.ai_buffer, self.read()), axis=1)
+        self.ai_buffer = np.concatenate((self.ai_buffer, self.analog_read()), axis=1)
 
     async def move_to_pos(self, pos_vltgs: iter):
         """
@@ -140,36 +146,39 @@ class Scanners(drivers.DAQmxInstrumentAIO):
         *xy_vltgs, z_vltg = vltgs
         *xy_limits, z_limits = limits
 
-        await self.write(ao_xy_addresses, xy_vltgs, xy_limits)
-        await self.write([ao_z_addr], [z_vltg], [z_limits])
+        await self.analog_write(ao_xy_addresses, xy_vltgs, xy_limits)
+        await self.analog_write([ao_z_addr], [z_vltg], [z_limits])
 
     def dump_buff_overflow(self):
         """Doc."""
 
-        if max(self.ao_buffer.shape) > self.buff_sz:
-            self.ao_buffer = self.ao_buffer[:, -self.buff_sz :]
-        if max(self.ai_buffer.shape) > self.buff_sz:
-            self.ai_buffer = self.ai_buffer[:, -self.buff_sz :]
+        if max(self.ao_buffer.shape) > self.ai_buff_sz:
+            self.ao_buffer = self.ao_buffer[:, -self.ai_buff_sz :]
+        if max(self.ai_buffer.shape) > self.ai_buff_sz:
+            self.ai_buffer = self.ai_buffer[:, -self.ai_buff_sz :]
 
 
-class Counter(drivers.DAQmxInstrumentCI):
+class Counter(drivers.NIDAQmxInstrument):
     """Doc."""
 
     # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
     # PREVIOUSLY DONE IN TIMEOUT
 
     update_time = 0.2
-    buff_sz = 10000
+    ci_buff_sz = 10000
+    # TODO: move ci_buffer to Counter in devices.py, send here as kwarg for uniting NI drivers
+    ci_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
 
     def __init__(self, nick, param_dict, led_widget, switch_widget, ai_task):
         self.led_widget = led_widget
         self.switch_widget = switch_widget
-        super().__init__(nick=nick, param_dict=param_dict, ai_task=ai_task)
+        super().__init__(nick=nick, param_dict=param_dict, ci_buffer=self.ci_buffer)
 
         self.cont_count_buff = np.empty(shape=(0,))
         self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
+        self.init_ci_task(ai_task)
 
         self.toggle(True)
 
@@ -177,16 +186,16 @@ class Counter(drivers.DAQmxInstrumentCI):
         """Doc."""
 
         if bool:
-            self.start()
+            self.start_task("ci_task")
         else:
-            self.close()
+            self.close_task("ci_task")
 
     def count(self):
         """Doc."""
 
-        num_samps_read = self.read()
+        num_samps_read = self.counter_read()
         self.cont_count_buff = np.append(
-            self.cont_count_buff, self.read_buffer[:num_samps_read]
+            self.cont_count_buff, self.ci_buffer[:num_samps_read]
         )
         self.num_reads_since_avg += num_samps_read
 
@@ -215,8 +224,8 @@ class Counter(drivers.DAQmxInstrumentCI):
     def dump_buff_overflow(self):
         """Doc."""
 
-        if len(self.cont_count_buff) > self.buff_sz:
-            self.cont_count_buff = self.cont_count_buff[-self.buff_sz :]
+        if len(self.cont_count_buff) > self.ci_buff_sz:
+            self.cont_count_buff = self.cont_count_buff[-self.ci_buff_sz :]
 
 
 class Camera(drivers.UC480Instrument):
@@ -295,7 +304,7 @@ class Camera(drivers.UC480Instrument):
         self._gui.canvas.draw()
 
 
-class SimpleDO(drivers.DAQmxInstrumentDO):
+class SimpleDO(drivers.NIDAQmxInstrument):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
@@ -308,7 +317,7 @@ class SimpleDO(drivers.DAQmxInstrumentDO):
     def toggle(self, bool):
         """Doc."""
 
-        self.write(bool)
+        self.digital_write(bool)
 
 
 class DepletionLaser(drivers.VISAInstrument):

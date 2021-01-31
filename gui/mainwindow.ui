@@ -1182,7 +1182,7 @@
                       <string>measurement progress</string>
                      </property>
                      <property name="maximum">
-                      <number>100</number>
+                      <number>1000</number>
                      </property>
                      <property name="value">
                       <number>0</number>
@@ -4150,7 +4150,7 @@ Duration (s)</string>
                       <string>measurement progress</string>
                      </property>
                      <property name="maximum">
-                      <number>100</number>
+                      <number>1000</number>
                      </property>
                      <property name="value">
                       <number>0</number>
@@ -4163,6 +4163,9 @@ Duration (s)</string>
                      </property>
                      <property name="orientation">
                       <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="invertedAppearance">
+                      <bool>false</bool>
                      </property>
                     </widget>
                    </item>
@@ -5261,7 +5264,7 @@ Measurement</string>
                     <string>measurement progress</string>
                    </property>
                    <property name="maximum">
-                    <number>100</number>
+                    <number>1000</number>
                    </property>
                    <property name="value">
                     <number>0</number>

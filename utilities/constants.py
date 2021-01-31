@@ -202,18 +202,18 @@ SCANNERS = DeviceAttrs(
     ),
 )
 
-# PXL_CLK = DeviceAttrs(
-#    cls_name="PixelClock",
-#    log_ref="Pixel Clock",
-#    led_widget=QtWidgetAccess("ledPxlClk", "icon", "main"),
-#    param_widgets=QtWidgetCollection(
-#        low_ticks=QtWidgetAccess("pixelClockLowTicks", "value"),
-#        high_ticks=QtWidgetAccess("pixelClockHighTicks", "value"),
-#        cntr_addr=QtWidgetAccess("pixelClockCounterAddress", "text"),
-#        tick_src=QtWidgetAccess("pixelClockSrcOfTicks", "text"),
-#        freq=QtWidgetAccess("pixelClockFreq", "value")
-#    )
-# )
+PXL_CLK = DeviceAttrs(
+    cls_name="PixelClock",
+    log_ref="Pixel Clock",
+    led_widget=QtWidgetAccess("ledPxlClk", "icon", "main"),
+    param_widgets=QtWidgetCollection(
+        low_ticks=QtWidgetAccess("pixelClockLowTicks", "value"),
+        high_ticks=QtWidgetAccess("pixelClockHighTicks", "value"),
+        cntr_addr=QtWidgetAccess("pixelClockCounterAddress", "text"),
+        tick_src=QtWidgetAccess("pixelClockSrcOfTicks", "text"),
+        freq=QtWidgetAccess("pixelClockFreq", "value"),
+    ),
+)
 
 # ----------------------------------------------
 # Measurements
@@ -255,7 +255,7 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     exc_mode=QtWidgetAccess("imgScanModeExc", "checked", "main"),
     dep_mode=QtWidgetAccess("imgScanModeDep", "checked", "main"),
     sted_mode=QtWidgetAccess("imgScanModeSted", "checked", "main"),
-    type=QtWidgetAccess("imgScanType", "currentText", "main"),
+    scn_type=QtWidgetAccess("imgScanType", "currentText", "main"),
     dim1=QtWidgetAccess("imgScanDim1", "value", "main"),
     dim2=QtWidgetAccess("imgScanDim2", "value", "main"),
     n_lines=QtWidgetAccess("imgScanNumLines", "value", "main"),
