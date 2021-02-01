@@ -6,6 +6,7 @@ import time
 from array import array
 from typing import NoReturn
 
+import nidaqmx.constants as NI_CONSTS
 import numpy as np
 
 import logic.drivers as drivers
@@ -101,7 +102,7 @@ class Scanners(drivers.NIDAQmxInstrument):
         super().__init__(
             nick=nick,
             param_dict=param_dict,
-            ao_timeout=0.1,
+            ao_timeout=0.1,  # TODO: these kwargs should belong to the device and not the driver (as well as the param_dict)
             ai_clk_rate=1000,
             ai_buff_sz=1000,
         )  # , ai_buffer=np.zeros(shape=(3, 1000), dtype=np.double))
@@ -113,7 +114,6 @@ class Scanners(drivers.NIDAQmxInstrument):
         # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
         self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
         self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
-        self.create_ai_task("Continuous")
 
         self.toggle(True)
 
@@ -121,9 +121,35 @@ class Scanners(drivers.NIDAQmxInstrument):
         """Doc."""
 
         if bool:
-            self.start_task("ai_task")
+            if hasattr(self, "task"):
+                self.close_task()
+            self.start_ai_task(
+                type="Continuous",
+                chan_specs=[
+                    {
+                        "physical_channel": self.ai_x_addr,
+                        "name_to_assign_to_channel": "aix",
+                        **self.x_limits,
+                    },
+                    {
+                        "physical_channel": self.ai_y_addr,
+                        "name_to_assign_to_channel": "aiy",
+                        **self.y_limits,
+                    },
+                    {
+                        "physical_channel": self.ai_z_addr,
+                        "name_to_assign_to_channel": "aiz",
+                        **self.z_limits,
+                    },
+                ],
+                clk_cnfg={
+                    "rate": self.ai_clk_rate,
+                    "sample_mode": NI_CONSTS.AcquisitionType.CONTINUOUS,
+                    "samps_per_chan": self.ai_buff_sz,
+                },
+            )
         else:
-            self.close_task("ai_task")
+            self.close_task()
 
     def fill_ai_buff(self) -> NoReturn:
         """Doc."""
@@ -194,7 +220,7 @@ class Counter(drivers.NIDAQmxInstrument):
         self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
-        self.create_ci_task(ai_task, type="Continuous")
+        self.ai_task = ai_task
 
         self.toggle(True)
 
@@ -202,9 +228,26 @@ class Counter(drivers.NIDAQmxInstrument):
         """Doc."""
 
         if bool:
-            self.start_task("ci_task")
+            if hasattr(self, "task"):
+                self.close_task()
+            self.start_ci_task(
+                type="Continuous",
+                chan_spec={
+                    "counter": self.address,
+                    "edge": NI_CONSTS.Edge.RISING,
+                    "initial_count": 0,
+                    "count_direction": NI_CONSTS.CountDirection.COUNT_UP,
+                },
+                ci_count_edges_term=self.CI_cnt_edges_term,
+                clk_cnfg={
+                    "rate": self.ai_task.timing.samp_clk_rate,
+                    "source": self.ai_task.timing.samp_clk_term,
+                    "sample_mode": NI_CONSTS.AcquisitionType.CONTINUOUS,
+                    "samps_per_chan": len(self.ci_buffer),
+                },
+            )
         else:
-            self.close_task("ci_task")
+            self.close_task()
 
     def count(self):
         """Doc."""

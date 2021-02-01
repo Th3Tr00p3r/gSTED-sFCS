@@ -3,18 +3,16 @@
 
 import asyncio
 from array import array
-from typing import NoReturn
+from typing import List, NoReturn
 
 import nidaqmx as ni
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
-from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
+from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
 from pyftdi.ftdi import Ftdi, FtdiError
 from pyftdi.usbtools import UsbTools
 
 from utilities.errors import dvc_err_hndlr as err_hndlr
-
-# TODO: Unite all NI drivers
 
 
 class FtdiInstrument:
@@ -89,87 +87,54 @@ class NIDAQmxInstrument:
 
         self.nick = nick
         self.error_dict = None
+        # TODO: next line should be in devices.py (after mending read/write methods to accept args)
         [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
 
     @err_hndlr
-    def start_task(self, task):
+    def close_task(self):
         """Doc."""
 
-        getattr(self, task).start()
-        self.state = True
+        self.task.close()
 
     @err_hndlr
-    def close_task(self, task):
+    def start_ai_task(self, type: str, chan_specs: List[dict], clk_cnfg: dict):
         """Doc."""
 
-        getattr(self, task).close()
-        self.state = False
+        self.task = ni.Task(new_task_name=f"{type} AI")
 
-    @err_hndlr
-    def create_ai_task(self, type: str):
-        """Doc."""
+        for chan_spec in chan_specs:
+            self.task.ai_channels.add_ai_voltage_chan(
+                terminal_config=ni.constants.TerminalConfiguration.RSE, **chan_spec
+            )
 
-        self.ai_task = ni.Task(new_task_name=f"{type} AI")
-
-        # x-galvo
-        self.ai_task.ai_channels.add_ai_voltage_chan(
-            physical_channel=self.ai_x_addr,
-            name_to_assign_to_channel="aix",
-            terminal_config=ni.constants.TerminalConfiguration.RSE,
-            min_val=-5.0,
-            max_val=5.0,
-        )
-
-        # x-galvo
-        self.ai_task.ai_channels.add_ai_voltage_chan(
-            physical_channel=self.ai_y_addr,
-            name_to_assign_to_channel="aiy",
-            terminal_config=ni.constants.TerminalConfiguration.RSE,
-            min_val=-5.0,
-            max_val=5.0,
-        )
-
-        # z-piezo
-        self.ai_task.ai_channels.add_ai_voltage_chan(
-            physical_channel=self.ai_z_addr,
-            name_to_assign_to_channel="aiz",
-            terminal_config=ni.constants.TerminalConfiguration.RSE,
-            min_val=0.0,
-            max_val=10.0,
-        )
-
-        self.ai_task.timing.cfg_samp_clk_timing(
+        self.task.timing.cfg_samp_clk_timing(
             # source is unspecified - uses onboard clock (see https://nidaqmx-python.readthedocs.io/en/latest/timing.html#nidaqmx._task_modules.timing.Timing.cfg_samp_clk_timing)
-            rate=self.ai_clk_rate,  # TODO - move these to settings -> param_dict
-            sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
-            samps_per_chan=self.ai_buff_sz,  # TODO - move these to settings -> param_dict
+            **clk_cnfg
         )
 
-        self.sreader = AnalogMultiChannelReader(self.ai_task.in_stream)
-        self.sreader.verify_array_shape = False
+        #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
+        #        self.sreader = AnalogMultiChannelReader(self.task.in_stream)
+        #        self.sreader.verify_array_shape = False
+
+        self.task.start()
 
     @err_hndlr
-    def create_ci_task(self, ai_task, type: str):
+    def start_ci_task(
+        self, type: str, chan_spec: dict, ci_count_edges_term, clk_cnfg: dict
+    ):
         """Doc."""
 
-        self.ci_task = ni.Task(new_task_name=f"{type} CI")
+        self.task = ni.Task(new_task_name=f"{type} CI")
 
-        chan = self.ci_task.ci_channels.add_ci_count_edges_chan(
-            counter=self.address,
-            edge=ni.constants.Edge.RISING,
-            initial_count=0,
-            count_direction=ni.constants.CountDirection.COUNT_UP,
-        )
-        chan.ci_count_edges_term = self.CI_cnt_edges_term
+        chan = self.task.ci_channels.add_ci_count_edges_chan(**chan_spec)
+        chan.ci_count_edges_term = ci_count_edges_term
 
-        self.ci_task.timing.cfg_samp_clk_timing(
-            rate=ai_task.timing.samp_clk_rate,
-            source=ai_task.timing.samp_clk_term,
-            sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
-            samps_per_chan=len(self.ci_buffer),
-        )
-        self.ci_task.sr = CounterReader(self.ci_task.in_stream)
-        self.ci_task.sr.verify_array_shape = False
+        self.task.timing.cfg_samp_clk_timing(**clk_cnfg)
+
+        self.task.sr = CounterReader(self.task.in_stream)
+        self.task.sr.verify_array_shape = False
+
+        self.task.start()
 
     @err_hndlr
     def analog_read(self):
@@ -182,7 +147,7 @@ class NIDAQmxInstrument:
         #        )
         #        return num_samps_read
 
-        read_samples = self.ai_task.read(
+        read_samples = self.task.read(
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE
         )
         return read_samples
@@ -193,7 +158,7 @@ class NIDAQmxInstrument:
     ) -> NoReturn:
         """Doc."""
 
-        with ni.Task(new_task_name="ao task") as task:
+        with ni.Task() as task:
             for (ao_addr, limits) in zip(ao_addresses, limits):
                 task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
             task.write(vals, timeout=self.ao_timeout)
@@ -208,7 +173,7 @@ class NIDAQmxInstrument:
         number of samples read.
         """
 
-        return self.ci_task.sr.read_many_sample_uint32(
+        return self.task.sr.read_many_sample_uint32(
             self.ci_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
