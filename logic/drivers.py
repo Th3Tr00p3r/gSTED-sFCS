@@ -101,16 +101,11 @@ class NIDAQmxInstrument:
         """Doc."""
 
         self.task = ni.Task(new_task_name=f"{type} AI")
-
         for chan_spec in chan_specs:
             self.task.ai_channels.add_ai_voltage_chan(
                 terminal_config=ni.constants.TerminalConfiguration.RSE, **chan_spec
             )
-
-        self.task.timing.cfg_samp_clk_timing(
-            # source is unspecified - uses onboard clock (see https://nidaqmx-python.readthedocs.io/en/latest/timing.html#nidaqmx._task_modules.timing.Timing.cfg_samp_clk_timing)
-            **clk_cnfg
-        )
+        self.task.timing.cfg_samp_clk_timing(**clk_cnfg)
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
         #        self.sreader = AnalogMultiChannelReader(self.task.in_stream)
@@ -125,14 +120,24 @@ class NIDAQmxInstrument:
         """Doc."""
 
         self.task = ni.Task(new_task_name=f"{type} CI")
-
         chan = self.task.ci_channels.add_ci_count_edges_chan(**chan_spec)
         chan.ci_count_edges_term = ci_count_edges_term
-
         self.task.timing.cfg_samp_clk_timing(**clk_cnfg)
 
         self.task.sr = CounterReader(self.task.in_stream)
         self.task.sr.verify_array_shape = False
+
+        self.task.start()
+
+    @err_hndlr
+    def start_co_task(
+        self, type: str, chan_spec: dict, ci_count_edges_term, clk_cnfg: dict
+    ):
+        """Doc."""
+
+        self.task = ni.Task(new_task_name=f"{type} CO")
+        self.task.co_channels.add_co_pulse_chan_ticks(**chan_spec)
+        self.task.timing.cfg_implicit_timing(**clk_cnfg)
 
         self.task.start()
 
@@ -157,6 +162,8 @@ class NIDAQmxInstrument:
         self, ao_addresses: iter, vals: iter, limits: iter
     ) -> NoReturn:
         """Doc."""
+        # TODO: make same as start_ai_task
+        # TODO: since I will be adding a continuous writing task for scans, this should be called single_write or similar
 
         with ni.Task() as task:
             for (ao_addr, limits) in zip(ao_addresses, limits):

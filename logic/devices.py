@@ -17,21 +17,28 @@ from utilities.errors import dvc_err_hndlr as err_hndlr
 class PixelClock(drivers.NIDAQmxInstrument):
     """Doc."""
 
-    #    ci_buff_sz = 10000
-    #    ci_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
+    def __init__(self, nick, param_dict):
+        super().__init__(nick=nick, param_dict=param_dict)
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget, ai_task):
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
-        super().__init__(nick=nick, param_dict=param_dict, ci_buffer=self.ci_buffer)
+    def toggle(self, bool):
+        """Doc."""
 
-        self.cont_count_buff = np.empty(shape=(0,))
-        self.counts = None  # this is for scans where the counts are actually used.
-        self.last_avg_time = time.perf_counter()
-        self.num_reads_since_avg = 0
-        self.create_co_task(ai_task, type="Continuous")
-
-        self.toggle(True)
+        if bool:
+            if hasattr(self, "task"):
+                self.close_task()
+            self.start_co_task(
+                type="Scan",
+                chan_spec={
+                    "name_to_assign_to_channel": "pixel clock",
+                    "counter": self.cntr_addr,
+                    "source_terminal": self.tick_src,
+                    "low_ticks": self.low_ticks,
+                    "high_ticks": self.high_ticks,
+                },
+                clk_cnfg={"sample_mode": NI_CONSTS.AcquisitionType.CONTINUOUS},
+            )
+        else:
+            self.close_task()
 
 
 class UM232H(drivers.FtdiInstrument):
@@ -51,7 +58,6 @@ class UM232H(drivers.FtdiInstrument):
             self.open()
             self.purge()
         else:
-            self.purge()
             self.close()
 
     def stream_read_TDC(self, meas):
@@ -128,17 +134,17 @@ class Scanners(drivers.NIDAQmxInstrument):
                 chan_specs=[
                     {
                         "physical_channel": self.ai_x_addr,
-                        "name_to_assign_to_channel": "aix",
+                        "name_to_assign_to_channel": "x-galvo ai",
                         **self.x_limits,
                     },
                     {
                         "physical_channel": self.ai_y_addr,
-                        "name_to_assign_to_channel": "aiy",
+                        "name_to_assign_to_channel": "y-galvo ai",
                         **self.y_limits,
                     },
                     {
                         "physical_channel": self.ai_z_addr,
-                        "name_to_assign_to_channel": "aiz",
+                        "name_to_assign_to_channel": "z-piezo ai",
                         **self.z_limits,
                     },
                 ],
@@ -233,6 +239,7 @@ class Counter(drivers.NIDAQmxInstrument):
             self.start_ci_task(
                 type="Continuous",
                 chan_spec={
+                    "name_to_assign_to_channel": "photon counter",
                     "counter": self.address,
                     "edge": NI_CONSTS.Edge.RISING,
                     "initial_count": 0,
