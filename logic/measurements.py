@@ -75,12 +75,26 @@ class SFCSImageMeasurement(Measurement):
 
     def __init__(self, app, **kwargs):
         super().__init__(app=app, type="SFCSImage", **kwargs)
-
-        self.save_path = app.gui.settings.imgDataPath.text()
-        self.file_template = app.gui.main.imgScanFileTemplate.text()
+        self.pxl_clk_dvc = app.devices.PixelClock
 
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scn_type}_{file_no}"
+
+    def setup_scan(self):
+        """Doc."""
+
+        def sync_line_freq(line_freq, pnts_per_line, pxl_clk_freq):
+            """Doc."""
+
+            pnts_freq = line_freq * pnts_per_line
+            clk_div = round(pxl_clk_freq / pnts_freq)
+            syncd_line_freq = pxl_clk_freq / (clk_div * pnts_per_line)
+            return syncd_line_freq, clk_div
+
+        self.line_freq, clk_div = sync_line_freq(
+            self.line_freq, self.pnts_per_line, self.pxl_clk_dvc.freq * 1000
+        )
+        self.pxl_clk_dvc.low_ticks = clk_div - 2
 
     async def run(self):
         """Doc."""

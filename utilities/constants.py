@@ -268,6 +268,7 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
 
 IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     file_template=QtWidgetAccess("imgScanFileTemplate", "text", "main"),
+    save_path=QtWidgetAccess("imgDataPath", "text", "settings"),
     prog_bar_wdgt=QtWidgetAccess("imgScanProgressBar", "value", "main"),
     curr_line_wdgt=QtWidgetAccess("currLine", "value", "main"),
     curr_plane_wdgt=QtWidgetAccess("currPlane", "value", "main"),

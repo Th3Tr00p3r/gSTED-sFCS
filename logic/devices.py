@@ -15,7 +15,11 @@ from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
 class PixelClock(drivers.NIDAQmxInstrument):
-    """Doc."""
+    """
+    The pixel clock is fed to the DAQ board from the FPGA.
+    Base frequency is 4 MHz. Used for scans, where it is useful to
+    have divisible frequencies for both the laser pulses and AI/AO.
+    """
 
     def __init__(self, nick, param_dict):
         super().__init__(nick=nick, param_dict=param_dict)

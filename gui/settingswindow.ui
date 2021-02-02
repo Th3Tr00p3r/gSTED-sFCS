@@ -1971,7 +1971,7 @@
                      <item>
                       <widget class="QLabel" name="label_38">
                        <property name="text">
-                        <string>Pixel Clock Freq. (KHz)</string>
+                        <string>Pixel Clock Freq. (MHz)</string>
                        </property>
                       </widget>
                      </item>
@@ -2004,7 +2004,7 @@
                         <number>99999</number>
                        </property>
                        <property name="value">
-                        <number>4000</number>
+                        <number>4</number>
                        </property>
                       </widget>
                      </item>
