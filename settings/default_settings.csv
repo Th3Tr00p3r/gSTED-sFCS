@@ -44,7 +44,7 @@ TDCpixelClockFreq,4
 TDCversion,3
 pixelClockLowTicks,10
 pixelClockHighTicks,2
-pixelClockFreq,4000
+pixelClockFreq,4
 AIclkDiv,100
 uc480PlaceHolder,0.0
 xConv,68.0
