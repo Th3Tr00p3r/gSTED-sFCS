@@ -379,6 +379,7 @@ class SettWin:
         self._app = app
         self._gui = gui
 
+    @err_hndlr
     def clean_up(self):
         """Doc."""
 
@@ -387,7 +388,7 @@ class SettWin:
         current_state = helper.wdgt_children_as_row_list(self._gui)
         last_loaded_state = helper.csv_rows_as_list(curr_file_path)
 
-        if current_state != last_loaded_state:
+        if set(current_state) != set(last_loaded_state):
             pressed = Question(
                 "Keep changes if made? "
                 "(otherwise, revert to last loaded settings file.)"
@@ -409,11 +410,12 @@ class SettWin:
             consts.SETTINGS_FOLDER_PATH,
             "CSV Files(*.csv *.txt)",
         )
-        self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
-            file_path
-        )
-        helper.gui_to_csv(self._gui.frame, file_path)
-        logging.debug(f"Settings file saved as: '{file_path}'")
+        if file_path != "":
+            self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
+                file_path
+            )
+            helper.gui_to_csv(self._gui.frame, file_path)
+            logging.debug(f"Settings file saved as: '{file_path}'")
 
     @err_hndlr
     def load(self, file_path=""):
@@ -430,14 +432,12 @@ class SettWin:
                 consts.SETTINGS_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
-
-        self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
-            file_path
-        )
-
-        helper.csv_to_gui(file_path, self._gui.frame)
-
-        logging.debug(f"Settings file loaded: '{file_path}'")
+        if file_path != "":
+            self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
+                file_path
+            )
+            helper.csv_to_gui(file_path, self._gui.frame)
+            logging.debug(f"Settings file loaded: '{file_path}'")
 
 
 class CamWin:

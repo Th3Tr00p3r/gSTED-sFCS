@@ -134,7 +134,7 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
                     val = child.currentIndex()
                 else:  # QLineEdit
                     val = child.text()
-                rows.append([child.objectName(), str(val)])
+                rows.append((child.objectName(), str(val)))
     return rows
 
 
@@ -155,7 +155,7 @@ def csv_rows_as_list(file_path) -> List[tuple]:
     with open(file_path, "r", newline="") as f:
         reader = csv.reader(f)
         for row in reader:
-            rows.append(row)
+            rows.append(tuple(row))
     return rows
 
 
