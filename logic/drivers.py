@@ -106,6 +106,7 @@ class NIDAQmxInstrument:
         chan_specs: List[dict],
         samp_clk_cnfg: dict,
         clk_params: dict = {},
+        export_signals: list = [],
     ):
         """Doc."""
 
@@ -117,6 +118,8 @@ class NIDAQmxInstrument:
         self.task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
         for key, val in clk_params.items():
             setattr(self.task.timing, key, val)
+        for sgnl, trmnl in export_signals:
+            self.task.export_signals.export_signal(sgnl, trmnl)
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
         #        self.sreader = AnalogMultiChannelReader(self.task.in_stream)
@@ -129,18 +132,22 @@ class NIDAQmxInstrument:
         self,
         name: str,
         chan_spec: dict,
-        ci_count_edges_term,
         samp_clk_cnfg: dict,
-        clk_params: dict = {},
+        chan_xtra_params: dict = {},
+        clk_xtra_params: dict = {},
+        export_signals: list = [],
     ):
         """Doc."""
 
         self.task = ni.Task(new_task_name=name)
         chan = self.task.ci_channels.add_ci_count_edges_chan(**chan_spec)
-        chan.ci_count_edges_term = ci_count_edges_term
+        for key, val in chan_xtra_params.items():
+            setattr(chan, key, val)
         self.task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
-        for key, val in clk_params.items():
+        for key, val in clk_xtra_params.items():
             setattr(self.task.timing, key, val)
+        for sgnl, trmnl in export_signals:
+            self.task.export_signals.export_signal(sgnl, trmnl)
 
         self.task.sr = CounterReader(self.task.in_stream)
         self.task.sr.verify_array_shape = False
@@ -200,11 +207,10 @@ class NIDAQmxInstrument:
         number of samples read.
         """
 
-        a = self.task.sr.read_many_sample_uint32(
+        return self.task.sr.read_many_sample_uint32(
             self.ci_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
-        return a
 
     @err_hndlr
     def digital_write(self, bool):
