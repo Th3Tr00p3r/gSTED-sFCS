@@ -6,7 +6,7 @@ import time
 from array import array
 from typing import NoReturn
 
-import nidaqmx.constants as NI_CONSTS
+import nidaqmx.constants as ni_consts
 import numpy as np
 
 import logic.drivers as drivers
@@ -30,19 +30,24 @@ class PixelClock(drivers.NIDAQmxInstrument):
         if bool:
             if hasattr(self, "task"):
                 self.close_task()
-            self.start_co_task(
-                type="Scan",
-                chan_spec={
-                    "name_to_assign_to_channel": "pixel clock",
-                    "counter": self.cntr_addr,
-                    "source_terminal": self.tick_src,
-                    "low_ticks": self.low_ticks,
-                    "high_ticks": self.high_ticks,
-                },
-                clk_cnfg={"sample_mode": NI_CONSTS.AcquisitionType.CONTINUOUS},
-            )
+            self.start_co_clock_sync()
         else:
             self.close_task()
+
+    def start_co_clock_sync(self) -> NoReturn:
+        """Doc."""
+
+        self.start_co_task(
+            type="Scan",
+            chan_spec={
+                "name_to_assign_to_channel": "pixel clock",
+                "counter": self.cntr_addr,
+                "source_terminal": self.tick_src,
+                "low_ticks": self.low_ticks,
+                "high_ticks": self.high_ticks,
+            },
+            clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
+        )
 
 
 class UM232H(drivers.FtdiInstrument):
@@ -102,9 +107,11 @@ class Scanners(drivers.NIDAQmxInstrument):
 
     origin = (0.0, 0.0, 5.0)
 
-    x_limits = {"min_val": -5.0, "max_val": 5.0}
-    y_limits = {"min_val": -5.0, "max_val": 5.0}
-    z_limits = {"min_val": 0.0, "max_val": 10.0}
+    x_ao_limits = {"min_val": -5.0, "max_val": 5.0}
+    y_ao_limits = {"min_val": -5.0, "max_val": 5.0}
+    z_ao_limits = {"min_val": 0.0, "max_val": 10.0}
+
+    ai_limits = {"min_val": -10.0, "max_val": 10.0}
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
         self.led_widget = led_widget
@@ -112,19 +119,14 @@ class Scanners(drivers.NIDAQmxInstrument):
         super().__init__(
             nick=nick,
             param_dict=param_dict,
-            ao_timeout=0.1,  # TODO: these kwargs should belong to the device and not the driver (as well as the param_dict)
-            ai_clk_rate=1000,
-            ai_buff_sz=1000,
+            ao_timeout=0.1,  # TODO: this should belong to the device and not the driver (as well as the param_dict)
         )  # , ai_buffer=np.zeros(shape=(3, 1000), dtype=np.double))
 
         self.last_ai = None
         self.last_ao = (self.ao_x_init_vltg, self.ao_y_init_vltg, self.ao_z_init_vltg)
         self.um_V_ratio = (self.x_conv_const, self.y_conv_const, self.z_conv_const)
 
-        # TODO: these buffers will be used for scans so the shape of the scan could be used/reviewed and compared for AO vs. AI
-        self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
-        self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
-
+        self.init_buffers()
         self.toggle(True)
 
     def toggle(self, bool):
@@ -133,33 +135,73 @@ class Scanners(drivers.NIDAQmxInstrument):
         if bool:
             if hasattr(self, "task"):
                 self.close_task()
-            self.start_ai_task(
-                type="Continuous",
-                chan_specs=[
-                    {
-                        "physical_channel": self.ai_x_addr,
-                        "name_to_assign_to_channel": "x-galvo ai",
-                        **self.x_limits,
-                    },
-                    {
-                        "physical_channel": self.ai_y_addr,
-                        "name_to_assign_to_channel": "y-galvo ai",
-                        **self.y_limits,
-                    },
-                    {
-                        "physical_channel": self.ai_z_addr,
-                        "name_to_assign_to_channel": "z-piezo ai",
-                        **self.z_limits,
-                    },
-                ],
-                clk_cnfg={
-                    "rate": self.ai_clk_rate,
-                    "sample_mode": NI_CONSTS.AcquisitionType.CONTINUOUS,
-                    "samps_per_chan": self.ai_buff_sz,
-                },
-            )
+            self.start_ai_continuous()
         else:
             self.close_task()
+
+    def start_ai_continuous(self) -> NoReturn:
+        """Doc."""
+
+        self.start_ai_task(
+            name="Continuous AI",
+            chan_specs=[
+                {
+                    "physical_channel": self.ai_x_addr,
+                    "name_to_assign_to_channel": "x-galvo ai",
+                    **self.ai_limits,
+                },
+                {
+                    "physical_channel": self.ai_y_addr,
+                    "name_to_assign_to_channel": "y-galvo ai",
+                    **self.ai_limits,
+                },
+                {
+                    "physical_channel": self.ai_z_addr,
+                    "name_to_assign_to_channel": "z-piezo ai",
+                    **self.ai_limits,
+                },
+            ],
+            samp_clk_cnfg={
+                "rate": self.MIN_OUTPUT_RATE_Hz,
+                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "samps_per_chan": self.AI_BUFFER_SZ,
+                "active_edge": ni_consts.Edge.RISING,
+            },
+        )
+
+    #    def start_ai_scan(self, clk_src) ->NoReturn:
+    #        """Doc."""
+    #
+    #        self.start_ai_task(
+    #            name="Scan AI",
+    #            chan_specs=[
+    #                {
+    #                    "physical_channel": self.ai_x_addr,
+    #                    "name_to_assign_to_channel": "x-galvo ai",
+    #                    **self.ai_limits,
+    #                },
+    #                {
+    #                    "physical_channel": self.ai_y_addr,
+    #                    "name_to_assign_to_channel": "y-galvo ai",
+    #                    **self.ai_limits,
+    #                },
+    #                {
+    #                    "physical_channel": self.ai_z_addr,
+    #                    "name_to_assign_to_channel": "z-piezo ai",
+    #                    **self.ai_limits,
+    #                },
+    #            ],
+    #            clk_cnfg={
+    #                "":
+    #                "":
+    #            },
+    #        )
+
+    def init_buffers(self) -> NoReturn:
+        """Doc."""
+
+        self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
+        self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
 
     def fill_ai_buff(self) -> NoReturn:
         """Doc."""
@@ -177,7 +219,6 @@ class Scanners(drivers.NIDAQmxInstrument):
         Finds out which AO voltages need to be changed,
         writes those voltages to the relevant scanners with
         the relevant limits, and saves the changed AO voltages.
-
         """
 
         ao_addresses = []
@@ -187,11 +228,11 @@ class Scanners(drivers.NIDAQmxInstrument):
         for axis, new_axis_vltg in zip(axes, pos_vltgs):
             if axis in {"x", "y"}:  # Differential Voltage [-5,5]
                 ao_addresses.append(getattr(self, f"ao_{axis}_addr"))
-                limits.append(getattr(self, f"{axis}_limits"))
+                limits.append(getattr(self, f"{axis}_ao_limits"))
                 vltgs += [new_axis_vltg, -new_axis_vltg]
             else:  # RSE Voltage [0,10]
                 ao_addresses.append(getattr(self, f"ao_{axis}_addr"))
-                limits.append(getattr(self, f"{axis}_limits"))
+                limits.append(getattr(self, f"{axis}_ao_limits"))
                 vltgs.append(new_axis_vltg)
 
         self.last_ao = pos_vltgs
@@ -206,10 +247,10 @@ class Scanners(drivers.NIDAQmxInstrument):
     def dump_buff_overflow(self):
         """Doc."""
 
-        if max(self.ao_buffer.shape) > self.ai_buff_sz:
-            self.ao_buffer = self.ao_buffer[:, -self.ai_buff_sz :]
-        if max(self.ai_buffer.shape) > self.ai_buff_sz:
-            self.ai_buffer = self.ai_buffer[:, -self.ai_buff_sz :]
+        if max(self.ao_buffer.shape) > self.AI_BUFFER_SZ:
+            self.ao_buffer = self.ao_buffer[:, -self.AI_BUFFER_SZ :]
+        if max(self.ai_buffer.shape) > self.AI_BUFFER_SZ:
+            self.ai_buffer = self.ai_buffer[:, -self.AI_BUFFER_SZ :]
 
 
 class Counter(drivers.NIDAQmxInstrument):
@@ -225,12 +266,12 @@ class Counter(drivers.NIDAQmxInstrument):
         self.led_widget = led_widget
         self.switch_widget = switch_widget
         super().__init__(nick=nick, param_dict=param_dict, ci_buffer=self.ci_buffer)
-
-        self.cont_count_buff = np.empty(shape=(0,))
         self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
         self.ai_task = ai_task
+
+        self.init_buffer()
 
         self.toggle(True)
 
@@ -240,25 +281,36 @@ class Counter(drivers.NIDAQmxInstrument):
         if bool:
             if hasattr(self, "task"):
                 self.close_task()
-            self.start_ci_task(
-                type="Continuous",
-                chan_spec={
-                    "name_to_assign_to_channel": "photon counter",
-                    "counter": self.address,
-                    "edge": NI_CONSTS.Edge.RISING,
-                    "initial_count": 0,
-                    "count_direction": NI_CONSTS.CountDirection.COUNT_UP,
-                },
-                ci_count_edges_term=self.CI_cnt_edges_term,
-                clk_cnfg={
-                    "rate": self.ai_task.timing.samp_clk_rate,
-                    "source": self.ai_task.timing.samp_clk_term,
-                    "sample_mode": NI_CONSTS.AcquisitionType.CONTINUOUS,
-                    "samps_per_chan": len(self.ci_buffer),
-                },
-            )
+            self.start_ci_continuous()
         else:
             self.close_task()
+
+    def start_ci_continuous(self) -> NoReturn:
+        """Doc."""
+
+        self.start_ci_task(
+            name="Continuous CI",
+            chan_spec={
+                "name_to_assign_to_channel": "photon counter",
+                "counter": self.address,
+                "edge": ni_consts.Edge.RISING,
+                "initial_count": 0,
+                "count_direction": ni_consts.CountDirection.COUNT_UP,
+            },
+            ci_count_edges_term=self.CI_cnt_edges_term,
+            samp_clk_cnfg={
+                "rate": self.ai_task.timing.samp_clk_rate,
+                "source": self.ai_task.timing.samp_clk_term,
+                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "samps_per_chan": len(self.ci_buffer),
+                "active_edge": ni_consts.Edge.RISING,
+            },
+        )
+
+    def init_buffer(self) -> NoReturn:
+        """Doc."""
+
+        self.cont_count_buff = np.empty(shape=(0,))
 
     def count(self):
         """Doc."""
@@ -280,16 +332,13 @@ class Counter(drivers.NIDAQmxInstrument):
                 self.cont_count_buff[-1]
                 - self.cont_count_buff[-(self.num_reads_since_avg + 1)]
             ) / actual_intrvl
-
-            self.num_reads_since_avg = 0
-            self.last_avg_time = time.perf_counter()
-
-            return avg_cnt_rate / 1000  # Hz -> KHz
-
+            avg_cnt_rate = avg_cnt_rate / 1000  # Hz -> KHz
         else:
-            self.num_reads_since_avg = 0
-            self.last_avg_time = time.perf_counter()
-            return 0
+            avg_cnt_rate = 0
+
+        self.num_reads_since_avg = 0
+        self.last_avg_time = time.perf_counter()
+        return avg_cnt_rate
 
     def dump_buff_overflow(self):
         """Doc."""

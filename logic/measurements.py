@@ -9,6 +9,8 @@ from typing import NoReturn, Tuple, Union
 
 import numpy as np
 
+import utilities.helper as helper
+
 
 class Measurement:
     """Base class for measurements"""
@@ -76,6 +78,8 @@ class SFCSImageMeasurement(Measurement):
     def __init__(self, app, **kwargs):
         super().__init__(app=app, type="SFCSImage", **kwargs)
         self.pxl_clk_dvc = app.devices.PixelClock
+        self.scanners_dvc = app.devices.Scanners
+        self.counter_dvc = app.devices.Scanners
 
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scn_type}_{file_no}"
@@ -83,18 +87,45 @@ class SFCSImageMeasurement(Measurement):
     def setup_scan(self):
         """Doc."""
 
-        def sync_line_freq(line_freq, pnts_per_line, pxl_clk_freq):
+        def sync_line_freq(line_freq: int, ppl: int, pxl_clk_freq: int) -> (int, int):
             """Doc."""
 
-            pnts_freq = line_freq * pnts_per_line
-            clk_div = round(pxl_clk_freq / pnts_freq)
-            syncd_line_freq = pxl_clk_freq / (clk_div * pnts_per_line)
+            point_freq = line_freq * ppl
+            clk_div = round(pxl_clk_freq / point_freq)
+            syncd_line_freq = pxl_clk_freq / (clk_div * ppl)
             return syncd_line_freq, clk_div
 
+        def fix_ppl(min_freq: int, line_freq: int, ppl: int) -> int:
+            """Doc."""
+
+            ratio = round(min_freq / line_freq)
+            if ratio > ppl:
+                return helper.div_ceil(ratio, 2) * 2
+            else:
+                return helper.div_ceil(ppl, 2) * 2
+
+        def bld_scn_addrs_str(scn_type: str, scanners_dvc) -> str:
+            """Doc."""
+
+            if scn_type == "XY":
+                return ", ".join(scanners_dvc.ao_x_addr, scanners_dvc.ao_y_addr)
+            elif scn_type == "YZ":
+                return ", ".join(scanners_dvc.ao_y_addr, scanners_dvc.ao_z_addr)
+            elif scn_type == "ZX":
+                return ", ".join(scanners_dvc.ao_z_addr, scanners_dvc.ao_x_addr)
+
         self.line_freq, clk_div = sync_line_freq(
-            self.line_freq, self.pnts_per_line, self.pxl_clk_dvc.freq * 1000
+            self.line_freq_Hz, self.ppl, self.pxl_clk_dvc.freq_MHz * 1e6
         )
         self.pxl_clk_dvc.low_ticks = clk_div - 2
+        self.ppl = fix_ppl(
+            self.scanners_dvc.MIN_OUTPUT_RATE_Hz, self.line_freq_Hz, self.ppl
+        )
+        self.scn_addrs = bld_scn_addrs_str(self.scn_type, self.scanners_dvc)
+        self.scanners_dvc.init_buffers()
+        self.counter_dvc.init_buffer()
+        self.curr_line_wdgt.set(0)
+        self.curr_plane_wdgt.set(0)
 
     async def run(self):
         """Doc."""

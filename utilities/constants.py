@@ -156,9 +156,8 @@ TDC = DeviceAttrs(
     param_widgets=QtWidgetCollection(
         address=QtWidgetAccess("TDCaddress", "text"),
         data_vrsn=QtWidgetAccess("TDCdataVersion", "text"),
-        laser_freq=QtWidgetAccess("TDClaserFreq", "value"),
-        fpga_freq=QtWidgetAccess("TDCFPGAFreq", "value"),
-        pxl_clk_freq=QtWidgetAccess("TDCpixelClockFreq", "value"),
+        laser_freq_MHz=QtWidgetAccess("TDClaserFreq", "value"),
+        fpga_freq_MHz=QtWidgetAccess("TDCFPGAFreq", "value"),
         tdc_vrsn=QtWidgetAccess("TDCversion", "value"),
     ),
 )
@@ -211,7 +210,7 @@ PXL_CLK = DeviceAttrs(
         high_ticks=QtWidgetAccess("pixelClockHighTicks", "value"),
         cntr_addr=QtWidgetAccess("pixelClockCounterAddress", "text"),
         tick_src=QtWidgetAccess("pixelClockSrcOfTicks", "text"),
-        freq=QtWidgetAccess("pixelClockFreq", "value"),
+        freq_MHz=QtWidgetAccess("pixelClockFreq", "value"),
     ),
 )
 
@@ -228,13 +227,13 @@ FCS_MEAS_WDGT_COLL = QtWidgetCollection(
 
 SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
     line_length=QtWidgetAccess("lineLen", "value", "main"),
-    ao_smplng_freq=QtWidgetAccess("aoSampFreq", "value", "main"),
+    ao_smplng_freq_Hz=QtWidgetAccess("aoSampFreq", "value", "main"),
     angle=QtWidgetAccess("angle", "value", "main"),
     lin_frac=QtWidgetAccess("solLinFrac", "value", "main"),
     line_shift=QtWidgetAccess("lineShift", "value", "main"),
     speed=QtWidgetAccess("solAngScanSpeed", "value", "main"),
     min_lines=QtWidgetAccess("minNumLines", "value", "main"),
-    max_scn_freq=QtWidgetAccess("maxScanFreq", "value", "main"),
+    max_scn_freq_Hz=QtWidgetAccess("maxScanFreq", "value", "main"),
 )
 
 SOL_MEAS_WDGT_COLL = QtWidgetCollection(
@@ -259,8 +258,8 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     dim1=QtWidgetAccess("imgScanDim1", "value", "main"),
     dim2=QtWidgetAccess("imgScanDim2", "value", "main"),
     n_lines=QtWidgetAccess("imgScanNumLines", "value", "main"),
-    pnts_per_line=QtWidgetAccess("imgScanPPLine", "value", "main"),
-    line_freq=QtWidgetAccess("imgScanLineFreq", "value", "main"),
+    ppl=QtWidgetAccess("imgScanPPLine", "value", "main"),
+    line_freq_Hz=QtWidgetAccess("imgScanLineFreq", "value", "main"),
     lin_frac=QtWidgetAccess("imgScanLinFrac", "value", "main"),
     n_planes=QtWidgetAccess("imgScanNumPlanes", "value", "main"),
     z_step=QtWidgetAccess("imgScanZstep", "value", "main"),
