@@ -106,11 +106,9 @@ class Scanners(drivers.NIDAQmxInstrument):
     """
 
     origin = (0.0, 0.0, 5.0)
-
     x_ao_limits = {"min_val": -5.0, "max_val": 5.0}
     y_ao_limits = {"min_val": -5.0, "max_val": 5.0}
     z_ao_limits = {"min_val": 0.0, "max_val": 10.0}
-
     ai_limits = {"min_val": -10.0, "max_val": 10.0}
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
@@ -121,6 +119,24 @@ class Scanners(drivers.NIDAQmxInstrument):
             param_dict=param_dict,
             ao_timeout=0.1,  # TODO: this should belong to the device and not the driver (as well as the param_dict)
         )  # , ai_buffer=np.zeros(shape=(3, 1000), dtype=np.double))
+
+        self.ai_chan_specs = [
+            {
+                "physical_channel": self.ai_x_addr,
+                "name_to_assign_to_channel": "x-galvo ai",
+                **self.ai_limits,
+            },
+            {
+                "physical_channel": self.ai_y_addr,
+                "name_to_assign_to_channel": "y-galvo ai",
+                **self.ai_limits,
+            },
+            {
+                "physical_channel": self.ai_z_addr,
+                "name_to_assign_to_channel": "z-piezo ai",
+                **self.ai_limits,
+            },
+        ]
 
         self.last_ai = None
         self.last_ao = (self.ao_x_init_vltg, self.ao_y_init_vltg, self.ao_z_init_vltg)
@@ -144,23 +160,7 @@ class Scanners(drivers.NIDAQmxInstrument):
 
         self.start_ai_task(
             name="Continuous AI",
-            chan_specs=[
-                {
-                    "physical_channel": self.ai_x_addr,
-                    "name_to_assign_to_channel": "x-galvo ai",
-                    **self.ai_limits,
-                },
-                {
-                    "physical_channel": self.ai_y_addr,
-                    "name_to_assign_to_channel": "y-galvo ai",
-                    **self.ai_limits,
-                },
-                {
-                    "physical_channel": self.ai_z_addr,
-                    "name_to_assign_to_channel": "z-piezo ai",
-                    **self.ai_limits,
-                },
-            ],
+            chan_specs=self.ai_chan_specs,
             samp_clk_cnfg={
                 "rate": self.MIN_OUTPUT_RATE_Hz,
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
@@ -169,33 +169,31 @@ class Scanners(drivers.NIDAQmxInstrument):
             },
         )
 
-    #    def start_ai_scan(self, clk_src) ->NoReturn:
-    #        """Doc."""
-    #
-    #        self.start_ai_task(
-    #            name="Scan AI",
-    #            chan_specs=[
-    #                {
-    #                    "physical_channel": self.ai_x_addr,
-    #                    "name_to_assign_to_channel": "x-galvo ai",
-    #                    **self.ai_limits,
-    #                },
-    #                {
-    #                    "physical_channel": self.ai_y_addr,
-    #                    "name_to_assign_to_channel": "y-galvo ai",
-    #                    **self.ai_limits,
-    #                },
-    #                {
-    #                    "physical_channel": self.ai_z_addr,
-    #                    "name_to_assign_to_channel": "z-piezo ai",
-    #                    **self.ai_limits,
-    #                },
-    #            ],
-    #            clk_cnfg={
-    #                "":
-    #                "":
-    #            },
-    #        )
+    def start_ai_img_scn(self, samps_per_chan, scn_clk_src, ai_conv_rate) -> NoReturn:
+        """Doc."""
+
+        self.start_ai_task(
+            name="Image Scan AI",
+            chan_specs=self.ai_chan_specs,
+            samp_clk_cnfg={
+                "rate": self.MIN_OUTPUT_RATE_Hz * 100,  # WHY? see CreateAOTask.vi
+                "source": scn_clk_src,
+                "samps_per_chan": samps_per_chan,
+                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "active_edge": ni_consts.Edge.RISING,
+            },
+            # TODO: Why is this needed?
+            export_signals=[
+                (
+                    "/Dev3/PFI1",
+                    ni_consts.Signal.SAMPLE_CLOCK,
+                ),  # TODO: name this terminal in consts.py
+                (
+                    "/Dev3/PFI2",
+                    ni_consts.Signal.AI_CONVERT_CLOCK,
+                ),  # TODO: name this terminal in consts.py
+            ],
+        )
 
     def init_buffers(self) -> NoReturn:
         """Doc."""
@@ -270,6 +268,13 @@ class Counter(drivers.NIDAQmxInstrument):
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
         self.ai_task = ai_task
+        self.ci_chan_specs = {
+            "name_to_assign_to_channel": "photon counter",
+            "counter": self.address,
+            "edge": ni_consts.Edge.RISING,
+            "initial_count": 0,
+            "count_direction": ni_consts.CountDirection.COUNT_UP,
+        }
 
         self.init_buffer()
 
@@ -290,19 +295,33 @@ class Counter(drivers.NIDAQmxInstrument):
 
         self.start_ci_task(
             name="Continuous CI",
-            chan_spec={
-                "name_to_assign_to_channel": "photon counter",
-                "counter": self.address,
-                "edge": ni_consts.Edge.RISING,
-                "initial_count": 0,
-                "count_direction": ni_consts.CountDirection.COUNT_UP,
-            },
-            ci_count_edges_term=self.CI_cnt_edges_term,
+            chan_spec=self.ci_chan_specs,
+            chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
             samp_clk_cnfg={
                 "rate": self.ai_task.timing.samp_clk_rate,
                 "source": self.ai_task.timing.samp_clk_term,
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "samps_per_chan": len(self.ci_buffer),
+                "active_edge": ni_consts.Edge.RISING,
+            },
+        )
+
+    def start_ci_img_scn(self, samps_per_chan, scn_clk_src) -> NoReturn:
+        """Doc."""
+
+        self.close_task()
+        self.start_ci_task(
+            name="Image Scan CI",
+            chan_specs=self.ci_chan_specs,
+            chan_xtra_params={
+                "ci_count_edges_term": self.CI_cnt_edges_term,
+                "ci_data_xfer_mech": ni_consts.DataTransferActiveTransferMode.DMA,
+            },
+            samp_clk_cnfg={
+                "rate": self.MIN_OUTPUT_RATE_Hz * 100,  # WHY? see CreateAOTask.vi
+                "source": scn_clk_src,
+                "samps_per_chan": samps_per_chan,
+                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "active_edge": ni_consts.Edge.RISING,
             },
         )

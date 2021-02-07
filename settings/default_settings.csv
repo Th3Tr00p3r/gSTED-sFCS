@@ -1,6 +1,6 @@
-arduinoAddr,COM3
 um232FlowControl,hw
 um232BitMode,SYNCFF
+arduinoAddr,COM3
 counterPixelClockAddress,Dev1/Ctr0
 pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
 counterTriggerAddress,Dev3/port1/line0
@@ -40,7 +40,6 @@ um232ProdID,24596
 um232nBytes,64000
 TDClaserFreq,10
 TDCFPGAFreq,400
-TDCpixelClockFreq,4
 TDCversion,3
 pixelClockLowTicks,10
 pixelClockHighTicks,2
