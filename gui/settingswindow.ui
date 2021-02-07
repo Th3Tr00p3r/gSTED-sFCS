@@ -1736,44 +1736,6 @@
                     </layout>
                    </item>
                    <item row="1" column="3">
-                    <layout class="QVBoxLayout" name="verticalLayout_39">
-                     <item>
-                      <widget class="QLabel" name="label_27">
-                       <property name="text">
-                        <string>Pixel Clock Freq. (MHz)</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="TDCpixelClockFreq">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="wrapping">
-                        <bool>false</bool>
-                       </property>
-                       <property name="readOnly">
-                        <bool>false</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="maximum">
-                        <number>99999</number>
-                       </property>
-                       <property name="value">
-                        <number>4</number>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="2" column="0">
                     <layout class="QVBoxLayout" name="verticalLayout_40">
                      <item>
                       <widget class="QLabel" name="label_28">

@@ -574,7 +574,7 @@
                             </font>
                            </property>
                            <property name="text">
-                            <string>Line Freq.</string>
+                            <string>Line Freq. (Hz)</string>
                            </property>
                           </widget>
                          </item>

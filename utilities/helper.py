@@ -7,6 +7,7 @@ import csv
 from dataclasses import dataclass
 from typing import Dict, List, NoReturn, Union
 
+import numpy as np
 import PyQt5.QtWidgets as QtWidgets
 
 import gui.icons.icon_paths as icon_path
@@ -35,6 +36,7 @@ class QtWidgetAccess:
 
     def set(self, arg, parent_gui=None) -> NoReturn:
         """Set widget property"""
+
         wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
         getattr(wdgt, self.setter)(arg)
 
@@ -100,18 +102,6 @@ class QtWidgetCollection:
                 wdgt.hold_obj(parent_gui)
 
         return self
-
-
-@dataclass
-class DeviceAttrs:
-
-    cls_name: str
-    log_ref: str
-    led_widget: QtWidgetAccess
-    param_widgets: QtWidgetCollection
-    cls_xtra_args: List[str] = None
-    led_icon_path: str = icon_path.LED_GREEN
-    switch_widget: QtWidgetAccess = None
 
 
 def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
@@ -187,3 +177,39 @@ def deep_getattr(object, deep_name, default=None):
     for attr in deep_name.split("."):
         deep_obj = getattr(deep_obj, attr)
     return deep_obj
+
+
+def div_ceil(x: int, y: int) -> int:
+    """Returns x divided by y rounded towards positive infinity"""
+    return x // y + (x % y > 0)
+
+
+@dataclass
+class DeviceAttrs:
+
+    cls_name: str
+    log_ref: str
+    led_widget: QtWidgetAccess
+    param_widgets: QtWidgetCollection
+    cls_xtra_args: List[str] = None
+    led_icon_path: str = icon_path.LED_GREEN
+    switch_widget: QtWidgetAccess = None
+
+
+@dataclass
+class WaveForm:
+    """Provides waveform functionallity similar to LabVIEW's waveform type"""
+
+    data: np.ndarray
+    dt: float
+    t0: float = 0
+
+    def len(self) -> int:
+        """Returns the Matlab-style length"""
+
+        return max(self.data.shape)
+
+    def t(self):
+        """Returns the time vector"""
+
+        return np.arange(self.t0, self.len() * self.dt, self.dt)
