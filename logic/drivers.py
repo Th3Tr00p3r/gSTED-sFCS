@@ -83,6 +83,9 @@ class FtdiInstrument:
 class NIDAQmxInstrument:
     """Doc."""
 
+    MIN_OUTPUT_RATE_Hz = 1000
+    AI_BUFFER_SZ = 1000
+
     def __init__(self, nick, param_dict, **kwargs):
 
         self.nick = nick
@@ -97,15 +100,23 @@ class NIDAQmxInstrument:
         self.task.close()
 
     @err_hndlr
-    def start_ai_task(self, type: str, chan_specs: List[dict], clk_cnfg: dict):
+    def start_ai_task(
+        self,
+        name: str,
+        chan_specs: List[dict],
+        samp_clk_cnfg: dict,
+        clk_params: dict = {},
+    ):
         """Doc."""
 
-        self.task = ni.Task(new_task_name=f"{type} AI")
+        self.task = ni.Task(new_task_name=name)
         for chan_spec in chan_specs:
             self.task.ai_channels.add_ai_voltage_chan(
                 terminal_config=ni.constants.TerminalConfiguration.RSE, **chan_spec
             )
-        self.task.timing.cfg_samp_clk_timing(**clk_cnfg)
+        self.task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+        for key, val in clk_params.items():
+            setattr(self.task.timing, key, val)
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
         #        self.sreader = AnalogMultiChannelReader(self.task.in_stream)
@@ -115,14 +126,21 @@ class NIDAQmxInstrument:
 
     @err_hndlr
     def start_ci_task(
-        self, type: str, chan_spec: dict, ci_count_edges_term, clk_cnfg: dict
+        self,
+        name: str,
+        chan_spec: dict,
+        ci_count_edges_term,
+        samp_clk_cnfg: dict,
+        clk_params: dict = {},
     ):
         """Doc."""
 
-        self.task = ni.Task(new_task_name=f"{type} CI")
+        self.task = ni.Task(new_task_name=name)
         chan = self.task.ci_channels.add_ci_count_edges_chan(**chan_spec)
         chan.ci_count_edges_term = ci_count_edges_term
-        self.task.timing.cfg_samp_clk_timing(**clk_cnfg)
+        self.task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+        for key, val in clk_params.items():
+            setattr(self.task.timing, key, val)
 
         self.task.sr = CounterReader(self.task.in_stream)
         self.task.sr.verify_array_shape = False
@@ -146,9 +164,11 @@ class NIDAQmxInstrument:
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
+        #        import numpy as np
+        #        self.ai_buffer = np.empty(shape=(3, 10000), dtype=np.float)
         #        num_samps_read = self.sreader.read_many_sample(
         #            self.ai_buffer,
-        #            number_of_samples_per_channel=READ_ALL_AVAILABLE,
+        #            number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         #        )
         #        return num_samps_read
 
@@ -180,10 +200,11 @@ class NIDAQmxInstrument:
         number of samples read.
         """
 
-        return self.task.sr.read_many_sample_uint32(
+        a = self.task.sr.read_many_sample_uint32(
             self.ci_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
+        return a
 
     @err_hndlr
     def digital_write(self, bool):
