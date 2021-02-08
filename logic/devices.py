@@ -29,10 +29,10 @@ class PixelClock(drivers.NIDAQmxInstrument):
 
         if bool:
             if hasattr(self, "task"):
-                self.close_task()
+                self.close_task("out")
             self.start_co_clock_sync()
         else:
-            self.close_task()
+            self.close_task("out")
 
     def start_co_clock_sync(self) -> NoReturn:
         """Doc."""
@@ -109,7 +109,6 @@ class Scanners(drivers.NIDAQmxInstrument):
     x_ao_limits = {"min_val": -5.0, "max_val": 5.0}
     y_ao_limits = {"min_val": -5.0, "max_val": 5.0}
     z_ao_limits = {"min_val": 0.0, "max_val": 10.0}
-    ai_limits = {"min_val": -10.0, "max_val": 10.0}
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
         self.led_widget = led_widget
@@ -122,20 +121,12 @@ class Scanners(drivers.NIDAQmxInstrument):
 
         self.ai_chan_specs = [
             {
-                "physical_channel": self.ai_x_addr,
-                "name_to_assign_to_channel": "x-galvo ai",
-                **self.ai_limits,
-            },
-            {
-                "physical_channel": self.ai_y_addr,
-                "name_to_assign_to_channel": "y-galvo ai",
-                **self.ai_limits,
-            },
-            {
-                "physical_channel": self.ai_z_addr,
-                "name_to_assign_to_channel": "z-piezo ai",
-                **self.ai_limits,
-            },
+                "physical_channel": getattr(self, f"ai_{axis}_addr"),
+                "name_to_assign_to_channel": f"{axis}-{inst} ai",
+                "min_val": -10.0,
+                "max_val": 10.0,
+            }
+            for axis, inst in zip(("x", "y", "z"), ("galvo", "galvo", "piezo"))
         ]
 
         self.last_ai = None
@@ -149,11 +140,11 @@ class Scanners(drivers.NIDAQmxInstrument):
         """Doc."""
 
         if bool:
-            if hasattr(self, "task"):
-                self.close_task()
+            if hasattr(self, "in_task"):
+                self.close_task("in")
             self.start_ai_continuous()
         else:
-            self.close_task()
+            self.close_task("in")
 
     def start_ai_continuous(self) -> NoReturn:
         """Doc."""
@@ -183,15 +174,16 @@ class Scanners(drivers.NIDAQmxInstrument):
                 "active_edge": ni_consts.Edge.RISING,
             },
             # TODO: Why is this needed?
+            # TODO: name these terminals in consts.py
             export_signals=[
                 (
                     "/Dev3/PFI1",
                     ni_consts.Signal.SAMPLE_CLOCK,
-                ),  # TODO: name this terminal in consts.py
+                ),
                 (
                     "/Dev3/PFI2",
                     ni_consts.Signal.AI_CONVERT_CLOCK,
-                ),  # TODO: name this terminal in consts.py
+                ),
             ],
         )
 
@@ -285,10 +277,10 @@ class Counter(drivers.NIDAQmxInstrument):
 
         if bool:
             if hasattr(self, "task"):
-                self.close_task()
+                self.close_task("in")
             self.start_ci_continuous()
         else:
-            self.close_task()
+            self.close_task("in")
 
     def start_ci_continuous(self) -> NoReturn:
         """Doc."""
@@ -309,7 +301,7 @@ class Counter(drivers.NIDAQmxInstrument):
     def start_ci_img_scn(self, samps_per_chan, scn_clk_src) -> NoReturn:
         """Doc."""
 
-        self.close_task()
+        self.close_task("in")
         self.start_ci_task(
             name="Image Scan CI",
             chan_specs=self.ci_chan_specs,

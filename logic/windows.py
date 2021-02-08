@@ -64,9 +64,9 @@ class MainWin:
             consts.LOADOUT_FOLDER_PATH,
             "CSV Files(*.csv *.txt)",
         )
-        helper.gui_to_csv(self._gui, file_path)
-
-        logging.debug(f"Loadout saved as: '{file_path}'")
+        if file_path != "":
+            helper.gui_to_csv(self._gui, file_path)
+            logging.debug(f"Loadout saved as: '{file_path}'")
 
     @err_hndlr
     def load(self, file_path=""):
@@ -79,9 +79,9 @@ class MainWin:
                 consts.LOADOUT_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
-        helper.csv_to_gui(file_path, self._gui)
-
-        logging.debug(f"Loadout loaded: '{file_path}'")
+            if file_path != "":
+                helper.csv_to_gui(file_path, self._gui)
+                logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chck()
     def dvc_toggle(self, nick):
@@ -251,8 +251,10 @@ class MainWin:
 
             elif type == "SFCSSolution":
                 self._app.meas = meas.SFCSSolutionMeasurement(
-                    self._app,
-                    **consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
+                    app=self._app,
+                    scn_params=consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
+                        self._app
+                    ),
                     **consts.SOL_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [
@@ -275,8 +277,8 @@ class MainWin:
 
             elif type == "SFCSImage":
                 self._app.meas = meas.SFCSImageMeasurement(
-                    self._app,
-                    **consts.IMG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
+                    app=self._app,
+                    scn_params=consts.IMG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
                     **consts.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         ["prog_bar_wdgt", "curr_line_wdgt", "curr_plane_wdgt"],
