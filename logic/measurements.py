@@ -5,20 +5,23 @@ import datetime
 import logging
 import math
 import time
+from types import SimpleNamespace
 from typing import NoReturn, Tuple, Union
 
 import numpy as np
 
-import utilities.helper as helper
+from utilities.helper import Waveform, div_ceil
 
 
 class Measurement:
     """Base class for measurements"""
 
-    def __init__(self, app, type, **kwargs):
+    def __init__(self, app, type: str, scn_params: dict = {}, **kwargs):
 
         self._app = app
         self.type = type
+        self.scn_params = SimpleNamespace()
+        [setattr(self.scn_params, key, val) for key, val in scn_params.items()]
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.data_dvc = app.devices.UM232H
         self.is_running = False
@@ -29,9 +32,7 @@ class Measurement:
         self.data_dvc.purge()
         self._app.gui.main.imp.dvc_toggle("TDC")
         self.is_running = True
-
         logging.info(f"{self.type} measurement started")
-
         await self.run()
 
     def stop(self):
@@ -40,10 +41,8 @@ class Measurement:
         self.is_running = False
         self._app.gui.main.imp.dvc_toggle("TDC")
         self.prog_bar_wdgt.set(0)
-
         # TODO: need to distinguish stopped from finished - a finished flag?
         logging.info(f"{self.type} measurement stopped")
-
         self._app.meas.type = None
 
     def save_data(self, file_name: str) -> NoReturn:
@@ -59,7 +58,6 @@ class Measurement:
 
         exc_state = self._app.devices.EXC_LASER.state
         dep_state = self._app.devices.DEP_LASER.state
-
         if exc_state and dep_state:
             laser_config = "sted"
         elif exc_state:
@@ -68,21 +66,25 @@ class Measurement:
             laser_config = "dep"
         else:
             laser_config = "nolaser"
-
         return laser_config
 
 
 class SFCSImageMeasurement(Measurement):
     """Doc."""
 
-    def __init__(self, app, **kwargs):
-        super().__init__(app=app, type="SFCSImage", **kwargs)
+    def __init__(self, app, scn_params, **kwargs):
+        super().__init__(app=app, type="SFCSImage", scn_params=scn_params, **kwargs)
         self.pxl_clk_dvc = app.devices.PixelClock
         self.scanners_dvc = app.devices.Scanners
         self.counter_dvc = app.devices.Scanners
 
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scn_type}_{file_no}"
+
+    def init_ai_wf(self) -> NoReturn:
+        self.ai_wf = Waveform(
+            data=np.empty(shape=(3, 0), dtype=np.float), dt=self.ao_wf.dt
+        )
 
     def setup_scan(self):
         """Doc."""
@@ -100,9 +102,9 @@ class SFCSImageMeasurement(Measurement):
 
             ratio = round(min_freq / line_freq)
             if ratio > ppl:
-                return helper.div_ceil(ratio, 2) * 2
+                return div_ceil(ratio, 2) * 2
             else:
-                return helper.div_ceil(ppl, 2) * 2
+                return div_ceil(ppl, 2) * 2
 
         def bld_scn_addrs_str(scn_type: str, scanners_dvc) -> str:
             """Doc."""
@@ -111,9 +113,31 @@ class SFCSImageMeasurement(Measurement):
                 return ", ".join(scanners_dvc.ao_x_addr, scanners_dvc.ao_y_addr)
             elif scn_type == "YZ":
                 return ", ".join(scanners_dvc.ao_y_addr, scanners_dvc.ao_z_addr)
-            elif scn_type == "ZX":
-                return ", ".join(scanners_dvc.ao_z_addr, scanners_dvc.ao_x_addr)
+            elif scn_type == "xz":
+                return ", ".join(scanners_dvc.ao_x_addr, scanners_dvc.ao_z_addr)
 
+        def calculate_scan(scan_params: SimpleNamespace):
+            """Doc."""
+
+            # TODO: This is a mock version of the soon-to-be-implememted function
+            mock_ao_2d_arr = np.vstack(
+                (np.arange(-5.0, 5.0, 0.5), np.arange(-5.0, 5.0, 0.5))
+            )
+            mock_ao_2d_wf = Waveform(data=mock_ao_2d_arr, dt=1e-5)  # dt is made up
+            set_pnts_lines_odd = 100
+            set_pnts_lines_even = 100
+            set_pnts_planes = 0
+            total_pnts = 200
+
+            return (
+                mock_ao_2d_wf,
+                set_pnts_lines_odd,
+                set_pnts_lines_even,
+                set_pnts_planes,
+                total_pnts,
+            )
+
+        # fix line freq, pxl clk low ticks, and ppl
         self.line_freq, clk_div = sync_line_freq(
             self.line_freq_Hz, self.ppl, self.pxl_clk_dvc.freq_MHz * 1e6
         )
@@ -121,11 +145,23 @@ class SFCSImageMeasurement(Measurement):
         self.ppl = fix_ppl(
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz, self.line_freq_Hz, self.ppl
         )
+        # unite relevant physical addresses
         self.scn_addrs = bld_scn_addrs_str(self.scn_type, self.scanners_dvc)
+        # init device buffers
         self.scanners_dvc.init_buffers()
         self.counter_dvc.init_buffer()
+        # init gui
         self.curr_line_wdgt.set(0)
         self.curr_plane_wdgt.set(0)
+        # build ao_wf and init ai_wf
+        (
+            self.ao_wf,
+            self.set_pnts_lines_odd,
+            self.set_pnts_lines_even,
+            self.set_pnts_planes,
+            self.total_pnts,
+        ) = calculate_scan(self.scn_params)
+        self.init_ai_wf()
 
     async def run(self):
         """Doc."""
@@ -137,8 +173,8 @@ class SFCSImageMeasurement(Measurement):
 class SFCSSolutionMeasurement(Measurement):
     """Doc."""
 
-    def __init__(self, app, **kwargs):
-        super().__init__(app=app, type="SFCSSolution", **kwargs)
+    def __init__(self, app, scn_params, **kwargs):
+        super().__init__(app=app, type="SFCSSolution", scn_params=scn_params, **kwargs)
         self.duration_multiplier = 60
         self.laser_config = self.get_laser_config()
 

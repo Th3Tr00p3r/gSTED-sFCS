@@ -197,12 +197,38 @@ class DeviceAttrs:
 
 
 @dataclass
-class WaveForm:
+class Waveform:
     """Provides waveform functionallity similar to LabVIEW's waveform type"""
 
     data: np.ndarray
     dt: float
     t0: float = 0
+
+    def __post_init__(self):
+        """Check that self.data is a 2D numpy array"""
+
+        if isinstance(self.data, np.ndarray):
+            if len(self.data.shape) > 2:
+                raise ValueError("Waveform data must be a 2D numpy array")
+        else:
+            raise ValueError("Waveform data must be a 2D numpy array")
+
+    def __add__(self, other):
+        """
+        Overloads '+' operator to np.concatenate() waveforms
+        and other waveforms/ndarrays.
+        """
+
+        if isinstance(other, Waveform):
+            if (self.dt == other.dt) and (self.t0 == other.t0):
+                new_data = np.concatenate((self.data, other.data), axis=0)
+            else:
+                raise ValueError(
+                    "Attempting to add waveforms of different temporal parameters (dt, t0)"
+                )
+        elif isinstance(other, np.ndarray):
+            new_data = np.concatenate((self.data, other), axis=0)
+        return Waveform(data=new_data, dt=self.dt, t0=self.t0)
 
     def len(self) -> int:
         """Returns the Matlab-style length"""
