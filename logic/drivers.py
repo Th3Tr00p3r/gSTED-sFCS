@@ -94,10 +94,11 @@ class NIDAQmxInstrument:
         [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
 
     @err_hndlr
-    def close_task(self):
+    def close_task(self, in_out: str):
         """Doc."""
 
-        self.task.close()
+        attr_name = f"{in_out}_task"
+        getattr(self, attr_name).close()
 
     @err_hndlr
     def start_ai_task(
@@ -110,22 +111,22 @@ class NIDAQmxInstrument:
     ):
         """Doc."""
 
-        self.task = ni.Task(new_task_name=name)
+        self.in_task = ni.Task(new_task_name=name)
         for chan_spec in chan_specs:
-            self.task.ai_channels.add_ai_voltage_chan(
+            self.in_task.ai_channels.add_ai_voltage_chan(
                 terminal_config=ni.constants.TerminalConfiguration.RSE, **chan_spec
             )
-        self.task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+        self.in_task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
         for key, val in clk_params.items():
-            setattr(self.task.timing, key, val)
+            setattr(self.in_task.timing, key, val)
         for sgnl, trmnl in export_signals:
-            self.task.export_signals.export_signal(sgnl, trmnl)
+            self.in_task.export_signals.export_signal(sgnl, trmnl)
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
-        #        self.sreader = AnalogMultiChannelReader(self.task.in_stream)
+        #        self.sreader = AnalogMultiChannelReader(self.in_task.in_stream)
         #        self.sreader.verify_array_shape = False
 
-        self.task.start()
+        self.in_task.start()
 
     @err_hndlr
     def start_ci_task(
@@ -139,20 +140,20 @@ class NIDAQmxInstrument:
     ):
         """Doc."""
 
-        self.task = ni.Task(new_task_name=name)
-        chan = self.task.ci_channels.add_ci_count_edges_chan(**chan_spec)
+        self.in_task = ni.Task(new_task_name=name)
+        chan = self.in_task.ci_channels.add_ci_count_edges_chan(**chan_spec)
         for key, val in chan_xtra_params.items():
             setattr(chan, key, val)
-        self.task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+        self.in_task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
         for key, val in clk_xtra_params.items():
-            setattr(self.task.timing, key, val)
+            setattr(self.in_task.timing, key, val)
         for sgnl, trmnl in export_signals:
-            self.task.export_signals.export_signal(sgnl, trmnl)
+            self.in_task.export_signals.export_signal(sgnl, trmnl)
 
-        self.task.sr = CounterReader(self.task.in_stream)
-        self.task.sr.verify_array_shape = False
+        self.in_task.sr = CounterReader(self.in_task.in_stream)
+        self.in_task.sr.verify_array_shape = False
 
-        self.task.start()
+        self.in_task.start()
 
     @err_hndlr
     def start_co_task(
@@ -160,11 +161,11 @@ class NIDAQmxInstrument:
     ):
         """Doc."""
 
-        self.task = ni.Task(new_task_name=f"{type} CO")
-        self.task.co_channels.add_co_pulse_chan_ticks(**chan_spec)
-        self.task.timing.cfg_implicit_timing(**clk_cnfg)
+        self.out_task = ni.Task(new_task_name=f"{type} CO")
+        self.out_task.co_channels.add_co_pulse_chan_ticks(**chan_spec)
+        self.out_task.timing.cfg_implicit_timing(**clk_cnfg)
 
-        self.task.start()
+        self.out_task.start()
 
     @err_hndlr
     def analog_read(self):
@@ -179,7 +180,7 @@ class NIDAQmxInstrument:
         #        )
         #        return num_samps_read
 
-        read_samples = self.task.read(
+        read_samples = self.in_task.read(
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE
         )
         return read_samples
@@ -207,7 +208,7 @@ class NIDAQmxInstrument:
         number of samples read.
         """
 
-        return self.task.sr.read_many_sample_uint32(
+        return self.in_task.sr.read_many_sample_uint32(
             self.ci_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
