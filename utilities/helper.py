@@ -231,9 +231,15 @@ class Waveform:
         return Waveform(data=new_data, dt=self.dt, t0=self.t0)
 
     def len(self) -> int:
-        """Returns the Matlab-style length"""
+        """Returns the numer of data points"""
 
-        return max(self.data.shape)
+        return self.data.shape[1]
+
+    # TODO: better name?
+    def num_chans(self) -> int:
+        """Returns the number of channels in the data"""
+
+        return self.data.shape[0]
 
     def t(self):
         """Returns the time vector"""

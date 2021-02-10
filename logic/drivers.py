@@ -94,6 +94,13 @@ class NIDAQmxInstrument:
         [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
 
     @err_hndlr
+    def start_task(self, in_out: str):
+        """Doc."""
+
+        attr_name = f"{in_out}_task"
+        getattr(self, attr_name).start()
+
+    @err_hndlr
     def close_task(self, in_out: str):
         """Doc."""
 
@@ -101,7 +108,7 @@ class NIDAQmxInstrument:
         getattr(self, attr_name).close()
 
     @err_hndlr
-    def start_ai_task(
+    def create_ai_task(
         self,
         name: str,
         chan_specs: List[dict],
@@ -126,10 +133,8 @@ class NIDAQmxInstrument:
         #        self.sreader = AnalogMultiChannelReader(self.in_task.in_stream)
         #        self.sreader.verify_array_shape = False
 
-        self.in_task.start()
-
     @err_hndlr
-    def start_ci_task(
+    def create_ci_task(
         self,
         name: str,
         chan_spec: dict,
@@ -153,10 +158,8 @@ class NIDAQmxInstrument:
         self.in_task.sr = CounterReader(self.in_task.in_stream)
         self.in_task.sr.verify_array_shape = False
 
-        self.in_task.start()
-
     @err_hndlr
-    def start_co_task(
+    def create_co_task(
         self, type: str, chan_spec: dict, ci_count_edges_term, clk_cnfg: dict
     ):
         """Doc."""
@@ -164,8 +167,6 @@ class NIDAQmxInstrument:
         self.out_task = ni.Task(new_task_name=f"{type} CO")
         self.out_task.co_channels.add_co_pulse_chan_ticks(**chan_spec)
         self.out_task.timing.cfg_implicit_timing(**clk_cnfg)
-
-        self.out_task.start()
 
     @err_hndlr
     def analog_read(self):
