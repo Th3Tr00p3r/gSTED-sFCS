@@ -1780,7 +1780,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QGroupBox" name="groupBox_13">
+                 <widget class="QGroupBox" name="groupBox_14">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                     <horstretch>0</horstretch>
@@ -1790,148 +1790,11 @@
                   <property name="title">
                    <string>Pixel Clock Parameters</string>
                   </property>
-                  <layout class="QGridLayout" name="gridLayout_16">
-                   <property name="spacing">
-                    <number>0</number>
-                   </property>
-                   <item row="0" column="0">
-                    <layout class="QVBoxLayout" name="verticalLayout_50">
+                  <layout class="QGridLayout" name="gridLayout_14">
+                   <item row="4" column="0" colspan="2">
+                    <layout class="QVBoxLayout" name="verticalLayout_62">
                      <item>
-                      <widget class="QLabel" name="label_39">
-                       <property name="text">
-                        <string>Low Ticks</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="pixelClockLowTicks">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="wrapping">
-                        <bool>false</bool>
-                       </property>
-                       <property name="readOnly">
-                        <bool>false</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="value">
-                        <number>10</number>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="0" column="1">
-                    <layout class="QVBoxLayout" name="verticalLayout_41">
-                     <item>
-                      <widget class="QLabel" name="label_29">
-                       <property name="text">
-                        <string>High Ticks</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="pixelClockHighTicks">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="wrapping">
-                        <bool>false</bool>
-                       </property>
-                       <property name="readOnly">
-                        <bool>false</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="value">
-                        <number>2</number>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="1" column="0" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_47">
-                     <item>
-                      <widget class="QLabel" name="pixelClockCounterChannel">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>Counter Physical Channel</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="pixelClockCounterAddress">
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Dev3/ctr0</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="2" column="0" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_46">
-                     <item>
-                      <widget class="QLabel" name="label_44">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>Source of Ticks</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="pixelClockSrcOfTicks">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>/Dev3/PFI3</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="3" column="0" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_49">
-                     <item>
-                      <widget class="QLabel" name="label_38">
+                      <widget class="QLabel" name="label_42">
                        <property name="text">
                         <string>Pixel Clock Freq. (MHz)</string>
                        </property>
@@ -1969,6 +1832,197 @@
                         <number>4</number>
                        </property>
                       </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="0" column="1">
+                    <layout class="QVBoxLayout" name="verticalLayout_42">
+                     <item>
+                      <widget class="QLabel" name="label_31">
+                       <property name="text">
+                        <string>High Ticks</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QSpinBox" name="pixelClockHighTicks">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
+                       <property name="wrapping">
+                        <bool>false</bool>
+                       </property>
+                       <property name="readOnly">
+                        <bool>false</bool>
+                       </property>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
+                       </property>
+                       <property name="value">
+                        <number>2</number>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="1" column="0" colspan="2">
+                    <layout class="QVBoxLayout" name="verticalLayout_59">
+                     <item>
+                      <widget class="QLabel" name="pixelClockCounterChannel_2">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>Counter Physical Channel</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="pixelClockCounterAddress">
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>Dev3/ctr0</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="0" column="0">
+                    <layout class="QVBoxLayout" name="verticalLayout_58">
+                     <item>
+                      <widget class="QLabel" name="label_40">
+                       <property name="text">
+                        <string>Low Ticks</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QSpinBox" name="pixelClockLowTicks">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
+                       <property name="wrapping">
+                        <bool>false</bool>
+                       </property>
+                       <property name="readOnly">
+                        <bool>false</bool>
+                       </property>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
+                       </property>
+                       <property name="value">
+                        <number>10</number>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="2" column="0" colspan="2">
+                    <layout class="QVBoxLayout" name="verticalLayout_61">
+                     <item>
+                      <widget class="QLabel" name="label_49">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>Source of Ticks</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="pixelClockSrcOfTicks">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>/Dev3/PFI3</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="3" column="0" colspan="2">
+                    <layout class="QVBoxLayout" name="verticalLayout_11">
+                     <item>
+                      <widget class="QLabel" name="label_50">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>Output Terminals</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_13">
+                       <item>
+                        <widget class="QLineEdit" name="pixelClockOutput">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>/Dev3/PFI12</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="pixelClockOutputExt">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>/Dev1/PFI5</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
                      </item>
                     </layout>
                    </item>

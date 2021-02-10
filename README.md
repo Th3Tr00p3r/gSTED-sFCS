@@ -42,7 +42,7 @@ Python-based software for our optical measurement system.
 
 - [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**)
 
-- pandas - currently used only for reading the settings out of laziness (overkill)
+- NumPy
 
 - matplotlib - used for plotting (currently only the camera, later the graphs)
 

@@ -82,8 +82,11 @@ class SFCSImageMeasurement(Measurement):
         return f"{self.file_template}_{self.laser_config}_{self.scn_type}_{file_no}"
 
     def init_ai_wf(self) -> NoReturn:
+        """Initiate AI Waveform with dt from the AO Waveform"""
+
+        num_chans = self.scanners_dvc.in_task.number_of_channels
         self.ai_wf = Waveform(
-            data=np.empty(shape=(3, 0), dtype=np.float), dt=self.ao_wf.dt
+            data=np.empty(shape=(num_chans, 0), dtype=np.float), dt=self.ao_wf.dt
         )
 
     def setup_scan(self):
@@ -123,14 +126,14 @@ class SFCSImageMeasurement(Measurement):
             mock_ao_2d_arr = np.vstack(
                 (np.arange(-5.0, 5.0, 0.5), np.arange(-5.0, 5.0, 0.5))
             )
-            mock_ao_2d_wf = Waveform(data=mock_ao_2d_arr, dt=1e-5)  # dt is made up
-            set_pnts_lines_odd = 100
+            ao_wf = Waveform(data=mock_ao_2d_arr, dt=1e-5)  # dt is made up
+            set_pnts_lines_odd = 100  # these are made up too
             set_pnts_lines_even = 100
             set_pnts_planes = 0
             total_pnts = 200
 
             return (
-                mock_ao_2d_wf,
+                ao_wf,
                 set_pnts_lines_odd,
                 set_pnts_lines_even,
                 set_pnts_planes,
@@ -162,12 +165,25 @@ class SFCSImageMeasurement(Measurement):
             self.total_pnts,
         ) = calculate_scan(self.scn_params)
         self.init_ai_wf()
+        # TODO: why is the next line correct? explain and use a constant for 1.5E-7
+        self.ai_conv_rate = 1 / ((self.ao_wf.dt - 1.5e-7) / self.ai_wf.num_chans)
+        self.samps_per_chan = self.total_pnts * 1.2
 
     async def run(self):
         """Doc."""
         # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
 
-        pass
+        self.setup_scan()
+
+        # start pixel clock
+        self.pxl_clk_dvc.toggle(True)
+
+        # move to initial position (later smoothly)
+        self.scanners_dvc.move_to_pos(self.ao_wf.data[:, 0])
+
+        # prepare all tasks, starting with ao (which the others are clocked by, and is synced by pxl clk)
+
+        # start all tasks (ai, ci, ao) together
 
 
 class SFCSSolutionMeasurement(Measurement):

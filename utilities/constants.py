@@ -4,6 +4,8 @@
 import gui.icons.icon_paths as icon_path
 from utilities.helper import DeviceAttrs, QtWidgetAccess, QtWidgetCollection
 
+# TODO: move all package constants here to avoid importing them to multiple modules. (e.g. nidaqmx), possibly in a dataclass?
+
 # ------------------------------
 # General
 # ------------------------------
@@ -210,6 +212,8 @@ PXL_CLK = DeviceAttrs(
         high_ticks=QtWidgetAccess("pixelClockHighTicks", "value"),
         cntr_addr=QtWidgetAccess("pixelClockCounterAddress", "text"),
         tick_src=QtWidgetAccess("pixelClockSrcOfTicks", "text"),
+        out_term=QtWidgetAccess("pixelClockOutput", "text"),
+        out_ext_term=QtWidgetAccess("pixelClockOutputExt", "text"),
         freq_MHz=QtWidgetAccess("pixelClockFreq", "value"),
     ),
 )

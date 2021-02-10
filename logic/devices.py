@@ -30,14 +30,14 @@ class PixelClock(drivers.NIDAQmxInstrument):
         if bool:
             if hasattr(self, "task"):
                 self.close_task("out")
-            self.start_co_clock_sync()
+            self._start_co_clock_sync()
         else:
             self.close_task("out")
 
-    def start_co_clock_sync(self) -> NoReturn:
+    def _start_co_clock_sync(self) -> NoReturn:
         """Doc."""
 
-        self.start_co_task(
+        self.create_co_task(
             type="Scan",
             chan_spec={
                 "name_to_assign_to_channel": "pixel clock",
@@ -48,6 +48,7 @@ class PixelClock(drivers.NIDAQmxInstrument):
             },
             clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
         )
+        self.start_task("out")
 
 
 class UM232H(drivers.FtdiInstrument):
@@ -149,7 +150,7 @@ class Scanners(drivers.NIDAQmxInstrument):
     def start_ai_continuous(self) -> NoReturn:
         """Doc."""
 
-        self.start_ai_task(
+        self.create_ai_task(
             name="Continuous AI",
             chan_specs=self.ai_chan_specs,
             samp_clk_cnfg={
@@ -159,11 +160,14 @@ class Scanners(drivers.NIDAQmxInstrument):
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
+        self.start_task("in")
 
-    def start_ai_img_scn(self, samps_per_chan, scn_clk_src, ai_conv_rate) -> NoReturn:
+    def prepare_ai_for_scan(
+        self, samps_per_chan, scn_clk_src, ai_conv_rate
+    ) -> NoReturn:
         """Doc."""
 
-        self.start_ai_task(
+        self.create_ai_task(
             name="Image Scan AI",
             chan_specs=self.ai_chan_specs,
             samp_clk_cnfg={
@@ -173,8 +177,8 @@ class Scanners(drivers.NIDAQmxInstrument):
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "active_edge": ni_consts.Edge.RISING,
             },
-            # TODO: Why is this needed?
-            # TODO: name these terminals in consts.py
+            clk_params={"ai_conv_rate": ai_conv_rate},  # TODO: correct val?
+            # TODO: Why is this needed? name these terminals in consts.py after figuring out
             export_signals=[
                 (
                     "/Dev3/PFI1",
@@ -186,6 +190,11 @@ class Scanners(drivers.NIDAQmxInstrument):
                 ),
             ],
         )
+
+    def start_ai_scan(self) -> NoReturn:
+        """Doc."""
+
+        self.start_task("in")
 
     def init_buffers(self) -> NoReturn:
         """Doc."""
@@ -285,7 +294,7 @@ class Counter(drivers.NIDAQmxInstrument):
     def start_ci_continuous(self) -> NoReturn:
         """Doc."""
 
-        self.start_ci_task(
+        self.create_ci_task(
             name="Continuous CI",
             chan_spec=self.ci_chan_specs,
             chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
@@ -297,8 +306,9 @@ class Counter(drivers.NIDAQmxInstrument):
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
+        self.start_task("in")
 
-    def start_ci_img_scn(self, samps_per_chan, scn_clk_src) -> NoReturn:
+    def prepare_ci_for_scan(self, samps_per_chan, scn_clk_src) -> NoReturn:
         """Doc."""
 
         self.close_task("in")
@@ -317,6 +327,11 @@ class Counter(drivers.NIDAQmxInstrument):
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
+
+    def start_ci_scan(self) -> NoReturn:
+        """Doc."""
+
+        self.start_task("in")
 
     def init_buffer(self) -> NoReturn:
         """Doc."""
