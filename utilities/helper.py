@@ -7,7 +7,6 @@ import csv
 from dataclasses import dataclass
 from typing import Dict, List, NoReturn, Union
 
-import numpy as np
 import PyQt5.QtWidgets as QtWidgets
 
 import gui.icons.icon_paths as icon_path
@@ -18,8 +17,8 @@ class QtWidgetAccess:
     def __init__(self, obj_name: str, getter: str, gui_parent_name: str = "settings"):
         self.obj_name = obj_name
         self.getter = getter
-        first_char, *rest_of_str = self.getter
-        self.setter = "set" + first_char.upper() + "".join(rest_of_str)
+        first_getter_letter, *rest_getter_str = self.getter
+        self.setter = "set" + first_getter_letter.upper() + "".join(rest_getter_str)
         self.gui_parent_name = gui_parent_name
 
     def hold_obj(self, parent_gui) -> QtWidgetAccess:
@@ -194,54 +193,3 @@ class DeviceAttrs:
     cls_xtra_args: List[str] = None
     led_icon_path: str = icon_path.LED_GREEN
     switch_widget: QtWidgetAccess = None
-
-
-@dataclass
-class Waveform:
-    """Provides waveform functionallity similar to LabVIEW's waveform type"""
-
-    data: np.ndarray
-    dt: float
-    t0: float = 0
-
-    def __post_init__(self):
-        """Check that self.data is a 2D numpy array"""
-
-        if isinstance(self.data, np.ndarray):
-            if len(self.data.shape) > 2:
-                raise ValueError("Waveform data must be a 2D numpy array")
-        else:
-            raise ValueError("Waveform data must be a 2D numpy array")
-
-    def __add__(self, other):
-        """
-        Overloads '+' operator to np.concatenate() waveforms
-        and other waveforms/ndarrays.
-        """
-
-        if isinstance(other, Waveform):
-            if (self.dt == other.dt) and (self.t0 == other.t0):
-                new_data = np.concatenate((self.data, other.data), axis=0)
-            else:
-                raise ValueError(
-                    "Attempting to add waveforms of different temporal parameters (dt, t0)"
-                )
-        elif isinstance(other, np.ndarray):
-            new_data = np.concatenate((self.data, other), axis=0)
-        return Waveform(data=new_data, dt=self.dt, t0=self.t0)
-
-    def len(self) -> int:
-        """Returns the numer of data points"""
-
-        return self.data.shape[1]
-
-    # TODO: better name?
-    def num_chans(self) -> int:
-        """Returns the number of channels in the data"""
-
-        return self.data.shape[0]
-
-    def t(self):
-        """Returns the time vector"""
-
-        return np.arange(self.t0, self.len() * self.dt, self.dt)
