@@ -28,8 +28,6 @@ class PixelClock(drivers.NIDAQmxInstrument):
         """Doc."""
 
         if bool:
-            if hasattr(self, "task"):
-                self.close_task("out")
             self._start_co_clock_sync()
         else:
             self.close_task("out")
@@ -37,8 +35,11 @@ class PixelClock(drivers.NIDAQmxInstrument):
     def _start_co_clock_sync(self) -> NoReturn:
         """Doc."""
 
+        if hasattr(self, "out_tasks"):
+            self.close_tasks("out")
+
         self.create_co_task(
-            type="Scan",
+            name="Pixel Clock CI",
             chan_spec={
                 "name_to_assign_to_channel": "pixel clock",
                 "counter": self.cntr_addr,
@@ -48,7 +49,7 @@ class PixelClock(drivers.NIDAQmxInstrument):
             },
             clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
         )
-        self.start_task("out")
+        self.start_tasks("out")
 
 
 class UM232H(drivers.FtdiInstrument):
@@ -103,7 +104,6 @@ class Scanners(drivers.NIDAQmxInstrument):
     """
     Scanners encompasses all analog focal point positioning devices
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
-
     """
 
     origin = (0.0, 0.0, 5.0)
@@ -129,26 +129,33 @@ class Scanners(drivers.NIDAQmxInstrument):
             }
             for axis, inst in zip(("x", "y", "z"), ("galvo", "galvo", "piezo"))
         ]
+        self.ao_chan_specs = [
+            {
+                "physical_channel": getattr(self, f"ao_{axis}_addr"),
+                "name_to_assign_to_channel": f"{axis}-{inst} ao",
+                **getattr(self, f"{axis}_ao_limits"),
+            }
+            for axis, inst in zip(("x", "y", "z"), ("galvo", "galvo", "piezo"))
+        ]
 
         self.last_ai = None
         self.last_ao = (self.ao_x_init_vltg, self.ao_y_init_vltg, self.ao_z_init_vltg)
         self.um_V_ratio = (self.x_conv_const, self.y_conv_const, self.z_conv_const)
 
-        self.init_buffers()
         self.toggle(True)
 
     def toggle(self, bool):
         """Doc."""
 
         if bool:
-            if hasattr(self, "in_task"):
-                self.close_task("in")
-            self.start_ai_continuous()
+            self.start_continuous_read_task()
         else:
-            self.close_task("in")
+            self.close_tasks("in")
 
-    def start_ai_continuous(self) -> NoReturn:
+    def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
+
+        self.close_tasks("in")
 
         self.create_ai_task(
             name="Continuous AI",
@@ -156,16 +163,19 @@ class Scanners(drivers.NIDAQmxInstrument):
             samp_clk_cnfg={
                 "rate": self.MIN_OUTPUT_RATE_Hz,
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samps_per_chan": self.AI_BUFFER_SZ,
+                "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
-        self.start_task("in")
+        self.init_buffers()
+        self.start_tasks("in")
 
-    def prepare_ai_for_scan(
+    def start_scan_read_task(
         self, samps_per_chan, scn_clk_src, ai_conv_rate
     ) -> NoReturn:
         """Doc."""
+
+        self.close_tasks("in")
 
         self.create_ai_task(
             name="Image Scan AI",
@@ -177,41 +187,38 @@ class Scanners(drivers.NIDAQmxInstrument):
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "active_edge": ni_consts.Edge.RISING,
             },
-            clk_params={"ai_conv_rate": ai_conv_rate},  # TODO: correct val?
-            # TODO: Why is this needed? name these terminals in consts.py after figuring out
-            export_signals=[
-                (
-                    "/Dev3/PFI1",
-                    ni_consts.Signal.SAMPLE_CLOCK,
-                ),
-                (
-                    "/Dev3/PFI2",
-                    ni_consts.Signal.AI_CONVERT_CLOCK,
-                ),
-            ],
+            clk_params={"ai_conv_rate": ai_conv_rate},
         )
+        self.init_buffers()
+        self.start_tasks("in")
 
-    def start_ai_scan(self) -> NoReturn:
+    def create_scan_write_task(
+        self,
+        data,
+        axes_use: (bool, bool, bool),
+        pxl_clk_src,
+        samps_per_chan,
+        sample_mode,
+    ) -> NoReturn:
         """Doc."""
 
-        self.start_task("in")
+        self.close_tasks("out")
 
-    def init_buffers(self) -> NoReturn:
-        """Doc."""
-
-        self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
-        self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
-
-    def fill_ai_buff(self) -> NoReturn:
-        """Doc."""
-
-        #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
-        #        num_samps_read = self.read()
-        #        self.ai_buffer = np.concatenate(
-        #        (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
-        #        )
-
-        self.ai_buffer = np.concatenate((self.ai_buffer, self.analog_read()), axis=1)
+        self.create_ao_task(
+            name="Scan AO",
+            axes_use=axes_use,
+            chan_specs=self.ao_chan_specs,
+            samp_clk_cnfg={
+                "rate": self.MIN_OUTPUT_RATE_Hz
+                * 100,  # WHY? see CreateAOTask.vi, ask Oleg
+                "source": pxl_clk_src,
+                "samps_per_chan": samps_per_chan,
+                "sample_mode": sample_mode,
+                "active_edge": ni_consts.Edge.RISING,
+            },
+        )
+        self.init_buffers()
+        self.analog_write(data)
 
     async def move_to_pos(self, pos_vltgs: iter):
         """
@@ -243,13 +250,32 @@ class Scanners(drivers.NIDAQmxInstrument):
         await self.analog_write(ao_xy_addresses, xy_vltgs, xy_limits)
         await self.analog_write([ao_z_addr], [z_vltg], [z_limits])
 
+    def init_buffers(self) -> NoReturn:
+        """Doc."""
+
+        self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
+        ai_task, *_ = self.in_tasks
+        num_ai_chans = ai_task.number_of_channels
+        self.ai_buffer = np.empty(shape=(num_ai_chans, 0), dtype=np.float)
+
+    def fill_ai_buff(self) -> NoReturn:
+        """Doc."""
+
+        #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
+        #        num_samps_read = self.read()
+        #        self.ai_buffer = np.concatenate(
+        #        (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
+        #        )
+
+        self.ai_buffer = np.concatenate((self.ai_buffer, self.analog_read()), axis=1)
+
     def dump_buff_overflow(self):
         """Doc."""
 
-        if max(self.ao_buffer.shape) > self.AI_BUFFER_SZ:
-            self.ao_buffer = self.ao_buffer[:, -self.AI_BUFFER_SZ :]
-        if max(self.ai_buffer.shape) > self.AI_BUFFER_SZ:
-            self.ai_buffer = self.ai_buffer[:, -self.AI_BUFFER_SZ :]
+        if max(self.ao_buffer.shape) > self.CONT_READ_BFFR_SZ:
+            self.ao_buffer = self.ao_buffer[:, -self.CONT_READ_BFFR_SZ :]
+        if max(self.ai_buffer.shape) > self.CONT_READ_BFFR_SZ:
+            self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
 
 
 class Counter(drivers.NIDAQmxInstrument):
@@ -258,17 +284,15 @@ class Counter(drivers.NIDAQmxInstrument):
     # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
 
     updt_time = 0.2
-    ci_buff_sz = 10000
-    ci_buffer = np.zeros(shape=(10000,), dtype=np.uint32)
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget, ai_task):
+    def __init__(self, nick, param_dict, led_widget, switch_widget, scanners_in_tasks):
         self.led_widget = led_widget
         self.switch_widget = switch_widget
-        super().__init__(nick=nick, param_dict=param_dict, ci_buffer=self.ci_buffer)
+        super().__init__(nick=nick, param_dict=param_dict)
         self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
-        self.ai_task = ai_task
+        self.ai_task, *_ = scanners_in_tasks
         self.ci_chan_specs = {
             "name_to_assign_to_channel": "photon counter",
             "counter": self.address,
@@ -277,22 +301,20 @@ class Counter(drivers.NIDAQmxInstrument):
             "count_direction": ni_consts.CountDirection.COUNT_UP,
         }
 
-        self.init_buffer()
-
         self.toggle(True)
 
     def toggle(self, bool):
         """Doc."""
 
         if bool:
-            if hasattr(self, "task"):
-                self.close_task("in")
             self.start_ci_continuous()
         else:
-            self.close_task("in")
+            self.close_tasks("in")
 
     def start_ci_continuous(self) -> NoReturn:
         """Doc."""
+
+        self.close_tasks("in")
 
         self.create_ci_task(
             name="Continuous CI",
@@ -302,16 +324,18 @@ class Counter(drivers.NIDAQmxInstrument):
                 "rate": self.ai_task.timing.samp_clk_rate,
                 "source": self.ai_task.timing.samp_clk_term,
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samps_per_chan": len(self.ci_buffer),
+                "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
-        self.start_task("in")
+        self.init_buffer()
+        self.start_tasks("in")
 
-    def prepare_ci_for_scan(self, samps_per_chan, scn_clk_src) -> NoReturn:
+    def start_ci_scan(self, samps_per_chan, scn_clk_src) -> NoReturn:
         """Doc."""
 
-        self.close_task("in")
+        self.close_tasks("in")
+
         self.start_ci_task(
             name="Image Scan CI",
             chan_specs=self.ci_chan_specs,
@@ -327,23 +351,20 @@ class Counter(drivers.NIDAQmxInstrument):
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
-
-    def start_ci_scan(self) -> NoReturn:
-        """Doc."""
-
-        self.start_task("in")
+        self.init_buffer()
+        self.start_tasks("in")
 
     def init_buffer(self) -> NoReturn:
         """Doc."""
 
-        self.cont_count_buff = np.empty(shape=(0,))
+        self.ci_buffer = np.empty(shape=(0,))
 
     def count(self):
         """Doc."""
 
-        num_samps_read = self.counter_read()
-        self.cont_count_buff = np.append(
-            self.cont_count_buff, self.ci_buffer[:num_samps_read]
+        num_samps_read = self.counter_stream_read()
+        self.ci_buffer = np.append(
+            self.ci_buffer, self.cont_read_buffer[:num_samps_read]
         )
         self.num_reads_since_avg += num_samps_read
 
@@ -351,12 +372,11 @@ class Counter(drivers.NIDAQmxInstrument):
         """Doc."""
 
         actual_intrvl = time.perf_counter() - self.last_avg_time
-        start_idx = len(self.cont_count_buff) - self.num_reads_since_avg
+        start_idx = len(self.ci_buffer) - self.num_reads_since_avg
 
         if start_idx > 0:
             avg_cnt_rate = (
-                self.cont_count_buff[-1]
-                - self.cont_count_buff[-(self.num_reads_since_avg + 1)]
+                self.ci_buffer[-1] - self.ci_buffer[-(self.num_reads_since_avg + 1)]
             ) / actual_intrvl
             avg_cnt_rate = avg_cnt_rate / 1000  # Hz -> KHz
         else:
@@ -369,8 +389,8 @@ class Counter(drivers.NIDAQmxInstrument):
     def dump_buff_overflow(self):
         """Doc."""
 
-        if len(self.cont_count_buff) > self.ci_buff_sz:
-            self.cont_count_buff = self.cont_count_buff[-self.ci_buff_sz :]
+        if len(self.ci_buffer) > self.CONT_READ_BFFR_SZ:
+            self.ci_buffer = self.ci_buffer[-self.CONT_READ_BFFR_SZ :]
 
 
 class Camera(drivers.UC480Instrument):

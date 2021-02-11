@@ -10,7 +10,7 @@ from typing import NoReturn, Tuple, Union
 
 import numpy as np
 
-from utilities.helper import Waveform, div_ceil
+from utilities.helper import div_ceil
 
 
 class Measurement:
@@ -81,14 +81,6 @@ class SFCSImageMeasurement(Measurement):
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scn_type}_{file_no}"
 
-    def init_ai_wf(self) -> NoReturn:
-        """Initiate AI Waveform with dt from the AO Waveform"""
-
-        num_chans = self.scanners_dvc.in_task.number_of_channels
-        self.ai_wf = Waveform(
-            data=np.empty(shape=(num_chans, 0), dtype=np.float), dt=self.ao_wf.dt
-        )
-
     def setup_scan(self):
         """Doc."""
 
@@ -126,14 +118,15 @@ class SFCSImageMeasurement(Measurement):
             mock_ao_2d_arr = np.vstack(
                 (np.arange(-5.0, 5.0, 0.5), np.arange(-5.0, 5.0, 0.5))
             )
-            ao_wf = Waveform(data=mock_ao_2d_arr, dt=1e-5)  # dt is made up
+            ao_buffer = mock_ao_2d_arr
+            # TODO: since not using waveform, ao freq is needed (additionally) instead of dt
             set_pnts_lines_odd = 100  # these are made up too
             set_pnts_lines_even = 100
             set_pnts_planes = 0
             total_pnts = 200
 
             return (
-                ao_wf,
+                ao_buffer,
                 set_pnts_lines_odd,
                 set_pnts_lines_even,
                 set_pnts_planes,
@@ -156,17 +149,17 @@ class SFCSImageMeasurement(Measurement):
         # init gui
         self.curr_line_wdgt.set(0)
         self.curr_plane_wdgt.set(0)
-        # build ao_wf and init ai_wf
+        # create ao_buffer
         (
-            self.ao_wf,
+            self.ao_buffer,
             self.set_pnts_lines_odd,
             self.set_pnts_lines_even,
             self.set_pnts_planes,
             self.total_pnts,
         ) = calculate_scan(self.scn_params)
-        self.init_ai_wf()
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7
-        self.ai_conv_rate = 1 / ((self.ao_wf.dt - 1.5e-7) / self.ai_wf.num_chans)
+        # TODO: create a scan arguments/parameters object to send to scanners_dvc (or simply for more clarity)
+        #        self.ai_conv_rate = 1 / ((1/AO_FREQ - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[1])
         self.samps_per_chan = self.total_pnts * 1.2
 
     async def run(self):
@@ -179,7 +172,7 @@ class SFCSImageMeasurement(Measurement):
         self.pxl_clk_dvc.toggle(True)
 
         # move to initial position (later smoothly)
-        self.scanners_dvc.move_to_pos(self.ao_wf.data[:, 0])
+        self.scanners_dvc.move_to_pos(self.ao_buffer[:, 0])
 
         # prepare all tasks, starting with ao (which the others are clocked by, and is synced by pxl clk)
 
