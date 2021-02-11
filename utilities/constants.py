@@ -120,7 +120,7 @@ STAGE = DeviceAttrs(
 
 COUNTER = DeviceAttrs(
     cls_name="Counter",
-    cls_xtra_args=["devices.SCANNERS.in_task"],
+    cls_xtra_args=["devices.SCANNERS.in_tasks"],
     log_ref="Counter",
     led_widget=QtWidgetAccess("ledCounter", "icon", "main"),
     param_widgets=QtWidgetCollection(
@@ -230,12 +230,12 @@ FCS_MEAS_WDGT_COLL = QtWidgetCollection(
 )
 
 SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
-    line_length=QtWidgetAccess("lineLen", "value", "main"),
+    line_length_um=QtWidgetAccess("lineLen", "value", "main"),
     ao_smplng_freq_Hz=QtWidgetAccess("aoSampFreq", "value", "main"),
-    angle=QtWidgetAccess("angle", "value", "main"),
+    angle_deg=QtWidgetAccess("angle", "value", "main"),
     lin_frac=QtWidgetAccess("solLinFrac", "value", "main"),
-    line_shift=QtWidgetAccess("lineShift", "value", "main"),
-    speed=QtWidgetAccess("solAngScanSpeed", "value", "main"),
+    line_shift_um=QtWidgetAccess("lineShift", "value", "main"),
+    speed_um_per_s=QtWidgetAccess("solAngScanSpeed", "value", "main"),
     min_lines=QtWidgetAccess("minNumLines", "value", "main"),
     max_scn_freq_Hz=QtWidgetAccess("maxScanFreq", "value", "main"),
 )
