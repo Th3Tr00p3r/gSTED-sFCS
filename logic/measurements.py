@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Measurements Module."""
 
+import asyncio
 import datetime
 import logging
 import math
@@ -235,7 +236,9 @@ class SFCSSolutionMeasurement(Measurement):
         self.time_passed = 0
         self.cal = True
         logging.info(f"Calibrating file intervals for {self.type} measurement")
-        await self._app.loop.run_in_executor(None, self.data_dvc.stream_read_TDC, self)
+
+        await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
+
         self.cal = False
         bps = self.data_dvc.tot_bytes_read / self.time_passed
         self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
@@ -261,9 +264,8 @@ class SFCSSolutionMeasurement(Measurement):
 
                 self.start_time = time.perf_counter()
                 self.time_passed = 0
-                await self._app.loop.run_in_executor(
-                    None, self.data_dvc.stream_read_TDC, self
-                )
+
+                await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
 
                 self.total_time_passed += self.time_passed
 
@@ -301,13 +303,11 @@ class FCSMeasurement(Measurement):
             )
 
         while self.is_running:
-            #            await asyncio.to_thread(mock_io, self.duration) # TODO: Try when upgrade to Python 3.9 is feasible
 
             self.start_time = time.perf_counter()
             self.time_passed = 0
-            await self._app.loop.run_in_executor(
-                None, self.data_dvc.stream_read_TDC, self
-            )
+
+            await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
 
             disp_ACF(meas_dvc=self.data_dvc)
             self.data_dvc.init_data()
