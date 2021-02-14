@@ -40,19 +40,21 @@ Python-based software for our optical measurement system.
 
 - Python 3.8.6 (some dependencies may not support newer versions yet, e.g. QScintilla does not support python 3.9 yet)
 
-- [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**)
+- [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**).
 
-- NumPy
+- [qasync](https://github.com/CabbageDevelopment/qasync) - to make PyQt5 work with Python's `asyncio` library.
 
-- matplotlib - used for plotting (currently only the camera, later the graphs)
+- NumPy.
 
-- [pyVISA](https://pypi.org/project/PyVISA/) - communication with VISA-supported devices
+- matplotlib - used for plotting (currently only the camera, later the graphs).
 
-- [nidaqmx](https://pypi.org/project/nidaqmx/) - communication with NI-DAQmx supported devices
+- [pyVISA](https://pypi.org/project/PyVISA/) - communication with VISA-supported devices.
 
-- [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), [Instrumental-lib](https://pypi.org/project/Instrumental-lib/), [nicelib](https://pypi.org/project/NiceLib/),  - communication with DC480 cameras
+- [nidaqmx](https://pypi.org/project/nidaqmx/) - communication with NI-DAQmx supported devices.
 
-- [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232, which is a usb port to the FPGA (TDC data). See installation details for windows in link (Zadig)
+- [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), [Instrumental-lib](https://pypi.org/project/Instrumental-lib/), [nicelib](https://pypi.org/project/NiceLib/),  - communication with DC480 cameras.
+
+- [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232, which is a usb port to the FPGA (TDC data). See installation details for windows in link (Zadig).
 
 ## Installing Eric IDE on Windows:
 

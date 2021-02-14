@@ -7,8 +7,8 @@ App object is instantiated which in turn loads the UI.
 import asyncio
 import sys
 
-from asyncqt import QEventLoop
 from PyQt5.QtWidgets import QApplication
+from qasync import QEventLoop
 
 from logic.app import App
 
