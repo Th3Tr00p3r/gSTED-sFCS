@@ -34,7 +34,7 @@ class Timeout:
         await asyncio.gather(
             self._updt_CI_and_AI(),
             self._update_avg_counts(),
-            self._app.loop.run_in_executor(None, self._update_dep),
+            asyncio.to_thread(self._update_dep),
             self._updt_current_state(),
             self._update_gui(),
         )

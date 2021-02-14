@@ -441,7 +441,7 @@ class Camera(drivers.UC480Instrument):
             but there's no async lambda yet.
             """
 
-            await self._loop.run_in_executor(None, self._vidshow)
+            await asyncio.to_thread(self._vidshow)
 
         if self.vid_state != new_state:
             self.toggle_vid(new_state)
