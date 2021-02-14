@@ -38,7 +38,7 @@ Python-based software for our optical measurement system.
 
 ## Dependencies/Imports:
 
-- Python 3.8.6 (some dependencies may not support newer versions yet, e.g. QScintilla does not support python 3.9 yet)
+- Python 3.9.1
 
 - [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**).
 
@@ -56,6 +56,10 @@ Python-based software for our optical measurement system.
 
 - [PyFtdi](https://eblot.github.io/pyftdi/installation.html) - communication with UM232, which is a usb port to the FPGA (TDC data). See installation details for windows in link (Zadig).
 
+- [PyYAML](https://pypi.org/project/PyYAML/)- for logging configuration
+
+- [pre-commit](https://pypi.org/project/pre-commit/) - a tool for creating pre-commit hooks (using [flake8 ](https://pypi.org/project/flake8/), [isort ](https://pypi.org/project/isort/) and [black](https://pypi.org/project/black/))
+
 ## Installing Eric IDE on Windows:
 
 Eric IDE is notoriously complicated to install properly. I've tried to make it easier with the following steps (assuming Python is installed and added to PATH):
@@ -70,9 +74,9 @@ Eric IDE is notoriously complicated to install properly. I've tried to make it e
    
    * Activate virtual environment, e.g. `eric_env\Scripts\activate.bat` (or `& .\activate` in powershell). `(eric_env)` should appear on left of text.
    
-   * Install eric via pip e.g. `pip install eric-ide`, say `y` to all.
+   * Install eric via pip e.g. `pip install eric-ide`.
    
-   * Run install.py from the distribution (still in the virtual environment) e.g. `python C:\temporary folder\eric6-20.10\install.py`
+   * Run install.py from the distribution (still in the virtual environment) e.g. `python C:\temporary folder\eric6-20.10\install.py`.
    
    * To have access to Qt Designer from within Eric IDE, copy the contents of `\eric_env\Lib\site-packages\qt5_applications\Qt\bin` into `\eric_env\Lib\site-packages\PyQt5\Qt\bin`
 
