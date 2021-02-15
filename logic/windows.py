@@ -153,18 +153,35 @@ class MainWin:
             self._app.devices.DEP_LASER.set_power(val)
 
     @err_chck({"SCANNERS"})
-    def move_scanners(self) -> NoReturn:
+    def move_scanners(self, force=False) -> NoReturn:
         """Doc."""
 
-        pos_vltgs = (
+        curr_pos = (
             self._gui.xAoV.value(),
             self._gui.yAoV.value(),
             self._gui.zAoV.value(),
         )
 
-        self._app.loop.create_task(self._app.devices.SCANNERS.move_to_pos(pos_vltgs))
-        logging.debug(
-            f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(pos_vltgs)} V"
+        last_pos = self._app.devices.SCANNERS.last_ao
+        data = []
+        type_str = ""
+        for ax, curr_ax_val, last_ax_val in zip(("X", "Y", "Z"), curr_pos, last_pos):
+            if force or (curr_ax_val != last_ax_val):
+                data.append([curr_ax_val])
+                type_str += ax
+
+        if data:
+            self._app.devices.SCANNERS.start_goto_write_task(
+                tuple(data), type_str
+            )  # TODO: make per axis!!!!!!
+            logging.debug(
+                f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
+            )
+
+        self._app.devices.SCANNERS.last_ao = (
+            self._gui.xAoV.value(),
+            self._gui.yAoV.value(),
+            self._gui.zAoV.value(),
         )
 
     def go_to_origin(self, which_axes: dict) -> NoReturn:
@@ -176,7 +193,7 @@ class MainWin:
             if is_chosen:
                 getattr(self._gui, f"{axis}AoV").setValue(org_axis_vltg)
 
-        self.move_scanners()
+        self.move_scanners(force=True)
 
         logging.debug(
             f"{getattr(consts, 'SCANNERS').log_ref} sent to origin {which_axes}"

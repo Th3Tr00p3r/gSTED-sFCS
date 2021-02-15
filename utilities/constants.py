@@ -12,6 +12,16 @@ from utilities.helper import DeviceAttrs, QtWidgetAccess, QtWidgetCollection
 
 TIMEOUT = 0.010  # seconds (10 ms)
 
+AXES_TO_BOOL_TUPLE_DICT = {
+    "X": (True, False, False),
+    "Y": (False, True, False),
+    "Z": (False, False, True),
+    "XY": (True, True, False),
+    "XZ": (True, False, True),
+    "YZ": (False, True, True),
+    "XYZ": (True, True, True),
+}
+
 LED_COLL = QtWidgetCollection(
     exc=QtWidgetAccess("ledExc", "icon", "main"),
     dep=QtWidgetAccess("ledDep", "icon", "main"),

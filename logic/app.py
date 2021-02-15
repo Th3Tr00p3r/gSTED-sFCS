@@ -62,6 +62,12 @@ class App:
         self.timeout_loop = Timeout(self)
         self.timeout_loop.start()
 
+        self.devices.SCANNERS.last_ao = (
+            self.gui.main.xAoV.value(),
+            self.gui.main.yAoV.value(),
+            self.gui.main.zAoV.value(),
+        )
+
     def config_logging(self):
         """Doc."""
 
