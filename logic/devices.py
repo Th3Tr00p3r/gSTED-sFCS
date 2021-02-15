@@ -4,12 +4,13 @@
 import asyncio
 import time
 from array import array
-from typing import NoReturn
+from typing import NoReturn, Tuple
 
 import nidaqmx.constants as ni_consts
 import numpy as np
 
 import logic.drivers as drivers
+import utilities.constants as consts
 import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
@@ -35,8 +36,7 @@ class PixelClock(drivers.NIDAQmxInstrument):
     def _start_co_clock_sync(self) -> NoReturn:
         """Doc."""
 
-        if hasattr(self, "out_tasks"):
-            self.close_tasks("out")
+        self.close_tasks("out")
 
         self.create_co_task(
             name="Pixel Clock CI",
@@ -120,7 +120,7 @@ class Scanners(drivers.NIDAQmxInstrument):
             ao_timeout=0.1,  # TODO: this should belong to the device and not the driver (as well as the param_dict)
         )  # , ai_buffer=np.zeros(shape=(3, 1000), dtype=np.double))
 
-        self.ai_chan_specs = [
+        self.ai_chan_specs = (
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} ai",
@@ -128,18 +128,8 @@ class Scanners(drivers.NIDAQmxInstrument):
                 "max_val": 10.0,
             }
             for axis, inst in zip(("x", "y", "z"), ("galvo", "galvo", "piezo"))
-        ]
-        self.ao_chan_specs = [
-            {
-                "physical_channel": getattr(self, f"ao_{axis}_addr"),
-                "name_to_assign_to_channel": f"{axis}-{inst} ao",
-                **getattr(self, f"{axis}_ao_limits"),
-            }
-            for axis, inst in zip(("x", "y", "z"), ("galvo", "galvo", "piezo"))
-        ]
+        )
 
-        self.last_ai = None
-        self.last_ao = (self.ao_x_init_vltg, self.ao_y_init_vltg, self.ao_z_init_vltg)
         self.um_V_ratio = (self.x_conv_const, self.y_conv_const, self.z_conv_const)
 
         self.toggle(True)
@@ -194,8 +184,8 @@ class Scanners(drivers.NIDAQmxInstrument):
 
     def create_scan_write_task(
         self,
-        data,
-        axes_use: (bool, bool, bool),
+        data: np.ndarray,
+        type: str,
         pxl_clk_src,
         samps_per_chan,
         sample_mode,
@@ -206,7 +196,7 @@ class Scanners(drivers.NIDAQmxInstrument):
 
         self.create_ao_task(
             name="Scan AO",
-            axes_use=axes_use,
+            type=type,
             chan_specs=self.ao_chan_specs,
             samp_clk_cnfg={
                 "rate": self.MIN_OUTPUT_RATE_Hz
@@ -218,37 +208,50 @@ class Scanners(drivers.NIDAQmxInstrument):
             },
         )
         self.init_buffers()
-        self.analog_write(data)
+        self.analog_write(data, type)
 
-    async def move_to_pos(self, pos_vltgs: iter):
-        """
-        Finds out which AO voltages need to be changed,
-        writes those voltages to the relevant scanners with
-        the relevant limits, and saves the changed AO voltages.
-        """
+    def start_goto_write_task(
+        self,
+        data: Tuple[list],
+        type: str,
+    ) -> NoReturn:
+        """Doc."""
 
-        ao_addresses = []
-        limits = []
-        vltgs = []
-        axes = ("x", "y", "z")
-        for axis, new_axis_vltg in zip(axes, pos_vltgs):
-            if axis in {"x", "y"}:  # Differential Voltage [-5,5]
-                ao_addresses.append(getattr(self, f"ao_{axis}_addr"))
-                limits.append(getattr(self, f"{axis}_ao_limits"))
-                vltgs += [new_axis_vltg, -new_axis_vltg]
-            else:  # RSE Voltage [0,10]
-                ao_addresses.append(getattr(self, f"ao_{axis}_addr"))
-                limits.append(getattr(self, f"{axis}_ao_limits"))
-                vltgs.append(new_axis_vltg)
+        def diff_vltg_data(data_row: list) -> [list, list]:
+            return [data_row, [(-1) * val for val in data_row]]
 
-        self.last_ao = pos_vltgs
+        self.close_tasks("out")
 
-        *ao_xy_addresses, ao_z_addr = ao_addresses
-        *xy_vltgs, z_vltg = vltgs
-        *xy_limits, z_limits = limits
+        axes_to_use = consts.AXES_TO_BOOL_TUPLE_DICT[type]
 
-        await self.analog_write(ao_xy_addresses, xy_vltgs, xy_limits)
-        await self.analog_write([ao_z_addr], [z_vltg], [z_limits])
+        xy_chan_spcs = []
+        z_chan_spcs = []
+        diff_data_xy = []
+        data_z = []
+        data_row_count = 0
+        ao_chan_specs = self.get_ao_chans_specs()
+        for ax, use_ax, ax_chn_spcs in zip(("X", "Y", "Z"), axes_to_use, ao_chan_specs):
+            if use_ax is True:
+                if ax in {"X", "Y"}:
+                    xy_chan_spcs.append(ax_chn_spcs)
+                    diff_data_xy += diff_vltg_data(data[data_row_count])
+                    data_row_count += 1
+                else:  # "Z"
+                    z_chan_spcs.append(ax_chn_spcs)
+                    data_z += data[data_row_count]
+
+        if xy_chan_spcs:
+            task = self.create_ao_task(
+                name="Goto AO xy",
+                chan_specs=xy_chan_spcs,
+            )
+            self.analog_write(task, np.array(diff_data_xy))
+
+        if z_chan_spcs:
+            task = self.create_ao_task(name="Goto AO z", chan_specs=z_chan_spcs)
+            self.analog_write(task, np.array(data_z))
+
+        self.start_tasks("out")
 
     def init_buffers(self) -> NoReturn:
         """Doc."""
@@ -276,6 +279,18 @@ class Scanners(drivers.NIDAQmxInstrument):
             self.ao_buffer = self.ao_buffer[:, -self.CONT_READ_BFFR_SZ :]
         if max(self.ai_buffer.shape) > self.CONT_READ_BFFR_SZ:
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
+
+    def get_ao_chans_specs(self):
+        """Doc."""
+
+        return (
+            {
+                "physical_channel": getattr(self, f"ao_{axis}_addr"),
+                "name_to_assign_to_channel": f"{axis}-{inst} ao",
+                **getattr(self, f"{axis}_ao_limits"),
+            }
+            for axis, inst in zip(("x", "y", "z"), ("galvo", "galvo", "piezo"))
+        )
 
 
 class Counter(drivers.NIDAQmxInstrument):

@@ -110,7 +110,7 @@ class NIDAQmxInstrument:
 
         task_list = getattr(self, f"{in_out}_tasks")
         [task.close() for task in task_list]
-        task_list = []
+        setattr(self, f"{in_out}_tasks", [])
 
     @err_hndlr
     def create_ai_task(
@@ -141,39 +141,22 @@ class NIDAQmxInstrument:
     def create_ao_task(
         self,
         name: str,
-        axes_use: (bool, bool, bool),
         chan_specs: List[dict],
         samp_clk_cnfg: dict = {},
         clk_params: dict = {},
-    ):
-        """
-        Expects first two addresses to be from Dev3 (X,Y)
-        and last address to be from Dev1 (Z)
-        """
+    ) -> ni.Task:
+        """Doc."""
 
-        *xy_chan_spec, z_chan_spec = chan_specs
-        *xy_axes_use, z_axis_use = axes_use
-
-        task_xy = ni.Task(new_task_name=name)
-        for chan_spec, use_axis in zip(xy_chan_spec, xy_axes_use):
-            if use_axis is True:
-                task_xy.ao_channels.add_ao_voltage_chan(**chan_spec)
+        ao_task = ni.Task(new_task_name=name)
+        for chan_spec in chan_specs:
+            ao_task.ao_channels.add_ao_voltage_chan(**chan_spec)
         if samp_clk_cnfg:
-            task_xy.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+            ao_task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
         for key, val in clk_params.items():
-            setattr(task_xy.timing, key, val)
+            setattr(ao_task.timing, key, val)
 
-        self.out_tasks.append(task_xy)
-
-        task_z = ni.Task(new_task_name=name)
-        if z_axis_use is True:
-            task_z.ao_channels.add_ao_voltage_chan(**z_chan_spec)
-            if samp_clk_cnfg:
-                task_z.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
-            for key, val in clk_params.items():
-                setattr(task_xy.timing, key, val)
-
-        self.out_tasks.append(task_z)
+        self.out_tasks.append(ao_task)
+        return ao_task
 
     @err_hndlr
     def create_ci_task(
@@ -231,19 +214,21 @@ class NIDAQmxInstrument:
         return read_samples
 
     @err_hndlr
-    async def analog_write(
-        self, ao_addresses: iter, vals: iter, limits: iter
-    ) -> NoReturn:
+    def analog_write(self, ao_task: ni.Task, data: np.ndarray) -> NoReturn:
         """Doc."""
-        # TODO: make same as start_ai_task
-        # TODO: since I will be adding a continuous writing task for scans, this should be called single_write or similar
 
-        with ni.Task() as task:
-            for (ao_addr, limits) in zip(ao_addresses, limits):
-                task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
-            task.write(vals, timeout=self.ao_timeout)
-            # TODO: add task.timing for finite samples - it works without it, but I could try to see if it changes anything
-            await asyncio.sleep(self.ao_timeout)
+        ao_task.write(data, timeout=self.ao_timeout)
+
+    #    @err_hndlr
+    #    def analog_write(
+    #        self, ao_addresses: iter, vals: iter, limits: iter
+    #    ) -> NoReturn:
+    #        """Doc."""
+    #
+    #        with ni.Task() as task:
+    #            for (ao_addr, limits) in zip(ao_addresses, limits):
+    #                task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
+    #            task.write(vals, timeout=self.ao_timeout)
 
     @err_hndlr
     def counter_stream_read(self):
@@ -262,9 +247,9 @@ class NIDAQmxInstrument:
     def digital_write(self, bool):
         """Doc."""
 
-        with ni.Task() as task:
-            task.do_channels.add_do_chan(self.address)
-            task.write(bool)
+        with ni.Task() as do_task:
+            do_task.do_channels.add_do_chan(self.address)
+            do_task.write(bool)
         self.state = bool
 
 
