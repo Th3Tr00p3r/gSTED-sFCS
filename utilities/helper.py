@@ -168,7 +168,8 @@ def csv_to_gui(file_path, gui_parent):
 
 def deep_getattr(object, deep_name, default=None):
     """
-    Get deep attribute of object.
+    Get deep attribute of object. Useful for dynamically set attributes.
+
     Example usage: a = deep_getattr(obj, "sobj.ssobj.a")
     """
 
@@ -180,6 +181,7 @@ def deep_getattr(object, deep_name, default=None):
 
 def div_ceil(x: int, y: int) -> int:
     """Returns x divided by y rounded towards positive infinity"""
+
     return x // y + (x % y > 0)
 
 

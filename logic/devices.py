@@ -53,7 +53,10 @@ class PixelClock(drivers.NIDAQmxInstrument):
 
 
 class UM232H(drivers.FtdiInstrument):
-    """Doc."""
+    """
+    Represents the FTDI chip used to transfer data from the FPGA
+    to the PC.
+    """
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
         self.led_widget = led_widget
@@ -199,12 +202,42 @@ class Scanners(drivers.NIDAQmxInstrument):
         data: Tuple[list],
         type: str,
         samp_clk_cnfg: dict = {},
-        scanning: bool = False,
+        scanning: bool = True,
     ) -> NoReturn:
         """Doc."""
 
         def diff_vltg_data(data_row: list) -> [list, list]:
             return [data_row, [(-1) * val for val in data_row]]
+
+        def smooth_start(
+            chan_specs: dict, final_pos: float, n_steps: int = 40
+        ) -> NoReturn:
+            """Doc."""
+
+            # read init_pos
+            *_, ai_chan_specs_z = self.ai_chan_specs
+            self.close_tasks("in")
+            self.create_ai_task(
+                name="Single Sample AI",
+                chan_specs=ai_chan_specs_z,
+                samp_clk_cnfg={
+                    # TODO: decide if rate makes sense
+                    "rate": self.MIN_OUTPUT_RATE_Hz,
+                    "samps_per_chan": 1,
+                    "sample_mode": ni_consts.AcquisitionType.FINITE,
+                    "active_edge": ni_consts.Edge.RISING,
+                },
+            )
+            self.init_buffers()
+            self.start_tasks("in")
+            self.fill_ai_buff()
+            #            init_pos = self.ai_buffer
+
+            # create smooth data from init_pos to final_pos
+
+            # move
+            task = self.create_ao_task(name="Smooth AO", chan_specs=chan_specs)
+            self.analog_write(task, data_z)
 
         self.close_tasks("out")
 
@@ -212,10 +245,8 @@ class Scanners(drivers.NIDAQmxInstrument):
             # TODO: why 100 KHz? see CreateAOTask.vi, ask Oleg
             # TODO: fix how arguments get here from measurements.py
             samp_clk_cnfg: dict = {
+                **samp_clk_cnfg,
                 "rate": 100000,
-                "source": "",
-                "samps_per_chan": 1,
-                "sample_mode": ni_consts.AcquisitionType.FINITE,
                 "active_edge": ni_consts.Edge.RISING,
             }
 
@@ -225,28 +256,29 @@ class Scanners(drivers.NIDAQmxInstrument):
         z_chan_spcs = []
         diff_data_xy = []
         data_z = []
-        data_row_count = 0
+        data_row_idx = 0
         for ax, use_ax, ax_chn_spcs in zip("XYZ", axes_to_use, self.ao_chan_specs):
             if use_ax is True:
                 if ax in "XY":
                     xy_chan_spcs.append(ax_chn_spcs)
-                    diff_data_xy += diff_vltg_data(data[data_row_count])
-                    data_row_count += 1
+                    diff_data_xy += diff_vltg_data(data[data_row_idx])
+                    data_row_idx += 1
                 else:  # "Z"
                     z_chan_spcs.append(ax_chn_spcs)
-                    data_z += data[data_row_count]
+                    data_z += data[data_row_idx]
 
         if xy_chan_spcs:
             task = self.create_ao_task(
-                name="Goto AO xy",
+                name="AO XY",
                 chan_specs=xy_chan_spcs,
                 samp_clk_cnfg=samp_clk_cnfg,
             )
             self.analog_write(task, diff_data_xy)
 
         if z_chan_spcs:
+            smooth_start(data_z)
             task = self.create_ao_task(
-                name="Goto AO z", chan_specs=z_chan_spcs, samp_clk_cnfg=samp_clk_cnfg
+                name="AO Z", chan_specs=z_chan_spcs, samp_clk_cnfg=samp_clk_cnfg
             )
             self.analog_write(task, data_z)
 
@@ -286,7 +318,10 @@ class Scanners(drivers.NIDAQmxInstrument):
 
 
 class Counter(drivers.NIDAQmxInstrument):
-    """Doc."""
+    """
+    Represents the detector which counts the green
+    fluorescence photons coming from the sample.
+    """
 
     # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
 
@@ -442,7 +477,7 @@ class Camera(drivers.UC480Instrument):
         async def helper(self):
             """
             This is a workaround -
-            loop.run_in_executor() must be awaited, but toggle_video needs to be
+            asyncio.to_thread() must be awaited, but toggle_video needs to be
             a regular function to keep the rest of the code as it is. by creating this
             async helper function I can make it work. A lambda would be better here
             but there's no async lambda yet.

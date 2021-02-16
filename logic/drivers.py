@@ -272,11 +272,9 @@ class VisaInstrument:
         self.rm = visa.ResourceManager()
 
     @err_hndlr
-    def _write(self, cmnd: str) -> bool:
+    def _write(self, cmnd: str) -> NoReturn:
         """
         Sends a command to the VISA instrument.
-        Returns True if no errors occured.
-
         """
 
         with self.Task(self) as task:
