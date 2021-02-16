@@ -120,14 +120,26 @@ class Scanners(drivers.NIDAQmxInstrument):
             ao_timeout=0.1,  # TODO: this should belong to the device and not the driver (as well as the param_dict)
         )  # , ai_buffer=np.zeros(shape=(3, 1000), dtype=np.double))
 
-        self.ai_chan_specs = (
+        # TODO: I accidently created a generator here where I was going for a tuple of dicts (should have used tuple()
+        # if I really wanted that). This is why I had to use it as a method/function and not as an attribute - the iterator
+        # is out of items after one go and leaves the attribute depleted. Perhaps I could use generators in other places?
+        self.ai_chan_specs = tuple(
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} ai",
                 "min_val": -10.0,
                 "max_val": 10.0,
             }
-            for axis, inst in zip(("x", "y", "z"), ("galvo", "galvo", "piezo"))
+            for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
+        )
+
+        self.ao_chan_specs = tuple(
+            {
+                "physical_channel": getattr(self, f"ao_{axis}_addr"),
+                "name_to_assign_to_channel": f"{axis}-{inst} ao",
+                **getattr(self, f"{axis}_ao_limits"),
+            }
+            for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         )
 
         self.um_V_ratio = (self.x_conv_const, self.y_conv_const, self.z_conv_const)
@@ -184,36 +196,10 @@ class Scanners(drivers.NIDAQmxInstrument):
 
     def create_scan_write_task(
         self,
-        data: np.ndarray,
-        type: str,
-        pxl_clk_src,
-        samps_per_chan,
-        sample_mode,
-    ) -> NoReturn:
-        """Doc."""
-
-        self.close_tasks("out")
-
-        self.create_ao_task(
-            name="Scan AO",
-            type=type,
-            chan_specs=self.ao_chan_specs,
-            samp_clk_cnfg={
-                "rate": self.MIN_OUTPUT_RATE_Hz
-                * 100,  # WHY? see CreateAOTask.vi, ask Oleg
-                "source": pxl_clk_src,
-                "samps_per_chan": samps_per_chan,
-                "sample_mode": sample_mode,
-                "active_edge": ni_consts.Edge.RISING,
-            },
-        )
-        self.init_buffers()
-        self.analog_write(data, type)
-
-    def start_goto_write_task(
-        self,
         data: Tuple[list],
         type: str,
+        samp_clk_cnfg: dict = {},
+        scanning: bool = False,
     ) -> NoReturn:
         """Doc."""
 
@@ -222,6 +208,17 @@ class Scanners(drivers.NIDAQmxInstrument):
 
         self.close_tasks("out")
 
+        if scanning:
+            # TODO: why 100 KHz? see CreateAOTask.vi, ask Oleg
+            # TODO: fix how arguments get here from measurements.py
+            samp_clk_cnfg: dict = {
+                "rate": 100000,
+                "source": "",
+                "samps_per_chan": 1,
+                "sample_mode": ni_consts.AcquisitionType.FINITE,
+                "active_edge": ni_consts.Edge.RISING,
+            }
+
         axes_to_use = consts.AXES_TO_BOOL_TUPLE_DICT[type]
 
         xy_chan_spcs = []
@@ -229,10 +226,9 @@ class Scanners(drivers.NIDAQmxInstrument):
         diff_data_xy = []
         data_z = []
         data_row_count = 0
-        ao_chan_specs = self.get_ao_chans_specs()
-        for ax, use_ax, ax_chn_spcs in zip(("X", "Y", "Z"), axes_to_use, ao_chan_specs):
+        for ax, use_ax, ax_chn_spcs in zip("XYZ", axes_to_use, self.ao_chan_specs):
             if use_ax is True:
-                if ax in {"X", "Y"}:
+                if ax in "XY":
                     xy_chan_spcs.append(ax_chn_spcs)
                     diff_data_xy += diff_vltg_data(data[data_row_count])
                     data_row_count += 1
@@ -244,14 +240,20 @@ class Scanners(drivers.NIDAQmxInstrument):
             task = self.create_ao_task(
                 name="Goto AO xy",
                 chan_specs=xy_chan_spcs,
+                samp_clk_cnfg=samp_clk_cnfg,
             )
-            self.analog_write(task, np.array(diff_data_xy))
+            self.analog_write(task, diff_data_xy)
 
         if z_chan_spcs:
-            task = self.create_ao_task(name="Goto AO z", chan_specs=z_chan_spcs)
-            self.analog_write(task, np.array(data_z))
+            task = self.create_ao_task(
+                name="Goto AO z", chan_specs=z_chan_spcs, samp_clk_cnfg=samp_clk_cnfg
+            )
+            self.analog_write(task, data_z)
 
-        self.start_tasks("out")
+        self.init_buffers()
+
+        if not scanning:
+            self.start_tasks("out")
 
     def init_buffers(self) -> NoReturn:
         """Doc."""
@@ -275,22 +277,12 @@ class Scanners(drivers.NIDAQmxInstrument):
     def dump_buff_overflow(self):
         """Doc."""
 
-        if max(self.ao_buffer.shape) > self.CONT_READ_BFFR_SZ:
+        _, ao_buffer_len = self.ao_buffer.shape
+        _, ai_buffer_len = self.ai_buffer.shape
+        if ao_buffer_len > self.CONT_READ_BFFR_SZ:
             self.ao_buffer = self.ao_buffer[:, -self.CONT_READ_BFFR_SZ :]
-        if max(self.ai_buffer.shape) > self.CONT_READ_BFFR_SZ:
+        if ai_buffer_len > self.CONT_READ_BFFR_SZ:
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
-
-    def get_ao_chans_specs(self):
-        """Doc."""
-
-        return (
-            {
-                "physical_channel": getattr(self, f"ao_{axis}_addr"),
-                "name_to_assign_to_channel": f"{axis}-{inst} ao",
-                **getattr(self, f"{axis}_ao_limits"),
-            }
-            for axis, inst in zip(("x", "y", "z"), ("galvo", "galvo", "piezo"))
-        )
 
 
 class Counter(drivers.NIDAQmxInstrument):

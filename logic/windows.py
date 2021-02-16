@@ -13,7 +13,7 @@ import gui.icons.icon_paths as icon
 import logic.measurements as meas
 import utilities.constants as consts
 import utilities.helper as helper
-from utilities.dialog import Error, Question
+from utilities.dialog import Error, Notification, Question
 from utilities.errors import error_checker as err_chck
 from utilities.errors import logic_error_handler as err_hndlr
 
@@ -48,9 +48,7 @@ class MainWin:
     def restart(self):
         """Restart all devices (except camera) and the timeout loop."""
 
-        pressed = Question(
-            q_txt="Are you sure?", q_title="Restarting Program"
-        ).display()
+        pressed = Question(txt="Are you sure?", title="Restarting Program").display()
         if pressed == QtWidgets.QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
 
@@ -156,63 +154,56 @@ class MainWin:
     def move_scanners(self, force=False) -> NoReturn:
         """Doc."""
 
-        curr_pos = (
-            self._gui.xAoV.value(),
-            self._gui.yAoV.value(),
-            self._gui.zAoV.value(),
-        )
+        def get_pos_from_gui():
+            return tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
+
+        curr_pos = get_pos_from_gui()
 
         last_pos = self._app.devices.SCANNERS.last_ao
         data = []
         type_str = ""
-        for ax, curr_ax_val, last_ax_val in zip(("X", "Y", "Z"), curr_pos, last_pos):
+        for ax, curr_ax_val, last_ax_val in zip("XYZ", curr_pos, last_pos):
             if force or (curr_ax_val != last_ax_val):
                 data.append([curr_ax_val])
                 type_str += ax
 
         if data:
-            self._app.devices.SCANNERS.start_goto_write_task(
-                tuple(data), type_str
-            )  # TODO: make per axis!!!!!!
+            self._app.devices.SCANNERS.create_scan_write_task(tuple(data), type_str)
             logging.debug(
                 f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
             )
 
-        self._app.devices.SCANNERS.last_ao = (
-            self._gui.xAoV.value(),
-            self._gui.yAoV.value(),
-            self._gui.zAoV.value(),
-        )
+        self._app.devices.SCANNERS.last_ao = get_pos_from_gui()
 
-    def go_to_origin(self, which_axes: dict) -> NoReturn:
+    def go_to_origin(self, which_axes: str) -> NoReturn:
         """Doc."""
 
         for axis, is_chosen, org_axis_vltg in zip(
-            which_axes.keys(), which_axes.values(), self._app.devices.SCANNERS.origin
+            "xyz",
+            consts.AXES_TO_BOOL_TUPLE_DICT[which_axes],
+            self._app.devices.SCANNERS.origin,
         ):
             if is_chosen:
-                getattr(self._gui, f"{axis}AoV").setValue(org_axis_vltg)
+                getattr(self._gui, f"{axis}AOV").setValue(org_axis_vltg)
 
         self.move_scanners(force=True)
 
         logging.debug(
-            f"{getattr(consts, 'SCANNERS').log_ref} sent to origin {which_axes}"
+            f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin"
         )
 
     def displace_scanner_axis(self, sign: int) -> NoReturn:
         """Doc."""
 
         axis = self._gui.axis.currentText()
-        current_vltg = getattr(self._gui, f"{axis}AoV").value()
-        um_disp = sign * self._gui.axisMove.value()
+        current_vltg = getattr(self._gui, f"{axis}AOV").value()
+        um_disp = sign * self._gui.axisMoveUm.value()
 
-        um_V_RATIO = dict(zip(("x", "y", "z"), self._app.devices.SCANNERS.um_V_ratio))[
-            axis
-        ]
+        um_V_RATIO = dict(zip("xyz", self._app.devices.SCANNERS.um_V_ratio))[axis]
 
         delta_vltg = um_disp / um_V_RATIO
 
-        getattr(self._gui, f"{axis}AoV").setValue(current_vltg + delta_vltg)
+        getattr(self._gui, f"{axis}AOV").setValue(current_vltg + delta_vltg)
 
         self.move_scanners()
 
@@ -397,23 +388,28 @@ class SettWin:
 
         self._app = app
         self._gui = gui
+        self.check_on_close = True
 
     @err_hndlr
     def clean_up(self):
         """Doc."""
 
-        curr_file_path = self._gui.settingsFileName.text()
+        if self.check_on_close is True:
+            curr_file_path = self._gui.settingsFileName.text()
 
-        current_state = helper.wdgt_children_as_row_list(self._gui)
-        last_loaded_state = helper.csv_rows_as_list(curr_file_path)
+            current_state = helper.wdgt_children_as_row_list(self._gui)
+            last_loaded_state = helper.csv_rows_as_list(curr_file_path)
 
-        if set(current_state) != set(last_loaded_state):
-            pressed = Question(
-                "Keep changes if made? "
-                "(otherwise, revert to last loaded settings file.)"
-            ).display()
-            if pressed == QtWidgets.QMessageBox.No:
-                self.load(self._gui.settingsFileName.text())
+            if set(current_state) != set(last_loaded_state):
+                pressed = Question(
+                    "Keep changes if made? "
+                    "(otherwise, revert to last loaded settings file.)"
+                ).display()
+                if pressed == QtWidgets.QMessageBox.No:
+                    self.load(self._gui.settingsFileName.text())
+
+        else:
+            Notification("Using Current settings.").display()
 
     @err_hndlr
     def save(self):
@@ -457,6 +453,11 @@ class SettWin:
             )
             helper.csv_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
+
+    def confirm(self):
+        """Doc."""
+
+        self.check_on_close = False
 
 
 class CamWin:
