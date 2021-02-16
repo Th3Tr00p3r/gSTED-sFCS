@@ -63,9 +63,9 @@ class App:
         self.timeout_loop.start()
 
         self.devices.SCANNERS.last_ao = (
-            self.gui.main.xAoV.value(),
-            self.gui.main.yAoV.value(),
-            self.gui.main.zAoV.value(),
+            self.gui.main.xAOV.value(),
+            self.gui.main.yAOV.value(),
+            self.gui.main.zAOV.value(),
         )
 
     def config_logging(self):
@@ -195,7 +195,7 @@ class App:
         """Doc."""
 
         pressed = Question(
-            q_txt="Are you sure you want to quit?", q_title="Quitting Program"
+            txt="Are you sure you want to quit?", title="Quitting Program"
         ).display()
         if pressed == QMessageBox.Yes:
             self.clean_up_app()

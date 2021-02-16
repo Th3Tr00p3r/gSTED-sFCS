@@ -62,11 +62,18 @@ class Error(UserDialog):
 class Question(UserDialog):
     """Doc."""
 
-    def __init__(self, q_txt, q_title="User Input Needed"):
+    def __init__(self, txt, title="User Input Needed"):
         """Doc."""
 
-        super().__init__(
-            msg_icon=QMessageBox.Question, msg_title=q_title, msg_text=q_txt
-        )
+        super().__init__(msg_icon=QMessageBox.Question, msg_title=title, msg_text=txt)
         self.set_buttons(["Yes", "No"])
         self._msg_box.setDefaultButton(QMessageBox.No)
+
+
+class Notification(UserDialog):
+    """Doc."""
+
+    def __init__(self, txt, title="Notification"):
+        """Doc."""
+
+        super().__init__(msg_icon=QMessageBox.Question, msg_title=title, msg_text=txt)

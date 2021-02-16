@@ -24,17 +24,11 @@ class MainWin(QMainWindow):
         self._loop = app.loop
 
         # Positioning/Scanners
-        self.axisMoveUp.released.connect(lambda: self.axisMove_released(1))
-        self.axisMoveDown.released.connect(lambda: self.axisMove_released(-1))
-        self.goToOrg.released.connect(
-            lambda: self.origin_released({"x": True, "y": True, "z": True})
-        )
-        self.goToOrgXY.released.connect(
-            lambda: self.origin_released({"x": True, "y": True, "z": False})
-        )
-        self.goToOrgZ.released.connect(
-            lambda: self.origin_released({"x": False, "y": False, "z": True})
-        )
+        self.axisMoveUp.released.connect(lambda: self.axisMoveUm_released(1))
+        self.axisMoveDown.released.connect(lambda: self.axisMoveUm_released(-1))
+        self.goToOrg.released.connect(lambda: self.origin_released("XYZ"))
+        self.goToOrgXY.released.connect(lambda: self.origin_released("XY"))
+        self.goToOrgZ.released.connect(lambda: self.origin_released("Z"))
 
         # Device LEDs
         self.ledExc.clicked.connect(self.leds_clicked)
@@ -193,10 +187,10 @@ class MainWin(QMainWindow):
     # Position Control
     # -----------------------------------------------------------------------
 
-    def origin_released(self, which_axes: dict) -> NoReturn:
+    def origin_released(self, axes: str) -> NoReturn:
         """Doc."""
 
-        self.imp.go_to_origin(which_axes)
+        self.imp.go_to_origin(axes)
 
     @pyqtSlot()
     def on_goTo_released(self) -> NoReturn:
@@ -204,7 +198,7 @@ class MainWin(QMainWindow):
 
         self.imp.move_scanners()
 
-    def axisMove_released(self, sign: int) -> NoReturn:
+    def axisMoveUm_released(self, sign: int) -> NoReturn:
         """Doc."""
 
         self.imp.displace_scanner_axis(sign)
@@ -246,6 +240,7 @@ class SettWin(QDialog):
         """Doc."""
 
         self.imp.clean_up()
+        self.imp.check_on_close = True
 
     @pyqtSlot()
     def on_saveButton_released(self) -> NoReturn:
@@ -259,12 +254,12 @@ class SettWin(QDialog):
 
         self.imp.load()
 
+    @pyqtSlot()
+    def on_confirmButton_released(self) -> NoReturn:
+        """Doc."""
 
-# TODO: This button should exit with the current settings without saving and notify to user (for doing single-use stuff)
-#    @pyqtSlot()
-#    def on_confirmButton_released(self) -> NoReturn:
-#        """Doc."""
-#
+        self.imp.confirm()
+        self.close()
 
 
 class CamWin(QWidget):

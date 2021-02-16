@@ -144,13 +144,13 @@ class Timeout:
                     )
                 )
 
-                self._app.gui.main.xAiV.setValue(x_ai)
-                self._app.gui.main.yAiV.setValue(y_ai)
-                self._app.gui.main.zAiV.setValue(z_ai)
+                self._app.gui.main.xAIV.setValue(x_ai)
+                self._app.gui.main.yAIV.setValue(y_ai)
+                self._app.gui.main.zAIV.setValue(z_ai)
 
-                self._app.gui.main.xAoUm.setValue(x_um)
-                self._app.gui.main.yAoUm.setValue(y_um)
-                self._app.gui.main.zAoUm.setValue(z_um)
+                self._app.gui.main.xAOum.setValue(x_um)
+                self._app.gui.main.yAOum.setValue(y_um)
+                self._app.gui.main.zAOum.setValue(z_um)
 
         def updt_meas_progbar(meas) -> NoReturn:
             """Doc."""
