@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1236</width>
-    <height>956</height>
+    <height>928</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -7033,7 +7033,7 @@ Settings</string>
           <number>0</number>
          </property>
          <item row="1" column="1">
-          <widget class="QDoubleSpinBox" name="xAoV">
+          <widget class="QDoubleSpinBox" name="xAOV">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
              <horstretch>0</horstretch>
@@ -7070,7 +7070,7 @@ Settings</string>
           </widget>
          </item>
          <item row="2" column="1">
-          <widget class="QDoubleSpinBox" name="yAoV">
+          <widget class="QDoubleSpinBox" name="yAOV">
            <property name="minimumSize">
             <size>
              <width>60</width>
@@ -7101,7 +7101,7 @@ Settings</string>
           </widget>
          </item>
          <item row="2" column="2">
-          <widget class="QDoubleSpinBox" name="yAoUm">
+          <widget class="QDoubleSpinBox" name="yAOum">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -7165,7 +7165,7 @@ Settings</string>
           </widget>
          </item>
          <item row="3" column="2">
-          <widget class="QDoubleSpinBox" name="zAoUm">
+          <widget class="QDoubleSpinBox" name="zAOum">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -7225,7 +7225,7 @@ Origin (um)</string>
           </widget>
          </item>
          <item row="1" column="3">
-          <widget class="QDoubleSpinBox" name="xAiV">
+          <widget class="QDoubleSpinBox" name="xAIV">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -7309,7 +7309,7 @@ Origin (um)</string>
           </widget>
          </item>
          <item row="3" column="3">
-          <widget class="QDoubleSpinBox" name="zAiV">
+          <widget class="QDoubleSpinBox" name="zAIV">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -7346,7 +7346,7 @@ Origin (um)</string>
           </widget>
          </item>
          <item row="3" column="1">
-          <widget class="QDoubleSpinBox" name="zAoV">
+          <widget class="QDoubleSpinBox" name="zAOV">
            <property name="minimumSize">
             <size>
              <width>60</width>
@@ -7377,7 +7377,7 @@ Origin (um)</string>
           </widget>
          </item>
          <item row="2" column="3">
-          <widget class="QDoubleSpinBox" name="yAiV">
+          <widget class="QDoubleSpinBox" name="yAIV">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -7417,7 +7417,7 @@ Origin (um)</string>
           </widget>
          </item>
          <item row="1" column="2">
-          <widget class="QDoubleSpinBox" name="xAoUm">
+          <widget class="QDoubleSpinBox" name="xAOum">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -7789,7 +7789,7 @@ Origin (um)</string>
           </widget>
          </item>
          <item row="1" column="1" alignment="Qt::AlignHCenter">
-          <widget class="QDoubleSpinBox" name="axisMove">
+          <widget class="QDoubleSpinBox" name="axisMoveUm">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
              <horstretch>0</horstretch>

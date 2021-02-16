@@ -19,10 +19,6 @@ import utilities.constants as consts
 from utilities.dialog import Error
 
 
-class CounterError(IOError):
-    """Doc."""
-
-
 def build_err_dict(exc: Exception) -> str:
     """Doc."""
 
