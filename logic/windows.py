@@ -168,7 +168,9 @@ class MainWin:
                 type_str += ax
 
         if data:
-            self._app.devices.SCANNERS.create_scan_write_task(tuple(data), type_str)
+            self._app.devices.SCANNERS.create_scan_write_task(
+                tuple(data), type_str, scanning=False
+            )
             logging.debug(
                 f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
             )
