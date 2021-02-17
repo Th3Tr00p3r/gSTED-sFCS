@@ -151,31 +151,25 @@ class MainWin:
             self._app.devices.DEP_LASER.set_power(val)
 
     @err_chck({"SCANNERS"})
-    def move_scanners(self, force=False) -> NoReturn:
+    def move_scanners(self) -> NoReturn:
         """Doc."""
 
-        def get_pos_from_gui():
-            return tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
+        scanners_dvc = self._app.devices.SCANNERS
 
-        curr_pos = get_pos_from_gui()
-
-        last_pos = self._app.devices.SCANNERS.last_ao
+        curr_pos = tuple(
+            getattr(self._gui, f"{ax}AOV").value() for ax in "xyz"
+        )  # TODO: perform AO single read at app init
         data = []
         type_str = ""
-        for ax, curr_ax_val, last_ax_val in zip("XYZ", curr_pos, last_pos):
-            if force or (curr_ax_val != last_ax_val):
-                data.append([curr_ax_val])
-                type_str += ax
+        for ax, curr_ax_val in zip("XYZ", curr_pos):
+            data.append([curr_ax_val])
+            type_str += ax
 
-        if data:
-            self._app.devices.SCANNERS.create_scan_write_task(
-                tuple(data), type_str, scanning=False
-            )
-            logging.debug(
-                f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
-            )
-
-        self._app.devices.SCANNERS.last_ao = get_pos_from_gui()
+        scanners_dvc.create_scan_write_task(tuple(data), type_str, scanning=False)
+        scanners_dvc.toggle(True)  # restart cont. reading
+        logging.debug(
+            f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
+        )
 
     def go_to_origin(self, which_axes: str) -> NoReturn:
         """Doc."""
@@ -188,7 +182,7 @@ class MainWin:
             if is_chosen:
                 getattr(self._gui, f"{axis}AOV").setValue(org_axis_vltg)
 
-        self.move_scanners(force=True)
+        self.move_scanners()
 
         logging.debug(
             f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin"
@@ -201,7 +195,6 @@ class MainWin:
 
         axis = self._gui.axis.currentText()
         current_vltg = scanners_dvc.read_single_ao_internal()[consts.AX_IDX[axis]]
-        scanners_dvc.toggle(True)  # restart cont. reading
         um_disp = sign * self._gui.axisMoveUm.value()
 
         um_V_RATIO = dict(zip("xyz", scanners_dvc.um_V_ratio))[axis]

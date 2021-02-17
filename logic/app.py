@@ -55,18 +55,20 @@ class App:
         self.init_devices()
         self.meas = Measurement(app=self, type=None)
 
+        # get last AO for scanners
+        ao_int_vltgs = self.devices.SCANNERS.read_single_ao_internal()
+        [
+            getattr(self.gui.main, f"{axis}AOV").setValue(vltg)
+            for axis, vltg in zip("xyz", ao_int_vltgs)
+        ]
+        self.devices.SCANNERS.toggle(True)  # restart cont. reading
+
         # FINALLY
         self.gui.main.show()
 
         # set up main timeout event
         self.timeout_loop = Timeout(self)
         self.timeout_loop.start()
-
-        self.devices.SCANNERS.last_ao = (
-            self.gui.main.xAOV.value(),
-            self.gui.main.yAOV.value(),
-            self.gui.main.zAOV.value(),
-        )
 
     def config_logging(self):
         """Doc."""
