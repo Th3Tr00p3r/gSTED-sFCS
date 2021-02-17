@@ -180,7 +180,7 @@ class Scanners(drivers.NIDAQmxInstrument):
             rse_samples = []
             rse_samples.append((read_samples[0][0] - read_samples[1][0]) / 2)
             rse_samples.append((read_samples[2][0] - read_samples[3][0]) / 2)
-            rse_samples.append(read_samples[4][0] / 2)
+            rse_samples.append(read_samples[4][0])
             return rse_samples
 
         self.close_tasks("in")
@@ -264,10 +264,10 @@ class Scanners(drivers.NIDAQmxInstrument):
             # move
             self.close_tasks("out")
             task = self.create_ao_task(name="Smooth AO", chan_specs=ao_chan_specs)
+            self.start_tasks(
+                "out"
+            )  # TODO: check if replacing this line with the next helpED
             self.analog_write(task, ao_data)
-            self.start_tasks("out")
-
-        self.close_tasks("out")
 
         if scanning:
             # TODO: why 100 KHz? see CreateAOTask.vi, ask Oleg
@@ -298,6 +298,8 @@ class Scanners(drivers.NIDAQmxInstrument):
         # start smooth
         if z_chan_spcs:
             smooth_start(axis="z", ao_chan_specs=z_chan_spcs, final_pos=ao_data_z[0])
+
+        self.close_tasks("out")
 
         if xy_chan_spcs:
             task = self.create_ao_task(
