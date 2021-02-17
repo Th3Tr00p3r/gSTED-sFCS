@@ -12,6 +12,8 @@ from utilities.helper import DeviceAttrs, QtWidgetAccess, QtWidgetCollection
 
 TIMEOUT = 0.010  # seconds (10 ms)
 
+AX_IDX = {"x": 0, "y": 1, "z": 2, "X": 0, "Y": 1, "Z": 2}
+
 AXES_TO_BOOL_TUPLE_DICT = {
     "X": (True, False, False),
     "Y": (False, True, False),

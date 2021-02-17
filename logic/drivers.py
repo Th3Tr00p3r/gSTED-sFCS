@@ -13,6 +13,7 @@ from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NO
 from pyftdi.ftdi import Ftdi, FtdiError
 from pyftdi.usbtools import UsbTools
 
+import utilities.helper as helper
 from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
@@ -124,9 +125,12 @@ class NIDAQmxInstrument:
 
         task = ni.Task(new_task_name=name)
         for chan_spec in chan_specs:
-            task.ai_channels.add_ai_voltage_chan(
-                terminal_config=ni.constants.TerminalConfiguration.RSE, **chan_spec
-            )
+            if helper.count_words(chan_spec["physical_channel"]) == 1:
+                chan_spec = {
+                    **chan_spec,
+                    "terminal_config": ni.constants.TerminalConfiguration.RSE,
+                }
+            task.ai_channels.add_ai_voltage_chan(**chan_spec)
         task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
         for key, val in clk_params.items():
             setattr(task.timing, key, val)
@@ -195,7 +199,7 @@ class NIDAQmxInstrument:
         self.out_tasks.append(task)
 
     @err_hndlr
-    def analog_read(self):
+    def analog_read(self, n_samples):
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
@@ -208,10 +212,7 @@ class NIDAQmxInstrument:
         #        return num_samps_read
 
         ai_task, *_ = self.in_tasks
-        read_samples = ai_task.read(
-            number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE
-        )
-        return read_samples
+        return ai_task.read(number_of_samples_per_channel=n_samples)
 
     @err_hndlr
     def analog_write(self, ao_task: ni.Task, data: np.ndarray) -> NoReturn:

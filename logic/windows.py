@@ -197,11 +197,14 @@ class MainWin:
     def displace_scanner_axis(self, sign: int) -> NoReturn:
         """Doc."""
 
+        scanners_dvc = self._app.devices.SCANNERS
+
         axis = self._gui.axis.currentText()
-        current_vltg = getattr(self._gui, f"{axis}AOV").value()
+        current_vltg = scanners_dvc.read_single_ao_internal()[consts.AX_IDX[axis]]
+        scanners_dvc.toggle(True)  # restart cont. reading
         um_disp = sign * self._gui.axisMoveUm.value()
 
-        um_V_RATIO = dict(zip("xyz", self._app.devices.SCANNERS.um_V_ratio))[axis]
+        um_V_RATIO = dict(zip("xyz", scanners_dvc.um_V_ratio))[axis]
 
         delta_vltg = um_disp / um_V_RATIO
 

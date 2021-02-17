@@ -129,9 +129,18 @@ class Scanners(drivers.NIDAQmxInstrument):
         self.ai_chan_specs = tuple(
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
-                "name_to_assign_to_channel": f"{axis}-{inst} ai",
+                "name_to_assign_to_channel": f"{axis}-{inst} AI",
                 "min_val": -10.0,
                 "max_val": 10.0,
+            }
+            for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
+        )
+
+        self.ao_int_chan_specs = tuple(
+            {
+                "physical_channel": getattr(self, f"ao_int_{axis}_addr"),
+                "name_to_assign_to_channel": f"{axis}-{inst} internal AO",
+                **getattr(self, f"{axis}_ao_limits"),
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         )
@@ -139,7 +148,7 @@ class Scanners(drivers.NIDAQmxInstrument):
         self.ao_chan_specs = tuple(
             {
                 "physical_channel": getattr(self, f"ao_{axis}_addr"),
-                "name_to_assign_to_channel": f"{axis}-{inst} ao",
+                "name_to_assign_to_channel": f"{axis}-{inst} AO",
                 **getattr(self, f"{axis}_ao_limits"),
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
@@ -156,6 +165,38 @@ class Scanners(drivers.NIDAQmxInstrument):
             self.start_continuous_read_task()
         else:
             self.close_tasks("in")
+
+    def read_single_ao_internal(self) -> (float, float, float):
+        """
+        Return a single sample from each channel (x,y,z),
+        for indicating the current AO position of the scanners.
+        """
+
+        def diff_to_rse(
+            read_samples: [list, list, list, list, list]
+        ) -> (float, float, float):
+            """Doc."""
+
+            rse_samples = []
+            rse_samples.append((read_samples[0][0] - read_samples[1][0]) / 2)
+            rse_samples.append((read_samples[2][0] - read_samples[3][0]) / 2)
+            rse_samples.append(read_samples[4][0] / 2)
+            return rse_samples
+
+        self.close_tasks("in")
+        self.create_ai_task(
+            name="Single Sample AI",
+            chan_specs=self.ao_int_chan_specs,
+            samp_clk_cnfg={
+                # TODO: decide if rate makes sense
+                "rate": self.MIN_OUTPUT_RATE_Hz,
+                "sample_mode": ni_consts.AcquisitionType.FINITE,
+                "active_edge": ni_consts.Edge.RISING,
+            },
+        )
+        self.start_tasks("in")
+        read_samples = self.analog_read(1)
+        return diff_to_rse(read_samples)
 
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
@@ -199,45 +240,32 @@ class Scanners(drivers.NIDAQmxInstrument):
 
     def create_scan_write_task(
         self,
-        data: Tuple[list],
+        ao_data: Tuple[list],
         type: str,
         samp_clk_cnfg: dict = {},
         scanning: bool = True,
     ) -> NoReturn:
         """Doc."""
 
-        def diff_vltg_data(data_row: list) -> [list, list]:
-            return [data_row, [(-1) * val for val in data_row]]
+        def diff_vltg_data(ao_data_row: list) -> [list, list]:
+            return [ao_data_row, [(-1) * val for val in ao_data_row]]
 
         def smooth_start(
-            chan_specs: dict, final_pos: float, n_steps: int = 40
+            axis: str, ao_chan_specs: dict, final_pos: float, n_steps: int = 40
         ) -> NoReturn:
             """Doc."""
 
             # read init_pos
-            *_, ai_chan_specs_z = self.ai_chan_specs
-            self.close_tasks("in")
-            self.create_ai_task(
-                name="Single Sample AI",
-                chan_specs=ai_chan_specs_z,
-                samp_clk_cnfg={
-                    # TODO: decide if rate makes sense
-                    "rate": self.MIN_OUTPUT_RATE_Hz,
-                    "samps_per_chan": 1,
-                    "sample_mode": ni_consts.AcquisitionType.FINITE,
-                    "active_edge": ni_consts.Edge.RISING,
-                },
-            )
-            self.init_buffers()
-            self.start_tasks("in")
-            self.fill_ai_buff()
-            #            init_pos = self.ai_buffer
+            init_pos = self.read_single_ao_internal()[consts.AX_IDX[axis]]
 
-            # create smooth data from init_pos to final_pos
+            # create smooth ao_data from init_pos to final_pos
+            ao_data = np.linspace(init_pos, final_pos, n_steps)
 
             # move
-            task = self.create_ao_task(name="Smooth AO", chan_specs=chan_specs)
-            self.analog_write(task, data_z)
+            self.close_tasks("out")
+            task = self.create_ao_task(name="Smooth AO", chan_specs=ao_chan_specs)
+            self.analog_write(task, ao_data)
+            self.start_tasks("out")
 
         self.close_tasks("out")
 
@@ -254,18 +282,22 @@ class Scanners(drivers.NIDAQmxInstrument):
 
         xy_chan_spcs = []
         z_chan_spcs = []
-        diff_data_xy = []
-        data_z = []
-        data_row_idx = 0
+        diff_ao_data_xy = []
+        ao_data_z = []
+        ao_data_row_idx = 0
         for ax, use_ax, ax_chn_spcs in zip("XYZ", axes_to_use, self.ao_chan_specs):
             if use_ax is True:
                 if ax in "XY":
                     xy_chan_spcs.append(ax_chn_spcs)
-                    diff_data_xy += diff_vltg_data(data[data_row_idx])
-                    data_row_idx += 1
+                    diff_ao_data_xy += diff_vltg_data(ao_data[ao_data_row_idx])
+                    ao_data_row_idx += 1
                 else:  # "Z"
                     z_chan_spcs.append(ax_chn_spcs)
-                    data_z += data[data_row_idx]
+                    ao_data_z += ao_data[ao_data_row_idx]
+
+        # start smooth
+        if z_chan_spcs:
+            smooth_start(axis="z", ao_chan_specs=z_chan_spcs, final_pos=ao_data_z[0])
 
         if xy_chan_spcs:
             task = self.create_ao_task(
@@ -273,14 +305,13 @@ class Scanners(drivers.NIDAQmxInstrument):
                 chan_specs=xy_chan_spcs,
                 samp_clk_cnfg=samp_clk_cnfg,
             )
-            self.analog_write(task, diff_data_xy)
+            self.analog_write(task, diff_ao_data_xy)
 
         if z_chan_spcs:
-            smooth_start(data_z)
             task = self.create_ao_task(
                 name="AO Z", chan_specs=z_chan_spcs, samp_clk_cnfg=samp_clk_cnfg
             )
-            self.analog_write(task, data_z)
+            self.analog_write(task, ao_data_z)
 
         self.init_buffers()
 
@@ -290,12 +321,12 @@ class Scanners(drivers.NIDAQmxInstrument):
     def init_buffers(self) -> NoReturn:
         """Doc."""
 
-        self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
+        #        self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
         ai_task, *_ = self.in_tasks
         num_ai_chans = ai_task.number_of_channels
         self.ai_buffer = np.empty(shape=(num_ai_chans, 0), dtype=np.float)
 
-    def fill_ai_buff(self) -> NoReturn:
+    def fill_ai_buff(self, n_samples=ni_consts.READ_ALL_AVAILABLE) -> NoReturn:
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
@@ -303,16 +334,16 @@ class Scanners(drivers.NIDAQmxInstrument):
         #        self.ai_buffer = np.concatenate(
         #        (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
         #        )
-
-        self.ai_buffer = np.concatenate((self.ai_buffer, self.analog_read()), axis=1)
+        read_samples = self.analog_read(n_samples)
+        self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
 
     def dump_buff_overflow(self):
         """Doc."""
 
-        _, ao_buffer_len = self.ao_buffer.shape
+        #        _, ao_buffer_len = self.ao_buffer.shape
         _, ai_buffer_len = self.ai_buffer.shape
-        if ao_buffer_len > self.CONT_READ_BFFR_SZ:
-            self.ao_buffer = self.ao_buffer[:, -self.CONT_READ_BFFR_SZ :]
+        #        if ao_buffer_len > self.CONT_READ_BFFR_SZ:
+        #            self.ao_buffer = self.ao_buffer[:, -self.CONT_READ_BFFR_SZ :]
         if ai_buffer_len > self.CONT_READ_BFFR_SZ:
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
 
