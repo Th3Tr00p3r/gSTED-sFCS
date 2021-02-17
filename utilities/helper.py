@@ -185,6 +185,12 @@ def div_ceil(x: int, y: int) -> int:
     return x // y + (x % y > 0)
 
 
+def count_words(input_str: str) -> int:
+    """Returns the number of words in a string"""
+
+    return len(input_str.split())
+
+
 @dataclass
 class DeviceAttrs:
 
