@@ -3,6 +3,7 @@
 
 import asyncio
 from array import array
+from types import SimpleNamespace
 from typing import List, NoReturn
 
 import nidaqmx as ni
@@ -86,6 +87,7 @@ class NIDAQmxInstrument:
     """Doc."""
 
     MIN_OUTPUT_RATE_Hz = 1000
+    # TODO: the following two lines are counter-specific, move them to Counter in devices.py
     CONT_READ_BFFR_SZ = 10000
     cont_read_buffer = np.zeros(shape=(CONT_READ_BFFR_SZ,), dtype=np.uint32)
 
@@ -93,25 +95,37 @@ class NIDAQmxInstrument:
 
         self.nick = nick
         self.error_dict = None
-        # TODO: next line should be in devices.py (after mending read/write methods to accept args)
+        # TODO: next line should be in devices.py
         [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
-        self.in_tasks = []
-        self.out_tasks = []
+        self.tasks = SimpleNamespace()
+        self.task_types = ["ai", "ao", "ci", "co"]
+        [setattr(self.tasks, type, {}) for type in self.task_types]
 
     @err_hndlr
-    def start_tasks(self, in_out: str):
+    def start_tasks(self, task_type: str):
         """Doc."""
 
-        task_list = getattr(self, f"{in_out}_tasks")
-        [task.start() for task in task_list]
+        [task.start() for task in getattr(self.tasks, task_type).values()]
+
+    def close_tasks(self, task_type: str):
+        """Doc."""
+
+        type_tasks_dict = getattr(self.tasks, task_type)
+        [type_tasks_dict[task_name].close() for task_name in type_tasks_dict.keys()]
+        setattr(self.tasks, task_type, {})
 
     @err_hndlr
-    def close_tasks(self, in_out: str):
+    def close_all_tasks(self):
         """Doc."""
 
-        task_list = getattr(self, f"{in_out}_tasks")
-        [task.close() for task in task_list]
-        setattr(self, f"{in_out}_tasks", [])
+        for type in self.task_types:
+            self.close_tasks(type)
+
+    @err_hndlr
+    def wait_for_task(self, task_type: str, task_name: str):
+        """Doc."""
+
+        getattr(self.tasks, task_type)[task_name].wait_until_done(timeout=3)
 
     @err_hndlr
     def create_ai_task(
@@ -125,6 +139,7 @@ class NIDAQmxInstrument:
 
         task = ni.Task(new_task_name=name)
         for chan_spec in chan_specs:
+            # TODO: see if following check can go to devices.py - interrupts possible merge of 'create task' functions
             if helper.count_words(chan_spec["physical_channel"]) == 1:
                 chan_spec = {
                     **chan_spec,
@@ -135,7 +150,7 @@ class NIDAQmxInstrument:
         for key, val in clk_params.items():
             setattr(task.timing, key, val)
 
-        self.in_tasks.append(task)
+        self.tasks.ai[name] = task
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
         #        self.sreader = AnalogMultiChannelReader(self.in_tasks.in_stream)
@@ -148,19 +163,18 @@ class NIDAQmxInstrument:
         chan_specs: List[dict],
         samp_clk_cnfg: dict = {},
         clk_params: dict = {},
-    ) -> ni.Task:
+    ) -> NoReturn:
         """Doc."""
 
-        ao_task = ni.Task(new_task_name=name)
+        task = ni.Task(new_task_name=name)
         for chan_spec in chan_specs:
-            ao_task.ao_channels.add_ao_voltage_chan(**chan_spec)
+            task.ao_channels.add_ao_voltage_chan(**chan_spec)
         if samp_clk_cnfg:
-            ao_task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+            task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
         for key, val in clk_params.items():
-            setattr(ao_task.timing, key, val)
+            setattr(task.timing, key, val)
 
-        self.out_tasks.append(ao_task)
-        return ao_task
+        self.tasks.ao[name] = task
 
     @err_hndlr
     def create_ci_task(
@@ -181,25 +195,24 @@ class NIDAQmxInstrument:
         for key, val in clk_xtra_params.items():
             setattr(task.timing, key, val)
 
+        # TODO: move to seperate function (interrupts merge of 'create task' functions
         task.sr = CounterReader(task.in_stream)
         task.sr.verify_array_shape = False
 
-        self.in_tasks.append(task)
+        self.tasks.ci[name] = task
 
     @err_hndlr
-    def create_co_task(
-        self, name: str, chan_spec: dict, ci_count_edges_term, clk_cnfg: dict
-    ):
+    def create_co_task(self, name: str, chan_spec: dict, clk_cnfg: dict):
         """Doc."""
 
         task = ni.Task(new_task_name=name)
         task.co_channels.add_co_pulse_chan_ticks(**chan_spec)
         task.timing.cfg_implicit_timing(**clk_cnfg)
 
-        self.out_tasks.append(task)
+        self.tasks.co[name] = task
 
     @err_hndlr
-    def analog_read(self, n_samples):
+    def analog_read(self, task_name: str, n_samples):
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
@@ -211,25 +224,20 @@ class NIDAQmxInstrument:
         #        )
         #        return num_samps_read
 
-        ai_task, *_ = self.in_tasks
+        ai_task = self.tasks.ai[task_name]
         return ai_task.read(number_of_samples_per_channel=n_samples)
 
     @err_hndlr
-    def analog_write(self, ao_task: ni.Task, data: np.ndarray) -> NoReturn:
+    def analog_write(
+        self, task_name: str, data: np.ndarray, auto_start=None
+    ) -> NoReturn:
         """Doc."""
 
-        ao_task.write(data, timeout=self.ao_timeout)
-
-    #    @err_hndlr
-    #    def analog_write(
-    #        self, ao_addresses: iter, vals: iter, limits: iter
-    #    ) -> NoReturn:
-    #        """Doc."""
-    #
-    #        with ni.Task() as task:
-    #            for (ao_addr, limits) in zip(ao_addresses, limits):
-    #                task.ao_channels.add_ao_voltage_chan(ao_addr, **limits)
-    #            task.write(vals, timeout=self.ao_timeout)
+        ao_task = self.tasks.ao[task_name]
+        if auto_start is not None:
+            ao_task.write(data, auto_start=auto_start, timeout=self.ao_timeout)
+        else:
+            ao_task.write(data, timeout=self.ao_timeout)
 
     @err_hndlr
     def counter_stream_read(self):
@@ -238,7 +246,8 @@ class NIDAQmxInstrument:
          (1D NumPy array, overwritten each read), and returns the
         number of samples read.
         """
-        ci_task, *_ = self.in_tasks
+
+        ci_task = self.tasks.ci["Continuous CI"]
         return ci_task.sr.read_many_sample_uint32(
             self.cont_read_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,

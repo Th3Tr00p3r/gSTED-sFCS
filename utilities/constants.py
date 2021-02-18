@@ -132,7 +132,7 @@ STAGE = DeviceAttrs(
 
 COUNTER = DeviceAttrs(
     cls_name="Counter",
-    cls_xtra_args=["devices.SCANNERS.in_tasks"],
+    cls_xtra_args=["devices.SCANNERS.tasks.ai"],
     log_ref="Counter",
     led_widget=QtWidgetAccess("ledCounter", "icon", "main"),
     param_widgets=QtWidgetCollection(
