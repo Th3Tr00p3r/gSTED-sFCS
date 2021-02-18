@@ -166,7 +166,6 @@ class MainWin:
             type_str += ax
 
         scanners_dvc.create_scan_write_task(tuple(data), type_str, scanning=False)
-        scanners_dvc.toggle(True)  # restart cont. reading
         logging.debug(
             f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
         )
@@ -174,15 +173,18 @@ class MainWin:
     def go_to_origin(self, which_axes: str) -> NoReturn:
         """Doc."""
 
+        scanners_dvc = self._app.devices.SCANNERS
+
         for axis, is_chosen, org_axis_vltg in zip(
             "xyz",
             consts.AXES_TO_BOOL_TUPLE_DICT[which_axes],
-            self._app.devices.SCANNERS.origin,
+            scanners_dvc.origin,
         ):
             if is_chosen:
                 getattr(self._gui, f"{axis}AOV").setValue(org_axis_vltg)
 
         self.move_scanners()
+        scanners_dvc.toggle(True)  # restart cont. reading
 
         logging.debug(
             f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin"
@@ -191,23 +193,29 @@ class MainWin:
     def displace_scanner_axis(self, sign: int) -> NoReturn:
         """Doc."""
 
-        scanners_dvc = self._app.devices.SCANNERS
-
-        axis = self._gui.axis.currentText()
-        current_vltg = scanners_dvc.read_single_ao_internal()[consts.AX_IDX[axis]]
         um_disp = sign * self._gui.axisMoveUm.value()
 
-        um_V_RATIO = dict(zip("xyz", scanners_dvc.um_V_ratio))[axis]
+        if um_disp != 0.0:
+            scanners_dvc = self._app.devices.SCANNERS
+            axis = self._gui.axis.currentText()
+            current_vltg = scanners_dvc.read_single_ao_internal()[consts.AX_IDX[axis]]
+            um_V_RATIO = dict(zip("xyz", scanners_dvc.um_V_ratio))[axis]
+            delta_vltg = um_disp / um_V_RATIO
+            new_vltg = current_vltg + delta_vltg
 
-        delta_vltg = um_disp / um_V_RATIO
+            axis_ao_limits = getattr(scanners_dvc, f"{axis}_ao_limits")
+            if new_vltg < axis_ao_limits["min_val"]:
+                new_vltg = axis_ao_limits["min_val"]
+            elif new_vltg > axis_ao_limits["max_val"]:
+                new_vltg = axis_ao_limits["max_val"]
 
-        getattr(self._gui, f"{axis}AOV").setValue(current_vltg + delta_vltg)
+            getattr(self._gui, f"{axis}AOV").setValue(new_vltg)
+            self.move_scanners()
+            scanners_dvc.toggle(True)  # restart cont. reading
 
-        self.move_scanners()
-
-        logging.debug(
-            f"{getattr(consts, 'SCANNERS').log_ref}({axis}) was displaced {str(um_disp)} um"
-        )
+            logging.debug(
+                f"{getattr(consts, 'SCANNERS').log_ref}({axis}) was displaced {str(um_disp)} um"
+            )
 
     @err_chck({"STAGE"})
     def move_stage(self, dir: str, steps: int):
