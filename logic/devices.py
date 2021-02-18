@@ -36,10 +36,12 @@ class PixelClock(drivers.NIDAQmxInstrument):
     def _start_co_clock_sync(self) -> NoReturn:
         """Doc."""
 
-        self.close_tasks("out")
+        task_name = "Pixel Clock CI"
+
+        self.close_tasks([task_name])
 
         self.create_co_task(
-            name="Pixel Clock CI",
+            name=task_name,
             chan_spec={
                 "name_to_assign_to_channel": "pixel clock",
                 "counter": self.cntr_addr,
@@ -49,7 +51,7 @@ class PixelClock(drivers.NIDAQmxInstrument):
             },
             clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
         )
-        self.start_tasks("out")
+        self.start_tasks([task_name])
 
 
 class UM232H(drivers.FtdiInstrument):
@@ -123,9 +125,6 @@ class Scanners(drivers.NIDAQmxInstrument):
             ao_timeout=0.1,  # TODO: this should belong to the device and not the driver (as well as the param_dict)
         )  # , ai_buffer=np.zeros(shape=(3, 1000), dtype=np.double))
 
-        # TODO: I accidently created a generator here where I was going for a tuple of dicts (should have used tuple()
-        # if I really wanted that). This is why I had to use it as a method/function and not as an attribute - the iterator
-        # is out of items after one go and leaves the attribute depleted. Perhaps I could use generators in other places?
         self.ai_chan_specs = tuple(
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
@@ -164,7 +163,7 @@ class Scanners(drivers.NIDAQmxInstrument):
         if bool:
             self.start_continuous_read_task()
         else:
-            self.close_tasks("in")
+            self.close_all_tasks()
 
     def read_single_ao_internal(self) -> (float, float, float):
         """
@@ -183,9 +182,12 @@ class Scanners(drivers.NIDAQmxInstrument):
             rse_samples.append(read_samples[4][0])
             return rse_samples
 
-        self.close_tasks("in")
+        task_name = "Single Sample AI"
+
+        self.close_tasks("ai")
+
         self.create_ai_task(
-            name="Single Sample AI",
+            name=task_name,
             chan_specs=self.ao_int_chan_specs,
             samp_clk_cnfg={
                 # TODO: decide if rate makes sense
@@ -194,17 +196,19 @@ class Scanners(drivers.NIDAQmxInstrument):
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
-        self.start_tasks("in")
-        read_samples = self.analog_read(1)
+        self.start_tasks("ai")
+        read_samples = self.analog_read(task_name, 1)
         return diff_to_rse(read_samples)
 
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
 
-        self.close_tasks("in")
+        task_name = "Continuous AI"
+
+        self.close_tasks("ai")
 
         self.create_ai_task(
-            name="Continuous AI",
+            name=task_name,
             chan_specs=self.ai_chan_specs,
             samp_clk_cnfg={
                 "rate": self.MIN_OUTPUT_RATE_Hz,
@@ -213,15 +217,15 @@ class Scanners(drivers.NIDAQmxInstrument):
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
-        self.init_buffers()
-        self.start_tasks("in")
+        self.init_ai_buffer()
+        self.start_tasks("ai")
 
     def start_scan_read_task(
         self, samps_per_chan, scn_clk_src, ai_conv_rate
     ) -> NoReturn:
         """Doc."""
 
-        self.close_tasks("in")
+        self.close_tasks("ai")
 
         self.create_ai_task(
             name="Image Scan AI",
@@ -235,8 +239,8 @@ class Scanners(drivers.NIDAQmxInstrument):
             },
             clk_params={"ai_conv_rate": ai_conv_rate},
         )
-        self.init_buffers()
-        self.start_tasks("in")
+        self.init_ai_buffer()
+        self.start_tasks("ai")
 
     def create_scan_write_task(
         self,
@@ -255,19 +259,27 @@ class Scanners(drivers.NIDAQmxInstrument):
         ) -> NoReturn:
             """Doc."""
 
-            # read init_pos
             init_pos = self.read_single_ao_internal()[consts.AX_IDX[axis]]
 
-            # create smooth ao_data from init_pos to final_pos
             ao_data = np.linspace(init_pos, final_pos, n_steps)
 
             # move
-            self.close_tasks("out")
-            task = self.create_ao_task(name="Smooth AO", chan_specs=ao_chan_specs)
-            self.start_tasks(
-                "out"
-            )  # TODO: check if replacing this line with the next helpED
-            self.analog_write(task, ao_data)
+            task_name = "Smooth AO"
+            self.close_tasks("ao")
+            self.create_ao_task(
+                name=task_name,
+                chan_specs=ao_chan_specs,
+                samp_clk_cnfg={
+                    "rate": self.MIN_OUTPUT_RATE_Hz,  # WHY? see CreateAOTask.vi
+                    "samps_per_chan": n_steps,
+                    "sample_mode": ni_consts.AcquisitionType.FINITE,
+                    "active_edge": ni_consts.Edge.RISING,
+                },
+            )
+            self.analog_write(task_name, ao_data, auto_start=False)
+            self.start_tasks("ao")
+            self.wait_for_task("ao", task_name)
+            self.close_tasks("ao")
 
         if scanning:
             # TODO: why 100 KHz? see CreateAOTask.vi, ask Oleg
@@ -299,36 +311,35 @@ class Scanners(drivers.NIDAQmxInstrument):
         if z_chan_spcs:
             smooth_start(axis="z", ao_chan_specs=z_chan_spcs, final_pos=ao_data_z[0])
 
-        self.close_tasks("out")
+        self.close_tasks("ao")
 
         if xy_chan_spcs:
-            task = self.create_ao_task(
-                name="AO XY",
+            xy_task_name = "AO XY"
+            self.create_ao_task(
+                name=xy_task_name,
                 chan_specs=xy_chan_spcs,
                 samp_clk_cnfg=samp_clk_cnfg,
             )
-            self.analog_write(task, diff_ao_data_xy)
+            self.analog_write(xy_task_name, diff_ao_data_xy)
 
         if z_chan_spcs:
-            task = self.create_ao_task(
-                name="AO Z", chan_specs=z_chan_spcs, samp_clk_cnfg=samp_clk_cnfg
+            z_task_name = "AO Z"
+            self.create_ao_task(
+                name=z_task_name, chan_specs=z_chan_spcs, samp_clk_cnfg=samp_clk_cnfg
             )
-            self.analog_write(task, ao_data_z)
-
-        self.init_buffers()
+            self.analog_write(z_task_name, ao_data_z)
 
         if not scanning:
-            self.start_tasks("out")
+            self.start_tasks("ao")
 
-    def init_buffers(self) -> NoReturn:
+    def init_ai_buffer(self) -> NoReturn:
         """Doc."""
 
-        #        self.ao_buffer = np.empty(shape=(3, 0), dtype=np.float)
-        ai_task, *_ = self.in_tasks
-        num_ai_chans = ai_task.number_of_channels
-        self.ai_buffer = np.empty(shape=(num_ai_chans, 0), dtype=np.float)
+        self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
 
-    def fill_ai_buff(self, n_samples=ni_consts.READ_ALL_AVAILABLE) -> NoReturn:
+    def fill_ai_buff(
+        self, task_name: str = "Continuous AI", n_samples=ni_consts.READ_ALL_AVAILABLE
+    ) -> NoReturn:
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
@@ -336,16 +347,13 @@ class Scanners(drivers.NIDAQmxInstrument):
         #        self.ai_buffer = np.concatenate(
         #        (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
         #        )
-        read_samples = self.analog_read(n_samples)
+        read_samples = self.analog_read("Continuous AI", n_samples)
         self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
 
-    def dump_buff_overflow(self):
+    def dump_ai_buff_overflow(self):
         """Doc."""
 
-        #        _, ao_buffer_len = self.ao_buffer.shape
-        _, ai_buffer_len = self.ai_buffer.shape
-        #        if ao_buffer_len > self.CONT_READ_BFFR_SZ:
-        #            self.ao_buffer = self.ao_buffer[:, -self.CONT_READ_BFFR_SZ :]
+        ai_buffer_len = self.ai_buffer.shape[1]
         if ai_buffer_len > self.CONT_READ_BFFR_SZ:
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
 
@@ -360,14 +368,17 @@ class Counter(drivers.NIDAQmxInstrument):
 
     updt_time = 0.2
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget, scanners_in_tasks):
+    def __init__(self, nick, param_dict, led_widget, switch_widget, scanners_ai_tasks):
         self.led_widget = led_widget
         self.switch_widget = switch_widget
         super().__init__(nick=nick, param_dict=param_dict)
         self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
-        self.ai_task, *_ = scanners_in_tasks
+
+        self.ai_cont_rate = scanners_ai_tasks["Continuous AI"].timing.samp_clk_rate
+        self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
+
         self.ci_chan_specs = {
             "name_to_assign_to_channel": "photon counter",
             "counter": self.address,
@@ -384,32 +395,34 @@ class Counter(drivers.NIDAQmxInstrument):
         if bool:
             self.start_ci_continuous()
         else:
-            self.close_tasks("in")
+            self.close_all_tasks()
 
     def start_ci_continuous(self) -> NoReturn:
         """Doc."""
 
-        self.close_tasks("in")
+        task_name = "Continuous CI"
+
+        self.close_tasks("ci")
 
         self.create_ci_task(
-            name="Continuous CI",
+            name=task_name,
             chan_spec=self.ci_chan_specs,
             chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
             samp_clk_cnfg={
-                "rate": self.ai_task.timing.samp_clk_rate,
-                "source": self.ai_task.timing.samp_clk_term,
+                "rate": self.ai_cont_rate,
+                "source": self.ai_cont_src,
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
-        self.init_buffer()
-        self.start_tasks("in")
+        self.init_ci_buffer()
+        self.start_tasks("ci")
 
     def start_ci_scan(self, samps_per_chan, scn_clk_src) -> NoReturn:
         """Doc."""
 
-        self.close_tasks("in")
+        self.close_tasks("ci")
 
         self.start_ci_task(
             name="Image Scan CI",
@@ -426,13 +439,8 @@ class Counter(drivers.NIDAQmxInstrument):
                 "active_edge": ni_consts.Edge.RISING,
             },
         )
-        self.init_buffer()
-        self.start_tasks("in")
-
-    def init_buffer(self) -> NoReturn:
-        """Doc."""
-
-        self.ci_buffer = np.empty(shape=(0,))
+        self.init_ci_buffer()
+        self.start_tasks("ci")
 
     def count(self):
         """Doc."""
@@ -461,7 +469,12 @@ class Counter(drivers.NIDAQmxInstrument):
         self.last_avg_time = time.perf_counter()
         return avg_cnt_rate
 
-    def dump_buff_overflow(self):
+    def init_ci_buffer(self) -> NoReturn:
+        """Doc."""
+
+        self.ci_buffer = np.empty(shape=(0,))
+
+    def dump_ci_buff_overflow(self):
         """Doc."""
 
         if len(self.ci_buffer) > self.CONT_READ_BFFR_SZ:

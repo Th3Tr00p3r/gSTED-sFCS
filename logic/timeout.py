@@ -116,12 +116,12 @@ class Timeout:
                 # COUNTER
                 if self._app.devices.COUNTER.error_dict is None:
                     self._app.devices.COUNTER.count()
-                    self._app.devices.COUNTER.dump_buff_overflow()
+                    self._app.devices.COUNTER.dump_ci_buff_overflow()
 
                 # AI
                 if self._app.devices.SCANNERS.error_dict is None:
                     self._app.devices.SCANNERS.fill_ai_buff()
-                    self._app.devices.SCANNERS.dump_buff_overflow()
+                    self._app.devices.SCANNERS.dump_ai_buff_overflow()
 
             await asyncio.sleep(consts.TIMEOUT)
 
