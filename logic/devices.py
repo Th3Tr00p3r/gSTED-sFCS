@@ -13,6 +13,7 @@ import logic.drivers as drivers
 import utilities.constants as consts
 import utilities.dialog as dialog
 from utilities.errors import dvc_err_hndlr as err_hndlr
+from utilities.helper import div_ceil, limit
 
 
 class PixelClock(drivers.NIDAQmxInstrument):
@@ -255,31 +256,40 @@ class Scanners(drivers.NIDAQmxInstrument):
             return [ao_data_row, [(-1) * val for val in ao_data_row]]
 
         def smooth_start(
-            axis: str, ao_chan_specs: dict, final_pos: float, n_steps: int = 40
+            axis: str, ao_chan_specs: dict, final_pos: float, step_sz: float = 0.25
         ) -> NoReturn:
-            """Doc."""
+            """Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)"""
 
-            init_pos = self.read_single_ao_internal()[consts.AX_IDX[axis]]
-
-            ao_data = np.linspace(init_pos, final_pos, n_steps)
-
-            # move
-            task_name = "Smooth AO"
-            self.close_tasks("ao")
-            self.create_ao_task(
-                name=task_name,
-                chan_specs=ao_chan_specs,
-                samp_clk_cnfg={
-                    "rate": self.MIN_OUTPUT_RATE_Hz,  # WHY? see CreateAOTask.vi
-                    "samps_per_chan": n_steps,
-                    "sample_mode": ni_consts.AcquisitionType.FINITE,
-                    "active_edge": ni_consts.Edge.RISING,
-                },
+            init_pos = limit(
+                self.read_single_ao_internal()[consts.AX_IDX[axis]], 0.0, 10.0
             )
-            self.analog_write(task_name, ao_data, auto_start=False)
-            self.start_tasks("ao")
-            self.wait_for_task("ao", task_name)
-            self.close_tasks("ao")
+
+            total_dist = abs(final_pos - init_pos)
+            n_steps = div_ceil(total_dist, step_sz)
+
+            if n_steps < 2:
+                return
+
+            else:
+                ao_data = np.linspace(init_pos, final_pos, n_steps)
+
+                # move
+                task_name = "Smooth AO"
+                self.close_tasks("ao")
+                self.create_ao_task(
+                    name=task_name,
+                    chan_specs=ao_chan_specs,
+                    samp_clk_cnfg={
+                        "rate": self.MIN_OUTPUT_RATE_Hz,  # WHY? see CreateAOTask.vi
+                        "samps_per_chan": n_steps,
+                        "sample_mode": ni_consts.AcquisitionType.FINITE,
+                        "active_edge": ni_consts.Edge.RISING,
+                    },
+                )
+                self.analog_write(task_name, ao_data, auto_start=False)
+                self.start_tasks("ao")
+                self.wait_for_task("ao", task_name)
+                self.close_tasks("ao")
 
         if scanning:
             # TODO: why 100 KHz? see CreateAOTask.vi, ask Oleg
@@ -335,7 +345,7 @@ class Scanners(drivers.NIDAQmxInstrument):
     def init_ai_buffer(self) -> NoReturn:
         """Doc."""
 
-        self.ai_buffer = np.empty(shape=(3, 0), dtype=np.float)
+        self.ai_buffer = np.array([[0], [0], [0]], dtype=np.float)
 
     def fill_ai_buff(
         self, task_name: str = "Continuous AI", n_samples=ni_consts.READ_ALL_AVAILABLE
