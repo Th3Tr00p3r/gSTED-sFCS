@@ -201,13 +201,13 @@ class MainWin:
             current_vltg = scanners_dvc.read_single_ao_internal()[consts.AX_IDX[axis]]
             um_V_RATIO = dict(zip("xyz", scanners_dvc.um_V_ratio))[axis]
             delta_vltg = um_disp / um_V_RATIO
-            new_vltg = current_vltg + delta_vltg
 
             axis_ao_limits = getattr(scanners_dvc, f"{axis}_ao_limits")
-            if new_vltg < axis_ao_limits["min_val"]:
-                new_vltg = axis_ao_limits["min_val"]
-            elif new_vltg > axis_ao_limits["max_val"]:
-                new_vltg = axis_ao_limits["max_val"]
+            new_vltg = helper.limit(
+                (current_vltg + delta_vltg),
+                axis_ao_limits["min_val"],
+                axis_ao_limits["max_val"],
+            )
 
             getattr(self._gui, f"{axis}AOV").setValue(new_vltg)
             self.move_scanners()
