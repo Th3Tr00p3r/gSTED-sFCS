@@ -182,13 +182,22 @@ def deep_getattr(object, deep_name, default=None):
 def div_ceil(x: int, y: int) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
-    return x // y + (x % y > 0)
+    return int(x // y + (x % y > 0))
 
 
 def count_words(input_str: str) -> int:
     """Returns the number of words in a string"""
 
     return len(input_str.split())
+
+
+def limit(val: float, min: float, max: float) -> float:
+
+    if min < val < max:
+        return val
+    elif val < min:
+        return min
+    return max
 
 
 @dataclass
