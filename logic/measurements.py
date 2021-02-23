@@ -112,22 +112,79 @@ class SFCSImageMeasurement(Measurement):
             elif scn_type == "xz":
                 return ", ".join(scanners_dvc.ao_x_addr, scanners_dvc.ao_z_addr)
 
-        def calculate_scan(scan_params: SimpleNamespace):
+        def calculate_scan(
+            scan_params: SimpleNamespace, um_V_ratio: (float, float, float)
+        ):
+            # TODO: this function needs better documentation, starting with some comments
             """Doc."""
 
-            # TODO: This is a mock version of the soon-to-be-implememted function
-            mock_ao_2d_arr = np.vstack(
-                (np.arange(-5.0, 5.0, 0.5), np.arange(-5.0, 5.0, 0.5))
-            )
-            ao_buffer = mock_ao_2d_arr
-            # TODO: since not using waveform, ao freq is needed (additionally) instead of dt
-            set_pnts_lines_odd = 100  # these are made up too
-            set_pnts_lines_even = 100
-            set_pnts_planes = 0
-            total_pnts = 200
+            dt = 1 / (scan_params.line_freq_Hz * scan_params.ppl)
+
+            # order according to relevant plane dimensions
+            if scan_params.scn_type == "XY":
+                dim_conv = um_V_ratio
+                curr_ao = (
+                    scan_params.curr_ao_x,
+                    scan_params.curr_ao_y,
+                    scan_params.curr_ao_z,
+                )
+            if scan_params.scn_type == "YZ":
+                dim_conv = (um_V_ratio[1], um_V_ratio[2], um_V_ratio[0])
+                curr_ao = (
+                    scan_params.curr_ao_y,
+                    scan_params.curr_ao_z,
+                    scan_params.curr_ao_x,
+                )
+            if scan_params.scn_type == "XZ":
+                dim_conv = (um_V_ratio[0], um_V_ratio[2], um_V_ratio[1])
+                curr_ao = (
+                    scan_params.curr_ao_x,
+                    scan_params.curr_ao_z,
+                    scan_params.curr_ao_y,
+                )
+
+            T = scan_params.ppl
+            f = scan_params.lin_frac
+            t0 = T / 2 * (1 - f) / (2 - f)
+            v = 1 / (T / 2 - 2 * t0)
+            a = v / t0
+            A = 1 / f
+
+            t = np.arange(T)
+            s = np.zeros(T)
+            J = t <= t0
+            s[J] = a * np.power(t[J], 2)
+
+            J = np.logical_and((t > t0), (t <= (T / 2 - t0)))
+            s[J] = v * t(J) - a * t0 ** 2 / 2
+
+            J = np.logical_and((t > (T / 2 - t0)), (t <= (T / 2 + t0)))
+            s[J] = A - a * np.power((t(J) - T / 2), 2) / 2
+
+            J = np.logical_and((t > (T / 2 + t0)), (t <= (T - t0)))
+            s[J] = A + a * t0 ^ 2 / 2 - v * (t[J] - T / 2)
+
+            J = t > (T - t0)
+            s[J] = a * np.power((T - t[J]), 2) / 2
+
+            s = s - 1 / (2 * f)
+            ao_buffer = s
+
+            dim1_vltg_ampl = scan_params.dim1_um * dim_conv(0)
+            ao_buffer[0, :] = curr_ao(0) + dim1_vltg_ampl * s
+            dim2_vltg_ampl = scan_params.dim1_um * dim_conv(1)
+            ao_buffer[1, :] = curr_ao(1) + dim2_vltg_ampl * s
+
+            # Ask Oleg - what are 'set_pnts_lines_odd/even' and why are they the same?
+            set_pnts_lines_odd = curr_ao(1)
+            set_pnts_lines_even = curr_ao(1)
+            set_pnts_planes = curr_ao(2)
+
+            total_pnts = scan_params.ppl * scan_params.n_lines * scan_params.n_planes
 
             return (
                 ao_buffer,
+                dt,
                 set_pnts_lines_odd,
                 set_pnts_lines_even,
                 set_pnts_planes,
@@ -145,13 +202,14 @@ class SFCSImageMeasurement(Measurement):
         # unite relevant physical addresses
         self.scn_addrs = bld_scn_addrs_str(self.scn_type, self.scanners_dvc)
         # init device buffers
-        self.scanners_dvc.init_buffers()
+        self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_buffer()
         # init gui
         self.curr_line_wdgt.set(0)
         self.curr_plane_wdgt.set(0)
         # create ao_buffer
         (
+            self.dt,
             self.ao_buffer,
             self.set_pnts_lines_odd,
             self.set_pnts_lines_even,

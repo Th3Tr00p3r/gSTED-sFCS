@@ -32,14 +32,14 @@ class PixelClock(drivers.NIDAQmxInstrument):
         if bool:
             self._start_co_clock_sync()
         else:
-            self.close_task("out")
+            self.close_all_tasks()
 
     def _start_co_clock_sync(self) -> NoReturn:
         """Doc."""
 
-        task_name = "Pixel Clock CI"
+        task_name = "Pixel Clock CO"
 
-        self.close_tasks([task_name])
+        self.close_tasks("co")
 
         self.create_co_task(
             name=task_name,
@@ -52,7 +52,7 @@ class PixelClock(drivers.NIDAQmxInstrument):
             },
             clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
         )
-        self.start_tasks([task_name])
+        self.start_tasks("co")
 
 
 class UM232H(drivers.FtdiInstrument):
@@ -154,7 +154,7 @@ class Scanners(drivers.NIDAQmxInstrument):
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         )
 
-        self.um_V_ratio = (self.x_conv_const, self.y_conv_const, self.z_conv_const)
+        self.um_V_ratio = (self.x_um2V_const, self.y_um2V_const, self.z_um2V_const)
 
         self.toggle(True)
 
@@ -345,7 +345,7 @@ class Scanners(drivers.NIDAQmxInstrument):
     def init_ai_buffer(self) -> NoReturn:
         """Doc."""
 
-        self.ai_buffer = np.array([[0], [0], [0]], dtype=np.float)
+        self.ai_buffer = np.array([[-99], [-99], [-99]], dtype=np.float)
 
     def fill_ai_buff(
         self, task_name: str = "Continuous AI", n_samples=ni_consts.READ_ALL_AVAILABLE
