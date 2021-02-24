@@ -12,6 +12,7 @@ from typing import NoReturn, Tuple, Union
 import nidaqmx.constants as ni_consts  # TODO: move to consts.py
 import numpy as np
 
+from utilities.dialog import Notification
 from utilities.helper import div_ceil
 
 
@@ -76,15 +77,41 @@ class SFCSImageMeasurement(Measurement):
 
     def __init__(self, app, scn_params, **kwargs):
         super().__init__(app=app, type="SFCSImage", scn_params=scn_params, **kwargs)
-        self.pxl_clk_dvc = app.devices.PixelClock
-        self.scanners_dvc = app.devices.Scanners
-        self.counter_dvc = app.devices.Scanners
+        self.pxl_clk_dvc = app.devices.PXL_CLK
+        self.scanners_dvc = app.devices.SCANNERS
+        self.counter_dvc = app.devices.SCANNERS
+        self.laser_dvcs = SimpleNamespace()
+        self.laser_dvcs.exc = app.devices.EXC_LASER
+        self.laser_dvcs.dep = app.devices.DEP_LASER
+        self.laser_dvcs.dep_shutter = app.devices.DEP_SHUTTER
         self.um_V_ratio = tuple(
             getattr(self.scanners_dvc, f"{ax}_um2V_const") for ax in "xyz"
         )
 
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scan_params.scn_type}_{file_no}"
+
+    def toggle_lasers(self) -> NoReturn:
+        """Doc."""
+
+        if self.sted_mode:
+            self.exc_mode = True
+            self.dep_mode = True
+
+        if self.exc_mode:
+            self.laser_dvcs.exc.toggle(True)
+        if self.dep_mode:
+            if self.laser_dvcs.dep.state is True:
+                self.laser_dvcs.dep_shutter.toggle(True)
+            else:
+                self.laser_dvcs.dep.toggle(True)
+                _ = Notification(
+                    "Depletion Laser is off.\nWait untill fully on, then press 'OK'."
+                ).display()
+                print(
+                    "TESTESTEST"
+                )  # TODO: make sure notification does cause pause, then remove the test
+                self.laser_dvcs.dep_shutter.toggle(True)
 
     def setup_scan(self):
         """Doc."""
@@ -213,16 +240,12 @@ class SFCSImageMeasurement(Measurement):
         self.ai_conv_rate = 1 / (
             (self.dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[1]
         )
-        self.samps_per_chan = self.total_pnts * 1.2
-        self.samp_clk_cnfg = {
-            "source": self.pxl_clk_dvc.out_term,
-            "sample_mode": ni_consts.AcquisitionType.FINITE,
-            "samps_per_chan": self.ao_buffer.shape[1],
-        }
 
     async def run(self):
         """Doc."""
         # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
+
+        self.toggle_lasers()
 
         self.setup_scan()
 
@@ -233,14 +256,47 @@ class SFCSImageMeasurement(Measurement):
         self.scanners_dvc.move_to_pos(self.ao_buffer[:, 0])
 
         # prepare all tasks, starting with ao (which the others are clocked by, and is synced by pxl clk)
-        self.pxl_clk_dvc.toggle(True)
         self.scanners_dvc.create_scan_write_task(
             ao_data=self.ao_buffer,
             type=self.scan_params.scn_type,
-            samp_clk_cnfg=self.samp_clk_cnfg,
+            samp_clk_cnfg_xy={
+                "source": self.pxl_clk_dvc.out_term,
+                "sample_mode": ni_consts.AcquisitionType.FINITE,
+                "samps_per_chan": self.ao_buffer.shape[1],
+                "rate": 100000,
+                "active_edge": ni_consts.Edge.RISING,
+            },
+            samp_clk_cnfg_z={
+                "source": self.pxl_clk_dvc.out_ext_term,
+                "sample_mode": ni_consts.AcquisitionType.FINITE,
+                "samps_per_chan": self.ao_buffer.shape[1],
+                "rate": 100000,
+                "active_edge": ni_consts.Edge.RISING,
+            },
         )
 
-        # start all tasks (ai, ci, ao) together
+        self.scanners_dvc.start_scan_read_task(
+            samp_clk_cnfg={
+                "rate": self.MIN_OUTPUT_RATE_Hz * 100,  # WHY? see CreateAOTask.vi
+                "source": self.scanners_dvc.tasks.ao.timing.samp_clk_term,
+                "samps_per_chan": self.total_pnts * 1.2,
+                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "active_edge": ni_consts.Edge.RISING,
+            },
+            ai_conv_rate=self.ai_conv_rate,
+        )
+
+        self.counter_dvc.start_scan_read_task(
+            samp_clk_cnfg={
+                "rate": self.MIN_OUTPUT_RATE_Hz * 100,  # WHY? see CreateAOTask.vi
+                "source": self.scanners_dvc.tasks.ao.timing.samp_clk_term,
+                "samps_per_chan": self.total_pnts * 1.2,
+                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "active_edge": ni_consts.Edge.RISING,
+            }
+        )
+
+        # TODO: see in LabVIEW's timeout where AO task starts and how the scan works.
 
 
 class SFCSSolutionMeasurement(Measurement):
