@@ -83,6 +83,7 @@ DVC_NICKS_TUPLE = (
     "CAMERA",
     "SCANNERS",
     "COUNTER",
+    "PXL_CLK",
 )
 
 EXC_LASER = DeviceAttrs(
