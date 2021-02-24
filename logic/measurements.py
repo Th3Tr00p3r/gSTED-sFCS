@@ -9,6 +9,7 @@ import time
 from types import SimpleNamespace
 from typing import NoReturn, Tuple, Union
 
+import nidaqmx.constants as ni_consts  # TODO: move to consts.py
 import numpy as np
 
 from utilities.helper import div_ceil
@@ -78,9 +79,12 @@ class SFCSImageMeasurement(Measurement):
         self.pxl_clk_dvc = app.devices.PixelClock
         self.scanners_dvc = app.devices.Scanners
         self.counter_dvc = app.devices.Scanners
+        self.um_V_ratio = tuple(
+            getattr(self.scanners_dvc, f"{ax}_um2V_const") for ax in "xyz"
+        )
 
     def build_filename(self, file_no: int) -> str:
-        return f"{self.file_template}_{self.laser_config}_{self.scn_type}_{file_no}"
+        return f"{self.file_template}_{self.laser_config}_{self.scan_params.scn_type}_{file_no}"
 
     def setup_scan(self):
         """Doc."""
@@ -112,7 +116,7 @@ class SFCSImageMeasurement(Measurement):
             elif scn_type == "xz":
                 return ", ".join(scanners_dvc.ao_x_addr, scanners_dvc.ao_z_addr)
 
-        def calculate_scan(
+        def calculate_scan_ao(
             scan_params: SimpleNamespace, um_V_ratio: (float, float, float)
         ):
             # TODO: this function needs better documentation, starting with some comments
@@ -122,26 +126,14 @@ class SFCSImageMeasurement(Measurement):
 
             # order according to relevant plane dimensions
             if scan_params.scn_type == "XY":
-                dim_conv = um_V_ratio
-                curr_ao = (
-                    scan_params.curr_ao_x,
-                    scan_params.curr_ao_y,
-                    scan_params.curr_ao_z,
-                )
+                dim_conv = tuple(um_V_ratio[i] for i in (0, 1, 2))
+                curr_ao = tuple(getattr(scan_params, f"curr_ao_{ax}") for ax in "xyz")
             if scan_params.scn_type == "YZ":
-                dim_conv = (um_V_ratio[1], um_V_ratio[2], um_V_ratio[0])
-                curr_ao = (
-                    scan_params.curr_ao_y,
-                    scan_params.curr_ao_z,
-                    scan_params.curr_ao_x,
-                )
+                dim_conv = tuple(um_V_ratio[i] for i in (1, 2, 0))
+                curr_ao = tuple(getattr(scan_params, f"curr_ao_{ax}") for ax in "yzx")
             if scan_params.scn_type == "XZ":
-                dim_conv = (um_V_ratio[0], um_V_ratio[2], um_V_ratio[1])
-                curr_ao = (
-                    scan_params.curr_ao_x,
-                    scan_params.curr_ao_z,
-                    scan_params.curr_ao_y,
-                )
+                dim_conv = tuple(um_V_ratio[i] for i in (0, 2, 1))
+                curr_ao = tuple(getattr(scan_params, f"curr_ao_{ax}") for ax in "xzy")
 
             T = scan_params.ppl
             f = scan_params.lin_frac
@@ -200,7 +192,7 @@ class SFCSImageMeasurement(Measurement):
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz, self.line_freq_Hz, self.ppl
         )
         # unite relevant physical addresses
-        self.scn_addrs = bld_scn_addrs_str(self.scn_type, self.scanners_dvc)
+        self.scn_addrs = bld_scn_addrs_str(self.scan_params.scn_type, self.scanners_dvc)
         # init device buffers
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_buffer()
@@ -209,17 +201,24 @@ class SFCSImageMeasurement(Measurement):
         self.curr_plane_wdgt.set(0)
         # create ao_buffer
         (
-            self.dt,
             self.ao_buffer,
+            self.dt,
             self.set_pnts_lines_odd,
             self.set_pnts_lines_even,
             self.set_pnts_planes,
             self.total_pnts,
-        ) = calculate_scan(self.scn_params)
+        ) = calculate_scan_ao(self.scn_params, self.um_V_ratio)
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7
         # TODO: create a scan arguments/parameters object to send to scanners_dvc (or simply for more clarity)
-        #        self.ai_conv_rate = 1 / ((1/AO_FREQ - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[1])
+        self.ai_conv_rate = 1 / (
+            (self.dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[1]
+        )
         self.samps_per_chan = self.total_pnts * 1.2
+        self.samp_clk_cnfg = {
+            "source": self.pxl_clk_dvc.out_term,
+            "sample_mode": ni_consts.AcquisitionType.FINITE,
+            "samps_per_chan": self.ao_buffer.shape[1],
+        }
 
     async def run(self):
         """Doc."""
@@ -230,10 +229,16 @@ class SFCSImageMeasurement(Measurement):
         # start pixel clock
         self.pxl_clk_dvc.toggle(True)
 
-        # move to initial position (later smoothly)
+        # move to initial position
         self.scanners_dvc.move_to_pos(self.ao_buffer[:, 0])
 
         # prepare all tasks, starting with ao (which the others are clocked by, and is synced by pxl clk)
+        self.pxl_clk_dvc.toggle(True)
+        self.scanners_dvc.create_scan_write_task(
+            ao_data=self.ao_buffer,
+            type=self.scan_params.scn_type,
+            samp_clk_cnfg=self.samp_clk_cnfg,
+        )
 
         # start all tasks (ai, ci, ao) together
 
