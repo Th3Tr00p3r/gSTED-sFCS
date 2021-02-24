@@ -17,9 +17,14 @@ class QtWidgetAccess:
     def __init__(self, obj_name: str, getter: str, gui_parent_name: str = "settings"):
         self.obj_name = obj_name
         self.getter = getter
-        first_getter_letter, *rest_getter_str = self.getter
-        self.setter = "set" + first_getter_letter.upper() + "".join(rest_getter_str)
+        self.setter = self._get_setter()
         self.gui_parent_name = gui_parent_name
+
+    def _get_setter(self) -> str:
+        """Doc."""
+
+        first_getter_letter, *rest_getter_str = self.getter
+        return "set" + first_getter_letter.upper() + "".join(rest_getter_str)
 
     def hold_obj(self, parent_gui) -> QtWidgetAccess:
         """Save the actual widget object as an attribute"""

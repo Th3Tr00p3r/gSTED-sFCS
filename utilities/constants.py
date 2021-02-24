@@ -284,6 +284,16 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     curr_ao_z=QtWidgetAccess("zAOV", "value", "main"),
 )
 
+# TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
+IMG_SCN_WDGT_FILLOUT_DICT = {
+    "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10],
+    "MFC - XY compartment": [""],  # TODO
+    "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 80, 1000, 20, 0.9, 1, 10],
+    "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 80, 1000, 20, 0.9, 1, 10],
+    "GB - XY single bead": [""],  # TODO
+    "GB - YZ single bead": [""],  # TODO
+}
+
 IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     file_template=QtWidgetAccess("imgScanFileTemplate", "text", "main"),
     save_path=QtWidgetAccess("imgDataPath", "text", "settings"),
