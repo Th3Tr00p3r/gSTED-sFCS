@@ -365,24 +365,11 @@ class MainWin:
 
     def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
         """Doc."""
-
         # TODO: use this function at app •init to have the default value loaded
-        # TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
-        if curr_text == "Locate Plane - YZ Coarse":
-            wdgt_vals = [1, 0, 0, "YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10]
-        elif curr_text == "MFC - XY compartment":
-            wdgt_vals = [""]
-        elif curr_text == "GB -  XY Coarse":
-            wdgt_vals = [0, 1, 0, "XY", 15, 15, 80, 1000, 20, 0.9, 1, 10]
-        elif curr_text == "GB - XY bead area":
-            wdgt_vals = [1, 0, 0, "XY", 5, 5, 80, 1000, 20, 0.9, 1, 10]
-        elif curr_text == "GB - XY single bead":
-            wdgt_vals = [""]
-        elif curr_text == "GB - YZ single bead":
-            wdgt_vals = [""]
 
-        consts.IMG_SCN_WDGT_COLL.write_to_gui(self._app, wdgt_vals)
-
+        consts.IMG_SCN_WDGT_COLL.write_to_gui(
+            self._app, consts.IMG_SCN_WDGT_FILLOUT_DICT[curr_text]
+        )
         logging.info(f"Image scan preset configuration chosen: '{curr_text}'")
 
 
