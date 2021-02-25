@@ -21,9 +21,8 @@ from utilities.errors import dvc_err_hndlr as err_hndlr
 class FtdiInstrument:
     """Doc."""
 
-    def __init__(self, nick, param_dict):
+    def __init__(self, param_dict, **kwargs):
 
-        self.nick = nick
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
 
@@ -91,9 +90,7 @@ class NIDAQmxInstrument:
     CONT_READ_BFFR_SZ = 10000
     cont_read_buffer = np.zeros(shape=(CONT_READ_BFFR_SZ,), dtype=np.uint32)
 
-    def __init__(self, nick, param_dict, **kwargs):
-
-        self.nick = nick
+    def __init__(self, param_dict, **kwargs):
         self.error_dict = None
         # TODO: next line should be in devices.py
         [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
@@ -268,13 +265,11 @@ class VisaInstrument:
 
     def __init__(
         self,
-        nick,
         param_dict,
         read_termination="",
         write_termination="",
+        **kwargs,
     ):
-
-        self.nick = nick
         self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.read_termination = read_termination
@@ -341,9 +336,7 @@ class VisaInstrument:
 class UC480Instrument:
     """Doc."""
 
-    def __init__(self, nick, param_dict):
-
-        self.nick = nick
+    def __init__(self, param_dict, **kwargs):
         self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
         self._inst = None

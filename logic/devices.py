@@ -12,19 +12,41 @@ import numpy as np
 import logic.drivers as drivers
 import utilities.constants as consts
 import utilities.dialog as dialog
+from logic.drivers import (
+    FtdiInstrument,
+    NIDAQmxInstrument,
+    UC480Instrument,
+    VisaInstrument,
+)
 from utilities.errors import dvc_err_hndlr as err_hndlr
 from utilities.helper import div_ceil, limit
 
 
-class PixelClock(drivers.NIDAQmxInstrument):
+class BaseDevice:
+    """Doc."""
+
+    def __init__(self, nick, led_widget, switch_widget, **kwargs):
+        self.nick = nick
+        self.led_widget = led_widget
+        self.switch_widget = switch_widget
+        # next line forwards all unused arguments to other parent classes of device
+        super().__init__(**kwargs)
+
+
+class PixelClock(BaseDevice, NIDAQmxInstrument):
     """
     The pixel clock is fed to the DAQ board from the FPGA.
     Base frequency is 4 MHz. Used for scans, where it is useful to
     have divisible frequencies for both the laser pulses and AI/AO.
     """
 
-    def __init__(self, nick, param_dict):
-        super().__init__(nick=nick, param_dict=param_dict)
+    def __init__(self, nick, param_dict, led_widget, switch_widget):
+        super().__init__(
+            nick=nick,
+            led_widget=led_widget,
+            switch_widget=switch_widget,
+            param_dict=param_dict,
+        )
 
     def toggle(self, bool):
         """Doc."""
@@ -55,16 +77,20 @@ class PixelClock(drivers.NIDAQmxInstrument):
         self.start_tasks("co")
 
 
-class UM232H(drivers.FtdiInstrument):
+class UM232H(BaseDevice, FtdiInstrument):
     """
     Represents the FTDI chip used to transfer data from the FPGA
     to the PC.
     """
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
-        super().__init__(nick=nick, param_dict=param_dict)
+        super().__init__(
+            nick=nick,
+            led_widget=led_widget,
+            switch_widget=switch_widget,
+            param_dict=param_dict,
+        )
+
         self.init_data()
         self.toggle(True)
 
@@ -106,7 +132,7 @@ class UM232H(drivers.FtdiInstrument):
         self.open()
 
 
-class Scanners(drivers.NIDAQmxInstrument):
+class Scanners(BaseDevice, NIDAQmxInstrument):
     """
     Scanners encompasses all analog focal point positioning devices
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
@@ -118,13 +144,14 @@ class Scanners(drivers.NIDAQmxInstrument):
     z_ao_limits = {"min_val": 0.0, "max_val": 10.0}
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
+        # TODO: 'ao_timeout' should belong to the device and not the driver (as well as the param_dict)
         super().__init__(
             nick=nick,
+            led_widget=led_widget,
+            switch_widget=switch_widget,
             param_dict=param_dict,
-            ao_timeout=0.1,  # TODO: this should belong to the device and not the driver (as well as the param_dict)
-        )  # , ai_buffer=np.zeros(shape=(3, 1000), dtype=np.double))
+            ao_timeout=0.1,
+        )
 
         self.ai_chan_specs = tuple(
             {
@@ -352,7 +379,7 @@ class Scanners(drivers.NIDAQmxInstrument):
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
 
 
-class Counter(drivers.NIDAQmxInstrument):
+class Counter(BaseDevice, NIDAQmxInstrument):
     """
     Represents the detector which counts the green
     fluorescence photons coming from the sample.
@@ -363,9 +390,13 @@ class Counter(drivers.NIDAQmxInstrument):
     updt_time = 0.2
 
     def __init__(self, nick, param_dict, led_widget, switch_widget, scanners_ai_tasks):
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
-        super().__init__(nick=nick, param_dict=param_dict)
+        super().__init__(
+            nick=nick,
+            led_widget=led_widget,
+            switch_widget=switch_widget,
+            param_dict=param_dict,
+        )
+
         self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
@@ -469,15 +500,19 @@ class Counter(drivers.NIDAQmxInstrument):
             self.ci_buffer = self.ci_buffer[-self.CONT_READ_BFFR_SZ :]
 
 
-class Camera(drivers.UC480Instrument):
+class Camera(BaseDevice, UC480Instrument):
     """Doc."""
 
     vid_intrvl = 0.3
 
     def __init__(self, nick, param_dict, led_widget, switch_widget, loop, gui):
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
-        super().__init__(nick=nick, param_dict=param_dict)
+        super().__init__(
+            nick=nick,
+            led_widget=led_widget,
+            switch_widget=switch_widget,
+            param_dict=param_dict,
+        )
+
         self._loop = loop
         self._gui = gui
         self.state = False
@@ -545,13 +580,16 @@ class Camera(drivers.UC480Instrument):
         self._gui.canvas.draw()
 
 
-class SimpleDO(drivers.NIDAQmxInstrument):
+class SimpleDO(BaseDevice, NIDAQmxInstrument):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
-        super().__init__(nick=nick, param_dict=param_dict)
+        super().__init__(
+            nick=nick,
+            led_widget=led_widget,
+            switch_widget=switch_widget,
+            param_dict=param_dict,
+        )
 
         self.toggle(False)
 
@@ -561,23 +599,23 @@ class SimpleDO(drivers.NIDAQmxInstrument):
         self.digital_write(bool)
 
 
-class DepletionLaser(drivers.VisaInstrument):
+class DepletionLaser(BaseDevice, VisaInstrument):
     """Control depletion laser through pyVISA"""
 
     min_SHG_temp = 52
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
         super().__init__(
             nick=nick,
+            led_widget=led_widget,
+            switch_widget=switch_widget,
             param_dict=param_dict,
             read_termination="\r",
             write_termination="\r",
         )
+
         self.updt_time = 1
         self.state = None
-
         self.toggle(False)
 
         if self.state is False:
@@ -624,7 +662,7 @@ class DepletionLaser(drivers.VisaInstrument):
             dialog.Error(error_txt="Current out of range").display()
 
 
-class StepperStage:
+class StepperStage(BaseDevice):
     """
     Control stepper stage through Arduino chip using PyVISA.
     This device operates slowly and needs special care,
@@ -632,13 +670,11 @@ class StepperStage:
     """
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
-        self.nick = nick
+        super().__init__(nick=nick, led_widget=led_widget, switch_widget=switch_widget)
         [setattr(self, key, val) for key, val in param_dict.items()]
+
         self.error_dict = None
         self.rm = drivers.visa.ResourceManager()
-
         self.toggle(True)
         self.toggle(False)
 
