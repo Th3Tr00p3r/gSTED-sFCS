@@ -49,8 +49,9 @@ class App:
         self.create_data_folders()
 
         # either error or ON
-        self.gui.main.ledUm232h.setIcon(QIcon(icon.LED_GREEN))
+        self.gui.main.ledScn.setIcon(QIcon(icon.LED_GREEN))
         self.gui.main.ledCounter.setIcon(QIcon(icon.LED_GREEN))
+        self.gui.main.ledUm232h.setIcon(QIcon(icon.LED_GREEN))
 
         self.init_devices()
         self.meas = Measurement(app=self, type=None)
@@ -156,7 +157,7 @@ class App:
         def lights_out(gui):
             """turn OFF all device switch/LED icons"""
 
-            led_list = [QIcon(icon.LED_OFF)] * 7 + [QIcon(icon.LED_GREEN)] * 2
+            led_list = [QIcon(icon.LED_OFF)] * 6 + [QIcon(icon.LED_GREEN)] * 3
             consts.LED_COLL.write_to_gui(self, led_list)
             consts.SWITCH_COLL.write_to_gui(self, QIcon(icon.SWITCH_OFF))
             gui.stageButtonsGroup.setEnabled(False)

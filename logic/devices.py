@@ -48,6 +48,8 @@ class PixelClock(BaseDevice, NIDAQmxInstrument):
             param_dict=param_dict,
         )
 
+        self.toggle(False)
+
     def toggle(self, bool):
         """Doc."""
 
@@ -55,6 +57,7 @@ class PixelClock(BaseDevice, NIDAQmxInstrument):
             self._start_co_clock_sync()
         else:
             self.close_all_tasks()
+        self.state = bool
 
     def _start_co_clock_sync(self) -> NoReturn:
         """Doc."""
@@ -144,7 +147,6 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
     z_ao_limits = {"min_val": 0.0, "max_val": 10.0}
 
     def __init__(self, nick, param_dict, led_widget, switch_widget):
-        # TODO: 'ao_timeout' should belong to the device and not the driver (as well as the param_dict)
         super().__init__(
             nick=nick,
             led_widget=led_widget,
@@ -221,7 +223,6 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                 # TODO: decide if rate makes sense
                 "rate": self.MIN_OUTPUT_RATE_Hz,
                 "sample_mode": ni_consts.AcquisitionType.FINITE,
-                "active_edge": ni_consts.Edge.RISING,
             },
         )
         self.start_tasks("ai")
@@ -242,7 +243,6 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                 "rate": self.MIN_OUTPUT_RATE_Hz,
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "samps_per_chan": self.CONT_READ_BFFR_SZ,
-                "active_edge": ni_consts.Edge.RISING,
             },
         )
         self.init_ai_buffer()
@@ -262,13 +262,13 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
         self.init_ai_buffer()
         self.start_tasks("ai")
 
-    def create_scan_write_task(
+    def create_write_task(
         self,
         ao_data: Tuple[list],
         type: str,
         samp_clk_cnfg_xy: dict = {},
         samp_clk_cnfg_z: dict = {},
-        scanning: bool = True,
+        scanning: bool = False,
     ) -> NoReturn:
         """Doc."""
 
@@ -303,7 +303,6 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                         "rate": self.MIN_OUTPUT_RATE_Hz,  # WHY? see CreateAOTask.vi
                         "samps_per_chan": n_steps,
                         "sample_mode": ni_consts.AcquisitionType.FINITE,
-                        "active_edge": ni_consts.Edge.RISING,
                     },
                 )
                 self.analog_write(task_name, ao_data, auto_start=False)
@@ -438,7 +437,6 @@ class Counter(BaseDevice, NIDAQmxInstrument):
                 "source": self.ai_cont_src,
                 "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "samps_per_chan": self.CONT_READ_BFFR_SZ,
-                "active_edge": ni_consts.Edge.RISING,
             },
         )
         self.init_ci_buffer()
@@ -449,7 +447,7 @@ class Counter(BaseDevice, NIDAQmxInstrument):
 
         self.close_tasks("ci")
 
-        self.start_ci_task(
+        self.create_ci_task(
             name="Image Scan CI",
             chan_specs=self.ci_chan_specs,
             chan_xtra_params={
