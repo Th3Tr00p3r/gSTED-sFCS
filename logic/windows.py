@@ -166,6 +166,8 @@ class MainWin:
             type_str += ax
 
         scanners_dvc.create_scan_write_task(tuple(data), type_str, scanning=False)
+        scanners_dvc.toggle(True)  # restart cont. reading
+
         logging.debug(
             f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
         )
@@ -184,7 +186,6 @@ class MainWin:
                 getattr(self._gui, f"{axis}AOV").setValue(org_axis_vltg)
 
         self.move_scanners()
-        scanners_dvc.toggle(True)  # restart cont. reading
 
         logging.debug(
             f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin"
@@ -211,7 +212,6 @@ class MainWin:
 
             getattr(self._gui, f"{axis}AOV").setValue(new_vltg)
             self.move_scanners()
-            scanners_dvc.toggle(True)  # restart cont. reading
 
             logging.debug(
                 f"{getattr(consts, 'SCANNERS').log_ref}({axis}) was displaced {str(um_disp)} um"
