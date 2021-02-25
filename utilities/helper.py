@@ -23,8 +23,11 @@ class QtWidgetAccess:
     def _get_setter(self) -> str:
         """Doc."""
 
-        first_getter_letter, *rest_getter_str = self.getter
-        return "set" + first_getter_letter.upper() + "".join(rest_getter_str)
+        if self.getter == "isChecked":
+            return "setChecked"
+        else:
+            first_getter_letter, *rest_getter_str = self.getter
+            return "set" + first_getter_letter.upper() + "".join(rest_getter_str)
 
     def hold_obj(self, parent_gui) -> QtWidgetAccess:
         """Save the actual widget object as an attribute"""

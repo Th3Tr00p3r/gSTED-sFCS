@@ -88,6 +88,12 @@ class MainWin(QMainWindow):
         self.imp.change_FCS_meas_dur(int)
 
     @pyqtSlot()
+    def on_startImgScan_released(self) -> NoReturn:
+        """Begin/end Image SFCS measurement"""
+
+        self.imp.toggle_meas("SFCSImage")
+
+    @pyqtSlot()
     def on_startFcsMeasurementButton_released(self) -> NoReturn:
         """Begin/end FCS measurement."""
 
