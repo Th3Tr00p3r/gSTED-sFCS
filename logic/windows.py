@@ -77,9 +77,9 @@ class MainWin:
                 consts.LOADOUT_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
-            if file_path != "":
-                helper.csv_to_gui(file_path, self._gui)
-                logging.debug(f"Loadout loaded: '{file_path}'")
+        if file_path != "":
+            helper.csv_to_gui(file_path, self._gui)
+            logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chck()
     def dvc_toggle(self, nick):
@@ -165,7 +165,7 @@ class MainWin:
             data.append([curr_ax_val])
             type_str += ax
 
-        scanners_dvc.create_scan_write_task(tuple(data), type_str, scanning=False)
+        scanners_dvc.create_write_task(tuple(data), type_str)
         scanners_dvc.toggle(True)  # restart cont. reading
 
         logging.debug(
