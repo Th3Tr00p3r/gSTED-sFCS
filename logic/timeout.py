@@ -86,7 +86,7 @@ class Timeout:
         now_timestamp = time.strftime("%H:%M:%S", time.localtime())
         first_line = f"[{now_timestamp}] Application Started"
 
-        # TODO: decide where to control the size
+        # TODO: decide where to control the size (GUI?)
         buffer_deque = deque([first_line], maxlen=5)
 
         while self.not_finished:
