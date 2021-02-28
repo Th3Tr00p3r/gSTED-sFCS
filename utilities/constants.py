@@ -274,6 +274,7 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     scn_type=QtWidgetAccess("imgScanType", "currentText", "main"),
     dim1_um=QtWidgetAccess("imgScanDim1", "value", "main"),
     dim2_um=QtWidgetAccess("imgScanDim2", "value", "main"),
+    dim3_um=QtWidgetAccess("imgScanDim3", "value", "main"),
     n_lines=QtWidgetAccess("imgScanNumLines", "value", "main"),
     ppl=QtWidgetAccess("imgScanPPLine", "value", "main"),
     line_freq_Hz=QtWidgetAccess("imgScanLineFreq", "value", "main"),

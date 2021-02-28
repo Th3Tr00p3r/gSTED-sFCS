@@ -91,27 +91,30 @@ class SFCSImageMeasurement(Measurement):
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scn_params.scn_type}_{file_no}"
 
-    def toggle_lasers(self) -> NoReturn:
+    def toggle_lasers(self, finish=False) -> NoReturn:
         """Doc."""
 
         if self.scn_params.sted_mode:
             self.scn_params.exc_mode = True
             self.scn_params.dep_mode = True
 
-        if self.scn_params.exc_mode:
-            self.laser_dvcs.exc.toggle(True)
-        if self.scn_params.dep_mode:
-            if self.laser_dvcs.dep.state is True:
-                self.laser_dvcs.dep_shutter.toggle(True)
-            else:
-                self.laser_dvcs.dep.toggle(True)
-                _ = Notification(
-                    "Depletion Laser is off.\nWait untill fully on, then press 'OK'."
-                ).display()
-                print(
-                    "TESTESTEST"
-                )  # TODO: make sure notification does cause pause, then remove the test
-                self.laser_dvcs.dep_shutter.toggle(True)
+        if finish:
+            if self.scn_params.exc_mode:
+                self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_off=True)
+            if self.scn_params.dep_mode:
+                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_off=True)
+        else:
+            if self.scn_params.exc_mode:
+                self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
+            if self.scn_params.dep_mode:
+                if self.laser_dvcs.dep.state is True:
+                    self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
+                else:
+                    self._app.gui.main.imp.dvc_toggle("DEP_LASER")
+                    _ = Notification(
+                        "Turning depletion Laser ON.\nPress 'OK' when it reaches full power."
+                    ).display()
+                    self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
 
     def setup_scan(self):
         """Doc."""
@@ -188,25 +191,45 @@ class SFCSImageMeasurement(Measurement):
 
             s = s - 1 / (2 * f)
 
-            dim1_vltg_ampl = scn_params.dim1_um / dim_conv[0]
-            dim2_vltg_ampl = scn_params.dim2_um / dim_conv[1]
-            ao_buffer = np.array(
-                [curr_ao[0] + dim1_vltg_ampl * s, curr_ao[1] + dim2_vltg_ampl * s]
-            ).tolist()
+            ampl = scn_params.dim1_um / dim_conv[0]
+            ao_buffer = curr_ao[0] + ampl * s
 
-            # Ask Oleg - what are 'set_pnts_lines_odd/even' and why are they the same?
-            set_pnts_lines_odd = curr_ao[1]
-            set_pnts_lines_even = curr_ao[1]
-            set_pnts_planes = curr_ao[2]
+            ampl = scn_params.dim2_um / dim_conv[1]
+            if scn_params.n_lines > 1:
+                vect = np.array(
+                    [
+                        (val / (scn_params.n_lines - 1)) - 0.5
+                        for val in range(scn_params.n_lines)
+                    ]
+                )
+            else:
+                vect = 0
+            set_pnts_lines_odd = curr_ao[1] + ampl * vect
+
+            ampl = scn_params.dim3_um / dim_conv[2]
+            if scn_params.n_planes > 1:
+                vect = np.array(
+                    [
+                        (val / (scn_params.n_planes - 1)) - 0.5
+                        for val in range(scn_params.n_planes)
+                    ]
+                )
+            else:
+                vect = 0
+            set_pnts_planes = curr_ao[2] + ampl * vect
+            if not isinstance(set_pnts_planes, list):
+                set_pnts_planes = np.array([set_pnts_planes])
+
+            set_pnts_lines_even = set_pnts_lines_odd[::-1]
 
             total_pnts = scn_params.ppl * scn_params.n_lines * scn_params.n_planes
 
             return (
-                ao_buffer,
+                ao_buffer.tolist(),
                 dt,
-                set_pnts_lines_odd,
-                set_pnts_lines_even,
-                set_pnts_planes,
+                set_pnts_lines_odd.tolist(),
+                set_pnts_lines_even.tolist(),
+                set_pnts_planes.tolist(),
                 total_pnts,
             )
 
@@ -227,9 +250,6 @@ class SFCSImageMeasurement(Measurement):
         # init device buffers
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_ci_buffer()
-        # init gui
-        self.curr_line_wdgt.set(0)
-        self.curr_plane_wdgt.set(0)
         # create ao_buffer
         (
             self.ao_buffer,
@@ -241,15 +261,15 @@ class SFCSImageMeasurement(Measurement):
         ) = calculate_scan_ao(self.scn_params, self.um_V_ratio)
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7
         # TODO: create a scan arguments/parameters object to send to scanners_dvc (or simply for more clarity)
-        self.n_ao_samps = len(self.ao_buffer[0])
+        self.n_ao_samps = len(self.ao_buffer)
         self.ai_conv_rate = 1 / (
-            (self.dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[1]
+            (self.dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[0]
         )
 
     def init_scan_tasks(self):
         """Doc."""
 
-        self.scanners_dvc.create_write_task(
+        self.scanners_dvc.start_write_task(
             # TODO: clearer way do get the following line?
             ao_data=self.ao_buffer,
             type=self.scn_params.scn_type,
@@ -265,26 +285,43 @@ class SFCSImageMeasurement(Measurement):
                 "samps_per_chan": self.n_ao_samps,
                 "rate": 100000,  # WHY? see CreateAOTask.vi
             },
-            scanning=True,
         )
 
         self.scanners_dvc.start_scan_read_task(
-            samp_clk_cnfg={
-                "rate": 10000,  # WHY? see CreateAOTask.vi
-                "source": self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term,
-                "samps_per_chan": int(self.total_pnts * 1.2),
-                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+            #            samp_clk_cnfg={
+            #                "rate": 100000,  # WHY? see CreateAOTask.vi
+            #                "source": self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term,
+            #                "samps_per_chan": int(self.total_pnts * 1.2),
+            #                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+            #            },
+            samp_clk_cnfg={},
+            timing_params={
+                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "samp_quant_samp_per_chan": int(self.total_pnts * 1.2),
+                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
+                "samp_clk_src": self.scanners_dvc.tasks.ao[
+                    "AO XY"
+                ].timing.samp_clk_term,
+                "ai_conv_rate": self.ai_conv_rate,
             },
-            ai_conv_rate=self.ai_conv_rate,
         )
 
         self.counter_dvc.start_scan_read_task(
-            samp_clk_cnfg={
-                "rate": 10000,  # WHY? see CreateAOTask.vi
-                "source": self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term,
-                "samps_per_chan": int(self.total_pnts * 1.2),
-                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
-            }
+            #            samp_clk_cnfg={
+            #                "rate": 100000,  # WHY? see CreateAOTask.vi
+            #                "source": self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term,
+            #                "samps_per_chan": int(self.total_pnts * 1.2),
+            #                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+            #            },
+            samp_clk_cnfg={},
+            timing_params={
+                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "samp_quant_samp_per_chan": int(self.total_pnts * 1.2),
+                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
+                "samp_clk_src": self.scanners_dvc.tasks.ao[
+                    "AO XY"
+                ].timing.samp_clk_term,
+            },
         )
 
     async def run(self):
@@ -299,19 +336,47 @@ class SFCSImageMeasurement(Measurement):
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
         # move to initial position
-        self.scanners_dvc.create_write_task(
+        self.scanners_dvc.start_write_task(
             # TODO: clearer way do get the following line?
             ao_data=[[self.ao_buffer[0][0]], [self.ao_buffer[1][0]]],
             type=self.scn_params.scn_type,
         )
 
-        # prepare all tasks, starting with ao (which the others are clocked by, and is synced by pxl clk)
-        self.init_scan_tasks()
+        plane_data = []
+        logging.info(f"Running {self.type} measurement")
+        for plane_idx in range(len(self.set_pnts_planes)):
 
-        # TODO: see in LabVIEW's timeout where AO task starts and how the scan works.
+            if self.is_running:
 
-        # stop pixel clock
+                self.curr_line_wdgt.set(plane_idx)
+                self.curr_plane_wdgt.set(plane_idx)
+
+                # scan plane
+                self.data_dvc.purge()
+
+                # prepare all tasks, starting with ao (which the others are clocked by, and is synced by pxl clk)
+                self.init_scan_tasks()
+
+                # read while ao task is running, in thread
+                await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
+
+                print(f"TEST: {self.data_dvc.data}")
+                plane_data.append(self.data_dvc.data)
+
+                self.data_dvc.init_data()
+
+            else:
+                break
+
+        plane_images = [self.build_image(plane) for plane in plane_data]
+        self.data = np.dstack(plane_images)
+        filename = self.build_filename()
+        self.save_data(filename)
+
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+        self.toggle_lasers(finish=True)
+        self.scanners_dvc.start_continuous_read_task()
+        self.counter_dvc.start_continuous_read_task()
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)

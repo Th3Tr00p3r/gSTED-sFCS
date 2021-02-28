@@ -120,6 +120,17 @@ class UM232H(BaseDevice, FtdiInstrument):
 
             meas.time_passed = time.perf_counter() - meas.start_time
 
+    def ao_task_sync_read_TDC(self, meas):
+        """
+        While ao tasks are running (plane scan). keep reading.
+        when all ao tasks end, finish reading.
+        """
+
+        while meas.scanners_dvc.are_tasks_done("ao") is False and meas.is_running:
+            read_bytes = self.read()
+            self.data.extend(read_bytes)
+            self.tot_bytes_read += len(read_bytes)
+
     def init_data(self):
         """Doc."""
 
@@ -248,7 +259,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
         self.init_ai_buffer()
         self.start_tasks("ai")
 
-    def start_scan_read_task(self, samp_clk_cnfg, ai_conv_rate) -> NoReturn:
+    def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> NoReturn:
         """Doc."""
 
         self.close_tasks("ai")
@@ -257,18 +268,17 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             name="Image Scan AI",
             chan_specs=self.ai_chan_specs,
             samp_clk_cnfg=samp_clk_cnfg,
-            clk_params={"ai_conv_rate": ai_conv_rate},
+            timing_params=timing_params,
         )
         self.init_ai_buffer()
         self.start_tasks("ai")
 
-    def create_write_task(
+    def start_write_task(
         self,
         ao_data: Tuple[list],
         type: str,
         samp_clk_cnfg_xy: dict = {},
         samp_clk_cnfg_z: dict = {},
-        scanning: bool = False,
     ) -> NoReturn:
         """Doc."""
 
@@ -349,8 +359,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             )
             self.analog_write(z_task_name, ao_data_z)
 
-        if not scanning:
-            self.start_tasks("ao")
+        self.start_tasks("ao")
 
     def init_ai_buffer(self) -> NoReturn:
         """Doc."""
@@ -430,7 +439,7 @@ class Counter(BaseDevice, NIDAQmxInstrument):
 
         self.create_ci_task(
             name=task_name,
-            chan_spec=self.ci_chan_specs,
+            chan_specs=self.ci_chan_specs,
             chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
             samp_clk_cnfg={
                 "rate": self.ai_cont_rate,
@@ -442,7 +451,7 @@ class Counter(BaseDevice, NIDAQmxInstrument):
         self.init_ci_buffer()
         self.start_tasks("ci")
 
-    def start_scan_read_task(self, samp_clk_cnfg) -> NoReturn:
+    def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> NoReturn:
         """Doc."""
 
         self.close_tasks("ci")
@@ -455,6 +464,7 @@ class Counter(BaseDevice, NIDAQmxInstrument):
                 "ci_data_xfer_mech": ni_consts.DataTransferActiveTransferMode.DMA,
             },
             samp_clk_cnfg=samp_clk_cnfg,
+            timing_params=timing_params,
         )
         self.init_ci_buffer()
         self.start_tasks("ci")
