@@ -82,11 +82,14 @@ class MainWin:
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chck()
-    def dvc_toggle(self, nick):
+    def dvc_toggle(self, nick, leave_on=False, leave_off=False):
         """Doc."""
 
         dvc = getattr(self._app.devices, nick)
         DVC_CONSTS = getattr(consts, nick)
+
+        if (leave_on and dvc.state is True) or (leave_off and dvc.state is False):
+            return
 
         if dvc.state is False:  # switch ON
             dvc.toggle(True)
@@ -165,7 +168,7 @@ class MainWin:
             data.append([curr_ax_val])
             type_str += ax
 
-        scanners_dvc.create_write_task(tuple(data), type_str)
+        scanners_dvc.start_write_task(tuple(data), type_str)
         scanners_dvc.toggle(True)  # restart cont. reading
 
         logging.debug(

@@ -104,6 +104,14 @@ class NIDAQmxInstrument:
 
         [task.start() for task in getattr(self.tasks, task_type).values()]
 
+    def are_tasks_done(self, task_type: str) -> bool:
+        """Doc."""
+
+        task_status = [
+            task.is_task_done() for task in getattr(self.tasks, task_type).values()
+        ]
+        return task_status.count(1) == len(task_status)
+
     def close_tasks(self, task_type: str):
         """Doc."""
 
@@ -129,8 +137,8 @@ class NIDAQmxInstrument:
         self,
         name: str,
         chan_specs: List[dict],
-        samp_clk_cnfg: dict,
-        clk_params: dict = {},
+        samp_clk_cnfg: dict = {},
+        timing_params: dict = {},
     ):
         """Doc."""
 
@@ -143,8 +151,9 @@ class NIDAQmxInstrument:
                     "terminal_config": ni.constants.TerminalConfiguration.RSE,
                 }
             task.ai_channels.add_ai_voltage_chan(**chan_spec)
-        task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
-        for key, val in clk_params.items():
+        if samp_clk_cnfg:
+            task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+        for key, val in timing_params.items():
             setattr(task.timing, key, val)
 
         self.tasks.ai[name] = task
@@ -159,7 +168,7 @@ class NIDAQmxInstrument:
         name: str,
         chan_specs: List[dict],
         samp_clk_cnfg: dict = {},
-        clk_params: dict = {},
+        timing_params: dict = {},
     ) -> NoReturn:
         """Doc."""
 
@@ -168,7 +177,7 @@ class NIDAQmxInstrument:
             task.ao_channels.add_ao_voltage_chan(**chan_spec)
         if samp_clk_cnfg:
             task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
-        for key, val in clk_params.items():
+        for key, val in timing_params.items():
             setattr(task.timing, key, val)
 
         self.tasks.ao[name] = task
@@ -177,18 +186,22 @@ class NIDAQmxInstrument:
     def create_ci_task(
         self,
         name: str,
-        chan_spec: dict,
-        samp_clk_cnfg: dict,
+        chan_specs: dict,
+        samp_clk_cnfg: dict = {},
+        timing_params: dict = {},
         chan_xtra_params: dict = {},
         clk_xtra_params: dict = {},
     ):
         """Doc."""
 
         task = ni.Task(new_task_name=name)
-        chan = task.ci_channels.add_ci_count_edges_chan(**chan_spec)
+        chan = task.ci_channels.add_ci_count_edges_chan(**chan_specs)
         for key, val in chan_xtra_params.items():
             setattr(chan, key, val)
-        task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+        if samp_clk_cnfg:
+            task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+        for key, val in timing_params.items():
+            setattr(task.timing, key, val)
         for key, val in clk_xtra_params.items():
             setattr(task.timing, key, val)
 
