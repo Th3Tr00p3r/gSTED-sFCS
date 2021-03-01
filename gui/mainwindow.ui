@@ -108,19 +108,6 @@
                  <property name="spacing">
                   <number>3</number>
                  </property>
-                 <item row="1" column="0">
-                  <spacer name="verticalSpacer_8">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
                  <item row="0" column="0">
                   <layout class="QVBoxLayout" name="verticalLayout_31">
                    <property name="spacing">
@@ -654,36 +641,7 @@
                           <widget class="QSpinBox" name="imgScanNumPlanes">
                            <property name="minimumSize">
                             <size>
-                             <width>60</width>
-                             <height>0</height>
-                            </size>
-                           </property>
-                           <property name="maximum">
-                            <number>999999</number>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item>
-                        <layout class="QVBoxLayout" name="verticalLayout_28">
-                         <item>
-                          <widget class="QLabel" name="label_32">
-                           <property name="font">
-                            <font>
-                             <pointsize>7</pointsize>
-                            </font>
-                           </property>
-                           <property name="text">
-                            <string>Z step (um)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QSpinBox" name="imgScanZstep">
-                           <property name="minimumSize">
-                            <size>
-                             <width>60</width>
+                             <width>0</width>
                              <height>0</height>
                             </size>
                            </property>
@@ -725,6 +683,19 @@
                           </widget>
                          </item>
                         </layout>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_10">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
                        </item>
                       </layout>
                      </item>
@@ -1348,6 +1319,94 @@
                       </spacer>
                      </item>
                     </layout>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <spacer name="verticalSpacer_8">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item row="1" column="0">
+                  <layout class="QHBoxLayout" name="horizontalLayout_35" stretch="1,0,0,1">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <spacer name="horizontalSpacer_40">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_76">
+                     <property name="text">
+                      <string>Scan 
+Pattern</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGraphicsView" name="imgScanPattern">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="minimumSize">
+                      <size>
+                       <width>200</width>
+                       <height>200</height>
+                      </size>
+                     </property>
+                     <property name="maximumSize">
+                      <size>
+                       <width>200</width>
+                       <height>200</height>
+                      </size>
+                     </property>
+                     <property name="baseSize">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="layoutDirection">
+                      <enum>Qt::LeftToRight</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_41">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
                    </item>
                   </layout>
                  </item>
@@ -3178,7 +3237,7 @@ Pattern</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QGraphicsView" name="solScanPatternGraphicsView">
+                 <widget class="QGraphicsView" name="solScanPattern">
                   <property name="enabled">
                    <bool>false</bool>
                   </property>
@@ -8501,7 +8560,6 @@ Origin (um)</string>
   <tabstop>imgScanLineFreq</tabstop>
   <tabstop>imgScanLinFrac</tabstop>
   <tabstop>imgScanNumPlanes</tabstop>
-  <tabstop>imgScanZstep</tabstop>
   <tabstop>startImgScan</tabstop>
   <tabstop>planeShowCombox</tabstop>
   <tabstop>imgShowCombox</tabstop>
@@ -8528,7 +8586,7 @@ Origin (um)</string>
   <tabstop>solAngActualSpeed</tabstop>
   <tabstop>solNumLines</tabstop>
   <tabstop>solTotPointsPerLine_2</tabstop>
-  <tabstop>solScanPatternGraphicsView</tabstop>
+  <tabstop>solScanPattern</tabstop>
   <tabstop>startSolScan</tabstop>
   <tabstop>solScanStartTime</tabstop>
   <tabstop>solScanEndTime</tabstop>

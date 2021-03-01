@@ -217,8 +217,6 @@ class SFCSImageMeasurement(Measurement):
             else:
                 vect = 0
             set_pnts_planes = curr_ao[2] + ampl * vect
-            if not isinstance(set_pnts_planes, list):
-                set_pnts_planes = np.array([set_pnts_planes])
 
             set_pnts_lines_even = set_pnts_lines_odd[::-1]
 
@@ -231,7 +229,7 @@ class SFCSImageMeasurement(Measurement):
             single_line_ao = single_line_ao.tolist()
             set_pnts_lines_odd = set_pnts_lines_odd.tolist()
             set_pnts_lines_even = set_pnts_lines_even.tolist()
-            set_pnts_planes = set_pnts_planes.tolist()
+            set_pnts_planes = np.asarray(set_pnts_planes).tolist()
 
             dim1_ao = []
             dim2_ao = []
@@ -287,7 +285,6 @@ class SFCSImageMeasurement(Measurement):
         """Doc."""
 
         self.scanners_dvc.start_write_task(
-            # TODO: clearer way do get the following line?
             ao_data=self.ao_buffer,
             type=self.scn_params.scn_type,
             samp_clk_cnfg_xy={
@@ -329,6 +326,19 @@ class SFCSImageMeasurement(Measurement):
             },
         )
 
+    def change_plane(self, plane_idx):
+        """Doc."""
+
+        for axis in "XYZ":
+            if axis not in self.scn_params.scn_type:
+                plane_axis = axis
+                break
+
+        self.scanners_dvc.start_write_task(
+            ao_data=[[self.set_pnts_planes[plane_idx]]],
+            type=plane_axis,
+        )
+
     async def run(self):
         """Doc."""
         # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
@@ -353,19 +363,22 @@ class SFCSImageMeasurement(Measurement):
 
             if self.is_running:
 
+                self.change_plane(plane_idx)
+
                 self.curr_line_wdgt.set(plane_idx)
                 self.curr_plane_wdgt.set(plane_idx)
 
-                # scan plane
                 self.data_dvc.purge()
 
-                # prepare all tasks, starting with ao (which the others are clocked by, and is synced by pxl clk)
                 self.init_scan_tasks()
 
-                # read while ao task is running, in thread
                 await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
 
-                print(f"TEST: {self.data_dvc.data}")
+                # TODO: add progbar support (calculate time for each plane, and mulyiply by number of planes)
+
+                print(
+                    f"Plane {plane_idx} scanned. First 10 bytes of data: {self.data_dvc.data[:10]}"
+                )
                 plane_data.append(self.data_dvc.data)
 
                 self.data_dvc.init_data()
@@ -373,6 +386,7 @@ class SFCSImageMeasurement(Measurement):
             else:
                 break
 
+            # TODO: prepare images, save, and present the middle plane
         #        plane_images = [self.build_image(plane) for plane in plane_data]
         #        self.data = np.dstack(plane_images)
         #        filename = self.build_filename()
