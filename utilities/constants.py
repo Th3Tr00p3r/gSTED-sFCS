@@ -280,7 +280,6 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     line_freq_Hz=QtWidgetAccess("imgScanLineFreq", "value", "main"),
     lin_frac=QtWidgetAccess("imgScanLinFrac", "value", "main"),
     n_planes=QtWidgetAccess("imgScanNumPlanes", "value", "main"),
-    z_step=QtWidgetAccess("imgScanZstep", "value", "main"),
     curr_ao_x=QtWidgetAccess("xAOV", "value", "main"),
     curr_ao_y=QtWidgetAccess("yAOV", "value", "main"),
     curr_ao_z=QtWidgetAccess("zAOV", "value", "main"),
@@ -288,10 +287,10 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
 
 # TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
 IMG_SCN_WDGT_FILLOUT_DICT = {
-    "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 80, 1000, 20, 0.9, 1, 10],
+    "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
     "MFC - XY compartment": [""],  # TODO
-    "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 80, 1000, 20, 0.9, 1, 10],
-    "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 80, 1000, 20, 0.9, 1, 10],
+    "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
+    "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
     "GB - XY single bead": [""],  # TODO
     "GB - YZ single bead": [""],  # TODO
 }
