@@ -106,6 +106,13 @@ class UM232H(BaseDevice, FtdiInstrument):
         else:
             self.close()
 
+    def read_TDC(self):
+        """Doc."""
+
+        read_bytes = self.read()
+        self.data.extend(read_bytes)
+        self.tot_bytes_read += len(read_bytes)
+
     def stream_read_TDC(self, meas):
         """Doc."""
 
@@ -113,11 +120,7 @@ class UM232H(BaseDevice, FtdiInstrument):
             meas.time_passed < meas.duration * meas.duration_multiplier
             and meas.is_running
         ):
-            read_bytes = self.read()
-            #            print(f"# Bytes read: {len(read_bytes)}")  # TEST
-            self.data.extend(read_bytes)
-            self.tot_bytes_read += len(read_bytes)
-
+            self.read_TDC()
             meas.time_passed = time.perf_counter() - meas.start_time
 
     def ao_task_sync_read_TDC(self, meas):
@@ -127,13 +130,8 @@ class UM232H(BaseDevice, FtdiInstrument):
         """
 
         while meas.scanners_dvc.are_tasks_done("ao") is False and meas.is_running:
-            read_bytes = self.read()
-            self.data.extend(read_bytes)
-            self.tot_bytes_read += len(read_bytes)
-
-        read_bytes = self.read()
-        self.data.extend(read_bytes)
-        self.tot_bytes_read += len(read_bytes)
+            self.read_TDC()
+        self.read_TDC()
 
     def init_data(self):
         """Doc."""
