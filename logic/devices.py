@@ -131,6 +131,10 @@ class UM232H(BaseDevice, FtdiInstrument):
             self.data.extend(read_bytes)
             self.tot_bytes_read += len(read_bytes)
 
+        read_bytes = self.read()
+        self.data.extend(read_bytes)
+        self.tot_bytes_read += len(read_bytes)
+
     def init_data(self):
         """Doc."""
 
@@ -265,7 +269,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
         self.close_tasks("ai")
 
         self.create_ai_task(
-            name="Image Scan AI",
+            name="Continuous AI",
             chan_specs=self.ai_chan_specs,
             samp_clk_cnfg=samp_clk_cnfg,
             timing_params=timing_params,
@@ -457,7 +461,7 @@ class Counter(BaseDevice, NIDAQmxInstrument):
         self.close_tasks("ci")
 
         self.create_ci_task(
-            name="Image Scan CI",
+            name="Continuous CI",
             chan_specs=self.ci_chan_specs,
             chan_xtra_params={
                 "ci_count_edges_term": self.CI_cnt_edges_term,

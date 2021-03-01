@@ -192,7 +192,7 @@ class SFCSImageMeasurement(Measurement):
             s = s - 1 / (2 * f)
 
             ampl = scn_params.dim1_um / dim_conv[0]
-            ao_buffer = curr_ao[0] + ampl * s
+            single_line_ao = curr_ao[0] + ampl * s
 
             ampl = scn_params.dim2_um / dim_conv[1]
             if scn_params.n_lines > 1:
@@ -224,12 +224,29 @@ class SFCSImageMeasurement(Measurement):
 
             total_pnts = scn_params.ppl * scn_params.n_lines * scn_params.n_planes
 
+            # at this point we have the AO (1D) for a single row,
+            # and the voltages corresponding to each row and plane.
+            # now we build the full AO (2D):
+
+            single_line_ao = single_line_ao.tolist()
+            set_pnts_lines_odd = set_pnts_lines_odd.tolist()
+            set_pnts_lines_even = set_pnts_lines_even.tolist()
+            set_pnts_planes = set_pnts_planes.tolist()
+
+            dim1_ao = []
+            dim2_ao = []
+            for odd_line_set_pnt in set_pnts_lines_odd:
+                dim1_ao += single_line_ao
+                dim2_ao += [odd_line_set_pnt] * len(single_line_ao)
+
+            ao_buffer = [dim1_ao, dim2_ao]
+
             return (
-                ao_buffer.tolist(),
+                ao_buffer,
                 dt,
-                set_pnts_lines_odd.tolist(),
-                set_pnts_lines_even.tolist(),
-                set_pnts_planes.tolist(),
+                set_pnts_lines_odd,
+                set_pnts_lines_even,
+                set_pnts_planes,
                 total_pnts,
             )
 
@@ -261,7 +278,7 @@ class SFCSImageMeasurement(Measurement):
         ) = calculate_scan_ao(self.scn_params, self.um_V_ratio)
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7
         # TODO: create a scan arguments/parameters object to send to scanners_dvc (or simply for more clarity)
-        self.n_ao_samps = len(self.ao_buffer)
+        self.n_ao_samps = len(self.ao_buffer[0])
         self.ai_conv_rate = 1 / (
             (self.dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[0]
         )
@@ -277,23 +294,17 @@ class SFCSImageMeasurement(Measurement):
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ni_consts.AcquisitionType.FINITE,
                 "samps_per_chan": self.n_ao_samps,
-                "rate": 100000,  # WHY? see CreateAOTask.vi
+                "rate": 100000,
             },
             samp_clk_cnfg_z={
                 "source": self.pxl_clk_dvc.out_ext_term,
                 "sample_mode": ni_consts.AcquisitionType.FINITE,
                 "samps_per_chan": self.n_ao_samps,
-                "rate": 100000,  # WHY? see CreateAOTask.vi
+                "rate": 100000,
             },
         )
 
         self.scanners_dvc.start_scan_read_task(
-            #            samp_clk_cnfg={
-            #                "rate": 100000,  # WHY? see CreateAOTask.vi
-            #                "source": self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term,
-            #                "samps_per_chan": int(self.total_pnts * 1.2),
-            #                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
-            #            },
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
@@ -307,12 +318,6 @@ class SFCSImageMeasurement(Measurement):
         )
 
         self.counter_dvc.start_scan_read_task(
-            #            samp_clk_cnfg={
-            #                "rate": 100000,  # WHY? see CreateAOTask.vi
-            #                "source": self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term,
-            #                "samps_per_chan": int(self.total_pnts * 1.2),
-            #                "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
-            #            },
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
@@ -368,10 +373,10 @@ class SFCSImageMeasurement(Measurement):
             else:
                 break
 
-        plane_images = [self.build_image(plane) for plane in plane_data]
-        self.data = np.dstack(plane_images)
-        filename = self.build_filename()
-        self.save_data(filename)
+        #        plane_images = [self.build_image(plane) for plane in plane_data]
+        #        self.data = np.dstack(plane_images)
+        #        filename = self.build_filename()
+        #        self.save_data(filename)
 
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         self.toggle_lasers(finish=True)
