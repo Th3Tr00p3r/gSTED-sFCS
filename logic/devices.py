@@ -295,6 +295,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             init_pos = limit(
                 self.read_single_ao_internal()[consts.AX_IDX[axis]], 0.0, 10.0
             )
+            final_pos = limit(final_pos, 0.0, 10.0)
 
             total_dist = abs(final_pos - init_pos)
             n_steps = div_ceil(total_dist, step_sz)

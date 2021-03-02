@@ -11,6 +11,7 @@ import PyQt5.QtWidgets as QtWidgets
 
 import gui.icons.icon_paths as icon_path
 import logic.app as app_module
+from utilities.dialog import UserDialog
 
 
 class QtWidgetAccess:
@@ -206,6 +207,12 @@ def limit(val: float, min: float, max: float) -> float:
     elif val < min:
         return min
     return max
+
+
+async def user_input(dialog: UserDialog):
+    """Doc."""
+
+    return dialog.display()
 
 
 @dataclass
