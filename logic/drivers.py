@@ -244,6 +244,7 @@ class NIDAQmxInstrument:
         """Doc."""
 
         ao_task = self.tasks.ao[task_name]
+        #        data = limit_ao_data(data)
         if auto_start is not None:
             ao_task.write(data, auto_start=auto_start, timeout=self.ao_timeout)
         else:

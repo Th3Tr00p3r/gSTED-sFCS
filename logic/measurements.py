@@ -12,7 +12,7 @@ from typing import NoReturn, Tuple, Union
 import nidaqmx.constants as ni_consts  # TODO: move to consts.py
 import numpy as np
 
-from utilities.dialog import Notification
+import utilities.constants as consts
 from utilities.helper import div_ceil
 
 
@@ -91,7 +91,7 @@ class SFCSImageMeasurement(Measurement):
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scn_params.scn_type}_{file_no}"
 
-    def toggle_lasers(self, finish=False) -> NoReturn:
+    async def toggle_lasers(self, finish=False) -> NoReturn:
         """Doc."""
 
         if self.scn_params.sted_mode:
@@ -107,14 +107,13 @@ class SFCSImageMeasurement(Measurement):
             if self.scn_params.exc_mode:
                 self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
             if self.scn_params.dep_mode:
-                if self.laser_dvcs.dep.state is True:
-                    self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
-                else:
+                if self.laser_dvcs.dep.state is False:
+                    logging.info(
+                        f"{consts.DEP_LASER.log_ref} isn't on. Turnning on and waiting 5 s before measurement."
+                    )
                     self._app.gui.main.imp.dvc_toggle("DEP_LASER")
-                    _ = Notification(
-                        "Turning depletion Laser ON.\nPress 'OK' when it reaches full power."
-                    ).display()
-                    self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
+                    await asyncio.sleep(5)
+                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
 
     def setup_scan(self):
         """Doc."""
@@ -230,6 +229,8 @@ class SFCSImageMeasurement(Measurement):
             set_pnts_lines_odd = set_pnts_lines_odd.tolist()
             set_pnts_lines_even = set_pnts_lines_even.tolist()
             set_pnts_planes = np.asarray(set_pnts_planes).tolist()
+            if not isinstance(set_pnts_planes, list):
+                set_pnts_planes = [set_pnts_planes]
 
             dim1_ao = []
             dim2_ao = []
@@ -343,7 +344,7 @@ class SFCSImageMeasurement(Measurement):
         """Doc."""
         # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
 
-        self.toggle_lasers()
+        await self.toggle_lasers()
 
         self.setup_scan()
 
@@ -393,7 +394,7 @@ class SFCSImageMeasurement(Measurement):
         #        self.save_data(filename)
 
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
-        self.toggle_lasers(finish=True)
+        await self.toggle_lasers(finish=True)
         self.scanners_dvc.start_continuous_read_task()
         self.counter_dvc.start_continuous_read_task()
 
