@@ -1,0 +1,322 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		7CF6B23E25ACE78E0053F622 /* SoftCorrelatorDynamicLib.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 7CF6B23D25ACE78E0053F622 /* SoftCorrelatorDynamicLib.hpp */; };
+		7CF6B24225ACE78E0053F622 /* SoftCorrelatorDynamicLib.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CF6B24125ACE78E0053F622 /* SoftCorrelatorDynamicLib.cpp */; };
+		7CF6B24F25ACE82F0053F622 /* CPhDelayCrossCorrelator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CF6B24825ACE82F0053F622 /* CPhDelayCrossCorrelator.cpp */; };
+		7CF6B25025ACE82F0053F622 /* CPhDelayCrossCorrelator.h in Headers */ = {isa = PBXBuildFile; fileRef = 7CF6B24925ACE82F0053F622 /* CPhDelayCrossCorrelator.h */; };
+		7CF6B25125ACE82F0053F622 /* Correlator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CF6B24A25ACE82F0053F622 /* Correlator.cpp */; };
+		7CF6B25225ACE82F0053F622 /* CountCorrelator.h in Headers */ = {isa = PBXBuildFile; fileRef = 7CF6B24B25ACE82F0053F622 /* CountCorrelator.h */; };
+		7CF6B25325ACE82F0053F622 /* Correlator.h in Headers */ = {isa = PBXBuildFile; fileRef = 7CF6B24C25ACE82F0053F622 /* Correlator.h */; };
+		7CF6B25425ACE82F0053F622 /* CountCorrelator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CF6B24D25ACE82F0053F622 /* CountCorrelator.cpp */; };
+		7CF6B25525ACE82F0053F622 /* CorrArray.h in Headers */ = {isa = PBXBuildFile; fileRef = 7CF6B24E25ACE82F0053F622 /* CorrArray.h */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		7CF6B23A25ACE78E0053F622 /* libSoftCorrelatorDynamicLib.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libSoftCorrelatorDynamicLib.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		7CF6B23D25ACE78E0053F622 /* SoftCorrelatorDynamicLib.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = SoftCorrelatorDynamicLib.hpp; sourceTree = "<group>"; };
+		7CF6B24125ACE78E0053F622 /* SoftCorrelatorDynamicLib.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = SoftCorrelatorDynamicLib.cpp; sourceTree = "<group>"; };
+		7CF6B24825ACE82F0053F622 /* CPhDelayCrossCorrelator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CPhDelayCrossCorrelator.cpp; sourceTree = "<group>"; };
+		7CF6B24925ACE82F0053F622 /* CPhDelayCrossCorrelator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CPhDelayCrossCorrelator.h; sourceTree = "<group>"; };
+		7CF6B24A25ACE82F0053F622 /* Correlator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Correlator.cpp; sourceTree = "<group>"; };
+		7CF6B24B25ACE82F0053F622 /* CountCorrelator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CountCorrelator.h; sourceTree = "<group>"; };
+		7CF6B24C25ACE82F0053F622 /* Correlator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Correlator.h; sourceTree = "<group>"; };
+		7CF6B24D25ACE82F0053F622 /* CountCorrelator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CountCorrelator.cpp; sourceTree = "<group>"; };
+		7CF6B24E25ACE82F0053F622 /* CorrArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CorrArray.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7CF6B23825ACE78E0053F622 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		7CF6B23125ACE78E0053F622 = {
+			isa = PBXGroup;
+			children = (
+				7CF6B23C25ACE78E0053F622 /* SoftCorrelatorDynamicLib */,
+				7CF6B23B25ACE78E0053F622 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		7CF6B23B25ACE78E0053F622 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7CF6B23A25ACE78E0053F622 /* libSoftCorrelatorDynamicLib.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7CF6B23C25ACE78E0053F622 /* SoftCorrelatorDynamicLib */ = {
+			isa = PBXGroup;
+			children = (
+				7CF6B24E25ACE82F0053F622 /* CorrArray.h */,
+				7CF6B24A25ACE82F0053F622 /* Correlator.cpp */,
+				7CF6B24C25ACE82F0053F622 /* Correlator.h */,
+				7CF6B24D25ACE82F0053F622 /* CountCorrelator.cpp */,
+				7CF6B24B25ACE82F0053F622 /* CountCorrelator.h */,
+				7CF6B24825ACE82F0053F622 /* CPhDelayCrossCorrelator.cpp */,
+				7CF6B24925ACE82F0053F622 /* CPhDelayCrossCorrelator.h */,
+				7CF6B23D25ACE78E0053F622 /* SoftCorrelatorDynamicLib.hpp */,
+				7CF6B24125ACE78E0053F622 /* SoftCorrelatorDynamicLib.cpp */,
+			);
+			path = SoftCorrelatorDynamicLib;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		7CF6B23625ACE78E0053F622 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7CF6B25325ACE82F0053F622 /* Correlator.h in Headers */,
+				7CF6B25525ACE82F0053F622 /* CorrArray.h in Headers */,
+				7CF6B25225ACE82F0053F622 /* CountCorrelator.h in Headers */,
+				7CF6B25025ACE82F0053F622 /* CPhDelayCrossCorrelator.h in Headers */,
+				7CF6B23E25ACE78E0053F622 /* SoftCorrelatorDynamicLib.hpp in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		7CF6B23925ACE78E0053F622 /* SoftCorrelatorDynamicLib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7CF6B24525ACE78E0053F622 /* Build configuration list for PBXNativeTarget "SoftCorrelatorDynamicLib" */;
+			buildPhases = (
+				7CF6B23625ACE78E0053F622 /* Headers */,
+				7CF6B23725ACE78E0053F622 /* Sources */,
+				7CF6B23825ACE78E0053F622 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SoftCorrelatorDynamicLib;
+			productName = SoftCorrelatorDynamicLib;
+			productReference = 7CF6B23A25ACE78E0053F622 /* libSoftCorrelatorDynamicLib.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		7CF6B23225ACE78E0053F622 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1150;
+				ORGANIZATIONNAME = Oleg;
+				TargetAttributes = {
+					7CF6B23925ACE78E0053F622 = {
+						CreatedOnToolsVersion = 11.5;
+					};
+				};
+			};
+			buildConfigurationList = 7CF6B23525ACE78E0053F622 /* Build configuration list for PBXProject "SoftCorrelatorDynamicLib" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 7CF6B23125ACE78E0053F622;
+			productRefGroup = 7CF6B23B25ACE78E0053F622 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7CF6B23925ACE78E0053F622 /* SoftCorrelatorDynamicLib */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7CF6B23725ACE78E0053F622 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7CF6B24225ACE78E0053F622 /* SoftCorrelatorDynamicLib.cpp in Sources */,
+				7CF6B25125ACE82F0053F622 /* Correlator.cpp in Sources */,
+				7CF6B25425ACE82F0053F622 /* CountCorrelator.cpp in Sources */,
+				7CF6B24F25ACE82F0053F622 /* CPhDelayCrossCorrelator.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		7CF6B24325ACE78E0053F622 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		7CF6B24425ACE78E0053F622 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		7CF6B24625ACE78E0053F622 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				EXECUTABLE_PREFIX = lib;
+				GCC_ENABLE_CPP_EXCEPTIONS = YES;
+				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		7CF6B24725ACE78E0053F622 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				EXECUTABLE_PREFIX = lib;
+				GCC_ENABLE_CPP_EXCEPTIONS = YES;
+				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		7CF6B23525ACE78E0053F622 /* Build configuration list for PBXProject "SoftCorrelatorDynamicLib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7CF6B24325ACE78E0053F622 /* Debug */,
+				7CF6B24425ACE78E0053F622 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7CF6B24525ACE78E0053F622 /* Build configuration list for PBXNativeTarget "SoftCorrelatorDynamicLib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7CF6B24625ACE78E0053F622 /* Debug */,
+				7CF6B24725ACE78E0053F622 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 7CF6B23225ACE78E0053F622 /* Project object */;
+}
