@@ -298,6 +298,7 @@ class VisaInstrument:
         with self.Task(self) as task:
             task.write(cmnd)
 
+        # TODO: this check should be in devices.py, not here
         if cmnd.startswith("setLDenable"):  # change state if toggle is performed
             *_, toggle_val = cmnd
             self.state = bool(int(toggle_val))

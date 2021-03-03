@@ -13,6 +13,7 @@ import nidaqmx.constants as ni_consts  # TODO: move to consts.py
 import numpy as np
 
 import utilities.constants as consts
+from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error
 from utilities.helper import div_ceil
 
@@ -20,12 +21,12 @@ from utilities.helper import div_ceil
 class Measurement:
     """Base class for measurements"""
 
-    def __init__(self, app, type: str, scn_params: dict = {}, **kwargs):
+    def __init__(self, app, type: str, scan_params: dict = {}, **kwargs):
 
         self._app = app
         self.type = type
-        self.scn_params = SimpleNamespace()
-        [setattr(self.scn_params, key, val) for key, val in scn_params.items()]
+        self.scan_params = SimpleNamespace()
+        [setattr(self.scan_params, key, val) for key, val in scan_params.items()]
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.data_dvc = app.devices.UM232H
         self.is_running = False
@@ -76,8 +77,8 @@ class Measurement:
 class SFCSImageMeasurement(Measurement):
     """Doc."""
 
-    def __init__(self, app, scn_params, **kwargs):
-        super().__init__(app=app, type="SFCSImage", scn_params=scn_params, **kwargs)
+    def __init__(self, app, scan_params, **kwargs):
+        super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
         self.pxl_clk_dvc = app.devices.PXL_CLK
         self.scanners_dvc = app.devices.SCANNERS
         self.counter_dvc = app.devices.COUNTER
@@ -90,28 +91,29 @@ class SFCSImageMeasurement(Measurement):
         )
 
     def build_filename(self, file_no: int) -> str:
-        return f"{self.file_template}_{self.laser_config}_{self.scn_params.scn_type}_{file_no}"
+        return f"{self.file_template}_{self.laser_config}_{self.scan_params.scn_type}_{file_no}"
 
     async def toggle_lasers(self, finish=False) -> NoReturn:
         """Doc."""
 
-        if self.scn_params.sted_mode:
-            self.scn_params.exc_mode = True
-            self.scn_params.dep_mode = True
+        if self.scan_params.sted_mode:
+            self.scan_params.exc_mode = True
+            self.scan_params.dep_mode = True
 
         if finish:
-            if self.scn_params.exc_mode:
+            if self.scan_params.exc_mode:
                 self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_off=True)
-            if self.scn_params.dep_mode:
+            if self.scan_params.dep_mode:
                 self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_off=True)
         else:
-            if self.scn_params.exc_mode:
+            if self.scan_params.exc_mode:
                 self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
-            if self.scn_params.dep_mode:
+            if self.scan_params.dep_mode:
                 if self.laser_dvcs.dep.state is False:
                     logging.info(
                         f"{consts.DEP_LASER.log_ref} isn't on. Turnning on and waiting 5 s before measurement."
                     )
+                    # TODO: add measurement error decorator to cleanly handle device errors before/during measurements (such as error in dep)
                     self._app.gui.main.imp.dvc_toggle("DEP_LASER")
                     await asyncio.sleep(5)
                 self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
@@ -146,124 +148,20 @@ class SFCSImageMeasurement(Measurement):
             elif scn_type == "XZ":
                 return ", ".join([scanners_dvc.ao_x_addr, scanners_dvc.ao_z_addr])
 
-        def calculate_scan_ao(
-            scn_params: SimpleNamespace, um_V_ratio: (float, float, float)
-        ):
-            # TODO: this function needs better documentation, starting with some comments
-            """Doc."""
-
-            dt = 1 / (scn_params.line_freq_Hz * scn_params.ppl)
-
-            # order according to relevant plane dimensions
-            if scn_params.scn_type == "XY":
-                dim_conv = tuple(um_V_ratio[i] for i in (0, 1, 2))
-                curr_ao = tuple(getattr(scn_params, f"curr_ao_{ax}") for ax in "xyz")
-            if scn_params.scn_type == "YZ":
-                dim_conv = tuple(um_V_ratio[i] for i in (1, 2, 0))
-                curr_ao = tuple(getattr(scn_params, f"curr_ao_{ax}") for ax in "yzx")
-            if scn_params.scn_type == "XZ":
-                dim_conv = tuple(um_V_ratio[i] for i in (0, 2, 1))
-                curr_ao = tuple(getattr(scn_params, f"curr_ao_{ax}") for ax in "xzy")
-
-            T = scn_params.ppl
-            f = scn_params.lin_frac
-            t0 = T / 2 * (1 - f) / (2 - f)
-            v = 1 / (T / 2 - 2 * t0)
-            a = v / t0
-            A = 1 / f
-
-            t = np.arange(T)
-            s = np.zeros(T)
-            J = t <= t0
-            s[J] = a * np.power(t[J], 2)
-
-            J = np.logical_and((t > t0), (t <= (T / 2 - t0)))
-            s[J] = v * t[J] - a * t0 ** 2 / 2
-
-            J = np.logical_and((t > (T / 2 - t0)), (t <= (T / 2 + t0)))
-            s[J] = A - a * np.power((t[J] - T / 2), 2) / 2
-
-            J = np.logical_and((t > (T / 2 + t0)), (t <= (T - t0)))
-            s[J] = A + a * t0 ** 2 / 2 - v * (t[J] - T / 2)
-
-            J = t > (T - t0)
-            s[J] = a * np.power((T - t[J]), 2) / 2
-
-            s = s - 1 / (2 * f)
-
-            ampl = scn_params.dim1_um / dim_conv[0]
-            single_line_ao = curr_ao[0] + ampl * s
-
-            ampl = scn_params.dim2_um / dim_conv[1]
-            if scn_params.n_lines > 1:
-                vect = np.array(
-                    [
-                        (val / (scn_params.n_lines - 1)) - 0.5
-                        for val in range(scn_params.n_lines)
-                    ]
-                )
-            else:
-                vect = 0
-            set_pnts_lines_odd = curr_ao[1] + ampl * vect
-
-            ampl = scn_params.dim3_um / dim_conv[2]
-            if scn_params.n_planes > 1:
-                vect = np.array(
-                    [
-                        (val / (scn_params.n_planes - 1)) - 0.5
-                        for val in range(scn_params.n_planes)
-                    ]
-                )
-            else:
-                vect = 0
-            set_pnts_planes = curr_ao[2] + ampl * vect
-
-            set_pnts_lines_even = set_pnts_lines_odd[::-1]
-
-            total_pnts = scn_params.ppl * scn_params.n_lines * scn_params.n_planes
-
-            # at this point we have the AO (1D) for a single row,
-            # and the voltages corresponding to each row and plane.
-            # now we build the full AO (2D):
-
-            single_line_ao = single_line_ao.tolist()
-            set_pnts_lines_odd = set_pnts_lines_odd.tolist()
-            set_pnts_lines_even = set_pnts_lines_even.tolist()
-            set_pnts_planes = np.asarray(set_pnts_planes).tolist()
-            if not isinstance(set_pnts_planes, list):
-                set_pnts_planes = [set_pnts_planes]
-
-            dim1_ao = []
-            dim2_ao = []
-            for odd_line_set_pnt in set_pnts_lines_odd:
-                dim1_ao += single_line_ao
-                dim2_ao += [odd_line_set_pnt] * len(single_line_ao)
-
-            ao_buffer = [dim1_ao, dim2_ao]
-
-            return (
-                ao_buffer,
-                dt,
-                set_pnts_lines_odd,
-                set_pnts_lines_even,
-                set_pnts_planes,
-                total_pnts,
-            )
-
         # fix line freq, pxl clk low ticks, and ppl
         self.line_freq, clk_div = sync_line_freq(
-            self.scn_params.line_freq_Hz,
-            self.scn_params.ppl,
+            self.scan_params.line_freq_Hz,
+            self.scan_params.ppl,
             self.pxl_clk_dvc.freq_MHz * 1e6,
         )
         self.pxl_clk_dvc.low_ticks = clk_div - 2
         self.ppl = fix_ppl(
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
-            self.scn_params.line_freq_Hz,
-            self.scn_params.ppl,
+            self.scan_params.line_freq_Hz,
+            self.scan_params.ppl,
         )
         # unite relevant physical addresses
-        self.scn_addrs = bld_scn_addrs_str(self.scn_params.scn_type, self.scanners_dvc)
+        self.scn_addrs = bld_scn_addrs_str(self.scan_params.scn_type, self.scanners_dvc)
         # init device buffers
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_ci_buffer()
@@ -275,7 +173,7 @@ class SFCSImageMeasurement(Measurement):
             self.set_pnts_lines_even,
             self.set_pnts_planes,
             self.total_pnts,
-        ) = calculate_scan_ao(self.scn_params, self.um_V_ratio)
+        ) = ScanPatternAO("image", self.scan_params, self.um_V_ratio).calculate_ao()
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7
         # TODO: create a scan arguments/parameters object to send to scanners_dvc (or simply for more clarity)
         self.n_ao_samps = len(self.ao_buffer[0])
@@ -288,7 +186,7 @@ class SFCSImageMeasurement(Measurement):
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
-            type=self.scn_params.scn_type,
+            type=self.scan_params.scn_type,
             samp_clk_cnfg_xy={
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ni_consts.AcquisitionType.FINITE,
@@ -332,7 +230,7 @@ class SFCSImageMeasurement(Measurement):
         """Doc."""
 
         for axis in "XYZ":
-            if axis not in self.scn_params.scn_type:
+            if axis not in self.scan_params.scn_type:
                 plane_axis = axis
                 break
 
@@ -348,7 +246,7 @@ class SFCSImageMeasurement(Measurement):
         self.scanners_dvc.start_write_task(
             # TODO: clearer way do get the following line?
             ao_data=[[self.ao_buffer[0][0]], [self.ao_buffer[1][0]]],
-            type=self.scn_params.scn_type,
+            type=self.scan_params.scn_type,
         )
 
     async def run(self):
@@ -395,6 +293,10 @@ class SFCSImageMeasurement(Measurement):
         #        filename = self.build_filename()
         #        self.save_data(filename)
 
+        self._app.gui.main.numPlaneShown.setValue(
+            1
+        )  # TODO: show middle plane? or lowest?
+
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         await self.toggle_lasers(finish=True)
         self.scanners_dvc.start_continuous_read_task()
@@ -407,8 +309,10 @@ class SFCSImageMeasurement(Measurement):
 class SFCSSolutionMeasurement(Measurement):
     """Doc."""
 
-    def __init__(self, app, scn_params, **kwargs):
-        super().__init__(app=app, type="SFCSSolution", scn_params=scn_params, **kwargs)
+    def __init__(self, app, scan_params, **kwargs):
+        super().__init__(
+            app=app, type="SFCSSolution", scan_params=scan_params, **kwargs
+        )
         self.duration_multiplier = 60
         self.laser_config = self.get_laser_config()
 
