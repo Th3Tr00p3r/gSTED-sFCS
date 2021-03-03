@@ -7901,17 +7901,17 @@ Origin (um)</string>
            </property>
            <item>
             <property name="text">
-             <string>x</string>
+             <string>X</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>y</string>
+             <string>Y</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>z</string>
+             <string>Z</string>
             </property>
            </item>
           </widget>

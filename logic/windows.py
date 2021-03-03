@@ -154,7 +154,7 @@ class MainWin:
             self._app.devices.DEP_LASER.set_power(val)
 
     @err_chck({"SCANNERS"})
-    def move_scanners(self) -> NoReturn:
+    def move_scanners(self, axes_used: str = "XYZ") -> NoReturn:
         """Doc."""
 
         scanners_dvc = self._app.devices.SCANNERS
@@ -165,10 +165,11 @@ class MainWin:
         data = []
         type_str = ""
         for ax, curr_ax_val in zip("XYZ", curr_pos):
-            data.append([curr_ax_val])
-            type_str += ax
+            if ax in axes_used:
+                data.append([curr_ax_val])
+                type_str += ax
 
-        scanners_dvc.start_write_task(tuple(data), type_str)
+        scanners_dvc.start_write_task(data, type_str)
         scanners_dvc.toggle(True)  # restart cont. reading
 
         logging.debug(
@@ -188,7 +189,7 @@ class MainWin:
             if is_chosen:
                 getattr(self._gui, f"{axis}AOV").setValue(org_axis_vltg)
 
-        self.move_scanners()
+        self.move_scanners(which_axes)
 
         logging.debug(
             f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin"
@@ -203,18 +204,18 @@ class MainWin:
             scanners_dvc = self._app.devices.SCANNERS
             axis = self._gui.axis.currentText()
             current_vltg = scanners_dvc.read_single_ao_internal()[consts.AX_IDX[axis]]
-            um_V_RATIO = dict(zip("xyz", scanners_dvc.um_V_ratio))[axis]
+            um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_V_ratio))[axis]
             delta_vltg = um_disp / um_V_RATIO
 
-            axis_ao_limits = getattr(scanners_dvc, f"{axis}_ao_limits")
+            axis_ao_limits = getattr(scanners_dvc, f"{axis.lower()}_ao_limits")
             new_vltg = helper.limit(
                 (current_vltg + delta_vltg),
                 axis_ao_limits["min_val"],
                 axis_ao_limits["max_val"],
             )
 
-            getattr(self._gui, f"{axis}AOV").setValue(new_vltg)
-            self.move_scanners()
+            getattr(self._gui, f"{axis.lower()}AOV").setValue(new_vltg)
+            self.move_scanners(axis)
 
             logging.debug(
                 f"{getattr(consts, 'SCANNERS').log_ref}({axis}) was displaced {str(um_disp)} um"

@@ -4,7 +4,7 @@
 import asyncio
 import time
 from array import array
-from typing import NoReturn, Tuple
+from typing import List, NoReturn
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -277,26 +277,43 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
 
     def start_write_task(
         self,
-        ao_data: Tuple[list],
+        ao_data: List[list],
         type: str,
         samp_clk_cnfg_xy: dict = {},
         samp_clk_cnfg_z: dict = {},
     ) -> NoReturn:
         """Doc."""
 
-        def diff_vltg_data(ao_data_row: list) -> [list, list]:
-            return [ao_data_row, [(-1) * val for val in ao_data_row]]
+        def limit_ao_data(ao_task, ao_data: list):
+            """Doc."""
+            ao_min = ao_task.channels.ao_min
+            ao_max = ao_task.channels.ao_max
+            if isinstance(ao_data[0], float):
+                return [limit(ao, ao_min, ao_max) for ao in ao_data]
+            else:
+                row_idx_iter = range(len(ao_data))
+                return [
+                    [limit(ao, ao_min, ao_max) for ao in ao_data[idx]]
+                    for idx in row_idx_iter
+                ]
+
+        def diff_vltg_data(ao_data: list) -> list:
+            """Doc."""
+
+            diff_ao_data = []
+            for row_idx in range(len(ao_data)):
+                diff_ao_data += [
+                    ao_data[row_idx],
+                    [(-1) * val for val in ao_data[row_idx]],
+                ]
+            return diff_ao_data
 
         def smooth_start(
             axis: str, ao_chan_specs: dict, final_pos: float, step_sz: float = 0.25
         ) -> NoReturn:
             """Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)"""
 
-            init_pos = limit(
-                self.read_single_ao_internal()[consts.AX_IDX[axis]], 0.0, 10.0
-            )
-            final_pos = limit(final_pos, 0.0, 10.0)
-
+            init_pos = self.read_single_ao_internal()[consts.AX_IDX[axis]]
             total_dist = abs(final_pos - init_pos)
             n_steps = div_ceil(total_dist, step_sz)
 
@@ -304,12 +321,12 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                 return
 
             else:
-                ao_data = np.linspace(init_pos, final_pos, n_steps)
+                ao_data = np.linspace(init_pos, final_pos, n_steps).tolist()
 
                 # move
-                task_name = "Smooth AO"
+                task_name = "Smooth AO Z"
                 self.close_tasks("ao")
-                self.create_ao_task(
+                ao_task = self.create_ao_task(
                     name=task_name,
                     chan_specs=ao_chan_specs,
                     samp_clk_cnfg={
@@ -318,6 +335,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                         "sample_mode": ni_consts.AcquisitionType.FINITE,
                     },
                 )
+                ao_data = limit_ao_data(ao_task, ao_data)
                 self.analog_write(task_name, ao_data, auto_start=False)
                 self.start_tasks("ao")
                 self.wait_for_task("ao", task_name)
@@ -327,14 +345,14 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
 
         xy_chan_spcs = []
         z_chan_spcs = []
-        diff_ao_data_xy = []
+        ao_data_xy = []
         ao_data_z = []
         ao_data_row_idx = 0
         for ax, use_ax, ax_chn_spcs in zip("XYZ", axes_to_use, self.ao_chan_specs):
             if use_ax is True:
                 if ax in "XY":
                     xy_chan_spcs.append(ax_chn_spcs)
-                    diff_ao_data_xy += diff_vltg_data(ao_data[ao_data_row_idx])
+                    ao_data_xy.append(ao_data[ao_data_row_idx])
                     ao_data_row_idx += 1
                 else:  # "Z"
                     z_chan_spcs.append(ax_chn_spcs)
@@ -348,18 +366,21 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
 
         if xy_chan_spcs:
             xy_task_name = "AO XY"
-            self.create_ao_task(
+            ao_task = self.create_ao_task(
                 name=xy_task_name,
                 chan_specs=xy_chan_spcs,
                 samp_clk_cnfg=samp_clk_cnfg_xy,
             )
-            self.analog_write(xy_task_name, diff_ao_data_xy)
+            ao_data_xy = limit_ao_data(ao_task, ao_data_xy)
+            ao_data_xy = diff_vltg_data(ao_data_xy)
+            self.analog_write(xy_task_name, ao_data_xy)
 
         if z_chan_spcs:
             z_task_name = "AO Z"
-            self.create_ao_task(
+            ao_task = self.create_ao_task(
                 name=z_task_name, chan_specs=z_chan_spcs, samp_clk_cnfg=samp_clk_cnfg_z
             )
+            ao_data_z = limit_ao_data(ao_task, ao_data_z)
             self.analog_write(z_task_name, ao_data_z)
 
         self.start_tasks("ao")

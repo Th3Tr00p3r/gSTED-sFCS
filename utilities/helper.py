@@ -202,7 +202,7 @@ def count_words(input_str: str) -> int:
 
 def limit(val: float, min: float, max: float) -> float:
 
-    if min < val < max:
+    if min <= val <= max:
         return val
     elif val < min:
         return min
