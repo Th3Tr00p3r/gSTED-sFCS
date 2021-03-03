@@ -1477,7 +1477,7 @@ Pattern</string>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="planeShowCombox">
+                      <widget class="QSpinBox" name="numPlaneShown">
                        <property name="maximumSize">
                         <size>
                          <width>50</width>
@@ -8561,7 +8561,7 @@ Origin (um)</string>
   <tabstop>imgScanLinFrac</tabstop>
   <tabstop>imgScanNumPlanes</tabstop>
   <tabstop>startImgScan</tabstop>
-  <tabstop>planeShowCombox</tabstop>
+  <tabstop>numPlaneShown</tabstop>
   <tabstop>imgShowCombox</tabstop>
   <tabstop>selectROI</tabstop>
   <tabstop>scanImgGraphicsView</tabstop>
