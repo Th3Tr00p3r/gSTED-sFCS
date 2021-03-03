@@ -653,6 +653,9 @@ class DepletionLaser(BaseDevice, VisaInstrument):
         if self.state is False:
             self.set_current(1500)
 
+        # TODO: this should move to toggle
+        self.state = False
+
     def toggle(self, bool):
         """Doc."""
 

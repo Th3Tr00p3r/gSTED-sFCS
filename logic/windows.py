@@ -270,7 +270,7 @@ class MainWin:
             elif type == "SFCSSolution":
                 self._app.meas = meas.SFCSSolutionMeasurement(
                     app=self._app,
-                    scn_params=consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
+                    scan_params=consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
                         self._app
                     ),
                     **consts.SOL_MEAS_WDGT_COLL.hold_objects(
@@ -296,7 +296,7 @@ class MainWin:
             elif type == "SFCSImage":
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
-                    scn_params=consts.IMG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
+                    scan_params=consts.IMG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
                     **consts.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         ["prog_bar_wdgt", "curr_line_wdgt", "curr_plane_wdgt"],
