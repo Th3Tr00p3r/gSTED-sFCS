@@ -13,6 +13,7 @@ import nidaqmx.constants as ni_consts  # TODO: move to consts.py
 import numpy as np
 
 import utilities.constants as consts
+from utilities.dialog import Error
 from utilities.helper import div_ceil
 
 
@@ -340,23 +341,24 @@ class SFCSImageMeasurement(Measurement):
             type=plane_axis,
         )
 
-    async def run(self):
+    def move_to_start(self):
         """Doc."""
-        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
+        # TODO: perhaps move back to current AO when done?
 
-        await self.toggle_lasers()
-
-        self.setup_scan()
-
-        # start pixel clock
-        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
-
-        # move to initial position
         self.scanners_dvc.start_write_task(
             # TODO: clearer way do get the following line?
             ao_data=[[self.ao_buffer[0][0]], [self.ao_buffer[1][0]]],
             type=self.scn_params.scn_type,
         )
+
+    async def run(self):
+        """Doc."""
+        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
+
+        await self.toggle_lasers()
+        self.setup_scan()
+        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+        self.move_to_start()
 
         plane_data = []
         logging.info(f"Running {self.type} measurement")
@@ -463,7 +465,12 @@ class SFCSSolutionMeasurement(Measurement):
 
         self.cal = False
         bps = self.data_dvc.tot_bytes_read / self.time_passed
-        self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
+        try:
+            self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
+        except ZeroDivisionError:
+            # TODO: create a decorator for measurement errors - better yet, add a counter error check for when counts are zero/unchanging
+            Error(custom_txt="Counter is probably unplugged.").display()
+            return
 
         if self.save_intrvl > self.total_duration:
             self.save_intrvl = self.total_duration

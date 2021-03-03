@@ -169,7 +169,7 @@ class NIDAQmxInstrument:
         chan_specs: List[dict],
         samp_clk_cnfg: dict = {},
         timing_params: dict = {},
-    ) -> NoReturn:
+    ) -> ni.Task:
         """Doc."""
 
         task = ni.Task(new_task_name=name)
@@ -179,8 +179,8 @@ class NIDAQmxInstrument:
             task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
         for key, val in timing_params.items():
             setattr(task.timing, key, val)
-
         self.tasks.ao[name] = task
+        return task
 
     @err_hndlr
     def create_ci_task(
@@ -244,7 +244,6 @@ class NIDAQmxInstrument:
         """Doc."""
 
         ao_task = self.tasks.ao[task_name]
-        #        data = limit_ao_data(data)
         if auto_start is not None:
             ao_task.write(data, auto_start=auto_start, timeout=self.ao_timeout)
         else:
