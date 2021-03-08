@@ -243,12 +243,12 @@ FCS_MEAS_WDGT_COLL = QtWidgetCollection(
 )
 
 SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
-    line_length_um=QtWidgetAccess("lineLen", "value", "main"),
-    ao_smplng_freq_Hz=QtWidgetAccess("aoSampFreq", "value", "main"),
+    max_line_len_um=QtWidgetAccess("maxLineLen", "value", "main"),
+    ao_samp_freq_Hz=QtWidgetAccess("aoSampFreq", "value", "main"),
     angle_deg=QtWidgetAccess("angle", "value", "main"),
     lin_frac=QtWidgetAccess("solLinFrac", "value", "main"),
     line_shift_um=QtWidgetAccess("lineShift", "value", "main"),
-    speed_um_per_s=QtWidgetAccess("solAngScanSpeed", "value", "main"),
+    speed_um_s=QtWidgetAccess("solAngScanSpeed", "value", "main"),
     min_lines=QtWidgetAccess("minNumLines", "value", "main"),
     max_scn_freq_Hz=QtWidgetAccess("maxScanFreq", "value", "main"),
 )
@@ -271,7 +271,7 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     exc_mode=QtWidgetAccess("imgScanModeExc", "isChecked", "main"),
     dep_mode=QtWidgetAccess("imgScanModeDep", "isChecked", "main"),
     sted_mode=QtWidgetAccess("imgScanModeSted", "isChecked", "main"),
-    scn_type=QtWidgetAccess("imgScanType", "currentText", "main"),
+    scan_type=QtWidgetAccess("imgScanType", "currentText", "main"),
     dim1_um=QtWidgetAccess("imgScanDim1", "value", "main"),
     dim2_um=QtWidgetAccess("imgScanDim2", "value", "main"),
     dim3_um=QtWidgetAccess("imgScanDim3", "value", "main"),

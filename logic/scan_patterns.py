@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """ scan patterns module. """
 
-from typing import SimpleNameSpace
+from math import cos, pi, sin, sqrt
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -29,13 +30,13 @@ class ScanPatternAO:
         dt = 1 / (params.line_freq_Hz * params.ppl)
 
         # order according to relevant plane dimensions
-        if params.scn_type == "XY":
+        if params.scan_type == "XY":
             dim_conv = tuple(self.um_V_ratio[i] for i in (0, 1, 2))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "XYZ")
-        if params.scn_type == "YZ":
+        if params.scan_type == "YZ":
             dim_conv = tuple(self.um_V_ratio[i] for i in (1, 2, 0))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "YZX")
-        if params.scn_type == "XZ":
+        if params.scan_type == "XZ":
             dim_conv = tuple(self.um_V_ratio[i] for i in (0, 2, 1))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "XZY")
 
@@ -88,8 +89,6 @@ class ScanPatternAO:
 
         set_pnts_lines_even = set_pnts_lines_odd[::-1]
 
-        total_pnts = params.ppl * params.n_lines * params.n_planes
-
         # at this point we have the AO (1D) for a single row,
         # and the voltages corresponding to each row and plane.
         # now we build the full AO (2D):
@@ -115,7 +114,6 @@ class ScanPatternAO:
             set_pnts_lines_odd,
             set_pnts_lines_even,
             set_pnts_planes,
-            total_pnts,
         )
 
     def calc_angular_pattern(self, params, um_V_ratio):
@@ -123,37 +121,37 @@ class ScanPatternAO:
         """Doc."""
 
         max_y_freq_Hz = 20
-        req_samp_freq_Hz = 10000
 
-        angle_rad = params.angle_deg * np.pi / 180
+        # argument definitions (for better readability
+        ang_deg = params.angle_deg
+        ang_rad = ang_deg * (pi / 180)
         f = params.lin_frac
+        max_line_len = params.max_line_len_um
+        line_shift = params.line_shift_um
+        min_n_lines = params.min_lines
+        samp_freq_Hz = params.ao_samp_freq_Hz
 
-        if (params.angle_deg == 0) or (params.angle_deg == 90):
-            tot_len = params.max_line_len
-            n_lines = 2 * int((params.max_line_len / params.line_shift + 1) / 2)
-        elif (params.angle_deg > 0) and (params.angle_deg < 90):
-            if np.cos(2 * angle_rad) < np.sqrt(2) * np.cos(
-                angle_rad + np.pi / 4
-            ) * params.max_line_len / (params.line_shift * (params.min_n_lines - 1)):
+        if (ang_deg == 0) or (ang_deg == 90):
+            tot_len = max_line_len
+            n_lines = 2 * int((max_line_len / line_shift + 1) / 2)
+        elif 0 < ang_deg < 90:
+            if cos(2 * ang_rad) < sqrt(2) * cos(ang_rad + pi / 4) * max_line_len / (
+                line_shift * (min_n_lines - 1)
+            ):
                 tot_len = min(
-                    params.max_line_len,
-                    (
-                        params.max_line_len
-                        - params.line_shift
-                        * (params.min_n_lines - 1)
-                        * np.sin(angle_rad)
-                    )
-                    / np.cos(angle_rad),
+                    max_line_len,
+                    (max_line_len - line_shift * (min_n_lines - 1) * sin(ang_rad))
+                    / cos(ang_rad),
                 )
                 n_lines = max(
-                    params.min_n_lines,
+                    min_n_lines,
                     2
                     * int(
                         (
-                            params.max_line_len
-                            / params.line_shift
-                            * (1 - abs(np.cos(angle_rad)))
-                            / np.sin(angle_rad)
+                            max_line_len
+                            / line_shift
+                            * (1 - abs(cos(ang_rad)))
+                            / sin(ang_rad)
                             + 1
                         )
                         / 2
@@ -161,53 +159,43 @@ class ScanPatternAO:
                 )
             else:
                 tot_len = min(
-                    params.max_line_len,
-                    (
-                        params.max_line_len
-                        - params.line_shift
-                        * (params.min_n_lines - 1)
-                        * np.cos(angle_rad)
-                    )
-                    / np.sin(angle_rad),
+                    max_line_len,
+                    (max_line_len - line_shift * (min_n_lines - 1) * cos(ang_rad))
+                    / sin(ang_rad),
                 )
                 n_lines = max(
-                    params.min_n_lines,
+                    min_n_lines,
                     2
                     * int(
                         (
-                            params.max_line_len
-                            / params.line_shift
-                            * (1 - abs(np.sin(angle_rad)))
-                            / np.cos(angle_rad)
+                            max_line_len
+                            / line_shift
+                            * (1 - abs(sin(ang_rad)))
+                            / cos(ang_rad)
                             + 1
                         )
                         / 2
                     ),
                 )
 
-        elif (params.angle_deg > 90) and (params.angle_deg < 180):
-            if np.cos(2 * angle_rad) < np.sqrt(2) * np.cos(
-                np.pi - angle_rad + np.pi / 4
-            ) * params.max_line_len / (params.line_shift * (params.min_n_lines - 1)):
+        elif 90 < ang_deg < 180:
+            if cos(2 * ang_rad) < sqrt(2) * cos(
+                pi - ang_rad + pi / 4
+            ) * max_line_len / (line_shift * (min_n_lines - 1)):
                 tot_len = min(
-                    params.max_line_len,
-                    (
-                        -params.max_line_len
-                        + params.line_shift
-                        * (params.min_n_lines - 1)
-                        * np.sin(angle_rad)
-                    )
-                    / np.cos(angle_rad),
+                    max_line_len,
+                    (-max_line_len + line_shift * (min_n_lines - 1) * sin(ang_rad))
+                    / cos(ang_rad),
                 )
                 n_lines = max(
-                    params.min_n_lines,
+                    min_n_lines,
                     2
                     * int(
                         (
-                            params.max_line_len
-                            / params.line_shift
-                            * (1 - abs(np.cos(angle_rad)))
-                            / np.sin(angle_rad)
+                            max_line_len
+                            / line_shift
+                            * (1 - abs(cos(ang_rad)))
+                            / sin(ang_rad)
                             + 1
                         )
                         / 2
@@ -215,24 +203,19 @@ class ScanPatternAO:
                 )
             else:
                 tot_len = min(
-                    params.max_line_len,
-                    (
-                        params.max_line_len
-                        + params.line_shift
-                        * (params.min_n_lines - 1)
-                        * np.cos(angle_rad)
-                    )
-                    / np.sin(angle_rad),
+                    max_line_len,
+                    (max_line_len + line_shift * (min_n_lines - 1) * cos(ang_rad))
+                    / sin(ang_rad),
                 )
                 n_lines = max(
-                    params.min_n_lines,
+                    min_n_lines,
                     2
                     * int(
                         (
-                            params.max_line_len
-                            / params.line_shift
-                            * (1 - abs(np.sin(angle_rad)))
-                            / abs(np.cos(angle_rad))
+                            max_line_len
+                            / line_shift
+                            * (1 - abs(sin(ang_rad)))
+                            / abs(cos(ang_rad))
                             + 1
                         )
                         / 2
@@ -240,15 +223,12 @@ class ScanPatternAO:
                 )
 
         else:
-            # TODO: error('The scan angle should be in [0, 180] range!')
-            pass
+            # TODO: add better error handeling
+            raise ValueError("The scan angle should be in [0, 180] range!")
 
-        line_len = f * tot_len
+        lin_len = f * tot_len
         scan_freq_Hz = params.speed_um_s / (2 * tot_len * (2 - f))
 
-        samp_freq_Hz = params.pxl_clk_freq_Hz / round(
-            params.pxl_clk_freq_Hz / req_samp_freq_Hz
-        )  # should be a multiplier of pxl_clk_freq_Hz
         tot_ppl = round((samp_freq_Hz / scan_freq_Hz) / 2)
         scan_freq_Hz = samp_freq_Hz / tot_ppl / 2
 
@@ -261,7 +241,7 @@ class ScanPatternAO:
         ppl = T * f / (2 - f)  # make ppl in linear part
 
         t0 = T * (1 - f) / (2 - f)
-        Vshift = params.line_shift / t0 / 2
+        Vshift = line_shift / t0 / 2
         v = 1 / (T - 2 * t0)
         a = v / t0
         A = 1 / f
@@ -276,66 +256,67 @@ class ScanPatternAO:
         shift_vec[J] = Vshift * (t[J] - t0)
 
         J = (t > t0) & (t <= (T - t0))
-        s[J] = v * t[J] - a * t0 ^ 2 / 2
+        s[J] = v * t[J] - a * t0 ** 2 / 2
         shift_vec[J] = 0
 
-        J = t > (T - t0)  # & (t <= (T/2 + t0))
+        J = t > (T - t0)
         s[J] = A - a * np.power((t[J] - T), 2) / 2
         shift_vec[J] = Vshift * (t[J] - T + t0)
         # centering
         s = s - 1 / (2 * f)
 
-        X1 = line_len * s * np.cos(angle_rad) + shift_vec * np.sin(angle_rad)
-        Y1 = line_len * s * np.sin(angle_rad) - shift_vec * np.cos(angle_rad)
-        X2 = -X1 + 2 * shift_vec * np.sin(angle_rad)
-        Y2 = -Y1 - 2 * shift_vec * np.cos(angle_rad)
-
-        for i in range(n_lines):
-            if i % 2 == 0:
+        x_ao = np.zeros(shape=(T, n_lines + 1))
+        y_ao = np.zeros(shape=(T, n_lines + 1))
+        X1 = lin_len * s * cos(ang_rad) + shift_vec * sin(ang_rad)
+        Y1 = lin_len * s * sin(ang_rad) - shift_vec * cos(ang_rad)
+        X2 = -X1 + 2 * shift_vec * sin(ang_rad)
+        Y2 = -Y1 - 2 * shift_vec * cos(ang_rad)
+        for line_idx in range(n_lines):
+            if line_idx % 2 == 0:
                 XT = X1
                 YT = Y1
             else:
                 XT = X2
                 YT = Y2
 
-            x_ao[:, i] = XT[:] + (i - (n_lines + 1) / 2) * params.line_shift * np.sin(
-                angle_rad
-            )
-            y_ao[:, i] = YT[:] - (i - (n_lines + 1) / 2) * params.line_shift * np.cos(
-                angle_rad
-            )
+            x_ao[:, line_idx] = XT[:] + (
+                line_idx - (n_lines + 1) / 2
+            ) * line_shift * sin(ang_rad)
+            y_ao[:, line_idx] = YT[:] - (
+                line_idx - (n_lines + 1) / 2
+            ) * line_shift * cos(ang_rad)
 
         # add one more line to walk back slowly to the beginning
         Xend = x_ao[-1, -1]
         Yend = y_ao[-1, -1]
-        x_ao[:, i + 1] = Xend + np.arange(1.0, T + 1) * (x_ao(1, 1) - Xend) / T
-        y_ao[:, i + 1] = Yend + np.arange(1.0, T + 1) * (y_ao(1, 1) - Yend) / T
+        x_ao[:, line_idx + 1] = Xend + np.arange(1.0, T + 1) * (x_ao[0, 0] - Xend) / T
+        y_ao[:, line_idx + 1] = Yend + np.arange(1.0, T + 1) * (y_ao[0, 0] - Yend) / T
 
-        x_ao = x_ao[:]
-        y_ao = y_ao[:]
+        # convert to voltages
+        x_um_V_ratio, y_um_V_ratio, _ = um_V_ratio
+        x_ao = x_ao / x_um_V_ratio
+        y_ao = y_ao / y_um_V_ratio
 
-        # try circular connections
-        J = t <= t0
-        s[J] = a * np.power(t[J], 2) / 2
+        ao_buffer = [x_ao.flatten("F").tolist(), y_ao.flatten("F").tolist()]
 
-        eff_speed_um_s = v * line_len * samp_freq_Hz
+        dt = 1 / samp_freq_Hz
 
-        scan_settings = SimpleNameSpace()
-        scan_settings.eff_speed_um_s = eff_speed_um_s
+        scan_settings = SimpleNamespace()
+        scan_settings.scan_type = params.scan_type
+        scan_settings.eff_speed_um_s = v * lin_len * samp_freq_Hz
         scan_settings.scan_freq_Hz = scan_freq_Hz
         scan_settings.samp_freq_Hz = samp_freq_Hz
         scan_settings.tot_ppl = tot_ppl
         scan_settings.ppl = ppl
         scan_settings.n_lines = n_lines
-        scan_settings.line_len = line_len
+        scan_settings.lin_len = lin_len
         scan_settings.tot_len = tot_len
-        scan_settings.max_line_len = params.max_line_len
-        scan_settings.line_shift = params.line_shift
-        scan_settings.angle_deg = params.angle_deg
-        scan_settings.lin_frac = params.lin_frac
-        scan_settings.pxl_clk_freq_Hz = params.pxl_clk_freq_Hz
+        scan_settings.max_line_len_um = max_line_len
+        scan_settings.line_shift_um = line_shift
+        scan_settings.angle_deg = ang_deg
+        scan_settings.lin_frac = f
         scan_settings.lin_part = np.arange(t0, (T - t0) + 1)
-        scan_settings.Xlim = [min(x_ao), max(x_ao)]
-        scan_settings.Ylim = [min(y_ao), max(y_ao)]
+        scan_settings.Xlim = [np.min(x_ao), np.max(x_ao)]
+        scan_settings.Ylim = [np.min(y_ao), np.max(y_ao)]
 
-        return x_ao, y_ao, scan_settings
+        return ao_buffer, dt, scan_settings

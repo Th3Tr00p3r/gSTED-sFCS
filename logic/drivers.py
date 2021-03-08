@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Drivers Module."""
 
-import asyncio
 from array import array
 from types import SimpleNamespace
 from typing import List, NoReturn
@@ -304,16 +303,6 @@ class VisaInstrument:
             self.state = bool(int(toggle_val))
 
     @err_hndlr
-    async def _aquery(self, cmnd: str) -> float:
-        """Doc."""
-
-        with self.Task(self) as task:
-            task.write(cmnd)
-            await asyncio.sleep(0.1)
-            ans = task.read()
-            return float(ans)
-
-    @err_hndlr
     def _query(self, cmnd: str) -> float:
         """Doc."""
 
@@ -335,8 +324,8 @@ class VisaInstrument:
                 self._dvc.address,
                 read_termination=self._dvc.read_termination,
                 write_termination=self._dvc.write_termination,
-                timeout=3,
-                open_timeout=3,
+                timeout=1,
+                open_timeout=1,
             )
             self._rsrc.query_delay = 0.1
             return self._rsrc

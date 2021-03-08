@@ -122,6 +122,7 @@ class UM232H(BaseDevice, FtdiInstrument):
         ):
             self.read_TDC()
             meas.time_passed = time.perf_counter() - meas.start_time
+        self.read_TDC()
 
     def ao_task_sync_read_TDC(self, meas):
         """
@@ -385,6 +386,11 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
 
         self.start_tasks("ao")
 
+    def stop_write_task(self) -> NoReturn:
+        """Doc."""
+
+        self.close_tasks("ao")
+
     def init_ai_buffer(self) -> NoReturn:
         """Doc."""
 
@@ -433,6 +439,7 @@ class Counter(BaseDevice, NIDAQmxInstrument):
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
 
+        # TODO: fix bug when counter and/or scanners error then restarting
         self.ai_cont_rate = scanners_ai_tasks["Continuous AI"].timing.samp_clk_rate
         self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
 
@@ -676,7 +683,7 @@ class DepletionLaser(BaseDevice, VisaInstrument):
         """Doc."""
 
         # check that current value is within range
-        if (value <= 1000) and (value >= 99):
+        if 99 <= value <= 1000:
             # change the mode to current
             self._write("Powerenable 1")
             # then set the power
@@ -688,7 +695,7 @@ class DepletionLaser(BaseDevice, VisaInstrument):
         """Doc."""
 
         # check that current value is within range
-        if (value <= 2500) and (value >= 1500):
+        if 1500 <= value <= 2500:
             # change the mode to current
             self._write("Powerenable 0")
             # then set the current
