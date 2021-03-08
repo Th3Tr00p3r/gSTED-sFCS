@@ -2523,7 +2523,7 @@ background-repeat: no-repeat;</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="lineLen">
+                              <widget class="QSpinBox" name="maxLineLen">
                                <property name="sizePolicy">
                                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                  <horstretch>0</horstretch>
@@ -8573,7 +8573,7 @@ Origin (um)</string>
   <tabstop>imgScanFileTemplate</tabstop>
   <tabstop>solScanType</tabstop>
   <tabstop>solAngScanPreset</tabstop>
-  <tabstop>lineLen</tabstop>
+  <tabstop>maxLineLen</tabstop>
   <tabstop>aoSampFreq</tabstop>
   <tabstop>angle</tabstop>
   <tabstop>solLinFrac</tabstop>
