@@ -30,13 +30,13 @@ class ScanPatternAO:
         dt = 1 / (params.line_freq_Hz * params.ppl)
 
         # order according to relevant plane dimensions
-        if params.scan_type == "XY":
+        if params.scan_plane == "XY":
             dim_conv = tuple(self.um_V_ratio[i] for i in (0, 1, 2))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "XYZ")
-        if params.scan_type == "YZ":
+        if params.scan_plane == "YZ":
             dim_conv = tuple(self.um_V_ratio[i] for i in (1, 2, 0))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "YZX")
-        if params.scan_type == "XZ":
+        if params.scan_plane == "XZ":
             dim_conv = tuple(self.um_V_ratio[i] for i in (0, 2, 1))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "XZY")
 
@@ -302,7 +302,7 @@ class ScanPatternAO:
         dt = 1 / samp_freq_Hz
 
         scan_settings = SimpleNamespace()
-        scan_settings.scan_type = params.scan_type
+        scan_settings.scan_plane = params.scan_plane
         scan_settings.eff_speed_um_s = v * lin_len * samp_freq_Hz
         scan_settings.scan_freq_Hz = scan_freq_Hz
         scan_settings.samp_freq_Hz = samp_freq_Hz
@@ -320,3 +320,30 @@ class ScanPatternAO:
         scan_settings.Ylim = [np.min(y_ao), np.max(y_ao)]
 
         return ao_buffer, dt, scan_settings
+
+    def calc_circle_pattern(self, params, um_V_ratio):
+        """Doc."""
+
+        # argument definitions (for better readability
+        samp_freq_Hz = params.ao_samp_freq_Hz
+        R_um = params.diameter_um / 2
+        speed = params.speed_um_s
+
+        tot_len = 2 * pi * R_um
+        scan_freq_Hz = speed / tot_len
+        n_smpls = int(samp_freq_Hz / scan_freq_Hz)
+
+        x_um_V_ratio, y_um_V_ratio, _ = um_V_ratio
+        R_Vx = R_um / x_um_V_ratio
+        R_Vy = R_um / y_um_V_ratio
+
+        ao_buffer = [
+            [R_Vx * sin(2 * pi * (i / n_smpls)) for i in range(n_smpls)],
+            [R_Vy * cos(2 * pi * (i / n_smpls)) for i in range(n_smpls)],
+        ]
+
+        dt = 1 / scan_freq_Hz
+
+        params.scan_freq_Hz = scan_freq_Hz
+
+        return ao_buffer, dt, params

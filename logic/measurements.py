@@ -90,7 +90,7 @@ class Measurement:
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
-            type=self.scan_params.scan_type,
+            type=self.scan_params.scan_plane,
             samp_clk_cnfg_xy={
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ao_sample_mode,
@@ -149,7 +149,7 @@ class SFCSImageMeasurement(Measurement):
         self.laser_dvcs.dep_shutter = app.devices.DEP_SHUTTER
 
     def build_filename(self, file_no: int) -> str:
-        return f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_type}_{file_no}"
+        return f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_plane}_{file_no}"
 
     async def toggle_lasers(self, finish=False) -> NoReturn:
         """Doc."""
@@ -196,14 +196,14 @@ class SFCSImageMeasurement(Measurement):
             else:
                 return div_ceil(ppl, 2) * 2
 
-        def bld_scn_addrs_str(scan_type: str, scanners_dvc) -> str:
+        def bld_scn_addrs_str(scan_plane: str, scanners_dvc) -> str:
             """Doc."""
 
-            if scan_type == "XY":
+            if scan_plane == "XY":
                 return ", ".join([scanners_dvc.ao_x_addr, scanners_dvc.ao_y_addr])
-            elif scan_type == "YZ":
+            elif scan_plane == "YZ":
                 return ", ".join([scanners_dvc.ao_y_addr, scanners_dvc.ao_z_addr])
-            elif scan_type == "XZ":
+            elif scan_plane == "XZ":
                 return ", ".join([scanners_dvc.ao_x_addr, scanners_dvc.ao_z_addr])
 
         # fix line freq, pxl clk low ticks, and ppl
@@ -221,7 +221,7 @@ class SFCSImageMeasurement(Measurement):
         # unite relevant physical addresses
         # TODO: is prop in next line ever used? if not, should delete it and the related function
         self.scn_addrs = bld_scn_addrs_str(
-            self.scan_params.scan_type, self.scanners_dvc
+            self.scan_params.scan_plane, self.scanners_dvc
         )
         # init device buffers
         self.scanners_dvc.init_ai_buffer()
@@ -242,7 +242,7 @@ class SFCSImageMeasurement(Measurement):
         """Doc."""
 
         for axis in "XYZ":
-            if axis not in self.scan_params.scan_type:
+            if axis not in self.scan_params.scan_plane:
                 plane_axis = axis
                 break
 
@@ -312,7 +312,7 @@ class SFCSSolutionMeasurement(Measurement):
         super().__init__(
             app=app, type="SFCSSolution", scan_params=scan_params, **kwargs
         )
-        self.scan_params.scan_type = "XY"
+        self.scan_params.scan_plane = "XY"
         self.duration_multiplier = 60
         self.laser_config = self.get_laser_config()
 
@@ -388,8 +388,8 @@ class SFCSSolutionMeasurement(Measurement):
         self.counter_dvc.init_ci_buffer()
 
         # create ao_buffer
-        (self.ao_buffer, dt, self.scan_params) = ScanPatternAO(
-            "angular", self.scan_params, self.um_V_ratio
+        self.ao_buffer, dt, self.scan_params = ScanPatternAO(
+            self.scan_params.pattern, self.scan_params, self.um_V_ratio
         ).calculate_ao()
         self.n_ao_samps = len(self.ao_buffer[0])
         # TODO: ask Oleg: why is the next line correct? explain and use a constant for 1.5E-7
@@ -406,7 +406,6 @@ class SFCSSolutionMeasurement(Measurement):
 
     async def run(self):
         """Doc."""
-        # TODO: this needs refactoring - add more functions and clean up code
         # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
 
         # initialize gui start/end times
@@ -421,7 +420,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.setup_scan()
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         self.data_dvc.purge()
-        self.init_scan_tasks("CONTINUOUS")  # TODO: TEST
+        self.init_scan_tasks("CONTINUOUS")
 
         self.total_time_passed = 0
         logging.info(f"Running {self.type} measurement")
@@ -450,6 +449,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         self.return_to_regular_tasks()
+        # TODO: move to origin, turn off lasers/shutter
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)
