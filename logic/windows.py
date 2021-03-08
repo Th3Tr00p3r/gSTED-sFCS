@@ -268,11 +268,21 @@ class MainWin:
                 self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
 
             elif type == "SFCSSolution":
+
+                pattern = self._app.gui.main.solScanType.currentText()
+                if pattern == "angular":
+                    scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
+                        self._app
+                    )
+                elif pattern == "circle":
+                    scan_params = consts.SOL_CIRC_SCN_WDGT_COLL.read_dict_from_gui(
+                        self._app
+                    )
+                scan_params["pattern"] = pattern
+
                 self._app.meas = meas.SFCSSolutionMeasurement(
                     app=self._app,
-                    scan_params=consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
-                        self._app
-                    ),
+                    scan_params=scan_params,
                     **consts.SOL_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [

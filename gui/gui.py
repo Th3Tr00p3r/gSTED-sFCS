@@ -129,11 +129,10 @@ class MainWin(QMainWindow):
         self.imp.dep_sett_apply()
 
     @pyqtSlot(int)
-    def on_solScanTypeCombox_currentIndexChanged(self, index: int) -> NoReturn:
+    def on_solScanType_currentIndexChanged(self, index: int) -> NoReturn:
         """
         Change stacked widget 'solScanParamsStacked' index
         according to index of the combo box 'solScanTypeCombox'.
-
         """
 
         self.solScanParamsStacked.setCurrentIndex(index)
