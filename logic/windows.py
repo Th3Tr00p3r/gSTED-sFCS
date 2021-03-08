@@ -369,7 +369,7 @@ class MainWin:
 
     def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
         """Doc."""
-        # TODO: use this function at app •init to have the default value loaded
+        # TODO: use this function at app init to have the default value loaded
 
         consts.IMG_SCN_WDGT_COLL.write_to_gui(
             self._app, consts.IMG_SCN_WDGT_FILLOUT_DICT[curr_text]
