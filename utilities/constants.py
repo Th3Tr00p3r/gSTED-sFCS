@@ -243,6 +243,9 @@ FCS_MEAS_WDGT_COLL = QtWidgetCollection(
 )
 
 SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
+    exc_mode=QtWidgetAccess("solScanModeExc", "isChecked", "main"),
+    dep_mode=QtWidgetAccess("solScanModeDep", "isChecked", "main"),
+    sted_mode=QtWidgetAccess("solScanModeSted", "isChecked", "main"),
     max_line_len_um=QtWidgetAccess("maxLineLen", "value", "main"),
     ao_samp_freq_Hz=QtWidgetAccess("angAoSampFreq", "value", "main"),
     angle_deg=QtWidgetAccess("angle", "value", "main"),
@@ -254,6 +257,9 @@ SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
 )
 
 SOL_CIRC_SCN_WDGT_COLL = QtWidgetCollection(
+    exc_mode=QtWidgetAccess("solScanModeExc", "isChecked", "main"),
+    dep_mode=QtWidgetAccess("solScanModeDep", "isChecked", "main"),
+    sted_mode=QtWidgetAccess("solScanModeSted", "isChecked", "main"),
     ao_samp_freq_Hz=QtWidgetAccess("circAoSampFreq", "value", "main"),
     diameter_um=QtWidgetAccess("circDiameter", "value", "main"),
     speed_um_s=QtWidgetAccess("circSpeed", "value", "main"),

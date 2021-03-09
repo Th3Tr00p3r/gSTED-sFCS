@@ -235,7 +235,6 @@ class SettWin(QDialog):
 
     def __init__(self, app, parent=None) -> NoReturn:
         """Doc."""
-        # TODO: lock app access while settings window is open
 
         super(SettWin, self).__init__(parent)
         uic.loadUi(consts.SETTINGSWINDOW_UI_PATH, self)
