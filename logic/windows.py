@@ -268,7 +268,7 @@ class MainWin:
                 self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
 
             elif type == "SFCSSolution":
-
+                self._app.gui.main.imp.go_to_origin("XY")
                 pattern = self._app.gui.main.solScanType.currentText()
                 if pattern == "angular":
                     scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
@@ -321,6 +321,7 @@ class MainWin:
                 self._gui.startFcsMeasurementButton.setText("Start \nMeasurement")
 
             elif type == "SFCSSolution":
+                self._app.gui.main.imp.go_to_origin("XY")
                 self._gui.startSolScan.setText("Start \nScan")
                 # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(True)
