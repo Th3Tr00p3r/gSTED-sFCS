@@ -65,6 +65,32 @@ class Measurement:
         with open(file_path, "wb") as f:
             np.save(f, np_data)
 
+    async def toggle_lasers(self, finish=False) -> NoReturn:
+        """Doc."""
+        # TODO: make sure dep measurement can't reach this point with error in dep!
+
+        if self.scan_params.sted_mode:
+            self.scan_params.exc_mode = True
+            self.scan_params.dep_mode = True
+
+        if finish:
+            if self.scan_params.exc_mode:
+                self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_off=True)
+            if self.scan_params.dep_mode:
+                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_off=True)
+        else:
+            if self.scan_params.exc_mode:
+                self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
+            if self.scan_params.dep_mode:
+                if self.laser_dvcs.dep.state is False:
+                    logging.info(
+                        f"{consts.DEP_LASER.log_ref} isn't on. Turnning on and waiting 5 s before measurement."
+                    )
+                    # TODO: add measurement error decorator to cleanly handle device errors before/during measurements (such as error in dep)
+                    self._app.gui.main.imp.dvc_toggle("DEP_LASER")
+                    await asyncio.sleep(5)
+                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
+
     def get_laser_config(self):
         """Doc."""
 
@@ -150,31 +176,6 @@ class SFCSImageMeasurement(Measurement):
 
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_plane}_{file_no}"
-
-    async def toggle_lasers(self, finish=False) -> NoReturn:
-        """Doc."""
-
-        if self.scan_params.sted_mode:
-            self.scan_params.exc_mode = True
-            self.scan_params.dep_mode = True
-
-        if finish:
-            if self.scan_params.exc_mode:
-                self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_off=True)
-            if self.scan_params.dep_mode:
-                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_off=True)
-        else:
-            if self.scan_params.exc_mode:
-                self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
-            if self.scan_params.dep_mode:
-                if self.laser_dvcs.dep.state is False:
-                    logging.info(
-                        f"{consts.DEP_LASER.log_ref} isn't on. Turnning on and waiting 5 s before measurement."
-                    )
-                    # TODO: add measurement error decorator to cleanly handle device errors before/during measurements (such as error in dep)
-                    self._app.gui.main.imp.dvc_toggle("DEP_LASER")
-                    await asyncio.sleep(5)
-                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
 
     def setup_scan(self):
         """Doc."""
@@ -418,6 +419,7 @@ class SFCSSolutionMeasurement(Measurement):
         num_files = await self.calibrate_num_files()
 
         self.setup_scan()
+        await self.toggle_lasers()
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         self.data_dvc.purge()
         self.init_scan_tasks("CONTINUOUS")
@@ -448,8 +450,8 @@ class SFCSSolutionMeasurement(Measurement):
                 break
 
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+        await self.toggle_lasers(finish=True)
         self.return_to_regular_tasks()
-        # TODO: move to origin, turn off lasers/shutter
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)
