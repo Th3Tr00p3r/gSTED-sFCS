@@ -1,25 +1,6 @@
 arduinoAddr,COM3
 um232FlowControl,hw
 um232BitMode,SYNCFF
-AOXaddr,"Dev3/ao2, Dev3/ao3"
-AOYaddr,"Dev3/ao0, Dev3/ao1"
-AOZaddr,Dev1/ao1
-AOXintAddr,"Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd"
-AOYintAddr,"Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd"
-AOZintAddr,Dev3/ai0
-AOdigTrigSrc,/Dev3/PFI0
-AItrigSrc,/Dev3/PFI0
-AIXaddr,Dev3/ai23
-AIYaddr,Dev3/ai7
-AIZaddr,Dev3/ai9
-AIlaserMonAddr,Dev3/ai3
-excMod,PicoQuant
-excTriggerExtAddr,Dev1/port0/line6
-excTriggerIntAddr,Dev3/port0/
-excAddr,Dev3/port0/line21
-depMod,MPB
-depAddr,COM7
-depShutterAddr,Dev3/port0/line11
 counterPixelClockAddress,Dev1/Ctr0
 pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
 counterTriggerAddress,Dev3/port1/line0
@@ -32,26 +13,46 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
+AOXaddr,"Dev3/ao2, Dev3/ao3"
+AOYaddr,"Dev3/ao0, Dev3/ao1"
+AOZaddr,Dev1/ao1
+AOXintAddr,"Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd"
+AOYintAddr,"Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd"
+AOZintAddr,Dev3/ai0
+AOdigTrigSrc,/Dev3/PFI0
+AItrigSrc,/Dev3/PFI0
+AIXaddr,Dev3/ai23
+AIYaddr,Dev3/ai7
+AIZaddr,Dev3/ai9
+AIlaserMonAddr,Dev3/ai3
+fcsDataPath,./data/
 solDataPath,./data/solution measurements/
 imgDataPath,./data/image measurements/
 camDataPath,./data/camera photos/
 logDataPath,./log/
+excMod,PicoQuant
+excTriggerExtAddr,Dev1/port0/line6
+excTriggerIntAddr,Dev3/port0/
+excAddr,Dev1/port0/line6
+depMod,MPB
+depAddr,COM7
+depShutterAddr,Dev3/port0/line11
 um232VendID,1027
 um232latencyTimerVal,6
 um232ProdID,24596
 um232nBytes,64000
-AIclkDiv,100
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCversion,3
 pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
+AIclkDiv,100
 uc480PlaceHolder,0.0
 xConv,68.0
 yConv,78.0
 zConv,10.0
+counterTriggerEdge,0
 AOtriggerEdge,0
 AOwfType,0
 excTriggerSrc,0
-counterTriggerEdge,0

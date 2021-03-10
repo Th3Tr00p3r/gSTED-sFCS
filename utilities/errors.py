@@ -137,7 +137,7 @@ def dvc_err_hndlr(func) -> Callable:
     return wrapper
 
 
-def error_checker(nick_set: set = None) -> Callable:
+def dvc_error_checker(nick_set: set = None) -> Callable:
     """
     Decorator for clean handeling of GUI interactions with errorneous devices.
     Checks for errors in devices associated with 'func' and shows error box
@@ -234,7 +234,39 @@ def logic_error_handler(func: Callable) -> Callable:
         try:
             return func(*args, **kwargs)
 
-        except FileNotFoundError as exc:
+        except Exception as exc:
             Error(**build_err_dict(exc)).display()
 
     return wrapper_error_handler
+
+
+def meas_err_hndlr(func: Callable) -> Callable:
+    """Doc."""
+
+    if asyncio.iscoroutinefunction(func):
+
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            """Doc."""
+
+            try:
+                return await func(*args, **kwargs)
+
+            except Exception as exc:
+                Error(**build_err_dict(exc)).display()
+
+        return wrapper
+
+    else:
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            """Doc."""
+
+            try:
+                return func(*args, **kwargs)
+
+            except Exception as exc:
+                Error(**build_err_dict(exc)).display()
+
+        return wrapper

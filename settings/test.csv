@@ -11,6 +11,8 @@ TDCaddress,Dev3/port0/line12
 TDCdataVersion,7bytes noreset
 pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
+pixelClockOutput,/Dev3/PFI12
+pixelClockOutputExt,/Dev1/PFI5
 AOXaddr,"Dev3/ao2, Dev3/ao3"
 AOYaddr,"Dev3/ao0, Dev3/ao1"
 AOZaddr,Dev1/ao1
@@ -23,28 +25,28 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-excMod,PicoQuant
-excTriggerExtAddr,Dev1/port0/line6
-excTriggerIntAddr,Dev3/port0/
-excAddr,Dev3/port0/line21
-depMod,MPB
-depAddr,COM7
-depShutterAddr,Dev3/port0/line11
+fcsDataPath,./data/
 solDataPath,./data/solution measurements/
 imgDataPath,./data/image measurements/
 camDataPath,./data/camera photos/
 logDataPath,./log/
+excMod,PicoQuant
+excTriggerExtAddr,Dev1/port0/line6
+excTriggerIntAddr,Dev3/port0/
+excAddr,Dev1/port0/line6
+depMod,MPB
+depAddr,COM7
+depShutterAddr,Dev3/port0/line11
 um232VendID,1027
 um232latencyTimerVal,6
 um232ProdID,24596
 um232nBytes,64000
 TDClaserFreq,10
 TDCFPGAFreq,400
-TDCpixelClockFreq,4
 TDCversion,3
-pixelClockLowTicks,10
+pixelClockFreq,4
 pixelClockHighTicks,2
-pixelClockFreq,4000
+pixelClockLowTicks,10
 AIclkDiv,100
 uc480PlaceHolder,0.0
 xConv,68.0

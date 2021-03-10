@@ -14,7 +14,7 @@ import logic.measurements as meas
 import utilities.constants as consts
 import utilities.helper as helper
 from utilities.dialog import Error, Notification, Question
-from utilities.errors import error_checker as err_chck
+from utilities.errors import dvc_error_checker as err_chck
 from utilities.errors import logic_error_handler as err_hndlr
 
 # TODO: None of the following should be classes. Notice that they don't have any attributes, therefore their state cannot change and thus Objects have no meaning. Instead, the methods should be functions in seperate modules, perhaps under a
@@ -176,6 +176,7 @@ class MainWin:
             f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
         )
 
+    @err_chck({"SCANNERS"})
     def go_to_origin(self, which_axes: str) -> NoReturn:
         """Doc."""
 
@@ -195,6 +196,7 @@ class MainWin:
             f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin"
         )
 
+    @err_chck({"SCANNERS"})
     def displace_scanner_axis(self, sign: int) -> NoReturn:
         """Doc."""
 
@@ -343,8 +345,10 @@ class MainWin:
 
     def change_FCS_meas_dur(self, new_dur):
         """Doc."""
+        # TODO: currently not working
 
-        if self._app.meas.type == "FCS":  # if FCS meas running
+        # if FCS meas running
+        if self._app.meas.type == "FCS":
             self._app.meas.duration = new_dur
 
     def open_settwin(self):
@@ -378,6 +382,7 @@ class MainWin:
 
         self._app.devices.UM232H.reset()
 
+    @err_hndlr
     def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
         """Doc."""
         # TODO: use this function at app init to have the default value loaded

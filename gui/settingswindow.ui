@@ -121,6 +121,32 @@
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_9">
               <item>
+               <layout class="QVBoxLayout" name="verticalLayout_15">
+                <item>
+                 <widget class="QLabel" name="label_13">
+                  <property name="text">
+                   <string>FCS Measurement Data Folder Path</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="fcsDataPath">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>./data/</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
                <widget class="QLabel" name="label_8">
                 <property name="text">
                  <string>Solution Measurement Data Folder Path</string>
@@ -138,7 +164,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>./data/solution measurements</string>
+                 <string>./data/solution measurements/</string>
                 </property>
                </widget>
               </item>
@@ -164,7 +190,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>./data/image measurements</string>
+                 <string>./data/image measurements/</string>
                 </property>
                </widget>
               </item>
@@ -190,7 +216,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>./data/camera photos</string>
+                 <string>./data/camera photos/</string>
                 </property>
                </widget>
               </item>
