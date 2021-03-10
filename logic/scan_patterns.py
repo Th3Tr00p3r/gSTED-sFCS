@@ -2,7 +2,6 @@
 """ scan patterns module. """
 
 from math import cos, pi, sin, sqrt
-from types import SimpleNamespace
 
 import numpy as np
 
@@ -120,8 +119,6 @@ class ScanPatternAO:
         # TODO: this function needs better documentation, starting with some comments
         """Doc."""
 
-        max_y_freq_Hz = 20
-
         # argument definitions (for better readability
         ang_deg = params.angle_deg
         ang_rad = ang_deg * (pi / 180)
@@ -130,6 +127,7 @@ class ScanPatternAO:
         line_shift = params.line_shift_um
         min_n_lines = params.min_lines
         samp_freq_Hz = params.ao_samp_freq_Hz
+        max_scan_freq_Hz = params.max_scan_freq_Hz
 
         if (ang_deg == 0) or (ang_deg == 90):
             tot_len = max_line_len
@@ -223,7 +221,7 @@ class ScanPatternAO:
                 )
 
         else:
-            # TODO: add better error handeling
+            # TODO: handle this error from measurements.py using needed decorator
             raise ValueError("The scan angle should be in [0, 180] range!")
 
         lin_len = f * tot_len
@@ -232,10 +230,10 @@ class ScanPatternAO:
         tot_ppl = round((samp_freq_Hz / scan_freq_Hz) / 2)
         scan_freq_Hz = samp_freq_Hz / tot_ppl / 2
 
-        if scan_freq_Hz > max_y_freq_Hz:
-            x_ao = []
-            y_ao = []
-            # TODO: error(['Maximal frequency exceeded: ', num2str(Freq)])
+        # TODO: ask Oleg about this (max y freq?)
+        if scan_freq_Hz > max_scan_freq_Hz:
+            print(f"scan frequency is over {max_scan_freq_Hz}. ({scan_freq_Hz} Hz)")
+            # raise ValueError("Why is this an error?")
 
         T = tot_ppl
         ppl = T * f / (2 - f)  # make ppl in linear part
@@ -301,25 +299,18 @@ class ScanPatternAO:
 
         dt = 1 / samp_freq_Hz
 
-        scan_settings = SimpleNamespace()
-        scan_settings.scan_plane = params.scan_plane
-        scan_settings.eff_speed_um_s = v * lin_len * samp_freq_Hz
-        scan_settings.scan_freq_Hz = scan_freq_Hz
-        scan_settings.samp_freq_Hz = samp_freq_Hz
-        scan_settings.tot_ppl = tot_ppl
-        scan_settings.ppl = ppl
-        scan_settings.n_lines = n_lines
-        scan_settings.lin_len = lin_len
-        scan_settings.tot_len = tot_len
-        scan_settings.max_line_len_um = max_line_len
-        scan_settings.line_shift_um = line_shift
-        scan_settings.angle_deg = ang_deg
-        scan_settings.lin_frac = f
-        scan_settings.lin_part = np.arange(t0, (T - t0) + 1)
-        scan_settings.Xlim = [np.min(x_ao), np.max(x_ao)]
-        scan_settings.Ylim = [np.min(y_ao), np.max(y_ao)]
+        params.eff_speed_um_s = v * lin_len * samp_freq_Hz
+        params.scan_freq_Hz = scan_freq_Hz
+        params.tot_ppl = tot_ppl
+        params.ppl = ppl
+        params.n_lines = n_lines
+        params.lin_len = lin_len
+        params.tot_len = tot_len
+        params.lin_part = np.arange(t0, (T - t0) + 1)
+        params.Xlim = [np.min(x_ao), np.max(x_ao)]
+        params.Ylim = [np.min(y_ao), np.max(y_ao)]
 
-        return ao_buffer, dt, scan_settings
+        return ao_buffer, dt, params
 
     def calc_circle_pattern(self, params, um_V_ratio):
         """Doc."""
