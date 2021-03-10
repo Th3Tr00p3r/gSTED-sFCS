@@ -33,53 +33,6 @@ class BaseDevice:
         super().__init__(**kwargs)
 
 
-class PixelClock(BaseDevice, NIDAQmxInstrument):
-    """
-    The pixel clock is fed to the DAQ board from the FPGA.
-    Base frequency is 4 MHz. Used for scans, where it is useful to
-    have divisible frequencies for both the laser pulses and AI/AO.
-    """
-
-    def __init__(self, nick, param_dict, led_widget, switch_widget):
-        super().__init__(
-            nick=nick,
-            led_widget=led_widget,
-            switch_widget=switch_widget,
-            param_dict=param_dict,
-        )
-
-        self.toggle(False)
-
-    def toggle(self, bool):
-        """Doc."""
-
-        if bool:
-            self._start_co_clock_sync()
-        else:
-            self.close_all_tasks()
-        self.state = bool
-
-    def _start_co_clock_sync(self) -> NoReturn:
-        """Doc."""
-
-        task_name = "Pixel Clock CO"
-
-        self.close_tasks("co")
-
-        self.create_co_task(
-            name=task_name,
-            chan_spec={
-                "name_to_assign_to_channel": "pixel clock",
-                "counter": self.cntr_addr,
-                "source_terminal": self.tick_src,
-                "low_ticks": self.low_ticks,
-                "high_ticks": self.high_ticks,
-            },
-            clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
-        )
-        self.start_tasks("co")
-
-
 class UM232H(BaseDevice, FtdiInstrument):
     """
     Represents the FTDI chip used to transfer data from the FPGA
@@ -123,6 +76,7 @@ class UM232H(BaseDevice, FtdiInstrument):
             self.read_TDC()
             meas.time_passed = time.perf_counter() - meas.start_time
         self.read_TDC()
+        meas.time_passed = time.perf_counter() - meas.start_time
 
     def ao_task_sync_read_TDC(self, meas):
         """
@@ -132,7 +86,9 @@ class UM232H(BaseDevice, FtdiInstrument):
 
         while meas.scanners_dvc.are_tasks_done("ao") is False and meas.is_running:
             self.read_TDC()
+            meas.time_passed = time.perf_counter() - meas.start_time
         self.read_TDC()
+        meas.time_passed = time.perf_counter() - meas.start_time
 
     def init_data(self):
         """Doc."""
@@ -537,6 +493,53 @@ class Counter(BaseDevice, NIDAQmxInstrument):
 
         if len(self.ci_buffer) > self.CONT_READ_BFFR_SZ:
             self.ci_buffer = self.ci_buffer[-self.CONT_READ_BFFR_SZ :]
+
+
+class PixelClock(BaseDevice, NIDAQmxInstrument):
+    """
+    The pixel clock is fed to the DAQ board from the FPGA.
+    Base frequency is 4 MHz. Used for scans, where it is useful to
+    have divisible frequencies for both the laser pulses and AI/AO.
+    """
+
+    def __init__(self, nick, param_dict, led_widget, switch_widget):
+        super().__init__(
+            nick=nick,
+            led_widget=led_widget,
+            switch_widget=switch_widget,
+            param_dict=param_dict,
+        )
+
+        self.toggle(False)
+
+    def toggle(self, bool):
+        """Doc."""
+
+        if bool:
+            self._start_co_clock_sync()
+        else:
+            self.close_all_tasks()
+        self.state = bool
+
+    def _start_co_clock_sync(self) -> NoReturn:
+        """Doc."""
+
+        task_name = "Pixel Clock CO"
+
+        self.close_tasks("co")
+
+        self.create_co_task(
+            name=task_name,
+            chan_spec={
+                "name_to_assign_to_channel": "pixel clock",
+                "counter": self.cntr_addr,
+                "source_terminal": self.tick_src,
+                "low_ticks": self.low_ticks,
+                "high_ticks": self.high_ticks,
+            },
+            clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
+        )
+        self.start_tasks("co")
 
 
 class Camera(BaseDevice, UC480Instrument):

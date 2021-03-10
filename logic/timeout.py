@@ -95,9 +95,9 @@ class Timeout:
                 last_line = get_last_line(consts.LOG_FOLDER_PATH + "log")
 
                 if last_line.find("INFO") != -1:
-                    last_line = (
-                        last_line[12:23] + last_line[38:]
-                    )  # TODO: explain these indices (see log file) or use regular expression instead
+                    line_time = last_line[12:23]
+                    line_text = last_line[38:]
+                    last_line = line_time + line_text
 
                     if last_line != buffer_deque[0]:
                         buffer_deque.appendleft(last_line)
@@ -155,11 +155,7 @@ class Timeout:
         def updt_meas_progbar(meas) -> NoReturn:
             """Doc."""
 
-            if (
-                (self._app.devices.UM232H.error_dict is None)
-                and meas.type in {"FCS", "SFCSSolution"}
-                and meas.is_running
-            ):
+            if (self._app.devices.UM232H.error_dict is None) and meas.is_running:
                 if meas.type == "FCS":
                     progress = (
                         meas.time_passed
@@ -175,6 +171,12 @@ class Timeout:
                         )
                     else:
                         progress = 0
+                elif meas.type == "SFCSImage":
+                    progress = (
+                        meas.time_passed
+                        / meas.est_duration
+                        * meas.prog_bar_wdgt.obj.maximum()
+                    )
                 meas.prog_bar_wdgt.set(progress)
 
         while self.not_finished:

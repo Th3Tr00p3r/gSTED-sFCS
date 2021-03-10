@@ -275,6 +275,8 @@ class NIDAQmxInstrument:
 class VisaInstrument:
     """Doc."""
 
+    # TODO: try to free the relevant USB port (COM3?) to avoid getting stuck when trying to run the application when dep is powered ON
+
     def __init__(
         self,
         param_dict,

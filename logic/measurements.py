@@ -15,6 +15,7 @@ import numpy as np
 import utilities.constants as consts
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error
+from utilities.errors import meas_err_hndlr as err_hndlr
 from utilities.helper import div_ceil
 
 
@@ -36,6 +37,7 @@ class Measurement:
             self.um_V_ratio = tuple(
                 getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
             )
+        self.get_laser_config()
         self.is_running = False
 
     async def start(self):
@@ -104,7 +106,8 @@ class Measurement:
             laser_config = "dep"
         else:
             laser_config = "nolaser"
-        return laser_config
+
+        self.laser_config = laser_config
 
     def init_scan_tasks(self, ao_sample_mode: str):
         """Doc."""
@@ -238,6 +241,7 @@ class SFCSImageMeasurement(Measurement):
         self.n_ao_samps = len(self.ao_buffer[0])
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7
         self.ai_conv_rate = 1 / ((dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[0])
+        self.est_duration = self.n_ao_samps * dt * len(self.set_pnts_planes)
 
     def change_plane(self, plane_idx):
         """Doc."""
@@ -252,6 +256,7 @@ class SFCSImageMeasurement(Measurement):
             type=plane_axis,
         )
 
+    @err_hndlr
     async def run(self):
         """Doc."""
         # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
@@ -261,6 +266,8 @@ class SFCSImageMeasurement(Measurement):
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
         plane_data = []
+        self.start_time = time.perf_counter()
+        self.time_passed = 0
         logging.info(f"Running {self.type} measurement")
         for plane_idx in range(len(self.set_pnts_planes)):
 
@@ -277,11 +284,12 @@ class SFCSImageMeasurement(Measurement):
 
                 await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
 
-                # TODO: add progbar support (calculate time for each plane, and mulyiply by number of planes)
-
+                # TEST
                 print(
                     f"Plane {plane_idx} scanned. First 10 bytes of data: {self.data_dvc.data[:10]}"
                 )
+                # /TEST
+
                 plane_data.append(self.data_dvc.data)
 
                 self.data_dvc.init_data()
@@ -315,7 +323,6 @@ class SFCSSolutionMeasurement(Measurement):
         )
         self.scan_params.scan_plane = "XY"
         self.duration_multiplier = 60
-        self.laser_config = self.get_laser_config()
 
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{file_no}"
@@ -405,6 +412,7 @@ class SFCSSolutionMeasurement(Measurement):
             f"Total Bytes = {self.data_dvc.tot_bytes_read}\n"
         )
 
+    @err_hndlr
     async def run(self):
         """Doc."""
         # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
@@ -414,12 +422,14 @@ class SFCSSolutionMeasurement(Measurement):
         self.start_time_wdgt.set(start_time)
         self.end_time_wdgt.set(end_time)
 
+        # turn on lasers
+        await self.toggle_lasers()
+
         # calibrating save-intervals/num_files
         # TODO: test if non-scanning calibration gives good enough approximation for file size, if not, consider scanning inside cal function
         num_files = await self.calibrate_num_files()
 
         self.setup_scan()
-        await self.toggle_lasers()
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         self.data_dvc.purge()
         self.init_scan_tasks("CONTINUOUS")
@@ -464,6 +474,9 @@ class FCSMeasurement(Measurement):
         super().__init__(app=app, type="FCS", **kwargs)
         self.duration_multiplier = 1
 
+    def build_filename(self) -> str:
+        return f"fcs_{self.laser_config}_{self.duration}s"
+
     async def run(self):
         """Doc."""
 
@@ -482,6 +495,9 @@ class FCSMeasurement(Measurement):
             self.time_passed = 0
 
             await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
+
+            if self.save is True:
+                self.save_data(self.build_filename())
 
             disp_ACF(meas_dvc=self.data_dvc)
             self.data_dvc.init_data()

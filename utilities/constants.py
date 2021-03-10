@@ -240,6 +240,8 @@ FCS_MEAS_WDGT_COLL = QtWidgetCollection(
     g0_wdgt=QtWidgetAccess("fcsG0", "value", "main"),
     decay_time_wdgt=QtWidgetAccess("fcsDecayTime", "value", "main"),
     prog_bar_wdgt=QtWidgetAccess("fcsProgressBar", "value", "main"),
+    save=QtWidgetAccess("fcsSave", "isChecked", "main"),
+    save_path=QtWidgetAccess("fcsDataPath", "text", "settings"),
 )
 
 SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
@@ -253,7 +255,7 @@ SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
     line_shift_um=QtWidgetAccess("lineShift", "value", "main"),
     speed_um_s=QtWidgetAccess("solAngScanSpeed", "value", "main"),
     min_lines=QtWidgetAccess("minNumLines", "value", "main"),
-    max_scn_freq_Hz=QtWidgetAccess("maxScanFreq", "value", "main"),
+    max_scan_freq_Hz=QtWidgetAccess("maxScanFreq", "value", "main"),
 )
 
 SOL_CIRC_SCN_WDGT_COLL = QtWidgetCollection(
