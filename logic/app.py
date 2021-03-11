@@ -88,6 +88,10 @@ class App:
         instantiating a driver object for each device.
         """
 
+        #        # reset all USB devices
+        #        usb_dvcs = usb.core.find(find_all=True)
+        #        [usb_dvc.reset() for usb_dvc in usb_dvcs]
+
         self.devices = SimpleNamespace()
         for nick in consts.DVC_NICKS_TUPLE:
             DVC_CONSTS = getattr(consts, nick)

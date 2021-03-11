@@ -35,7 +35,7 @@ excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
 excAddr,Dev1/port0/line6
 depMod,MPB
-depAddr,COM7
+depAddr,COM6
 depShutterAddr,Dev3/port0/line11
 um232VendID,1027
 um232latencyTimerVal,6
