@@ -14,7 +14,6 @@ from pyftdi.ftdi import Ftdi, FtdiError
 from pyftdi.usbtools import UsbTools
 
 import utilities.helper as helper
-from utilities.errors import dvc_err_hndlr as err_hndlr
 
 
 class FtdiInstrument:
@@ -27,7 +26,6 @@ class FtdiInstrument:
 
         self._inst = Ftdi()  # URL - ftdi://ftdi:232h:FT3TG15/1
 
-    @err_hndlr
     def open(self):
         """Doc."""
 
@@ -41,7 +39,6 @@ class FtdiInstrument:
 
         self.state = True
 
-    @err_hndlr
     def read(self):
         """Doc."""
 
@@ -53,26 +50,22 @@ class FtdiInstrument:
 
         return read_bytes[2:]
 
-    @err_hndlr
     def purge(self):
         """Doc."""
 
         self._inst.purge_rx_buffer()
 
-    @err_hndlr
     def close(self):
         """Doc."""
 
         self._inst.close()
         self.state = False
 
-    @err_hndlr
     def reset_dvc(self):
         """Doc."""
 
         self._inst.reset(usb_reset=True)
 
-    @err_hndlr
     def check_status(self, status: array) -> NoReturn:
         """Doc."""
 
@@ -97,7 +90,6 @@ class NIDAQmxInstrument:
         self.task_types = ["ai", "ao", "ci", "co"]
         [setattr(self.tasks, type, {}) for type in self.task_types]
 
-    @err_hndlr
     def start_tasks(self, task_type: str):
         """Doc."""
 
@@ -118,20 +110,17 @@ class NIDAQmxInstrument:
         [type_tasks_dict[task_name].close() for task_name in type_tasks_dict.keys()]
         setattr(self.tasks, task_type, {})
 
-    @err_hndlr
     def close_all_tasks(self):
         """Doc."""
 
         for type in self.task_types:
             self.close_tasks(type)
 
-    @err_hndlr
     def wait_for_task(self, task_type: str, task_name: str):
         """Doc."""
 
         getattr(self.tasks, task_type)[task_name].wait_until_done(timeout=3)
 
-    @err_hndlr
     def create_ai_task(
         self,
         name: str,
@@ -161,7 +150,6 @@ class NIDAQmxInstrument:
         #        self.sreader = AnalogMultiChannelReader(self.in_tasks.in_stream)
         #        self.sreader.verify_array_shape = False
 
-    @err_hndlr
     def create_ao_task(
         self,
         name: str,
@@ -181,7 +169,6 @@ class NIDAQmxInstrument:
         self.tasks.ao[name] = task
         return task
 
-    @err_hndlr
     def create_ci_task(
         self,
         name: str,
@@ -210,7 +197,6 @@ class NIDAQmxInstrument:
 
         self.tasks.ci[name] = task
 
-    @err_hndlr
     def create_co_task(self, name: str, chan_spec: dict, clk_cnfg: dict):
         """Doc."""
 
@@ -220,7 +206,6 @@ class NIDAQmxInstrument:
 
         self.tasks.co[name] = task
 
-    @err_hndlr
     def analog_read(self, task_name: str, n_samples):
         """Doc."""
 
@@ -236,7 +221,6 @@ class NIDAQmxInstrument:
         ai_task = self.tasks.ai[task_name]
         return ai_task.read(number_of_samples_per_channel=n_samples)
 
-    @err_hndlr
     def analog_write(
         self, task_name: str, data: np.ndarray, auto_start=None
     ) -> NoReturn:
@@ -248,7 +232,6 @@ class NIDAQmxInstrument:
         else:
             ao_task.write(data, timeout=self.ao_timeout)
 
-    @err_hndlr
     def counter_stream_read(self):
         """
          Reads all available samples on board into self.cont_read_buffer
@@ -262,14 +245,12 @@ class NIDAQmxInstrument:
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
 
-    @err_hndlr
     def digital_write(self, bool):
         """Doc."""
 
         with ni.Task() as do_task:
             do_task.do_channels.add_do_chan(self.address)
             do_task.write(bool)
-        self.state = bool
 
 
 class VisaInstrument:
@@ -290,21 +271,12 @@ class VisaInstrument:
         self.write_termination = write_termination
         self.rm = visa.ResourceManager()
 
-    @err_hndlr
     def _write(self, cmnd: str) -> NoReturn:
-        """
-        Sends a command to the VISA instrument.
-        """
+        """Sends a command to the VISA instrument."""
 
         with self.Task(self) as task:
             task.write(cmnd)
 
-        # TODO: this check should be in devices.py, not here
-        if cmnd.startswith("setLDenable"):  # change state if toggle is performed
-            *_, toggle_val = cmnd
-            self.state = bool(int(toggle_val))
-
-    @err_hndlr
     def _query(self, cmnd: str) -> float:
         """Doc."""
 
@@ -346,7 +318,6 @@ class UC480Instrument:
         [setattr(self, key, val) for key, val in param_dict.items()]
         self._inst = None
 
-    @err_hndlr
     def init_cam(self):
         """Doc."""
 
@@ -355,20 +326,17 @@ class UC480Instrument:
         except Exception:
             raise UC480Error(msg="Camera disconnected")
 
-    @err_hndlr
     def close_cam(self):
         """Doc."""
 
         if self._inst is not None:
             self._inst.close()
 
-    @err_hndlr
     def grab_image(self):
         """Doc."""
 
         return self._inst.grab_image()
 
-    @err_hndlr
     def toggle_vid(self, state):
         """Doc."""
 
@@ -377,7 +345,6 @@ class UC480Instrument:
         else:
             self._inst.stop_live_video()
 
-    @err_hndlr
     def get_latest_frame(self):
         """Doc."""
 
