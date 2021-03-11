@@ -37,6 +37,10 @@ class Measurement:
             self.um_V_ratio = tuple(
                 getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
             )
+        self.laser_dvcs = SimpleNamespace()
+        self.laser_dvcs.exc = app.devices.EXC_LASER
+        self.laser_dvcs.dep = app.devices.DEP_LASER
+        self.laser_dvcs.dep_shutter = app.devices.DEP_SHUTTER
         self.get_laser_config()
         self.is_running = False
 
@@ -172,10 +176,6 @@ class SFCSImageMeasurement(Measurement):
 
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
-        self.laser_dvcs = SimpleNamespace()
-        self.laser_dvcs.exc = app.devices.EXC_LASER
-        self.laser_dvcs.dep = app.devices.DEP_LASER
-        self.laser_dvcs.dep_shutter = app.devices.DEP_SHUTTER
 
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_plane}_{file_no}"
