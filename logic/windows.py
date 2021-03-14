@@ -263,7 +263,8 @@ class MainWin:
                 self._app.meas = meas.FCSMeasurement(
                     self._app,
                     **consts.FCS_MEAS_WDGT_COLL.hold_objects(
-                        self._app, ["prog_bar_wdgt", "g0_wdgt", "decay_time_wdgt"]
+                        self._app,
+                        ["prog_bar_wdgt", "g0_wdgt", "decay_time_wdgt", "plot_wdgt"],
                     ).read_dict_from_gui(self._app),
                 )
 
@@ -311,7 +312,13 @@ class MainWin:
                     scan_params=consts.IMG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
                     **consts.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
-                        ["prog_bar_wdgt", "curr_line_wdgt", "curr_plane_wdgt"],
+                        [
+                            "prog_bar_wdgt",
+                            "curr_plane_wdgt",
+                            "plane_shown",
+                            "image_wdgt",
+                            "pattern_wdgt",
+                        ],
                     ).read_dict_from_gui(self._app),
                 )
                 self._gui.startImgScan.setText("Stop \nScan")

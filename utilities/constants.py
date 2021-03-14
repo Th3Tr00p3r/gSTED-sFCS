@@ -242,6 +242,7 @@ FCS_MEAS_WDGT_COLL = QtWidgetCollection(
     prog_bar_wdgt=QtWidgetAccess("fcsProgressBar", "value", "main"),
     save=QtWidgetAccess("fcsSave", "isChecked", "main"),
     save_path=QtWidgetAccess("fcsDataPath", "text", "settings"),
+    plot_wdgt=QtWidgetAccess("fcsPlot", None, "main"),
 )
 
 SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
@@ -279,6 +280,7 @@ SOL_MEAS_WDGT_COLL = QtWidgetCollection(
     end_time_wdgt=QtWidgetAccess("solScanEndTime", "time", "main"),
     file_num_wdgt=QtWidgetAccess("solScanFileNo", "value", "main"),
     total_files_wdgt=QtWidgetAccess("solScanTotalFiles", "value", "main"),
+    pattern_wdgt=QtWidgetAccess("solScanPattern", None, "main"),
 )
 
 IMG_SCN_WDGT_COLL = QtWidgetCollection(
@@ -313,6 +315,8 @@ IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     file_template=QtWidgetAccess("imgScanFileTemplate", "text", "main"),
     save_path=QtWidgetAccess("imgDataPath", "text", "settings"),
     prog_bar_wdgt=QtWidgetAccess("imgScanProgressBar", "value", "main"),
-    curr_line_wdgt=QtWidgetAccess("currLine", "value", "main"),
     curr_plane_wdgt=QtWidgetAccess("currPlane", "value", "main"),
+    plane_shown=QtWidgetAccess("numPlaneShown", "value", "main"),
+    image_wdgt=QtWidgetAccess("imgScanPlot", None, "main"),
+    pattern_wdgt=QtWidgetAccess("imgScanPattern", None, "main"),
 )

@@ -425,7 +425,6 @@ class Counter(BaseDevice, NIDAQmxInstrument):
             param_dict=param_dict,
         )
 
-        self.counts = None  # this is for scans where the counts are actually used.
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
 

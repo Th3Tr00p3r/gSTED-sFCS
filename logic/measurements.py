@@ -11,12 +11,13 @@ from typing import NoReturn, Tuple
 
 import nidaqmx.constants as ni_consts  # TODO: move to consts.py
 import numpy as np
+import pyqtgraph as pg
 
 import utilities.constants as consts
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error
 from utilities.errors import meas_err_hndlr as err_hndlr
-from utilities.helper import div_ceil
+from utilities.helper import div_ceil, get_datetime_str
 
 
 class Measurement:
@@ -177,8 +178,8 @@ class SFCSImageMeasurement(Measurement):
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
 
-    def build_filename(self, file_no: int) -> str:
-        return f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_plane}_{file_no}"
+    def build_filename(self) -> str:
+        return f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_plane}_{get_datetime_str()}"
 
     def setup_scan(self):
         """Doc."""
@@ -242,6 +243,7 @@ class SFCSImageMeasurement(Measurement):
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7
         self.ai_conv_rate = 1 / ((dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[0])
         self.est_duration = self.n_ao_samps * dt * len(self.set_pnts_planes)
+        self.plane_shown.obj.setMaximum(len(self.set_pnts_planes) - 1)
 
     def change_plane(self, plane_idx):
         """Doc."""
@@ -255,6 +257,33 @@ class SFCSImageMeasurement(Measurement):
             ao_data=[[self.set_pnts_planes[plane_idx]]],
             type=plane_axis,
         )
+
+    def build_image(self, plane_data):
+        """Doc."""
+
+        # TESTESTET
+        from PIL import Image as PImage
+
+        # / TESTESTEST
+        #        pxl_sz = self.scan_params.dim2_um / (self.scan_params.n_lines - 1)
+        # TESTESTET
+        img = PImage.open("D:/people/Idomic/gSTED-sFCS/test.png")
+        # / TESTESTEST
+
+        return img
+
+    def disp_plane_img(self, plane_idx):
+        """Doc."""
+
+        image_wdgt = self.image_wdgt.obj
+        p = image_wdgt.addPlot()
+
+        img_item = pg.ImageItem(image=self.data[:, :, plane_idx])
+        p.addItem(img_item)
+
+        hist_item = pg.HistogramLUTItem()
+        hist_item.setImageItem(img_item)
+        image_wdgt.addItem(hist_item)
 
     @err_hndlr
     async def run(self):
@@ -275,7 +304,6 @@ class SFCSImageMeasurement(Measurement):
 
                 self.change_plane(plane_idx)
 
-                self.curr_line_wdgt.set(plane_idx)
                 self.curr_plane_wdgt.set(plane_idx)
 
                 self.data_dvc.purge()
@@ -297,14 +325,16 @@ class SFCSImageMeasurement(Measurement):
             else:
                 break
 
-            # TODO: prepare images, save, and present the middle plane
-        #        plane_images = [self.build_image(plane) for plane in plane_data]
-        #        self.data = np.dstack(plane_images)
-        #        filename = self.build_filename()
-        #        self.save_data(filename)
+        # TODO: prepare images, save, and present the middle plane
+        plane_images = [self.build_image(plane) for plane in plane_data]
+        self.data = np.dstack(plane_images)
+        filename = self.build_filename()
+        self.save_data(filename)
 
-        # TODO: show middle plane? or lowest? add gui object to params
-        self._app.gui.main.numPlaneShown.setValue(1)
+        # show middle plane
+        mid_plane = int(len(self.set_pnts_planes) // 2)
+        self.plane_shown.set(mid_plane)
+        self.disp_plane_img(mid_plane)
 
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         await self.toggle_lasers(finish=True)
@@ -488,6 +518,8 @@ class FCSMeasurement(Measurement):
                 f"Full Data[:100] = {meas_dvc.data[:100]}\n"
                 f"Total Bytes = {meas_dvc.tot_bytes_read}\n"
             )
+
+            self.plot_wdgt.obj.plot(meas_dvc.data, clear=True)
 
         while self.is_running:
 

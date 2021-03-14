@@ -1199,63 +1199,12 @@
                     </widget>
                    </item>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_20" stretch="1,2,0,2,1">
+                    <layout class="QHBoxLayout" name="horizontalLayout_20" stretch="1,2,1">
                      <property name="spacing">
                       <number>0</number>
                      </property>
                      <item>
                       <spacer name="horizontalSpacer_18">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_25">
-                       <property name="spacing">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <widget class="QLabel" name="label_27">
-                         <property name="font">
-                          <font>
-                           <pointsize>7</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Current Line</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QSpinBox" name="currLine">
-                         <property name="enabled">
-                          <bool>false</bool>
-                         </property>
-                         <property name="buttonSymbols">
-                          <enum>QAbstractSpinBox::NoButtons</enum>
-                         </property>
-                         <property name="minimum">
-                          <number>-99999</number>
-                         </property>
-                         <property name="maximum">
-                          <number>999999</number>
-                         </property>
-                         <property name="value">
-                          <number>-1</number>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_19">
                        <property name="orientation">
                         <enum>Qt::Horizontal</enum>
                        </property>
@@ -1487,6 +1436,12 @@ Pattern</string>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
                        </property>
+                       <property name="minimum">
+                        <number>0</number>
+                       </property>
+                       <property name="value">
+                        <number>0</number>
+                       </property>
                       </widget>
                      </item>
                      <item>
@@ -1535,7 +1490,7 @@ Pattern</string>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="imgShowCombox">
+                      <widget class="QComboBox" name="imgShowMethod">
                        <property name="font">
                         <font>
                          <pointsize>8</pointsize>
@@ -1604,366 +1559,15 @@ Pattern</string>
                   </layout>
                  </item>
                  <item>
-                  <layout class="QGridLayout" name="gridLayout_17" rowstretch="1,0" columnstretch="0,1">
+                  <layout class="QGridLayout" name="gridLayout_17" rowstretch="1,0" columnstretch="0">
                    <property name="spacing">
                     <number>0</number>
                    </property>
-                   <item row="0" column="0">
-                    <widget class="QPushButton" name="selectROI">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="minimumSize">
-                      <size>
-                       <width>0</width>
-                       <height>0</height>
-                      </size>
-                     </property>
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>150</height>
-                      </size>
-                     </property>
-                     <property name="font">
-                      <font>
-                       <pointsize>10</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>Select 
-ROI 
-to Scan</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1" rowspan="2">
-                    <layout class="QGridLayout" name="gridLayout_14" rowstretch="1,0" columnstretch="1,0">
+                   <item row="0" column="0" rowspan="2">
+                    <layout class="QGridLayout" name="imageLayout" rowstretch="0" columnstretch="0">
                      <property name="spacing">
                       <number>0</number>
                      </property>
-                     <item row="0" column="1">
-                      <widget class="QGraphicsView" name="graphicsView_2">
-                       <property name="maximumSize">
-                        <size>
-                         <width>100</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="0">
-                      <widget class="QGraphicsView" name="scanImgGraphicsView">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>300</width>
-                         <height>300</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>9999</width>
-                         <height>9999</height>
-                        </size>
-                       </property>
-                       <property name="baseSize">
-                        <size>
-                         <width>0</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="layoutDirection">
-                        <enum>Qt::LeftToRight</enum>
-                       </property>
-                       <property name="frameShadow">
-                        <enum>QFrame::Plain</enum>
-                       </property>
-                       <property name="sizeAdjustPolicy">
-                        <enum>QAbstractScrollArea::AdjustIgnored</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QGraphicsView" name="graphicsView">
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>100</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>100</height>
-                        </size>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="1">
-                      <layout class="QVBoxLayout" name="verticalLayout_68">
-                       <item>
-                        <widget class="QLabel" name="label_66">
-                         <property name="maximumSize">
-                          <size>
-                           <width>999</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>Cursor Info</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="lineEdit_16">
-                         <property name="enabled">
-                          <bool>false</bool>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="readOnly">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="1" column="0">
-                    <layout class="QVBoxLayout" name="verticalLayout_24" stretch="0,1">
-                     <property name="spacing">
-                      <number>3</number>
-                     </property>
-                     <item>
-                      <widget class="QGroupBox" name="imgScanToolsGroup">
-                       <property name="title">
-                        <string>Tools</string>
-                       </property>
-                       <layout class="QGridLayout" name="gridLayout_32">
-                        <item row="0" column="2">
-                         <widget class="QToolButton" name="ROItoolButton">
-                          <property name="minimumSize">
-                           <size>
-                            <width>32</width>
-                            <height>32</height>
-                           </size>
-                          </property>
-                          <property name="maximumSize">
-                           <size>
-                            <width>32</width>
-                            <height>32</height>
-                           </size>
-                          </property>
-                          <property name="font">
-                           <font>
-                            <pointsize>18</pointsize>
-                           </font>
-                          </property>
-                          <property name="toolTip">
-                           <string>crosshair</string>
-                          </property>
-                          <property name="layoutDirection">
-                           <enum>Qt::LeftToRight</enum>
-                          </property>
-                          <property name="text">
-                           <string/>
-                          </property>
-                          <property name="icon">
-                           <iconset>
-                            <normalon>:/crosshair.png</normalon>
-                           </iconset>
-                          </property>
-                          <property name="iconSize">
-                           <size>
-                            <width>25</width>
-                            <height>25</height>
-                           </size>
-                          </property>
-                          <property name="checkable">
-                           <bool>true</bool>
-                          </property>
-                          <property name="autoExclusive">
-                           <bool>true</bool>
-                          </property>
-                          <property name="toolButtonStyle">
-                           <enum>Qt::ToolButtonIconOnly</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item row="0" column="3">
-                         <widget class="QToolButton" name="magToolButton">
-                          <property name="minimumSize">
-                           <size>
-                            <width>32</width>
-                            <height>32</height>
-                           </size>
-                          </property>
-                          <property name="maximumSize">
-                           <size>
-                            <width>32</width>
-                            <height>32</height>
-                           </size>
-                          </property>
-                          <property name="toolTip">
-                           <string>magnify</string>
-                          </property>
-                          <property name="styleSheet">
-                           <string notr="true">background-image: url(:/icons/actions/system-search.png);
-background-position: center;
-background-repeat: no-repeat;</string>
-                          </property>
-                          <property name="text">
-                           <string/>
-                          </property>
-                          <property name="icon">
-                           <iconset>
-                            <normalon>:/zoom.png</normalon>
-                           </iconset>
-                          </property>
-                          <property name="iconSize">
-                           <size>
-                            <width>32</width>
-                            <height>32</height>
-                           </size>
-                          </property>
-                          <property name="checkable">
-                           <bool>true</bool>
-                          </property>
-                          <property name="autoExclusive">
-                           <bool>true</bool>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_19" stretch="0,0">
-                       <property name="spacing">
-                        <number>3</number>
-                       </property>
-                       <item>
-                        <layout class="QVBoxLayout" name="verticalLayout_23" stretch="0,1">
-                         <item>
-                          <widget class="QLabel" name="label_34">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="maximumSize">
-                            <size>
-                             <width>16777215</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                           <property name="font">
-                            <font>
-                             <pointsize>7</pointsize>
-                            </font>
-                           </property>
-                           <property name="text">
-                            <string>Contrast</string>
-                           </property>
-                           <property name="alignment">
-                            <set>Qt::AlignCenter</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item alignment="Qt::AlignHCenter">
-                          <widget class="QSlider" name="imgScanContrastSlider">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="maximum">
-                            <number>1000</number>
-                           </property>
-                           <property name="singleStep">
-                            <number>1</number>
-                           </property>
-                           <property name="pageStep">
-                            <number>10</number>
-                           </property>
-                           <property name="value">
-                            <number>700</number>
-                           </property>
-                           <property name="orientation">
-                            <enum>Qt::Vertical</enum>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item>
-                        <layout class="QVBoxLayout" name="verticalLayout_22" stretch="0,1">
-                         <item>
-                          <widget class="QLabel" name="label_35">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="maximumSize">
-                            <size>
-                             <width>16777215</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                           <property name="font">
-                            <font>
-                             <pointsize>7</pointsize>
-                            </font>
-                           </property>
-                           <property name="text">
-                            <string>Brightness</string>
-                           </property>
-                           <property name="alignment">
-                            <set>Qt::AlignCenter</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item alignment="Qt::AlignHCenter">
-                          <widget class="QSlider" name="imgScanBrightnessSlider">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="styleSheet">
-                            <string notr="true"/>
-                           </property>
-                           <property name="maximum">
-                            <number>1000</number>
-                           </property>
-                           <property name="value">
-                            <number>700</number>
-                           </property>
-                           <property name="orientation">
-                            <enum>Qt::Vertical</enum>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                      </layout>
-                     </item>
                     </layout>
                    </item>
                   </layout>
@@ -3540,7 +3144,7 @@ Pattern</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QGraphicsView" name="solScanPattern">
+                 <widget class="PlotWidget" name="solScanPattern">
                   <property name="enabled">
                    <bool>false</bool>
                   </property>
@@ -5638,7 +5242,7 @@ Measurement</string>
                   </layout>
                  </item>
                  <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
-                  <widget class="QGraphicsView" name="FCSgraphicsView">
+                  <widget class="PlotWidget" name="fcsPlot">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                      <horstretch>0</horstretch>
@@ -8859,6 +8463,13 @@ Origin (um)</string>
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>tabWidget</tabstop>
   <tabstop>imgScanPreset</tabstop>
@@ -8872,14 +8483,7 @@ Origin (um)</string>
   <tabstop>imgScanNumPlanes</tabstop>
   <tabstop>startImgScan</tabstop>
   <tabstop>numPlaneShown</tabstop>
-  <tabstop>imgShowCombox</tabstop>
-  <tabstop>selectROI</tabstop>
-  <tabstop>scanImgGraphicsView</tabstop>
-  <tabstop>graphicsView_2</tabstop>
-  <tabstop>imgScanContrastSlider</tabstop>
-  <tabstop>imgScanBrightnessSlider</tabstop>
-  <tabstop>graphicsView</tabstop>
-  <tabstop>lineEdit_16</tabstop>
+  <tabstop>imgShowMethod</tabstop>
   <tabstop>imgScanFileTemplate</tabstop>
   <tabstop>solScanType</tabstop>
   <tabstop>solAngScanPreset</tabstop>
@@ -8903,7 +8507,7 @@ Origin (um)</string>
   <tabstop>solScanFileTemplate</tabstop>
   <tabstop>measFCSDur</tabstop>
   <tabstop>startFcsMeasurementButton</tabstop>
-  <tabstop>FCSgraphicsView</tabstop>
+  <tabstop>fcsPlot</tabstop>
  </tabstops>
  <resources>
   <include location="icons/icons.qrc"/>
