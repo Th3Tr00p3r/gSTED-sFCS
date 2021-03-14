@@ -10,6 +10,9 @@ data/
 log/
 # settings/
 
+# test pics (idomich)
+*.png
+
 # eric project folder (idomich)
 .eric6project
 

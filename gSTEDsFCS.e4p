@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project gSTEDsFCS -->
-<!-- Saved: 2021-01-28, 17:20:25 -->
+<!-- Saved: 2021-03-14, 13:09:46 -->
 <!-- Copyright (C) 2021 idomic,  -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -23,6 +23,7 @@
     <Source>logic/devices.py</Source>
     <Source>logic/drivers.py</Source>
     <Source>logic/measurements.py</Source>
+    <Source>logic/scan_patterns.py</Source>
     <Source>logic/timeout.py</Source>
     <Source>logic/windows.py</Source>
     <Source>main.py</Source>
