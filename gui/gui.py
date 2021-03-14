@@ -3,6 +3,7 @@
 
 from typing import NoReturn
 
+import pyqtgraph as pg
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QDialog, QMainWindow, QWidget
@@ -22,6 +23,51 @@ class MainWin(QMainWindow):
         self.move(600, 30)
         self.imp = wins_imp.MainWin(self, app)
         self._loop = app.loop
+
+        # Graphics ----------------------------------------------------------------------------------------------------------------
+        # TESTESTET
+        import numpy as np
+        from PIL import Image as PImage
+
+        img = np.array(PImage.open("D:/people/Idomic/gSTED-sFCS/test.png"))
+        img_item = pg.ImageItem(img)
+        # / TESTESTEST
+        glw = pg.GraphicsLayoutWidget()
+        vb = glw.addViewBox()
+        vb.addItem(img_item)
+        vb.setLimits(
+            xMin=0,
+            xMax=img.shape[0],
+            minXRange=0,
+            maxXRange=img.shape[0],
+            yMin=0,
+            yMax=img.shape[1],
+            minYRange=0,
+            maxYRange=img.shape[1],
+        )
+
+        # crosshair
+        vLine = pg.InfiniteLine(angle=90, movable=False)
+        hLine = pg.InfiniteLine(angle=0, movable=False)
+        vb.addItem(vLine, ignoreBounds=True)
+        vb.addItem(hLine, ignoreBounds=True)
+
+        def mouseClicked(evt):
+            pos = evt.pos()  # using signal proxy turns original arguments into a tuple
+            if vb.sceneBoundingRect().contains(pos):
+                mousePoint = vb.mapSceneToView(pos)
+                vLine.setPos(mousePoint.x())
+                hLine.setPos(mousePoint.y())
+
+        #        proxy = pg.SignalProxy(vb.scene().sigMouseClicked, rateLimit=60, slot=mouseClicked)
+        vb.scene().sigMouseClicked.connect(mouseClicked)
+
+        hist = pg.HistogramLUTItem()
+        hist.setImageItem(img_item)
+        glw.addItem(hist)
+        self.imageLayout.addWidget(glw)
+
+        # ----------------------------------------------------------------------------------------------------------------------------------
 
         # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.axisMoveUm_released(1))

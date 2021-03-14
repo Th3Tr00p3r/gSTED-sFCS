@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import datetime
 from dataclasses import dataclass
 from typing import Dict, List, NoReturn, Union
 
@@ -11,14 +12,17 @@ import PyQt5.QtWidgets as QtWidgets
 
 import gui.icons.icon_paths as icon_path
 import logic.app as app_module
-from utilities.dialog import UserDialog
 
 
 class QtWidgetAccess:
     def __init__(self, obj_name: str, getter: str, gui_parent_name: str = "settings"):
         self.obj_name = obj_name
-        self.getter = getter
-        self.setter = self._get_setter()
+        if getter is not None:
+            self.getter = getter
+            self.setter = self._get_setter()
+        else:
+            self.getter = None
+            self.setter = None
         self.gui_parent_name = gui_parent_name
 
     def _get_setter(self) -> str:
@@ -39,8 +43,13 @@ class QtWidgetAccess:
     def get(self, parent_gui=None) -> Union[int, float, str]:
         """Get widget value"""
 
-        wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
-        return getattr(wdgt, self.getter)()
+        if self.getter is not None:
+            wdgt = (
+                self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
+            )
+            return getattr(wdgt, self.getter)()
+        else:
+            return None
 
     def set(self, arg, parent_gui=None) -> NoReturn:
         """Set widget property"""
@@ -209,10 +218,10 @@ def limit(val: float, min: float, max: float) -> float:
     return max
 
 
-async def user_input(dialog: UserDialog):
-    """Doc."""
+def get_datetime_str() -> str:
+    """Return a date and time string in the format DDMMYY_HHMMSS"""
 
-    return dialog.display()
+    return datetime.datetime.now().strftime("%d%m_%H%M%S")
 
 
 @dataclass
