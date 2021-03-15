@@ -116,12 +116,14 @@ class Timeout:
                 # COUNTER
                 if self._app.devices.COUNTER.error_dict is None:
                     self._app.devices.COUNTER.count()
-                    self._app.devices.COUNTER.dump_ci_buff_overflow()
+                    if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
+                        self._app.devices.COUNTER.dump_ci_buff_overflow()
 
                 # AI
                 if self._app.devices.SCANNERS.error_dict is None:
                     self._app.devices.SCANNERS.fill_ai_buff()
-                    self._app.devices.SCANNERS.dump_ai_buff_overflow()
+                    if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
+                        self._app.devices.SCANNERS.dump_ai_buff_overflow()
 
             await asyncio.sleep(consts.TIMEOUT)
 
