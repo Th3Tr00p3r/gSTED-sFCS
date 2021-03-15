@@ -223,6 +223,39 @@ class MainWin:
                 f"{getattr(consts, 'SCANNERS').log_ref}({axis}) was displaced {str(um_disp)} um"
             )
 
+    @err_chck({"SCANNERS"})
+    def roi_to_scan(self):
+        """Doc"""
+
+        try:
+            # TODO: dim1 & 2 are positions on the image, not voltages. I need to see how to ranslate them (LabVIEW, image cluster)
+            dim1_vltg = self._gui.imgScanPlot.vLine.pos().x()
+            dim2_vltg = self._gui.imgScanPlot.hLine.pos().y()
+            dim3_vltg = self._app.last_img_scn.set_pnts_planes[
+                self._gui.numPlaneShown.value()
+            ]
+
+            plane_type = self._app.last_img_scn.plane_type
+
+            if plane_type == "XY":
+                vltgs = (dim1_vltg, dim2_vltg, dim3_vltg)
+            elif plane_type == "XZ":
+                vltgs = (dim1_vltg, dim3_vltg, dim2_vltg)
+            elif plane_type == "YZ":
+                vltgs = (dim2_vltg, dim3_vltg, dim1_vltg)
+
+            for axis, vltg in zip("XYZ", vltgs):
+                getattr(self._gui, f"{axis.lower()}AOV").setValue(vltg)
+
+            self.move_scanners(plane_type)
+
+            logging.info(
+                f"{getattr(consts, 'SCANNERS').log_ref} moved to ROI ({vltgs})"
+            )
+
+        except AttributeError:
+            pass
+
     @err_chck({"STAGE"})
     def move_stage(self, dir: str, steps: int):
         """Doc."""
@@ -272,7 +305,7 @@ class MainWin:
 
             elif type == "SFCSSolution":
                 self._app.gui.main.imp.go_to_origin("XY")
-                pattern = self._app.gui.main.solScanType.currentText()
+                pattern = self._gui.solScanType.currentText()
                 if pattern == "angular":
                     scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
                         self._app
@@ -316,6 +349,7 @@ class MainWin:
                             "prog_bar_wdgt",
                             "curr_plane_wdgt",
                             "plane_shown",
+                            "plane_choice",
                             "image_wdgt",
                             "pattern_wdgt",
                         ],
@@ -330,7 +364,7 @@ class MainWin:
                 self._gui.startFcsMeasurementButton.setText("Start \nMeasurement")
 
             elif type == "SFCSSolution":
-                self._app.gui.main.imp.go_to_origin("XY")
+                self._gui.imp.go_to_origin("XY")
                 self._gui.startSolScan.setText("Start \nScan")
                 # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(True)
@@ -349,6 +383,29 @@ class MainWin:
                 f"({current_type}) is currently running."
             )
             Error(custom_txt=txt).display()
+
+    def disp_plane_img(self, plane_idx):
+        """Doc."""
+
+        def build_image(disp_mthd, pic_params):
+            """Doc."""
+
+            if disp_mthd == "Forward scan - actual counts per pixel":
+                return pic_params.pic1
+
+        disp_mthd = self._gui.imgShowMethod.currentText()
+        plane_type = self._app.last_img_scn.plane_type
+        pic_params = self._app.last_img_scn.plane_pic_params[plane_idx]
+
+        image = build_image(disp_mthd, pic_params)
+
+        self._gui.imgScanPlot.add_image(image, plane_type)
+
+    def plane_choice_changed(self, plane_idx):
+        """Doc."""
+
+        self._app.meas.plane_shown.set(plane_idx)
+        self._app.meas.disp_plane_img(plane_idx)
 
     def change_FCS_meas_dur(self, new_dur):
         """Doc."""

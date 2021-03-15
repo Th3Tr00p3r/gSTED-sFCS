@@ -11,7 +11,6 @@ from typing import NoReturn, Tuple
 
 import nidaqmx.constants as ni_consts  # TODO: move to consts.py
 import numpy as np
-import pyqtgraph as pg
 
 import utilities.constants as consts
 from logic.scan_patterns import ScanPatternAO
@@ -235,15 +234,15 @@ class SFCSImageMeasurement(Measurement):
         (
             self.ao_buffer,
             dt,
-            self.set_pnts_lines_odd,
-            self.set_pnts_lines_even,
-            self.set_pnts_planes,
+            self.scan_params.set_pnts_lines_odd,
+            self.scan_params.set_pnts_lines_even,
+            self.scan_params.set_pnts_planes,
         ) = ScanPatternAO("image", self.scan_params, self.um_V_ratio).calculate_ao()
         self.n_ao_samps = len(self.ao_buffer[0])
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7
         self.ai_conv_rate = 1 / ((dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[0])
-        self.est_duration = self.n_ao_samps * dt * len(self.set_pnts_planes)
-        self.plane_shown.obj.setMaximum(len(self.set_pnts_planes) - 1)
+        self.est_duration = self.n_ao_samps * dt * len(self.scan_params.set_pnts_planes)
+        self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
 
     def change_plane(self, plane_idx):
         """Doc."""
@@ -254,36 +253,118 @@ class SFCSImageMeasurement(Measurement):
                 break
 
         self.scanners_dvc.start_write_task(
-            ao_data=[[self.set_pnts_planes[plane_idx]]],
+            ao_data=[[self.scan_params.set_pnts_planes[plane_idx]]],
             type=plane_axis,
         )
 
-    def build_image(self, plane_data):
+    def build_image(self, plane_idx):
         """Doc."""
 
-        # TESTESTET
-        from PIL import Image as PImage
+        n_lines = self.scan_params.n_lines
+        n_planes = self.scan_params.n_planes
+        pxl_sz = self.scan_params.dim2_um / (n_lines - 1)
+        ao = np.array(self.ao_buffer)
+        lines_odd = self.scan_params.set_pnts_lines_odd
+        scan_plane = self.scan_params.scan_plane
+        ppl = self.scan_params.ppl
+        counts = self.counter_dvc.cont_read_buffer
 
-        # / TESTESTEST
-        #        pxl_sz = self.scan_params.dim2_um / (self.scan_params.n_lines - 1)
-        # TESTESTET
-        img = PImage.open("D:/people/Idomic/gSTED-sFCS/test.png")
-        # / TESTESTEST
+        if scan_plane in {"XY", "XZ"}:
+            xc = self.scan_params.curr_ao_x
+            um_per_V = self.um_V_ratio[0]
 
-        return img
+        elif scan_plane == "YZ":
+            xc = self.scan_params.curr_ao_y
+            um_per_V = self.um_V_ratio[1]
 
-    def disp_plane_img(self, plane_idx):
+        pxl_sz_V = pxl_sz / um_per_V
+        line_len_V = (self.scan_params.dim1_um) / um_per_V
+
+        total_pnts = n_lines * ppl
+        j0 = (n_planes - 1) * total_pnts
+        J = np.arange(total_pnts) + j0
+
+        x = np.tile(ao[:].T, (1, n_lines))
+
+        if n_planes == 1:
+            counts = np.diff([0, counts[J]])
+        else:
+            counts = np.diff(counts[[j0, J]])
+
+        x.reshape(ppl, n_lines, order="F")
+
+        counts.reshape(ppl, n_lines, order="F")
+        Ic = int(ppl / 2)
+        x1 = x[1:Ic, :]
+        x2 = x[-1 : Ic + 1 : -1, :]
+        counts1 = counts[:Ic, :]
+        counts2 = counts[-1 : Ic + 1 : -1, :]
+
+        x_min = xc - line_len_V / 2
+        pxls_pl = int(line_len_V / pxl_sz_V) + 1
+
+        # even and odd planes are scanned in the opposite directions
+        if n_planes % 2:
+            K = np.arange(n_lines)
+        else:
+            K = np.arange(n_lines, 0, 1)
+
+        pic1 = np.zeros((n_lines, pxls_pl))
+        norm1 = np.zeros((n_lines, pxls_pl))
+        for j in K:
+            temp_counts = np.zeros((1, pxls_pl))
+            temp_num = np.zeros((1, pxls_pl))
+            for i in range(Ic):
+                idx = round((x1[i, j] - x_min) / pxl_sz_V) + 1
+                if 0 < idx < pxls_pl:
+                    temp_counts[idx] = temp_counts[idx] + counts1[i, j]
+                    temp_num[idx] = temp_num[idx] + 1
+            pic1[K[j], :] = temp_counts
+            norm1[K[j], :] = temp_num
+
+        pic2 = np.zeros((n_lines, pxls_pl))
+        norm2 = np.zeros((n_lines, pxls_pl))
+        for j in K:
+            temp_counts = np.zeros((1, pxls_pl))
+            temp_num = np.zeros((1, pxls_pl))
+            for i in range(Ic):
+                idx = round((x2[i, j] - x_min) / pxl_sz_V) + 1
+                if 0 < idx < pxls_pl:
+                    temp_counts[idx] = temp_counts[idx] + counts2[i, j]
+                    temp_num[idx] = temp_num[idx] + 1
+            pic2[K[j], :] = temp_counts
+            norm2[K[j], :] = temp_num
+
+        line_scale_V = x_min + np.arange(pxls_pl) * pxl_sz_V
+
+        pic_params = SimpleNamespace()
+        pic_params.pic1 = pic1
+        pic_params.norm1 = norm1
+        pic_params.pic2 = pic2
+        pic_params.norm2 = norm2
+        pic_params.line_ticks = line_scale_V
+        pic_params.row_ticks = lines_odd
+
+        return pic_params
+
+    #    def build_image(self):
+    #        """Doc."""
+    #
+    #        # TESTESTET
+    #        from PIL import Image as PImage
+    #
+    #        img = PImage.open("D:/people/Idomic/gSTED-sFCS/test.png")
+    #        # / TESTESTEST
+    #
+    #        return img
+
+    def keep_last_meas(self):
         """Doc."""
 
-        image_wdgt = self.image_wdgt.obj
-        p = image_wdgt.addPlot()
-
-        img_item = pg.ImageItem(image=self.data[:, :, plane_idx])
-        p.addItem(img_item)
-
-        hist_item = pg.HistogramLUTItem()
-        hist_item.setImageItem(img_item)
-        image_wdgt.addItem(hist_item)
+        self._app.last_img_scn = SimpleNamespace()
+        self._app.last_img_scn.plane_type = self.scan_params.scan_plane
+        self._app.last_img_scn.plane_pic_params = self.plane_pic_params
+        self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
 
     @err_hndlr
     async def run(self):
@@ -298,44 +379,42 @@ class SFCSImageMeasurement(Measurement):
         self.start_time = time.perf_counter()
         self.time_passed = 0
         logging.info(f"Running {self.type} measurement")
-        for plane_idx in range(len(self.set_pnts_planes)):
+        for plane_idx in range(self.scan_params.n_planes):
 
             if self.is_running:
 
                 self.change_plane(plane_idx)
-
                 self.curr_plane_wdgt.set(plane_idx)
-
                 self.data_dvc.purge()
-
                 self.init_scan_tasks("FINITE")
 
                 await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
 
-                # TEST
-                print(
-                    f"Plane {plane_idx} scanned. First 10 bytes of data: {self.data_dvc.data[:10]}"
-                )
-                # /TEST
-
                 plane_data.append(self.data_dvc.data)
-
                 self.data_dvc.init_data()
 
             else:
                 break
 
-        # TODO: prepare images, save, and present the middle plane
-        plane_images = [self.build_image(plane) for plane in plane_data]
-        self.data = np.dstack(plane_images)
-        filename = self.build_filename()
-        self.save_data(filename)
+        if plane_idx == self.scan_params.n_planes - 1:
+            # prepare data
+            self.plane_pic_params = [
+                self.build_image(plane_idx)
+                for plane_idx in range(self.scan_params.n_planes)
+            ]
 
-        # show middle plane
-        mid_plane = int(len(self.set_pnts_planes) // 2)
-        self.plane_shown.set(mid_plane)
-        self.disp_plane_img(mid_plane)
+            # save data
+            self.save_data(self.build_filename())
+            self.keep_last_meas()
 
+            # TODO: instead of this, show each plane when finished (better then speed is to know what your'e getting)
+            # show middle plane
+            mid_plane = int(len(self.scan_params.set_pnts_planes) // 2)
+            self.plane_shown.set(mid_plane)
+            self.plane_choice.set(mid_plane)
+            self._app.gui.main.imp.disp_plane_img(mid_plane)
+
+        # return to stand-by state
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         await self.toggle_lasers(finish=True)
         self.return_to_regular_tasks()

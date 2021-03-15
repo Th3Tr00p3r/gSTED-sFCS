@@ -3,6 +3,7 @@
 
 from typing import NoReturn
 
+import numpy as np
 import pyqtgraph as pg
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
@@ -24,50 +25,8 @@ class MainWin(QMainWindow):
         self.imp = wins_imp.MainWin(self, app)
         self._loop = app.loop
 
-        # Graphics ----------------------------------------------------------------------------------------------------------------
-        # TESTESTET
-        import numpy as np
-        from PIL import Image as PImage
-
-        img = np.array(PImage.open("D:/people/Idomic/gSTED-sFCS/test.png"))
-        img_item = pg.ImageItem(img)
-        # / TESTESTEST
-        glw = pg.GraphicsLayoutWidget()
-        vb = glw.addViewBox()
-        vb.addItem(img_item)
-        vb.setLimits(
-            xMin=0,
-            xMax=img.shape[0],
-            minXRange=0,
-            maxXRange=img.shape[0],
-            yMin=0,
-            yMax=img.shape[1],
-            minYRange=0,
-            maxYRange=img.shape[1],
-        )
-
-        # crosshair
-        vLine = pg.InfiniteLine(angle=90, movable=False)
-        hLine = pg.InfiniteLine(angle=0, movable=False)
-        vb.addItem(vLine, ignoreBounds=True)
-        vb.addItem(hLine, ignoreBounds=True)
-
-        def mouseClicked(evt):
-            pos = evt.pos()  # using signal proxy turns original arguments into a tuple
-            if vb.sceneBoundingRect().contains(pos):
-                mousePoint = vb.mapSceneToView(pos)
-                vLine.setPos(mousePoint.x())
-                hLine.setPos(mousePoint.y())
-
-        #        proxy = pg.SignalProxy(vb.scene().sigMouseClicked, rateLimit=60, slot=mouseClicked)
-        vb.scene().sigMouseClicked.connect(mouseClicked)
-
-        hist = pg.HistogramLUTItem()
-        hist.setImageItem(img_item)
-        glw.addItem(hist)
-        self.imageLayout.addWidget(glw)
-
-        # ----------------------------------------------------------------------------------------------------------------------------------
+        # graphics
+        self.imgScanPlot = ImageDisplay(layout=self.imageLayout)
 
         # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.axisMoveUm_released(1))
@@ -126,6 +85,18 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.save()
+
+    @pyqtSlot()
+    def on_roiImgScn_released(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.roi_to_scan()
+
+    @pyqtSlot(int)
+    def on_numPlaneShownChoice_sliderMoved(self, val: int) -> NoReturn:
+        """Doc."""
+
+        self.imp.plane_choice_changed(val)
 
     @pyqtSlot(int)
     def on_measFCSDuration_valueChanged(self, int) -> NoReturn:
@@ -339,3 +310,50 @@ class CamWin(QWidget):
         """Doc."""
 
         self.imp.toggle_video()
+
+
+class ImageDisplay:
+    """Doc."""
+
+    def __init__(self, layout):
+        glw = pg.GraphicsLayoutWidget()
+        self.vb = glw.addViewBox()
+        self.hist = pg.HistogramLUTItem()
+        glw.addItem(self.hist)
+        layout.addWidget(glw)
+
+    def add_image(
+        self, image: np.ndarray, plane_type: str, limit_zoomout=True, crosshair=True
+    ):
+        """Doc."""
+
+        self.plane_type = plane_type
+        image_item = pg.ImageItem(image)
+        self.vb.addItem(image_item)
+        self.hist.setImageItem(image_item)
+
+        if limit_zoomout:
+            self.vb.setLimits(
+                xMin=0,
+                xMax=image.shape[0],
+                minXRange=0,
+                maxXRange=image.shape[0],
+                yMin=0,
+                yMax=image.shape[1],
+                minYRange=0,
+                maxYRange=image.shape[1],
+            )
+        if crosshair:
+            self.vLine = pg.InfiniteLine(angle=90, movable=False)
+            self.hLine = pg.InfiniteLine(angle=0, movable=False)
+            self.vb.addItem(self.vLine, ignoreBounds=True)
+            self.vb.addItem(self.hLine, ignoreBounds=True)
+            # proxy = pg.SignalProxy(vb.scene().sigMouseClicked, rateLimit=1, slot=mouseClicked)
+            self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
+
+    def mouseClicked(self, evt):
+        pos = evt.pos()  # using signal proxy turns original arguments into a tuple
+        if self.vb.sceneBoundingRect().contains(pos):
+            mousePoint = self.vb.mapSceneToView(pos)
+            self.vLine.setPos(mousePoint.x())
+            self.hLine.setPos(mousePoint.y())

@@ -317,6 +317,7 @@ IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     prog_bar_wdgt=QtWidgetAccess("imgScanProgressBar", "value", "main"),
     curr_plane_wdgt=QtWidgetAccess("currPlane", "value", "main"),
     plane_shown=QtWidgetAccess("numPlaneShown", "value", "main"),
+    plane_choice=QtWidgetAccess("numPlaneShownChoice", "value", "main"),
     image_wdgt=QtWidgetAccess("imgScanPlot", None, "main"),
     pattern_wdgt=QtWidgetAccess("imgScanPattern", None, "main"),
 )
