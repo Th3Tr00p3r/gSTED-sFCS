@@ -4,6 +4,7 @@
 import logging
 from typing import NoReturn
 
+import numpy as np
 import PyQt5.QtWidgets as QtWidgets
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -387,19 +388,45 @@ class MainWin:
     def disp_plane_img(self, plane_idx):
         """Doc."""
 
-        def build_image(disp_mthd, pic_params):
+        def build_image(img_data, method):
             """Doc."""
 
-            if disp_mthd == "Forward scan - actual counts per pixel":
-                return pic_params.pic1
+            if method == "Forward scan - actual counts per pixel":
+                return img_data.pic1
+
+            elif method == "Forward scan - points per pixel":
+                return img_data.norm1
+
+            elif method == "Forward scan - normalized":
+                return img_data.pic1 / img_data.norm1
+
+            elif method == "Backwards scan - actual counts per pixel":
+                return img_data.pic2
+
+            elif method == "Backwards scan - points per pixel":
+                return img_data.norm2
+
+            elif method == "Backwards scan - normalized":
+                return img_data.pic2 / img_data.norm2
+
+            elif method == "Both scans - interlaced":
+                p1 = img_data.pic1 / img_data.norm1
+                p2 = img_data.pic2 / img_data.norm2
+                n_lines = p1.shape[0] + p2.shape[0]
+                p = np.zeros(p1.shape)  # assert p1.shape == p2.shape ?
+                p[:n_lines:2, :] = p1
+                p[1:n_lines:2, :] = p2
+                return p
+
+            elif method == "Both scans - averaged":
+                return (img_data.pic1 + img_data.pic2) / (
+                    img_data.norm1 + img_data.norm2
+                )
 
         disp_mthd = self._gui.imgShowMethod.currentText()
-        plane_type = self._app.last_img_scn.plane_type
-        pic_params = self._app.last_img_scn.plane_pic_params[plane_idx]
-
-        image = build_image(disp_mthd, pic_params)
-
-        self._gui.imgScanPlot.add_image(image, plane_type)
+        image_data = self._app.last_img_scn.plane_images_data[plane_idx]
+        image = build_image(image_data, disp_mthd)
+        self._gui.imgScanPlot.add_image(image)
 
     def plane_choice_changed(self, plane_idx):
         """Doc."""
