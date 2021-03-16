@@ -93,11 +93,7 @@ class ScanPatternAO:
         # now we build the full AO (2D):
 
         single_line_ao = single_line_ao.tolist()
-        set_pnts_lines_odd = set_pnts_lines_odd.tolist()
-        set_pnts_lines_even = set_pnts_lines_even.tolist()
-        set_pnts_planes = np.asarray(set_pnts_planes).tolist()
-        if not isinstance(set_pnts_planes, list):
-            set_pnts_planes = [set_pnts_planes]
+        set_pnts_planes = np.atleast_1d(set_pnts_planes)
 
         dim1_ao = []
         dim2_ao = []

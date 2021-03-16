@@ -322,12 +322,9 @@ class ImageDisplay:
         glw.addItem(self.hist)
         layout.addWidget(glw)
 
-    def add_image(
-        self, image: np.ndarray, plane_type: str, limit_zoomout=True, crosshair=True
-    ):
+    def add_image(self, image: np.ndarray, limit_zoomout=True, crosshair=True):
         """Doc."""
 
-        self.plane_type = plane_type
         image_item = pg.ImageItem(image)
         self.vb.addItem(image_item)
         self.hist.setImageItem(image_item)

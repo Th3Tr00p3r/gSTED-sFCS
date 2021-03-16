@@ -8,6 +8,7 @@ import datetime
 from dataclasses import dataclass
 from typing import Dict, List, NoReturn, Union
 
+import numpy as np
 import PyQt5.QtWidgets as QtWidgets
 
 import gui.icons.icon_paths as icon_path
@@ -234,3 +235,14 @@ class DeviceAttrs:
     cls_xtra_args: List[str] = None
     led_icon_path: str = icon_path.LED_GREEN
     switch_widget: QtWidgetAccess = None
+
+
+@dataclass
+class ImageData:
+
+    pic1: np.ndarray
+    norm1: np.ndarray
+    pic2: np.ndarray
+    norm2: np.ndarray
+    line_ticks_V: np.ndarray
+    row_ticks_V: np.ndarray
