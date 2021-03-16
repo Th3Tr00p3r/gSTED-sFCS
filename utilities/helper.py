@@ -10,6 +10,7 @@ from typing import Dict, List, NoReturn, Union
 
 import numpy as np
 import PyQt5.QtWidgets as QtWidgets
+import pyqtgraph as pg
 
 import gui.icons.icon_paths as icon_path
 import logic.app as app_module
@@ -246,3 +247,47 @@ class ImageData:
     norm2: np.ndarray
     line_ticks_V: np.ndarray
     row_ticks_V: np.ndarray
+
+
+class ImageDisplay:
+    """Doc."""
+
+    def __init__(self, layout):
+        glw = pg.GraphicsLayoutWidget()
+        self.vb = glw.addViewBox()
+        self.hist = pg.HistogramLUTItem()
+        glw.addItem(self.hist)
+        layout.addWidget(glw)
+
+    def add_image(self, image: np.ndarray, limit_zoomout=True, crosshair=True):
+        """Doc."""
+
+        image_item = pg.ImageItem(image)
+        self.vb.addItem(image_item)
+        self.hist.setImageItem(image_item)
+
+        if limit_zoomout:
+            self.vb.setLimits(
+                xMin=0,
+                xMax=image.shape[0],
+                minXRange=0,
+                maxXRange=image.shape[0],
+                yMin=0,
+                yMax=image.shape[1],
+                minYRange=0,
+                maxYRange=image.shape[1],
+            )
+        if crosshair:
+            self.vLine = pg.InfiniteLine(angle=90, movable=False)
+            self.hLine = pg.InfiniteLine(angle=0, movable=False)
+            self.vb.addItem(self.vLine, ignoreBounds=True)
+            self.vb.addItem(self.hLine, ignoreBounds=True)
+            # proxy = pg.SignalProxy(vb.scene().sigMouseClicked, rateLimit=1, slot=mouseClicked)
+            self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
+
+    def mouseClicked(self, evt):
+        pos = evt.pos()  # using signal proxy turns original arguments into a tuple
+        if self.vb.sceneBoundingRect().contains(pos):
+            mousePoint = self.vb.mapSceneToView(pos)
+            self.vLine.setPos(mousePoint.x())
+            self.hLine.setPos(mousePoint.y())
