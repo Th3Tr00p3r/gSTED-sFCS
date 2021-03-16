@@ -16,7 +16,7 @@ import utilities.constants as consts
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error
 from utilities.errors import meas_err_hndlr as err_hndlr
-from utilities.helper import div_ceil, get_datetime_str
+from utilities.helper import ImageData, div_ceil, get_datetime_str
 
 
 class Measurement:
@@ -257,17 +257,15 @@ class SFCSImageMeasurement(Measurement):
             type=plane_axis,
         )
 
-    def build_image(self, plane_idx):
+    def prepare_image_data(self, plane_idx):
         """Doc."""
 
         n_lines = self.scan_params.n_lines
-        n_planes = self.scan_params.n_planes
         pxl_sz = self.scan_params.dim2_um / (n_lines - 1)
-        ao = np.array(self.ao_buffer)
-        lines_odd = self.scan_params.set_pnts_lines_odd
         scan_plane = self.scan_params.scan_plane
         ppl = self.scan_params.ppl
-        counts = self.counter_dvc.cont_read_buffer
+        ao = np.array(self.ao_buffer)[0, :ppl]
+        counts = self.counter_dvc.ci_buffer
 
         if scan_plane in {"XY", "XZ"}:
             xc = self.scan_params.curr_ao_x
@@ -280,43 +278,45 @@ class SFCSImageMeasurement(Measurement):
         pxl_sz_V = pxl_sz / um_per_V
         line_len_V = (self.scan_params.dim1_um) / um_per_V
 
-        total_pnts = n_lines * ppl
-        j0 = (n_planes - 1) * total_pnts
-        J = np.arange(total_pnts) + j0
+        ppp = n_lines * ppl
+        j0 = plane_idx * ppp
+        J = np.arange(ppp) + j0
+
+        if plane_idx == 0:  # if first plane
+            counts = np.concatenate([[0], counts[J]])
+            counts = np.diff(counts)
+        else:
+            counts = np.concatenate([[j0], counts[J]])
+            counts = np.diff(counts)
+
+        counts = counts.reshape(ppl, n_lines, order="F")
 
         x = np.tile(ao[:].T, (1, n_lines))
+        x = x.reshape(ppl, n_lines, order="F")
 
-        if n_planes == 1:
-            counts = np.diff([0, counts[J]])
-        else:
-            counts = np.diff(counts[[j0, J]])
-
-        x.reshape(ppl, n_lines, order="F")
-
-        counts.reshape(ppl, n_lines, order="F")
         Ic = int(ppl / 2)
-        x1 = x[1:Ic, :]
-        x2 = x[-1 : Ic + 1 : -1, :]
+        x1 = x[:Ic, :]
+        x2 = x[-1 : Ic - 1 : -1, :]
         counts1 = counts[:Ic, :]
-        counts2 = counts[-1 : Ic + 1 : -1, :]
+        counts2 = counts[-1 : Ic - 1 : -1, :]
 
         x_min = xc - line_len_V / 2
         pxls_pl = int(line_len_V / pxl_sz_V) + 1
 
         # even and odd planes are scanned in the opposite directions
-        if n_planes % 2:
-            K = np.arange(n_lines)
-        else:
+        if plane_idx % 2:
             K = np.arange(n_lines, 0, 1)
+        else:
+            K = np.arange(n_lines)
 
         pic1 = np.zeros((n_lines, pxls_pl))
         norm1 = np.zeros((n_lines, pxls_pl))
         for j in K:
-            temp_counts = np.zeros((1, pxls_pl))
-            temp_num = np.zeros((1, pxls_pl))
+            temp_counts = np.zeros(pxls_pl)
+            temp_num = np.zeros(pxls_pl)
             for i in range(Ic):
-                idx = round((x1[i, j] - x_min) / pxl_sz_V) + 1
-                if 0 < idx < pxls_pl:
+                idx = int((x1[i, j] - x_min) / pxl_sz_V) + 1
+                if 0 <= idx < pxls_pl:
                     temp_counts[idx] = temp_counts[idx] + counts1[i, j]
                     temp_num[idx] = temp_num[idx] + 1
             pic1[K[j], :] = temp_counts
@@ -325,27 +325,20 @@ class SFCSImageMeasurement(Measurement):
         pic2 = np.zeros((n_lines, pxls_pl))
         norm2 = np.zeros((n_lines, pxls_pl))
         for j in K:
-            temp_counts = np.zeros((1, pxls_pl))
-            temp_num = np.zeros((1, pxls_pl))
+            temp_counts = np.zeros(pxls_pl)
+            temp_num = np.zeros(pxls_pl)
             for i in range(Ic):
-                idx = round((x2[i, j] - x_min) / pxl_sz_V) + 1
-                if 0 < idx < pxls_pl:
+                idx = int((x2[i, j] - x_min) / pxl_sz_V) + 1
+                if 0 <= idx < pxls_pl:
                     temp_counts[idx] = temp_counts[idx] + counts2[i, j]
                     temp_num[idx] = temp_num[idx] + 1
             pic2[K[j], :] = temp_counts
             norm2[K[j], :] = temp_num
 
         line_scale_V = x_min + np.arange(pxls_pl) * pxl_sz_V
+        row_scale_V = self.scan_params.set_pnts_lines_odd
 
-        pic_params = SimpleNamespace()
-        pic_params.pic1 = pic1
-        pic_params.norm1 = norm1
-        pic_params.pic2 = pic2
-        pic_params.norm2 = norm2
-        pic_params.line_ticks = line_scale_V
-        pic_params.row_ticks = lines_odd
-
-        return pic_params
+        return ImageData(pic1, norm1, pic2, norm2, line_scale_V, row_scale_V)
 
     #    def build_image(self):
     #        """Doc."""
@@ -363,7 +356,7 @@ class SFCSImageMeasurement(Measurement):
 
         self._app.last_img_scn = SimpleNamespace()
         self._app.last_img_scn.plane_type = self.scan_params.scan_plane
-        self._app.last_img_scn.plane_pic_params = self.plane_pic_params
+        self._app.last_img_scn.plane_images_data = self.plane_images_data
         self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
 
     @err_hndlr
@@ -398,8 +391,8 @@ class SFCSImageMeasurement(Measurement):
 
         if plane_idx == self.scan_params.n_planes - 1:
             # prepare data
-            self.plane_pic_params = [
-                self.build_image(plane_idx)
+            self.plane_images_data = [
+                self.prepare_image_data(plane_idx)
                 for plane_idx in range(self.scan_params.n_planes)
             ]
 
