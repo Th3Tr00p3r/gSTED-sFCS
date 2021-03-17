@@ -14,6 +14,7 @@ import gui.icons.icon_paths as icon
 import logic.measurements as meas
 import utilities.constants as consts
 import utilities.helper as helper
+from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import dvc_error_checker as err_chck
 from utilities.errors import logic_error_handler as err_hndlr
@@ -296,6 +297,7 @@ class MainWin:
             if type == "FCS":
                 self._app.meas = meas.FCSMeasurement(
                     self._app,
+                    # TODO: switch to read namespace
                     **consts.FCS_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         ["prog_bar_wdgt", "g0_wdgt", "decay_time_wdgt", "plot_wdgt"],
@@ -308,10 +310,12 @@ class MainWin:
                 self._app.gui.main.imp.go_to_origin("XY")
                 pattern = self._gui.solScanType.currentText()
                 if pattern == "angular":
+                    # TODO: switch to read namespace
                     scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
                         self._app
                     )
                 elif pattern == "circle":
+                    # TODO: switch to read namespace
                     scan_params = consts.SOL_CIRC_SCN_WDGT_COLL.read_dict_from_gui(
                         self._app
                     )
@@ -320,6 +324,7 @@ class MainWin:
                 self._app.meas = meas.SFCSSolutionMeasurement(
                     app=self._app,
                     scan_params=scan_params,
+                    # TODO: switch to read namespace
                     **consts.SOL_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [
@@ -343,7 +348,9 @@ class MainWin:
             elif type == "SFCSImage":
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
+                    # TODO: switch to read namespace
                     scan_params=consts.IMG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
+                    # TODO: switch to read namespace
                     **consts.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [
@@ -384,6 +391,36 @@ class MainWin:
                 f"({current_type}) is currently running."
             )
             Error(custom_txt=txt).display()
+
+    def disp_sol_scn_pttrn(self):
+        """Doc."""
+
+        try:
+            scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(
+                self._app
+            )
+            um_V_ratio = self._app.devices.SCANNERS.um_V_ratio
+            ao, *_ = ScanPatternAO("angular", scan_params, um_V_ratio).calculate_ao()
+            x_data, y_data = ao
+            self._gui.solScanPattern.plot(x_data, y_data, clear=True)
+
+        # devices not yet initialized
+        except AttributeError:
+            pass
+
+    def disp_img_scn_pttrn(self):
+        """Doc."""
+
+        try:
+            scan_params = consts.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
+            um_V_ratio = self._app.devices.SCANNERS.um_V_ratio
+            ao, *_ = ScanPatternAO("image", scan_params, um_V_ratio).calculate_ao()
+            x_data, y_data = ao
+            self._gui.imgScanPattern.plot(x_data, y_data, clear=True)
+
+        # devices not yet initialized
+        except AttributeError:
+            pass
 
     def disp_plane_img(self, plane_idx):
         """Doc."""
@@ -431,8 +468,13 @@ class MainWin:
     def plane_choice_changed(self, plane_idx):
         """Doc."""
 
-        self._app.meas.plane_shown.set(plane_idx)
-        self._app.meas.disp_plane_img(plane_idx)
+        try:
+            self._app.meas.plane_shown.set(plane_idx)
+            self._app.meas.disp_plane_img(plane_idx)
+
+        # no scan performed since app init
+        except AttributeError:
+            pass
 
     def change_FCS_meas_dur(self, new_dur):
         """Doc."""
