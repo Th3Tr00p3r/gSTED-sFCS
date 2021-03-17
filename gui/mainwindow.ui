@@ -577,12 +577,12 @@
                             </font>
                            </property>
                            <property name="text">
-                            <string>Points/Line</string>
+                            <string>Points per Line</string>
                            </property>
                           </widget>
                          </item>
                          <item>
-                          <widget class="QSpinBox" name="imgScanPPLine">
+                          <widget class="QSpinBox" name="imgScanPPL">
                            <property name="maximum">
                             <number>99999999</number>
                            </property>
@@ -674,11 +674,14 @@
                            <property name="decimals">
                             <number>2</number>
                            </property>
+                           <property name="minimum">
+                            <double>0.050000000000000</double>
+                           </property>
                            <property name="maximum">
-                            <double>1.000000000000000</double>
+                            <double>0.950000000000000</double>
                            </property>
                            <property name="singleStep">
-                            <double>0.050000000000000</double>
+                            <double>0.010000000000000</double>
                            </property>
                           </widget>
                          </item>
@@ -1311,7 +1314,7 @@ Pattern</string>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QGraphicsView" name="imgScanPattern">
+                    <widget class="PlotWidget" name="imgScanPattern">
                      <property name="enabled">
                       <bool>false</bool>
                      </property>
@@ -2348,11 +2351,14 @@ to Scan</string>
                              <property name="decimals">
                               <number>2</number>
                              </property>
+                             <property name="minimum">
+                              <double>0.050000000000000</double>
+                             </property>
                              <property name="maximum">
-                              <double>1.000000000000000</double>
+                              <double>0.950000000000000</double>
                              </property>
                              <property name="singleStep">
-                              <double>0.050000000000000</double>
+                              <double>0.010000000000000</double>
                              </property>
                              <property name="value">
                               <double>0.900000000000000</double>
@@ -8562,7 +8568,7 @@ Origin (um)</string>
   <tabstop>imgScanDim1</tabstop>
   <tabstop>imgScanDim2</tabstop>
   <tabstop>imgScanNumLines</tabstop>
-  <tabstop>imgScanPPLine</tabstop>
+  <tabstop>imgScanPPL</tabstop>
   <tabstop>imgScanLineFreq</tabstop>
   <tabstop>imgScanLinFrac</tabstop>
   <tabstop>imgScanNumPlanes</tabstop>

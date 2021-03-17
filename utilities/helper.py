@@ -6,7 +6,8 @@ from __future__ import annotations
 import csv
 import datetime
 from dataclasses import dataclass
-from typing import Dict, List, NoReturn, Union
+from types import SimpleNamespace
+from typing import List, NoReturn, Union
 
 import numpy as np
 import PyQt5.QtWidgets as QtWidgets
@@ -67,6 +68,24 @@ class QtWidgetCollection:
         for key, val in kwargs.items():
             setattr(self, key, val)
 
+    def hold_objects(
+        self, app: app_module.App, wdgt_name_list: List[str] = None, hold_all=False
+    ) -> QtWidgetCollection:
+        """Stores the actual GUI object in the listed, or all, widgets."""
+
+        if wdgt_name_list is not None:
+            for wdgt_name in wdgt_name_list:
+                wdgt = getattr(self, wdgt_name)
+                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                wdgt.hold_obj(parent_gui)
+
+        elif hold_all:
+            for wdgt in vars(self).values():
+                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                wdgt.hold_obj(parent_gui)
+
+        return self
+
     def write_to_gui(self, app: app_module.App, new_vals) -> NoReturn:
         """
         Fill widget collection with values from dict/list, or a single value for all.
@@ -86,9 +105,7 @@ class QtWidgetCollection:
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(new_vals, parent_gui)
 
-    def read_dict_from_gui(
-        self, app: app_module.App
-    ) -> Dict[Union[int, float, str, QtWidgetAccess]]:
+    def read_dict_from_gui(self, app: app_module.App) -> dict:
         """
         Read values from QtWidgetAccess objects, which are the attributes of self and return a dict.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
@@ -104,23 +121,17 @@ class QtWidgetCollection:
                 wdgt_val_dict[attr_name] = wdgt.get(parent_gui)
         return wdgt_val_dict
 
-    def hold_objects(
-        self, app: app_module.App, wdgt_name_list: List[str] = None, hold_all=False
-    ) -> QtWidgetCollection:
-        """Stores the actual GUI object in the listed, or all, widgets."""
+    def read_namespace_from_gui(self, app: app_module.App) -> SimpleNamespace:
+        """Doc."""
 
-        if wdgt_name_list is not None:
-            for wdgt_name in wdgt_name_list:
-                wdgt = getattr(self, wdgt_name)
-                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                wdgt.hold_obj(parent_gui)
-
-        elif hold_all:
-            for wdgt in vars(self).values():
-                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                wdgt.hold_obj(parent_gui)
-
-        return self
+        wdgt_val_ns = SimpleNamespace()
+        for attr_name, wdgt in vars(self).items():
+            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+            if hasattr(wdgt, "obj"):
+                setattr(wdgt_val_ns, attr_name, wdgt)
+            else:
+                setattr(wdgt_val_ns, attr_name, wdgt.get(parent_gui))
+        return wdgt_val_ns
 
 
 def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:

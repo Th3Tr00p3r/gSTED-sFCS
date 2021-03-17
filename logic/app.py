@@ -62,6 +62,8 @@ class App:
         self.devices.SCANNERS.toggle(True)  # restart cont. reading
 
         # FINALLY
+        self.gui.main.imp.disp_sol_scn_pttrn()
+        self.gui.main.imp.disp_img_scn_pttrn()
         self.gui.main.show()
 
         # set up main timeout event
