@@ -27,6 +27,20 @@ class MainWin(QMainWindow):
         # graphics
         self.imgScanPlot = ImageDisplay(layout=self.imageLayout)
 
+        # scan patterns
+        # image
+        self.imgScanDim1.valueChanged.connect(self.display_image_scan_pattern)
+        self.imgScanDim2.valueChanged.connect(self.display_image_scan_pattern)
+        self.imgScanNumLines.valueChanged.connect(self.display_image_scan_pattern)
+        self.imgScanPPL.valueChanged.connect(self.display_image_scan_pattern)
+        self.imgScanLinFrac.valueChanged.connect(self.display_image_scan_pattern)
+        # solution
+        self.maxLineLen.valueChanged.connect(self.display_solution_scan_pattern)
+        self.angle.valueChanged.connect(self.display_solution_scan_pattern)
+        self.solLinFrac.valueChanged.connect(self.display_solution_scan_pattern)
+        self.lineShift.valueChanged.connect(self.display_solution_scan_pattern)
+        self.minNumLines.valueChanged.connect(self.display_solution_scan_pattern)
+
         # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.axisMoveUm_released(1))
         self.axisMoveDown.released.connect(lambda: self.axisMoveUm_released(-1))
@@ -84,6 +98,16 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.save()
+
+    def display_solution_scan_pattern(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.disp_sol_scn_pttrn()
+
+    def display_image_scan_pattern(self) -> NoReturn:
+        """Doc."""
+
+        self.imp.disp_img_scn_pttrn()
 
     @pyqtSlot()
     def on_roiImgScn_released(self) -> NoReturn:

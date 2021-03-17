@@ -138,15 +138,15 @@ class Measurement:
             },
         )
 
+        ao_clk_src = self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term
+
         self.scanners_dvc.start_scan_read_task(
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
                 "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
-                "samp_clk_src": self.scanners_dvc.tasks.ao[
-                    "AO XY"
-                ].timing.samp_clk_term,
+                "samp_clk_src": ao_clk_src,
                 "ai_conv_rate": self.ai_conv_rate,
             },
         )
@@ -155,11 +155,9 @@ class Measurement:
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
+                "samp_quant_samp_per_chan": 0,  # int(self.n_ao_samps * 1.2)
                 "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
-                "samp_clk_src": self.scanners_dvc.tasks.ao[
-                    "AO XY"
-                ].timing.samp_clk_term,
+                "samp_clk_src": ao_clk_src,
             },
         )
 
@@ -227,9 +225,6 @@ class SFCSImageMeasurement(Measurement):
         self.scn_addrs = bld_scn_addrs_str(
             self.scan_params.scan_plane, self.scanners_dvc
         )
-        # init device buffers
-        self.scanners_dvc.init_ai_buffer()
-        self.counter_dvc.init_ci_buffer()
         # create ao_buffer
         (
             self.ao_buffer,
@@ -340,17 +335,6 @@ class SFCSImageMeasurement(Measurement):
 
         return ImageData(pic1, norm1, pic2, norm2, line_scale_V, row_scale_V)
 
-    #    def build_image(self):
-    #        """Doc."""
-    #
-    #        # TESTESTET
-    #        from PIL import Image as PImage
-    #
-    #        img = PImage.open("D:/people/Idomic/gSTED-sFCS/test.png")
-    #        # / TESTESTEST
-    #
-    #        return img
-
     def keep_last_meas(self):
         """Doc."""
 
@@ -367,6 +351,9 @@ class SFCSImageMeasurement(Measurement):
         await self.toggle_lasers()
         self.setup_scan()
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+
+        self.scanners_dvc.init_ai_buffer()
+        self.counter_dvc.init_ci_buffer()
 
         plane_data = []
         self.start_time = time.perf_counter()
@@ -389,6 +376,16 @@ class SFCSImageMeasurement(Measurement):
             else:
                 break
 
+        print(
+            "counts items/total points ratio (should be 1):",
+            self.counter_dvc.ci_buffer.size
+            / (
+                self.scan_params.n_planes
+                * self.scan_params.n_lines
+                * self.scan_params.ppl
+            ),
+        )  # TESTESTEST
+
         if plane_idx == self.scan_params.n_planes - 1:
             # prepare data
             self.plane_images_data = [
@@ -406,6 +403,8 @@ class SFCSImageMeasurement(Measurement):
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
             self._app.gui.main.imp.disp_plane_img(mid_plane)
+        else:  # manually stopped
+            pass
 
         # return to stand-by state
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
@@ -492,11 +491,6 @@ class SFCSSolutionMeasurement(Measurement):
                 )
                 - 2
             )
-
-        # init device buffers
-        self.scanners_dvc.init_ai_buffer()
-        self.counter_dvc.init_ci_buffer()
-
         # create ao_buffer
         self.ao_buffer, dt, self.scan_params = ScanPatternAO(
             self.scan_params.pattern, self.scan_params, self.um_V_ratio
@@ -534,6 +528,10 @@ class SFCSSolutionMeasurement(Measurement):
         self.setup_scan()
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         self.data_dvc.purge()
+
+        self.scanners_dvc.init_ai_buffer()
+        self.counter_dvc.init_ci_buffer()
+
         self.init_scan_tasks("CONTINUOUS")
 
         self.total_time_passed = 0

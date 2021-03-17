@@ -9,7 +9,7 @@ import nidaqmx.constants as ni_consts
 import numpy as np
 from nidaqmx.errors import DaqError
 from pyftdi.ftdi import FtdiError
-from pyvisa.errors import VisaIOError  # TEST
+from pyvisa.errors import VisaIOError
 
 import logic.drivers as drivers
 import utilities.constants as consts
@@ -247,7 +247,6 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                 samp_clk_cnfg=samp_clk_cnfg,
                 timing_params=timing_params,
             )
-            self.init_ai_buffer()
             self.start_tasks("ai")
         except DaqError as exc:
             hndl_dvc_err(exc, self, "start_scan_read_task()")
@@ -414,7 +413,6 @@ class Counter(BaseDevice, NIDAQmxInstrument):
     """
 
     # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
-
     updt_time = 0.2
 
     def __init__(self, nick, param_dict, led_widget, switch_widget, scanners_ai_tasks):
@@ -423,6 +421,9 @@ class Counter(BaseDevice, NIDAQmxInstrument):
             led_widget=led_widget,
             switch_widget=switch_widget,
             param_dict=param_dict,
+        )
+        self.cont_read_buffer = np.zeros(
+            shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32
         )
 
         self.last_avg_time = time.perf_counter()
@@ -491,7 +492,6 @@ class Counter(BaseDevice, NIDAQmxInstrument):
                 samp_clk_cnfg=samp_clk_cnfg,
                 timing_params=timing_params,
             )
-            self.init_ci_buffer()
             self.start_tasks("ci")
         except DaqError as exc:
             hndl_dvc_err(exc, self, "start_scan_read_task()")
@@ -504,8 +504,8 @@ class Counter(BaseDevice, NIDAQmxInstrument):
         except DaqError as exc:
             hndl_dvc_err(exc, self, "count()")
         else:
-            self.ci_buffer = np.append(
-                self.ci_buffer, self.cont_read_buffer[:num_samps_read]
+            self.ci_buffer = np.concatenate(
+                (self.ci_buffer, self.cont_read_buffer[:num_samps_read])
             )
             self.num_reads_since_avg += num_samps_read
 

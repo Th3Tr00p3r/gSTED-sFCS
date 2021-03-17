@@ -78,9 +78,7 @@ class NIDAQmxInstrument:
     """Doc."""
 
     MIN_OUTPUT_RATE_Hz = 1000
-    # TODO: the following two lines are counter-specific, move them to Counter in devices.py
     CONT_READ_BFFR_SZ = 10000
-    cont_read_buffer = np.zeros(shape=(CONT_READ_BFFR_SZ,), dtype=np.uint32)
 
     def __init__(self, param_dict, **kwargs):
         self.error_dict = None
