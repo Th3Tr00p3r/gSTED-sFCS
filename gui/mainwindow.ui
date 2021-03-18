@@ -466,6 +466,9 @@
                            <property name="decimals">
                             <number>1</number>
                            </property>
+                           <property name="minimum">
+                            <double>0.100000000000000</double>
+                           </property>
                            <property name="maximum">
                             <double>9999999.000000000000000</double>
                            </property>
@@ -495,6 +498,9 @@
                            <property name="decimals">
                             <number>1</number>
                            </property>
+                           <property name="minimum">
+                            <double>0.100000000000000</double>
+                           </property>
                            <property name="maximum">
                             <double>999999.000000000000000</double>
                            </property>
@@ -523,6 +529,9 @@
                           <widget class="QDoubleSpinBox" name="imgScanDim3">
                            <property name="decimals">
                             <number>1</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.000000000000000</double>
                            </property>
                            <property name="maximum">
                             <double>999999.000000000000000</double>
@@ -557,6 +566,9 @@
                          </item>
                          <item>
                           <widget class="QSpinBox" name="imgScanNumLines">
+                           <property name="minimum">
+                            <number>2</number>
+                           </property>
                            <property name="maximum">
                             <number>99999</number>
                            </property>
@@ -583,6 +595,9 @@
                          </item>
                          <item>
                           <widget class="QSpinBox" name="imgScanPPL">
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
                            <property name="maximum">
                             <number>99999999</number>
                            </property>
@@ -1316,7 +1331,7 @@ Pattern</string>
                    <item>
                     <widget class="PlotWidget" name="imgScanPattern">
                      <property name="enabled">
-                      <bool>false</bool>
+                      <bool>true</bool>
                      </property>
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -2469,7 +2484,7 @@ to Scan</string>
                               </size>
                              </property>
                              <property name="minimum">
-                              <number>1</number>
+                              <number>2</number>
                              </property>
                              <property name="maximum">
                               <number>99999</number>
@@ -2974,6 +2989,9 @@ to Scan</string>
                                <height>30</height>
                               </size>
                              </property>
+                             <property name="minimum">
+                              <number>1</number>
+                             </property>
                              <property name="maximum">
                               <number>100000</number>
                              </property>
@@ -3006,6 +3024,9 @@ to Scan</string>
                                <height>30</height>
                               </size>
                              </property>
+                             <property name="minimum">
+                              <number>1</number>
+                             </property>
                              <property name="maximum">
                               <number>1000</number>
                              </property>
@@ -3037,6 +3058,9 @@ to Scan</string>
                                <width>9999</width>
                                <height>30</height>
                               </size>
+                             </property>
+                             <property name="minimum">
+                              <number>10</number>
                              </property>
                              <property name="maximum">
                               <number>20000</number>
@@ -3237,7 +3261,7 @@ Pattern</string>
                 <item>
                  <widget class="PlotWidget" name="solScanPattern">
                   <property name="enabled">
-                   <bool>false</bool>
+                   <bool>true</bool>
                   </property>
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">

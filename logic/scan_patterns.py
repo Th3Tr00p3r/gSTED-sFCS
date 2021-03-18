@@ -92,6 +92,9 @@ class ScanPatternAO:
         # and the voltages corresponding to each row and plane.
         # now we build the full AO (2D):
 
+        # add way back:
+        single_line_ao = np.concatenate((single_line_ao, -single_line_ao))
+
         single_line_ao = single_line_ao.tolist()
         set_pnts_planes = np.atleast_1d(set_pnts_planes)
 
@@ -240,7 +243,6 @@ class ScanPatternAO:
         a = v / t0
         A = 1 / f
 
-        T = round(T)
         t = np.arange(T)
         s = np.zeros(T)
         shift_vec = np.zeros(T)
@@ -281,10 +283,10 @@ class ScanPatternAO:
             ) * line_shift * cos(ang_rad)
 
         # add one more line to walk back slowly to the beginning
-        Xend = x_ao[-1, -1]
-        Yend = y_ao[-1, -1]
-        x_ao[:, line_idx + 1] = Xend + np.arange(1.0, T + 1) * (x_ao[0, 0] - Xend) / T
-        y_ao[:, line_idx + 1] = Yend + np.arange(1.0, T + 1) * (y_ao[0, 0] - Yend) / T
+        Xend = x_ao[-1, -2]
+        Yend = y_ao[-1, -2]
+        x_ao[:, line_idx + 1] = Xend + np.arange(T) * (x_ao[0, 0] - Xend) / T
+        y_ao[:, line_idx + 1] = Yend + np.arange(T) * (y_ao[0, 0] - Yend) / T
 
         # convert to voltages
         x_um_V_ratio, y_um_V_ratio, _ = um_V_ratio

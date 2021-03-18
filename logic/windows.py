@@ -288,7 +288,7 @@ class MainWin:
             self._gui.stepperDock.setVisible(True)
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
-    @err_chck({"TDC", "UM232H"})
+    @err_chck({"TDC", "UM232H", "SCANNERS"})
     def toggle_meas(self, type):
         """Doc."""
 
@@ -392,31 +392,26 @@ class MainWin:
             )
             Error(custom_txt=txt).display()
 
-    def disp_sol_scn_pttrn(self):
+    def disp_scn_pttrn(self, pattern: str):
         """Doc."""
 
-        try:
-            scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(
-                self._app
-            )
-            um_V_ratio = self._app.devices.SCANNERS.um_V_ratio
-            ao, *_ = ScanPatternAO("angular", scan_params, um_V_ratio).calculate_ao()
-            x_data, y_data = ao
-            self._gui.solScanPattern.plot(x_data, y_data, clear=True)
+        if pattern == "image":
+            scan_params_coll = consts.IMG_SCN_WDGT_COLL
+            plt_wdgt = self._gui.imgScanPattern
+        elif pattern == "angular":
+            scan_params_coll = consts.SOL_ANG_SCN_WDGT_COLL
+            plt_wdgt = self._gui.solScanPattern
+        elif pattern == "circle":
+            scan_params_coll = consts.SOL_CIRC_SCN_WDGT_COLL
+            plt_wdgt = self._gui.solScanPattern
 
-        # devices not yet initialized
-        except AttributeError:
-            pass
-
-    def disp_img_scn_pttrn(self):
-        """Doc."""
+        scan_params = scan_params_coll.read_namespace_from_gui(self._app)
 
         try:
-            scan_params = consts.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
             um_V_ratio = self._app.devices.SCANNERS.um_V_ratio
-            ao, *_ = ScanPatternAO("image", scan_params, um_V_ratio).calculate_ao()
+            ao, *_ = ScanPatternAO(pattern, scan_params, um_V_ratio).calculate_ao()
             x_data, y_data = ao
-            self._gui.imgScanPattern.plot(x_data, y_data, clear=True)
+            plt_wdgt.plot(x_data, y_data, clear=True)
 
         # devices not yet initialized
         except AttributeError:
