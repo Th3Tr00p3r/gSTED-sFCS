@@ -29,17 +29,40 @@ class MainWin(QMainWindow):
 
         # scan patterns
         # image
-        self.imgScanDim1.valueChanged.connect(self.display_image_scan_pattern)
-        self.imgScanDim2.valueChanged.connect(self.display_image_scan_pattern)
-        self.imgScanNumLines.valueChanged.connect(self.display_image_scan_pattern)
-        self.imgScanPPL.valueChanged.connect(self.display_image_scan_pattern)
-        self.imgScanLinFrac.valueChanged.connect(self.display_image_scan_pattern)
-        # solution
-        self.maxLineLen.valueChanged.connect(self.display_solution_scan_pattern)
-        self.angle.valueChanged.connect(self.display_solution_scan_pattern)
-        self.solLinFrac.valueChanged.connect(self.display_solution_scan_pattern)
-        self.lineShift.valueChanged.connect(self.display_solution_scan_pattern)
-        self.minNumLines.valueChanged.connect(self.display_solution_scan_pattern)
+        self.imgScanDim1.valueChanged.connect(
+            lambda: self.display_scan_pattern("image")
+        )
+        self.imgScanDim2.valueChanged.connect(
+            lambda: self.display_scan_pattern("image")
+        )
+        self.imgScanNumLines.valueChanged.connect(
+            lambda: self.display_scan_pattern("image")
+        )
+        self.imgScanPPL.valueChanged.connect(lambda: self.display_scan_pattern("image"))
+        self.imgScanLinFrac.valueChanged.connect(
+            lambda: self.display_scan_pattern("image")
+        )
+        self.imgScanType.currentTextChanged.connect(
+            lambda: self.display_scan_pattern("image")
+        )
+        # solution (angular)
+        self.maxLineLen.valueChanged.connect(
+            lambda: self.display_scan_pattern("angular")
+        )
+        self.angle.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
+        self.solLinFrac.valueChanged.connect(
+            lambda: self.display_scan_pattern("angular")
+        )
+        self.lineShift.valueChanged.connect(
+            lambda: self.display_scan_pattern("angular")
+        )
+        self.minNumLines.valueChanged.connect(
+            lambda: self.display_scan_pattern("angular")
+        )
+        # solution (circle)
+        self.circDiameter.valueChanged.connect(
+            lambda: self.display_scan_pattern("circle")
+        )
 
         # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.axisMoveUm_released(1))
@@ -99,15 +122,10 @@ class MainWin(QMainWindow):
 
         self.imp.save()
 
-    def display_solution_scan_pattern(self) -> NoReturn:
+    def display_scan_pattern(self, pattern: str) -> NoReturn:
         """Doc."""
 
-        self.imp.disp_sol_scn_pttrn()
-
-    def display_image_scan_pattern(self) -> NoReturn:
-        """Doc."""
-
-        self.imp.disp_img_scn_pttrn()
+        self.imp.disp_scn_pttrn(pattern)
 
     @pyqtSlot()
     def on_roiImgScn_released(self) -> NoReturn:
@@ -176,6 +194,12 @@ class MainWin(QMainWindow):
         """
 
         self.solScanParamsStacked.setCurrentIndex(index)
+
+    @pyqtSlot(str)
+    def on_solScanType_currentTextChanged(self, txt: str) -> NoReturn:
+        """Doc."""
+
+        self.imp.disp_scn_pttrn(txt)
 
     @pyqtSlot(str)
     def on_imgScanPreset_currentTextChanged(self, curr_txt: str) -> NoReturn:
