@@ -46,8 +46,9 @@ class ScanPatternAO:
         a = v / t0
         A = 1 / f
 
-        t = np.arange(T)
         s = np.zeros(T)
+
+        t = np.arange(T)
         J = t <= t0
         s[J] = a * np.power(t[J], 2)
 
@@ -91,9 +92,6 @@ class ScanPatternAO:
         # at this point we have the AO (1D) for a single row,
         # and the voltages corresponding to each row and plane.
         # now we build the full AO (2D):
-
-        # add way back:
-        single_line_ao = np.concatenate((single_line_ao, -single_line_ao))
 
         single_line_ao = single_line_ao.tolist()
         set_pnts_planes = np.atleast_1d(set_pnts_planes)
