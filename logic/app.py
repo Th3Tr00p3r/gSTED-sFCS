@@ -53,13 +53,11 @@ class App:
         self.init_devices()
         self.meas = Measurement(app=self, type=None)
 
-        # get last AO for scanners
-        ao_int_vltgs = self.devices.SCANNERS.read_single_ao_internal()
+        # init AO as origin (last AO is measured in internal AO if needed)
         [
-            getattr(self.gui.main, f"{axis}AOV").setValue(vltg)
-            for axis, vltg in zip("xyz", ao_int_vltgs)
+            getattr(self.gui.main, f"{axis}AOV").setValue(org_vltg)
+            for axis, org_vltg in zip("xyz", self.devices.SCANNERS.origin)
         ]
-        self.devices.SCANNERS.toggle(True)  # restart cont. reading
 
         # FINALLY
         self.gui.main.imp.disp_scn_pttrn("image")

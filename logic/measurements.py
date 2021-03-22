@@ -234,8 +234,10 @@ class SFCSImageMeasurement(Measurement):
             self.scan_params.set_pnts_planes,
         ) = ScanPatternAO("image", self.scan_params, self.um_V_ratio).calculate_ao()
         self.n_ao_samps = len(self.ao_buffer[0])
-        # TODO: why is the next line correct? explain and use a constant for 1.5E-7
-        self.ai_conv_rate = 1 / ((dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[0])
+        # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
+        self.ai_conv_rate = (
+            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (dt - 1.5e-7))
+        )
         self.est_duration = self.n_ao_samps * dt * len(self.scan_params.set_pnts_planes)
         self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
 
@@ -369,6 +371,12 @@ class SFCSImageMeasurement(Measurement):
                 self.init_scan_tasks("FINITE")
 
                 await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
+                # TESTESTEST
+                self.counter_dvc.fill_ci_buffer()
+                self.scanners_dvc.fill_ai_buffer()
+                print("ci_buffer length: ", self.counter_dvc.ci_buffer.size)
+                print("ai_buffer length: ", self.scanners_dvc.ai_buffer.shape[1])
+                # /TESTESTEST
 
                 plane_data.append(self.data_dvc.data)
                 self.data_dvc.init_data()
@@ -376,6 +384,7 @@ class SFCSImageMeasurement(Measurement):
             else:
                 break
 
+        # TESTESTEST
         print(
             "counts items/total points ratio (should be 1):",
             self.counter_dvc.ci_buffer.size
@@ -384,7 +393,8 @@ class SFCSImageMeasurement(Measurement):
                 * self.scan_params.n_lines
                 * self.scan_params.ppl
             ),
-        )  # TESTESTEST
+        )
+        # /TESTESTEST
 
         if plane_idx == self.scan_params.n_planes - 1:
             # prepare data
@@ -497,7 +507,9 @@ class SFCSSolutionMeasurement(Measurement):
         ).calculate_ao()
         self.n_ao_samps = len(self.ao_buffer[0])
         # TODO: ask Oleg: why is the next line correct? explain and use a constant for 1.5E-7
-        self.ai_conv_rate = 1 / ((dt - 1.5e-7) / self.scanners_dvc.ai_buffer.shape[0])
+        self.ai_conv_rate = (
+            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (dt - 1.5e-7))
+        )
 
     def disp_ACF(self):
         """Placeholder for calculating and presenting the ACF"""
