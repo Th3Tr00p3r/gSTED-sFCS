@@ -115,13 +115,15 @@ class Timeout:
             if self.running:
                 # COUNTER
                 if self._app.devices.COUNTER.error_dict is None:
-                    self._app.devices.COUNTER.count()
-                    if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
+                    if self._app.meas.type in {"SFCSSolution", "SFCSImage"}:
+                        self._app.devices.COUNTER.fill_ci_buffer()  # use kwarg 'stream=False' to test without stream reading during meas
+                    else:
+                        self._app.devices.COUNTER.fill_ci_buffer()
                         self._app.devices.COUNTER.dump_ci_buff_overflow()
 
                 # AI
                 if self._app.devices.SCANNERS.error_dict is None:
-                    self._app.devices.SCANNERS.fill_ai_buff()
+                    self._app.devices.SCANNERS.fill_ai_buffer()
                     if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
                         self._app.devices.SCANNERS.dump_ai_buff_overflow()
 
@@ -134,25 +136,37 @@ class Timeout:
             """Doc."""
 
             if self._app.devices.SCANNERS.error_dict is None:
-
-                (x_ai, y_ai, z_ai) = tuple(self._app.devices.SCANNERS.ai_buffer[:, -1])
-
-                (x_um, y_um, z_um) = tuple(
-                    (axis_vltg - axis_org) * axis_ratio
-                    for axis_vltg, axis_ratio, axis_org in zip(
-                        (x_ai, y_ai, z_ai),
-                        self._app.devices.SCANNERS.um_V_ratio,
-                        self._app.devices.SCANNERS.origin,
+                try:
+                    (x_ai, y_ai, z_ai) = tuple(
+                        self._app.devices.SCANNERS.ai_buffer[:3, -1]
                     )
-                )
+                    (x_ao_int, y_ao_int, z_ao_int) = tuple(
+                        self._app.devices.SCANNERS.ai_buffer[3:, -1]
+                    )
+                except IndexError:
+                    # buffer have just been initialized
+                    pass
+                else:
+                    (x_um, y_um, z_um) = tuple(
+                        (axis_vltg - axis_org) * axis_ratio
+                        for axis_vltg, axis_ratio, axis_org in zip(
+                            (x_ao_int, y_ao_int, z_ao_int),
+                            self._app.devices.SCANNERS.um_V_ratio,
+                            self._app.devices.SCANNERS.origin,
+                        )
+                    )
 
-                self._app.gui.main.xAIV.setValue(x_ai)
-                self._app.gui.main.yAIV.setValue(y_ai)
-                self._app.gui.main.zAIV.setValue(z_ai)
+                    self._app.gui.main.xAIV.setValue(x_ai)
+                    self._app.gui.main.yAIV.setValue(y_ai)
+                    self._app.gui.main.zAIV.setValue(z_ai)
 
-                self._app.gui.main.xAOum.setValue(x_um)
-                self._app.gui.main.yAOum.setValue(y_um)
-                self._app.gui.main.zAOum.setValue(z_um)
+                    self._app.gui.main.xAOVint.setValue(x_ao_int)
+                    self._app.gui.main.yAOVint.setValue(y_ao_int)
+                    self._app.gui.main.zAOVint.setValue(z_ao_int)
+
+                    self._app.gui.main.xAOum.setValue(x_um)
+                    self._app.gui.main.yAOum.setValue(y_um)
+                    self._app.gui.main.zAOum.setValue(z_um)
 
         def updt_meas_progbar(meas) -> NoReturn:
             """Doc."""

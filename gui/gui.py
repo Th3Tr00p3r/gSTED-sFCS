@@ -122,6 +122,13 @@ class MainWin(QMainWindow):
 
         self.imp.save()
 
+    @pyqtSlot(int)
+    def on_minNumLines_valueChanged(self, val: int) -> NoReturn:
+        """Allow only even values"""
+
+        if val % 2:
+            self.minNumLines.setValue(val - 1)
+
     def display_scan_pattern(self, pattern: str) -> NoReturn:
         """Doc."""
 

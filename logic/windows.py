@@ -207,7 +207,7 @@ class MainWin:
         if um_disp != 0.0:
             scanners_dvc = self._app.devices.SCANNERS
             axis = self._gui.axis.currentText()
-            current_vltg = scanners_dvc.read_single_ao_internal()[consts.AX_IDX[axis]]
+            current_vltg = scanners_dvc.ai_buffer[3:, -1][consts.AX_IDX[axis]]
             um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_V_ratio))[axis]
             delta_vltg = um_disp / um_V_RATIO
 

@@ -136,7 +136,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             ao_timeout=0.1,
         )
 
-        self.ai_chan_specs = tuple(
+        self.ai_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} AI",
@@ -144,25 +144,25 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                 "max_val": 10.0,
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
-        )
+        ]
 
-        self.ao_int_chan_specs = tuple(
+        self.ao_int_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ao_int_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} internal AO",
                 **getattr(self, f"{axis}_ao_limits"),
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
-        )
+        ]
 
-        self.ao_chan_specs = tuple(
+        self.ao_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ao_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} AO",
                 **getattr(self, f"{axis}_ao_limits"),
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
-        )
+        ]
 
         self.um_V_ratio = (self.x_um2V_const, self.y_um2V_const, self.z_um2V_const)
 
@@ -179,42 +179,6 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             except DaqError as exc:
                 hndl_dvc_err(exc, self, f"toggle({bool})")
 
-    def read_single_ao_internal(self) -> (float, float, float):
-        """
-        Return a single sample from each channel (x,y,z),
-        for indicating the current AO position of the scanners.
-        """
-
-        def diff_to_rse(
-            read_samples: [list, list, list, list, list]
-        ) -> (float, float, float):
-            """Doc."""
-
-            rse_samples = []
-            rse_samples.append((read_samples[0][0] - read_samples[1][0]) / 2)
-            rse_samples.append((read_samples[2][0] - read_samples[3][0]) / 2)
-            rse_samples.append(read_samples[4][0])
-            return rse_samples
-
-        task_name = "Single Sample AI"
-
-        try:
-            self.close_tasks("ai")
-            self.create_ai_task(
-                name=task_name,
-                chan_specs=self.ao_int_chan_specs,
-                samp_clk_cnfg={
-                    # TODO: decide if rate makes sense
-                    "rate": self.MIN_OUTPUT_RATE_Hz,
-                    "sample_mode": ni_consts.AcquisitionType.FINITE,
-                },
-            )
-            self.start_tasks("ai")
-            read_samples = self.analog_read(task_name, 1)
-            return diff_to_rse(read_samples)
-        except DaqError as exc:
-            hndl_dvc_err(exc, self, "read_single_ao_internal()")
-
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
 
@@ -224,7 +188,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             self.close_tasks("ai")
             self.create_ai_task(
                 name=task_name,
-                chan_specs=self.ai_chan_specs,
+                chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
                 samp_clk_cnfg={
                     "rate": self.MIN_OUTPUT_RATE_Hz,
                     "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
@@ -243,7 +207,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             self.close_tasks("ai")
             self.create_ai_task(
                 name="Continuous AI",
-                chan_specs=self.ai_chan_specs,
+                chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
                 samp_clk_cnfg=samp_clk_cnfg,
                 timing_params=timing_params,
             )
@@ -260,36 +224,16 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
     ) -> NoReturn:
         """Doc."""
 
-        def limit_ao_data(ao_task, ao_data: list):
-            """Doc."""
-            ao_min = ao_task.channels.ao_min
-            ao_max = ao_task.channels.ao_max
-            if isinstance(ao_data[0], float):
-                return [limit(ao, ao_min, ao_max) for ao in ao_data]
-            else:
-                row_idx_iter = range(len(ao_data))
-                return [
-                    [limit(ao, ao_min, ao_max) for ao in ao_data[idx]]
-                    for idx in row_idx_iter
-                ]
-
-        def diff_vltg_data(ao_data: list) -> list:
-            """Doc."""
-
-            diff_ao_data = []
-            for row_idx in range(len(ao_data)):
-                diff_ao_data += [
-                    ao_data[row_idx],
-                    [(-1) * val for val in ao_data[row_idx]],
-                ]
-            return diff_ao_data
-
         def smooth_start(
             axis: str, ao_chan_specs: dict, final_pos: float, step_sz: float = 0.25
         ) -> NoReturn:
             """Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)"""
 
-            init_pos = self.read_single_ao_internal()[consts.AX_IDX[axis]]
+            try:
+                init_pos = self.ai_buffer[3:, -1][consts.AX_IDX[axis]]
+            except IndexError:
+                init_pos = self.last_int_ao[consts.AX_IDX[axis]]
+
             total_dist = abs(final_pos - init_pos)
             n_steps = div_ceil(total_dist, step_sz)
 
@@ -311,7 +255,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                             "sample_mode": ni_consts.AcquisitionType.FINITE,
                         },
                     )
-                    ao_data = limit_ao_data(ao_task, ao_data)
+                    ao_data = self.limit_ao_data(ao_task, ao_data)
                     self.analog_write(task_name, ao_data, auto_start=False)
                     self.start_tasks("ao")
                     self.wait_for_task("ao", task_name)
@@ -349,8 +293,8 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                     chan_specs=xy_chan_spcs,
                     samp_clk_cnfg=samp_clk_cnfg_xy,
                 )
-                ao_data_xy = limit_ao_data(ao_task, ao_data_xy)
-                ao_data_xy = diff_vltg_data(ao_data_xy)
+                ao_data_xy = self.limit_ao_data(ao_task, ao_data_xy)
+                ao_data_xy = self.diff_vltg_data(ao_data_xy)
                 self.analog_write(xy_task_name, ao_data_xy)
 
             if z_chan_spcs:
@@ -360,7 +304,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                     chan_specs=z_chan_spcs,
                     samp_clk_cnfg=samp_clk_cnfg_z,
                 )
-                ao_data_z = limit_ao_data(ao_task, ao_data_z)
+                ao_data_z = self.limit_ao_data(ao_task, ao_data_z)
                 self.analog_write(z_task_name, ao_data_z)
 
             self.start_tasks("ao")
@@ -378,9 +322,15 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
     def init_ai_buffer(self) -> NoReturn:
         """Doc."""
 
-        self.ai_buffer = np.array([[-99], [-99], [-99]], dtype=np.float)
+        try:
+            self.last_int_ao = self.ai_buffer[3:, -1]
+        except (AttributeError, IndexError):
+            # case ai_buffer not created yet, or just created and not populated yet
+            pass
+        finally:
+            self.ai_buffer = np.empty(shape=(6, 0), dtype=np.float)
 
-    def fill_ai_buff(
+    def fill_ai_buffer(
         self, task_name: str = "Continuous AI", n_samples=ni_consts.READ_ALL_AVAILABLE
     ) -> NoReturn:
         """Doc."""
@@ -392,10 +342,11 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
         #        )
 
         try:
-            read_samples = self.analog_read("Continuous AI", n_samples)
+            read_samples = self.analog_read(task_name, n_samples)
         except DaqError as exc:
-            hndl_dvc_err(exc, self, "fill_ai_buff()")
+            hndl_dvc_err(exc, self, "fill_ai_buffer()")
         else:
+            read_samples = read_samples[:3] + self.diff_to_rse(read_samples[3:])
             self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
 
     def dump_ai_buff_overflow(self):
@@ -404,6 +355,42 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
         ai_buffer_len = self.ai_buffer.shape[1]
         if ai_buffer_len > self.CONT_READ_BFFR_SZ:
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
+
+    def diff_to_rse(
+        self, read_samples: [list, list, list, list, list]
+    ) -> (float, float, float):
+        """Doc."""
+
+        read_samples = np.array(read_samples)
+        rse_samples = np.empty(shape=(3, read_samples.shape[1]), dtype=np.float)
+        rse_samples[0, :] = (read_samples[0, :] - read_samples[1, :]) / 2
+        rse_samples[1, :] = (read_samples[2, :] - read_samples[3, :]) / 2
+        rse_samples[2, :] = read_samples[4, :]
+        return rse_samples.tolist()
+
+    def limit_ao_data(self, ao_task, ao_data: list):
+        """Doc."""
+        ao_min = ao_task.channels.ao_min
+        ao_max = ao_task.channels.ao_max
+        if isinstance(ao_data[0], float):
+            return [limit(ao, ao_min, ao_max) for ao in ao_data]
+        else:
+            row_idx_iter = range(len(ao_data))
+            return [
+                [limit(ao, ao_min, ao_max) for ao in ao_data[idx]]
+                for idx in row_idx_iter
+            ]
+
+    def diff_vltg_data(self, ao_data: list) -> list:
+        """Doc."""
+
+        diff_ao_data = []
+        for row_idx in range(len(ao_data)):
+            diff_ao_data += [
+                ao_data[row_idx],
+                [(-1) * val for val in ao_data[row_idx]],
+            ]
+        return diff_ao_data
 
 
 class Counter(BaseDevice, NIDAQmxInstrument):
@@ -496,18 +483,31 @@ class Counter(BaseDevice, NIDAQmxInstrument):
         except DaqError as exc:
             hndl_dvc_err(exc, self, "start_scan_read_task()")
 
-    def count(self):
+    def fill_ci_buffer(
+        self,
+        stream=True,
+        task_name: str = "Continuous CI",
+        n_samples=ni_consts.READ_ALL_AVAILABLE,
+    ):
         """Doc."""
 
-        try:
-            num_samps_read = self.counter_stream_read()
-        except DaqError as exc:
-            hndl_dvc_err(exc, self, "count()")
+        if stream:
+            try:
+                num_samps_read = self.counter_stream_read()
+            except DaqError as exc:
+                hndl_dvc_err(exc, self, "fill_ci_buffer()")
+            else:
+                self.ci_buffer = np.concatenate(
+                    (self.ci_buffer, self.cont_read_buffer[:num_samps_read])
+                )
+                self.num_reads_since_avg += num_samps_read
         else:
-            self.ci_buffer = np.concatenate(
-                (self.ci_buffer, self.cont_read_buffer[:num_samps_read])
-            )
-            self.num_reads_since_avg += num_samps_read
+            try:
+                read_samples = self.counter_read(task_name, n_samples)
+            except DaqError as exc:
+                hndl_dvc_err(exc, self, "fill_ci_buffer()")
+            else:
+                self.ci_buffer = np.concatenate((self.ci_buffer, read_samples))
 
     def average_counts(self):
         """Doc."""
