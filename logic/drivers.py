@@ -204,7 +204,7 @@ class NIDAQmxInstrument:
 
         self.tasks.co[name] = task
 
-    def analog_read(self, task_name: str, n_samples):
+    def analog_read(self, task_name: str, n_samples, task_type="ai"):
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
@@ -216,7 +216,7 @@ class NIDAQmxInstrument:
         #        )
         #        return num_samps_read
 
-        ai_task = self.tasks.ai[task_name]
+        ai_task = getattr(self.tasks, task_type)[task_name]
         return ai_task.read(number_of_samples_per_channel=n_samples)
 
     def analog_write(
@@ -229,6 +229,13 @@ class NIDAQmxInstrument:
             ao_task.write(data, auto_start=auto_start, timeout=self.ao_timeout)
         else:
             ao_task.write(data, timeout=self.ao_timeout)
+
+    def counter_read(self, task_name: str, n_samples):
+        """Doc."""
+        # TODO: finish testing than write documentation
+
+        ci_task = self.tasks.ci[task_name]
+        return ci_task.read(number_of_samples_per_channel=n_samples)
 
     def counter_stream_read(self):
         """
