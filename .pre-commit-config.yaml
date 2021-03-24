@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/pycqa/isort
-    rev: 5.6.4
+    rev: 5.8.0
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
@@ -12,6 +12,13 @@ repos:
       language_version: python3.9
       
 -   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.8.4
+    rev: 3.9.0
     hooks:
     - id: flake8
+    
+# -   repo: https://github.com/Damnever/pigar
+    # rev: 0.10.0
+    # hooks:
+    # - id: pigar
+      # args: ["--without-referenced-comments"]
+    
