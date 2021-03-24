@@ -221,6 +221,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
         type: str,
         samp_clk_cnfg_xy: dict = {},
         samp_clk_cnfg_z: dict = {},
+        start=True,
     ) -> NoReturn:
         """Doc."""
 
@@ -286,6 +287,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
 
         try:
             self.close_tasks("ao")
+
             if xy_chan_spcs:
                 xy_task_name = "AO XY"
                 ao_task = self.create_ao_task(
@@ -307,17 +309,11 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                 ao_data_z = self.limit_ao_data(ao_task, ao_data_z)
                 self.analog_write(z_task_name, ao_data_z)
 
-            self.start_tasks("ao")
+            if start is True:
+                self.start_tasks("ao")
+
         except DaqError as exc:
             hndl_dvc_err(exc, self, "start_write_task()")
-
-    def stop_write_task(self) -> NoReturn:
-        """Doc."""
-
-        try:
-            self.close_tasks("ao")
-        except DaqError as exc:
-            hndl_dvc_err(exc, self, "stop_write_task()")
 
     def init_ai_buffer(self) -> NoReturn:
         """Doc."""
