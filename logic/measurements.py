@@ -513,7 +513,7 @@ class SFCSSolutionMeasurement(Measurement):
     @err_hndlr
     async def run(self):
         """Doc."""
-        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
+        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel, before running
 
         # initialize gui start/end times
         start_time, end_time = self.get_current_and_end_times()

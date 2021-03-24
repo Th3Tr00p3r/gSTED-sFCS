@@ -229,13 +229,24 @@ class MainWin:
     def roi_to_scan(self):
         """Doc"""
 
+        plane_idx = self._gui.numPlaneShown.value()
         try:
-            # TODO: dim1 & 2 are positions on the image, not voltages. I need to see how to ranslate them (LabVIEW, image cluster)
-            dim1_vltg = self._gui.imgScanPlot.vLine.pos().x()
-            dim2_vltg = self._gui.imgScanPlot.hLine.pos().y()
-            dim3_vltg = self._app.last_img_scn.set_pnts_planes[
-                self._gui.numPlaneShown.value()
-            ]
+            line_ticks_V = self._app.last_img_scn.plane_images_data[
+                plane_idx
+            ].line_ticks_V
+            row_ticks_V = self._app.last_img_scn.plane_images_data[
+                plane_idx
+            ].row_ticks_V
+            plane_ticks = self._app.last_img_scn.set_pnts_planes
+
+            coord_1, coord_2 = (
+                round(self._gui.imgScanPlot.vLine.pos().x()) - 1,
+                round(self._gui.imgScanPlot.hLine.pos().y()) - 1,
+            )
+
+            dim1_vltg = line_ticks_V[coord_1]
+            dim2_vltg = row_ticks_V[coord_2]
+            dim3_vltg = plane_ticks[plane_idx]
 
             plane_type = self._app.last_img_scn.plane_type
 
@@ -244,7 +255,7 @@ class MainWin:
             elif plane_type == "XZ":
                 vltgs = (dim1_vltg, dim3_vltg, dim2_vltg)
             elif plane_type == "YZ":
-                vltgs = (dim2_vltg, dim3_vltg, dim1_vltg)
+                vltgs = (dim3_vltg, dim1_vltg, dim2_vltg)
 
             for axis, vltg in zip("XYZ", vltgs):
                 getattr(self._gui, f"{axis.lower()}AOV").setValue(vltg)
@@ -448,7 +459,7 @@ class MainWin:
                 p1 = img_data.pic1 / img_data.norm1
                 p2 = img_data.pic2 / img_data.norm2
                 n_lines = p1.shape[0] + p2.shape[0]
-                p = np.zeros(p1.shape)  # assert p1.shape == p2.shape ?
+                p = np.zeros(p1.shape)
                 p[:n_lines:2, :] = p1[:n_lines:2, :]
                 p[1:n_lines:2, :] = p2[1:n_lines:2, :]
                 return p
