@@ -116,7 +116,8 @@ class Timeout:
                 # COUNTER
                 if self._app.devices.COUNTER.error_dict is None:
                     if self._app.meas.type in {"SFCSSolution", "SFCSImage"}:
-                        self._app.devices.COUNTER.fill_ci_buffer()  # use kwarg 'stream=False' to test without stream reading during meas
+                        # use kwarg 'stream=False' to test without stream reading during meas
+                        self._app.devices.COUNTER.fill_ci_buffer()
                     else:
                         self._app.devices.COUNTER.fill_ci_buffer()
                         self._app.devices.COUNTER.dump_ci_buff_overflow()
