@@ -300,7 +300,7 @@ class SFCSImageMeasurement(Measurement):
 
         # even and odd planes are scanned in the opposite directions
         if plane_idx % 2:
-            K = np.arange(n_lines, 0, 1)
+            K = np.arange(n_lines - 1, -1, -1)
         else:
             K = np.arange(n_lines)
 
@@ -371,8 +371,8 @@ class SFCSImageMeasurement(Measurement):
                 self.scanners_dvc.start_tasks("ao")
 
                 # collect initial AI/CI to avoid possible overflow
-                self.counter_dvc.fill_ci_buffer()  # TEST
-                self.scanners_dvc.fill_ai_buffer()  # TEST
+                self.counter_dvc.fill_ci_buffer()
+                self.scanners_dvc.fill_ai_buffer()
 
                 await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
 

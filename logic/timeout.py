@@ -138,14 +138,16 @@ class Timeout:
 
             if self._app.devices.SCANNERS.error_dict is None:
                 try:
-                    (x_ai, y_ai, z_ai) = tuple(
-                        self._app.devices.SCANNERS.ai_buffer[:3, -1]
-                    )
-                    (x_ao_int, y_ao_int, z_ao_int) = tuple(
-                        self._app.devices.SCANNERS.ai_buffer[3:, -1]
-                    )
+                    (
+                        x_ai,
+                        y_ai,
+                        z_ai,
+                        x_ao_int,
+                        y_ao_int,
+                        z_ao_int,
+                    ) = self._app.devices.SCANNERS.ai_buffer[:, -1]
                 except IndexError:
-                    # buffer have just been initialized
+                    # AI buffer have just been initialized
                     pass
                 else:
                     (x_um, y_um, z_um) = tuple(

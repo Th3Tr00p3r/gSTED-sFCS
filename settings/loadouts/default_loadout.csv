@@ -15,7 +15,7 @@ imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
-currPlane,1
+currPlane,0
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -29,14 +29,14 @@ imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
-xAOV,-3.58535
-yAOV,1.13274
-zAOV,6.50465
+xAOV,0.0
+yAOV,0.0
+zAOV,5.0
 axisMoveUm,0.0
 solScanType,0
 solCircScanPreset,0
 solAngScanPreset,0
 imgScanPreset,0
-imgScanType,0
+imgScanType,1
 imgShowMethod,0
 axis,0

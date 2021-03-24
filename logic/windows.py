@@ -417,7 +417,10 @@ class MainWin:
         except AttributeError:
             pass
 
-    def disp_plane_img(self, plane_idx):
+    def disp_plane_img(
+        self,
+        plane_idx,
+    ):
         """Doc."""
 
         def build_image(img_data, method):
@@ -446,8 +449,8 @@ class MainWin:
                 p2 = img_data.pic2 / img_data.norm2
                 n_lines = p1.shape[0] + p2.shape[0]
                 p = np.zeros(p1.shape)  # assert p1.shape == p2.shape ?
-                p[:n_lines:2, :] = p1
-                p[1:n_lines:2, :] = p2
+                p[:n_lines:2, :] = p1[:n_lines:2, :]
+                p[1:n_lines:2, :] = p2[1:n_lines:2, :]
                 return p
 
             elif method == "Both scans - averaged":
@@ -456,16 +459,21 @@ class MainWin:
                 )
 
         disp_mthd = self._gui.imgShowMethod.currentText()
-        image_data = self._app.last_img_scn.plane_images_data[plane_idx]
-        image = build_image(image_data, disp_mthd)
-        self._gui.imgScanPlot.add_image(image)
+        try:
+            image_data = self._app.last_img_scn.plane_images_data[plane_idx]
+        except AttributeError:
+            # No last_img_scn yet
+            pass
+        else:
+            image = build_image(image_data, disp_mthd)
+            self._gui.imgScanPlot.add_image(image)
 
     def plane_choice_changed(self, plane_idx):
         """Doc."""
 
         try:
             self._app.meas.plane_shown.set(plane_idx)
-            self._app.meas.disp_plane_img(plane_idx)
+            self.disp_plane_img(plane_idx)
 
         # no scan performed since app init
         except AttributeError:

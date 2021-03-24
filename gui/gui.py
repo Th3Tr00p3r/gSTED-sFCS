@@ -141,6 +141,13 @@ class MainWin(QMainWindow):
         self.imp.roi_to_scan()
 
     @pyqtSlot(int)
+    def on_imgShowMethod_currentIndexChanged(self) -> NoReturn:
+        """Doc."""
+
+        plane_idx = self.numPlaneShownChoice.value()
+        self.imp.disp_plane_img(plane_idx)
+
+    @pyqtSlot(int)
     def on_numPlaneShownChoice_sliderMoved(self, val: int) -> NoReturn:
         """Doc."""
 

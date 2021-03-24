@@ -702,7 +702,7 @@ class DepletionLaser(BaseDevice, VisaInstrument):
             write_termination="\r",
         )
 
-        self.updt_time = 1
+        self.updt_time = 2
         self.state = None
         self.toggle(False)
 
