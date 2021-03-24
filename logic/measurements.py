@@ -116,10 +116,7 @@ class Measurement:
     def init_scan_tasks(self, ao_sample_mode: str):
         """Doc."""
 
-        if ao_sample_mode == "FINITE":
-            ao_sample_mode = ni_consts.AcquisitionType.FINITE
-        elif ao_sample_mode == "CONTINUOUS":
-            ao_sample_mode = ni_consts.AcquisitionType.CONTINUOUS
+        ao_sample_mode = getattr(ni_consts.AcquisitionType, ao_sample_mode)
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
@@ -136,6 +133,7 @@ class Measurement:
                 "samps_per_chan": self.n_ao_samps,
                 "rate": 100000,
             },
+            start=False,
         )
 
         ao_clk_src = self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term
@@ -155,7 +153,7 @@ class Measurement:
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samp_quant_samp_per_chan": 0,  # int(self.n_ao_samps * 1.2)
+                "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
                 "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
             },
@@ -164,9 +162,9 @@ class Measurement:
     def return_to_regular_tasks(self):
         """Close AO tasks and resume continuous AI/CI"""
 
-        self.scanners_dvc.stop_write_task()
         self.scanners_dvc.start_continuous_read_task()
         self.counter_dvc.start_continuous_read_task()
+        self.scanners_dvc.close_tasks("ao")
 
 
 class SFCSImageMeasurement(Measurement):
@@ -368,15 +366,19 @@ class SFCSImageMeasurement(Measurement):
                 self.change_plane(plane_idx)
                 self.curr_plane_wdgt.set(plane_idx)
                 self.data_dvc.purge()
+
                 self.init_scan_tasks("FINITE")
+                self.scanners_dvc.start_tasks("ao")
+
+                # collect initial AI/CI to avoid possible overflow
+                self.counter_dvc.fill_ci_buffer()  # TEST
+                self.scanners_dvc.fill_ai_buffer()  # TEST
 
                 await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
-                # TESTESTEST
+
+                # collect final AI/CI
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
-                print("ci_buffer length: ", self.counter_dvc.ci_buffer.size)
-                print("ai_buffer length: ", self.scanners_dvc.ai_buffer.shape[1])
-                # /TESTESTEST
 
                 plane_data.append(self.data_dvc.data)
                 self.data_dvc.init_data()
@@ -384,19 +386,7 @@ class SFCSImageMeasurement(Measurement):
             else:
                 break
 
-        # TESTESTEST
-        print(
-            "counts items/total points ratio (should be 1):",
-            self.counter_dvc.ci_buffer.size
-            / (
-                self.scan_params.n_planes
-                * self.scan_params.n_lines
-                * self.scan_params.ppl
-            ),
-        )
-        # /TESTESTEST
-
-        if plane_idx == self.scan_params.n_planes - 1:
+        if self.is_running:
             # prepare data
             self.plane_images_data = [
                 self.prepare_image_data(plane_idx)
@@ -417,9 +407,9 @@ class SFCSImageMeasurement(Measurement):
             pass
 
         # return to stand-by state
-        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
         await self.toggle_lasers(finish=True)
         self.return_to_regular_tasks()
+        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)
@@ -545,6 +535,11 @@ class SFCSSolutionMeasurement(Measurement):
         self.counter_dvc.init_ci_buffer()
 
         self.init_scan_tasks("CONTINUOUS")
+        self.scanners_dvc.start_tasks("ao")
+
+        # collect initial AI/CI to avoid possible overflow
+        self.counter_dvc.fill_ci_buffer()
+        self.scanners_dvc.fill_ai_buffer()
 
         self.total_time_passed = 0
         logging.info(f"Running {self.type} measurement")
@@ -571,9 +566,13 @@ class SFCSSolutionMeasurement(Measurement):
             else:
                 break
 
-        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+        # collect final AI/CI
+        self.counter_dvc.fill_ci_buffer()
+        self.scanners_dvc.fill_ai_buffer()
+
         await self.toggle_lasers(finish=True)
         self.return_to_regular_tasks()
+        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)
