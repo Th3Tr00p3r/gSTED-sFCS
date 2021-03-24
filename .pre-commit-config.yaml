@@ -17,8 +17,8 @@ repos:
     - id: flake8
     
 # -   repo: https://github.com/Damnever/pigar
-    # rev: 0.10.0
+    # rev: 823a3c2478361d53dba408bea75e1766d253f3c0
     # hooks:
-    # - id: pigar
-      # args: ["--without-referenced-comments"]
+      # - id: pigar
+        # args: ["--without-referenced-comments"]
     
