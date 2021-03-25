@@ -9,31 +9,28 @@ import time
 from types import SimpleNamespace
 from typing import NoReturn, Tuple
 
-import nidaqmx.constants as ni_consts  # TODO: move to consts.py
 import numpy as np
 
 import utilities.constants as consts
 from logic.scan_patterns import ScanPatternAO
-from utilities.dialog import Error
-from utilities.errors import meas_err_hndlr as err_hndlr
+from utilities.errors import err_hndlr
 from utilities.helper import ImageData, div_ceil, get_datetime_str
 
 
 class Measurement:
     """Base class for measurements"""
 
-    def __init__(self, app, type: str, scan_params: dict = {}, **kwargs):
+    def __init__(self, app, type: str, scan_params=None, **kwargs):
 
         self._app = app
         self.type = type
         self.data_dvc = app.devices.UM232H
         [setattr(self, key, val) for key, val in kwargs.items()]
-        if scan_params:
+        if scan_params is not None:
             self.pxl_clk_dvc = app.devices.PXL_CLK
             self.scanners_dvc = app.devices.SCANNERS
             self.counter_dvc = app.devices.COUNTER
-            self.scan_params = SimpleNamespace()
-            [setattr(self.scan_params, key, val) for key, val in scan_params.items()]
+            self.scan_params = scan_params
             self.um_V_ratio = tuple(
                 getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
             )
@@ -41,7 +38,6 @@ class Measurement:
         self.laser_dvcs.exc = app.devices.EXC_LASER
         self.laser_dvcs.dep = app.devices.DEP_LASER
         self.laser_dvcs.dep_shutter = app.devices.DEP_SHUTTER
-        self.get_laser_config()
         self.is_running = False
 
     async def start(self):
@@ -92,12 +88,12 @@ class Measurement:
                     logging.info(
                         f"{consts.DEP_LASER.log_ref} isn't on. Turnning on and waiting 5 s before measurement."
                     )
-                    # TODO: add measurement error decorator to cleanly handle device errors before/during measurements (such as error in dep)
                     self._app.gui.main.imp.dvc_toggle("DEP_LASER")
                     await asyncio.sleep(5)
                 self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
+            self.get_laser_config()
 
-    def get_laser_config(self):
+    def get_laser_config(self) -> NoReturn:
         """Doc."""
 
         exc_state = self._app.devices.EXC_LASER.state
@@ -113,10 +109,10 @@ class Measurement:
 
         self.laser_config = laser_config
 
-    def init_scan_tasks(self, ao_sample_mode: str):
+    def init_scan_tasks(self, ao_sample_mode: str) -> NoReturn:
         """Doc."""
 
-        ao_sample_mode = getattr(ni_consts.AcquisitionType, ao_sample_mode)
+        ao_sample_mode = getattr(consts.NI.AcquisitionType, ao_sample_mode)
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
@@ -141,9 +137,9 @@ class Measurement:
         self.scanners_dvc.start_scan_read_task(
             samp_clk_cnfg={},
             timing_params={
-                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "samp_quant_samp_mode": consts.NI.AcquisitionType.CONTINUOUS,
                 "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
-                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
+                "samp_timing_type": consts.NI.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
                 "ai_conv_rate": self.ai_conv_rate,
             },
@@ -152,9 +148,9 @@ class Measurement:
         self.counter_dvc.start_scan_read_task(
             samp_clk_cnfg={},
             timing_params={
-                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "samp_quant_samp_mode": consts.NI.AcquisitionType.CONTINUOUS,
                 "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
-                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
+                "samp_timing_type": consts.NI.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
             },
         )
@@ -343,7 +339,6 @@ class SFCSImageMeasurement(Measurement):
         self._app.last_img_scn.plane_images_data = self.plane_images_data
         self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
 
-    @err_hndlr
     async def run(self):
         """Doc."""
         # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
@@ -397,7 +392,6 @@ class SFCSImageMeasurement(Measurement):
             self.save_data(self.build_filename())
             self.keep_last_meas()
 
-            # TODO: instead of this, show each plane when finished (better then speed is to know what your'e getting)
             # show middle plane
             mid_plane = int(len(self.scan_params.set_pnts_planes) // 2)
             self.plane_shown.set(mid_plane)
@@ -459,9 +453,8 @@ class SFCSSolutionMeasurement(Measurement):
         bps = self.data_dvc.tot_bytes_read / self.time_passed
         try:
             self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
-        except ZeroDivisionError:
-            # TODO: create a decorator for measurement errors - better yet, add a counter error check for when counts are zero/unchanging
-            Error(custom_txt="Counter is probably unplugged.").display()
+        except ZeroDivisionError as exc:
+            err_hndlr(exc, "calibrate_num_files()")
             return
 
         if self.save_intrvl > self.total_duration:
@@ -510,10 +503,8 @@ class SFCSSolutionMeasurement(Measurement):
             f"Total Bytes = {self.data_dvc.tot_bytes_read}\n"
         )
 
-    @err_hndlr
     async def run(self):
         """Doc."""
-        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel, before running
 
         # initialize gui start/end times
         start_time, end_time = self.get_current_and_end_times()

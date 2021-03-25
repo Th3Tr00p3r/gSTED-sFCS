@@ -40,16 +40,16 @@ class Error(UserDialog):
     """Doc."""
 
     def __init__(
-        self, exc_type="", exc_msg="", exc_tb="", custom_txt="", custom_title=""
+        self, type="", msg="", tb="", module="", line="", custom_txt="", custom_title=""
     ):
         """Doc."""
 
-        if exc_type:
+        if type:
             super().__init__(
                 msg_icon=QMessageBox.Critical,
-                msg_title=f"{exc_type}: {custom_title}",
-                msg_text=exc_msg,
-                msg_det=exc_tb,
+                msg_title=f"{type}: {custom_title} ({module}, {line})",
+                msg_text=msg,
+                msg_det=tb,
             )
         else:
             super().__init__(

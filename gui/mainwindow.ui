@@ -3075,71 +3075,6 @@ to Scan</string>
                         </layout>
                        </item>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_7">
-                         <item>
-                          <spacer name="horizontalSpacer_23">
-                           <property name="orientation">
-                            <enum>Qt::Horizontal</enum>
-                           </property>
-                           <property name="sizeHint" stdset="0">
-                            <size>
-                             <width>40</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                          </spacer>
-                         </item>
-                         <item>
-                          <layout class="QVBoxLayout" name="verticalLayout_87">
-                           <property name="spacing">
-                            <number>0</number>
-                           </property>
-                           <item>
-                            <widget class="QLabel" name="label_99">
-                             <property name="font">
-                              <font>
-                               <pointsize>8</pointsize>
-                              </font>
-                             </property>
-                             <property name="text">
-                              <string>Actual Scan Freq. (Hz)</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QLineEdit" name="solTotPointsPerLine_3">
-                             <property name="enabled">
-                              <bool>false</bool>
-                             </property>
-                             <property name="maximumSize">
-                              <size>
-                               <width>999</width>
-                               <height>30</height>
-                              </size>
-                             </property>
-                             <property name="readOnly">
-                              <bool>true</bool>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </item>
-                         <item>
-                          <spacer name="horizontalSpacer_11">
-                           <property name="orientation">
-                            <enum>Qt::Horizontal</enum>
-                           </property>
-                           <property name="sizeHint" stdset="0">
-                            <size>
-                             <width>40</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                          </spacer>
-                         </item>
-                        </layout>
-                       </item>
-                       <item>
                         <spacer name="verticalSpacer_3">
                          <property name="orientation">
                           <enum>Qt::Vertical</enum>
@@ -5422,10 +5357,53 @@ Measurement</string>
          <number>0</number>
         </property>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,0,0">
+         <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1,0,0,0">
           <property name="spacing">
            <number>0</number>
           </property>
+          <item>
+           <widget class="QSlider" name="logNumLinesSlider">
+            <property name="maximumSize">
+             <size>
+              <width>999</width>
+              <height>999</height>
+             </size>
+            </property>
+            <property name="minimum">
+             <number>5</number>
+            </property>
+            <property name="maximum">
+             <number>50</number>
+            </property>
+            <property name="singleStep">
+             <number>1</number>
+            </property>
+            <property name="pageStep">
+             <number>1</number>
+            </property>
+            <property name="value">
+             <number>5</number>
+            </property>
+            <property name="sliderPosition">
+             <number>5</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="invertedAppearance">
+             <bool>false</bool>
+            </property>
+            <property name="invertedControls">
+             <bool>false</bool>
+            </property>
+            <property name="tickPosition">
+             <enum>QSlider::TicksBelow</enum>
+            </property>
+            <property name="tickInterval">
+             <number>5</number>
+            </property>
+           </widget>
+          </item>
           <item>
            <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,2">
             <property name="spacing">

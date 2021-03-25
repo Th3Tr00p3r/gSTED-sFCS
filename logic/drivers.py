@@ -230,13 +230,6 @@ class NIDAQmxInstrument:
         else:
             ao_task.write(data, timeout=self.ao_timeout)
 
-    def counter_read(self, task_name: str, n_samples):
-        """Doc."""
-        # TODO: finish testing than write documentation
-
-        ci_task = self.tasks.ci[task_name]
-        return ci_task.read(number_of_samples_per_channel=n_samples)
-
     def counter_stream_read(self):
         """
          Reads all available samples on board into self.cont_read_buffer
