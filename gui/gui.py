@@ -154,7 +154,7 @@ class MainWin(QMainWindow):
         self.imp.plane_choice_changed(val)
 
     @pyqtSlot(int)
-    def on_measFCSDuration_valueChanged(self, int) -> NoReturn:
+    def on_measFCSDur_valueChanged(self, int) -> NoReturn:
         """Doc."""
 
         self.imp.change_FCS_meas_dur(int)

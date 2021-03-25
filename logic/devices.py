@@ -5,7 +5,6 @@ import time
 from array import array
 from typing import List, NoReturn
 
-import nidaqmx.constants as ni_consts
 import numpy as np
 from nidaqmx.errors import DaqError
 from pyftdi.ftdi import FtdiError
@@ -20,7 +19,7 @@ from logic.drivers import (
     UC480Instrument,
     VisaInstrument,
 )
-from utilities.errors import hndl_dvc_err
+from utilities.errors import err_hndlr
 from utilities.helper import div_ceil, limit
 
 
@@ -62,7 +61,7 @@ class UM232H(BaseDevice, FtdiInstrument):
             else:
                 self.close()
         except (AttributeError, OSError, FtdiError, ValueError) as exc:
-            hndl_dvc_err(exc, self, "toggle()")
+            err_hndlr(exc, "toggle()", dvc=self)
 
     def read_TDC(self):
         """Doc."""
@@ -72,7 +71,7 @@ class UM232H(BaseDevice, FtdiInstrument):
             self.data.extend(read_bytes)
             self.tot_bytes_read += len(read_bytes)
         except (AttributeError, OSError, FtdiError, ValueError) as exc:
-            hndl_dvc_err(exc, self, "read_TDC()")
+            err_hndlr(exc, "read_TDC()", dvc=self)
 
     def stream_read_TDC(self, meas):
         """Doc."""
@@ -113,7 +112,7 @@ class UM232H(BaseDevice, FtdiInstrument):
             time.sleep(0.3)
             self.open()
         except (AttributeError, OSError, FtdiError, ValueError) as exc:
-            hndl_dvc_err(exc, self, "reset()")
+            err_hndlr(exc, "reset()", dvc=self)
 
 
 class Scanners(BaseDevice, NIDAQmxInstrument):
@@ -177,7 +176,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             try:
                 self.close_all_tasks()
             except DaqError as exc:
-                hndl_dvc_err(exc, self, f"toggle({bool})")
+                err_hndlr(exc, f"toggle({bool})", dvc=self)
 
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
@@ -191,14 +190,14 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                 chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
                 samp_clk_cnfg={
                     "rate": self.MIN_OUTPUT_RATE_Hz,
-                    "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                    "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
                     "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 },
             )
             self.init_ai_buffer()
             self.start_tasks("ai")
         except DaqError as exc:
-            hndl_dvc_err(exc, self, "start_continuous_read_task()")
+            err_hndlr(exc, "start_continuous_read_task()", dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> NoReturn:
         """Doc."""
@@ -213,7 +212,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             )
             self.start_tasks("ai")
         except DaqError as exc:
-            hndl_dvc_err(exc, self, "start_scan_read_task()")
+            err_hndlr(exc, "start_scan_read_task()", dvc=self)
 
     def start_write_task(
         self,
@@ -253,7 +252,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                         samp_clk_cnfg={
                             "rate": self.MIN_OUTPUT_RATE_Hz,  # WHY? see CreateAOTask.vi
                             "samps_per_chan": n_steps,
-                            "sample_mode": ni_consts.AcquisitionType.FINITE,
+                            "sample_mode": consts.NI.AcquisitionType.FINITE,
                         },
                     )
                     ao_data = self.limit_ao_data(ao_task, ao_data)
@@ -262,7 +261,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                     self.wait_for_task("ao", task_name)
                     self.close_tasks("ao")
                 except DaqError as exc:
-                    hndl_dvc_err(exc, self, "smooth_start()")
+                    err_hndlr(exc, "smooth_start()", dvc=self)
 
         axes_to_use = consts.AXES_TO_BOOL_TUPLE_DICT[type]
 
@@ -313,7 +312,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
                 self.start_tasks("ao")
 
         except DaqError as exc:
-            hndl_dvc_err(exc, self, "start_write_task()")
+            err_hndlr(exc, "start_write_task()", dvc=self)
 
     def init_ai_buffer(self) -> NoReturn:
         """Doc."""
@@ -327,7 +326,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
             self.ai_buffer = np.empty(shape=(6, 0), dtype=np.float)
 
     def fill_ai_buffer(
-        self, task_name: str = "Continuous AI", n_samples=ni_consts.READ_ALL_AVAILABLE
+        self, task_name: str = "Continuous AI", n_samples=consts.NI.READ_ALL_AVAILABLE
     ) -> NoReturn:
         """Doc."""
 
@@ -340,7 +339,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
         try:
             read_samples = self.analog_read(task_name, n_samples)
         except DaqError as exc:
-            hndl_dvc_err(exc, self, "fill_ai_buffer()")
+            err_hndlr(exc, "fill_ai_buffer()", dvc=self)
         else:
             read_samples = read_samples[:3] + self.diff_to_rse(read_samples[3:])
             self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
@@ -395,7 +394,6 @@ class Counter(BaseDevice, NIDAQmxInstrument):
     fluorescence photons coming from the sample.
     """
 
-    # TODO: ADD CHECK FOR ERROR CAUSED BY INACTIVITY (SUCH AS WHEN DEBUGGING).
     updt_time = 0.2
 
     def __init__(self, nick, param_dict, led_widget, switch_widget, scanners_ai_tasks):
@@ -419,9 +417,9 @@ class Counter(BaseDevice, NIDAQmxInstrument):
         self.ci_chan_specs = {
             "name_to_assign_to_channel": "photon counter",
             "counter": self.address,
-            "edge": ni_consts.Edge.RISING,
+            "edge": consts.NI.Edge.RISING,
             "initial_count": 0,
-            "count_direction": ni_consts.CountDirection.COUNT_UP,
+            "count_direction": consts.NI.CountDirection.COUNT_UP,
         }
 
         self.toggle(True)
@@ -435,7 +433,7 @@ class Counter(BaseDevice, NIDAQmxInstrument):
             try:
                 self.close_all_tasks()
             except DaqError as exc:
-                hndl_dvc_err(exc, self, f"toggle({bool})")
+                err_hndlr(exc, f"toggle({bool})", dvc=self)
 
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
@@ -451,14 +449,14 @@ class Counter(BaseDevice, NIDAQmxInstrument):
                 samp_clk_cnfg={
                     "rate": self.ai_cont_rate,
                     "source": self.ai_cont_src,
-                    "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                    "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
                     "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 },
             )
             self.init_ci_buffer()
             self.start_tasks("ci")
         except DaqError as exc:
-            hndl_dvc_err(exc, self, "start_continuous_read_task()")
+            err_hndlr(exc, "start_continuous_read_task()", dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> NoReturn:
         """Doc."""
@@ -470,40 +468,31 @@ class Counter(BaseDevice, NIDAQmxInstrument):
                 chan_specs=self.ci_chan_specs,
                 chan_xtra_params={
                     "ci_count_edges_term": self.CI_cnt_edges_term,
-                    "ci_data_xfer_mech": ni_consts.DataTransferActiveTransferMode.DMA,
+                    "ci_data_xfer_mech": consts.NI.DataTransferActiveTransferMode.DMA,
                 },
                 samp_clk_cnfg=samp_clk_cnfg,
                 timing_params=timing_params,
             )
             self.start_tasks("ci")
         except DaqError as exc:
-            hndl_dvc_err(exc, self, "start_scan_read_task()")
+            err_hndlr(exc, "start_scan_read_task()", dvc=self)
 
     def fill_ci_buffer(
         self,
-        stream=True,
         task_name: str = "Continuous CI",
-        n_samples=ni_consts.READ_ALL_AVAILABLE,
+        n_samples=consts.NI.READ_ALL_AVAILABLE,
     ):
         """Doc."""
 
-        if stream:
-            try:
-                num_samps_read = self.counter_stream_read()
-            except DaqError as exc:
-                hndl_dvc_err(exc, self, "fill_ci_buffer()")
-            else:
-                self.ci_buffer = np.concatenate(
-                    (self.ci_buffer, self.cont_read_buffer[:num_samps_read])
-                )
-                self.num_reads_since_avg += num_samps_read
+        try:
+            num_samps_read = self.counter_stream_read()
+        except DaqError as exc:
+            err_hndlr(exc, "fill_ci_buffer()", dvc=self)
         else:
-            try:
-                read_samples = self.counter_read(task_name, n_samples)
-            except DaqError as exc:
-                hndl_dvc_err(exc, self, "fill_ci_buffer()")
-            else:
-                self.ci_buffer = np.concatenate((self.ci_buffer, read_samples))
+            self.ci_buffer = np.concatenate(
+                (self.ci_buffer, self.cont_read_buffer[:num_samps_read])
+            )
+            self.num_reads_since_avg += num_samps_read
 
     def average_counts(self):
         """Doc."""
@@ -561,7 +550,7 @@ class PixelClock(BaseDevice, NIDAQmxInstrument):
             try:
                 self.close_all_tasks()
             except DaqError as exc:
-                hndl_dvc_err(exc, self, f"toggle({bool})")
+                err_hndlr(exc, f"toggle({bool})", dvc=self)
             else:
                 self.state = bool
 
@@ -581,11 +570,11 @@ class PixelClock(BaseDevice, NIDAQmxInstrument):
                     "low_ticks": self.low_ticks,
                     "high_ticks": self.high_ticks,
                 },
-                clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
+                clk_cnfg={"sample_mode": consts.NI.AcquisitionType.CONTINUOUS},
             )
             self.start_tasks("co")
         except DaqError as exc:
-            hndl_dvc_err(exc, self, "_start_co_clock_sync()")
+            err_hndlr(exc, "_start_co_clock_sync()", dvc=self)
 
 
 class Camera(BaseDevice, UC480Instrument):
@@ -709,9 +698,6 @@ class DepletionLaser(BaseDevice, VisaInstrument):
         if self.state is False:
             self.set_current(1500)
 
-        # TODO: this should move to toggle
-        self.state = False
-
     def toggle(self, bool):
         """Doc."""
 
@@ -719,7 +705,7 @@ class DepletionLaser(BaseDevice, VisaInstrument):
         try:
             self._write(cmnd)
         except VisaIOError as exc:
-            hndl_dvc_err(exc, self, "toggle()")
+            err_hndlr(exc, "toggle()", dvc=self)
         else:
             self.state = bool
 
@@ -736,10 +722,10 @@ class DepletionLaser(BaseDevice, VisaInstrument):
         try:
             return self._query(cmnd)
         except VisaIOError as exc:
-            hndl_dvc_err(exc, self, "get_prop()")
+            err_hndlr(exc, "get_prop()", dvc=self)
             return -999
         except ValueError as exc:
-            hndl_dvc_err(exc, self, "get_prop()", lvl="WARNING")
+            err_hndlr(exc, "get_prop()", lvl="WARNING", dvc=self)
             return -999
 
     def set_power(self, value_mW):
@@ -755,7 +741,7 @@ class DepletionLaser(BaseDevice, VisaInstrument):
                 cmnd = f"Setpower 0 {value_mW}"
                 self._write(cmnd)
             except VisaIOError as exc:
-                hndl_dvc_err(exc, self, "set_power()")
+                err_hndlr(exc, "set_power()", dvc=self)
         else:
             dialog.Error(error_txt="Power out of range").display()
 
@@ -772,7 +758,7 @@ class DepletionLaser(BaseDevice, VisaInstrument):
                 cmnd = f"setLDcur 1 {value_mW}"
                 self._write(cmnd)
             except VisaIOError as exc:
-                hndl_dvc_err(exc, self, "set_current()")
+                err_hndlr(exc, "set_current()", dvc=self)
         else:
             dialog.Error(error_txt="Current out of range").display()
 
@@ -802,7 +788,7 @@ class StepperStage(BaseDevice):
             else:
                 self.rsrc.close()
         except VisaIOError as exc:
-            hndl_dvc_err(exc, self, "toggle()")
+            err_hndlr(exc, "toggle()", dvc=self)
         else:
             self.state = bool
 
@@ -819,7 +805,7 @@ class StepperStage(BaseDevice):
         try:
             self.rsrc.write(cmnd)
         except VisaIOError as exc:
-            hndl_dvc_err(exc, self, "move()")
+            err_hndlr(exc, "move()", dvc=self)
 
     def release(self):
         """Doc."""
@@ -828,4 +814,4 @@ class StepperStage(BaseDevice):
         try:
             self.rsrc.write(cmnd)
         except VisaIOError as exc:
-            hndl_dvc_err(exc, self, "release()")
+            err_hndlr(exc, "release()", dvc=self)

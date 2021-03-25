@@ -25,7 +25,7 @@ class App:
 
     def __init__(self, loop):
         """Doc."""
-        # refactor this init so that it uses clean_up app method - split it into a once-occuring setup, and the rest in clean_up can be repeated in restsrts
+        # TODO: refactor this init so that it uses clean_up app method - split it into a once-occuring setup, and the rest in clean_up can be repeated in restsrts
 
         self.loop = loop
 
@@ -88,14 +88,11 @@ class App:
         instantiating a driver object for each device.
         """
 
-        #        # reset all USB devices
-        #        usb_dvcs = usb.core.find(find_all=True)
-        #        [usb_dvc.reset() for usb_dvc in usb_dvcs]
-
         self.devices = SimpleNamespace()
         for nick in consts.DVC_NICKS_TUPLE:
             DVC_CONSTS = getattr(consts, nick)
             dvc_class = getattr(devices, DVC_CONSTS.cls_name)
+            # TODO: switch to read namespace
             param_dict = DVC_CONSTS.param_widgets.read_dict_from_gui(self)
 
             gui_parent_name = DVC_CONSTS.led_widget.gui_parent_name

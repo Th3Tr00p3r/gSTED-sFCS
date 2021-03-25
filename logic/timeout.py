@@ -9,7 +9,6 @@ from collections import deque
 from typing import NoReturn
 
 import utilities.constants as consts
-from utilities.errors import logic_error_handler as err_hndlr
 
 
 class Timeout:
@@ -69,28 +68,35 @@ class Timeout:
     async def _updt_current_state(self) -> NoReturn:
         """Doc."""
 
-        @err_hndlr
         def get_last_line(file_path) -> str:
             """
             Return the last line of a text file.
             (https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python)
             """
-
-            with open(file_path, "rb") as f:
-                f.seek(-2, os.SEEK_END)
-                while f.read(1) != b"\n":
-                    f.seek(-2, os.SEEK_CUR)
-                last_line = f.readline().decode()
-            return last_line
+            try:
+                with open(file_path, "rb") as f:
+                    f.seek(-2, os.SEEK_END)
+                    while f.read(1) != b"\n":
+                        f.seek(-2, os.SEEK_CUR)
+                    last_line = f.readline().decode()
+            except FileNotFoundError:
+                last_line = "Log File Not Found!!!"
+                self._app.gui.main.lastAction.setPlainText(last_line)
+            finally:
+                return last_line
 
         now_timestamp = time.strftime("%H:%M:%S", time.localtime())
         first_line = f"[{now_timestamp}] Application Started"
 
-        # TODO: decide where to control the size (GUI?)
-        buffer_deque = deque([first_line], maxlen=5)
+        maxlen = self._app.gui.main.logNumLinesSlider.value()
+        buffer_deque = deque([first_line], maxlen=maxlen)
 
         while self.not_finished:
             if self.running:
+
+                new_maxlen = self._app.gui.main.logNumLinesSlider.value()
+                if buffer_deque.maxlen != new_maxlen:
+                    buffer_deque = deque(buffer_deque, maxlen=new_maxlen)
 
                 last_line = get_last_line(consts.LOG_FOLDER_PATH + "log")
 
@@ -109,17 +115,13 @@ class Timeout:
 
     async def _updt_CI_and_AI(self) -> NoReturn:
         """Doc."""
-        # TODO: (later, if anything slows down) consider running in thread (see _updt_dep in this module)
 
         while self.not_finished:
             if self.running:
                 # COUNTER
                 if self._app.devices.COUNTER.error_dict is None:
-                    if self._app.meas.type in {"SFCSSolution", "SFCSImage"}:
-                        # use kwarg 'stream=False' to test without stream reading during meas
-                        self._app.devices.COUNTER.fill_ci_buffer()
-                    else:
-                        self._app.devices.COUNTER.fill_ci_buffer()
+                    self._app.devices.COUNTER.fill_ci_buffer()
+                    if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
                         self._app.devices.COUNTER.dump_ci_buff_overflow()
 
                 # AI
@@ -147,7 +149,7 @@ class Timeout:
                         z_ao_int,
                     ) = self._app.devices.SCANNERS.ai_buffer[:, -1]
                 except IndexError:
-                    # AI buffer have just been initialized
+                    # AI buffer has just been initialized
                     pass
                 else:
                     (x_um, y_um, z_um) = tuple(

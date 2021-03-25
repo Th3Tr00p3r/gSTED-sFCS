@@ -16,8 +16,7 @@ import utilities.constants as consts
 import utilities.helper as helper
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
-from utilities.errors import dvc_error_checker as err_chck
-from utilities.errors import logic_error_handler as err_hndlr
+from utilities.errors import dvc_err_chckr as err_chckr
 
 # TODO: None of the following should be classes. Notice that they don't have any attributes, therefore their state cannot change and thus Objects have no meaning. Instead, the methods should be functions in seperate modules, perhaps under a
 
@@ -54,7 +53,6 @@ class MainWin:
         if pressed == QtWidgets.QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
 
-    @err_hndlr
     def save(self):
         """Doc."""
 
@@ -68,7 +66,6 @@ class MainWin:
             helper.gui_to_csv(self._gui, file_path)
             logging.debug(f"Loadout saved as: '{file_path}'")
 
-    @err_hndlr
     def load(self, file_path=""):
         """Doc."""
 
@@ -83,7 +80,7 @@ class MainWin:
             helper.csv_to_gui(file_path, self._gui)
             logging.debug(f"Loadout loaded: '{file_path}'")
 
-    @err_chck()
+    @err_chckr()
     def dvc_toggle(self, nick, leave_on=False, leave_off=False):
         """Doc."""
 
@@ -144,7 +141,7 @@ class MainWin:
         if err_dict is not None:
             Error(**err_dict, custom_title=getattr(consts, dvc_nick).log_ref).display()
 
-    @err_chck({"DEP_LASER"})
+    @err_chckr({"DEP_LASER"})
     def dep_sett_apply(self):
         """Doc."""
 
@@ -155,15 +152,13 @@ class MainWin:
             val = self._gui.depPow.value()
             self._app.devices.DEP_LASER.set_power(val)
 
-    @err_chck({"SCANNERS"})
+    @err_chckr({"SCANNERS"})
     def move_scanners(self, axes_used: str = "XYZ") -> NoReturn:
         """Doc."""
 
         scanners_dvc = self._app.devices.SCANNERS
 
-        curr_pos = tuple(
-            getattr(self._gui, f"{ax}AOV").value() for ax in "xyz"
-        )  # TODO: perform AO single read at app init
+        curr_pos = tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
         data = []
         type_str = ""
         for ax, curr_ax_val in zip("XYZ", curr_pos):
@@ -178,7 +173,7 @@ class MainWin:
             f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
         )
 
-    @err_chck({"SCANNERS"})
+    @err_chckr({"SCANNERS"})
     def go_to_origin(self, which_axes: str) -> NoReturn:
         """Doc."""
 
@@ -198,7 +193,7 @@ class MainWin:
             f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin"
         )
 
-    @err_chck({"SCANNERS"})
+    @err_chckr({"SCANNERS"})
     def displace_scanner_axis(self, sign: int) -> NoReturn:
         """Doc."""
 
@@ -225,7 +220,7 @@ class MainWin:
                 f"{getattr(consts, 'SCANNERS').log_ref}({axis}) was displaced {str(um_disp)} um"
             )
 
-    @err_chck({"SCANNERS"})
+    @err_chckr({"SCANNERS"})
     def roi_to_scan(self):
         """Doc"""
 
@@ -269,7 +264,7 @@ class MainWin:
         except AttributeError:
             pass
 
-    @err_chck({"STAGE"})
+    @err_chckr({"STAGE"})
     def move_stage(self, dir: str, steps: int):
         """Doc."""
 
@@ -278,7 +273,7 @@ class MainWin:
             f"{getattr(consts, 'STAGE').log_ref} moved {str(steps)} steps {str(dir)}"
         )
 
-    @err_chck({"STAGE"})
+    @err_chckr({"STAGE"})
     def release_stage(self):
         """Doc."""
 
@@ -299,7 +294,7 @@ class MainWin:
             self._gui.stepperDock.setVisible(True)
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
-    @err_chck({"TDC", "UM232H", "SCANNERS"})
+    @err_chckr({"TDC", "UM232H", "SCANNERS"})
     def toggle_meas(self, type):
         """Doc."""
 
@@ -308,7 +303,6 @@ class MainWin:
             if type == "FCS":
                 self._app.meas = meas.FCSMeasurement(
                     self._app,
-                    # TODO: switch to read namespace
                     **consts.FCS_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         ["prog_bar_wdgt", "g0_wdgt", "decay_time_wdgt", "plot_wdgt"],
@@ -321,21 +315,18 @@ class MainWin:
                 self._app.gui.main.imp.go_to_origin("XY")
                 pattern = self._gui.solScanType.currentText()
                 if pattern == "angular":
-                    # TODO: switch to read namespace
-                    scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_dict_from_gui(
+                    scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(
                         self._app
                     )
                 elif pattern == "circle":
-                    # TODO: switch to read namespace
-                    scan_params = consts.SOL_CIRC_SCN_WDGT_COLL.read_dict_from_gui(
+                    scan_params = consts.SOL_CIRC_SCN_WDGT_COLL.read_namespace_from_gui(
                         self._app
                     )
-                scan_params["pattern"] = pattern
+                scan_params.pattern = pattern
 
                 self._app.meas = meas.SFCSSolutionMeasurement(
                     app=self._app,
                     scan_params=scan_params,
-                    # TODO: switch to read namespace
                     **consts.SOL_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [
@@ -359,9 +350,9 @@ class MainWin:
             elif type == "SFCSImage":
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
-                    # TODO: switch to read namespace
-                    scan_params=consts.IMG_SCN_WDGT_COLL.read_dict_from_gui(self._app),
-                    # TODO: switch to read namespace
+                    scan_params=consts.IMG_SCN_WDGT_COLL.read_namespace_from_gui(
+                        self._app
+                    ),
                     **consts.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [
@@ -401,7 +392,7 @@ class MainWin:
                 f"Another type of measurement "
                 f"({current_type}) is currently running."
             )
-            Error(custom_txt=txt).display()
+            Notification(txt).display()
 
     def disp_scn_pttrn(self, pattern: str):
         """Doc."""
@@ -485,16 +476,13 @@ class MainWin:
         try:
             self._app.meas.plane_shown.set(plane_idx)
             self.disp_plane_img(plane_idx)
-
-        # no scan performed since app init
         except AttributeError:
+            # no scan performed since app init
             pass
 
     def change_FCS_meas_dur(self, new_dur):
         """Doc."""
-        # TODO: currently not working
 
-        # if FCS meas running
         if self._app.meas.type == "FCS":
             self._app.meas.duration = new_dur
 
@@ -504,7 +492,7 @@ class MainWin:
         self._app.gui.settings.show()
         self._app.gui.settings.activateWindow()
 
-    @err_chck({"CAMERA"})
+    @err_chckr({"CAMERA"})
     async def open_camwin(self):
         # TODO: simply making this func async doesn't help. the blocking function here is 'UC480_Camera(reopen_policy="new")'
         # from 'drivers.py', and I can't yet see a way to make it async (since I don't want to touch the API) I should try threading for this.
@@ -515,7 +503,7 @@ class MainWin:
         self._app.gui.camera.activateWindow()
         self._app.gui.camera.imp.init_cam()
 
-    @err_chck({"COUNTER"})
+    @err_chckr({"COUNTER"})
     def cnts_avg_sldr_changed(self, val):
         """Doc."""
 
@@ -529,10 +517,8 @@ class MainWin:
 
         self._app.devices.UM232H.reset()
 
-    @err_hndlr
     def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
         """Doc."""
-        # TODO: use this function at app init to have the default value loaded
 
         consts.IMG_SCN_WDGT_COLL.write_to_gui(
             self._app, consts.IMG_SCN_WDGT_FILLOUT_DICT[curr_text]
@@ -550,7 +536,6 @@ class SettWin:
         self._gui = gui
         self.check_on_close = True
 
-    @err_hndlr
     def clean_up(self):
         """Doc."""
 
@@ -571,7 +556,6 @@ class SettWin:
         else:
             Notification("Using Current settings.").display()
 
-    @err_hndlr
     def save(self):
         """
         Write all QLineEdit, QspinBox and QdoubleSpinBox
@@ -592,7 +576,6 @@ class SettWin:
             helper.gui_to_csv(self._gui.frame, file_path)
             logging.debug(f"Settings file saved as: '{file_path}'")
 
-    @err_hndlr
     def load(self, file_path=""):
         """
         Read 'file_path' (csv) and write to matching QLineEdit,
@@ -655,7 +638,7 @@ class CamWin:
             self._cam = None
             logging.debug("Camera connection closed")
 
-    @err_chck({"CAMERA"})
+    @err_chckr({"CAMERA"})
     def toggle_video(self):
         """Doc."""
 
@@ -679,7 +662,7 @@ class CamWin:
 
             logging.debug("Camera video mode OFF")
 
-    @err_chck({"CAMERA"})
+    @err_chckr({"CAMERA"})
     def shoot(self):
         """Doc."""
 
