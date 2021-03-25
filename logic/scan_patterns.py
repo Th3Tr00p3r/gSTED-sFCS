@@ -218,7 +218,6 @@ class ScanPatternAO:
                 )
 
         else:
-            # TODO: handle this error from measurements.py using needed decorator
             raise ValueError("The scan angle should be in [0, 180] range!")
 
         lin_len = f * tot_len
@@ -318,15 +317,15 @@ class ScanPatternAO:
 
         tot_len = 2 * pi * R_um
         scan_freq_Hz = speed / tot_len
-        n_smpls = int(samp_freq_Hz / scan_freq_Hz)
+        n_samps = int(samp_freq_Hz / scan_freq_Hz)
 
         x_um_V_ratio, y_um_V_ratio, _ = um_V_ratio
         R_Vx = R_um / x_um_V_ratio
         R_Vy = R_um / y_um_V_ratio
 
         ao_buffer = [
-            [R_Vx * sin(2 * pi * (i / n_smpls)) for i in range(n_smpls)],
-            [R_Vy * cos(2 * pi * (i / n_smpls)) for i in range(n_smpls)],
+            [R_Vx * sin(2 * pi * (i / n_samps)) for i in range(n_samps)],
+            [R_Vy * cos(2 * pi * (i / n_samps)) for i in range(n_samps)],
         ]
 
         dt = 1 / scan_freq_Hz

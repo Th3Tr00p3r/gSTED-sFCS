@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """ Global constants. """
 
+import nidaqmx.constants as NI  # NOQA
+
 import gui.icons.icon_paths as icon_path
 from utilities.helper import DeviceAttrs, QtWidgetAccess, QtWidgetCollection
 
