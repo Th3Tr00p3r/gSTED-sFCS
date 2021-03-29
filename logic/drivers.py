@@ -13,8 +13,6 @@ from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NO
 from pyftdi.ftdi import Ftdi, FtdiError
 from pyftdi.usbtools import UsbTools
 
-import utilities.helper as helper
-
 
 class FtdiInstrument:
     """Doc."""
@@ -130,12 +128,6 @@ class NIDAQmxInstrument:
 
         task = ni.Task(new_task_name=name)
         for chan_spec in chan_specs:
-            # TODO: see if following check can go to devices.py - interrupts possible merge of 'create task' functions
-            if helper.count_words(chan_spec["physical_channel"]) == 1:
-                chan_spec = {
-                    **chan_spec,
-                    "terminal_config": ni.constants.TerminalConfiguration.RSE,
-                }
             task.ai_channels.add_ai_voltage_chan(**chan_spec)
         if samp_clk_cnfg:
             task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
