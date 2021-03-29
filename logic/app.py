@@ -91,22 +91,14 @@ class App:
         self.devices = SimpleNamespace()
         for nick in consts.DVC_NICKS_TUPLE:
             DVC_CONSTS = getattr(consts, nick)
-            dvc_class = getattr(devices, DVC_CONSTS.cls_name)
-            # TODO: switch to read namespace
-            param_dict = DVC_CONSTS.param_widgets.read_dict_from_gui(self)
+            dvc_class = getattr(devices, DVC_CONSTS.class_name)
+            param_dict = DVC_CONSTS.param_widgets.hold_objects(
+                self, ["led_widget", "switch_widget"]
+            ).read_dict_from_gui(self)
+            param_dict["nick"] = nick
+            param_dict["log_ref"] = DVC_CONSTS.log_ref
+            param_dict["led_icon_path"] = DVC_CONSTS.led_icon_path
 
-            gui_parent_name = DVC_CONSTS.led_widget.gui_parent_name
-            led_widget = DVC_CONSTS.led_widget.hold_obj(
-                parent_gui=getattr(self.gui, gui_parent_name)
-            )
-
-            if DVC_CONSTS.switch_widget is not None:
-                gui_parent_name = DVC_CONSTS.switch_widget.gui_parent_name
-                switch_widget = DVC_CONSTS.switch_widget.hold_obj(
-                    parent_gui=getattr(self.gui, gui_parent_name)
-                )
-            else:
-                switch_widget = None
             if DVC_CONSTS.cls_xtra_args is not None:
                 x_args = [
                     helper.deep_getattr(self, deep_attr)
@@ -116,10 +108,7 @@ class App:
                     self.devices,
                     nick,
                     dvc_class(
-                        nick,
                         param_dict,
-                        led_widget,
-                        switch_widget,
                         *x_args,
                     ),
                 )
@@ -127,7 +116,7 @@ class App:
                 setattr(
                     self.devices,
                     nick,
-                    dvc_class(nick, param_dict, led_widget, switch_widget),
+                    dvc_class(param_dict),
                 )
 
     def clean_up_app(self, restart=False):
