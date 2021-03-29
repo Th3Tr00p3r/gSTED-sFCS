@@ -66,7 +66,7 @@ class QtWidgetCollection:
 
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
-            setattr(self, key, val)
+            setattr(self, key, QtWidgetAccess(*val))
 
     def hold_objects(
         self, app: app_module.App, wdgt_name_list: List[str] = None, hold_all=False
@@ -75,9 +75,14 @@ class QtWidgetCollection:
 
         if wdgt_name_list is not None:
             for wdgt_name in wdgt_name_list:
-                wdgt = getattr(self, wdgt_name)
-                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                wdgt.hold_obj(parent_gui)
+                try:
+                    wdgt = getattr(self, wdgt_name)
+                except AttributeError:
+                    # collection has no widget 'wdgt_name'
+                    pass
+                else:
+                    parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                    wdgt.hold_obj(parent_gui)
 
         elif hold_all:
             for wdgt in vars(self).values():
@@ -237,16 +242,20 @@ def get_datetime_str() -> str:
     return datetime.datetime.now().strftime("%d%m_%H%M%S")
 
 
+def inv_dict(dct: dict) -> dict:
+    """Inverts a Python dictionary. Expects mapping to be 1-to-1"""
+
+    return {val: key for key, val in dct.items()}
+
+
 @dataclass
 class DeviceAttrs:
 
-    cls_name: str
+    class_name: str
     log_ref: str
-    led_widget: QtWidgetAccess
     param_widgets: QtWidgetCollection
     cls_xtra_args: List[str] = None
     led_icon_path: str = icon_path.LED_GREEN
-    switch_widget: QtWidgetAccess = None
 
 
 @dataclass

@@ -19,7 +19,7 @@ import utilities.helper as helper
 class FtdiInstrument:
     """Doc."""
 
-    def __init__(self, param_dict, **kwargs):
+    def __init__(self, param_dict):
 
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
@@ -261,7 +261,6 @@ class VisaInstrument:
         param_dict,
         read_termination="",
         write_termination="",
-        **kwargs,
     ):
         self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
@@ -311,7 +310,7 @@ class VisaInstrument:
 class UC480Instrument:
     """Doc."""
 
-    def __init__(self, param_dict, **kwargs):
+    def __init__(self, param_dict):
         self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
         self._inst = None

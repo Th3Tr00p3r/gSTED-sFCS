@@ -23,28 +23,14 @@ from utilities.errors import err_hndlr
 from utilities.helper import div_ceil, limit
 
 
-class BaseDevice:
-    """Doc."""
-
-    def __init__(self, nick, led_widget, switch_widget, **kwargs):
-        self.nick = nick
-        self.led_widget = led_widget
-        self.switch_widget = switch_widget
-        # next line forwards all unused arguments to other parent classes of device
-        super().__init__(**kwargs)
-
-
-class UM232H(BaseDevice, FtdiInstrument):
+class UM232H(FtdiInstrument):
     """
     Represents the FTDI chip used to transfer data from the FPGA
     to the PC.
     """
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget):
+    def __init__(self, param_dict):
         super().__init__(
-            nick=nick,
-            led_widget=led_widget,
-            switch_widget=switch_widget,
             param_dict=param_dict,
         )
 
@@ -115,7 +101,7 @@ class UM232H(BaseDevice, FtdiInstrument):
             err_hndlr(exc, "reset()", dvc=self)
 
 
-class Scanners(BaseDevice, NIDAQmxInstrument):
+class Scanners(NIDAQmxInstrument):
     """
     Scanners encompasses all analog focal point positioning devices
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
@@ -126,12 +112,9 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
     y_ao_limits = {"min_val": -5.0, "max_val": 5.0}
     z_ao_limits = {"min_val": 0.0, "max_val": 10.0}
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget):
+    def __init__(self, param_dict):
         super().__init__(
-            nick=nick,
-            led_widget=led_widget,
-            switch_widget=switch_widget,
-            param_dict=param_dict,
+            param_dict,
             ao_timeout=0.1,
         )
 
@@ -388,7 +371,7 @@ class Scanners(BaseDevice, NIDAQmxInstrument):
         return diff_ao_data
 
 
-class Counter(BaseDevice, NIDAQmxInstrument):
+class Counter(NIDAQmxInstrument):
     """
     Represents the detector which counts the green
     fluorescence photons coming from the sample.
@@ -396,12 +379,9 @@ class Counter(BaseDevice, NIDAQmxInstrument):
 
     updt_time = 0.2
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget, scanners_ai_tasks):
+    def __init__(self, param_dict, scanners_ai_tasks):
         super().__init__(
-            nick=nick,
-            led_widget=led_widget,
-            switch_widget=switch_widget,
-            param_dict=param_dict,
+            param_dict,
         )
         self.cont_read_buffer = np.zeros(
             shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32
@@ -524,19 +504,16 @@ class Counter(BaseDevice, NIDAQmxInstrument):
             self.ci_buffer = self.ci_buffer[-self.CONT_READ_BFFR_SZ :]
 
 
-class PixelClock(BaseDevice, NIDAQmxInstrument):
+class PixelClock(NIDAQmxInstrument):
     """
     The pixel clock is fed to the DAQ board from the FPGA.
     Base frequency is 4 MHz. Used for scans, where it is useful to
     have divisible frequencies for both the laser pulses and AI/AO.
     """
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget):
+    def __init__(self, param_dict):
         super().__init__(
-            nick=nick,
-            led_widget=led_widget,
-            switch_widget=switch_widget,
-            param_dict=param_dict,
+            param_dict,
         )
 
         self.toggle(False)
@@ -577,17 +554,14 @@ class PixelClock(BaseDevice, NIDAQmxInstrument):
             err_hndlr(exc, "_start_co_clock_sync()", dvc=self)
 
 
-class Camera(BaseDevice, UC480Instrument):
+class Camera(UC480Instrument):
     """Doc."""
 
     vid_intrvl = 0.3
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget, loop, gui):
+    def __init__(self, param_dict, loop, gui):
         super().__init__(
-            nick=nick,
-            led_widget=led_widget,
-            switch_widget=switch_widget,
-            param_dict=param_dict,
+            param_dict,
         )
 
         self._loop = loop
@@ -656,15 +630,12 @@ class Camera(BaseDevice, UC480Instrument):
         self._gui.canvas.draw()
 
 
-class SimpleDO(BaseDevice, NIDAQmxInstrument):
+class SimpleDO(NIDAQmxInstrument):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget):
+    def __init__(self, param_dict):
         super().__init__(
-            nick=nick,
-            led_widget=led_widget,
-            switch_widget=switch_widget,
-            param_dict=param_dict,
+            param_dict,
         )
 
         self.toggle(False)
@@ -676,17 +647,14 @@ class SimpleDO(BaseDevice, NIDAQmxInstrument):
         self.state = bool
 
 
-class DepletionLaser(BaseDevice, VisaInstrument):
+class DepletionLaser(VisaInstrument):
     """Control depletion laser through pyVISA"""
 
     min_SHG_temp = 52
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget):
+    def __init__(self, param_dict):
         super().__init__(
-            nick=nick,
-            led_widget=led_widget,
-            switch_widget=switch_widget,
-            param_dict=param_dict,
+            param_dict,
             read_termination="\r",
             write_termination="\r",
         )
@@ -763,17 +731,15 @@ class DepletionLaser(BaseDevice, VisaInstrument):
             dialog.Error(error_txt="Current out of range").display()
 
 
-class StepperStage(BaseDevice):
+class StepperStage:
     """
     Control stepper stage through Arduino chip using PyVISA.
     This device operates slowly and needs special care,
     and so its driver is within its own class (not inherited)
     """
 
-    def __init__(self, nick, param_dict, led_widget, switch_widget):
-        super().__init__(nick=nick, led_widget=led_widget, switch_widget=switch_widget)
+    def __init__(self, param_dict):
         [setattr(self, key, val) for key, val in param_dict.items()]
-
         self.error_dict = None
         self.rm = drivers.visa.ResourceManager()
         self.toggle(True)
