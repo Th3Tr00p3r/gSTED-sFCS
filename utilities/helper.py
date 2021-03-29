@@ -221,12 +221,6 @@ def div_ceil(x: int, y: int) -> int:
     return int(x // y + (x % y > 0))
 
 
-def count_words(input_str: str) -> int:
-    """Returns the number of words in a string"""
-
-    return len(input_str.split())
-
-
 def limit(val: float, min: float, max: float) -> float:
 
     if min <= val <= max:
@@ -298,16 +292,23 @@ class ImageDisplay:
                 maxYRange=image.shape[1],
             )
         if crosshair:
-            self.vLine = pg.InfiniteLine(angle=90, movable=False)
-            self.hLine = pg.InfiniteLine(angle=0, movable=False)
-            self.vb.addItem(self.vLine, ignoreBounds=True)
-            self.vb.addItem(self.hLine, ignoreBounds=True)
-            # proxy = pg.SignalProxy(vb.scene().sigMouseClicked, rateLimit=1, slot=mouseClicked)
+            self.vLine = pg.InfiniteLine(angle=90, movable=True)
+            self.hLine = pg.InfiniteLine(angle=0, movable=True)
+            self.vb.addItem(self.vLine)
+            self.vb.addItem(self.hLine)
             self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
 
     def mouseClicked(self, evt):
-        pos = evt.pos()  # using signal proxy turns original arguments into a tuple
-        if self.vb.sceneBoundingRect().contains(pos):
-            mousePoint = self.vb.mapSceneToView(pos)
-            self.vLine.setPos(mousePoint.x())
-            self.hLine.setPos(mousePoint.y())
+        """Doc."""
+        # TODO: selected position is not accurate for some reason.
+
+        try:
+            pos = evt.pos()
+        except AttributeError:
+            # outside image
+            pass
+        else:
+            if self.vb.sceneBoundingRect().contains(pos):
+                mousePoint = self.vb.mapSceneToView(pos)
+                self.vLine.setPos(mousePoint.x() + 0.5)
+                self.hLine.setPos(mousePoint.y())

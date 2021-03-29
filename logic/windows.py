@@ -93,8 +93,11 @@ class MainWin:
             dvc.toggle(True)
 
             if dvc.state:  # if managed to turn ON
-                if dvc.switch_widget is not None:
+                try:
                     dvc.switch_widget.set(QIcon(icon.SWITCH_ON))
+                except AttributeError:
+                    # no switch
+                    pass
 
                 on_icon = QIcon(dvc.led_icon_path)
                 dvc.led_widget.set(on_icon)
@@ -108,8 +111,11 @@ class MainWin:
             dvc.toggle(False)
 
             if not dvc.state:  # if managed to turn OFF
-                if dvc.switch_widget is not None:
+                try:
                     dvc.switch_widget.set(QIcon(icon.SWITCH_OFF))
+                except AttributeError:
+                    # no switch
+                    pass
 
                 dvc.led_widget.set(QIcon(icon.LED_OFF))
 
@@ -226,8 +232,8 @@ class MainWin:
             plane_ticks = self._app.last_img_scn.set_pnts_planes
 
             coord_1, coord_2 = (
-                round(self._gui.imgScanPlot.vLine.pos().x()) - 1,
-                round(self._gui.imgScanPlot.hLine.pos().y()) - 1,
+                round(self._gui.imgScanPlot.vLine.value()) - 1,
+                round(self._gui.imgScanPlot.hLine.value()) - 1,
             )
 
             dim1_vltg = line_ticks_V[coord_1]
@@ -248,7 +254,7 @@ class MainWin:
 
             self.move_scanners(plane_type)
 
-            logging.info(
+            logging.debug(
                 f"{getattr(consts, 'SCANNERS').log_ref} moved to ROI ({vltgs})"
             )
 

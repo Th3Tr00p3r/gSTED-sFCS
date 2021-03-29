@@ -118,12 +118,16 @@ class Scanners(NIDAQmxInstrument):
             ao_timeout=0.1,
         )
 
+        rse = consts.NI.TerminalConfiguration.RSE
+        diff = consts.NI.TerminalConfiguration.DIFFERENTIAL
+
         self.ai_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} AI",
                 "min_val": -10.0,
                 "max_val": 10.0,
+                "terminal_config": rse,
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
@@ -133,8 +137,11 @@ class Scanners(NIDAQmxInstrument):
                 "physical_channel": getattr(self, f"ao_int_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} internal AO",
                 **getattr(self, f"{axis}_ao_limits"),
+                "terminal_config": trm_cnfg,
             }
-            for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
+            for axis, trm_cnfg, inst in zip(
+                "xyz", (diff, diff, rse), ("galvo", "galvo", "piezo")
+            )
         ]
 
         self.ao_chan_specs = [
