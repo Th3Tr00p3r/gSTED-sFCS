@@ -113,7 +113,6 @@ class ScanPatternAO:
         )
 
     def calc_angular_pattern(self, params, um_V_ratio):
-        # TODO: this function needs better documentation, starting with some comments
         """Doc."""
 
         # argument definitions (for better readability

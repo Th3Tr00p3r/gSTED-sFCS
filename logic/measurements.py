@@ -55,7 +55,6 @@ class Measurement:
         self.is_running = False
         self._app.gui.main.imp.dvc_toggle("TDC")
         self.prog_bar_wdgt.set(0)
-        # TODO: need to distinguish stopped from finished - a finished flag?
         logging.info(f"{self.type} measurement stopped")
         self._app.meas.type = None
 
@@ -69,7 +68,6 @@ class Measurement:
 
     async def toggle_lasers(self, finish=False) -> NoReturn:
         """Doc."""
-        # TODO: make sure dep measurement can't reach this point with error in dep!
 
         if self.scan_params.sted_mode:
             self.scan_params.exc_mode = True
@@ -192,16 +190,6 @@ class SFCSImageMeasurement(Measurement):
             else:
                 return div_ceil(ppl, 2) * 2
 
-        def bld_scn_addrs_str(scan_plane: str, scanners_dvc) -> str:
-            """Doc."""
-
-            if scan_plane == "XY":
-                return ", ".join([scanners_dvc.ao_x_addr, scanners_dvc.ao_y_addr])
-            elif scan_plane == "YZ":
-                return ", ".join([scanners_dvc.ao_y_addr, scanners_dvc.ao_z_addr])
-            elif scan_plane == "XZ":
-                return ", ".join([scanners_dvc.ao_x_addr, scanners_dvc.ao_z_addr])
-
         # fix line freq, pxl clk low ticks, and ppl
         self.line_freq, clk_div = sync_line_freq(
             self.scan_params.line_freq_Hz,
@@ -213,11 +201,6 @@ class SFCSImageMeasurement(Measurement):
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
             self.scan_params.line_freq_Hz,
             self.scan_params.ppl,
-        )
-        # unite relevant physical addresses
-        # TODO: is prop in next line ever used? if not, should delete it and the related function
-        self.scn_addrs = bld_scn_addrs_str(
-            self.scan_params.scan_plane, self.scanners_dvc
         )
         # create ao_buffer
         (
@@ -341,7 +324,6 @@ class SFCSImageMeasurement(Measurement):
 
     async def run(self):
         """Doc."""
-        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
 
         await self.toggle_lasers()
         self.setup_scan()
@@ -533,7 +515,10 @@ class SFCSSolutionMeasurement(Measurement):
         self.scanners_dvc.fill_ai_buffer()
 
         self.total_time_passed = 0
-        logging.info(f"Running {self.type} measurement")
+
+        if self.is_running:
+            logging.info(f"Running {self.type} measurement")
+
         for file_num in range(1, num_files + 1):
 
             if self.is_running:
