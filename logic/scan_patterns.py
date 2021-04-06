@@ -113,7 +113,6 @@ class ScanPatternAO:
         )
 
     def calc_angular_pattern(self, params, um_V_ratio):
-        # TODO: this function needs better documentation, starting with some comments
         """Doc."""
 
         # argument definitions (for better readability
@@ -302,8 +301,8 @@ class ScanPatternAO:
         params.lin_len = lin_len
         params.tot_len = tot_len
         params.lin_part = np.arange(t0, (T - t0) + 1)
-        params.Xlim = [np.min(x_ao), np.max(x_ao)]
-        params.Ylim = [np.min(y_ao), np.max(y_ao)]
+        params.x_lim = [np.min(x_ao), np.max(x_ao)]
+        params.y_lim = [np.min(y_ao), np.max(y_ao)]
 
         return ao_buffer, dt, params
 
