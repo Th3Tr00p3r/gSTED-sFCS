@@ -481,7 +481,7 @@ class Counter(NIDAQmxInstrument):
             )
             self.num_reads_since_avg += num_samps_read
 
-    def average_counts(self):
+    def average_counts(self) -> NoReturn:
         """Doc."""
 
         actual_intrvl = time.perf_counter() - self.last_avg_time
@@ -496,8 +496,8 @@ class Counter(NIDAQmxInstrument):
             avg_cnt_rate = 0
 
         self.num_reads_since_avg = 0
+        self.avg_cnt_rate = avg_cnt_rate
         self.last_avg_time = time.perf_counter()
-        return avg_cnt_rate
 
     def init_ci_buffer(self) -> NoReturn:
         """Doc."""
