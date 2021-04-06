@@ -13,13 +13,11 @@ from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NO
 from pyftdi.ftdi import Ftdi, FtdiError
 from pyftdi.usbtools import UsbTools
 
-import utilities.helper as helper
-
 
 class FtdiInstrument:
     """Doc."""
 
-    def __init__(self, param_dict, **kwargs):
+    def __init__(self, param_dict):
 
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
@@ -130,12 +128,6 @@ class NIDAQmxInstrument:
 
         task = ni.Task(new_task_name=name)
         for chan_spec in chan_specs:
-            # TODO: see if following check can go to devices.py - interrupts possible merge of 'create task' functions
-            if helper.count_words(chan_spec["physical_channel"]) == 1:
-                chan_spec = {
-                    **chan_spec,
-                    "terminal_config": ni.constants.TerminalConfiguration.RSE,
-                }
             task.ai_channels.add_ai_voltage_chan(**chan_spec)
         if samp_clk_cnfg:
             task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
@@ -261,7 +253,6 @@ class VisaInstrument:
         param_dict,
         read_termination="",
         write_termination="",
-        **kwargs,
     ):
         self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
@@ -311,7 +302,7 @@ class VisaInstrument:
 class UC480Instrument:
     """Doc."""
 
-    def __init__(self, param_dict, **kwargs):
+    def __init__(self, param_dict):
         self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
         self._inst = None

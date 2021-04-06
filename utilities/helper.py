@@ -66,7 +66,7 @@ class QtWidgetCollection:
 
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
-            setattr(self, key, val)
+            setattr(self, key, QtWidgetAccess(*val))
 
     def hold_objects(
         self, app: app_module.App, wdgt_name_list: List[str] = None, hold_all=False
@@ -75,9 +75,14 @@ class QtWidgetCollection:
 
         if wdgt_name_list is not None:
             for wdgt_name in wdgt_name_list:
-                wdgt = getattr(self, wdgt_name)
-                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                wdgt.hold_obj(parent_gui)
+                try:
+                    wdgt = getattr(self, wdgt_name)
+                except AttributeError:
+                    # collection has no widget 'wdgt_name'
+                    pass
+                else:
+                    parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                    wdgt.hold_obj(parent_gui)
 
         elif hold_all:
             for wdgt in vars(self).values():
@@ -216,12 +221,6 @@ def div_ceil(x: int, y: int) -> int:
     return int(x // y + (x % y > 0))
 
 
-def count_words(input_str: str) -> int:
-    """Returns the number of words in a string"""
-
-    return len(input_str.split())
-
-
 def limit(val: float, min: float, max: float) -> float:
 
     if min <= val <= max:
@@ -237,16 +236,20 @@ def get_datetime_str() -> str:
     return datetime.datetime.now().strftime("%d%m_%H%M%S")
 
 
+def inv_dict(dct: dict) -> dict:
+    """Inverts a Python dictionary. Expects mapping to be 1-to-1"""
+
+    return {val: key for key, val in dct.items()}
+
+
 @dataclass
 class DeviceAttrs:
 
-    cls_name: str
+    class_name: str
     log_ref: str
-    led_widget: QtWidgetAccess
     param_widgets: QtWidgetCollection
     cls_xtra_args: List[str] = None
     led_icon_path: str = icon_path.LED_GREEN
-    switch_widget: QtWidgetAccess = None
 
 
 @dataclass
@@ -289,16 +292,23 @@ class ImageDisplay:
                 maxYRange=image.shape[1],
             )
         if crosshair:
-            self.vLine = pg.InfiniteLine(angle=90, movable=False)
-            self.hLine = pg.InfiniteLine(angle=0, movable=False)
-            self.vb.addItem(self.vLine, ignoreBounds=True)
-            self.vb.addItem(self.hLine, ignoreBounds=True)
-            # proxy = pg.SignalProxy(vb.scene().sigMouseClicked, rateLimit=1, slot=mouseClicked)
+            self.vLine = pg.InfiniteLine(angle=90, movable=True)
+            self.hLine = pg.InfiniteLine(angle=0, movable=True)
+            self.vb.addItem(self.vLine)
+            self.vb.addItem(self.hLine)
             self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
 
     def mouseClicked(self, evt):
-        pos = evt.pos()  # using signal proxy turns original arguments into a tuple
-        if self.vb.sceneBoundingRect().contains(pos):
-            mousePoint = self.vb.mapSceneToView(pos)
-            self.vLine.setPos(mousePoint.x())
-            self.hLine.setPos(mousePoint.y())
+        """Doc."""
+        # TODO: selected position is not accurate for some reason.
+
+        try:
+            pos = evt.pos()
+        except AttributeError:
+            # outside image
+            pass
+        else:
+            if self.vb.sceneBoundingRect().contains(pos):
+                mousePoint = self.vb.mapSceneToView(pos)
+                self.vLine.setPos(mousePoint.x() + 0.5)
+                self.hLine.setPos(mousePoint.y())
