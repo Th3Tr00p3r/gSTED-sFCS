@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Mon Dec 21 22:54:26 2020
@@ -7,104 +8,168 @@ Created on Mon Dec 21 22:54:26 2020
 """
 
 import numpy as np
+from warnings import warn
 
 
 
 class PhotonDataClass:
     
-   # def __init__(self):
+    #def __init__(self):
     
-    def DoConvertFPGAdataToPhotons(self, FPGAdata, Version = '7bytes noreset'):
-        if Version == '7bytes noreset':
+    def DoConvertFPGAdataToPhotons(self, FPGAdata, Version = 3):
+        if Version >= 2:
            GroupLen = 7
            maxval = 256**3
-            
-        
-        # find brackets    
-        I_248 = np.where(FPGAdata == 248)[0]
-        I_254 = np.where(FPGAdata == 254)[0]
-        II = np.intersect1d(I_248, I_254-GroupLen+1, assume_unique = True) #find those in registry
-        
-        #find different sections
-        modII = II % GroupLen #remainder
-        modII_true = (modII[:-1] == modII[1:]) # remove singular events that are naturally occuring
-        modII_true = np.append(modII_true, [False])
-        modII = modII[modII_true]
-        I = II[modII_true]
-
-        # split into sections with constant modII
-        k = np.where(np.diff(modII) !=0)[0]
-        print('Found ' + str(len(k)+1) + ' sections of lengths:')
-        print(np.diff(np.concatenate(([0], k, [len(modII)]))))
-
+        self.Version = Version
+     
+        sectionEdges = list()
+        edgeStart, edgeStop, dataEnd = DoFindSectionEdge(FPGAdata, 0, GroupLen)
+        sectionEdges.append(np.array([edgeStart, edgeStop]))
                             
+        while (not dataEnd):
+            edgeStart, edgeStop, dataEnd = DoFindSectionEdge(FPGAdata, edgeStop+1, GroupLen)
+            sectionEdges.append(np.array([edgeStart, edgeStop]))
+            
+        print('Found ' + str(len(sectionEdges)) + ' sections of lengths:')
+        SectionLength = np.array([np.diff(SE)[0] for SE in sectionEdges])
+        print(SectionLength)
+                            
+        
+        #patching: look at the largest section only
+        SecInd = np.argmax(SectionLength)
+        I = np.arange(sectionEdges[SecInd][0], sectionEdges[SecInd][1], GroupLen)
         counter = FPGAdata[I+1]*256**2 + FPGAdata[I+2]*256 + FPGAdata[I+3]
         time_stamps = np.diff(counter.astype(int))
-        #J = find(time_stamps < 0);
+
+        
         #find simple "inversions": the data with a missing byte
-        # decrease in counter on data j+1, yet the next counter data (j+2) is
+        #decrease in counter on data j+1, yet the next counter data (j+2) is
         # higher than j.
-        J = np.where( np.logical_and((time_stamps[:-1] < 0), (time_stamps[:-1]+time_stamps[1:] > 0)))[0]
-        J1 = np.where(time_stamps[J+1] > 256)[0]
-        if J1.size != 0:
-            print('Found ' + str(len(J1)) +' of missing byte data: fixing...')
-            time_stamps[J[J1]] = time_stamps[J[J1]] + 256
-            time_stamps[J[J1]+1] = time_stamps[J[J1]+1] - 256
-            counter[J[J1]+1] = counter[J[J1]+1] + 256
-
-
-        # checking: perhaps missing byte is turning the next byte do more corrections
-        J2 = np.where((time_stamps[J] < 0) and (time_stamps[J+1] > 256))[0]
-        time_stamps[J[J2]] = time_stamps[J[J2]] + 256**2 - 256 # remove back what we added at the previous step
-        time_stamps[J[J2]+1] = time_stamps[J[J2]+1] - 256**2 + 256
-        counter[J[J2]+1] = counter[J[J2]+1] + 256**2
-
-        #last resort: if nothing helps: place the photon in the middle
-        J3 = np.where(time_stamps[J] < 0)[0] 
-        if len(J3) > 0:
-            print(str(len(J3)) + ' ad hoc data fixing.')
-            temp = (time_stamps[J[J3]] + time_stamps[J[J3]+1])/2
-            time_stamps[J[J3]] = np.floor(temp)
-            time_stamps[J[J3]+1] = np.ceil(temp)
-            counter[J[J3]+1] = counter[J[J3]] + time_stamps[J[J3]]
-
-
-        # some rare cases of a small negative number preceded by a relatively large
-        # positive number: not treated above
-        J4 = np.where( np.logical_and((time_stamps[1:] < 0), (time_stamps[:-1]+time_stamps[1:] > 0)))[0]
-        if len(J4) >0:
-            print(str(len(J4)) + ' more ad hoc data fixing.')
-            temp = (time_stamps[J4] + time_stamps[J4+1])/2
-            time_stamps[J4] = np.floor(temp)
-            time_stamps[J4+1] = np.ceil(temp)
-            counter[J4] = counter[J4+1] - time_stamps[J4]
-
-
-        NoOfNotfixed = np.sum(np.logical_and((time_stamps < 0), (time_stamps > -256**2)))  # check what this means
-        if NoOfNotfixed > 0:
-            print(str(NoOfNotfixed) + ' data cannot be fixed.')
+        J = np.where( np.logical_and((time_stamps[:-1] < 0),  (time_stamps[:-1]+time_stamps[1:] > 0)))[0] 
+        if J.size !=0:
+            print('Found ' +  str(J.size) + ' of missing bit data: ad hoc fixing...')
+            temp = (time_stamps[J] + time_stamps[J+1])/2
+            time_stamps[J] = np.floor(temp).astype(int)
+            time_stamps[J+1] = np.ceil(temp).astype(int)
+            counter[J+1] = counter[J+2] - time_stamps[J+1]
 
         J = np.where(time_stamps < 0)[0]
-        J = np.setdiff1d(J, k); # remove section edges, i.e. treat each section separately 
         time_stamps[J] = time_stamps[J]+maxval
+        for i in (J+1):
+            counter[i:] = counter[i:] + maxval
+            
+        coarse = FPGAdata[I+4].astype(int)
+        fine =  FPGAdata[I+5].astype(int)
+        self.coarse = coarse
+        if self.Version >= 3:
+            twobit1 = np.floor(coarse/64).astype(int)
+            self.coarse = self.coarse - twobit1*64
+            self.coarse2 = self.coarse - np.mod(self.coarse, 4) + twobit1
 
-        coarse = FPGAdata[I+4]
-        fine =  FPGAdata[I+5]
-        
 
-        self.counter = counter
+        self.runtime = counter.astype(int)
  #       self.time_stamps = time_stamps
         self.fname = ''
-        self.coarse = coarse
         self.fine = fine  
-        self.runtime = np.cumsum(np.concatenate(([0], time_stamps)))
  #       if self.runtime(end) > flintmax:
  #           error('Runtime overrun intmax!')
 
-        self.sectionEdges = np.array([np.append([1], [k]),  np.append([k], [len(self.coarse)])]);
+        self.sectionEdges = sectionEdges
         self.AllSectionEdges = np.array([]);
         self.counterEnds = np.array([counter[0], counter[-1]]);
-#P.NoOfInversionProblems = NoOfInversionProblems;       
+        
+#P.NoOfInversionProblems = NoOfInversionProblems;      
+ 
+def DoFindSectionEdge(data, sectionStart, GroupLen):
+    dataEnd = False
+            # find brackets    
+    I_248 = np.where(data[sectionStart:] == 248)[0]
+    I_254 = np.where(data[sectionStart:] == 254)[0]
+    II = np.intersect1d(I_248, I_254-GroupLen+1, assume_unique = True) #find those in registry
+    edgeStart = sectionStart+II[0]
+    p248 = data[edgeStart::GroupLen]
+    p254 = data[(edgeStart+GroupLen-1)::GroupLen]
+    kk248 = np.where(p248 != 248)[0]
+    kk254 = np.where(p254 != 254)[0]
+      
+ 
+    for ii, kk in enumerate(kk248):
+       # check that this is not a case of a singular mistake in 248
+       # byte: happens very rarely but does happen
+       if (len(kk254) < ii+1):
+           if (kk == len(p248)-1): #problem in the last photon in the file
+               edgeStop = edgeStart + kk*GroupLen
+               warn('if (len(kk254) < ii+1):')
+               break
+           elif (len(kk248) == ii+1):  #likely a singular problem
+               # just test the most significant bytes of the runtime are
+               # close
+               if abs(np.diff(data(edgeStart + kk*GroupLen + np.array([-GroupLen+1 , 1])))) < 3:
+                   # single error: move on
+                   warn('(len(kk248) == ii+1):')
+                   continue
+               else:
+                   warn('Check data for strange section edges!')
+               
+           elif np.diff(kk248[ii:(ii+2)]) > 1: #likely a singular problem since further data are in registry
+               # just test the most significant bytes of the runtime are
+               # close
+               if abs(np.diff(data(edgeStart + kk*GroupLen + np.array([-GroupLen+1 , 1])))) < 3:
+                   # single error: move on
+                   warn('elif np.diff(kk248[ii:(ii+2)]) > 1: ')
+                   continue
+               else:
+                   warn('Check data for strange section edges!')
+               
+           else:
+               warn('Bizarre problem in data: 248 byte out of registry while 254 is in registry!')
+           
+       else: # (length(kk254) >= ii + 1)
+          #if (kk248(ii) == kk254(ii)), # likely a real section
+           if np.isin(kk, kk254):
+                edgeStop = edgeStart + kk*GroupLen
+                if (data[edgeStop-1] != 254):
+                    edgeStop = edgeStop - GroupLen
+                warn('if np.isin(kk, kk254):')
+                break
+           elif kk248[ii] == (kk254[ii]+1):  #np.isin(kk, (kk254[ii]+1)): # likely a real section ? why np.isin?
+                edgeStop = edgeStart + kk*GroupLen
+                if (data[edgeStop-1] != 254):
+                    edgeStop = edgeStop - GroupLen
+                warn('elif  np.isin(kk, (kk254[ii]+1)):')
+                break
+           elif (kk < kk254[ii]): # likely a singular error on 248 byte
+               # just test the most significant bytes of the runtime are
+               # close
+               if abs(np.diff(data[edgeStart + kk*GroupLen + np.array([-GroupLen+1 , 1])]))< 3:
+                   # single error: move on
+                   warn('elif (kk < kk254[ii]):')
+                   continue
+               else:
+                   warn('Check data for strange section edges!')
+               
+           else : #likely a signular mistake on 254 byte
+               # just test the most significant bytes of the runtime are
+               # close
+              if abs(np.diff(data[edgeStart + kk*GroupLen + np.array([-GroupLen+1 , 1])]))< 3:
+                   # single error: move on
+                   warn('else :')
+                   continue
+              else:
+                   warn('Check data for strange section edges!');
+    if len(kk248) > 0:
+        if (ii == kk248.size-1): #reached the end of the loop without breaking
+            edgeStop = edgeStart + (p254.size-1)*GroupLen
+            dataEnd = True
+    else:
+         edgeStop = edgeStart + (p254.size-1)*GroupLen
+         dataEnd = True
+        
+    return edgeStart, edgeStop, dataEnd
 
+
+    
+       
+        
        
         
