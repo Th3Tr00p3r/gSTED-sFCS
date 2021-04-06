@@ -218,11 +218,12 @@ class Timeout:
 
         """
 
+        cntr_dvc = self._app.devices.COUNTER
         while self.not_finished:
             if self.running:
-                if self._app.devices.COUNTER.error_dict is None:
-                    avg_counts = self._app.devices.COUNTER.average_counts()
-                    self._app.gui.main.counts.setValue(avg_counts)
+                if cntr_dvc.error_dict is None:
+                    cntr_dvc.average_counts()
+                    self._app.gui.main.counts.setValue(cntr_dvc.avg_cnt_rate)
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 

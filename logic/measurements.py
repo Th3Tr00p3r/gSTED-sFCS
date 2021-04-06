@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from typing import NoReturn, Tuple
 
 import numpy as np
+import scipy.io as sio
 
 import utilities.constants as consts
 from logic.scan_patterns import ScanPatternAO
@@ -24,6 +25,8 @@ class Measurement:
 
         self._app = app
         self.type = type
+        self.tdc_dvc = app.devices.TDC
+        self.pxl_clk_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
         [setattr(self, key, val) for key, val in kwargs.items()]
         if scan_params is not None:
@@ -33,6 +36,19 @@ class Measurement:
             self.scan_params = scan_params
             self.um_V_ratio = tuple(
                 getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
+            )
+            self.sys_info = dict(
+                Setup="STED with galvos",
+                AfterPulseParam=[
+                    -0.004057535648770,
+                    -0.107704707102406,
+                    -1.069455813887638,
+                    -4.827204349438697,
+                    -10.762333427569356,
+                    -7.426041455313178,
+                ],
+                AI_ScalingXYZ=[1.243, 1.239, 1],
+                XYZ_um_to_V=self.um_V_ratio,
             )
         self.laser_dvcs = SimpleNamespace()
         self.laser_dvcs.exc = app.devices.EXC_LASER
@@ -55,21 +71,21 @@ class Measurement:
         self.is_running = False
         self._app.gui.main.imp.dvc_toggle("TDC")
         self.prog_bar_wdgt.set(0)
-        # TODO: need to distinguish stopped from finished - a finished flag?
         logging.info(f"{self.type} measurement stopped")
         self._app.meas.type = None
 
-    def save_data(self, file_name: str) -> NoReturn:
-        """Save measurement data as NumPy array (.npy), given filename"""
+    def save_data(self, data_dict: dict, file_name: str) -> NoReturn:
+        """
+        Save measurement data as a .mat (MATLAB) file
+        which can then be analyzed in MATLAB using our
+        current MATLAB-based analysis (or later in Python using sio.loadmat())
+        """
 
-        file_path = self.save_path + file_name + ".npy"
-        np_data = np.frombuffer(self.data_dvc.data, dtype=np.uint8)
-        with open(file_path, "wb") as f:
-            np.save(f, np_data)
+        file_path = self.save_path + file_name + ".mat"
+        sio.savemat(file_path, data_dict)
 
     async def toggle_lasers(self, finish=False) -> NoReturn:
         """Doc."""
-        # TODO: make sure dep measurement can't reach this point with error in dep!
 
         if self.scan_params.sted_mode:
             self.scan_params.exc_mode = True
@@ -192,16 +208,6 @@ class SFCSImageMeasurement(Measurement):
             else:
                 return div_ceil(ppl, 2) * 2
 
-        def bld_scn_addrs_str(scan_plane: str, scanners_dvc) -> str:
-            """Doc."""
-
-            if scan_plane == "XY":
-                return ", ".join([scanners_dvc.ao_x_addr, scanners_dvc.ao_y_addr])
-            elif scan_plane == "YZ":
-                return ", ".join([scanners_dvc.ao_y_addr, scanners_dvc.ao_z_addr])
-            elif scan_plane == "XZ":
-                return ", ".join([scanners_dvc.ao_x_addr, scanners_dvc.ao_z_addr])
-
         # fix line freq, pxl clk low ticks, and ppl
         self.line_freq, clk_div = sync_line_freq(
             self.scan_params.line_freq_Hz,
@@ -213,11 +219,6 @@ class SFCSImageMeasurement(Measurement):
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
             self.scan_params.line_freq_Hz,
             self.scan_params.ppl,
-        )
-        # unite relevant physical addresses
-        # TODO: is prop in next line ever used? if not, should delete it and the related function
-        self.scn_addrs = bld_scn_addrs_str(
-            self.scan_params.scan_plane, self.scanners_dvc
         )
         # create ao_buffer
         (
@@ -339,9 +340,63 @@ class SFCSImageMeasurement(Measurement):
         self._app.last_img_scn.plane_images_data = self.plane_images_data
         self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
 
+    def prep_data_dict(self) -> dict:
+        """
+        Prepare the full measurement data, in a way that
+        matches current MATLAB analysis
+        """
+
+        def prep_scan_params() -> dict:
+
+            return {
+                "Dimension1_lines_um": self.scan_params.dim1_um,
+                "Dimension2_col_um": self.scan_params.dim2_um,
+                "Dimension3_um": self.scan_params.dim3_um,
+                "Lines": self.scan_params.n_lines,
+                "Planes": self.scan_params.n_planes,
+                "Line_freq_Hz": self.scan_params.line_freq_Hz,
+                "Points_per_Line": self.scan_params.ppl,
+                "ScanType": self.scan_params.scan_plane + "scan",
+                "Offset_AOX": self.scan_params.curr_ao_x,
+                "Offset_AOY": self.scan_params.curr_ao_y,
+                "Offset_AOZ": self.scan_params.curr_ao_z,
+                "Offset_AIX": self.scan_params.curr_ao_x,  # check
+                "Offset_AIY": self.scan_params.curr_ao_y,  # check
+                "Offset_AIZ": self.scan_params.curr_ao_z,  # check
+                "whatStage": "Galvanometers",
+                "LinFrac": self.scan_params.lin_frac,
+            }
+
+        def prep_tdc_scan_data() -> dict:
+
+            return {
+                "Plane": np.array([data for data in self.plane_data], dtype=np.object),
+                "DataVersion": self.tdc_dvc.data_vrsn,
+                "FpgaFreq": self.tdc_dvc.fpga_freq_MHz,
+                "PixelFreq": self.pxl_clk_dvc.freq_MHz,
+                "LaserFreq": self.tdc_dvc.laser_freq_MHz,
+                "Version": self.tdc_dvc.tdc_vrsn,
+            }
+
+        return {
+            "PixClkFreq": self.pxl_clk_dvc.freq_MHz,
+            "TdcScanData": prep_tdc_scan_data(),
+            "version": self.tdc_dvc.tdc_vrsn,
+            "AI": self.scanners_dvc.ai_buffer,
+            "Cnt": self.counter_dvc.ci_buffer,
+            "ScanParam": prep_scan_params(),
+            "PID": [],  # check
+            "AO": self.ao_buffer,
+            "SP": [],  # check
+            "log": [],  # info in mat filename
+            "LinesOdd": self.scan_params.set_pnts_lines_odd,
+            "FastScan": True,
+            "SystemInfo": self.sys_info,
+            "XYZ_um_to_V": self.um_V_ratio,
+        }
+
     async def run(self):
         """Doc."""
-        # TODO: Add check if file templeate exists in save dir, and if so confirm overwrite or cancel
 
         await self.toggle_lasers()
         self.setup_scan()
@@ -350,11 +405,12 @@ class SFCSImageMeasurement(Measurement):
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_ci_buffer()
 
-        plane_data = []
+        n_planes = self.scan_params.n_planes
+        self.plane_data = []
         self.start_time = time.perf_counter()
         self.time_passed = 0
         logging.info(f"Running {self.type} measurement")
-        for plane_idx in range(self.scan_params.n_planes):
+        for plane_idx in range(n_planes):
 
             if self.is_running:
 
@@ -375,7 +431,7 @@ class SFCSImageMeasurement(Measurement):
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
 
-                plane_data.append(self.data_dvc.data)
+                self.plane_data.append(self.data_dvc.data)
                 self.data_dvc.init_data()
 
             else:
@@ -389,7 +445,7 @@ class SFCSImageMeasurement(Measurement):
             ]
 
             # save data
-            self.save_data(self.build_filename())
+            self.save_data(self.prep_data_dict(), self.build_filename())
             self.keep_last_meas()
 
             # show middle plane
@@ -503,6 +559,57 @@ class SFCSSolutionMeasurement(Measurement):
             f"Total Bytes = {self.data_dvc.tot_bytes_read}\n"
         )
 
+    def prep_data_dict(self) -> dict:
+        """
+        Prepare the full measurement data, in a way that
+        matches current MATLAB analysis
+        """
+
+        def prep_full_data():
+            def prep_ang_scan_sett_dict():
+
+                return {
+                    "X": self.ao_buffer[0],
+                    "Y": self.ao_buffer[1],
+                    "ActualSpeed": self.scan_params.eff_speed_um_s,
+                    "ScanFreq": self.scan_params.scan_freq_Hz,
+                    "SampleFreq": self.scan_params.ao_samp_freq_Hz,
+                    "PointsPerLineTotal": self.scan_params.tot_ppl,
+                    "PointsPerLine": self.scan_params.ppl,
+                    "NofLines": self.scan_params.n_lines,
+                    "LineLength": self.scan_params.lin_len,
+                    "LengthTot": self.scan_params.tot_len,
+                    "LineLengthMax": self.scan_params.max_line_len_um,
+                    "LineShift": self.scan_params.line_shift_um,
+                    "AngleDegrees": self.scan_params.angle_deg,
+                    "LinFrac": self.scan_params.lin_frac,
+                    "PixClockFreq": self.pxl_clk_dvc.freq_MHz,  # already in full_data
+                    "LinearPart": self.scan_params.lin_part,
+                    "Xlim": self.scan_params.x_lim,
+                    "Ylim": self.scan_params.y_lim,
+                }
+
+            full_data = {
+                "Data": np.frombuffer(self.data_dvc.data, dtype=np.uint8),
+                "DataVersion": self.tdc_dvc.data_vrsn,
+                "FpgaFreq": self.tdc_dvc.fpga_freq_MHz,
+                "PixelFreq": self.pxl_clk_dvc.freq_MHz,
+                "LaserFreq": self.tdc_dvc.laser_freq_MHz,
+                "Version": self.tdc_dvc.tdc_vrsn,
+                "AI": self.scanners_dvc.ai_buffer,  # TODO: limit to AO length
+                "AO": self.ao_buffer,
+                "AvgCnt": self.counter_dvc.avg_cnt_rate,
+            }
+            if self.scan_params.pattern == "circle":
+                full_data["CircleSpeed_um_sec"] = self.scan_params.speed_um_s
+                full_data["AnglularScanSettings"] = None
+            else:
+                full_data["CircleSpeed_um_sec"] = 0
+                full_data["AnglularScanSettings"] = prep_ang_scan_sett_dict()
+            return full_data
+
+        return {"FullData": prep_full_data(), "SystemInfo": self.sys_info}
+
     async def run(self):
         """Doc."""
 
@@ -533,7 +640,10 @@ class SFCSSolutionMeasurement(Measurement):
         self.scanners_dvc.fill_ai_buffer()
 
         self.total_time_passed = 0
-        logging.info(f"Running {self.type} measurement")
+
+        if self.is_running:
+            logging.info(f"Running {self.type} measurement")
+
         for file_num in range(1, num_files + 1):
 
             if self.is_running:
@@ -549,17 +659,20 @@ class SFCSSolutionMeasurement(Measurement):
 
                 self.disp_ACF()
 
-                file_name = self.build_filename(file_num)
-                self.save_data(file_name)
+                # collect final AI/CI
+                self.counter_dvc.fill_ci_buffer()
+                self.scanners_dvc.fill_ai_buffer()
 
+                # save file data
+                self.save_data(self.prep_data_dict(), self.build_filename(file_num))
+
+                # initialize data buffers for next file
                 self.data_dvc.init_data()
+                self.scanners_dvc.init_ai_buffer()
+                self.counter_dvc.init_ci_buffer()
 
             else:
                 break
-
-        # collect final AI/CI
-        self.counter_dvc.fill_ci_buffer()
-        self.scanners_dvc.fill_ai_buffer()
 
         await self.toggle_lasers(finish=True)
         self.return_to_regular_tasks()

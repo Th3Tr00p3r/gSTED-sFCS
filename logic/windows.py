@@ -85,7 +85,6 @@ class MainWin:
         """Doc."""
 
         dvc = getattr(self._app.devices, nick)
-        DVC_CONSTS = getattr(consts, nick)
 
         if (leave_on and dvc.state is True) or (leave_off and dvc.state is False):
             return
@@ -94,13 +93,16 @@ class MainWin:
             dvc.toggle(True)
 
             if dvc.state:  # if managed to turn ON
-                if DVC_CONSTS.switch_widget is not None:
-                    DVC_CONSTS.switch_widget.set(QIcon(icon.SWITCH_ON))
+                try:
+                    dvc.switch_widget.set(QIcon(icon.SWITCH_ON))
+                except AttributeError:
+                    # no switch
+                    pass
 
-                on_icon = QIcon(DVC_CONSTS.led_icon_path)
-                DVC_CONSTS.led_widget.set(on_icon)
+                on_icon = QIcon(dvc.led_icon_path)
+                dvc.led_widget.set(on_icon)
 
-                logging.debug(f"{DVC_CONSTS.log_ref} toggled ON")
+                logging.debug(f"{dvc.log_ref} toggled ON")
 
                 if nick == "STAGE":
                     self._gui.stageButtonsGroup.setEnabled(True)
@@ -109,12 +111,15 @@ class MainWin:
             dvc.toggle(False)
 
             if not dvc.state:  # if managed to turn OFF
-                if DVC_CONSTS.switch_widget is not None:
-                    DVC_CONSTS.switch_widget.set(QIcon(icon.SWITCH_OFF))
+                try:
+                    dvc.switch_widget.set(QIcon(icon.SWITCH_OFF))
+                except AttributeError:
+                    # no switch
+                    pass
 
-                DVC_CONSTS.led_widget.set(QIcon(icon.LED_OFF))
+                dvc.led_widget.set(QIcon(icon.LED_OFF))
 
-                logging.debug(f"{DVC_CONSTS.log_ref} toggled OFF")
+                logging.debug(f"{dvc.log_ref} toggled OFF")
 
                 if nick == "STAGE":
                     self._gui.stageButtonsGroup.setEnabled(False)
@@ -127,16 +132,8 @@ class MainWin:
     def led_clicked(self, led_obj_name):
         """Doc."""
 
-        def dvc_nick_from_led_name(led_obj_name) -> str:
-            """Doc."""
-
-            led_to_nick_dict = {
-                getattr(consts, dvc_nick).led_widget.obj_name: dvc_nick
-                for dvc_nick in consts.DVC_NICKS_TUPLE
-            }
-            return led_to_nick_dict[led_obj_name]
-
-        dvc_nick = dvc_nick_from_led_name(led_obj_name)
+        LED_NAME_DVC_NICK_DICT = helper.inv_dict(consts.DVC_NICK_LED_NAME_DICT)
+        dvc_nick = LED_NAME_DVC_NICK_DICT[led_obj_name]
         err_dict = getattr(self._app.devices, dvc_nick).error_dict
         if err_dict is not None:
             Error(**err_dict, custom_title=getattr(consts, dvc_nick).log_ref).display()
@@ -235,8 +232,8 @@ class MainWin:
             plane_ticks = self._app.last_img_scn.set_pnts_planes
 
             coord_1, coord_2 = (
-                round(self._gui.imgScanPlot.vLine.pos().x()) - 1,
-                round(self._gui.imgScanPlot.hLine.pos().y()) - 1,
+                round(self._gui.imgScanPlot.vLine.value()) - 1,
+                round(self._gui.imgScanPlot.hLine.value()) - 1,
             )
 
             dim1_vltg = line_ticks_V[coord_1]
@@ -257,7 +254,7 @@ class MainWin:
 
             self.move_scanners(plane_type)
 
-            logging.info(
+            logging.debug(
                 f"{getattr(consts, 'SCANNERS').log_ref} moved to ROI ({vltgs})"
             )
 
