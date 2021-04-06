@@ -9,11 +9,18 @@ Created on Tue Jan  5 17:50:37 2021
 import numpy as np 
 #import h5py 
 import sys
-sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
+import os
+
+sys.path.insert(0, os.path.dirname(__file__))
+#sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
 
 import scipy.io
 
 from PhotonDataClass import PhotonDataClass
+from MatlabUtilities import loadmat #loads matfiles with structures (scipy.io does not do structures)
+from CorrFuncTDCclass import CorrFuncTDCclass
+import glob
+import re #regular expressions
 
 #%%
 
@@ -186,10 +193,45 @@ SC = SoftwareCorrelatorClass()
 DS, NC = SC.getCorrelatorParams()
 
 #%%
-from SoftwareCorrelatorModule import SoftwareCorrelatorClass, CorrelatorType
 
-SC = SoftwareCorrelatorClass()
-SC.SoftCrossCorrelator(phHistPy, CorrelatorType.PhDelayCorrelator, 1)
+S = loadmatStruc('/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpConf0.mat')
 
-                         
+ #%%
+S = CorrFuncTDCclass()   
+
+#%%
+fpathtmpl = '/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpConf*.mat'
+fpathes = glob.glob(fpathtmpl)
+print(fpathes)
+
+temp = re.split(fpathtmpl, fpathes[0])
+print(temp)
+
+#%%
+folderpath_fnametmpl = os.path.split(fpathtmpl) #splits in folderpath and filename template
+fnametmpl, file_extension = os.path.splitext(folderpath_fnametmpl[1]) # splits filename template into the name template proper and its extension
+
+fpath = fpathes[0]
+folderpath_fname = os.path.split(fpath) #splits in folderpath and filename
+fname, file_extension = os.path.splitext(folderpath_fname[1]) # splits filename into the name proper and its extension
+temp = re.split(fnametmpl, fname)
+
+#%%
+fpath1, file_extension = os.path.splitext(fpath)
+temp = re.split(fpathtmpl[:-4], fpath1)
+
+#%%
+
+temp = re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1]
+print(temp)
+
+#%%
+fpathesSorted = sorted(fpathes, key = lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1])
+print(fpathesSorted)
+#%%
+fpathes.sort(key = lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1])
+
+#%%
+S = CorrFuncTDCclass()   
+S.DoReadFPGAdata( '/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpConf*.mat', FixShift = True)           
 
