@@ -5335,19 +5335,6 @@ Measurement</string>
          <attribute name="title">
           <string>Debugging</string>
          </attribute>
-         <widget class="QPushButton" name="resetUm232">
-          <property name="geometry">
-           <rect>
-            <x>90</x>
-            <y>80</y>
-            <width>75</width>
-            <height>61</height>
-           </rect>
-          </property>
-          <property name="text">
-           <string>UM232H Reset</string>
-          </property>
-         </widget>
         </widget>
        </widget>
       </item>
