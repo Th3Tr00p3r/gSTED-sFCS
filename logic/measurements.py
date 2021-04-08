@@ -80,6 +80,8 @@ class Measurement:
         which can then be analyzed in MATLAB using our
         current MATLAB-based analysis (or later in Python using sio.loadmat())
         """
+        # TODO: add option to save in Python format (loadmat works in a weird way but Oleg found a fix in SO).
+        # We will eventually do everything in Python
 
         file_path = self.save_path + file_name + ".mat"
         sio.savemat(file_path, data_dict)
