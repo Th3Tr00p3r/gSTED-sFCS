@@ -46,14 +46,14 @@ class MainWin:
 
         self._app.exit_app(event)
 
-    def restart(self):
+    def restart(self) -> NoReturn:
         """Restart all devices (except camera) and the timeout loop."""
 
         pressed = Question(txt="Are you sure?", title="Restarting Program").display()
         if pressed == QtWidgets.QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
 
-    def save(self):
+    def save(self) -> NoReturn:
         """Doc."""
 
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -66,7 +66,7 @@ class MainWin:
             helper.gui_to_csv(self._gui, file_path)
             logging.debug(f"Loadout saved as: '{file_path}'")
 
-    def load(self, file_path=""):
+    def load(self, file_path="") -> NoReturn:
         """Doc."""
 
         if not file_path:
@@ -81,7 +81,7 @@ class MainWin:
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chckr()
-    def dvc_toggle(self, nick, leave_on=False, leave_off=False):
+    def dvc_toggle(self, nick, leave_on=False, leave_off=False) -> NoReturn:
         """Doc."""
 
         dvc = getattr(self._app.devices, nick)
@@ -129,7 +129,7 @@ class MainWin:
                     self._gui.depActualCurr.setValue(0)
                     self._gui.depActualPow.setValue(0)
 
-    def led_clicked(self, led_obj_name):
+    def led_clicked(self, led_obj_name) -> NoReturn:
         """Doc."""
 
         LED_NAME_DVC_NICK_DICT = helper.inv_dict(consts.DVC_NICK_LED_NAME_DICT)
