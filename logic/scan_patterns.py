@@ -26,7 +26,7 @@ class ScanPatternAO:
         # TODO: this function needs better documentation, starting with some comments
         """Doc."""
 
-        dt = 1 / (params.line_freq_Hz * params.ppl)
+        params.dt = 1 / (self.scan_params.line_freq_Hz * self.scan_params.ppl)
 
         # order according to relevant plane dimensions
         if params.scan_plane == "XY":
@@ -106,7 +106,6 @@ class ScanPatternAO:
 
         return (
             ao_buffer,
-            dt,
             set_pnts_lines_odd,
             set_pnts_lines_even,
             set_pnts_planes,
@@ -291,8 +290,7 @@ class ScanPatternAO:
 
         ao_buffer = [x_ao.flatten("F").tolist(), y_ao.flatten("F").tolist()]
 
-        dt = 1 / samp_freq_Hz
-
+        params.dt = 1 / samp_freq_Hz
         params.eff_speed_um_s = v * lin_len * samp_freq_Hz
         params.scan_freq_Hz = scan_freq_Hz
         params.tot_ppl = tot_ppl
@@ -304,7 +302,7 @@ class ScanPatternAO:
         params.x_lim = [np.min(x_ao), np.max(x_ao)]
         params.y_lim = [np.min(y_ao), np.max(y_ao)]
 
-        return ao_buffer, dt, params
+        return ao_buffer, params
 
     def calc_circle_pattern(self, params, um_V_ratio):
         """Doc."""
@@ -327,8 +325,7 @@ class ScanPatternAO:
             [R_Vy * cos(2 * pi * (i / n_samps)) for i in range(n_samps)],
         ]
 
-        dt = 1 / scan_freq_Hz
-
+        params.dt = 1 / scan_freq_Hz
         params.scan_freq_Hz = scan_freq_Hz
 
-        return ao_buffer, dt, params
+        return ao_buffer, params
