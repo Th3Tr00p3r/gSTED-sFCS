@@ -81,3 +81,17 @@ Eric IDE is notoriously complicated to install properly. I've tried to make it e
    * To have access to Qt Designer from within Eric IDE, copy the contents of `\eric_env\Lib\site-packages\qt5_applications\Qt\bin` into `\eric_env\Lib\site-packages\PyQt5\Qt\bin`
 
 3. That's it, icons should appear on desktop.
+
+## Compiling the Software Correlator Dynamic Library
+
+* Windows:
+  
+  1. Install [MinGW](https://sourceforge.net/projects/mingw/)
+  
+  2. add /bin to Path
+  
+  3.  in cmd or PowerShell, cd to `/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib`
+  
+  4. Compile: `g++ -o SoftCorrelatorDynamicLib -shared -fPIC -O2 SoftCorrelatorDynamicLib.cpp Correlator.cpp CountCorrelator.cpp CPhDelayCrossCorrelator.cpp`
+
+* 
