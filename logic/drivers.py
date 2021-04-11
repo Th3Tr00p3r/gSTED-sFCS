@@ -81,7 +81,6 @@ class NIDAQmxInstrument:
 
     def __init__(self, param_dict, **kwargs):
         self.error_dict = None
-        # TODO: next line should be in devices.py
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.tasks = SimpleNamespace()
         self.task_types = ["ai", "ao", "ci", "co"]
@@ -103,15 +102,16 @@ class NIDAQmxInstrument:
     def close_tasks(self, task_type: str):
         """Doc."""
 
-        type_tasks_dict = getattr(self.tasks, task_type)
-        [type_tasks_dict[task_name].close() for task_name in type_tasks_dict.keys()]
+        [task.close() for task in getattr(self.tasks, task_type).values()]
         setattr(self.tasks, task_type, {})
 
     def close_all_tasks(self):
         """Doc."""
 
         for type in self.task_types:
-            self.close_tasks(type)
+            # TODO: define relevant task types for each device, then following check can be removed (can be removed without harm anyway)
+            if getattr(self.tasks, type) != {}:
+                self.close_tasks(type)
 
     def wait_for_task(self, task_type: str, task_name: str):
         """Doc."""

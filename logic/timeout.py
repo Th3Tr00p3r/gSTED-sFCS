@@ -42,7 +42,6 @@ class Timeout:
     def start(self) -> NoReturn:
         """Doc."""
 
-        self.running = True
         self.not_finished = True
         self._app.loop.create_task(self._main())
         logging.debug("Starting main timer.")
@@ -51,19 +50,6 @@ class Timeout:
         """Doc."""
 
         self.not_finished = False
-
-    def pause(self) -> NoReturn:
-        """Doc."""
-
-        self.running = False
-        logging.debug("Stopping main timer.")
-
-    def resume(self) -> NoReturn:
-        """Doc."""
-
-        if not self.running:
-            self.running = True
-            logging.debug("Resuming main timer.")
 
     async def _updt_current_state(self) -> NoReturn:
         """Doc."""
@@ -92,43 +78,41 @@ class Timeout:
         buffer_deque = deque([first_line], maxlen=maxlen)
 
         while self.not_finished:
-            if self.running:
+            new_maxlen = self._app.gui.main.logNumLinesSlider.value()
+            if buffer_deque.maxlen != new_maxlen:
+                buffer_deque = deque(buffer_deque, maxlen=new_maxlen)
 
-                new_maxlen = self._app.gui.main.logNumLinesSlider.value()
-                if buffer_deque.maxlen != new_maxlen:
-                    buffer_deque = deque(buffer_deque, maxlen=new_maxlen)
+            last_line = get_last_line(consts.LOG_FOLDER_PATH + "log")
 
-                last_line = get_last_line(consts.LOG_FOLDER_PATH + "log")
+            if last_line.find("INFO") != -1:
+                line_time = last_line[12:23]
+                line_text = last_line[38:]
+                last_line = line_time + line_text
 
-                if last_line.find("INFO") != -1:
-                    line_time = last_line[12:23]
-                    line_text = last_line[38:]
-                    last_line = line_time + line_text
+                if last_line != buffer_deque[0]:
+                    buffer_deque.appendleft(last_line)
 
-                    if last_line != buffer_deque[0]:
-                        buffer_deque.appendleft(last_line)
+                    text = "".join(buffer_deque)
+                    self._app.gui.main.lastAction.setPlainText(text)
 
-                        text = "".join(buffer_deque)
-                        self._app.gui.main.lastAction.setPlainText(text)
-
-                await asyncio.sleep(0.3)
+            await asyncio.sleep(0.3)
 
     async def _updt_CI_and_AI(self) -> NoReturn:
         """Doc."""
 
         while self.not_finished:
-            if self.running:
-                # COUNTER
-                if self._app.devices.COUNTER.error_dict is None:
-                    self._app.devices.COUNTER.fill_ci_buffer()
-                    if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
-                        self._app.devices.COUNTER.dump_ci_buff_overflow()
 
-                # AI
-                if self._app.devices.SCANNERS.error_dict is None:
-                    self._app.devices.SCANNERS.fill_ai_buffer()
-                    if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
-                        self._app.devices.SCANNERS.dump_ai_buff_overflow()
+            # COUNTER
+            if self._app.devices.COUNTER.error_dict is None:
+                self._app.devices.COUNTER.fill_ci_buffer()
+                if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
+                    self._app.devices.COUNTER.dump_ci_buff_overflow()
+
+            # AI
+            if self._app.devices.SCANNERS.error_dict is None:
+                self._app.devices.SCANNERS.fill_ai_buffer()
+                if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
+                    self._app.devices.SCANNERS.dump_ai_buff_overflow()
 
             await asyncio.sleep(consts.TIMEOUT)
 
@@ -201,13 +185,12 @@ class Timeout:
                 meas.prog_bar_wdgt.set(progress)
 
         while self.not_finished:
-            if self.running:
 
-                # SCANNERS
-                updt_scn_pos(self._app)
+            # SCANNERS
+            updt_scn_pos(self._app)
 
-                # Measurement progress bar
-                updt_meas_progbar(self._app.meas)
+            # Measurement progress bar
+            updt_meas_progbar(self._app.meas)
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
@@ -220,10 +203,9 @@ class Timeout:
 
         cntr_dvc = self._app.devices.COUNTER
         while self.not_finished:
-            if self.running:
-                if cntr_dvc.error_dict is None:
-                    cntr_dvc.average_counts()
-                    self._app.gui.main.counts.setValue(cntr_dvc.avg_cnt_rate)
+            if cntr_dvc.error_dict is None:
+                cntr_dvc.average_counts()
+                self._app.gui.main.counts.setValue(cntr_dvc.avg_cnt_rate)
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
@@ -262,11 +244,10 @@ class Timeout:
                     update_current(dep_dvc, main_gui)
 
         while self.not_finished:
-            if self.running:
-                update_props(
-                    self._app.devices.DEP_LASER.error_dict,
-                    self._app.devices.DEP_LASER,
-                    self._app.gui.main,
-                )
+            update_props(
+                self._app.devices.DEP_LASER.error_dict,
+                self._app.devices.DEP_LASER,
+                self._app.gui.main,
+            )
 
             time.sleep(self.updt_intrvl["dep"])
