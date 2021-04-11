@@ -396,7 +396,6 @@ class Counter(NIDAQmxInstrument):
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
 
-        # TODO: fix bug when counter and/or scanners error then restarting
         self.ai_cont_rate = scanners_ai_tasks["Continuous AI"].timing.samp_clk_rate
         self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
 
