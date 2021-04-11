@@ -232,7 +232,6 @@ class SFCSImageMeasurement(Measurement):
         # create ao_buffer
         (
             self.ao_buffer,
-            dt,
             self.scan_params.set_pnts_lines_odd,
             self.scan_params.set_pnts_lines_even,
             self.scan_params.set_pnts_planes,
@@ -240,9 +239,15 @@ class SFCSImageMeasurement(Measurement):
         self.n_ao_samps = len(self.ao_buffer[0])
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
-            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (dt - 1.5e-7))
+            self.scanners_dvc.ai_buffer.shape[0]
+            * 2
+            * (1 / (self.scan_params.dt - 1.5e-7))
         )
-        self.est_duration = self.n_ao_samps * dt * len(self.scan_params.set_pnts_planes)
+        self.est_duration = (
+            self.n_ao_samps
+            * self.scan_params.dt
+            * len(self.scan_params.set_pnts_planes)
+        )
         self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
 
     def change_plane(self, plane_idx):
@@ -550,13 +555,15 @@ class SFCSSolutionMeasurement(Measurement):
                 - 2
             )
         # create ao_buffer
-        self.ao_buffer, dt, self.scan_params = ScanPatternAO(
+        self.ao_buffer, self.scan_params = ScanPatternAO(
             self.scan_params.pattern, self.scan_params, self.um_V_ratio
         ).calculate_ao()
         self.n_ao_samps = len(self.ao_buffer[0])
         # TODO: ask Oleg: why is the next line correct? explain and use a constant for 1.5E-7
         self.ai_conv_rate = (
-            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (dt - 1.5e-7))
+            self.scanners_dvc.ai_buffer.shape[0]
+            * 2
+            * (1 / (self.scan_params.dt - 1.5e-7))
         )
 
     def disp_ACF(self):
