@@ -127,8 +127,7 @@ class App:
 
             for nick in consts.DVC_NICKS_TUPLE:
                 dvc = getattr(app.devices, nick)
-                if not dvc.error_dict:
-                    dvc.toggle(False)
+                dvc.toggle(False)
 
         def close_all_wins(app):
             """Doc."""
@@ -159,7 +158,8 @@ class App:
 
             close_all_dvcs(self)
 
-            self.timeout_loop.pause()
+            # finish current timeout loop
+            self.timeout_loop.finish()
 
             lights_out(self.gui.main)
             self.gui.main.depActualCurr.setValue(0)
@@ -167,7 +167,9 @@ class App:
 
             self.init_devices()
 
-            self.timeout_loop.resume()
+            # restart timeout loop
+            self.timeout_loop = Timeout(self)
+            self.timeout_loop.start()
 
             logging.info("Restarting application.")
 
