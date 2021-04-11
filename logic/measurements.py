@@ -5,6 +5,7 @@ import asyncio
 import datetime
 import logging
 import math
+import pickle
 import time
 from types import SimpleNamespace
 from typing import NoReturn, Tuple
@@ -74,17 +75,23 @@ class Measurement:
         logging.info(f"{self.type} measurement stopped")
         self._app.meas.type = None
 
-    def save_data(self, data_dict: dict, file_name: str) -> NoReturn:
+    def save_data(self, data_dict: dict, file_name: str, mat=True) -> NoReturn:
         """
-        Save measurement data as a .mat (MATLAB) file
-        which can then be analyzed in MATLAB using our
+        Save measurement data as a .mat (MATLAB) file or a
+        .pkl file. .mat files can be analyzed in MATLAB using our
         current MATLAB-based analysis (or later in Python using sio.loadmat())
         """
-        # TODO: add option to save in Python format (loadmat works in a weird way but Oleg found a fix in SO).
-        # We will eventually do everything in Python
 
-        file_path = self.save_path + file_name + ".mat"
-        sio.savemat(file_path, data_dict)
+        file_path = self.save_path + file_name
+
+        # .mat for MATLAB
+        if mat:
+            sio.savemat(file_path + ".mat", data_dict)
+
+        # .pkl for Python
+        else:
+            with open(file_path + ".pkl", "wb") as f:
+                pickle.dump(data_dict, f)
 
     async def toggle_lasers(self, finish=False) -> NoReturn:
         """Doc."""
