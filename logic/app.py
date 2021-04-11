@@ -25,7 +25,6 @@ class App:
 
     def __init__(self, loop):
         """Doc."""
-        # TODO: refactor this init so that it uses clean_up app method - split it into a once-occuring setup, and the rest in clean_up can be repeated in restsrts
 
         self.loop = loop
 
@@ -53,7 +52,7 @@ class App:
         self.init_devices()
         self.meas = Measurement(app=self, type=None)
 
-        # init AO as origin (last AO is measured in internal AO if needed)
+        # init AO as origin (actual AO is measured in internal AO if last position is needed)
         [
             getattr(self.gui.main, f"{axis}AOV").setValue(org_vltg)
             for axis, org_vltg in zip("xyz", self.devices.SCANNERS.origin)
