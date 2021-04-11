@@ -77,11 +77,12 @@ class NIDAQmxInstrument:
 
     MIN_OUTPUT_RATE_Hz = 1000
     CONT_READ_BFFR_SZ = 10000
+    AO_TIMEOUT = 0.1
 
     def __init__(self, param_dict, **kwargs):
         self.error_dict = None
         # TODO: next line should be in devices.py
-        [setattr(self, key, val) for key, val in {**param_dict, **kwargs}.items()]
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.tasks = SimpleNamespace()
         self.task_types = ["ai", "ao", "ci", "co"]
         [setattr(self.tasks, type, {}) for type in self.task_types]
@@ -218,9 +219,9 @@ class NIDAQmxInstrument:
 
         ao_task = self.tasks.ao[task_name]
         if auto_start is not None:
-            ao_task.write(data, auto_start=auto_start, timeout=self.ao_timeout)
+            ao_task.write(data, auto_start=auto_start, timeout=self.AO_TIMEOUT)
         else:
-            ao_task.write(data, timeout=self.ao_timeout)
+            ao_task.write(data, timeout=self.AO_TIMEOUT)
 
     def counter_stream_read(self):
         """

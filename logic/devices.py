@@ -115,7 +115,6 @@ class Scanners(NIDAQmxInstrument):
     def __init__(self, param_dict):
         super().__init__(
             param_dict,
-            ao_timeout=0.1,
         )
 
         rse = consts.NI.TerminalConfiguration.RSE
