@@ -4530,6 +4530,9 @@ Duration (s)</string>
                    <property name="minimum">
                     <number>1</number>
                    </property>
+                   <property name="maximum">
+                    <number>9999</number>
+                   </property>
                    <property name="value">
                     <number>3</number>
                    </property>

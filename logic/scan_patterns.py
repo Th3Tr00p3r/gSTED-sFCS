@@ -93,16 +93,21 @@ class ScanPatternAO:
         # and the voltages corresponding to each row and plane.
         # now we build the full AO (2D):
 
-        single_line_ao = single_line_ao.tolist()
         set_pnts_planes = np.atleast_1d(set_pnts_planes)
 
-        dim1_ao = []
-        dim2_ao = []
-        for odd_line_set_pnt in set_pnts_lines_odd:
-            dim1_ao += single_line_ao
-            dim2_ao += [odd_line_set_pnt] * len(single_line_ao)
+        dim1_ao = np.empty(
+            shape=(set_pnts_lines_odd.size * params.ppl,), dtype=np.float
+        )
+        dim2_ao = np.empty(
+            shape=(set_pnts_lines_odd.size * params.ppl,), dtype=np.float
+        )
+        for idx, odd_line_set_pnt in enumerate(set_pnts_lines_odd):
+            dim1_ao[idx * params.ppl : idx * params.ppl + params.ppl] = single_line_ao
+            dim2_ao[idx * params.ppl : idx * params.ppl + params.ppl] = [
+                odd_line_set_pnt
+            ] * len(single_line_ao)
 
-        ao_buffer = [dim1_ao, dim2_ao]
+        ao_buffer = np.vstack((dim1_ao, dim2_ao))
 
         return (
             ao_buffer,
@@ -288,7 +293,7 @@ class ScanPatternAO:
         x_ao = x_ao / x_um_V_ratio
         y_ao = y_ao / y_um_V_ratio
 
-        ao_buffer = [x_ao.flatten("F").tolist(), y_ao.flatten("F").tolist()]
+        ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
 
         params.dt = 1 / samp_freq_Hz
         params.eff_speed_um_s = v * lin_len * samp_freq_Hz
@@ -320,10 +325,13 @@ class ScanPatternAO:
         R_Vx = R_um / x_um_V_ratio
         R_Vy = R_um / y_um_V_ratio
 
-        ao_buffer = [
-            [R_Vx * sin(2 * pi * (i / n_samps)) for i in range(n_samps)],
-            [R_Vy * cos(2 * pi * (i / n_samps)) for i in range(n_samps)],
-        ]
+        ao_buffer = np.array(
+            [
+                [R_Vx * sin(2 * pi * (i / n_samps)) for i in range(n_samps)],
+                [R_Vy * cos(2 * pi * (i / n_samps)) for i in range(n_samps)],
+            ],
+            dtype=np.float,
+        )
 
         params.dt = 1 / scan_freq_Hz
         params.scan_freq_Hz = scan_freq_Hz

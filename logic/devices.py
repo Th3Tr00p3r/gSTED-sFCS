@@ -115,6 +115,7 @@ class Scanners(NIDAQmxInstrument):
     def __init__(self, param_dict):
         super().__init__(
             param_dict,
+            task_types=("ai", "ao"),
         )
 
         rse = consts.NI.TerminalConfiguration.RSE
@@ -388,6 +389,7 @@ class Counter(NIDAQmxInstrument):
     def __init__(self, param_dict, scanners_ai_tasks):
         super().__init__(
             param_dict,
+            task_types=("ci", "co"),
         )
         self.cont_read_buffer = np.zeros(
             shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32
@@ -519,6 +521,7 @@ class PixelClock(NIDAQmxInstrument):
     def __init__(self, param_dict):
         super().__init__(
             param_dict,
+            task_types=("ci", "co"),
         )
 
         self.toggle(False)
@@ -641,6 +644,7 @@ class SimpleDO(NIDAQmxInstrument):
     def __init__(self, param_dict):
         super().__init__(
             param_dict,
+            task_types=("do"),
         )
 
         self.toggle(False)

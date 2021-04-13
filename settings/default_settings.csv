@@ -25,11 +25,6 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-fcsDataPath,./data/
-solDataPath,./data/solution measurements/
-imgDataPath,./data/image measurements/
-camDataPath,./data/camera photos/
-logDataPath,./log/
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
@@ -37,6 +32,11 @@ excAddr,Dev1/port0/line6
 depMod,MPB
 depAddr,COM6
 depShutterAddr,Dev3/port0/line11
+fcsDataPath,./data/
+solDataPath,./data/solution measurements/
+imgDataPath,./data/image measurements/
+camDataPath,./data/camera photos/
+logDataPath,./log/
 um232VendID,1027
 um232latencyTimerVal,6
 um232ProdID,24596
@@ -56,3 +56,4 @@ counterTriggerEdge,0
 AOtriggerEdge,0
 AOwfType,0
 excTriggerSrc,0
+saveFormat,1

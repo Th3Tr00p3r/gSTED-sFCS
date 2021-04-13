@@ -30,10 +30,10 @@ class Measurement:
         self.pxl_clk_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
         [setattr(self, key, val) for key, val in kwargs.items()]
+        self.counter_dvc = app.devices.COUNTER
         if scan_params is not None:
             self.pxl_clk_dvc = app.devices.PXL_CLK
             self.scanners_dvc = app.devices.SCANNERS
-            self.counter_dvc = app.devices.COUNTER
             self.scan_params = scan_params
             self.um_V_ratio = tuple(
                 getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
@@ -75,20 +75,21 @@ class Measurement:
         logging.info(f"{self.type} measurement stopped")
         self._app.meas.type = None
 
-    def save_data(self, data_dict: dict, file_name: str, mat=True) -> NoReturn:
+    def save_data(self, data_dict: dict, file_name: str) -> NoReturn:
         """
         Save measurement data as a .mat (MATLAB) file or a
         .pkl file. .mat files can be analyzed in MATLAB using our
-        current MATLAB-based analysis (or later in Python using sio.loadmat())
+        current MATLAB-based analysis (or later in Python using sio.loadmat()).
+        Note: saving as .mat takes longer
         """
 
         file_path = self.save_path + file_name
 
-        # .mat for MATLAB
-        if mat:
+        # .mat
+        if self.save_frmt == "MATLAB":
             sio.savemat(file_path + ".mat", data_dict)
 
-        # .pkl for Python
+        # .pkl
         else:
             with open(file_path + ".pkl", "wb") as f:
                 pickle.dump(data_dict, f)
@@ -140,7 +141,8 @@ class Measurement:
         ao_sample_mode = getattr(consts.NI.AcquisitionType, ao_sample_mode)
 
         self.scanners_dvc.start_write_task(
-            ao_data=self.ao_buffer,
+            # TODO: transition from list to ndarray in devices.py, then remove .tolist()
+            ao_data=self.ao_buffer.tolist(),
             type=self.scan_params.scan_plane,
             samp_clk_cnfg_xy={
                 "source": self.pxl_clk_dvc.out_term,
@@ -236,7 +238,7 @@ class SFCSImageMeasurement(Measurement):
             self.scan_params.set_pnts_lines_even,
             self.scan_params.set_pnts_planes,
         ) = ScanPatternAO("image", self.scan_params, self.um_V_ratio).calculate_ao()
-        self.n_ao_samps = len(self.ao_buffer[0])
+        self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
             self.scanners_dvc.ai_buffer.shape[0]
@@ -270,7 +272,7 @@ class SFCSImageMeasurement(Measurement):
         pxl_sz = self.scan_params.dim2_um / (n_lines - 1)
         scan_plane = self.scan_params.scan_plane
         ppl = self.scan_params.ppl
-        ao = np.array(self.ao_buffer)[0, :ppl]
+        ao = self.ao_buffer[0, :ppl]
         counts = self.counter_dvc.ci_buffer
 
         if scan_plane in {"XY", "XZ"}:
@@ -311,9 +313,14 @@ class SFCSImageMeasurement(Measurement):
 
         # even and odd planes are scanned in the opposite directions
         if plane_idx % 2:
+            # odd (backwards)
             K = np.arange(n_lines - 1, -1, -1)
         else:
+            # even (forwards)
             K = np.arange(n_lines)
+
+        # TODO: test if this fixes fliiped photos on GB
+        #        K = np.arange(n_lines) # TESTESTEST
 
         pic1 = np.zeros((n_lines, pxls_pl))
         norm1 = np.zeros((n_lines, pxls_pl))
@@ -451,6 +458,7 @@ class SFCSImageMeasurement(Measurement):
             else:
                 break
 
+        # finished measurement
         if self.is_running:
             # prepare data
             self.plane_images_data = [
@@ -467,7 +475,9 @@ class SFCSImageMeasurement(Measurement):
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
             self._app.gui.main.imp.disp_plane_img(mid_plane)
-        else:  # manually stopped
+
+        # manually stopped
+        else:
             pass
 
         # return to stand-by state
@@ -558,7 +568,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.ao_buffer, self.scan_params = ScanPatternAO(
             self.scan_params.pattern, self.scan_params, self.um_V_ratio
         ).calculate_ao()
-        self.n_ao_samps = len(self.ao_buffer[0])
+        self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: ask Oleg: why is the next line correct? explain and use a constant for 1.5E-7
         self.ai_conv_rate = (
             self.scanners_dvc.ai_buffer.shape[0]
@@ -585,8 +595,8 @@ class SFCSSolutionMeasurement(Measurement):
             def prep_ang_scan_sett_dict():
 
                 return {
-                    "X": self.ao_buffer[0],
-                    "Y": self.ao_buffer[1],
+                    "X": self.ao_buffer[0, :],
+                    "Y": self.ao_buffer[1, :],
                     "ActualSpeed": self.scan_params.eff_speed_um_s,
                     "ScanFreq": self.scan_params.scan_freq_Hz,
                     "SampleFreq": self.scan_params.ao_samp_freq_Hz,
@@ -612,7 +622,7 @@ class SFCSSolutionMeasurement(Measurement):
                 "PixelFreq": self.pxl_clk_dvc.freq_MHz,
                 "LaserFreq": self.tdc_dvc.laser_freq_MHz,
                 "Version": self.tdc_dvc.tdc_vrsn,
-                "AI": self.scanners_dvc.ai_buffer,  # TODO: limit to AO length
+                "AI": self.scanners_dvc.ai_buffer,
                 "AO": self.ao_buffer,
                 "AvgCnt": self.counter_dvc.avg_cnt_rate,
             }
@@ -679,6 +689,11 @@ class SFCSSolutionMeasurement(Measurement):
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
 
+                # save just one full pattern of AI
+                self.scanners_dvc.ai_buffer = self.scanners_dvc.ai_buffer[
+                    :, : self.ao_buffer.shape[1]
+                ]
+
                 # save file data
                 self.save_data(self.prep_data_dict(), self.build_filename(file_num))
 
@@ -699,7 +714,7 @@ class SFCSSolutionMeasurement(Measurement):
 
 
 class FCSMeasurement(Measurement):
-    """Repeated static FCS measurement, intended fo system calibration"""
+    """Repeated static FCS measurement, intended fo system alignment"""
 
     def __init__(self, app, **kwargs):
         super().__init__(app=app, type="FCS", **kwargs)
@@ -707,6 +722,20 @@ class FCSMeasurement(Measurement):
 
     def build_filename(self) -> str:
         return f"fcs_{self.laser_config}_{self.duration}s"
+
+    def prep_data_dict(self) -> dict:
+        """Doc."""
+
+        return {
+            "FullData": {
+                "Data": np.frombuffer(self.data_dvc.data, dtype=np.uint8),
+                "DataVersion": self.tdc_dvc.data_vrsn,
+                "FpgaFreq": self.tdc_dvc.fpga_freq_MHz,
+                "LaserFreq": self.tdc_dvc.laser_freq_MHz,
+                "Version": self.tdc_dvc.tdc_vrsn,
+                "AvgCnt": self.counter_dvc.avg_cnt_rate,
+            }
+        }
 
     async def run(self):
         """Doc."""
@@ -722,6 +751,8 @@ class FCSMeasurement(Measurement):
 
             self.plot_wdgt.obj.plot(meas_dvc.data, clear=True)
 
+        self.get_laser_config()
+
         while self.is_running:
 
             self.start_time = time.perf_counter()
@@ -730,7 +761,7 @@ class FCSMeasurement(Measurement):
             await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
 
             if self.save is True:
-                self.save_data(self.build_filename())
+                self.save_data(self.prep_data_dict(), self.build_filename())
 
             disp_ACF(meas_dvc=self.data_dvc)
             self.data_dvc.init_data()
