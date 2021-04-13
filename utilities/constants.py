@@ -256,6 +256,7 @@ FCS_MEAS_WDGT_COLL = QtWidgetCollection(
     prog_bar_wdgt=("fcsProgressBar", "value", "main"),
     save=("fcsSave", "isChecked", "main"),
     save_path=("fcsDataPath", "text", "settings"),
+    save_frmt=("saveFormat", "currentText", "settings"),
     plot_wdgt=("fcsPlot", None, "main"),
 )
 
@@ -285,6 +286,7 @@ SOL_CIRC_SCN_WDGT_COLL = QtWidgetCollection(
 SOL_MEAS_WDGT_COLL = QtWidgetCollection(
     file_template=("solScanFileTemplate", "text", "main"),
     save_path=("solDataPath", "text", "settings"),
+    save_frmt=("saveFormat", "currentText", "settings"),
     max_file_size=("solScanMaxFileSize", "value", "main"),
     cal_duration=("solScanCalDur", "value", "main"),
     total_duration=("solScanTotalDur", "value", "main"),
@@ -328,6 +330,7 @@ IMG_SCN_WDGT_FILLOUT_DICT = {
 IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     file_template=("imgScanFileTemplate", "text", "main"),
     save_path=("imgDataPath", "text", "settings"),
+    save_frmt=("saveFormat", "currentText", "settings"),
     prog_bar_wdgt=("imgScanProgressBar", "value", "main"),
     curr_plane_wdgt=("currPlane", "value", "main"),
     plane_shown=("numPlaneShown", "value", "main"),

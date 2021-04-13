@@ -79,11 +79,11 @@ class NIDAQmxInstrument:
     CONT_READ_BFFR_SZ = 10000
     AO_TIMEOUT = 0.1
 
-    def __init__(self, param_dict, **kwargs):
+    def __init__(self, param_dict, task_types, **kwargs):
         self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.tasks = SimpleNamespace()
-        self.task_types = ["ai", "ao", "ci", "co"]
+        self.task_types = task_types
         [setattr(self.tasks, type, {}) for type in self.task_types]
 
     def start_tasks(self, task_type: str):
@@ -109,9 +109,7 @@ class NIDAQmxInstrument:
         """Doc."""
 
         for type in self.task_types:
-            # TODO: define relevant task types for each device, then following check can be removed (can be removed without harm anyway)
-            if getattr(self.tasks, type) != {}:
-                self.close_tasks(type)
+            self.close_tasks(type)
 
     def wait_for_task(self, task_type: str, task_name: str):
         """Doc."""
