@@ -254,9 +254,6 @@ FCS_MEAS_WDGT_COLL = QtWidgetCollection(
     g0_wdgt=("fcsG0", "value", "main"),
     decay_time_wdgt=("fcsDecayTime", "value", "main"),
     prog_bar_wdgt=("fcsProgressBar", "value", "main"),
-    save=("fcsSave", "isChecked", "main"),
-    save_path=("fcsDataPath", "text", "settings"),
-    save_frmt=("saveFormat", "currentText", "settings"),
     plot_wdgt=("fcsPlot", None, "main"),
 )
 
