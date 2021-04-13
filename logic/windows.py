@@ -409,7 +409,7 @@ class MainWin:
         try:
             um_V_ratio = self._app.devices.SCANNERS.um_V_ratio
             ao, *_ = ScanPatternAO(pattern, scan_params, um_V_ratio).calculate_ao()
-            x_data, y_data = ao
+            x_data, y_data = ao[0, :], ao[1, :]
             plt_wdgt.plot(x_data, y_data, clear=True)
 
         # devices not yet initialized
