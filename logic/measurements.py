@@ -319,7 +319,7 @@ class SFCSImageMeasurement(Measurement):
             # even (forwards)
             K = np.arange(n_lines)
 
-        # TODO: test if this fixes fliiped photos on GB
+        # TODO: test if this fixes flipped photos on GB
         #        K = np.arange(n_lines) # TESTESTEST
 
         pic1 = np.zeros((n_lines, pxls_pl))
@@ -499,6 +499,11 @@ class SFCSSolutionMeasurement(Measurement):
         self.scan_params.scan_plane = "XY"
         self.duration_multiplier = 60
 
+        if self.scan_params.pattern == "static":
+            self.scanning = False
+        else:
+            self.scanning = True
+
     def build_filename(self, file_no: int) -> str:
         return f"{self.file_template}_{self.laser_config}_{file_no}"
 
@@ -569,7 +574,7 @@ class SFCSSolutionMeasurement(Measurement):
             self.scan_params.pattern, self.scan_params, self.um_V_ratio
         ).calculate_ao()
         self.n_ao_samps = self.ao_buffer.shape[1]
-        # TODO: ask Oleg: why is the next line correct? explain and use a constant for 1.5E-7
+        # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
             self.scanners_dvc.ai_buffer.shape[0]
             * 2
@@ -591,30 +596,29 @@ class SFCSSolutionMeasurement(Measurement):
         matches current MATLAB analysis
         """
 
-        def prep_full_data():
-            def prep_ang_scan_sett_dict():
+        def prep_ang_scan_sett_dict():
+            return {
+                "X": self.ao_buffer[0, :],
+                "Y": self.ao_buffer[1, :],
+                "ActualSpeed": self.scan_params.eff_speed_um_s,
+                "ScanFreq": self.scan_params.scan_freq_Hz,
+                "SampleFreq": self.scan_params.ao_samp_freq_Hz,
+                "PointsPerLineTotal": self.scan_params.tot_ppl,
+                "PointsPerLine": self.scan_params.ppl,
+                "NofLines": self.scan_params.n_lines,
+                "LineLength": self.scan_params.lin_len,
+                "LengthTot": self.scan_params.tot_len,
+                "LineLengthMax": self.scan_params.max_line_len_um,
+                "LineShift": self.scan_params.line_shift_um,
+                "AngleDegrees": self.scan_params.angle_deg,
+                "LinFrac": self.scan_params.lin_frac,
+                "PixClockFreq": self.pxl_clk_dvc.freq_MHz,  # already in full_data
+                "LinearPart": self.scan_params.lin_part,
+                "Xlim": self.scan_params.x_lim,
+                "Ylim": self.scan_params.y_lim,
+            }
 
-                return {
-                    "X": self.ao_buffer[0, :],
-                    "Y": self.ao_buffer[1, :],
-                    "ActualSpeed": self.scan_params.eff_speed_um_s,
-                    "ScanFreq": self.scan_params.scan_freq_Hz,
-                    "SampleFreq": self.scan_params.ao_samp_freq_Hz,
-                    "PointsPerLineTotal": self.scan_params.tot_ppl,
-                    "PointsPerLine": self.scan_params.ppl,
-                    "NofLines": self.scan_params.n_lines,
-                    "LineLength": self.scan_params.lin_len,
-                    "LengthTot": self.scan_params.tot_len,
-                    "LineLengthMax": self.scan_params.max_line_len_um,
-                    "LineShift": self.scan_params.line_shift_um,
-                    "AngleDegrees": self.scan_params.angle_deg,
-                    "LinFrac": self.scan_params.lin_frac,
-                    "PixClockFreq": self.pxl_clk_dvc.freq_MHz,  # already in full_data
-                    "LinearPart": self.scan_params.lin_part,
-                    "Xlim": self.scan_params.x_lim,
-                    "Ylim": self.scan_params.y_lim,
-                }
-
+        if self.scanning:
             full_data = {
                 "Data": np.frombuffer(self.data_dvc.data, dtype=np.uint8),
                 "DataVersion": self.tdc_dvc.data_vrsn,
@@ -628,13 +632,24 @@ class SFCSSolutionMeasurement(Measurement):
             }
             if self.scan_params.pattern == "circle":
                 full_data["CircleSpeed_um_sec"] = self.scan_params.speed_um_s
-                full_data["AnglularScanSettings"] = None
+                full_data["AnglularScanSettings"] = []
             else:
                 full_data["CircleSpeed_um_sec"] = 0
                 full_data["AnglularScanSettings"] = prep_ang_scan_sett_dict()
-            return full_data
 
-        return {"FullData": prep_full_data(), "SystemInfo": self.sys_info}
+            return {"FullData": full_data, "SystemInfo": self.sys_info}
+
+        else:
+            full_data = {
+                "Data": np.frombuffer(self.data_dvc.data, dtype=np.uint8),
+                "DataVersion": self.tdc_dvc.data_vrsn,
+                "FpgaFreq": self.tdc_dvc.fpga_freq_MHz,
+                "LaserFreq": self.tdc_dvc.laser_freq_MHz,
+                "Version": self.tdc_dvc.tdc_vrsn,
+                "AvgCnt": self.counter_dvc.avg_cnt_rate,
+            }
+
+            return {"FullData": full_data}
 
     async def run(self):
         """Doc."""
@@ -651,15 +666,18 @@ class SFCSSolutionMeasurement(Measurement):
         # TODO: test if non-scanning calibration gives good enough approximation for file size, if not, consider scanning inside cal function
         num_files = await self.calibrate_num_files()
 
-        self.setup_scan()
-        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+        if self.scanning:
+            self.setup_scan()
+            self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+
         self.data_dvc.purge()
 
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_ci_buffer()
 
-        self.init_scan_tasks("CONTINUOUS")
-        self.scanners_dvc.start_tasks("ao")
+        if self.scanning:
+            self.init_scan_tasks("CONTINUOUS")
+            self.scanners_dvc.start_tasks("ao")
 
         # collect initial AI/CI to avoid possible overflow
         self.counter_dvc.fill_ci_buffer()
@@ -689,10 +707,11 @@ class SFCSSolutionMeasurement(Measurement):
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
 
-                # save just one full pattern of AI
-                self.scanners_dvc.ai_buffer = self.scanners_dvc.ai_buffer[
-                    :, : self.ao_buffer.shape[1]
-                ]
+                if self.scanning:
+                    # save just one full pattern of AI
+                    self.scanners_dvc.ai_buffer = self.scanners_dvc.ai_buffer[
+                        :, : self.ao_buffer.shape[1]
+                    ]
 
                 # save file data
                 self.save_data(self.prep_data_dict(), self.build_filename(file_num))
@@ -706,8 +725,10 @@ class SFCSSolutionMeasurement(Measurement):
                 break
 
         await self.toggle_lasers(finish=True)
-        self.return_to_regular_tasks()
-        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+
+        if self.scanning:
+            self.return_to_regular_tasks()
+            self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)
@@ -719,23 +740,6 @@ class FCSMeasurement(Measurement):
     def __init__(self, app, **kwargs):
         super().__init__(app=app, type="FCS", **kwargs)
         self.duration_multiplier = 1
-
-    def build_filename(self) -> str:
-        return f"fcs_{self.laser_config}_{self.duration}s"
-
-    def prep_data_dict(self) -> dict:
-        """Doc."""
-
-        return {
-            "FullData": {
-                "Data": np.frombuffer(self.data_dvc.data, dtype=np.uint8),
-                "DataVersion": self.tdc_dvc.data_vrsn,
-                "FpgaFreq": self.tdc_dvc.fpga_freq_MHz,
-                "LaserFreq": self.tdc_dvc.laser_freq_MHz,
-                "Version": self.tdc_dvc.tdc_vrsn,
-                "AvgCnt": self.counter_dvc.avg_cnt_rate,
-            }
-        }
 
     async def run(self):
         """Doc."""
@@ -759,9 +763,6 @@ class FCSMeasurement(Measurement):
             self.time_passed = 0
 
             await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
-
-            if self.save is True:
-                self.save_data(self.prep_data_dict(), self.build_filename())
 
             disp_ACF(meas_dvc=self.data_dvc)
             self.data_dvc.init_data()

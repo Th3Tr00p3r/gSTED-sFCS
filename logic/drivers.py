@@ -180,7 +180,6 @@ class NIDAQmxInstrument:
         for key, val in clk_xtra_params.items():
             setattr(task.timing, key, val)
 
-        # TODO: move to seperate function (interrupts merge of 'create task' functions
         task.sr = CounterReader(task.in_stream)
         task.sr.verify_array_shape = False
 
