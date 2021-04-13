@@ -163,6 +163,8 @@ class App:
             lights_out(self.gui.main)
             self.gui.main.depActualCurr.setValue(0)
             self.gui.main.depActualPow.setValue(0)
+            self.gui.main.imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
+            self.gui.settings.imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
 
             self.init_devices()
 

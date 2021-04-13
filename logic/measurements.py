@@ -423,6 +423,8 @@ class SFCSImageMeasurement(Measurement):
         self.setup_scan()
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
+        self.data_dvc.init_data()
+        self.data_dvc.purge()
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_ci_buffer()
 
@@ -437,7 +439,6 @@ class SFCSImageMeasurement(Measurement):
 
                 self.change_plane(plane_idx)
                 self.curr_plane_wdgt.set(plane_idx)
-                self.data_dvc.purge()
 
                 self.init_scan_tasks("FINITE")
                 self.scanners_dvc.start_tasks("ao")
@@ -446,6 +447,7 @@ class SFCSImageMeasurement(Measurement):
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
 
+                self.data_dvc.purge()
                 await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
 
                 # collect final AI/CI
@@ -670,8 +672,8 @@ class SFCSSolutionMeasurement(Measurement):
             self.setup_scan()
             self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
+        self.data_dvc.init_data()
         self.data_dvc.purge()
-
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_ci_buffer()
 
@@ -718,6 +720,7 @@ class SFCSSolutionMeasurement(Measurement):
 
                 # initialize data buffers for next file
                 self.data_dvc.init_data()
+                self.data_dvc.purge()
                 self.scanners_dvc.init_ai_buffer()
                 self.counter_dvc.init_ci_buffer()
 
@@ -762,7 +765,8 @@ class FCSMeasurement(Measurement):
             self.start_time = time.perf_counter()
             self.time_passed = 0
 
+            self.data_dvc.init_data()
+            self.data_dvc.purge()
             await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
 
             disp_ACF(meas_dvc=self.data_dvc)
-            self.data_dvc.init_data()

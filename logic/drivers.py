@@ -308,8 +308,9 @@ class UC480Instrument:
     def init_cam(self):
         """Doc."""
 
-        try:  # this is due to bad error handeling in instrumental-lib...
+        try:
             self._inst = UC480_Camera(reopen_policy="new")
+        # general exc is due to bad error handeling in instrumental-lib...
         except Exception:
             raise UC480Error(msg="Camera disconnected")
 
