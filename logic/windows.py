@@ -49,7 +49,9 @@ class MainWin:
     def restart(self) -> NoReturn:
         """Restart all devices (except camera) and the timeout loop."""
 
-        pressed = Question(txt="Are you sure?", title="Restarting Program").display()
+        pressed = Question(
+            txt="Are you sure?", title="Restarting Application"
+        ).display()
         if pressed == QtWidgets.QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
 
@@ -319,6 +321,11 @@ class MainWin:
                     scan_params = consts.SOL_CIRC_SCN_WDGT_COLL.read_namespace_from_gui(
                         self._app
                     )
+                elif pattern == "static":
+                    scan_params = consts.SOL_NO_SCN_WDGT_COLL.read_namespace_from_gui(
+                        self._app
+                    )
+
                 scan_params.pattern = pattern
 
                 self._app.meas = meas.SFCSSolutionMeasurement(
@@ -403,18 +410,26 @@ class MainWin:
         elif pattern == "circle":
             scan_params_coll = consts.SOL_CIRC_SCN_WDGT_COLL
             plt_wdgt = self._gui.solScanPattern
+        elif pattern == "static":
+            scan_params_coll = None
+            plt_wdgt = self._gui.solScanPattern
 
-        scan_params = scan_params_coll.read_namespace_from_gui(self._app)
+        if scan_params_coll:
+            scan_params = scan_params_coll.read_namespace_from_gui(self._app)
 
-        try:
-            um_V_ratio = self._app.devices.SCANNERS.um_V_ratio
-            ao, *_ = ScanPatternAO(pattern, scan_params, um_V_ratio).calculate_ao()
-            x_data, y_data = ao[0, :], ao[1, :]
-            plt_wdgt.plot(x_data, y_data, clear=True)
+            try:
+                um_V_ratio = self._app.devices.SCANNERS.um_V_ratio
+                ao, *_ = ScanPatternAO(pattern, scan_params, um_V_ratio).calculate_ao()
+                x_data, y_data = ao[0, :], ao[1, :]
+                plt_wdgt.plot(x_data, y_data, clear=True)
 
-        # devices not yet initialized
-        except AttributeError:
-            pass
+            # devices not yet initialized
+            except AttributeError:
+                pass
+
+        # no scan
+        else:
+            plt_wdgt.plot([], [], clear=True)
 
     def disp_plane_img(
         self,

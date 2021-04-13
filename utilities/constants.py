@@ -283,6 +283,12 @@ SOL_CIRC_SCN_WDGT_COLL = QtWidgetCollection(
     speed_um_s=("circSpeed", "value", "main"),
 )
 
+SOL_NO_SCN_WDGT_COLL = QtWidgetCollection(
+    exc_mode=("solScanModeExc", "isChecked", "main"),
+    dep_mode=("solScanModeDep", "isChecked", "main"),
+    sted_mode=("solScanModeSted", "isChecked", "main"),
+)
+
 SOL_MEAS_WDGT_COLL = QtWidgetCollection(
     file_template=("solScanFileTemplate", "text", "main"),
     save_path=("solDataPath", "text", "settings"),

@@ -1961,6 +1961,9 @@ to Scan</string>
                        <property name="styleSheet">
                         <string notr="true">background-color: rgb(255, 255, 255);</string>
                        </property>
+                       <property name="currentIndex">
+                        <number>0</number>
+                       </property>
                        <item>
                         <property name="text">
                          <string>angular</string>
@@ -1969,6 +1972,11 @@ to Scan</string>
                        <item>
                         <property name="text">
                          <string>circle</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>static</string>
                         </property>
                        </item>
                       </widget>
@@ -3089,6 +3097,7 @@ to Scan</string>
                        </item>
                       </layout>
                      </widget>
+                     <widget class="QWidget" name="page"/>
                     </widget>
                    </item>
                   </layout>
@@ -4470,7 +4479,7 @@ Duration (s)</string>
                 <number>0</number>
                </property>
                <item>
-                <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0,0,0,1">
+                <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0,0,1">
                  <property name="spacing">
                   <number>0</number>
                  </property>
@@ -4550,13 +4559,6 @@ Duration (s)</string>
                     </size>
                    </property>
                   </spacer>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="fcsSave">
-                   <property name="text">
-                    <string>Save Data</string>
-                   </property>
-                  </widget>
                  </item>
                  <item>
                   <widget class="QPushButton" name="startFcsMeasurementButton">
