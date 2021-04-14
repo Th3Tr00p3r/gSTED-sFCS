@@ -3,7 +3,7 @@
 import asyncio
 import time
 from array import array
-from typing import List, NoReturn
+from typing import NoReturn
 
 import numpy as np
 from nidaqmx.errors import DaqError
@@ -20,7 +20,7 @@ from logic.drivers import (
     VisaInstrument,
 )
 from utilities.errors import err_hndlr
-from utilities.helper import div_ceil, limit
+from utilities.helper import div_ceil
 
 
 class UM232H(FtdiInstrument):
@@ -206,7 +206,7 @@ class Scanners(NIDAQmxInstrument):
 
     def start_write_task(
         self,
-        ao_data: List[list],
+        ao_data: np.ndarray,
         type: str,
         samp_clk_cnfg_xy: dict = {},
         samp_clk_cnfg_z: dict = {},
@@ -257,18 +257,24 @@ class Scanners(NIDAQmxInstrument):
 
         xy_chan_spcs = []
         z_chan_spcs = []
-        ao_data_xy = []
-        ao_data_z = []
+        ao_data_xy = np.empty(shape=(0,))
         ao_data_row_idx = 0
         for ax, use_ax, ax_chn_spcs in zip("XYZ", axes_to_use, self.ao_chan_specs):
             if use_ax is True:
                 if ax in "XY":
                     xy_chan_spcs.append(ax_chn_spcs)
-                    ao_data_xy.append(ao_data[ao_data_row_idx])
+                    if ao_data_xy.size == 0:
+                        # first concatenate the X/Y data to empty array to have 1D array
+                        ao_data_xy = np.concatenate(
+                            (ao_data_xy, ao_data[ao_data_row_idx])
+                        )
+                    else:
+                        # then, if XY scan, stack the Y data below the X data to have 2D array
+                        ao_data_xy = np.vstack((ao_data_xy, ao_data[ao_data_row_idx]))
                     ao_data_row_idx += 1
                 else:  # "Z"
                     z_chan_spcs.append(ax_chn_spcs)
-                    ao_data_z += ao_data[ao_data_row_idx]
+                    ao_data_z = ao_data[ao_data_row_idx]
 
         # start smooth
         if z_chan_spcs:
@@ -353,28 +359,27 @@ class Scanners(NIDAQmxInstrument):
         rse_samples[2, :] = read_samples[4, :]
         return rse_samples.tolist()
 
-    def limit_ao_data(self, ao_task, ao_data: list):
-        """Doc."""
+    def limit_ao_data(self, ao_task, ao_data: np.ndarray) -> np.ndarray:
         ao_min = ao_task.channels.ao_min
         ao_max = ao_task.channels.ao_max
-        if isinstance(ao_data[0], float):
-            return [limit(ao, ao_min, ao_max) for ao in ao_data]
-        else:
-            row_idx_iter = range(len(ao_data))
-            return [
-                [limit(ao, ao_min, ao_max) for ao in ao_data[idx]]
-                for idx in row_idx_iter
-            ]
+        return np.clip(ao_data, ao_min, ao_max)
 
-    def diff_vltg_data(self, ao_data: list) -> list:
+    def diff_vltg_data(self, ao_data: np.ndarray) -> np.ndarray:
         """Doc."""
 
-        diff_ao_data = []
-        for row_idx in range(len(ao_data)):
-            diff_ao_data += [
-                ao_data[row_idx],
-                [(-1) * val for val in ao_data[row_idx]],
-            ]
+        # 2D array
+        if len(ao_data.shape) == 2:
+            diff_ao_data = np.empty(
+                shape=(ao_data.shape[0] * 2, ao_data.shape[1]), dtype=np.float
+            )
+            n_rows = ao_data.shape[0]
+        # 1D array
+        else:
+            diff_ao_data = np.empty(shape=(2, ao_data.size), dtype=np.float)
+            n_rows = 1
+        for row_idx in range(n_rows):
+            diff_ao_data[row_idx * 2] = ao_data[row_idx]
+            diff_ao_data[row_idx * 2 + 1] = -ao_data[row_idx]
         return diff_ao_data
 
 
