@@ -141,8 +141,7 @@ class Measurement:
         ao_sample_mode = getattr(consts.NI.AcquisitionType, ao_sample_mode)
 
         self.scanners_dvc.start_write_task(
-            # TODO: transition from list to ndarray in devices.py, then remove .tolist()
-            ao_data=self.ao_buffer.tolist(),
+            ao_data=self.ao_buffer,
             type=self.scan_params.scan_plane,
             samp_clk_cnfg_xy={
                 "source": self.pxl_clk_dvc.out_term,
@@ -726,6 +725,13 @@ class SFCSSolutionMeasurement(Measurement):
 
             else:
                 break
+
+        print(
+            f"mean latency: {self.data_dvc.read_intrvl_buffer.mean()*1000:.2} ms"
+        )  # TESTESTEST
+        print(
+            f"actual/set latency ratio: {self.data_dvc.read_intrvl_buffer.mean()*1000 / self.data_dvc.ltncy_tmr_val:.2}"
+        )  # TESTESTEST
 
         await self.toggle_lasers(finish=True)
 

@@ -34,6 +34,7 @@ class UM232H(FtdiInstrument):
             param_dict=param_dict,
         )
 
+        self.read_intrvl_buffer = np.zeros(shape=1000, dtype=np.float)
         self.init_data()
         self.toggle(True)
 
@@ -53,11 +54,13 @@ class UM232H(FtdiInstrument):
         """Doc."""
 
         try:
-            read_bytes = self.read()
-            self.data.extend(read_bytes)
-            self.tot_bytes_read += len(read_bytes)
+            byte_array, n = self.read()
+            self.data.extend(byte_array)
+            self.tot_bytes_read += n
         except (AttributeError, OSError, FtdiError, ValueError) as exc:
             err_hndlr(exc, "read_TDC()", dvc=self)
+        else:
+            self.fill_ri_buffer()
 
     def stream_read_TDC(self, meas):
         """Doc."""
@@ -77,7 +80,7 @@ class UM232H(FtdiInstrument):
         when all ao tasks end, finish reading.
         """
 
-        while meas.scanners_dvc.are_tasks_done("ao") is False and meas.is_running:
+        while meas.is_running and not meas.scanners_dvc.are_tasks_done("ao"):
             self.read_TDC()
             meas.time_passed = time.perf_counter() - meas.start_time
         self.read_TDC()
@@ -89,16 +92,26 @@ class UM232H(FtdiInstrument):
         self.data = array("B")
         self.tot_bytes_read = 0
 
-    def reset(self):
+    def fill_ri_buffer(self):
         """Doc."""
 
         try:
-            self.reset_dvc()
-            self.close()
-            time.sleep(0.3)
-            self.open()
-        except (AttributeError, OSError, FtdiError, ValueError) as exc:
-            err_hndlr(exc, "reset()", dvc=self)
+            now = time.perf_counter()
+            delay = now - self.last_read
+            self.last_read = now
+        except AttributeError:
+            # if first time
+            delay = now
+            self.last_read = now
+            self.last_idx = 0
+
+        try:
+            self.read_intrvl_buffer[self.last_idx] = delay
+        except IndexError:
+            # if full, start at the beginning
+            self.last_idx = 0
+            self.read_intrvl_buffer[self.last_idx] = delay
+        self.last_idx += 1
 
 
 class Scanners(NIDAQmxInstrument):
@@ -365,7 +378,13 @@ class Scanners(NIDAQmxInstrument):
         return np.clip(ao_data, ao_min, ao_max)
 
     def diff_vltg_data(self, ao_data: np.ndarray) -> np.ndarray:
-        """Doc."""
+        """
+        For each row in 'ao_data', add the negative of that row
+        as a row right after it, e.g.:
+
+        [[0.5, 0.7, -0.2], [0.1, 0., 0.]] ->
+        [[0.5, 0.7, -0.2], [-0.5, -0.7, 0.2], [0.1, 0., 0.], [-0.1, 0., 0.]]
+        """
 
         # 2D array
         if len(ao_data.shape) == 2:

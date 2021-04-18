@@ -524,11 +524,6 @@ class MainWin:
             val / 1000
         )  # convert to seconds
 
-    def reset(self):
-        """Doc."""
-
-        self._app.devices.UM232H.reset()
-
     def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
         """Doc."""
 
