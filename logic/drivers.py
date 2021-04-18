@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Drivers Module."""
 
-from array import array
+import array
 from types import SimpleNamespace
 from typing import List, NoReturn
 
@@ -11,7 +11,6 @@ import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
 from pyftdi.ftdi import Ftdi, FtdiError
-from pyftdi.usbtools import UsbTools
 
 
 class FtdiInstrument:
@@ -27,26 +26,26 @@ class FtdiInstrument:
     def open(self):
         """Doc."""
 
-        UsbTools.flush_cache()
-
         self._inst.open(self.vend_id, self.prod_id)
         self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self.bit_mode))
         self._inst.set_latency_timer(self.ltncy_tmr_val)
         self._inst.set_flowctrl(self.flow_ctrl)
-        self._inst.read_data_set_chunksize(self.n_bytes)
+
+        self.read_buffer = array.array(
+            "B", np.zeros(shape=(self.n_bytes,), dtype=np.uint8)
+        )
 
         self.state = True
 
-    def read(self):
+    def read(self) -> (array.array, int):
         """Doc."""
 
-        read_bytes = self._inst._usb_dev.read(
+        n_bytes = self._inst._usb_dev.read(
             self._inst._out_ep,
-            self._inst._readbuffer_chunksize,
+            self.read_buffer,
         )
-        self.check_status(read_bytes[:2])
-
-        return read_bytes[2:]
+        self.check_status(self.read_buffer[:2])
+        return self.read_buffer[2:n_bytes], n_bytes - 2
 
     def purge(self):
         """Doc."""
@@ -59,12 +58,7 @@ class FtdiInstrument:
         self._inst.close()
         self.state = False
 
-    def reset_dvc(self):
-        """Doc."""
-
-        self._inst.reset(usb_reset=True)
-
-    def check_status(self, status: array) -> NoReturn:
+    def check_status(self, status: array.array) -> NoReturn:
         """Doc."""
 
         if status[1] & self._inst.ERROR_BITS[1]:
