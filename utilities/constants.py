@@ -171,10 +171,13 @@ UM232H = DeviceAttrs(
         led_widget=("ledUm232h", "icon", "main"),
         vend_id=("um232VendID", "value"),
         prod_id=("um232ProdID", "value"),
-        ltncy_tmr_val=("um232latencyTimerVal", "value"),
-        flow_ctrl=("um232FlowControl", "text"),
+        serial=("um232Serial", "text"),
         bit_mode=("um232BitMode", "text"),
-        n_bytes=("um232nBytes", "value"),
+        timeout_ms=("um232Timeout", "value"),
+        ltncy_tmr_val=("um232LatencyTimerVal", "value"),
+        flow_ctrl=("um232FlowControl", "text"),
+        tx_size=("um232TxSize", "value"),
+        n_bytes=("um232NumBytes", "value"),
     ),
 )
 
