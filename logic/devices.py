@@ -13,17 +13,12 @@ from pyvisa.errors import VisaIOError
 import logic.drivers as drivers
 import utilities.constants as consts
 import utilities.dialog as dialog
-from logic.drivers import (
-    FtdiInstrument,
-    NIDAQmxInstrument,
-    UC480Instrument,
-    VisaInstrument,
-)
+from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyFtdi, PyVISA  # NOQA
 from utilities.errors import err_hndlr
 from utilities.helper import div_ceil
 
 
-class UM232H(FtdiInstrument):
+class UM232H(Ftd2xx):
     """
     Represents the FTDI chip used to transfer data from the FPGA
     to the PC.
@@ -47,7 +42,13 @@ class UM232H(FtdiInstrument):
                 self.purge()
             else:
                 self.close()
-        except (AttributeError, OSError, FtdiError, ValueError) as exc:
+        except (
+            AttributeError,
+            OSError,
+            FtdiError,
+            ValueError,
+            NotImplementedError,
+        ) as exc:
             err_hndlr(exc, "toggle()", dvc=self)
 
     def read_TDC(self):
@@ -100,7 +101,7 @@ class UM232H(FtdiInstrument):
             delay = now - self.last_read
             self.last_read = now
         except AttributeError:
-            # if first time
+            # if first time (no last_read)
             delay = now
             self.last_read = now
             self.last_idx = 0
@@ -114,7 +115,7 @@ class UM232H(FtdiInstrument):
         self.last_idx += 1
 
 
-class Scanners(NIDAQmxInstrument):
+class Scanners(NIDAQmx):
     """
     Scanners encompasses all analog focal point positioning devices
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
@@ -402,7 +403,7 @@ class Scanners(NIDAQmxInstrument):
         return diff_ao_data
 
 
-class Counter(NIDAQmxInstrument):
+class Counter(NIDAQmx):
     """
     Represents the detector which counts the green
     fluorescence photons coming from the sample.
@@ -535,7 +536,7 @@ class Counter(NIDAQmxInstrument):
             self.ci_buffer = self.ci_buffer[-self.CONT_READ_BFFR_SZ :]
 
 
-class PixelClock(NIDAQmxInstrument):
+class PixelClock(NIDAQmx):
     """
     The pixel clock is fed to the DAQ board from the FPGA.
     Base frequency is 4 MHz. Used for scans, where it is useful to
@@ -586,7 +587,7 @@ class PixelClock(NIDAQmxInstrument):
             err_hndlr(exc, "_start_co_clock_sync()", dvc=self)
 
 
-class Camera(UC480Instrument):
+class Camera(Instrumental):
     """Doc."""
 
     vid_intrvl = 0.3
@@ -662,7 +663,7 @@ class Camera(UC480Instrument):
         self._gui.canvas.draw()
 
 
-class SimpleDO(NIDAQmxInstrument):
+class SimpleDO(NIDAQmx):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
     def __init__(self, param_dict):
@@ -680,7 +681,7 @@ class SimpleDO(NIDAQmxInstrument):
         self.state = bool
 
 
-class DepletionLaser(VisaInstrument):
+class DepletionLaser(PyVISA):
     """Control depletion laser through pyVISA"""
 
     min_SHG_temp = 52
