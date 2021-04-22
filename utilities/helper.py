@@ -242,6 +242,19 @@ def inv_dict(dct: dict) -> dict:
     return {val: key for key, val in dct.items()}
 
 
+def trans_dict(dct: dict, val_trans_dct: dict) -> dict:
+    """
+    Updates values of dict according to another dict:
+    val_trans_dct.keys() are the values to update,
+    and val_trans_dct.values() are the new values.
+    """
+
+    for org_key, org_val in dct.items():
+        if org_val in val_trans_dct.keys():
+            dct[org_key] = val_trans_dct[org_val]
+    return dct
+
+
 @dataclass
 class DeviceAttrs:
 

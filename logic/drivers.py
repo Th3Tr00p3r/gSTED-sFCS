@@ -5,15 +5,60 @@ import array
 from types import SimpleNamespace
 from typing import List, NoReturn
 
+import ftd2xx
 import nidaqmx as ni
 import numpy as np
+import pyftdi.ftdi as pyftdi
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
-from pyftdi.ftdi import Ftdi, FtdiError
+
+from utilities.helper import trans_dict
 
 
-class FtdiInstrument:
+class Ftd2xx:
+    """Doc."""
+
+    pyftdi_to_ftd2xx = {"SYNCFF": 0x40, "hw": ftd2xx.defines.FLOW_RTS_CTS}
+
+    def __init__(self, param_dict):
+        param_dict = trans_dict(param_dict, self.pyftdi_to_ftd2xx)
+        [
+            setattr(self, key, val) for key, val in param_dict.items()
+        ]  # update param dict values based on pyftdi_to_ftd2xx
+        self.error_dict = None
+
+    def open(self):
+        """Doc."""
+
+        self._inst = ftd2xx.openEx(bytes(self.serial, "utf-8"))
+        self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
+        self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
+        self._inst.setLatencyTimer(self.ltncy_tmr_val)
+        self._inst.setFlowControl(self.flow_ctrl)
+        self._inst.setUSBParameters(self.tx_size)
+
+    def read(self):
+        """Doc."""
+
+        read_bytes = self._inst.read(self.n_bytes)
+        n = len(read_bytes)
+        #        print("# bytes read: ", n) # TESTESTEST
+        return read_bytes, n
+
+    def purge(self):
+        """Doc."""
+
+        self._inst.purge(ftd2xx.defines.PURGE_RX)
+
+    def close(self):
+        """Doc."""
+
+        self._inst.close()
+        self.state = False
+
+
+class PyFtdi:
     """Doc."""
 
     def __init__(self, param_dict):
@@ -21,13 +66,13 @@ class FtdiInstrument:
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
 
-        self._inst = Ftdi()  # URL - ftdi://ftdi:232h:FT3TG15/1
+        self._inst = pyftdi.Ftdi()  # URL - ftdi://ftdi:232h:FT3TG15/1
 
     def open(self):
         """Doc."""
 
         self._inst.open(self.vend_id, self.prod_id)
-        self._inst.set_bitmode(0, getattr(Ftdi.BitMode, self.bit_mode))
+        self._inst.set_bitmode(0, getattr(pyftdi.Ftdi.BitMode, self.bit_mode))
         self._inst.set_latency_timer(self.ltncy_tmr_val)
         self._inst.set_flowctrl(self.flow_ctrl)
 
@@ -63,10 +108,10 @@ class FtdiInstrument:
 
         if status[1] & self._inst.ERROR_BITS[1]:
             s = " ".join(self._inst.decode_modem_status(status, True)).title()
-            raise FtdiError(f"FTDI error: {status[0]:02x}:{ status[1]:02x} {s}")
+            raise pyftdi.FtdiError(f"FTDI error: {status[0]:02x}:{ status[1]:02x} {s}")
 
 
-class NIDAQmxInstrument:
+class NIDAQmx:
     """Doc."""
 
     MIN_OUTPUT_RATE_Hz = 1000
@@ -235,7 +280,7 @@ class NIDAQmxInstrument:
             do_task.write(bool)
 
 
-class VisaInstrument:
+class PyVISA:
     """Doc."""
 
     # TODO: try to free the relevant USB port (COM3?) to avoid getting stuck when trying to run the application when dep is powered ON
@@ -291,7 +336,7 @@ class VisaInstrument:
             self._rsrc.close()
 
 
-class UC480Instrument:
+class Instrumental:
     """Doc."""
 
     def __init__(self, param_dict):
