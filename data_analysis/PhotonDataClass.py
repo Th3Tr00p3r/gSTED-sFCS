@@ -75,7 +75,7 @@ class PhotonDataClass:
  #           error('Runtime overrun intmax!')
 
         self.sectionEdges = sectionEdges
-        self.AllSectionEdges = np.array([]);
+        self.AllSectionEdges = np.array([])
         self.counterEnds = np.array([counter[0], counter[-1]]);
         
 #P.NoOfInversionProblems = NoOfInversionProblems;      
