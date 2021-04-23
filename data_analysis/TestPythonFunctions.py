@@ -253,4 +253,7 @@ print(P.counterEnds)
 
 #%%
 S.DoCorrelateRegularData()#%% Test how correlation works
-
+#%%
+S.DoAverageCorr()
+#%%
+S.DoPlotCorrFunc()
