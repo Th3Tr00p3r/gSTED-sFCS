@@ -18,11 +18,12 @@ from warnings import warn
 sys.path.append(os.path.dirname(__file__))
 #sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
 
+from CorrFuncDataClass import CorrFuncDataClass
 from PhotonDataClass import PhotonDataClass
 from SoftwareCorrelatorModule import SoftwareCorrelatorClass, CorrelatorType
 from MatlabUtilities import loadmat #loads matfiles with structures (scipy.io does not do structures)
 
-class CorrFuncTDCclass:
+class CorrFuncTDCclass(CorrFuncDataClass):
     def __init__(self): 
         self.data = {'Version' : 2, 'LineEndAdder': 1000, 'Data': list()} #dictionary to hold the data
                     
