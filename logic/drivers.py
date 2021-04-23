@@ -19,13 +19,13 @@ from utilities.helper import trans_dict
 class Ftd2xx:
     """Doc."""
 
+    # TODO: update README, keep PyFtdi for now. After removing, get rid of uneccessary gui settings and the trans dict function
+
     pyftdi_to_ftd2xx = {"SYNCFF": 0x40, "hw": ftd2xx.defines.FLOW_RTS_CTS}
 
     def __init__(self, param_dict):
         param_dict = trans_dict(param_dict, self.pyftdi_to_ftd2xx)
-        [
-            setattr(self, key, val) for key, val in param_dict.items()
-        ]  # update param dict values based on pyftdi_to_ftd2xx
+        [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
 
     def open(self):
