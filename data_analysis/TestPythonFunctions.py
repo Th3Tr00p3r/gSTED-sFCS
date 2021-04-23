@@ -235,3 +235,25 @@ fpathes.sort(key = lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath
 S = CorrFuncTDCclass()   
 S.DoReadFPGAdata( '/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpConf*.mat', FixShift = True)           
 
+#%% Test how correlation works
+S = CorrFuncTDCclass()   
+S.DoReadFPGAdata( '/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpConf*.mat', FixShift = True)           
+#%%
+S.DoCorrelateRegularData()
+
+
+
+
+#%% Test how correlation works
+S = CorrFuncTDCclass()   
+S.DoReadFPGAdata( '/Users/oleg/Documents/Experiments/STED/For testing Python/solScan_exc_5_mins_2204/solScan_exc_*.mat')           
+#%%
+P = S.data['Data'][-1]
+print(P.counterEnds)
+
+#%%
+S.DoCorrelateRegularData()#%% Test how correlation works
+#%%
+S.DoAverageCorr()
+#%%
+S.DoPlotCorrFunc()

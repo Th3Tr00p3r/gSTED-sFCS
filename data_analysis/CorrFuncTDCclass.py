@@ -13,6 +13,7 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
+from CorrFuncDataClass import CorrFuncDataClass
 from MatlabUtilities import (
     loadmat,  # loads matfiles with structures (scipy.io does not do structures)
 )
@@ -20,12 +21,13 @@ from PhotonDataClass import PhotonDataClass
 from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
+from SoftwareCorrelatorModule import CorrelatorType, SoftwareCorrelatorClass
 
 sys.path.append(os.path.dirname(__file__))
 # sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
 
 
-class CorrFuncTDCclass:
+class CorrFuncTDCclass(CorrFuncDataClass):
     def __init__(self):
         self.data = {
             "Version": 2,
@@ -343,6 +345,8 @@ class CorrFuncTDCclass:
                     plt.plot(ROI1["col"], ROI1["row"], color="white")
                     # now back
                     BW[1::2, :] = np.flip(BW[1::2, :], 1)
+                    ROI2 = {"row": np.array(ROI["row"]), "col": np.array(ROI["col"])}
+                    plt.plot(ROI2["col"], ROI2["row"], color="white")
 
                     # get image line correlation to subtract trends
                     Img = P.Image * P.BWmask
@@ -408,6 +412,137 @@ class CorrFuncTDCclass:
             Cnt[j, :] = CntLine
 
         return Cnt, PixNoTot, pixNumber, LineNo
+
+    def DoCorrelateRegularData(
+        self, RunDuration=-1, MinTimeFrac=0.5, MaxOutlierProb=1e-5, NrunsRequested=60
+    ):
+
+        # if self.IsDataOnDisk:
+        #     self.DoLoadDataFromDisk
+        #     DumpDataToDiskAfter = True
+        # else:
+        #     DumpDataToDiskAfter = False
+
+        CF = SoftwareCorrelatorClass()
+
+        if RunDuration < 0:  # auto determination of run duration
+            TotalDurationEstimate = 0
+            for P in self.data["Data"]:
+                time_stamps = np.diff(P.runtime)
+                mu = np.median(time_stamps) / np.log(2)
+                TotalDurationEstimate = (
+                    TotalDurationEstimate + mu * len(P.runtime) / self.LaserFreq
+                )
+
+            RunDuration = TotalDurationEstimate / NrunsRequested
+            print("Auto determination of run duration = " + str(RunDuration))
+
+        self.RequestedDuration = RunDuration
+        self.MinDurationFraction = MinTimeFrac
+        self.duration = np.array([])
+        self.lag = np.array([])
+        self.corrfunc = list()
+        self.weights = list()
+        self.CF_CR = list()
+        self.countrate = np.array([])
+
+        self.TotalDurationSkipped = 0
+
+        for P in self.data["Data"]:
+            print("Correlating " + P.fname)
+            # find additional outliers
+            time_stamps = np.diff(P.runtime)
+            mu = np.maximum(
+                np.median(time_stamps), stats.median_abs_deviation(time_stamps)
+            ) / np.log(
+                2
+            )  # for exponential distribution MEDIAN and MAD are the same, but for
+            # biexponential MAD seems more sensitive
+            maxTimeStamp = stats.expon.ppf(
+                1 - MaxOutlierProb / len(time_stamps), scale=mu
+            )
+            secEdges = np.asarray(time_stamps > maxTimeStamp).nonzero()[0]
+            NoOutliers = len(secEdges)
+            if NoOutliers > 0:
+                print(str(NoOutliers) + " of all outliers")
+
+            secEdges = np.append(np.insert(secEdges, 0, 0), len(time_stamps))
+            P.AllSectionEdges = np.array([secEdges[:-1], secEdges[1:]]).T
+
+            for j, sE in enumerate(P.AllSectionEdges):
+                # split into segments of approx time of RunDuration
+                SegmentTime = (P.runtime[sE[1]] - P.runtime[sE[0]]) / self.LaserFreq
+                if SegmentTime < MinTimeFrac * RunDuration:
+                    print(
+                        "Duration of segment No. "
+                        + str(j)
+                        + " of file "
+                        + P.fname
+                        + "is "
+                        + str(SegmentTime)
+                        + "s: too short. Skipping..."
+                    )
+                    self.TotalDurationSkipped = self.TotalDurationSkipped + SegmentTime
+                    continue
+
+                NoSplits = np.ceil(SegmentTime / RunDuration).astype("int")
+                Splits = np.linspace(
+                    0, np.diff(sE)[0].astype("int"), NoSplits + 1, dtype="int"
+                )
+                ts = time_stamps[sE[0] : sE[1]]
+
+                for k in range(NoSplits):
+                    ts_split = ts[Splits[k] : Splits[k + 1]]
+                    self.duration = np.append(
+                        self.duration, ts_split.sum() / self.LaserFreq
+                    )
+                    CF.DoSoftCrossCorrelator(
+                        ts_split,
+                        CorrelatorType.PhDelayCorrelator,
+                        timebase_ms=1000 / self.LaserFreq,
+                    )  # time base of 20MHz to ms
+                    if len(self.lag) < len(CF.lag):
+                        self.lag = CF.lag
+                        if self.AfterPulseParam[0] == "MultiExponentFit":
+                            # work with any number of exponents
+                            # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
+                            beta = self.AfterPulseParam[1]
+                            self.AfterPulse = np.dot(
+                                beta[::2], np.exp(-np.outer(beta[1::2], self.lag))
+                            )
+
+                    self.corrfunc.append(CF.corrfunc)
+                    self.weights.append(CF.weights)
+                    self.countrate = np.append(self.countrate, CF.countrate)
+                    self.CF_CR.append(
+                        CF.countrate * CF.corrfunc - self.AfterPulse[: CF.corrfunc.size]
+                    )
+
+        for ind in range(len(self.corrfunc)):  # zero pad
+            padLen = len(self.lag) - len(self.corrfunc[ind])
+            self.corrfunc[ind] = np.pad(self.corrfunc[ind], (0, padLen), "constant")
+            self.weights[ind] = np.pad(self.weights[ind], (0, padLen), "constant")
+            self.CF_CR[ind] = np.pad(self.CF_CR[ind], (0, padLen), "constant")
+
+        self.corrfunc = np.array(self.corrfunc)
+        self.weights = np.array(self.weights)
+        self.CF_CR = np.array(self.CF_CR)
+
+        self.TotalDuration = self.duration.sum()
+        print(
+            str(self.TotalDurationSkipped)
+            + "s skipped out of "
+            + str(self.TotalDuration)
+            + "s."
+        )
+
+        # if ~isempty(obj.V_um_ms)
+        #     obj.DoSetVelocity(obj.V_um_ms);
+        # end
+
+        # if DumpDataToDiskAfter
+        #     obj.DoDumpDataToDisk,
+        # end
 
 
 def DoXcorr(

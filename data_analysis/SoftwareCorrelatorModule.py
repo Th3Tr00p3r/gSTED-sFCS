@@ -53,7 +53,7 @@ class SoftwareCorrelatorClass:
         self.NumOfCorrelators = NumCorr[0]
         return DoubSize[0], NumCorr[0]
     
-    def SoftCrossCorrelator(self, photonArray, CType = CorrelatorType.PhDelayCorrelator, timebase_ms = 1):
+    def DoSoftCrossCorrelator(self, photonArray, CType = CorrelatorType.PhDelayCorrelator, timebase_ms = 1):
         if len(photonArray.shape) == 1:
             Nentries = photonArray.size
         else:
