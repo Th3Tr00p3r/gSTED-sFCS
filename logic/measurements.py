@@ -532,7 +532,13 @@ class SFCSSolutionMeasurement(Measurement):
             self.scanning = True
 
     def build_filename(self, file_no: int) -> str:
-        return f"{self.file_template}_{self.laser_config}_{file_no}"
+
+        if self.file_template:
+            return (
+                f"{self.file_template}_{self.scan_type}_{self.laser_config}_{file_no}"
+            )
+        else:
+            return f"{self.scan_type}_{self.laser_config}_{file_no}"
 
     def get_current_and_end_times(self) -> Tuple[datetime.time, datetime.time]:
         """
