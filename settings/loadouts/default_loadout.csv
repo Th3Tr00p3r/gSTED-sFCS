@@ -1,10 +1,11 @@
 imgScanFileTemplate,imgScan
-solScanFileTemplate,solScan
+solScanFileTemplate,
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
+measFCSDur,3
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -15,7 +16,6 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
-measFCSDur,3
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -23,12 +23,12 @@ imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
+fcsG0,0.0
+fcsDecayTime,0.0
 solLinFrac,0.9
 solScanMaxFileSize,20.0
 solScanCalDur,3.0
 solScanTotalDur,0.1
-fcsG0,0.0
-fcsDecayTime,0.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0

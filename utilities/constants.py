@@ -290,6 +290,7 @@ SOL_NO_SCN_WDGT_COLL = QtWidgetCollection(
 )
 
 SOL_MEAS_WDGT_COLL = QtWidgetCollection(
+    scan_type=("solScanType", "currentText", "main"),
     file_template=("solScanFileTemplate", "text", "main"),
     save_path=("solDataPath", "text", "settings"),
     save_frmt=("saveFormat", "currentText", "settings"),
