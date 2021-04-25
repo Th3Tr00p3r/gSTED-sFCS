@@ -31,17 +31,17 @@ class Ftd2xx:
     def open(self):
         """Doc."""
 
-        self._inst = ftd2xx.openEx(bytes(self.serial, "utf-8"))
+        self._inst = ftd2xx.aio.openEx(bytes(self.serial, "utf-8"))
         self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
         self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
         self._inst.setLatencyTimer(self.ltncy_tmr_val)
         self._inst.setFlowControl(self.flow_ctrl)
         self._inst.setUSBParameters(self.tx_size)
 
-    def read(self):
+    async def read(self):
         """Doc."""
 
-        read_bytes = self._inst.read(self.n_bytes)
+        read_bytes = await self._inst.read(self.n_bytes)
         n = len(read_bytes)
         #        print("# bytes read: ", n) # TESTESTEST
         return read_bytes, n

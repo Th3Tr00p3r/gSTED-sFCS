@@ -61,7 +61,6 @@ class Measurement:
         """Doc."""
 
         self.data_dvc.purge()
-        self._app.gui.main.imp.dvc_toggle("TDC")
         self.is_running = True
         logging.info(f"{self.type} measurement started")
         await self.run()
@@ -70,10 +69,35 @@ class Measurement:
         """Doc."""
 
         self.is_running = False
-        self._app.gui.main.imp.dvc_toggle("TDC")
         self.prog_bar_wdgt.set(0)
         logging.info(f"{self.type} measurement stopped")
         self._app.meas.type = None
+
+    async def record_data(self, timed: bool) -> NoReturn:
+        """
+        Turn ON the TDC (FPGA), read while conditions are met,
+        turn OFF TDC and read leftover data.
+        """
+
+        async def read_and_track_time():
+            await self.data_dvc.read_TDC()
+            self.time_passed = time.perf_counter() - self.start_time
+
+        self._app.gui.main.imp.dvc_toggle("TDC")
+
+        if timed:
+            while (
+                self.time_passed < self.duration * self.duration_multiplier
+                and self.is_running
+            ):
+                await read_and_track_time()
+
+        else:
+            while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
+                await read_and_track_time()
+
+        self._app.gui.main.imp.dvc_toggle("TDC")
+        await read_and_track_time()
 
     def save_data(self, data_dict: dict, file_name: str) -> NoReturn:
         """
@@ -447,7 +471,9 @@ class SFCSImageMeasurement(Measurement):
                 self.scanners_dvc.fill_ai_buffer()
 
                 self.data_dvc.purge()
-                await asyncio.to_thread(self.data_dvc.ao_task_sync_read_TDC, self)
+
+                # recording
+                await self.record_data(timed=False)
 
                 # collect final AI/CI
                 self.counter_dvc.fill_ci_buffer()
@@ -533,7 +559,8 @@ class SFCSSolutionMeasurement(Measurement):
         self.cal = True
         logging.info(f"Calibrating file intervals for {self.type} measurement")
 
-        await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
+        # reading
+        await self.record_data(timed=True)
 
         self.cal = False
         bps = self.data_dvc.tot_bytes_read / self.time_passed
@@ -698,7 +725,8 @@ class SFCSSolutionMeasurement(Measurement):
                 self.start_time = time.perf_counter()
                 self.time_passed = 0
 
-                await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
+                # reading
+                await self.record_data(timed=True)
 
                 self.total_time_passed += self.time_passed
 
@@ -773,6 +801,8 @@ class FCSMeasurement(Measurement):
 
             self.data_dvc.init_data()
             self.data_dvc.purge()
-            await asyncio.to_thread(self.data_dvc.stream_read_TDC, self)
+
+            # reading
+            await self.record_data(timed=True)
 
             disp_ACF(meas_dvc=self.data_dvc)
