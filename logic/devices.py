@@ -13,7 +13,7 @@ from pyvisa.errors import VisaIOError
 import logic.drivers as drivers
 import utilities.constants as consts
 import utilities.dialog as dialog
-from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyFtdi, PyVISA  # NOQA
+from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from utilities.errors import err_hndlr
 from utilities.helper import div_ceil
 
@@ -51,41 +51,17 @@ class UM232H(Ftd2xx):
         ) as exc:
             err_hndlr(exc, "toggle()", dvc=self)
 
-    def read_TDC(self):
+    async def read_TDC(self):
         """Doc."""
 
         try:
-            byte_array, n = self.read()
+            byte_array, n = await self.read()
             self.data.extend(byte_array)
             self.tot_bytes_read += n
         except (AttributeError, OSError, FtdiError, ValueError) as exc:
             err_hndlr(exc, "read_TDC()", dvc=self)
         else:
             self.fill_ri_buffer()
-
-    def stream_read_TDC(self, meas):
-        """Doc."""
-
-        while (
-            meas.time_passed < meas.duration * meas.duration_multiplier
-            and meas.is_running
-        ):
-            self.read_TDC()
-            meas.time_passed = time.perf_counter() - meas.start_time
-        self.read_TDC()
-        meas.time_passed = time.perf_counter() - meas.start_time
-
-    def ao_task_sync_read_TDC(self, meas):
-        """
-        While ao tasks are running (plane scan). keep reading.
-        when all ao tasks end, finish reading.
-        """
-
-        while meas.is_running and not meas.scanners_dvc.are_tasks_done("ao"):
-            self.read_TDC()
-            meas.time_passed = time.perf_counter() - meas.start_time
-        self.read_TDC()
-        meas.time_passed = time.perf_counter() - meas.start_time
 
     def init_data(self):
         """Doc."""
@@ -684,6 +660,8 @@ class SimpleDO(NIDAQmx):
 class DepletionLaser(PyVISA):
     """Control depletion laser through pyVISA"""
 
+    # TODO: try switching to pyVISA-py, or otherwise figure out why this device gets stuck every once in a while
+
     min_SHG_temp = 52
 
     def __init__(self, param_dict):
@@ -771,6 +749,8 @@ class StepperStage:
     This device operates slowly and needs special care,
     and so its driver is within its own class (not inherited)
     """
+
+    # TODO: if this uses PyVISA, have it be like all other devices by changing the PyVISA driver class to accomodate it!
 
     def __init__(self, param_dict):
         [setattr(self, key, val) for key, val in param_dict.items()]
