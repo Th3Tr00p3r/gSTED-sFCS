@@ -33,7 +33,7 @@ class Timeout:
         await asyncio.gather(
             self._updt_CI_and_AI(),
             self._update_avg_counts(),
-            asyncio.to_thread(self._update_dep),
+            self._update_dep(),  # TODO: try (in lab) to have each call in thread (seperately).
             self._updt_current_state(),
             self._update_gui(),
         )
@@ -209,7 +209,7 @@ class Timeout:
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
-    def _update_dep(self) -> NoReturn:
+    async def _update_dep(self) -> NoReturn:
         """Update depletion laser GUI"""
 
         def update_SHG_temp(dep_dvc, main_gui) -> NoReturn:
@@ -250,4 +250,4 @@ class Timeout:
                 self._app.gui.main,
             )
 
-            time.sleep(self.updt_intrvl["dep"])
+            await asyncio.sleep(self.updt_intrvl["dep"])

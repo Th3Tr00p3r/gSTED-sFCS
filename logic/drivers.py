@@ -38,20 +38,19 @@ class Ftd2xx:
         self._inst.setFlowControl(self.flow_ctrl)
         self._inst.setUSBParameters(self.tx_size)
 
-    async def read(self):
+    async def read(self) -> (array.array, int):
         """Doc."""
 
         read_bytes = await self._inst.read(self.n_bytes)
         n = len(read_bytes)
-        #        print("# bytes read: ", n) # TESTESTEST
         return read_bytes, n
 
-    def purge(self):
+    def purge(self) -> NoReturn:
         """Doc."""
 
         self._inst.purge(ftd2xx.defines.PURGE_RX)
 
-    def close(self):
+    def close(self) -> NoReturn:
         """Doc."""
 
         self._inst.close()
@@ -297,43 +296,31 @@ class PyVISA:
         self.write_termination = write_termination
         self.rm = visa.ResourceManager()
 
-    def _write(self, cmnd: str) -> NoReturn:
+    def open(self) -> NoReturn:
+        """Doc."""
+
+        self._rsrc = self.rm.open_resource(
+            self.address,
+            read_termination=self.read_termination,
+            write_termination=self.write_termination,
+            timeout=5,
+            open_timeout=5,
+        )
+
+    def write(self, cmnd: str) -> NoReturn:
         """Sends a command to the VISA instrument."""
 
-        with self.Task(self) as task:
-            task.write(cmnd)
+        self._rsrc.write(cmnd)
 
-    def _query(self, cmnd: str) -> float:
+    def query(self, cmnd: str) -> float:
         """Doc."""
 
-        with self.Task(self) as task:
-            return float(task.query(cmnd))
+        return self._rsrc.query(cmnd)
 
-    class Task:
+    def close(self) -> NoReturn:
         """Doc."""
 
-        def __init__(self, dvc):
-            """Doc."""
-
-            self._dvc = dvc
-
-        def __enter__(self):
-            """Doc."""
-
-            self._rsrc = self._dvc.rm.open_resource(
-                self._dvc.address,
-                read_termination=self._dvc.read_termination,
-                write_termination=self._dvc.write_termination,
-                timeout=1,
-                open_timeout=1,
-            )
-            self._rsrc.query_delay = 0.1
-            return self._rsrc
-
-        def __exit__(self, exc_type, exc_value, exc_tb):
-            """Doc."""
-
-            self._rsrc.close()
+        self._rsrc.close()
 
 
 class Instrumental:
