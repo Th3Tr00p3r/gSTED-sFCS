@@ -13,15 +13,19 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
-from CorrFuncDataClass import CorrFuncDataClass
 from MatlabUtilities import (
     loadmat,  # loads matfiles with structures (scipy.io does not do structures)
 )
-from PhotonDataClass import PhotonDataClass
 from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
-from SoftwareCorrelatorModule import CorrelatorType, SoftwareCorrelatorClass
+
+from data_analysis.CorrFuncDataClass import CorrFuncDataClass
+from data_analysis.PhotonDataClass import PhotonDataClass
+from data_analysis.SoftwareCorrelatorModule import (
+    CorrelatorType,
+    SoftwareCorrelatorClass,
+)
 
 sys.path.append(os.path.dirname(__file__))
 # sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')

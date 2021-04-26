@@ -90,13 +90,13 @@ class MainWin(QMainWindow):
 
         # Device Toggling
         self.excOnButton.released.connect(
-            lambda: self.device_toggle_button_released("EXC_LASER")
+            lambda: self.device_toggle_button_released("EXC_LASER", "toggle")
         )
         self.depEmissionOn.released.connect(
-            lambda: self.device_toggle_button_released("DEP_LASER")
+            lambda: self.device_toggle_button_released("DEP_LASER", "laser_toggle")
         )
         self.depShutterOn.released.connect(
-            lambda: self.device_toggle_button_released("DEP_SHUTTER")
+            lambda: self.device_toggle_button_released("DEP_SHUTTER", "toggle")
         )
 
     def closeEvent(self, event: QEvent) -> NoReturn:
@@ -177,10 +177,12 @@ class MainWin(QMainWindow):
 
         self.imp.toggle_meas("SFCSSolution")
 
-    def device_toggle_button_released(self, dvc_nick: str) -> NoReturn:
+    def device_toggle_button_released(
+        self, dvc_nick: str, toggle_mthd: str
+    ) -> NoReturn:
         """Turn devices On/Off."""
 
-        self.imp.dvc_toggle(dvc_nick)
+        self.imp.dvc_toggle(dvc_nick, toggle_mthd)
 
     @pyqtSlot()
     def on_powMode_released(self) -> NoReturn:
