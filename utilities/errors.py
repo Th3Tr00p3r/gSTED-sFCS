@@ -53,7 +53,7 @@ def err_hndlr(exc, func, lvl="ERROR", dvc=None):
         logging.warning(log_str)
 
 
-# TODO: allow toggle off on error!
+# TODO: allow toggle(off) on error!
 def dvc_err_chckr(nick_set: set = None) -> Callable:
     """
     Decorator for clean handeling of GUI interactions with errorneous devices.

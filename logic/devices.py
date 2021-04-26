@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Devices Module."""
 import asyncio
+import re
 import time
 from array import array
 from typing import NoReturn
@@ -43,11 +44,8 @@ class UM232H(Ftd2xx):
             else:
                 self.close()
         except (
-            AttributeError,
-            OSError,
+            # TODO: disconnect cable and see what error is caused
             FtdiError,
-            ValueError,
-            NotImplementedError,
         ) as exc:
             err_hndlr(exc, "toggle()", dvc=self)
 
@@ -673,7 +671,7 @@ class DepletionLaser(PyVISA):
 
         self.updt_time = 2
         self.state = None
-        self.toggle(False)
+        self.toggle(True)
 
         if self.state is False:
             self.set_current(1500)
@@ -681,11 +679,27 @@ class DepletionLaser(PyVISA):
     def toggle(self, bool):
         """Doc."""
 
-        cmnd = f"setLDenable {int(bool)}"
         try:
-            self._write(cmnd)
+            if bool is True:
+                self.open()
+            else:
+                if self.state is True:
+                    self.laser_toggle(False)
+                self.close()
         except VisaIOError as exc:
             err_hndlr(exc, "toggle()", dvc=self)
+        else:
+            # state stays 'None' if open() fails
+            self.state = False
+
+    def laser_toggle(self, bool):
+        """Doc."""
+
+        cmnd = f"setLDenable {int(bool)}"
+        try:
+            self.write(cmnd)
+        except VisaIOError as exc:
+            err_hndlr(exc, "laser_toggle()", dvc=self)
         else:
             self.state = bool
 
@@ -700,12 +714,12 @@ class DepletionLaser(PyVISA):
         cmnd = prop_cmnd_dict[prop]
 
         try:
-            return self._query(cmnd)
+            return float(re.findall(r"-?\d+\.?\d*", self.query(cmnd))[0])
         except VisaIOError as exc:
-            err_hndlr(exc, "get_prop()", dvc=self)
+            err_hndlr(exc, f"get_prop({cmnd})", dvc=self)
             return -999
-        except ValueError as exc:
-            err_hndlr(exc, "get_prop()", lvl="WARNING", dvc=self)
+        except IndexError as exc:
+            err_hndlr(exc, f"get_prop({cmnd})", lvl="WARNING", dvc=self)
             return -999
 
     def set_power(self, value_mW):
@@ -716,10 +730,10 @@ class DepletionLaser(PyVISA):
             try:
                 # change the mode to power
                 cmnd = "Powerenable 1"
-                self._write(cmnd)
+                self.write(cmnd)
                 # then set the power
                 cmnd = f"Setpower 0 {value_mW}"
-                self._write(cmnd)
+                self.write(cmnd)
             except VisaIOError as exc:
                 err_hndlr(exc, "set_power()", dvc=self)
         else:
@@ -733,10 +747,10 @@ class DepletionLaser(PyVISA):
             try:
                 # change the mode to power
                 cmnd = "Powerenable 0"
-                self._write(cmnd)
+                self.write(cmnd)
                 # then set the power
                 cmnd = f"setLDcur 1 {value_mW}"
-                self._write(cmnd)
+                self.write(cmnd)
             except VisaIOError as exc:
                 err_hndlr(exc, "set_current()", dvc=self)
         else:

@@ -83,7 +83,9 @@ class MainWin:
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chckr()
-    def dvc_toggle(self, nick, leave_on=False, leave_off=False) -> NoReturn:
+    def dvc_toggle(
+        self, nick, toggle_mthd="toggle", leave_on=False, leave_off=False
+    ) -> NoReturn:
         """Doc."""
 
         dvc = getattr(self._app.devices, nick)
@@ -92,7 +94,7 @@ class MainWin:
             return
 
         if dvc.state is False:  # switch ON
-            dvc.toggle(True)
+            getattr(dvc, toggle_mthd)(True)
 
             if dvc.state:  # if managed to turn ON
                 try:
@@ -110,7 +112,7 @@ class MainWin:
                     self._gui.stageButtonsGroup.setEnabled(True)
 
         else:  # switch OFF
-            dvc.toggle(False)
+            getattr(dvc, toggle_mthd)(False)
 
             if not dvc.state:  # if managed to turn OFF
                 try:

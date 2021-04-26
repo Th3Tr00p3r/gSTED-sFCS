@@ -14,6 +14,8 @@ import numpy as np
 import scipy.io as sio
 
 import utilities.constants as consts
+from data_analysis.CorrFuncTDCclass import CorrFuncTDCclass
+from data_analysis.PhotonDataClass import PhotonDataClass
 from logic.scan_patterns import ScanPatternAO
 from utilities.errors import err_hndlr
 from utilities.helper import ImageData, div_ceil, get_datetime_str
@@ -129,7 +131,9 @@ class Measurement:
             if self.scan_params.exc_mode:
                 self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_off=True)
             if self.scan_params.dep_mode:
-                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_off=True)
+                self._app.gui.main.imp.dvc_toggle(
+                    "DEP_SHUTTER", toggle_mthd="laser_toggle", leave_off=True
+                )
         else:
             if self.scan_params.exc_mode:
                 self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
@@ -140,7 +144,9 @@ class Measurement:
                     )
                     self._app.gui.main.imp.dvc_toggle("DEP_LASER")
                     await asyncio.sleep(5)
-                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
+                self._app.gui.main.imp.dvc_toggle(
+                    "DEP_SHUTTER", toggle_mthd="laser_toggle", leave_on=True
+                )
             self.get_laser_config()
 
     def get_laser_config(self) -> NoReturn:
@@ -784,19 +790,25 @@ class FCSMeasurement(Measurement):
         super().__init__(app=app, type="FCS", **kwargs)
         self.duration_multiplier = 1
 
-    async def run(self):
+    def disp_ACF(self):
         """Doc."""
 
-        def disp_ACF(meas_dvc):
-            """Doc."""
+        print(
+            f"Measurement Finished:\n"
+            f"Full Data[:100] = {self.data_dvc.data[:100]}\n"
+            f"Total Bytes = {self.data_dvc.tot_bytes_read}\n"
+        )
 
-            print(
-                f"Measurement Finished:\n"
-                f"Full Data[:100] = {meas_dvc.data[:100]}\n"
-                f"Total Bytes = {meas_dvc.tot_bytes_read}\n"
-            )
+        p = PhotonDataClass()
+        p.DoConvertFPGAdataToPhotons(np.frombuffer(self.data_dvc.data, dtype=np.uint8))
+        s = CorrFuncTDCclass()
+        s.data["Data"].append(p)
+        s.DoCorrelateRegularData()
 
-            self.plot_wdgt.obj.plot(meas_dvc.data, clear=True)
+        self.plot_wdgt.obj.plot(self.data_dvc.data, clear=True)
+
+    async def run(self):
+        """Doc."""
 
         self.get_laser_config()
 
@@ -811,4 +823,4 @@ class FCSMeasurement(Measurement):
             # reading
             await self.record_data(timed=True)
 
-            disp_ACF(meas_dvc=self.data_dvc)
+            self.disp_ACF()
