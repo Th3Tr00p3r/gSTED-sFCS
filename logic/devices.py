@@ -658,8 +658,6 @@ class SimpleDO(NIDAQmx):
 class DepletionLaser(PyVISA):
     """Control depletion laser through pyVISA"""
 
-    # TODO: try switching to pyVISA-py, or otherwise figure out why this device gets stuck every once in a while
-
     min_SHG_temp = 52
 
     def __init__(self, param_dict):
@@ -714,13 +712,15 @@ class DepletionLaser(PyVISA):
         cmnd = prop_cmnd_dict[prop]
 
         try:
-            return float(re.findall(r"-?\d+\.?\d*", self.query(cmnd))[0])
+            response = self.query(cmnd)
+            #            print(f"command: {cmnd}, response: {response}")  # TESTESTEST
+            return float(re.findall(r"-?\d+\.?\d*", response)[0])
         except VisaIOError as exc:
             err_hndlr(exc, f"get_prop({cmnd})", dvc=self)
-            return -999
+            return 0
         except IndexError as exc:
             err_hndlr(exc, f"get_prop({cmnd})", lvl="WARNING", dvc=self)
-            return -999
+            return 0
 
     def set_power(self, value_mW):
         """Doc."""

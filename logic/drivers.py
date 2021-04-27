@@ -303,7 +303,7 @@ class PyVISA:
             self.address,
             read_termination=self.read_termination,
             write_termination=self.write_termination,
-            timeout=5,
+            timeout=1,
             open_timeout=5,
         )
 

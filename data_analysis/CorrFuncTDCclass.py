@@ -13,14 +13,14 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
-from MatlabUtilities import (
-    loadmat,  # loads matfiles with structures (scipy.io does not do structures)
-)
 from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
 from data_analysis.CorrFuncDataClass import CorrFuncDataClass
+from data_analysis.MatlabUtilities import (
+    loadmat,  # loads matfiles with structures (scipy.io does not do structures)
+)
 from data_analysis.PhotonDataClass import PhotonDataClass
 from data_analysis.SoftwareCorrelatorModule import (
     CorrelatorType,
