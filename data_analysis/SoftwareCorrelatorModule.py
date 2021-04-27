@@ -24,7 +24,7 @@ class CorrelatorType(enum.Enum):
 
 class SoftwareCorrelatorClass:
     def __init__(self):
-        lib_path = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.dll"
+        lib_path = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
         self.libPath = lib_path
         SoftCorrelatorDynamicLib = CDLL(lib_path)
         getCorrParams = SoftCorrelatorDynamicLib.getCorrelatorParams

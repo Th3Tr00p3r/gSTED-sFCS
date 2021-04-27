@@ -216,11 +216,11 @@ class Timeout:
             """Doc."""
 
             temp = dep_dvc.get_prop("temp")
-            main_gui.depTemp.setValue(temp)
             if temp < dep_dvc.min_SHG_temp:
                 main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
             else:
                 main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
+            main_gui.depTemp.setValue(temp)
 
         def update_power(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
