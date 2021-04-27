@@ -7,6 +7,7 @@ from array import array
 from typing import NoReturn
 
 import numpy as np
+from ftd2xx.ftd2xx import DeviceError
 from nidaqmx.errors import DaqError
 from pyftdi.ftdi import FtdiError
 from pyvisa.errors import VisaIOError
@@ -45,7 +46,7 @@ class UM232H(Ftd2xx):
                 self.close()
         except (
             # TODO: disconnect cable and see what error is caused
-            FtdiError,
+            DeviceError,
         ) as exc:
             err_hndlr(exc, "toggle()", dvc=self)
 
