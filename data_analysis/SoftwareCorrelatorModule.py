@@ -26,7 +26,7 @@ class SoftwareCorrelatorClass:
     def __init__(self):
         lib_path = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
         self.libPath = lib_path
-        SoftCorrelatorDynamicLib = CDLL(lib_path)
+        SoftCorrelatorDynamicLib = CDLL(lib_path, winmode=0)
         getCorrParams = SoftCorrelatorDynamicLib.getCorrelatorParams
         getCorrParams.restype = None
         getCorrParams.argtypes = [ndpointer(c_int), ndpointer(c_int)]

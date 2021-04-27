@@ -533,12 +533,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         self.CF_CR = np.array(self.CF_CR)
 
         self.TotalDuration = self.duration.sum()
-        print(
-            str(self.TotalDurationSkipped)
-            + "s skipped out of "
-            + str(self.TotalDuration)
-            + "s."
-        )
+        print(f"{self.TotalDurationSkipped}s skipped out of {self.TotalDuration}s.")
 
         # if ~isempty(obj.V_um_ms)
         #     obj.DoSetVelocity(obj.V_um_ms);

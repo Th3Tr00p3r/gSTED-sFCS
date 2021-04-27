@@ -802,6 +802,7 @@ class FCSMeasurement(Measurement):
         p = PhotonDataClass()
         p.DoConvertFPGAdataToPhotons(np.frombuffer(self.data_dvc.data, dtype=np.uint8))
         s = CorrFuncTDCclass()
+        s.LaserFreq = self.tdc_dvc.laser_freq_MHz
         s.data["Data"].append(p)
         s.DoCorrelateRegularData()
 
