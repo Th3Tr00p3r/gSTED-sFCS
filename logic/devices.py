@@ -645,7 +645,6 @@ class SimpleDO(NIDAQmx):
             param_dict,
             task_types=("do"),
         )
-
         self.toggle(False)
 
     def toggle(self, bool):
