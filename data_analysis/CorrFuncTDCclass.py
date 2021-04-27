@@ -433,6 +433,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
             TotalDurationEstimate = 0
             for P in self.data["Data"]:
                 time_stamps = np.diff(P.runtime)
+<<<<<<< Updated upstream
                 mu = np.median(time_stamps) / np.log(2)
                 TotalDurationEstimate = (
                     TotalDurationEstimate + mu * len(P.runtime) / self.LaserFreq
@@ -508,6 +509,41 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                     if len(self.lag) < len(CF.lag):
                         self.lag = CF.lag
                         if self.AfterPulseParam[0] == "MultiExponentFit":
+=======
+                mu = np.maximum(np.median(time_stamps), np.abs(time_stamps-time_stamps.mean()).mean())/np.log(2) #for exponential distribution MEDIAN and MAD are the same, but for 
+                # biexponential MAD seems more sensitive
+                maxTimeStamp = stats.expon.ppf(1-MaxOutlierProb/len(time_stamps), scale = mu)
+                secEdges = np.asarray(time_stamps > maxTimeStamp).nonzero()[0]
+                NoOutliers = len(secEdges)
+                if NoOutliers>0:
+                    print(str(NoOutliers) + ' of all outliers')
+                    
+                secEdges = np.append(np.insert(secEdges, 0, 0), len(time_stamps))
+                P.AllSectionEdges = np.array([secEdges[:-1], secEdges[1:]]).T   
+                
+
+                for j, sE in enumerate(P.AllSectionEdges):
+                   # split into segments of approx time of RunDuration
+                   SegmentTime = (P.runtime[sE[1]]-P.runtime[sE[0]])/self.LaserFreq
+                   if (SegmentTime < MinTimeFrac*RunDuration):
+                       print('Duration of segment No. ' + str(j) + ' of file ' + P.fname + 'is ' +
+                           str(SegmentTime) + 's: too short. Skipping...')
+                       self.TotalDurationSkipped = self.TotalDurationSkipped + SegmentTime
+                       continue
+                   
+                   
+                   NoSplits = np.ceil(SegmentTime/RunDuration).astype('int')
+                   Splits = np.linspace(0, np.diff(sE)[0].astype('int'), NoSplits+1, dtype = 'int')
+                   ts = time_stamps[sE[0]:sE[1]]
+                   
+                   for k in range(NoSplits):
+                       ts_split = ts[Splits[k]:Splits[k+1]]
+                       self.duration = np.append(self.duration, ts_split.sum()/self.LaserFreq)
+                       CF.DoSoftCrossCorrelator(ts_split, CorrelatorType.PhDelayCorrelator, timebase_ms = 1000/self.LaserFreq) # time base of 20MHz to ms
+                       if len(self.lag) < len(CF.lag):
+                            self.lag = CF.lag
+                            if self.AfterPulseParam[0] == 'MultiExponentFit': 
+>>>>>>> Stashed changes
                             # work with any number of exponents
                             # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
                             beta = self.AfterPulseParam[1]
