@@ -805,8 +805,9 @@ class FCSMeasurement(Measurement):
         s.LaserFreq = self.tdc_dvc.laser_freq_MHz
         s.data["Data"].append(p)
         s.DoCorrelateRegularData()
+        s.DoAverageCorr(NoPlot=True)
 
-        self.plot_wdgt.obj.plot(self.data_dvc.data, clear=True)
+        self.plot_wdgt.obj.plot(s.lag, s.Normalized, clear=True)
 
     async def run(self):
         """Doc."""
