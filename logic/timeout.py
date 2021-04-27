@@ -33,7 +33,7 @@ class Timeout:
         await asyncio.gather(
             self._updt_CI_and_AI(),
             self._update_avg_counts(),
-            self._update_dep(),  # TODO: try (in lab) to have each call in thread (seperately).
+            self._update_dep(),
             self._updt_current_state(),
             self._update_gui(),
         )
@@ -225,12 +225,14 @@ class Timeout:
         def update_power(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
 
-            main_gui.depActualPow.setValue(dep_dvc.get_prop("pow"))
+            pow = dep_dvc.get_prop("pow")
+            main_gui.depActualPow.setValue(pow)
 
         def update_current(dep_dvc, main_gui) -> NoReturn:
             """Doc."""
 
-            main_gui.depActualCurr.setValue(dep_dvc.get_prop("curr"))
+            curr = dep_dvc.get_prop("curr")
+            main_gui.depActualCurr.setValue(curr)
 
         def update_props(dep_err_dict, dep_dvc, main_gui) -> NoReturn:
             """Doc."""
