@@ -301,18 +301,8 @@ class MainWin:
 
         current_type = self._app.meas.type
         if current_type is None:  # no meas running
-            if type == "FCS":
-                self._app.meas = meas.FCSMeasurement(
-                    self._app,
-                    **consts.FCS_MEAS_WDGT_COLL.hold_objects(
-                        self._app,
-                        ["prog_bar_wdgt", "g0_wdgt", "decay_time_wdgt", "plot_wdgt"],
-                    ).read_dict_from_gui(self._app),
-                )
 
-                self._gui.startFcsMeasurementButton.setText("Stop \nMeasurement")
-
-            elif type == "SFCSSolution":
+            if type == "SFCSSolution":
                 self._app.gui.main.imp.go_to_origin("XY")
                 pattern = self._gui.solScanType.currentText()
                 if pattern == "angular":
@@ -342,6 +332,9 @@ class MainWin:
                             "cal_save_intrvl_wdgt",
                             "total_files_wdgt",
                             "file_num_wdgt",
+                            "g0_wdgt",
+                            "decay_time_wdgt",
+                            "plot_wdgt",
                         ],
                     ).read_dict_from_gui(self._app),
                 )
@@ -350,7 +343,10 @@ class MainWin:
                 # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(False)
                 self._gui.solScanCalDur.setEnabled(False)
-                self._gui.solScanTotalDur.setEnabled(False)
+                self._gui.solScanTotalDur.setEnabled(
+                    self._gui.repeatSolMeas.isChecked()
+                )
+                self._gui.solScanDurUnits.setEnabled(False)
                 self._gui.solScanFileTemplate.setEnabled(False)
 
             elif type == "SFCSImage":
@@ -376,16 +372,15 @@ class MainWin:
             self._app.loop.create_task(self._app.meas.start())
 
         elif current_type == type:  # manual shutdown
-            if type == "FCS":
-                self._gui.startFcsMeasurementButton.setText("Start \nMeasurement")
 
-            elif type == "SFCSSolution":
+            if type == "SFCSSolution":
                 self._gui.imp.go_to_origin("XY")
                 self._gui.startSolScan.setText("Start \nScan")
                 # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanCalDur.setEnabled(True)
                 self._gui.solScanTotalDur.setEnabled(True)
+                self._gui.solScanDurUnits.setEnabled(True)
                 self._gui.solScanFileTemplate.setEnabled(True)
 
             elif type == "SFCSImage":
@@ -494,10 +489,11 @@ class MainWin:
             # no scan performed since app init
             pass
 
-    def change_FCS_meas_dur(self, new_dur):
-        """Doc."""
+    def change_meas_dur(self, new_dur: float):
+        """Allow duration change during run only for alignment measurements"""
 
-        if self._app.meas.type == "FCS":
+        if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
+            self._app.meas.total_duration = new_dur
             self._app.meas.duration = new_dur
 
     def open_settwin(self):
