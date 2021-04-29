@@ -161,13 +161,7 @@ class Timeout:
             """Doc."""
 
             if (self._app.devices.UM232H.error_dict is None) and meas.is_running:
-                if meas.type == "FCS":
-                    progress = (
-                        meas.time_passed
-                        / (meas.duration * meas.duration_multiplier)
-                        * meas.prog_bar_wdgt.obj.maximum()
-                    )
-                elif meas.type == "SFCSSolution":
+                if meas.type == "SFCSSolution":
                     if not meas.cal:
                         progress = (
                             (meas.total_time_passed + meas.time_passed)

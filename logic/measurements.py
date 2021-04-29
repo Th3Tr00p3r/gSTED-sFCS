@@ -8,7 +8,7 @@ import math
 import pickle
 import time
 from types import SimpleNamespace
-from typing import NoReturn, Tuple
+from typing import NoReturn
 
 import numpy as np
 import scipy.io as sio
@@ -525,28 +525,39 @@ class SFCSImageMeasurement(Measurement):
 class SFCSSolutionMeasurement(Measurement):
     """Doc."""
 
+    dur_mul_dict = {
+        "seconds": 1,
+        "minutes": 60,
+        "hours": 3600,
+    }
+
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(
             app=app, type="SFCSSolution", scan_params=scan_params, **kwargs
         )
         self.scan_params.scan_plane = "XY"
-        self.duration_multiplier = 60
+        self.duration_multiplier = self.dur_mul_dict[self.duration_units]
 
         if self.scan_params.pattern == "static":
             self.scanning = False
         else:
             self.scanning = True
 
+        self.cal = False
+
     def build_filename(self, file_no: int) -> str:
 
-        if self.file_template:
-            return (
-                f"{self.file_template}_{self.scan_type}_{self.laser_config}_{file_no}"
-            )
-        else:
-            return f"{self.scan_type}_{self.laser_config}_{file_no}"
+        if not self.file_template:
+            # give a general template for a solution measuremnt
+            self.file_template = "sol"
 
-    def get_current_and_end_times(self) -> Tuple[datetime.time, datetime.time]:
+        if self.repeat is True:
+            # repeated measurements are always file 0
+            file_no = 0
+
+        return f"{self.file_template}_{self.scan_type}_{self.laser_config}_{file_no}"
+
+    def set_current_and_end_times(self) -> NoReturn:
         """
         Given a duration in seconds, returns a tuple (current_time, end_time)
         in datetime.time format, where end_time is current_time + duration_in_seconds.
@@ -554,11 +565,12 @@ class SFCSSolutionMeasurement(Measurement):
 
         duration_in_seconds = int(self.total_duration * self.duration_multiplier)
         curr_datetime = datetime.datetime.now()
-        curr_time = datetime.datetime.now().time()
+        start_time = datetime.datetime.now().time()
         end_time = (
             curr_datetime + datetime.timedelta(seconds=duration_in_seconds)
         ).time()
-        return curr_time, end_time
+        self.start_time_wdgt.set(start_time)
+        self.end_time_wdgt.set(end_time)
 
     async def calibrate_num_files(self):
         """Doc."""
@@ -630,6 +642,20 @@ class SFCSSolutionMeasurement(Measurement):
             f"Total Bytes = {self.data_dvc.tot_bytes_read}\n"
         )
 
+        if self.repeat is True:
+            # display ACF for alignments
+            # TODO: (later perhaps for scans too)
+            p = PhotonDataClass()
+            p.DoConvertFPGAdataToPhotons(
+                np.frombuffer(self.data_dvc.data, dtype=np.uint8)
+            )
+            s = CorrFuncTDCclass()
+            s.LaserFreq = self.tdc_dvc.laser_freq_MHz
+            s.data["Data"].append(p)
+            s.DoCorrelateRegularData()
+            s.DoAverageCorr(NoPlot=True)
+            self.plot_wdgt.obj.plot(s.lag, s.CF_CR[0], clear=True)
+
     def prep_data_dict(self) -> dict:
         """
         Prepare the full measurement data, in a way that
@@ -695,16 +721,19 @@ class SFCSSolutionMeasurement(Measurement):
         """Doc."""
 
         # initialize gui start/end times
-        start_time, end_time = self.get_current_and_end_times()
-        self.start_time_wdgt.set(start_time)
-        self.end_time_wdgt.set(end_time)
+        self.set_current_and_end_times()
 
         # turn on lasers
         await self.toggle_lasers()
 
         # calibrating save-intervals/num_files
         # TODO: test if non-scanning calibration gives good enough approximation for file size, if not, consider scanning inside cal function
-        num_files = await self.calibrate_num_files()
+        if not self.repeat:
+            num_files = await self.calibrate_num_files()
+        else:
+            # if alignment measurement
+            num_files = 999
+            self.duration = self.total_duration
 
         if self.scanning:
             self.setup_scan()
@@ -754,6 +783,11 @@ class SFCSSolutionMeasurement(Measurement):
                         :, : self.ao_buffer.shape[1]
                     ]
 
+                # reset timers for alignment measurements
+                if self.repeat:
+                    self.total_time_passed = 0
+                    self.set_current_and_end_times()
+
                 # save file data
                 self.save_data(self.prep_data_dict(), self.build_filename(file_num))
 
@@ -781,48 +815,3 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)
-
-
-class FCSMeasurement(Measurement):
-    """Repeated static FCS measurement, intended fo system alignment"""
-
-    def __init__(self, app, **kwargs):
-        super().__init__(app=app, type="FCS", **kwargs)
-        self.duration_multiplier = 1
-
-    def disp_ACF(self):
-        """Doc."""
-
-        print(
-            f"Measurement Finished:\n"
-            f"Full Data[:100] = {self.data_dvc.data[:100]}\n"
-            f"Total Bytes = {self.data_dvc.tot_bytes_read}\n"
-        )
-
-        p = PhotonDataClass()
-        p.DoConvertFPGAdataToPhotons(np.frombuffer(self.data_dvc.data, dtype=np.uint8))
-        s = CorrFuncTDCclass()
-        s.LaserFreq = self.tdc_dvc.laser_freq_MHz
-        s.data["Data"].append(p)
-        s.DoCorrelateRegularData()
-        s.DoAverageCorr(NoPlot=True)
-
-        self.plot_wdgt.obj.plot(s.lag, s.Normalized, clear=True)
-
-    async def run(self):
-        """Doc."""
-
-        self.get_laser_config()
-
-        while self.is_running:
-
-            self.start_time = time.perf_counter()
-            self.time_passed = 0
-
-            self.data_dvc.init_data()
-            self.data_dvc.purge()
-
-            # reading
-            await self.record_data(timed=True)
-
-            self.disp_ACF()

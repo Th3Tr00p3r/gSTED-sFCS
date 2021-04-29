@@ -153,23 +153,17 @@ class MainWin(QMainWindow):
 
         self.imp.plane_choice_changed(val)
 
-    @pyqtSlot(int)
-    def on_measFCSDur_valueChanged(self, int) -> NoReturn:
+    @pyqtSlot(float)
+    def on_solScanTotalDur_valueChanged(self, float) -> NoReturn:
         """Doc."""
 
-        self.imp.change_FCS_meas_dur(int)
+        self.imp.change_meas_dur(float)
 
     @pyqtSlot()
     def on_startImgScan_released(self) -> NoReturn:
         """Begin/end Image SFCS measurement"""
 
         self.imp.toggle_meas("SFCSImage")
-
-    @pyqtSlot()
-    def on_startFcsMeasurementButton_released(self) -> NoReturn:
-        """Begin/end FCS measurement."""
-
-        self.imp.toggle_meas("FCS")
 
     @pyqtSlot()
     def on_startSolScan_released(self) -> NoReturn:

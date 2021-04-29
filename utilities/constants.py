@@ -252,14 +252,6 @@ PXL_CLK = DeviceAttrs(
 # Measurements
 # ----------------------------------------------
 
-FCS_MEAS_WDGT_COLL = QtWidgetCollection(
-    duration=("measFCSDur", "value", "main"),
-    g0_wdgt=("fcsG0", "value", "main"),
-    decay_time_wdgt=("fcsDecayTime", "value", "main"),
-    prog_bar_wdgt=("fcsProgressBar", "value", "main"),
-    plot_wdgt=("fcsPlot", None, "main"),
-)
-
 SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
     exc_mode=("solScanModeExc", "isChecked", "main"),
     dep_mode=("solScanModeDep", "isChecked", "main"),
@@ -292,11 +284,13 @@ SOL_NO_SCN_WDGT_COLL = QtWidgetCollection(
 SOL_MEAS_WDGT_COLL = QtWidgetCollection(
     scan_type=("solScanType", "currentText", "main"),
     file_template=("solScanFileTemplate", "text", "main"),
+    repeat=("repeatSolMeas", "isChecked", "main"),
     save_path=("solDataPath", "text", "settings"),
     save_frmt=("saveFormat", "currentText", "settings"),
     max_file_size=("solScanMaxFileSize", "value", "main"),
     cal_duration=("solScanCalDur", "value", "main"),
     total_duration=("solScanTotalDur", "value", "main"),
+    duration_units=("solScanDurUnits", "currentText", "main"),
     cal_save_intrvl_wdgt=("solScanCalSaveIntrvl", "value", "main"),
     prog_bar_wdgt=("solScanProgressBar", "value", "main"),
     start_time_wdgt=("solScanStartTime", "time", "main"),
@@ -304,6 +298,9 @@ SOL_MEAS_WDGT_COLL = QtWidgetCollection(
     file_num_wdgt=("solScanFileNo", "value", "main"),
     total_files_wdgt=("solScanTotalFiles", "value", "main"),
     pattern_wdgt=("solScanPattern", None, "main"),
+    g0_wdgt=("g0", "value", "main"),
+    decay_time_wdgt=("decayTime", "value", "main"),
+    plot_wdgt=("acf", None, "main"),
 )
 
 IMG_SCN_WDGT_COLL = QtWidgetCollection(
