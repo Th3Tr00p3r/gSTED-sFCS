@@ -529,15 +529,15 @@ class PixelClock(NIDAQmx):
     def toggle(self, bool):
         """Doc."""
 
-        if bool:
-            self._start_co_clock_sync()
-        else:
-            try:
-                self.close_all_tasks()
-            except DaqError as exc:
-                err_hndlr(exc, f"toggle({bool})", dvc=self)
+        try:
+            if bool:
+                self._start_co_clock_sync()
             else:
-                self.state = bool
+                self.close_all_tasks()
+        except DaqError as exc:
+            err_hndlr(exc, f"toggle({bool})", dvc=self)
+        else:
+            self.state = bool
 
     def _start_co_clock_sync(self) -> NoReturn:
         """Doc."""
