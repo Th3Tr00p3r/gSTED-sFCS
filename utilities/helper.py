@@ -14,7 +14,7 @@ import PyQt5.QtWidgets as QtWidgets
 import pyqtgraph as pg
 
 import gui.icons.icon_paths as icon_path
-import logic.app as app_module
+import logic.app
 
 
 class QtWidgetAccess:
@@ -69,9 +69,9 @@ class QtWidgetCollection:
             setattr(self, key, QtWidgetAccess(*val))
 
     def hold_objects(
-        self, app: app_module.App, wdgt_name_list: List[str] = None, hold_all=False
+        self, app: logic.app.App, wdgt_name_list: List[str] = None, hold_all=False
     ) -> QtWidgetCollection:
-        """Stores the actual GUI object in the listed, or all, widgets."""
+        """Stores the actual GUI object in the listed (or all) widgets."""
 
         if wdgt_name_list is not None:
             for wdgt_name in wdgt_name_list:
@@ -91,7 +91,7 @@ class QtWidgetCollection:
 
         return self
 
-    def write_to_gui(self, app: app_module.App, new_vals) -> NoReturn:
+    def write_to_gui(self, app: logic.app.App, new_vals) -> NoReturn:
         """
         Fill widget collection with values from dict/list, or a single value for all.
         if new_vals is a list, the values will be inserted in the order of vars(self).keys().
@@ -110,7 +110,7 @@ class QtWidgetCollection:
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(new_vals, parent_gui)
 
-    def read_dict_from_gui(self, app: app_module.App) -> dict:
+    def read_dict_from_gui(self, app: logic.app.App) -> dict:
         """
         Read values from QtWidgetAccess objects, which are the attributes of self and return a dict.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
@@ -126,8 +126,11 @@ class QtWidgetCollection:
                 wdgt_val_dict[attr_name] = wdgt.get(parent_gui)
         return wdgt_val_dict
 
-    def read_namespace_from_gui(self, app: app_module.App) -> SimpleNamespace:
-        """Doc."""
+    def read_namespace_from_gui(self, app: logic.app.App) -> SimpleNamespace:
+        """
+        Same as 'read_dict_from_gui' but returns a SimpleNamespace object
+        with attributes instead of keys.
+        """
 
         wdgt_val_ns = SimpleNamespace()
         for attr_name, wdgt in vars(self).items():
@@ -151,12 +154,14 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
     rows = []
     for child in children_list:
         if not child.objectName() == "qt_spinbox_lineedit":
-            # if QComboBox or QSpinBox/QLineEdit (combobox doesn't have readonly property)
             if hasattr(child, "currentIndex") or not child.isReadOnly():
+                # if QComboBox or QSpinBox/QLineEdit (combobox doesn't have readonly property)
                 if hasattr(child, "value"):  # QSpinBox
                     val = child.value()
                 elif hasattr(child, "currentIndex"):  # QComboBox
                     val = child.currentIndex()
+                elif hasattr(child, "currentIndex"):  # QCheckBox
+                    val = child.isChecked()
                 else:  # QLineEdit
                     val = child.text()
                 rows.append((child.objectName(), str(val)))
@@ -198,6 +203,8 @@ def csv_to_gui(file_path, gui_parent):
                 child.setValue(float(val))
             elif hasattr(child, "currentIndex"):  # QComboBox
                 child.setCurrentIndex(int(val))
+            elif hasattr(child, "isChecked"):  # QCheckBox
+                child.setChecked(bool(val))
             elif hasattr(child, "text"):  # QLineEdit
                 child.setText(val)
 
@@ -231,7 +238,7 @@ def limit(val: float, min: float, max: float) -> float:
 
 
 def get_datetime_str() -> str:
-    """Return a date and time string in the format DDMMYY_HHMMSS"""
+    """Return current date and time string in the format DDMMYY_HHMMSS"""
 
     return datetime.datetime.now().strftime("%d%m_%H%M%S")
 

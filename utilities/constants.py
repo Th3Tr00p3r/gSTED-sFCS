@@ -321,16 +321,6 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     curr_ao_z=("zAOV", "value", "main"),
 )
 
-# TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
-IMG_SCN_WDGT_FILLOUT_DICT = {
-    "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
-    "MFC - XY compartment": [""],  # TODO
-    "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
-    "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
-    "GB - XY single bead": [""],  # TODO
-    "GB - YZ single bead": [""],  # TODO
-}
-
 IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     file_template=("imgScanFileTemplate", "text", "main"),
     save_path=("imgDataPath", "text", "settings"),
@@ -342,3 +332,51 @@ IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     image_wdgt=("imgScanPlot", None, "main"),
     pattern_wdgt=("imgScanPattern", None, "main"),
 )
+
+# ----------------------------------------------
+# Presets
+# ----------------------------------------------
+
+# TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
+IMG_SCN_WDGT_FILLOUT_DICT = {
+    "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
+    "MFC - XY compartment": [
+        1,
+        0,
+        0,
+        "XY",
+        70,
+        70,
+        0,
+        80,
+        1000,
+        20,
+        0.9,
+        1,
+    ],  # TODO: set better params
+    "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
+    "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
+    "GB - XY single bead": [1, 0, 0, "XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],
+    "GB - YZ single bead": [1, 0, 0, "YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
+}
+
+SOL_MEAS_WDGT_FILLOUT_DICT = {
+    "Standard Alignment": {
+        "scan_type": "static",
+        "repeat": True,
+        "duration_units": "seconds",
+        "total_duration": 10,
+    },
+    "Standard Angular": {
+        "scan_type": "angular",
+        "repeat": False,
+        "duration_units": "hours",
+        "total_duration": 1,
+    },
+    "Standard Circular": {
+        "scan_type": "circle",
+        "repeat": False,
+        "duration_units": "hours",
+        "total_duration": 1,
+    },
+}

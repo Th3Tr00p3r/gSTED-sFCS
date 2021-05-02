@@ -217,6 +217,12 @@ class MainWin(QMainWindow):
 
         self.imp.fill_img_scan_preset_gui(curr_txt)
 
+    @pyqtSlot(str)
+    def on_solMeasPreset_currentTextChanged(self, curr_txt: str) -> NoReturn:
+        """Doc."""
+
+        self.imp.fill_sol_meas_preset_gui(curr_txt)
+
     @pyqtSlot()
     def on_actionSettings_triggered(self) -> NoReturn:
         """Show settings window"""

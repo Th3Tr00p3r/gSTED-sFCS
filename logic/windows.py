@@ -492,9 +492,13 @@ class MainWin:
     def change_meas_dur(self, new_dur: float):
         """Allow duration change during run only for alignment measurements"""
 
-        if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
-            self._app.meas.total_duration = new_dur
-            self._app.meas.duration = new_dur
+        try:
+            if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
+                self._app.meas.total_duration = new_dur
+                self._app.meas.duration = new_dur
+        except AttributeError:
+            # meas no yet defined (this is due to loading preset on startup)
+            pass
 
     def open_settwin(self):
         """Doc."""
@@ -528,7 +532,17 @@ class MainWin:
         consts.IMG_SCN_WDGT_COLL.write_to_gui(
             self._app, consts.IMG_SCN_WDGT_FILLOUT_DICT[curr_text]
         )
-        logging.info(f"Image scan preset configuration chosen: '{curr_text}'")
+        logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
+
+    def fill_sol_meas_preset_gui(self, curr_text: str) -> NoReturn:
+        """Doc."""
+
+        consts.SOL_MEAS_WDGT_COLL.write_to_gui(
+            self._app, consts.SOL_MEAS_WDGT_FILLOUT_DICT[curr_text]
+        )
+        logging.debug(
+            f"Solution measurement preset configuration chosen: '{curr_text}'"
+        )
 
 
 class SettWin:
