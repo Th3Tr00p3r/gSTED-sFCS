@@ -8,7 +8,6 @@ from typing import List, NoReturn
 import ftd2xx
 import nidaqmx as ni
 import numpy as np
-import pyftdi.ftdi as pyftdi
 import pyvisa as visa
 from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
@@ -21,17 +20,27 @@ class Ftd2xx:
 
     # TODO: update README, keep PyFtdi for now. After removing, get rid of uneccessary gui settings and the trans dict function
 
-    pyftdi_to_ftd2xx = {"SYNCFF": 0x40, "hw": ftd2xx.defines.FLOW_RTS_CTS}
+    ftd2xx_dict = {
+        "Single Channel Synchronous 245 FIFO": 0x40,
+        "RTS-CTS": ftd2xx.defines.FLOW_RTS_CTS,
+    }
 
     def __init__(self, param_dict):
-        param_dict = trans_dict(param_dict, self.pyftdi_to_ftd2xx)
+        param_dict = trans_dict(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
+
+        # auto-find UM232H serial number
+        num_devs = ftd2xx.createDeviceInfoList()
+        for idx in range(num_devs):
+            info_dict = ftd2xx.getDeviceInfoDetail(devnum=idx)
+            if info_dict["description"] == b"UM232H":
+                self.serial = info_dict["serial"]
 
     def open(self):
         """Doc."""
 
-        self._inst = ftd2xx.aio.openEx(bytes(self.serial, "utf-8"))
+        self._inst = ftd2xx.aio.openEx(self.serial)
         self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
         self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
         self._inst.setLatencyTimer(self.ltncy_tmr_val)
@@ -55,59 +64,6 @@ class Ftd2xx:
 
         self._inst.close()
         self.state = False
-
-
-class PyFtdi:
-    """Doc."""
-
-    def __init__(self, param_dict):
-
-        [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = None
-
-        self._inst = pyftdi.Ftdi()  # URL - ftdi://ftdi:232h:FT3TG15/1
-
-    def open(self):
-        """Doc."""
-
-        self._inst.open(self.vend_id, self.prod_id)
-        self._inst.set_bitmode(0, getattr(pyftdi.Ftdi.BitMode, self.bit_mode))
-        self._inst.set_latency_timer(self.ltncy_tmr_val)
-        self._inst.set_flowctrl(self.flow_ctrl)
-
-        self.read_buffer = array.array(
-            "B", np.zeros(shape=(self.n_bytes,), dtype=np.uint8)
-        )
-
-        self.state = True
-
-    def read(self) -> (array.array, int):
-        """Doc."""
-
-        n_bytes = self._inst._usb_dev.read(
-            self._inst._out_ep,
-            self.read_buffer,
-        )
-        self.check_status(self.read_buffer[:2])
-        return self.read_buffer[2:n_bytes], n_bytes - 2
-
-    def purge(self):
-        """Doc."""
-
-        self._inst.purge_rx_buffer()
-
-    def close(self):
-        """Doc."""
-
-        self._inst.close()
-        self.state = False
-
-    def check_status(self, status: array.array) -> NoReturn:
-        """Doc."""
-
-        if status[1] & self._inst.ERROR_BITS[1]:
-            s = " ".join(self._inst.decode_modem_status(status, True)).title()
-            raise pyftdi.FtdiError(f"FTDI error: {status[0]:02x}:{ status[1]:02x} {s}")
 
 
 class NIDAQmx:
