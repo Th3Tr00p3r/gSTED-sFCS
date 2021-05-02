@@ -8,6 +8,7 @@ Created on Sun Jan 17 14:08:54 2021
 import enum
 from ctypes import CDLL, c_double, c_int, c_long
 from warnings import warn
+from sys import platform
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -24,7 +25,10 @@ class CorrelatorType(enum.Enum):
 
 class SoftwareCorrelatorClass:
     def __init__(self):
-        lib_path = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.dll"
+        if platform == 'win32':
+            lib_path = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.dll"
+        elif platform == 'darwin':
+            lib_path = "/Users/oleg/Documents/Python programming/Scanning setups Lab/gSTED-sFCS/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.so"
         self.libPath = lib_path
         SoftCorrelatorDynamicLib = CDLL(lib_path)
         getCorrParams = SoftCorrelatorDynamicLib.getCorrelatorParams
