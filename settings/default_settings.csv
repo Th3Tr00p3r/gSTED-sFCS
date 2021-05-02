@@ -1,21 +1,4 @@
 arduinoAddr,COM3
-fcsDataPath,./data/
-solDataPath,./data/solution measurements/
-imgDataPath,./data/image measurements/
-camDataPath,./data/camera photos/
-logDataPath,./log/
-AOXaddr,"Dev3/ao2, Dev3/ao3"
-AOYaddr,"Dev3/ao0, Dev3/ao1"
-AOZaddr,Dev1/ao1
-AOXintAddr,"Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd"
-AOYintAddr,"Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd"
-AOZintAddr,Dev3/ai0
-AOdigTrigSrc,/Dev3/PFI0
-AItrigSrc,/Dev3/PFI0
-AIXaddr,Dev3/ai23
-AIYaddr,Dev3/ai7
-AIZaddr,Dev3/ai9
-AIlaserMonAddr,Dev3/ai3
 counterPixelClockAddress,Dev1/Ctr0
 pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
 counterTriggerAddress,Dev3/port1/line0
@@ -28,6 +11,18 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
+AOXaddr,"Dev3/ao2, Dev3/ao3"
+AOYaddr,"Dev3/ao0, Dev3/ao1"
+AOZaddr,Dev1/ao1
+AOXintAddr,"Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd"
+AOYintAddr,"Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd"
+AOZintAddr,Dev3/ai0
+AOdigTrigSrc,/Dev3/PFI0
+AItrigSrc,/Dev3/PFI0
+AIXaddr,Dev3/ai23
+AIYaddr,Dev3/ai7
+AIZaddr,Dev3/ai9
+AIlaserMonAddr,Dev3/ai3
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
@@ -35,18 +30,21 @@ excAddr,Dev1/port0/line6
 depMod,MPB
 depAddr,COM6
 depShutterAddr,Dev3/port0/line11
+fcsDataPath,./data/
+solDataPath,./data/solution measurements/
+imgDataPath,./data/image measurements/
+camDataPath,./data/camera photos/
+logDataPath,./log/
 um232Serial,FT3TG15
-um232FlowControl,hw
-um232BitMode,SYNCFF
-AIclkDiv,100
+um232FlowControl,RTS-CTS
+um232BitMode,Single Channel Synchronous 245 FIFO
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCversion,3
 pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
-um232VendID,1027
-um232ProdID,24596
+AIclkDiv,100
 um232LatencyTimerVal,2
 um232Timeout,2
 um232NumBytes,64000
@@ -55,8 +53,8 @@ uc480PlaceHolder,0.0
 xConv,68.0
 yConv,78.0
 zConv,10.0
-saveFormat,1
+counterTriggerEdge,0
 AOtriggerEdge,0
 AOwfType,0
-counterTriggerEdge,0
 excTriggerSrc,0
+saveFormat,1

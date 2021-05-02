@@ -9,7 +9,6 @@ from typing import NoReturn
 import numpy as np
 from ftd2xx.ftd2xx import DeviceError
 from nidaqmx.errors import DaqError
-from pyftdi.ftdi import FtdiError
 from pyvisa.errors import VisaIOError
 
 import logic.drivers as drivers
@@ -47,6 +46,7 @@ class UM232H(Ftd2xx):
         except (
             # TODO: disconnect cable and see what error is caused
             DeviceError,
+            TypeError,
         ) as exc:
             err_hndlr(exc, "toggle()", dvc=self)
 
@@ -57,7 +57,7 @@ class UM232H(Ftd2xx):
             byte_array, n = await self.read()
             self.data.extend(byte_array)
             self.tot_bytes_read += n
-        except (AttributeError, OSError, FtdiError, ValueError) as exc:
+        except (AttributeError, OSError, ValueError) as exc:
             err_hndlr(exc, "read_TDC()", dvc=self)
         else:
             self.fill_ri_buffer()
