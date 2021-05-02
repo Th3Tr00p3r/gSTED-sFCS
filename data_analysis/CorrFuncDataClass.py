@@ -10,6 +10,7 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from FitTools import curvefitLims
 
 sys.path.append(os.path.dirname(__file__))
 # sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
@@ -63,9 +64,56 @@ class CorrFuncDataClass:
         if not NoPlot:
             self.DoPlotCorrFunc()
 
-    def DoPlotCorrFunc(self):
-        plt.semilogx(self.lag[1:], self.AverageCF_CR[1:])  # skip 0 lag time
-        plt.xlabel("lag (ms)")
-        plt.ylabel("G (cps)")
-        plt.autoscale()
+    def DoPlotCorrFunc(self, Xfield = 'lag', Yfield  = 'AverageCF_CR', Xscale = 'log', 
+                       Yscale = 'linear'):
+        X = getattr(self, Xfield)
+        Y = getattr(self, Yfield)
+        if Xscale == 'log':
+            X = X[1:] #remove zero point data
+            Y = Y[1:]
+        plt.plot(X, Y, 'o')  # skip 0 lag time
+        plt.xlabel(Xfield)
+        plt.ylabel(Yfield)
+        plt.gca().set_xscale(Xscale)
+        plt.gca().set_yscale(Yscale)
         plt.show()
+        
+    def DoFit(self, Xfield = 'lag', Yfield  = 'AverageCF_CR', YerrorField = 'errorCF_CR',
+              FitFunc = 'Diffusion3Dfit', ConstantParam = {}, FitParamEstimate = [5000, 0.04, 30],
+              FitRange = [1e-3, 100], NoPlot = False, Xscale = 'log', Yscale = 'linear'):
+            
+        #[DynRange, IsDynRangeInput] = ParseInputs('Dynamic Range', [], varargin); % variable FitRange: give either a scalar or a vector of two
+        #DynRangeBetaParam = ParseInputs('Dynamic Range parameter', 2, varargin); %the parameter in beta on which to do dynamic range
+        #MaxIter = 3;
+        #lsqcurvefitParam = ParseInputs('lsqcurvefitParam', {}, varargin);
+        
+        X = getattr(self, Xfield)
+        Y = getattr(self, Yfield)
+        errorY = getattr(self, YerrorField)
+        if Xscale == 'log':
+            X = X[1:] #remove zero point data
+            Y = Y[1:]
+            errorY = errorY[1:]
+        
+        
+        FP = curvefitLims(FitFunc, X, Y, errorY, XLim = FitRange, NoPlot = NoPlot, 
+                                XScale = Xscale, YScale = Yscale, paramEstimates = FitParamEstimate)
+        
+        # if ~isempty(DynRange), % do dynamic range iterations
+        #     for iter = 1:MaxIter;
+        #         FitRange(1) = FP.beta(DynRangeBetaParam)/DynRange(1);
+        #         FitRange(2) = FP.beta(DynRangeBetaParam)*DynRange(end);
+        #         J = find((X>FitRange(1)) & (X < FitRange(2)));
+        #         FP = nlinfitWeight2(X(J), Y(J), FitFunc, FP.beta, errorY(J), param, lsqcurvefitParam{:});
+        #     end
+        # end
+        
+        #FP.FitRange = FitRange;
+        #FP.constParam = param;
+        
+        #self.DoPlotCorrFunc()
+        if not hasattr(self, 'FitParam'):
+            self.FitParam = dict()
+        
+        self.FitParam[FP['FitFunc']] = FP
+        
