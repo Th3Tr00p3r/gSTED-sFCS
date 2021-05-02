@@ -650,10 +650,11 @@ class SFCSSolutionMeasurement(Measurement):
                 np.frombuffer(self.data_dvc.data, dtype=np.uint8)
             )
             s = CorrFuncTDCclass()
-            s.LaserFreq = self.tdc_dvc.laser_freq_MHz
+            s.LaserFreq = self.tdc_dvc.laser_freq_MHz * 1e6
             s.data["Data"].append(p)
             s.DoCorrelateRegularData()
             s.DoAverageCorr(NoPlot=True)
+            self.g0_wdgt.set(s.G0)
             self.plot_wdgt.obj.plot(s.lag, s.CF_CR[0], clear=True)
 
     def prep_data_dict(self) -> dict:
@@ -771,8 +772,6 @@ class SFCSSolutionMeasurement(Measurement):
 
                 self.total_time_passed += self.time_passed
 
-                self.disp_ACF()
-
                 # collect final AI/CI
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
@@ -788,8 +787,11 @@ class SFCSSolutionMeasurement(Measurement):
                     self.total_time_passed = 0
                     self.set_current_and_end_times()
 
-                # save file data
-                self.save_data(self.prep_data_dict(), self.build_filename(file_num))
+                # save and display data
+                if self.is_running or self.repeat is False:
+                    # if not manually stopped while aligning
+                    self.save_data(self.prep_data_dict(), self.build_filename(file_num))
+                    self.disp_ACF()
 
                 # initialize data buffers for next file
                 self.data_dvc.init_data()
