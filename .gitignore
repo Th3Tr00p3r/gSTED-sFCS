@@ -13,6 +13,9 @@ log/
 # test pics (idomich)
 *.png
 
+# pushed by oleg sometimes
+.DS_Store
+
 # eric project folder (idomich)
 .eric6project
 
@@ -21,8 +24,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
+## C extensions
+#*.so
 
 # Distribution / packaging
 .Python

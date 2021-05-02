@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Mar 22 17:38:27 2021
-
 @author: oleg
 """
 import glob
@@ -26,6 +25,9 @@ from data_analysis.SoftwareCorrelatorModule import (
     CorrelatorType,
     SoftwareCorrelatorClass,
 )
+
+DataAnalysisParentFolder, temp = os.path.split(os.path.dirname(__file__))
+sys.path.append(DataAnalysisParentFolder)
 
 sys.path.append(os.path.dirname(__file__))
 # sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
@@ -457,7 +459,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
             # find additional outliers
             time_stamps = np.diff(P.runtime)
             mu = np.maximum(
-                np.median(time_stamps), stats.median_abs_deviation(time_stamps)
+                np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()
             ) / np.log(
                 2
             )  # for exponential distribution MEDIAN and MAD are the same, but for
