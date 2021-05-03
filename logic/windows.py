@@ -420,8 +420,8 @@ class MainWin:
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.plot(x_data, y_data, clear=True)
 
-            # devices not yet initialized
             except AttributeError:
+                # devices not yet initialized
                 pass
 
         # no scan

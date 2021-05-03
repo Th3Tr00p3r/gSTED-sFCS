@@ -2220,7 +2220,7 @@ Duration (s)</string>
                       <item>
                        <widget class="QDoubleSpinBox" name="solScanCalSaveIntrvl">
                         <property name="enabled">
-                         <bool>false</bool>
+                         <bool>true</bool>
                         </property>
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -2295,7 +2295,7 @@ Duration (s)</string>
                       <item>
                        <widget class="QSpinBox" name="solScanFileNo">
                         <property name="enabled">
-                         <bool>false</bool>
+                         <bool>true</bool>
                         </property>
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -2351,7 +2351,7 @@ Duration (s)</string>
                       <item>
                        <widget class="QSpinBox" name="solScanTotalFiles">
                         <property name="enabled">
-                         <bool>false</bool>
+                         <bool>true</bool>
                         </property>
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -4283,7 +4283,7 @@ Pattern:</string>
                   <item>
                    <widget class="QTimeEdit" name="solScanStartTime">
                     <property name="enabled">
-                     <bool>false</bool>
+                     <bool>true</bool>
                     </property>
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
@@ -4364,7 +4364,7 @@ Pattern:</string>
                   <item alignment="Qt::AlignRight">
                    <widget class="QTimeEdit" name="solScanEndTime">
                     <property name="enabled">
-                     <bool>false</bool>
+                     <bool>true</bool>
                     </property>
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
@@ -4474,7 +4474,7 @@ Pattern:</string>
                        <item>
                         <widget class="QDoubleSpinBox" name="g0">
                          <property name="enabled">
-                          <bool>false</bool>
+                          <bool>true</bool>
                          </property>
                          <property name="minimumSize">
                           <size>
@@ -4484,14 +4484,17 @@ Pattern:</string>
                          </property>
                          <property name="maximumSize">
                           <size>
-                           <width>120</width>
-                           <height>40</height>
+                           <width>80</width>
+                           <height>30</height>
                           </size>
                          </property>
                          <property name="font">
                           <font>
                            <pointsize>12</pointsize>
                           </font>
+                         </property>
+                         <property name="readOnly">
+                          <bool>true</bool>
                          </property>
                          <property name="buttonSymbols">
                           <enum>QAbstractSpinBox::NoButtons</enum>
@@ -4573,7 +4576,7 @@ Pattern:</string>
                        <item>
                         <widget class="QDoubleSpinBox" name="decayTime">
                          <property name="enabled">
-                          <bool>false</bool>
+                          <bool>true</bool>
                          </property>
                          <property name="minimumSize">
                           <size>
@@ -4583,14 +4586,17 @@ Pattern:</string>
                          </property>
                          <property name="maximumSize">
                           <size>
-                           <width>120</width>
-                           <height>40</height>
+                           <width>80</width>
+                           <height>30</height>
                           </size>
                          </property>
                          <property name="font">
                           <font>
                            <pointsize>12</pointsize>
                           </font>
+                         </property>
+                         <property name="readOnly">
+                          <bool>true</bool>
                          </property>
                          <property name="buttonSymbols">
                           <enum>QAbstractSpinBox::NoButtons</enum>
