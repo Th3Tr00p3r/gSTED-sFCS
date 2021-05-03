@@ -18,8 +18,6 @@ from utilities.helper import trans_dict
 class Ftd2xx:
     """Doc."""
 
-    # TODO: update README, keep PyFtdi for now. After removing, get rid of uneccessary gui settings and the trans dict function
-
     ftd2xx_dict = {
         "Single Channel Synchronous 245 FIFO": 0x40,
         "RTS-CTS": ftd2xx.defines.FLOW_RTS_CTS,
@@ -237,8 +235,6 @@ class NIDAQmx:
 
 class PyVISA:
     """Doc."""
-
-    # TODO: try to free the relevant USB port (COM3?) to avoid getting stuck when trying to run the application when dep is powered ON
 
     def __init__(
         self,

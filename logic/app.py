@@ -60,7 +60,8 @@ class App:
 
         # FINALLY
         self.gui.main.imp.disp_scn_pttrn("image")
-        self.gui.main.imp.disp_scn_pttrn("angular")
+        sol_pattern = consts.SOL_MEAS_WDGT_COLL.read_namespace_from_gui(self).scan_type
+        self.gui.main.imp.disp_scn_pttrn(sol_pattern)
         self.gui.main.show()
 
         # set up main timeout event
