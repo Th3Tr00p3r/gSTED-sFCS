@@ -12,6 +12,7 @@ from typing import NoReturn
 
 import numpy as np
 import scipy.io as sio
+from scipy.optimize import OptimizeWarning
 
 import utilities.constants as consts
 from data_analysis.CorrFuncTDCclass import CorrFuncTDCclass
@@ -654,8 +655,27 @@ class SFCSSolutionMeasurement(Measurement):
             s.data["Data"].append(p)
             s.DoCorrelateRegularData()
             s.DoAverageCorr(NoPlot=True)
-            self.g0_wdgt.set(s.G0)
-            self.plot_wdgt.obj.plot(s.lag, s.CF_CR[0], clear=True)
+            try:
+                s.DoFit(NoPlot=True)
+                #                print(s.FitParam) # TESTESTEST
+                g0, tau, _ = s.FitParam["Diffusion3Dfit"]["beta"]
+                x, y = s.FitParam["x"], s.FitParam["y"]
+                self.g0_wdgt.set(g0)
+                self.decay_time_wdgt.set(tau)
+                self.plot_wdgt.obj.plot(s.lag, s.AverageCF_CR, clear=True)
+                self.plot_wdgt.obj.plot(x, y, clear=False)
+            except (RuntimeWarning, RuntimeError, OptimizeWarning, KeyError) as exc:
+                # fit failed
+                print(
+                    f"Fit failed ({exc.__class__.__name__}) - showing G0 only, but should probably be ignored..."
+                )
+                self.g0_wdgt.set(s.G0)
+                self.plot_wdgt.obj.plot(s.lag, s.AverageCF_CR, clear=True)
+
+            # TODO: better xRange - based on tau estimate? (don't have) or what?
+            self.plot_wdgt.obj.plotItem.vb.setRange(
+                xRange=(0, 10), yRange=(-s.G0 * 0.3, s.G0 * 1.3)
+            )
 
     def prep_data_dict(self) -> dict:
         """

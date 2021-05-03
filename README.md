@@ -92,5 +92,4 @@ Windows:
 
 3. in cmd or PowerShell, cd to `/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib`
 
-4. Compile: `g++ -o SoftCorrelatorDynamicLib -shared -fPIC -O2 SoftCorrelatorDynamicLib.cpp Correlator.cpp CountCorrelator.cpp CPhDelayCrossCorrelator.cpp`
-* 
+4. Compile: `g++ -o SoftCorrelatorDynamicLib.so -shared -fPIC -O2 SoftCorrelatorDynamicLib.cpp Correlator.cpp CountCorrelator.cpp CPhDelayCrossCorrelator.cpp`

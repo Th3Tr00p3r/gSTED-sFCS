@@ -149,21 +149,28 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
     l2 = parent_wdgt.findChildren(QtWidgets.QSpinBox)
     l3 = parent_wdgt.findChildren(QtWidgets.QDoubleSpinBox)
     l4 = parent_wdgt.findChildren(QtWidgets.QComboBox)
-    children_list = l1 + l2 + l3 + l4
+    l5 = parent_wdgt.findChildren(QtWidgets.QCheckBox)
+    children_list = l1 + l2 + l3 + l4 + l5
 
     rows = []
     for child in children_list:
         if not child.objectName() == "qt_spinbox_lineedit":
-            if hasattr(child, "currentIndex") or not child.isReadOnly():
-                # if QComboBox or QSpinBox/QLineEdit (combobox doesn't have readonly property)
-                if hasattr(child, "value"):  # QSpinBox
-                    val = child.value()
-                elif hasattr(child, "currentIndex"):  # QComboBox
+            try:
+                if not child.isReadOnly():
+                    # only save editable QSpinBox/QLineEdit
+                    if hasattr(child, "value"):  # QSpinBox
+                        val = child.value()
+                    else:  # QLineEdit
+                        val = child.text()
+                    rows.append((child.objectName(), str(val)))
+            except AttributeError:
+                # if doesn't have a isReadOnly attribute (QComboBox/QCheckBox)
+                if hasattr(child, "currentIndex"):  # QComboBox
                     val = child.currentIndex()
-                elif hasattr(child, "currentIndex"):  # QCheckBox
+                elif hasattr(child, "isChecked"):  # QCheckBox
                     val = child.isChecked()
-                else:  # QLineEdit
-                    val = child.text()
+                else:
+                    continue
                 rows.append((child.objectName(), str(val)))
     return rows
 
