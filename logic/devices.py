@@ -11,7 +11,6 @@ from ftd2xx.ftd2xx import DeviceError
 from nidaqmx.errors import DaqError
 from pyvisa.errors import VisaIOError
 
-import logic.drivers as drivers
 import utilities.constants as consts
 import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
@@ -734,19 +733,12 @@ class DepletionLaser(PyVISA):
             dialog.Error(error_txt="Current out of range").display()
 
 
-class StepperStage:
-    """
-    Control stepper stage through Arduino chip using PyVISA.
-    This device operates slowly and needs special care,
-    and so its driver is within its own class (not inherited)
-    """
-
-    # TODO: if this uses PyVISA, have it be like all other devices by changing the PyVISA driver class to accomodate it!
+class StepperStage(PyVISA):
+    """Control stepper stage through Arduino chip using PyVISA."""
 
     def __init__(self, param_dict):
-        [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = None
-        self.rm = drivers.visa.ResourceManager()
+        super().__init__(param_dict)
+
         self.toggle(True)
         self.toggle(False)
 
@@ -754,35 +746,33 @@ class StepperStage:
         """Doc."""
 
         try:
-            if bool:
-                self.rsrc = self.rm.open_resource(self.address)
+            if bool is True:
+                self.open()
             else:
-                self.rsrc.close()
+                self.close()
         except VisaIOError as exc:
             err_hndlr(exc, "toggle()", dvc=self)
         else:
             self.state = bool
 
-    def move(self, dir=None, steps=None):
+    def move(self, dir, steps):
         """Doc."""
 
         cmd_dict = {
-            "UP": (lambda steps: "my " + str(-steps)),
-            "DOWN": (lambda steps: "my " + str(steps)),
-            "LEFT": (lambda steps: "mx " + str(steps)),
-            "RIGHT": (lambda steps: "mx " + str(-steps)),
+            "UP": f"my {-steps}",
+            "DOWN": f"my {steps}",
+            "LEFT": f"mx {steps}",
+            "RIGHT": f"mx {-steps}",
         }
-        cmnd = cmd_dict[dir](steps)
         try:
-            self.rsrc.write(cmnd)
+            self.write(cmd_dict[dir])
         except VisaIOError as exc:
             err_hndlr(exc, "move()", dvc=self)
 
     def release(self):
         """Doc."""
 
-        cmnd = "ryx "
         try:
-            self.rsrc.write(cmnd)
+            self.write("ryx ")
         except VisaIOError as exc:
             err_hndlr(exc, "release()", dvc=self)
