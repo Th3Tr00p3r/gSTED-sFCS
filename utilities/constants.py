@@ -296,7 +296,9 @@ SOL_MEAS_WDGT_COLL = QtWidgetCollection(
     total_files_wdgt=("solScanTotalFiles", "value", "main"),
     pattern_wdgt=("solScanPattern", None, "main"),
     g0_wdgt=("g0", "value", "main"),
-    decay_time_wdgt=("decayTime", "value", "main"),
+    g0_err_wdgt=("g0Err", "value", "main"),
+    tau_wdgt=("decayTime", "value", "main"),
+    tau_err_wdgt=("decayTimeErr", "value", "main"),
     plot_wdgt=("acf", None, "main"),
 )
 
