@@ -30,7 +30,6 @@ class UM232H(Ftd2xx):
             param_dict=param_dict,
         )
 
-        self.read_intrvl_buffer = np.zeros(shape=1000, dtype=np.float)
         self.init_data()
         self.toggle(True)
 
@@ -47,6 +46,7 @@ class UM232H(Ftd2xx):
             # TODO: disconnect cable and see what error is caused
             DeviceError,
             TypeError,
+            AttributeError,
         ) as exc:
             err_hndlr(exc, "toggle()", dvc=self)
 
@@ -57,37 +57,14 @@ class UM232H(Ftd2xx):
             byte_array, n = await self.read()
             self.data.extend(byte_array)
             self.tot_bytes_read += n
-        except (AttributeError, OSError, ValueError) as exc:
+        except (DeviceError, AttributeError, OSError, ValueError) as exc:
             err_hndlr(exc, "read_TDC()", dvc=self)
-        else:
-            self.fill_ri_buffer()
 
     def init_data(self):
         """Doc."""
 
         self.data = array("B")
         self.tot_bytes_read = 0
-
-    def fill_ri_buffer(self):
-        """Doc."""
-
-        try:
-            now = time.perf_counter()
-            delay = now - self.last_read
-            self.last_read = now
-        except AttributeError:
-            # if first time (no last_read)
-            delay = now
-            self.last_read = now
-            self.last_idx = 0
-
-        try:
-            self.read_intrvl_buffer[self.last_idx] = delay
-        except IndexError:
-            # if full, start at the beginning
-            self.last_idx = 0
-            self.read_intrvl_buffer[self.last_idx] = delay
-        self.last_idx += 1
 
 
 class Scanners(NIDAQmx):

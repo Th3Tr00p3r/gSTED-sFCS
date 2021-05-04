@@ -15,6 +15,7 @@ import scipy.io as sio
 from scipy.optimize import OptimizeWarning
 
 import utilities.constants as consts
+from data_analysis import FitTools
 from data_analysis.CorrFuncTDCclass import CorrFuncTDCclass
 from data_analysis.PhotonDataClass import PhotonDataClass
 from logic.scan_patterns import ScanPatternAO
@@ -112,12 +113,12 @@ class Measurement:
 
         file_path = self.save_path + file_name
 
-        # .mat
         if self.save_frmt == "MATLAB":
+            # .mat
             sio.savemat(file_path + ".mat", data_dict)
 
-        # .pkl
         else:
+            # .pkl
             with open(file_path + ".pkl", "wb") as f:
                 pickle.dump(data_dict, f)
 
@@ -635,13 +636,7 @@ class SFCSSolutionMeasurement(Measurement):
         )
 
     def disp_ACF(self):
-        """Placeholder for calculating and presenting the ACF"""
-
-        print(
-            f"Measurement Finished:\n"
-            f"Full Data[:100] = {self.data_dvc.data[:100]}\n"
-            f"Total Bytes = {self.data_dvc.tot_bytes_read}\n"
-        )
+        """Doc."""
 
         if self.repeat is True:
             # display ACF for alignments
@@ -657,24 +652,35 @@ class SFCSSolutionMeasurement(Measurement):
             s.DoAverageCorr(NoPlot=True)
             try:
                 s.DoFit(NoPlot=True)
-                #                print(s.FitParam) # TESTESTEST
-                g0, tau, _ = s.FitParam["Diffusion3Dfit"]["beta"]
-                x, y = s.FitParam["x"], s.FitParam["y"]
-                self.g0_wdgt.set(g0)
-                self.decay_time_wdgt.set(tau)
-                self.plot_wdgt.obj.plot(s.lag, s.AverageCF_CR, clear=True)
-                self.plot_wdgt.obj.plot(x, y, clear=False)
             except (RuntimeWarning, RuntimeError, OptimizeWarning, KeyError) as exc:
                 # fit failed
                 print(
                     f"Fit failed ({exc.__class__.__name__}) - showing G0 only, but should probably be ignored..."
                 )
+                g0, tau = s.G0, 0.1
                 self.g0_wdgt.set(s.G0)
+                self.g0_err_wdgt.set(0)
+                self.tau_wdgt.set(0)
+                self.tau_err_wdgt.set(0)
                 self.plot_wdgt.obj.plot(s.lag, s.AverageCF_CR, clear=True)
+            else:
+                # fit succeeded
+                fit_params = s.FitParam["Diffusion3Dfit"]
+                g0, tau, _ = fit_params["beta"]
+                g0_err, tau_err, _ = fit_params["errorBeta"]
+                x, y = fit_params["x"], fit_params["y"]
+                fit_func = getattr(FitTools, fit_params["FitFunc"])
+                self.g0_wdgt.set(g0)
+                self.g0_err_wdgt.set(g0_err)
+                self.tau_wdgt.set(tau * 1e3)
+                self.tau_err_wdgt.set(tau_err * 1e3)
+                self.plot_wdgt.obj.plot(x, y, clear=True)
+                self.plot_wdgt.obj.plot(
+                    x, fit_func(x, *fit_params["beta"]), clear=False, pen="r"
+                )
 
-            # TODO: better xRange - based on tau estimate? (don't have) or what?
             self.plot_wdgt.obj.plotItem.vb.setRange(
-                xRange=(0, 10), yRange=(-s.G0 * 0.3, s.G0 * 1.3)
+                xRange=(0, tau * 1.3), yRange=(-g0 * 0.1, g0 * 1.3)
             )
 
     def prep_data_dict(self) -> dict:
@@ -821,13 +827,6 @@ class SFCSSolutionMeasurement(Measurement):
 
             else:
                 break
-
-        print(
-            f"mean latency: {self.data_dvc.read_intrvl_buffer.mean()*1000:.2} ms"
-        )  # TESTESTEST
-        print(
-            f"actual/set latency ratio: {self.data_dvc.read_intrvl_buffer.mean()*1000 / self.data_dvc.ltncy_tmr_val:.2}"
-        )  # TESTESTEST
 
         await self.toggle_lasers(finish=True)
 
