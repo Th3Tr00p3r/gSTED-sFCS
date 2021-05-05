@@ -604,8 +604,6 @@ class DepletionLaser(PyVISA):
     def get_prop(self, prop):
         """Doc."""
 
-        self.clear_recieve_buffer()
-
         prop_cmnd_dict = {
             "temp": "SHGtemp",
             "curr": "LDcurrent 1",
@@ -614,6 +612,7 @@ class DepletionLaser(PyVISA):
         cmnd = prop_cmnd_dict[prop]
 
         try:
+            self.flush()
             response = self.query(cmnd)
             return float(re.findall(r"-?\d+\.?\d*", response)[0])
         except VisaIOError as exc:
@@ -656,14 +655,6 @@ class DepletionLaser(PyVISA):
                 err_hndlr(exc, "set_current()", dvc=self)
         else:
             dialog.Error(error_txt="Current out of range").display()
-
-    def clear_recieve_buffer(self):
-        """Doc."""
-
-        try:
-            self.flush()
-        except VisaIOError as exc:
-            err_hndlr(exc, "clear_recieve_buffer()", dvc=self)
 
 
 class StepperStage(PyVISA):
