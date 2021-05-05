@@ -255,8 +255,8 @@ class PyVISA:
             self.address,
             read_termination=self.read_termination,
             write_termination=self.write_termination,
-            timeout=1,
-            open_timeout=5,
+            timeout=50,  # ms
+            open_timeout=50,  # ms
         )
 
     def write(self, cmnd: str) -> NoReturn:
@@ -273,6 +273,12 @@ class PyVISA:
         """Doc."""
 
         self._rsrc.close()
+
+    def flush(self) -> NoReturn:
+        """Doc."""
+
+        mask = visa.constants.BufferOperation(4) | visa.constants.BufferOperation(6)
+        self._rsrc.flush(mask)
 
 
 class Instrumental:

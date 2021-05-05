@@ -654,7 +654,7 @@ class SFCSSolutionMeasurement(Measurement):
             s.DoAverageCorr(NoPlot=True)
             try:
                 s.DoFit(NoPlot=True)
-            except (RuntimeWarning, RuntimeError, OptimizeWarning, KeyError) as exc:
+            except (RuntimeWarning, RuntimeError, OptimizeWarning) as exc:
                 # fit failed
                 err_hndlr(exc, "disp_ACF()", lvl="warning")
                 self.fit_led.set(QIcon(icon_path.LED_RED))
