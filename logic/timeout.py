@@ -4,7 +4,6 @@
 import asyncio
 import logging
 import os
-import time
 from collections import deque
 from typing import NoReturn
 
@@ -71,11 +70,8 @@ class Timeout:
             finally:
                 return last_line
 
-        now_timestamp = time.strftime("%H:%M:%S", time.localtime())
-        first_line = f"[{now_timestamp}] Application Started"
-
         maxlen = self._app.gui.main.logNumLinesSlider.value()
-        buffer_deque = deque([first_line], maxlen=maxlen)
+        buffer_deque = deque([""], maxlen=maxlen)
 
         while self.not_finished:
             new_maxlen = self._app.gui.main.logNumLinesSlider.value()

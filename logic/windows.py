@@ -18,8 +18,6 @@ from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import dvc_err_chckr as err_chckr
 
-# TODO: None of the following should be classes. Notice that they don't have any attributes, therefore their state cannot change and thus Objects have no meaning. Instead, the methods should be functions in seperate modules, perhaps under a
-
 
 class MainWin:
     """Doc."""
