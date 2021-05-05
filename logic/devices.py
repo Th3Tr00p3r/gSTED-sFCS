@@ -538,6 +538,179 @@ class PixelClock(NIDAQmx):
             err_hndlr(exc, "_start_co_clock_sync()", dvc=self)
 
 
+class SimpleDO(NIDAQmx):
+    """ON/OFF device (excitation laser, depletion shutter, TDC)."""
+
+    def __init__(self, param_dict):
+        super().__init__(
+            param_dict,
+            task_types=("do"),
+        )
+        self.toggle(False)
+
+    def toggle(self, bool):
+        """Doc."""
+
+        self.digital_write(bool)
+        self.state = bool
+
+
+class DepletionLaser(PyVISA):
+    """Control depletion laser through pyVISA"""
+
+    min_SHG_temp = 52
+
+    def __init__(self, param_dict):
+        super().__init__(
+            param_dict,
+            read_termination="\r",
+            write_termination="\r",
+        )
+
+        self.updt_time = 0.3
+        self.state = None
+        self.toggle(True)
+
+        if self.state is False:
+            self.set_current(1500)
+
+    def toggle(self, bool):
+        """Doc."""
+
+        try:
+            if bool is True:
+                self.open()
+            else:
+                if self.state is True:
+                    self.laser_toggle(False)
+                self.close()
+        except VisaIOError as exc:
+            err_hndlr(exc, "toggle()", dvc=self)
+        else:
+            # state stays 'None' if open() fails
+            self.state = False
+
+    def laser_toggle(self, bool):
+        """Doc."""
+
+        cmnd = f"setLDenable {int(bool)}"
+        try:
+            self.write(cmnd)
+        except VisaIOError as exc:
+            err_hndlr(exc, "laser_toggle()", dvc=self)
+        else:
+            self.state = bool
+
+    def get_prop(self, prop):
+        """Doc."""
+
+        self.clear_recieve_buffer()
+
+        prop_cmnd_dict = {
+            "temp": "SHGtemp",
+            "curr": "LDcurrent 1",
+            "pow": "Power 0",
+        }
+        cmnd = prop_cmnd_dict[prop]
+
+        try:
+            response = self.query(cmnd)
+            return float(re.findall(r"-?\d+\.?\d*", response)[0])
+        except VisaIOError as exc:
+            err_hndlr(exc, f"get_prop({cmnd})", dvc=self)
+            return 0
+        except IndexError as exc:
+            err_hndlr(exc, f"get_prop({cmnd})", lvl="warning", dvc=self)
+            return 0
+
+    def set_power(self, value_mW):
+        """Doc."""
+
+        # check that value is within range
+        if 99 <= value_mW <= 1000:
+            try:
+                # change the mode to power
+                cmnd = "Powerenable 1"
+                self.write(cmnd)
+                # then set the power
+                cmnd = f"Setpower 0 {value_mW}"
+                self.write(cmnd)
+            except VisaIOError as exc:
+                err_hndlr(exc, "set_power()", dvc=self)
+        else:
+            dialog.Error(error_txt="Power out of range").display()
+
+    def set_current(self, value_mW):
+        """Doc."""
+
+        # check that value is within range
+        if 1500 <= value_mW <= 2500:
+            try:
+                # change the mode to power
+                cmnd = "Powerenable 0"
+                self.write(cmnd)
+                # then set the power
+                cmnd = f"setLDcur 1 {value_mW}"
+                self.write(cmnd)
+            except VisaIOError as exc:
+                err_hndlr(exc, "set_current()", dvc=self)
+        else:
+            dialog.Error(error_txt="Current out of range").display()
+
+    def clear_recieve_buffer(self):
+        """Doc."""
+
+        try:
+            self.flush()
+        except VisaIOError as exc:
+            err_hndlr(exc, "clear_recieve_buffer()", dvc=self)
+
+
+class StepperStage(PyVISA):
+    """Control stepper stage through Arduino chip using PyVISA."""
+
+    def __init__(self, param_dict):
+        super().__init__(param_dict)
+
+        self.toggle(True)
+        self.toggle(False)
+
+    def toggle(self, bool):
+        """Doc."""
+
+        try:
+            if bool is True:
+                self.open()
+            else:
+                self.close()
+        except VisaIOError as exc:
+            err_hndlr(exc, "toggle()", dvc=self)
+        else:
+            self.state = bool
+
+    def move(self, dir, steps):
+        """Doc."""
+
+        cmd_dict = {
+            "UP": f"my {-steps}",
+            "DOWN": f"my {steps}",
+            "LEFT": f"mx {steps}",
+            "RIGHT": f"mx {-steps}",
+        }
+        try:
+            self.write(cmd_dict[dir])
+        except VisaIOError as exc:
+            err_hndlr(exc, "move()", dvc=self)
+
+    def release(self):
+        """Doc."""
+
+        try:
+            self.write("ryx ")
+        except VisaIOError as exc:
+            err_hndlr(exc, "release()", dvc=self)
+
+
 class Camera(Instrumental):
     """Doc."""
 
@@ -612,166 +785,3 @@ class Camera(Instrumental):
         ax = self._gui.figure.add_subplot(111)
         ax.imshow(img)
         self._gui.canvas.draw()
-
-
-class SimpleDO(NIDAQmx):
-    """ON/OFF device (excitation laser, depletion shutter, TDC)."""
-
-    def __init__(self, param_dict):
-        super().__init__(
-            param_dict,
-            task_types=("do"),
-        )
-        self.toggle(False)
-
-    def toggle(self, bool):
-        """Doc."""
-
-        self.digital_write(bool)
-        self.state = bool
-
-
-class DepletionLaser(PyVISA):
-    """Control depletion laser through pyVISA"""
-
-    min_SHG_temp = 52
-
-    def __init__(self, param_dict):
-        super().__init__(
-            param_dict,
-            read_termination="\r",
-            write_termination="\r",
-        )
-
-        self.updt_time = 2
-        self.state = None
-        self.toggle(True)
-
-        if self.state is False:
-            self.set_current(1500)
-
-    def toggle(self, bool):
-        """Doc."""
-
-        try:
-            if bool is True:
-                self.open()
-            else:
-                if self.state is True:
-                    self.laser_toggle(False)
-                self.close()
-        except VisaIOError as exc:
-            err_hndlr(exc, "toggle()", dvc=self)
-        else:
-            # state stays 'None' if open() fails
-            self.state = False
-
-    def laser_toggle(self, bool):
-        """Doc."""
-
-        cmnd = f"setLDenable {int(bool)}"
-        try:
-            self.write(cmnd)
-        except VisaIOError as exc:
-            err_hndlr(exc, "laser_toggle()", dvc=self)
-        else:
-            self.state = bool
-
-    def get_prop(self, prop):
-        """Doc."""
-
-        prop_cmnd_dict = {
-            "temp": "SHGtemp",
-            "curr": "LDcurrent 1",
-            "pow": "Power 0",
-        }
-        cmnd = prop_cmnd_dict[prop]
-
-        try:
-            response = self.query(cmnd)
-            return float(re.findall(r"-?\d+\.?\d*", response)[0])
-        except VisaIOError as exc:
-            err_hndlr(exc, f"get_prop({cmnd})", dvc=self)
-            return 0
-        except IndexError as exc:
-            err_hndlr(exc, f"get_prop({cmnd})", lvl="warning", dvc=self)
-            return 0
-
-    def set_power(self, value_mW):
-        """Doc."""
-
-        # check that value is within range
-        if 99 <= value_mW <= 1000:
-            try:
-                # change the mode to power
-                cmnd = "Powerenable 1"
-                self.write(cmnd)
-                # then set the power
-                cmnd = f"Setpower 0 {value_mW}"
-                self.write(cmnd)
-            except VisaIOError as exc:
-                err_hndlr(exc, "set_power()", dvc=self)
-        else:
-            dialog.Error(error_txt="Power out of range").display()
-
-    def set_current(self, value_mW):
-        """Doc."""
-
-        # check that value is within range
-        if 1500 <= value_mW <= 2500:
-            try:
-                # change the mode to power
-                cmnd = "Powerenable 0"
-                self.write(cmnd)
-                # then set the power
-                cmnd = f"setLDcur 1 {value_mW}"
-                self.write(cmnd)
-            except VisaIOError as exc:
-                err_hndlr(exc, "set_current()", dvc=self)
-        else:
-            dialog.Error(error_txt="Current out of range").display()
-
-
-class StepperStage(PyVISA):
-    """Control stepper stage through Arduino chip using PyVISA."""
-
-    def __init__(self, param_dict):
-        super().__init__(param_dict)
-
-        self.toggle(True)
-        self.toggle(False)
-
-    def toggle(self, bool):
-        """Doc."""
-
-        try:
-            if bool is True:
-                self.open()
-            else:
-                self.close()
-        except VisaIOError as exc:
-            err_hndlr(exc, "toggle()", dvc=self)
-        else:
-            self.state = bool
-
-    def move(self, dir, steps):
-        """Doc."""
-
-        cmd_dict = {
-            "UP": f"my {-steps}",
-            "DOWN": f"my {steps}",
-            "LEFT": f"mx {steps}",
-            "RIGHT": f"mx {-steps}",
-        }
-        try:
-            self.write(cmd_dict[dir])
-        except VisaIOError as exc:
-            err_hndlr(exc, "move()", dvc=self)
-
-    def release(self):
-        """Doc."""
-
-        try:
-            self.write("ryx ")
-        except VisaIOError as exc:
-            err_hndlr(exc, "release()", dvc=self)

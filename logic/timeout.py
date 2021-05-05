@@ -206,44 +206,30 @@ class Timeout:
     async def _update_dep(self) -> NoReturn:
         """Update depletion laser GUI"""
 
-        def update_SHG_temp(dep_dvc, main_gui) -> NoReturn:
-            """Doc."""
-
-            temp = dep_dvc.get_prop("temp")
-            if temp < dep_dvc.min_SHG_temp:
-                main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
-            else:
-                main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
-            main_gui.depTemp.setValue(temp)
-
-        def update_power(dep_dvc, main_gui) -> NoReturn:
-            """Doc."""
-
-            pow = dep_dvc.get_prop("pow")
-            main_gui.depActualPow.setValue(pow)
-
-        def update_current(dep_dvc, main_gui) -> NoReturn:
-            """Doc."""
-
-            curr = dep_dvc.get_prop("curr")
-            main_gui.depActualCurr.setValue(curr)
-
-        def update_props(dep_err_dict, dep_dvc, main_gui) -> NoReturn:
-            """Doc."""
-
-            if dep_err_dict is None:
-                update_SHG_temp(dep_dvc, main_gui)
-
-                # check current/power only if laser is ON
-                if dep_dvc.state is True:
-                    update_power(dep_dvc, main_gui)
-                    update_current(dep_dvc, main_gui)
+        dep_dvc = self._app.devices.DEP_LASER
+        main_gui = self._app.gui.main
 
         while self.not_finished:
-            update_props(
-                self._app.devices.DEP_LASER.error_dict,
-                self._app.devices.DEP_LASER,
-                self._app.gui.main,
-            )
+
+            if dep_dvc.error_dict is None:
+
+                temp, pow, curr = (
+                    dep_dvc.get_prop("temp"),
+                    dep_dvc.get_prop("pow"),
+                    dep_dvc.get_prop("curr"),
+                )
+
+                main_gui.depTemp.setValue(temp)
+                main_gui.depActualPow.setValue(pow)
+                main_gui.depActualCurr.setValue(curr)
+
+                if temp < dep_dvc.min_SHG_temp:
+                    main_gui.depTemp.setStyleSheet(
+                        "background-color: red; color: white;"
+                    )
+                else:
+                    main_gui.depTemp.setStyleSheet(
+                        "background-color: white; color: black;"
+                    )
 
             await asyncio.sleep(self.updt_intrvl["dep"])
