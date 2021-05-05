@@ -28,7 +28,7 @@ def build_err_dict(exc: Exception) -> str:
     return dict(type=exc_type, msg=str(exc), tb=frmtd_tb, module=fname, line=lineno)
 
 
-def err_hndlr(exc, func, lvl="ERROR", dvc=None):
+def err_hndlr(exc, func, lvl="error", dvc=None, disp=False):
     """Doc."""
 
     err_dict = build_err_dict(exc)
@@ -36,21 +36,17 @@ def err_hndlr(exc, func, lvl="ERROR", dvc=None):
     if dvc is not None:
         dvc_log_ref = getattr(consts, dvc.nick).log_ref
         log_str = f"{err_dict['type']}: {dvc_log_ref} didn't respond to '{func}' ({err_dict['module']}, {err_dict['line']})"
-        if lvl == "ERROR":
+        if lvl == "error":
             if dvc.error_dict is None:  # keep only first error
                 dvc.error_dict = err_dict
             dvc.led_widget.set(QIcon(icon.LED_RED))
 
     else:  # logic eror
-        log_str = (
-            f"{func}: {err_dict['msg']} ({err_dict['module']}, {err_dict['line']})"
-        )
-        Error(err_dict).display()
+        log_str = f"{err_dict['type']}: {err_dict['msg']} ({func}, {err_dict['module']}, {err_dict['line']})"
+        if disp:
+            Error(**err_dict).display()
 
-    if lvl == "ERROR":
-        logging.error(log_str, exc_info=False)
-    else:  # "WARNING"
-        logging.warning(log_str)
+    getattr(logging, lvl)(log_str, exc_info=False)
 
 
 # TODO: allow toggle(off) on error!
