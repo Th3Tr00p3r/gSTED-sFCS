@@ -584,7 +584,7 @@ class DepletionLaser(PyVISA):
                 if self.state is True:
                     self.laser_toggle(False)
                 self.close()
-        except VisaIOError as exc:
+        except (VisaIOError, AttributeError) as exc:
             err_hndlr(exc, "toggle()", dvc=self)
         else:
             # state stays 'None' if open() fails
