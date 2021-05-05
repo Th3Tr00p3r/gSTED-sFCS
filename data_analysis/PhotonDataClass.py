@@ -15,7 +15,7 @@ class PhotonDataClass:
 
     # def __init__(self):
 
-    def DoConvertFPGAdataToPhotons(self, FPGAdata, Version=3):
+    def DoConvertFPGAdataToPhotons(self, FPGAdata, Version=3, verbose=False):
         if Version >= 2:
             GroupLen = 7
             maxval = 256 ** 3
@@ -31,9 +31,9 @@ class PhotonDataClass:
             )
             sectionEdges.append(np.array([edgeStart, edgeStop]))
 
-        print("Found " + str(len(sectionEdges)) + " sections of lengths:")
         SectionLength = np.array([np.diff(SE)[0] for SE in sectionEdges])
-        print(SectionLength)
+        if verbose:
+            print(f"Found {len(sectionEdges)} sections of lengths:\n{SectionLength}")
 
         # patching: look at the largest section only
         SecInd = np.argmax(SectionLength)
@@ -52,7 +52,8 @@ class PhotonDataClass:
             )
         )[0]
         if J.size != 0:
-            print("Found " + str(J.size) + " of missing bit data: ad hoc fixing...")
+            if verbose:
+                print(f"Found {J.size} of missing bit data: ad hoc fixing...")
             temp = (time_stamps[J] + time_stamps[J + 1]) / 2
             time_stamps[J] = np.floor(temp).astype(int)
             time_stamps[J + 1] = np.ceil(temp).astype(int)

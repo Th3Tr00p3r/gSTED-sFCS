@@ -689,13 +689,12 @@ class DepletionLaser(PyVISA):
 
         try:
             response = self.query(cmnd)
-            #            print(f"command: {cmnd}, response: {response}")  # TESTESTEST
             return float(re.findall(r"-?\d+\.?\d*", response)[0])
         except VisaIOError as exc:
             err_hndlr(exc, f"get_prop({cmnd})", dvc=self)
             return 0
         except IndexError as exc:
-            err_hndlr(exc, f"get_prop({cmnd})", lvl="WARNING", dvc=self)
+            err_hndlr(exc, f"get_prop({cmnd})", lvl="warning", dvc=self)
             return 0
 
     def set_power(self, value_mW):

@@ -337,6 +337,7 @@ class MainWin:
                             "tau_wdgt",
                             "tau_err_wdgt",
                             "plot_wdgt",
+                            "fit_led",
                         ],
                     ).read_dict_from_gui(self._app),
                 )

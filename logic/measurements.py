@@ -12,8 +12,10 @@ from typing import NoReturn
 
 import numpy as np
 import scipy.io as sio
+from PyQt5.QtGui import QIcon
 from scipy.optimize import OptimizeWarning
 
+import gui.icons.icon_paths as icon_path
 import utilities.constants as consts
 from data_analysis import FitTools
 from data_analysis.CorrFuncTDCclass import CorrFuncTDCclass
@@ -654,26 +656,21 @@ class SFCSSolutionMeasurement(Measurement):
                 s.DoFit(NoPlot=True)
             except (RuntimeWarning, RuntimeError, OptimizeWarning, KeyError) as exc:
                 # fit failed
-                print(
-                    f"Fit failed ({exc.__class__.__name__}) - showing G0 only, but should probably be ignored..."
-                )
+                err_hndlr(exc, "disp_ACF()", lvl="warning")
+                self.fit_led.set(QIcon(icon_path.LED_RED))
                 g0, tau = s.G0, 0.1
                 self.g0_wdgt.set(s.G0)
-                self.g0_err_wdgt.set(0)
                 self.tau_wdgt.set(0)
-                self.tau_err_wdgt.set(0)
                 self.plot_wdgt.obj.plot(s.lag, s.AverageCF_CR, clear=True)
             else:
                 # fit succeeded
+                self.fit_led.set(QIcon(icon_path.LED_OFF))
                 fit_params = s.FitParam["Diffusion3Dfit"]
                 g0, tau, _ = fit_params["beta"]
-                g0_err, tau_err, _ = fit_params["errorBeta"]
                 x, y = fit_params["x"], fit_params["y"]
                 fit_func = getattr(FitTools, fit_params["FitFunc"])
                 self.g0_wdgt.set(g0)
-                self.g0_err_wdgt.set(g0_err)
                 self.tau_wdgt.set(tau * 1e3)
-                self.tau_err_wdgt.set(tau_err * 1e3)
                 self.plot_wdgt.obj.plot(x, y, clear=True)
                 self.plot_wdgt.obj.plot(
                     x, fit_func(x, *fit_params["beta"]), clear=False, pen="r"
