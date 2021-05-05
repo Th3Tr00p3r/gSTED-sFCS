@@ -15,7 +15,6 @@ class UserDialog:
         msg_inf=None,
         msg_det=None,
     ):
-        """Doc."""
 
         self._msg_box = QMessageBox()
         self._msg_box.setIcon(msg_icon)
@@ -42,7 +41,6 @@ class Error(UserDialog):
     def __init__(
         self, type="", msg="", tb="", module="", line="", custom_txt="", custom_title=""
     ):
-        """Doc."""
 
         if type:
             super().__init__(
@@ -63,7 +61,6 @@ class Question(UserDialog):
     """Doc."""
 
     def __init__(self, txt, title="User Input Needed"):
-        """Doc."""
 
         super().__init__(msg_icon=QMessageBox.Question, msg_title=title, msg_text=txt)
         self.set_buttons(["Yes", "No"])
@@ -74,6 +71,5 @@ class Notification(UserDialog):
     """Doc."""
 
     def __init__(self, txt, title="Notification"):
-        """Doc."""
 
         super().__init__(msg_icon=QMessageBox.Question, msg_title=title, msg_text=txt)
