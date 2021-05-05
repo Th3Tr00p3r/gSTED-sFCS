@@ -129,6 +129,8 @@ class ScanPatternAO:
         samp_freq_Hz = params.ao_samp_freq_Hz
         max_scan_freq_Hz = params.max_scan_freq_Hz
 
+        assert 0 <= ang_deg <= 180, "The scan angle should be in [0, 180] range!"
+
         if (ang_deg == 0) or (ang_deg == 90):
             tot_len = max_line_len
             n_lines = 2 * int((max_line_len / line_shift + 1) / 2)
@@ -220,9 +222,6 @@ class ScanPatternAO:
                     ),
                 )
 
-        else:
-            raise ValueError("The scan angle should be in [0, 180] range!")
-
         lin_len = f * tot_len
         scan_freq_Hz = params.speed_um_s / (2 * tot_len * (2 - f))
 
@@ -230,9 +229,9 @@ class ScanPatternAO:
         scan_freq_Hz = samp_freq_Hz / tot_ppl / 2
 
         # TODO: ask Oleg about this (max y freq?)
-        if scan_freq_Hz > max_scan_freq_Hz:
-            print(f"scan frequency is over {max_scan_freq_Hz}. ({scan_freq_Hz} Hz)")
-            # raise ValueError("Why is this an error?")
+        assert (
+            scan_freq_Hz < max_scan_freq_Hz
+        ), f"scan frequency is over {max_scan_freq_Hz}. ({scan_freq_Hz} Hz)"
 
         T = tot_ppl
         ppl = T * f / (2 - f)  # make ppl in linear part

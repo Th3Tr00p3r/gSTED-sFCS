@@ -64,9 +64,15 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         )
 
     def DoReadFPGAdata(
-        self, fpathtmpl, FixShift=False, LineEndAdder=1000, ROISelection="auto"
+        self,
+        fpathtmpl,
+        FixShift=False,
+        LineEndAdder=1000,
+        ROISelection="auto",
+        verbose=False,
     ):
-        print("Loading FPGA data...")
+        if verbose:
+            print("Loading FPGA data...")
         # fpathtmpl : template of complete path to data
 
         fpathes = glob.glob(fpathtmpl)
@@ -94,7 +100,8 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         )
 
         for fpath in fpathes:
-            print("Loading " + fpath)
+            if verbose:
+                print(f"Loading {fpath}")
             folderpath_fname = os.path.split(fpath)  # splits in folderpath and filename
             fname, file_extension = os.path.splitext(
                 folderpath_fname[1]
@@ -420,7 +427,12 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         return Cnt, PixNoTot, pixNumber, LineNo
 
     def DoCorrelateRegularData(
-        self, RunDuration=-1, MinTimeFrac=0.5, MaxOutlierProb=1e-5, NrunsRequested=60
+        self,
+        RunDuration=-1,
+        MinTimeFrac=0.5,
+        MaxOutlierProb=1e-5,
+        NrunsRequested=60,
+        verbose=False,
     ):
 
         # if self.IsDataOnDisk:
@@ -441,7 +453,8 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                 )
 
             RunDuration = TotalDurationEstimate / NrunsRequested
-            print("Auto determination of run duration = " + str(RunDuration))
+            if verbose:
+                print(f"Auto determination of run duration = {RunDuration}")
 
         self.RequestedDuration = RunDuration
         self.MinDurationFraction = MinTimeFrac
@@ -455,7 +468,8 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         self.TotalDurationSkipped = 0
 
         for P in self.data["Data"]:
-            print("Correlating " + P.fname)
+            if verbose:
+                print(f"Correlating {P.fname}")
             # find additional outliers
             time_stamps = np.diff(P.runtime)
             mu = np.maximum(
@@ -470,7 +484,8 @@ class CorrFuncTDCclass(CorrFuncDataClass):
             secEdges = np.asarray(time_stamps > maxTimeStamp).nonzero()[0]
             NoOutliers = len(secEdges)
             if NoOutliers > 0:
-                print(str(NoOutliers) + " of all outliers")
+                if verbose:
+                    print(f"{NoOutliers} of all outliers")
 
             secEdges = np.append(np.insert(secEdges, 0, 0), len(time_stamps))
             P.AllSectionEdges = np.array([secEdges[:-1], secEdges[1:]]).T
@@ -479,15 +494,10 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                 # split into segments of approx time of RunDuration
                 SegmentTime = (P.runtime[sE[1]] - P.runtime[sE[0]]) / self.LaserFreq
                 if SegmentTime < MinTimeFrac * RunDuration:
-                    print(
-                        "Duration of segment No. "
-                        + str(j)
-                        + " of file "
-                        + P.fname
-                        + "is "
-                        + str(SegmentTime)
-                        + "s: too short. Skipping..."
-                    )
+                    if verbose:
+                        print(
+                            f"Duration of segment No. {j} of file {P.fname} is {SegmentTime}s: too short. Skipping..."
+                        )
                     self.TotalDurationSkipped = self.TotalDurationSkipped + SegmentTime
                     continue
 
@@ -535,7 +545,8 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         self.CF_CR = np.array(self.CF_CR)
 
         self.TotalDuration = self.duration.sum()
-        print(f"{self.TotalDurationSkipped}s skipped out of {self.TotalDuration}s.")
+        if verbose:
+            print(f"{self.TotalDurationSkipped}s skipped out of {self.TotalDuration}s.")
 
         # if ~isempty(obj.V_um_ms)
         #     obj.DoSetVelocity(obj.V_um_ms);
