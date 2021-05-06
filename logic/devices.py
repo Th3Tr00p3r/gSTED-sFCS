@@ -3,7 +3,6 @@
 import asyncio
 import re
 import time
-from array import array
 from typing import NoReturn
 
 import numpy as np
@@ -54,7 +53,7 @@ class UM232H(Ftd2xx):
 
         try:
             byte_array, n = await self.read()
-            self.data.extend(byte_array)
+            self.data = np.concatenate((self.data, byte_array), axis=0)
             self.tot_bytes_read += n
         except (DeviceError, AttributeError, OSError, ValueError) as exc:
             err_hndlr(exc, "read_TDC()", dvc=self)
@@ -62,7 +61,7 @@ class UM232H(Ftd2xx):
     def init_data(self):
         """Doc."""
 
-        self.data = array("B")
+        self.data = np.empty(shape=(0,), dtype=np.uint8)
         self.tot_bytes_read = 0
 
 
@@ -609,18 +608,22 @@ class DepletionLaser(PyVISA):
             "curr": "LDcurrent 1",
             "pow": "Power 0",
         }
-        cmnd = prop_cmnd_dict[prop]
 
         try:
+            cmnd = prop_cmnd_dict[prop]
             self.flush()
             response = self.query(cmnd)
-            return float(re.findall(r"-?\d+\.?\d*", response)[0])
         except VisaIOError as exc:
-            err_hndlr(exc, f"get_prop({cmnd})", dvc=self)
+            err_hndlr(exc, f"get_prop({prop})", dvc=self)
             return 0
         except IndexError as exc:
-            err_hndlr(exc, f"get_prop({cmnd})", lvl="warning", dvc=self)
+            err_hndlr(exc, f"get_prop({prop})", lvl="warning", dvc=self)
             return 0
+        except KeyError as exc:
+            err_hndlr(exc, f"get_prop({prop})")
+            return 0
+        else:
+            return float(re.findall(r"-?\d+\.?\d*", response)[0])
 
     def set_power(self, value_mW):
         """Doc."""

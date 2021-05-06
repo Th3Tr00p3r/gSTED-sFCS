@@ -7,6 +7,7 @@ import logging
 import math
 import pickle
 import time
+from multiprocessing import Process
 from types import SimpleNamespace
 from typing import NoReturn
 
@@ -640,13 +641,13 @@ class SFCSSolutionMeasurement(Measurement):
     def disp_ACF(self):
         """Doc."""
 
+        #        def ACF(data):
+
         if self.repeat is True:
             # display ACF for alignments
             # TODO: (later perhaps for scans too)
             p = PhotonDataClass()
-            p.DoConvertFPGAdataToPhotons(
-                np.frombuffer(self.data_dvc.data, dtype=np.uint8)
-            )
+            p.DoConvertFPGAdataToPhotons(self.data_dvc.data)
             s = CorrFuncTDCclass()
             s.LaserFreq = self.tdc_dvc.laser_freq_MHz * 1e6
             s.data["Data"].append(p)
@@ -672,9 +673,8 @@ class SFCSSolutionMeasurement(Measurement):
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(tau * 1e3)
                 self.plot_wdgt.obj.plot(x, y, clear=True)
-                self.plot_wdgt.obj.plot(
-                    x, fit_func(x, *fit_params["beta"]), clear=False, pen="r"
-                )
+                y_fit = fit_func(x, *fit_params["beta"])
+                self.plot_wdgt.obj.plot(x, y_fit, pen="r")
 
             self.plot_wdgt.obj.plotItem.vb.setRange(
                 xRange=(0, tau * 1.3), yRange=(-g0 * 0.1, g0 * 1.3)
@@ -710,7 +710,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.scanning:
             full_data = {
-                "Data": np.frombuffer(self.data_dvc.data, dtype=np.uint8),
+                "Data": self.data_dvc.data,
                 "DataVersion": self.tdc_dvc.data_vrsn,
                 "FpgaFreq": self.tdc_dvc.fpga_freq_MHz,
                 "PixelFreq": self.pxl_clk_dvc.freq_MHz,
@@ -731,7 +731,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         else:
             full_data = {
-                "Data": np.frombuffer(self.data_dvc.data, dtype=np.uint8),
+                "Data": self.data_dvc.data,
                 "DataVersion": self.tdc_dvc.data_vrsn,
                 "FpgaFreq": self.tdc_dvc.fpga_freq_MHz,
                 "LaserFreq": self.tdc_dvc.laser_freq_MHz,
