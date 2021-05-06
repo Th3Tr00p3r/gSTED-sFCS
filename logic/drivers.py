@@ -48,7 +48,8 @@ class Ftd2xx:
     async def read(self) -> (array.array, int):
         """Doc."""
 
-        read_bytes = await self._inst.read(self.n_bytes)
+        raw_bytes = await self._inst.read(self.n_bytes)
+        read_bytes = np.frombuffer(raw_bytes, dtype=np.uint8)
         n = len(read_bytes)
         return read_bytes, n
 
