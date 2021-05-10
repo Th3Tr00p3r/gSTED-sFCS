@@ -25,6 +25,7 @@ from data_analysis.SoftwareCorrelatorModule import (
     CorrelatorType,
     SoftwareCorrelatorClass,
 )
+from utilities.helper import timer
 
 DataAnalysisParentFolder, temp = os.path.split(os.path.dirname(__file__))
 sys.path.append(DataAnalysisParentFolder)
@@ -426,6 +427,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
 
         return Cnt, PixNoTot, pixNumber, LineNo
 
+    @timer
     def DoCorrelateRegularData(
         self,
         RunDuration=-1,
@@ -557,9 +559,9 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         # end
 
 
-def DoXcorr(
-    a, b
-):  # does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly
+def DoXcorr(a, b):
+    """does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
+
     if a.size != b.size:
         warn("For unequal lengths of a, b the meaning of lags is not clear!")
     C = np.correlate(a, b, mode="full")

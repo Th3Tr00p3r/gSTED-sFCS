@@ -7,10 +7,10 @@ import logging
 import math
 import pickle
 import time
-from multiprocessing import Process
 from types import SimpleNamespace
 from typing import NoReturn
 
+import numba as nb
 import numpy as np
 import scipy.io as sio
 from PyQt5.QtGui import QIcon
@@ -302,6 +302,25 @@ class SFCSImageMeasurement(Measurement):
     def prepare_image_data(self, plane_idx):
         """Doc."""
 
+        @nb.njit(cache=True)
+        def calc_pic(K, counts, x, x_min, n_lines, pxls_pl, pxl_sz_V, Ic):
+            """Doc."""
+
+            pic = np.zeros((n_lines, pxls_pl))
+            norm = np.zeros((n_lines, pxls_pl))
+            for j in K:
+                temp_counts = np.zeros(pxls_pl)
+                temp_num = np.zeros(pxls_pl)
+                for i in range(Ic):
+                    idx = int((x[i, j] - x_min) / pxl_sz_V) + 1
+                    if 0 <= idx < pxls_pl:
+                        temp_counts[idx] = temp_counts[idx] + counts[i, j]
+                        temp_num[idx] = temp_num[idx] + 1
+                pic[K[j], :] = temp_counts
+                norm[K[j], :] = temp_num
+
+            return pic, norm
+
         n_lines = self.scan_params.n_lines
         pxl_sz = self.scan_params.dim2_um / (n_lines - 1)
         scan_plane = self.scan_params.scan_plane
@@ -356,31 +375,8 @@ class SFCSImageMeasurement(Measurement):
         # TODO: test if this fixes flipped photos on GB
         #        K = np.arange(n_lines) # TESTESTEST
 
-        pic1 = np.zeros((n_lines, pxls_pl))
-        norm1 = np.zeros((n_lines, pxls_pl))
-        for j in K:
-            temp_counts = np.zeros(pxls_pl)
-            temp_num = np.zeros(pxls_pl)
-            for i in range(Ic):
-                idx = int((x1[i, j] - x_min) / pxl_sz_V) + 1
-                if 0 <= idx < pxls_pl:
-                    temp_counts[idx] = temp_counts[idx] + counts1[i, j]
-                    temp_num[idx] = temp_num[idx] + 1
-            pic1[K[j], :] = temp_counts
-            norm1[K[j], :] = temp_num
-
-        pic2 = np.zeros((n_lines, pxls_pl))
-        norm2 = np.zeros((n_lines, pxls_pl))
-        for j in K:
-            temp_counts = np.zeros(pxls_pl)
-            temp_num = np.zeros(pxls_pl)
-            for i in range(Ic):
-                idx = int((x2[i, j] - x_min) / pxl_sz_V) + 1
-                if 0 <= idx < pxls_pl:
-                    temp_counts[idx] = temp_counts[idx] + counts2[i, j]
-                    temp_num[idx] = temp_num[idx] + 1
-            pic2[K[j], :] = temp_counts
-            norm2[K[j], :] = temp_num
+        pic1, norm1 = calc_pic(K, counts1, x1, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
+        pic2, norm2 = calc_pic(K, counts2, x2, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
 
         line_scale_V = x_min + np.arange(pxls_pl) * pxl_sz_V
         row_scale_V = self.scan_params.set_pnts_lines_odd
@@ -641,18 +637,22 @@ class SFCSSolutionMeasurement(Measurement):
     def disp_ACF(self):
         """Doc."""
 
-        #        def ACF(data):
+        def ACF(data):
+            """Doc."""
 
-        if self.repeat is True:
-            # display ACF for alignments
-            # TODO: (later perhaps for scans too)
             p = PhotonDataClass()
-            p.DoConvertFPGAdataToPhotons(self.data_dvc.data)
+            p.DoConvertFPGAdataToPhotons(data)
             s = CorrFuncTDCclass()
             s.LaserFreq = self.tdc_dvc.laser_freq_MHz * 1e6
             s.data["Data"].append(p)
             s.DoCorrelateRegularData()
-            s.DoAverageCorr(NoPlot=True)
+            s.DoAverageCorr(NoPlot=True, use_numba=True)
+            return s
+
+        if self.repeat is True:
+            # display ACF for alignments
+            # TODO: (later perhaps for scans too)
+            s = ACF(self.data_dvc.data)
             try:
                 s.DoFit(NoPlot=True)
             except (RuntimeWarning, RuntimeError, OptimizeWarning) as exc:

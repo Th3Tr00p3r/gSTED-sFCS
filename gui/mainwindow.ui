@@ -439,7 +439,7 @@ Pattern</string>
                             <number>2</number>
                            </property>
                            <property name="maximum">
-                            <number>99999</number>
+                            <number>10000</number>
                            </property>
                           </widget>
                          </item>

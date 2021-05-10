@@ -14,7 +14,7 @@ import utilities.constants as consts
 import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from utilities.errors import err_hndlr
-from utilities.helper import div_ceil
+from utilities.helper import div_ceil, sync_to_thread
 
 
 class UM232H(Ftd2xx):
@@ -745,23 +745,12 @@ class Camera(Instrumental):
     def toggle_video(self, new_state):
         """Doc."""
 
-        async def helper(self):
-            """
-            This is a workaround -
-            asyncio.to_thread() must be awaited, but toggle_video needs to be
-            a regular function to keep the rest of the code as it is. by creating this
-            async helper function I can make it work. A lambda would be better here
-            but there's no async lambda yet.
-            """
-
-            await asyncio.to_thread(self._vidshow)
-
         if self.vid_state != new_state:
             self.toggle_vid(new_state)
             self.vid_state = new_state
 
         if new_state is True:
-            self._loop.create_task(helper(self))
+            self._loop.create_task(sync_to_thread(self._vidshow))
 
     def _vidshow(self):
         """Doc."""

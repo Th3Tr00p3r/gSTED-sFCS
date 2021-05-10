@@ -9,9 +9,11 @@ import os
 import sys
 
 import matplotlib.pyplot as plt
+import numba as nb
 import numpy as np
 
 from data_analysis.FitTools import curvefitLims
+from utilities.helper import timer
 
 sys.path.append(os.path.dirname(__file__))
 # sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
@@ -20,10 +22,28 @@ sys.path.append(os.path.dirname(__file__))
 
 
 class CorrFuncDataClass:
-    #    def __init__(self):
+    @timer
     def DoAverageCorr(
-        self, Rejection=2, NormRange=np.array([1e-3, 2e-3]), DeleteList=[], NoPlot=False
+        self,
+        Rejection=2,
+        NormRange=np.array([1e-3, 2e-3]),
+        DeleteList=[],
+        NoPlot=False,
+        use_numba=False,
     ):
+
+        # use 'numba' for speed-up
+        def calc_weighted_avg(CF_CR, weights):
+            """Doc."""
+
+            AverageCF_CR = (CF_CR * weights).sum(0) / weights.sum(0)
+
+            errorCF_CR = np.sqrt(
+                (weights ** 2 * (CF_CR - AverageCF_CR) ** 2).sum(0)
+            ) / weights.sum(0)
+
+            return AverageCF_CR, errorCF_CR
+
         self.Rejection = Rejection
         self.NormRange = NormRange
         self.DeleteList = DeleteList
@@ -46,13 +66,15 @@ class CorrFuncDataClass:
                 [i for i in range(self.CF_CR.shape[0]) if i not in DeleteList]
             ).astype("int")
 
-        self.AverageCF_CR = (
-            self.CF_CR[self.Jgood, :] * self.weights[self.Jgood, :]
-        ).sum(0) / self.weights[self.Jgood, :].sum(0)
-        sig = self.CF_CR[self.Jgood, :] - self.AverageCF_CR
-        self.errorCF_CR = np.sqrt(
-            (self.weights[self.Jgood, :] ** 2 * sig ** 2).sum(0)
-        ) / self.weights[self.Jgood, :].sum(0)
+        if use_numba:
+            func = nb.njit(calc_weighted_avg, cache=True)
+        else:
+            func = calc_weighted_avg
+
+        self.AverageCF_CR, self.errorCF_CR = func(
+            self.CF_CR[self.Jgood, :], self.weights[self.Jgood, :]
+        )
+
         Jt = np.logical_and(
             (self.lag > self.NormRange[0]), (self.lag < self.NormRange[1])
         )
@@ -61,7 +83,6 @@ class CorrFuncDataClass:
         ).sum()
         self.Normalized = self.AverageCF_CR / self.G0
         self.errorNormalized = self.errorCF_CR / self.G0
-
         if not NoPlot:
             self.DoPlotCorrFunc()
 
