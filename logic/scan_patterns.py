@@ -3,6 +3,7 @@
 
 from math import cos, pi, sin, sqrt
 
+import numba as nb
 import numpy as np
 
 
@@ -25,6 +26,20 @@ class ScanPatternAO:
     def calc_image_pattern(self, params, um_V_ratio):
         # TODO: this function needs better documentation, starting with some comments
         """Doc."""
+
+        @nb.njit(cache=True)
+        def calc_ao(set_pnts_lines_odd, single_line_ao, ppl):
+            """Doc."""
+
+            dim1_ao = np.empty(shape=(set_pnts_lines_odd.size * ppl,))
+            dim2_ao = np.empty(shape=(set_pnts_lines_odd.size * ppl,))
+            for idx, odd_line_set_pnt in enumerate(set_pnts_lines_odd):
+                dim1_ao[idx * ppl : idx * ppl + ppl] = single_line_ao
+                dim2_ao[idx * ppl : idx * ppl + ppl] = [odd_line_set_pnt] * len(
+                    single_line_ao
+                )
+
+            return np.vstack((dim1_ao, dim2_ao))
 
         params.dt = 1 / (self.scan_params.line_freq_Hz * self.scan_params.ppl)
 
@@ -95,19 +110,7 @@ class ScanPatternAO:
 
         set_pnts_planes = np.atleast_1d(set_pnts_planes)
 
-        dim1_ao = np.empty(
-            shape=(set_pnts_lines_odd.size * params.ppl,), dtype=np.float
-        )
-        dim2_ao = np.empty(
-            shape=(set_pnts_lines_odd.size * params.ppl,), dtype=np.float
-        )
-        for idx, odd_line_set_pnt in enumerate(set_pnts_lines_odd):
-            dim1_ao[idx * params.ppl : idx * params.ppl + params.ppl] = single_line_ao
-            dim2_ao[idx * params.ppl : idx * params.ppl + params.ppl] = [
-                odd_line_set_pnt
-            ] * len(single_line_ao)
-
-        ao_buffer = np.vstack((dim1_ao, dim2_ao))
+        ao_buffer = calc_ao(set_pnts_lines_odd, single_line_ao, T)
 
         return (
             ao_buffer,

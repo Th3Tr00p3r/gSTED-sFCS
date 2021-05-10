@@ -207,6 +207,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
                     continue
                 else:
                     warn("Check data for strange section edges!")
+
     if len(kk248) > 0:
         if ii == kk248.size - 1:  # reached the end of the loop without breaking
             edgeStop = edgeStart + (p254.size - 1) * GroupLen

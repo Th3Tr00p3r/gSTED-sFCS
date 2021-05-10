@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Drivers Module."""
 
-import array
 from types import SimpleNamespace
 from typing import List, NoReturn
 
@@ -45,7 +44,7 @@ class Ftd2xx:
         self._inst.setFlowControl(self.flow_ctrl)
         self._inst.setUSBParameters(self.tx_size)
 
-    async def read(self) -> (array.array, int):
+    async def read(self) -> (np.ndarray, int):
         """Doc."""
 
         raw_bytes = await self._inst.read(self.n_bytes)
