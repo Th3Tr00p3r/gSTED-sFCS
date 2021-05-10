@@ -3,8 +3,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import datetime
+import functools
+import time
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import List, NoReturn, Union
@@ -15,6 +18,179 @@ import pyqtgraph as pg
 
 import gui.icons.icon_paths as icon_path
 import logic.app
+
+
+def timer(func):
+    @functools.wraps(func)
+    def wrapper_timer(*args, **kwargs):
+        tic = time.perf_counter()
+        value = func(*args, **kwargs)
+        toc = time.perf_counter()
+        elapsed_time_ms = (toc - tic) * 1e3
+        print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
+        return value
+
+    return wrapper_timer
+
+
+# print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTESTEST
+# tic = time.perf_counter() # TESTESTEST
+
+
+async def sync_to_thread(func):
+    """
+    This is a workaround -
+    asyncio.to_thread() must be awaited, but toggle_video needs to be
+    a regular function to keep the rest of the code as it is. by creating this
+    async helper function I can make it work. A lambda would be better here
+    but there's no async lambda yet.
+    """
+    await asyncio.to_thread(func)
+
+
+def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
+    """Doc."""
+
+    l1 = parent_wdgt.findChildren(QtWidgets.QLineEdit)
+    l2 = parent_wdgt.findChildren(QtWidgets.QSpinBox)
+    l3 = parent_wdgt.findChildren(QtWidgets.QDoubleSpinBox)
+    l4 = parent_wdgt.findChildren(QtWidgets.QComboBox)
+    l5 = parent_wdgt.findChildren(QtWidgets.QCheckBox)
+    children_list = l1 + l2 + l3 + l4 + l5
+
+    rows = []
+    for child in children_list:
+        if not child.objectName() == "qt_spinbox_lineedit":
+            try:
+                if not child.isReadOnly():
+                    # only save editable QSpinBox/QLineEdit
+                    if hasattr(child, "value"):  # QSpinBox
+                        val = child.value()
+                    else:  # QLineEdit
+                        val = child.text()
+                    rows.append((child.objectName(), str(val)))
+            except AttributeError:
+                # if doesn't have a isReadOnly attribute (QComboBox/QCheckBox)
+                if hasattr(child, "currentIndex"):  # QComboBox
+                    val = child.currentIndex()
+                elif hasattr(child, "isChecked"):  # QCheckBox
+                    val = child.isChecked()
+                else:
+                    continue
+                rows.append((child.objectName(), str(val)))
+    return rows
+
+
+def gui_to_csv(parent_wdgt, file_path):
+    """Doc."""
+
+    rows = wdgt_children_as_row_list(parent_wdgt)
+
+    with open(file_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(rows)
+
+
+def csv_rows_as_list(file_path) -> List[tuple]:
+    """Doc."""
+
+    rows = []
+    with open(file_path, "r", newline="") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            rows.append(tuple(row))
+    return rows
+
+
+def csv_to_gui(file_path, gui_parent):
+    """Doc."""
+
+    rows = csv_rows_as_list(file_path)
+
+    for row in rows:
+        wdgt_name, val = row
+        child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
+        if not child == "nullptr":
+            if hasattr(child, "value"):  # QSpinBox
+                child.setValue(float(val))
+            elif hasattr(child, "currentIndex"):  # QComboBox
+                child.setCurrentIndex(int(val))
+            elif hasattr(child, "isChecked"):  # QCheckBox
+                child.setChecked(bool(val))
+            elif hasattr(child, "text"):  # QLineEdit
+                child.setText(val)
+
+
+def deep_getattr(deep_object, deep_name, default=None):
+    """
+    Get deep attribute of object. Useful for dynamically-set deep attributes.
+    Example usage: a = deep_getattr(obj, "sobj.ssobj.a")
+    """
+
+    for attr in deep_name.split("."):
+        deep_object = getattr(deep_object, attr)
+    return deep_object
+
+
+def div_ceil(x: int, y: int) -> int:
+    """Returns x divided by y rounded towards positive infinity"""
+
+    return int(x // y + (x % y > 0))
+
+
+def limit(val: float, min: float, max: float) -> float:
+
+    if min <= val <= max:
+        return val
+    elif val < min:
+        return min
+    return max
+
+
+def get_datetime_str() -> str:
+    """Return current date and time string in the format DDMMYY_HHMMSS"""
+
+    return datetime.datetime.now().strftime("%d%m_%H%M%S")
+
+
+def inv_dict(dct: dict) -> dict:
+    """Inverts a Python dictionary. Expects mapping to be 1-to-1"""
+
+    return {val: key for key, val in dct.items()}
+
+
+def trans_dict(dct: dict, val_trans_dct: dict) -> dict:
+    """
+    Updates values of dict according to another dict:
+    val_trans_dct.keys() are the values to update,
+    and val_trans_dct.values() are the new values.
+    """
+
+    for org_key, org_val in dct.items():
+        if org_val in val_trans_dct.keys():
+            dct[org_key] = val_trans_dct[org_val]
+    return dct
+
+
+@dataclass
+class DeviceAttrs:
+
+    class_name: str
+    log_ref: str
+    param_widgets: QtWidgetCollection
+    cls_xtra_args: List[str] = None
+    led_icon_path: str = icon_path.LED_GREEN
+
+
+@dataclass
+class ImageData:
+
+    pic1: np.ndarray
+    norm1: np.ndarray
+    pic2: np.ndarray
+    norm2: np.ndarray
+    line_ticks_V: np.ndarray
+    row_ticks_V: np.ndarray
 
 
 class QtWidgetAccess:
@@ -140,154 +316,6 @@ class QtWidgetCollection:
             else:
                 setattr(wdgt_val_ns, attr_name, wdgt.get(parent_gui))
         return wdgt_val_ns
-
-
-def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
-    """Doc."""
-
-    l1 = parent_wdgt.findChildren(QtWidgets.QLineEdit)
-    l2 = parent_wdgt.findChildren(QtWidgets.QSpinBox)
-    l3 = parent_wdgt.findChildren(QtWidgets.QDoubleSpinBox)
-    l4 = parent_wdgt.findChildren(QtWidgets.QComboBox)
-    l5 = parent_wdgt.findChildren(QtWidgets.QCheckBox)
-    children_list = l1 + l2 + l3 + l4 + l5
-
-    rows = []
-    for child in children_list:
-        if not child.objectName() == "qt_spinbox_lineedit":
-            try:
-                if not child.isReadOnly():
-                    # only save editable QSpinBox/QLineEdit
-                    if hasattr(child, "value"):  # QSpinBox
-                        val = child.value()
-                    else:  # QLineEdit
-                        val = child.text()
-                    rows.append((child.objectName(), str(val)))
-            except AttributeError:
-                # if doesn't have a isReadOnly attribute (QComboBox/QCheckBox)
-                if hasattr(child, "currentIndex"):  # QComboBox
-                    val = child.currentIndex()
-                elif hasattr(child, "isChecked"):  # QCheckBox
-                    val = child.isChecked()
-                else:
-                    continue
-                rows.append((child.objectName(), str(val)))
-    return rows
-
-
-def gui_to_csv(parent_wdgt, file_path):
-    """Doc."""
-
-    rows = wdgt_children_as_row_list(parent_wdgt)
-
-    with open(file_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(rows)
-
-
-def csv_rows_as_list(file_path) -> List[tuple]:
-    """Doc."""
-
-    rows = []
-    with open(file_path, "r", newline="") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            rows.append(tuple(row))
-    return rows
-
-
-def csv_to_gui(file_path, gui_parent):
-    """Doc."""
-    # TODO: add exception handeling for when a .ui file was changed since loadout was saved
-
-    rows = csv_rows_as_list(file_path)
-
-    for row in rows:
-        wdgt_name, val = row
-        child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
-        if not child == "nullptr":
-            if hasattr(child, "value"):  # QSpinBox
-                child.setValue(float(val))
-            elif hasattr(child, "currentIndex"):  # QComboBox
-                child.setCurrentIndex(int(val))
-            elif hasattr(child, "isChecked"):  # QCheckBox
-                child.setChecked(bool(val))
-            elif hasattr(child, "text"):  # QLineEdit
-                child.setText(val)
-
-
-def deep_getattr(object, deep_name, default=None):
-    """
-    Get deep attribute of object. Useful for dynamically-set deep attributes.
-
-    Example usage: a = deep_getattr(obj, "sobj.ssobj.a")
-    """
-
-    deep_obj = object
-    for attr in deep_name.split("."):
-        deep_obj = getattr(deep_obj, attr)
-    return deep_obj
-
-
-def div_ceil(x: int, y: int) -> int:
-    """Returns x divided by y rounded towards positive infinity"""
-
-    return int(x // y + (x % y > 0))
-
-
-def limit(val: float, min: float, max: float) -> float:
-
-    if min <= val <= max:
-        return val
-    elif val < min:
-        return min
-    return max
-
-
-def get_datetime_str() -> str:
-    """Return current date and time string in the format DDMMYY_HHMMSS"""
-
-    return datetime.datetime.now().strftime("%d%m_%H%M%S")
-
-
-def inv_dict(dct: dict) -> dict:
-    """Inverts a Python dictionary. Expects mapping to be 1-to-1"""
-
-    return {val: key for key, val in dct.items()}
-
-
-def trans_dict(dct: dict, val_trans_dct: dict) -> dict:
-    """
-    Updates values of dict according to another dict:
-    val_trans_dct.keys() are the values to update,
-    and val_trans_dct.values() are the new values.
-    """
-
-    for org_key, org_val in dct.items():
-        if org_val in val_trans_dct.keys():
-            dct[org_key] = val_trans_dct[org_val]
-    return dct
-
-
-@dataclass
-class DeviceAttrs:
-
-    class_name: str
-    log_ref: str
-    param_widgets: QtWidgetCollection
-    cls_xtra_args: List[str] = None
-    led_icon_path: str = icon_path.LED_GREEN
-
-
-@dataclass
-class ImageData:
-
-    pic1: np.ndarray
-    norm1: np.ndarray
-    pic2: np.ndarray
-    norm2: np.ndarray
-    line_ticks_V: np.ndarray
-    row_ticks_V: np.ndarray
 
 
 class ImageDisplay:
