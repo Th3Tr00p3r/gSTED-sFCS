@@ -494,6 +494,7 @@ class SFCSImageMeasurement(Measurement):
 
         # finished measurement
         if self.is_running:
+            # if not manually stopped
             # prepare data
             self.plane_images_data = [
                 self.prepare_image_data(plane_idx)
@@ -509,10 +510,6 @@ class SFCSImageMeasurement(Measurement):
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
             self._app.gui.main.imp.disp_plane_img(mid_plane)
-
-        # manually stopped
-        else:
-            pass
 
         # return to stand-by state
         await self.toggle_lasers(finish=True)
@@ -647,6 +644,7 @@ class SFCSSolutionMeasurement(Measurement):
             s.data["Data"].append(p)
             s.DoCorrelateRegularData()
             s.DoAverageCorr(NoPlot=True, use_numba=True)
+
             return s
 
         if self.repeat is True:
