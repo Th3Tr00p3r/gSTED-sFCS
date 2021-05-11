@@ -25,7 +25,6 @@ from data_analysis.SoftwareCorrelatorModule import (
     CorrelatorType,
     SoftwareCorrelatorClass,
 )
-from utilities.helper import timer
 
 DataAnalysisParentFolder, temp = os.path.split(os.path.dirname(__file__))
 sys.path.append(DataAnalysisParentFolder)
@@ -395,9 +394,9 @@ class CorrFuncTDCclass(CorrFuncDataClass):
             P.fpath = fpath
             self.data["Data"].append(P)
 
-    def DoConvertAngularScanToImage(
-        self, rntime, AnglularScanSettings
-    ):  # utility function for opening Angular Scans
+    def DoConvertAngularScanToImage(self, rntime, AnglularScanSettings):
+        """utility function for opening Angular Scans"""
+
         PixNoTot = np.floor(
             rntime * AnglularScanSettings["SampleFreq"] / self.LaserFreq
         ).astype("int")
@@ -427,7 +426,6 @@ class CorrFuncTDCclass(CorrFuncDataClass):
 
         return Cnt, PixNoTot, pixNumber, LineNo
 
-    @timer
     def DoCorrelateRegularData(
         self,
         RunDuration=-1,
@@ -470,6 +468,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         self.TotalDurationSkipped = 0
 
         for P in self.data["Data"]:
+
             if verbose:
                 print(f"Correlating {P.fname}")
             # find additional outliers
@@ -493,6 +492,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
             P.AllSectionEdges = np.array([secEdges[:-1], secEdges[1:]]).T
 
             for j, sE in enumerate(P.AllSectionEdges):
+
                 # split into segments of approx time of RunDuration
                 SegmentTime = (P.runtime[sE[1]] - P.runtime[sE[0]]) / self.LaserFreq
                 if SegmentTime < MinTimeFrac * RunDuration:
@@ -510,6 +510,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                 ts = time_stamps[sE[0] : sE[1]]
 
                 for k in range(NoSplits):
+
                     ts_split = ts[Splits[k] : Splits[k + 1]]
                     self.duration = np.append(
                         self.duration, ts_split.sum() / self.LaserFreq

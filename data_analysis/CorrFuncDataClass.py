@@ -32,15 +32,18 @@ class CorrFuncDataClass:
         use_numba=False,
     ):
 
-        # use 'numba' for speed-up
+        # enable 'use_numba' for speed-up
         def calc_weighted_avg(CF_CR, weights):
             """Doc."""
 
-            AverageCF_CR = (CF_CR * weights).sum(0) / weights.sum(0)
+            tot_weights = weights.sum(0)
 
-            errorCF_CR = np.sqrt(
-                (weights ** 2 * (CF_CR - AverageCF_CR) ** 2).sum(0)
-            ) / weights.sum(0)
+            AverageCF_CR = (CF_CR * weights).sum(0) / tot_weights
+
+            errorCF_CR = (
+                np.sqrt((weights ** 2 * (CF_CR - AverageCF_CR) ** 2).sum(0))
+                / tot_weights
+            )
 
             return AverageCF_CR, errorCF_CR
 
