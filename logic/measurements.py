@@ -649,13 +649,12 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.repeat is True:
             # display ACF for alignments
-            # TODO: (later perhaps for scans too)
             s = ACF(self.data_dvc.data)
             try:
                 s.DoFit(NoPlot=True)
             except (RuntimeWarning, RuntimeError, OptimizeWarning) as exc:
                 # fit failed
-                err_hndlr(exc, "disp_ACF()", lvl="warning")
+                err_hndlr(exc, "disp_ACF()", lvl="debug")
                 self.fit_led.set(QIcon(icon_path.LED_RED))
                 g0, tau = s.G0, 0.1
                 self.g0_wdgt.set(s.G0)
@@ -809,7 +808,7 @@ class SFCSSolutionMeasurement(Measurement):
                     self.set_current_and_end_times()
 
                 # save and display data
-                if self.is_running or self.repeat is False:
+                if self.is_running or not self.repeat:
                     # if not manually stopped while aligning
                     self.save_data(self.prep_data_dict(), self.build_filename(file_num))
                     self.disp_ACF()

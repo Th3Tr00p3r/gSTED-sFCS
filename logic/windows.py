@@ -293,7 +293,7 @@ class MainWin:
             self._gui.stepperDock.setVisible(True)
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
-    @err_chckr({"TDC", "UM232H", "SCANNERS"})
+    @err_chckr({"TDC", "UM232H", "SCANNERS", "COUNTER"})
     def toggle_meas(self, type):
         """Doc."""
 

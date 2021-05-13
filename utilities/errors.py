@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import traceback
+from types import SimpleNamespace
 from typing import Callable
 
 from PyQt5.QtGui import QIcon
@@ -58,79 +59,49 @@ def dvc_err_chckr(nick_set: set = None) -> Callable:
 
     nick_set - a set of all device nicks to check for errors
         before attempting the decorated func()
-
     """
 
     def outer_wrapper(func) -> Callable:
-        """Doc."""
+        def check(nick_set, devices: SimpleNamespace, func_args) -> bool:
+            """
+            Checks for error in specified devices
+            and displays informative error messages to user.
+            """
+
+            if nick_set is None:
+                nick_set = {func_args[0]}
+
+            txt = [
+                f"{nick} error.\n"
+                for nick in nick_set
+                if getattr(devices, nick).error_dict
+            ]
+
+            if txt:
+                # if any errors found for specified devices
+                txt.append("\nClick relevant LED for details.")
+                Error(custom_txt="".join(txt)).display()
+                return False
+
+            else:
+                # no errors found
+                return True
 
         if asyncio.iscoroutinefunction(func):
 
             @functools.wraps(func)
             async def inner_wrapper(self, *args, **kwargs):
-                """Doc."""
 
-                if nick_set is not None:
-                    count = 0
-                    txt = ""
-                    for nick in nick_set:
-
-                        if getattr(self._app.devices, nick).error_dict is not None:
-                            txt += f"{nick} error.\n"
-                            count += 1
-
-                    if count > 0:
-                        txt += "\nClick relevant LED for details."
-                        Error(
-                            custom_txt=txt, custom_title=f"Errors ({count})"
-                        ).display()
-
-                    else:
-                        return await func(self, *args, **kwargs)
-
-                else:
-                    nick = args[0]
-                    err_msg = getattr(self._app.devices, nick).error_dict
-
-                    if err_msg is not None:
-                        txt = f"{nick} error.\n\nClick relevant LED for details."
-                        Error(custom_txt=txt).display()
-                    else:
-                        return await func(self, *args, **kwargs)
+                if check(nick_set, self._app.devices, args) is True:
+                    return await func(self, *args, **kwargs)
 
         else:
 
             @functools.wraps(func)
             def inner_wrapper(self, *args, **kwargs):
-                """Doc."""
 
-                if nick_set is not None:
-                    count = 0
-                    txt = ""
-                    for nick in nick_set:
-
-                        if getattr(self._app.devices, nick).error_dict is not None:
-                            txt += f"{nick} error.\n"
-                            count += 1
-
-                    if count > 0:
-                        txt += "\nClick relevant LED for details."
-                        Error(
-                            custom_txt=txt, custom_title=f"Errors ({count})"
-                        ).display()
-
-                    else:
-                        return func(self, *args, **kwargs)
-
-                else:
-                    nick = args[0]
-                    err_msg = getattr(self._app.devices, nick).error_dict
-
-                    if err_msg is not None:
-                        txt = f"{nick} error.\n\nClick relevant LED for details."
-                        Error(custom_txt=txt).display()
-                    else:
-                        return func(self, *args, **kwargs)
+                if check(nick_set, self._app.devices, args) is True:
+                    return func(self, *args, **kwargs)
 
         return inner_wrapper
 
