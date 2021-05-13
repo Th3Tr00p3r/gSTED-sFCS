@@ -13,16 +13,11 @@ import numba as nb
 import numpy as np
 
 from data_analysis.FitTools import curvefitLims
-from utilities.helper import timer
 
 sys.path.append(os.path.dirname(__file__))
-# sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
-
-# from PhotonDataClass import PhotonDataClass
 
 
 class CorrFuncDataClass:
-    @timer
     def DoAverageCorr(
         self,
         Rejection=2,

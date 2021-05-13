@@ -10,7 +10,7 @@ import functools
 import time
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import List, NoReturn, Union
+from typing import Callable, List, NoReturn, Union
 
 import numpy as np
 import PyQt5.QtWidgets as QtWidgets
@@ -20,7 +20,12 @@ import gui.icons.icon_paths as icon_path
 import logic.app
 
 
-def timer(func):
+def timer(func) -> Callable:
+    """
+    Meant to be used as a decorator (@timer)
+    for quickly setting up function timing for testing.
+    """
+
     @functools.wraps(func)
     def wrapper_timer(*args, **kwargs):
         tic = time.perf_counter()

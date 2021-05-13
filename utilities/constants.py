@@ -351,7 +351,7 @@ IMG_SCN_WDGT_FILLOUT_DICT = {
         20,
         0.9,
         1,
-    ],  # TODO: set better params
+    ],
     "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
     "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
     "GB - XY single bead": [1, 0, 0, "XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],
