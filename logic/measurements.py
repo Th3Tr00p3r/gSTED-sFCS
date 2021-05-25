@@ -660,6 +660,9 @@ class SFCSSolutionMeasurement(Measurement):
                 self.g0_wdgt.set(s.G0)
                 self.tau_wdgt.set(0)
                 self.plot_wdgt.obj.plot(s.lag, s.AverageCF_CR, clear=True)
+                self.plot_wdgt.obj.plotItem.vb.setRange(
+                    xRange=(math.log(0.05), math.log(5)), yRange=(-g0 * 0.1, g0 * 1.3)
+                )
             else:
                 # fit succeeded
                 self.fit_led.set(QIcon(icon_path.LED_OFF))
@@ -672,10 +675,10 @@ class SFCSSolutionMeasurement(Measurement):
                 self.plot_wdgt.obj.plot(x, y, clear=True)
                 y_fit = fit_func(x, *fit_params["beta"])
                 self.plot_wdgt.obj.plot(x, y_fit, pen="r")
-
-            self.plot_wdgt.obj.plotItem.vb.setRange(
-                xRange=(0, tau * 1.3), yRange=(-g0 * 0.1, g0 * 1.3)
-            )
+                self.plot_wdgt.obj.plotItem.autoRange()
+                logging.info(
+                    f"Aligning ({self.laser_config}): G0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
+                )
 
     def prep_data_dict(self) -> dict:
         """

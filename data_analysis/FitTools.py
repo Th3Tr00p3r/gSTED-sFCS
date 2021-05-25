@@ -20,6 +20,7 @@ warnings.simplefilter("error", RuntimeWarning)
 
 def curvefitLims(
     fitName,
+    paramEstimates,
     xs,
     ys,
     ysErrs,
@@ -28,7 +29,6 @@ def curvefitLims(
     NoPlot=False,
     XScale="log",
     YScale="linear",
-    paramEstimates=None,
 ):
     """Doc."""
 

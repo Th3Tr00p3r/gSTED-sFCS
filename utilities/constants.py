@@ -273,6 +273,7 @@ SOL_CIRC_SCN_WDGT_COLL = QtWidgetCollection(
 )
 
 SOL_NO_SCN_WDGT_COLL = QtWidgetCollection(
+    # TODO: move laser modes to SOL_MEAS_WDGT_COLL (also from 2 collections above)
     exc_mode=("solScanModeExc", "isChecked", "main"),
     dep_mode=("solScanModeDep", "isChecked", "main"),
     sted_mode=("solScanModeSted", "isChecked", "main"),

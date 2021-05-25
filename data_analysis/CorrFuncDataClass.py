@@ -106,7 +106,7 @@ class CorrFuncDataClass:
         YerrorField="errorCF_CR",
         FitFunc="Diffusion3Dfit",
         ConstantParam={},
-        FitParamEstimate=[5000, 0.04, 30],
+        FitParamEstimate=None,
         FitRange=[1e-3, 100],
         NoPlot=False,
         Xscale="log",
@@ -118,6 +118,9 @@ class CorrFuncDataClass:
         # MaxIter = 3;
         # lsqcurvefitParam = ParseInputs('lsqcurvefitParam', {}, varargin);
 
+        if FitParamEstimate is None:
+            FitParamEstimate = [self.G0, 0.035, 30]
+
         X = getattr(self, Xfield)
         Y = getattr(self, Yfield)
         errorY = getattr(self, YerrorField)
@@ -128,6 +131,7 @@ class CorrFuncDataClass:
 
         FP = curvefitLims(
             FitFunc,
+            FitParamEstimate,
             X,
             Y,
             errorY,
@@ -135,7 +139,6 @@ class CorrFuncDataClass:
             NoPlot=NoPlot,
             XScale=Xscale,
             YScale=Yscale,
-            paramEstimates=FitParamEstimate,
         )
 
         # if ~isempty(DynRange), % do dynamic range iterations
