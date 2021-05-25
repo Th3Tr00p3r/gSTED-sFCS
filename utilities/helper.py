@@ -144,12 +144,12 @@ def div_ceil(x: int, y: int) -> int:
 
 
 def limit(val: float, min: float, max: float) -> float:
-
     if min <= val <= max:
         return val
     elif val < min:
         return min
-    return max
+    else:
+        return max
 
 
 def get_datetime_str() -> str:

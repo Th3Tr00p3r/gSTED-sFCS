@@ -36,6 +36,7 @@ class MainWin:
         self._gui.actionLaser_Control.setChecked(True)
         self._gui.actionStepper_Stage_Control.setChecked(True)
         self._gui.stageButtonsGroup.setEnabled(False)
+        self._gui.acf.setLogMode(x=True)
 
         self._gui.countsAvg.setValue(self._gui.countsAvgSlider.value())
 

@@ -4419,9 +4419,9 @@ Pattern:</string>
                  <item row="1" column="0">
                   <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0">
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_14">
+                    <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="1,0">
                      <property name="spacing">
-                      <number>0</number>
+                      <number>6</number>
                      </property>
                      <item>
                       <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -4429,7 +4429,7 @@ Pattern:</string>
                         <number>0</number>
                        </property>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_24" stretch="0,0,0,1">
+                        <layout class="QHBoxLayout" name="horizontalLayout_24" stretch="0,0">
                          <property name="spacing">
                           <number>0</number>
                          </property>
@@ -4464,19 +4464,6 @@ Pattern:</string>
                           </widget>
                          </item>
                          <item>
-                          <spacer name="horizontalSpacer_20">
-                           <property name="orientation">
-                            <enum>Qt::Horizontal</enum>
-                           </property>
-                           <property name="sizeHint" stdset="0">
-                            <size>
-                             <width>20</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                          </spacer>
-                         </item>
-                         <item>
                           <widget class="QDoubleSpinBox" name="g0">
                            <property name="enabled">
                             <bool>true</bool>
@@ -4489,13 +4476,13 @@ Pattern:</string>
                            </property>
                            <property name="maximumSize">
                             <size>
-                             <width>100</width>
-                             <height>30</height>
+                             <width>200</width>
+                             <height>60</height>
                             </size>
                            </property>
                            <property name="font">
                             <font>
-                             <pointsize>16</pointsize>
+                             <pointsize>30</pointsize>
                             </font>
                            </property>
                            <property name="readOnly">
@@ -4515,23 +4502,10 @@ Pattern:</string>
                            </property>
                           </widget>
                          </item>
-                         <item>
-                          <spacer name="horizontalSpacer_22">
-                           <property name="orientation">
-                            <enum>Qt::Horizontal</enum>
-                           </property>
-                           <property name="sizeHint" stdset="0">
-                            <size>
-                             <width>40</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                          </spacer>
-                         </item>
                         </layout>
                        </item>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="0,0,0,1">
+                        <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="0,0">
                          <property name="spacing">
                           <number>0</number>
                          </property>
@@ -4566,19 +4540,6 @@ Pattern:</string>
                           </widget>
                          </item>
                          <item>
-                          <spacer name="horizontalSpacer_23">
-                           <property name="orientation">
-                            <enum>Qt::Horizontal</enum>
-                           </property>
-                           <property name="sizeHint" stdset="0">
-                            <size>
-                             <width>20</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                          </spacer>
-                         </item>
-                         <item>
                           <widget class="QDoubleSpinBox" name="decayTime">
                            <property name="enabled">
                             <bool>true</bool>
@@ -4591,13 +4552,13 @@ Pattern:</string>
                            </property>
                            <property name="maximumSize">
                             <size>
-                             <width>100</width>
-                             <height>30</height>
+                             <width>200</width>
+                             <height>60</height>
                             </size>
                            </property>
                            <property name="font">
                             <font>
-                             <pointsize>16</pointsize>
+                             <pointsize>30</pointsize>
                             </font>
                            </property>
                            <property name="readOnly">
@@ -4610,19 +4571,6 @@ Pattern:</string>
                             <double>999999999.000000000000000</double>
                            </property>
                           </widget>
-                         </item>
-                         <item>
-                          <spacer name="horizontalSpacer_27">
-                           <property name="orientation">
-                            <enum>Qt::Horizontal</enum>
-                           </property>
-                           <property name="sizeHint" stdset="0">
-                            <size>
-                             <width>40</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                          </spacer>
                          </item>
                         </layout>
                        </item>
@@ -4701,8 +4649,8 @@ Pattern:</string>
                      </property>
                      <property name="minimumSize">
                       <size>
-                       <width>370</width>
-                       <height>370</height>
+                       <width>300</width>
+                       <height>300</height>
                       </size>
                      </property>
                      <property name="maximumSize">
