@@ -1,6 +1,4 @@
 arduinoAddr,COM3
-um232FlowControl,RTS-CTS
-um232BitMode,Single Channel Synchronous 245 FIFO
 counterPixelClockAddress,Dev1/Ctr0
 pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
 counterTriggerAddress,Dev3/port1/line0
@@ -37,10 +35,8 @@ solDataPath,./data/solution measurements/
 imgDataPath,./data/image measurements/
 camDataPath,./data/camera photos/
 logDataPath,./log/
-um232LatencyTimerVal,2
-um232Timeout,2
-um232NumBytes,64000
-um232TxSize,64000
+um232FlowControl,RTS-CTS
+um232BitMode,Single Channel Synchronous 245 FIFO
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCversion,3
@@ -48,6 +44,10 @@ pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
 AIclkDiv,100
+um232LatencyTimerVal,2
+um232Timeout,2
+um232NumBytes,256000
+um232TxSize,256000
 uc480PlaceHolder,0.0
 xConv,68.0
 yConv,78.0
@@ -57,4 +57,4 @@ AOtriggerEdge,0
 AOwfType,0
 excTriggerSrc,0
 saveFormat,0
-counterCIdupCountPrevention,False
+counterCIdupCountPrevention,True
