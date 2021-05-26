@@ -298,9 +298,8 @@ class MainWin:
     def toggle_meas(self, type):
         """Doc."""
 
-        current_type = self._app.meas.type
-        if current_type is None:  # no meas running
-
+        if (current_type := self._app.meas.type) is None:
+            # no meas running
             if type == "SFCSSolution":
                 self._app.gui.main.imp.go_to_origin("XY")
                 pattern = self._gui.solScanType.currentText()
@@ -332,9 +331,7 @@ class MainWin:
                             "total_files_wdgt",
                             "file_num_wdgt",
                             "g0_wdgt",
-                            "g0_err_wdgt",
                             "tau_wdgt",
-                            "tau_err_wdgt",
                             "plot_wdgt",
                             "fit_led",
                         ],
@@ -342,7 +339,6 @@ class MainWin:
                 )
 
                 self._gui.startSolScan.setText("Stop \nScan")
-                # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(False)
                 self._gui.solScanCalDur.setEnabled(False)
                 self._gui.solScanTotalDur.setEnabled(
@@ -373,8 +369,8 @@ class MainWin:
 
             self._app.loop.create_task(self._app.meas.start())
 
-        elif current_type == type:  # manual shutdown
-
+        elif current_type == type:
+            # manual shutdown
             if type == "SFCSSolution":
                 self._gui.imp.go_to_origin("XY")
                 self._gui.startSolScan.setText("Start \nScan")
@@ -390,7 +386,8 @@ class MainWin:
 
             self._app.meas.stop()
 
-        else:  # other meas running
+        else:
+            # other meas running
             txt = (
                 f"Another type of measurement "
                 f"({current_type}) is currently running."
@@ -426,8 +423,8 @@ class MainWin:
                 # devices not yet initialized
                 pass
 
-        # no scan
         else:
+            # no scan
             plt_wdgt.plot([], [], clear=True)
 
     def disp_plane_img(

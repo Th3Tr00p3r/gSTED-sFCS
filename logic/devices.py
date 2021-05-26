@@ -64,6 +64,21 @@ class UM232H(Ftd2xx):
         self.data = np.empty(shape=(0,), dtype=np.uint8)
         self.tot_bytes_read = 0
 
+    def purge_buffers(self):
+        """Doc."""
+        try:
+            self.purge()
+        except DeviceError as exc:
+            err_hndlr(exc, "purge_buffers()", dvc=self)
+
+    def get_queue_status(self):
+        """Doc."""
+
+        try:
+            return self._inst.getQueueStatus()
+        except DeviceError as exc:
+            err_hndlr(exc, "get_queue_status()", dvc=self)
+
 
 class Scanners(NIDAQmx):
     """
@@ -608,9 +623,9 @@ class DepletionLaser(PyVISA):
             "curr": "LDcurrent 1",
             "pow": "Power 0",
         }
+        cmnd = prop_cmnd_dict[prop]
 
         try:
-            cmnd = prop_cmnd_dict[prop]
             self.flush()
             response = self.query(cmnd)
         except VisaIOError as exc:

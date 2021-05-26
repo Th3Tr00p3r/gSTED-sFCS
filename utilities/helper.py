@@ -309,8 +309,8 @@ class QtWidgetCollection:
 
     def read_namespace_from_gui(self, app: logic.app.App) -> SimpleNamespace:
         """
-        Same as 'read_dict_from_gui' but returns a SimpleNamespace object
-        with attributes instead of keys.
+        Same as 'read_dict_from_gui' but returns an object
+        instead of a dictionary.
         """
 
         wdgt_val_ns = SimpleNamespace()
