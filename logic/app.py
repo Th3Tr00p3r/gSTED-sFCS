@@ -148,7 +148,8 @@ class App:
             consts.SWITCH_COLL.write_to_gui(self, QIcon(icon.SWITCH_OFF))
             gui.stageButtonsGroup.setEnabled(False)
 
-        if restart:  # restarting
+        if restart:
+            # restarting
 
             if self.gui.camera is not None:
                 self.gui.camera.close()
@@ -168,6 +169,9 @@ class App:
             #            self.gui.settings.imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
 
             self.init_devices()
+
+            #            self.timeout_loop._app = self # TESTESTEST
+            #            self.gui.main.imp._app = self # TESTESTEST
 
             # restart timeout loop
             self.timeout_loop = Timeout(self)

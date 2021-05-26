@@ -67,7 +67,7 @@ class Measurement:
     async def start(self):
         """Doc."""
 
-        self.data_dvc.purge()
+        self.data_dvc.purge_buffers()
         self.is_running = True
         logging.info(f"{self.type} measurement started")
         await self.run()
@@ -87,8 +87,14 @@ class Measurement:
         """
 
         async def read_and_track_time():
-            await self.data_dvc.read_TDC()
-            self.time_passed = time.perf_counter() - self.start_time
+            """Doc."""
+
+            if self.data_dvc.error_dict is None:
+                await self.data_dvc.read_TDC()
+                self.time_passed = time.perf_counter() - self.start_time
+            else:
+                # abort measurement in case of UM232H error
+                self.is_running = False
 
         self._app.gui.main.imp.dvc_toggle("TDC")
 
@@ -454,7 +460,7 @@ class SFCSImageMeasurement(Measurement):
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
         self.data_dvc.init_data()
-        self.data_dvc.purge()
+        self.data_dvc.purge_buffers()
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_ci_buffer()
 
@@ -477,7 +483,7 @@ class SFCSImageMeasurement(Measurement):
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
 
-                self.data_dvc.purge()
+                self.data_dvc.purge_buffers()
 
                 # recording
                 await self.record_data(timed=False)
@@ -535,22 +541,15 @@ class SFCSSolutionMeasurement(Measurement):
         )
         self.scan_params.scan_plane = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
-
-        if self.scan_params.pattern == "static":
-            self.scanning = False
-        else:
-            self.scanning = True
-
+        self.scanning = not (self.scan_params.pattern == "static")
         self.cal = False
 
     def build_filename(self, file_no: int) -> str:
 
         if not self.file_template:
-            # give a general template for a solution measuremnt
             self.file_template = "sol"
 
         if self.repeat is True:
-            # repeated measurements are always file 0
             file_no = 0
 
         return f"{self.file_template}_{self.scan_type}_{self.laser_config}_{file_no}"
@@ -581,8 +580,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.cal = True
         logging.info(f"Calibrating file intervals for {self.type} measurement")
 
-        # reading
-        await self.record_data(timed=True)
+        await self.record_data(timed=True)  # reading
 
         self.cal = False
         bps = self.data_dvc.tot_bytes_read / self.time_passed
@@ -764,7 +762,7 @@ class SFCSSolutionMeasurement(Measurement):
             self._app.gui.main.imp.dvc_toggle("PXL_CLK")
 
         self.data_dvc.init_data()
-        self.data_dvc.purge()
+        self.data_dvc.purge_buffers()
         self.scanners_dvc.init_ai_buffer()
         self.counter_dvc.init_ci_buffer()
 
@@ -818,7 +816,7 @@ class SFCSSolutionMeasurement(Measurement):
 
                 # initialize data buffers for next file
                 self.data_dvc.init_data()
-                self.data_dvc.purge()
+                self.data_dvc.purge_buffers()
                 self.scanners_dvc.init_ai_buffer()
                 self.counter_dvc.init_ci_buffer()
 
