@@ -6,9 +6,9 @@ Created on Sun Jan 17 14:08:54 2021
 @author: oleg
 """
 import enum
+import logging
 from ctypes import CDLL, c_double, c_int, c_long
 from sys import platform
-from warnings import warn
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -118,11 +118,11 @@ class SoftwareCorrelatorClass:
             self.countrateA = np.sum(photonArray[1, :] == 1) / Duration_s
             self.countrateB = np.sum(photonArray[2, :] == 1) / Duration_s
         else:
-            raise Exception("Invalid correlator type!")
+            raise ValueError("Invalid correlator type!")
 
         self.SoftCorr(CType.value, Nentries, phHist, NoCorrChannels, self.corrPy)
         if NoCorrChannels[0] != self.TotalCorrChanLen:
-            warn("Number of correlator channels inconsistent!")
+            logging.warning("Number of correlator channels inconsistent!")
 
         self.lag = self.corrPy[1, :] * timebase_ms
         # corr.lag(corr.lag < 0) = 0; % fix zero channel time
