@@ -5,10 +5,10 @@ Created on Mon Mar 22 17:38:27 2021
 @author: oleg
 """
 import glob
+import logging
 import os
 import re  # regular expressions
 import sys
-from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -564,7 +564,7 @@ def DoXcorr(a, b):
     """does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
     if a.size != b.size:
-        warn("For unequal lengths of a, b the meaning of lags is not clear!")
+        logging.warning("For unequal lengths of a, b the meaning of lags is not clear!")
     C = np.correlate(a, b, mode="full")
     C = C[np.floor(C.size / 2).astype("int") :]
     lags = np.arange(C.size)
