@@ -5,8 +5,7 @@ Created on Mon Dec 21 22:54:26 2020
 
 @author: oleg
 """
-
-from warnings import warn
+import logging
 
 import numpy as np
 
@@ -107,7 +106,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
         if len(kk254) < ii + 1:
             if kk == len(p248) - 1:  # problem in the last photon in the file
                 edgeStop = edgeStart + kk * GroupLen
-                warn("if (len(kk254) < ii+1):")
+                logging.warning("if (len(kk254) < ii+1):")
                 break
             elif len(kk248) == ii + 1:  # likely a singular problem
                 # just test the most significant bytes of the runtime are
@@ -123,10 +122,10 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
                     < 3
                 ):
                     # single error: move on
-                    warn("(len(kk248) == ii+1):")
+                    logging.warning("(len(kk248) == ii+1):")
                     continue
                 else:
-                    warn("Check data for strange section edges!")
+                    logging.warning("Check data for strange section edges!")
 
             elif (
                 np.diff(kk248[ii : (ii + 2)]) > 1
@@ -144,13 +143,13 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
                     < 3
                 ):
                     # single error: move on
-                    warn("elif np.diff(kk248[ii:(ii+2)]) > 1: ")
+                    logging.warning("elif np.diff(kk248[ii:(ii+2)]) > 1: ")
                     continue
                 else:
-                    warn("Check data for strange section edges!")
+                    logging.warning("Check data for strange section edges!")
 
             else:
-                warn(
+                logging.warning(
                     "Bizarre problem in data: 248 byte out of registry while 254 is in registry!"
                 )
 
@@ -160,7 +159,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
                 edgeStop = edgeStart + kk * GroupLen
                 if data[edgeStop - 1] != 254:
                     edgeStop = edgeStop - GroupLen
-                warn("if np.isin(kk, kk254):")
+                logging.warning("if np.isin(kk, kk254):")
                 break
             elif kk248[ii] == (
                 kk254[ii] + 1
@@ -168,7 +167,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
                 edgeStop = edgeStart + kk * GroupLen
                 if data[edgeStop - 1] != 254:
                     edgeStop = edgeStop - GroupLen
-                warn("elif  np.isin(kk, (kk254[ii]+1)):")
+                logging.warning("elif  np.isin(kk, (kk254[ii]+1)):")
                 break
             elif kk < kk254[ii]:  # likely a singular error on 248 byte
                 # just test the most significant bytes of the runtime are
@@ -184,10 +183,10 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
                     < 3
                 ):
                     # single error: move on
-                    warn("elif (kk < kk254[ii]):")
+                    logging.warning("elif (kk < kk254[ii]):")
                     continue
                 else:
-                    warn("Check data for strange section edges!")
+                    logging.warning("Check data for strange section edges!")
 
             else:  # likely a signular mistake on 254 byte
                 # just test the most significant bytes of the runtime are
@@ -203,10 +202,10 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
                     < 3
                 ):
                     # single error: move on
-                    warn("else :")
+                    logging.warning("else :")
                     continue
                 else:
-                    warn("Check data for strange section edges!")
+                    logging.warning("Check data for strange section edges!")
 
     if len(kk248) > 0:
         if ii == kk248.size - 1:  # reached the end of the loop without breaking
