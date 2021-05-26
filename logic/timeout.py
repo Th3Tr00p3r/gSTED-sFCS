@@ -35,6 +35,7 @@ class Timeout:
             self._update_dep(),
             self._updt_current_state(),
             self._update_gui(),
+            self._updt_um232h_status(),
         )
         logging.debug("_main function exited")
 
@@ -118,7 +119,7 @@ class Timeout:
         def updt_scn_pos(app):
             """Doc."""
 
-            if self._app.devices.SCANNERS.error_dict is None:
+            if app.devices.SCANNERS.error_dict is None:
                 try:
                     (
                         x_ai,
@@ -127,7 +128,7 @@ class Timeout:
                         x_ao_int,
                         y_ao_int,
                         z_ao_int,
-                    ) = self._app.devices.SCANNERS.ai_buffer[:, -1]
+                    ) = app.devices.SCANNERS.ai_buffer[:, -1]
                 except IndexError:
                     # AI buffer has just been initialized
                     pass
@@ -136,22 +137,22 @@ class Timeout:
                         (axis_vltg - axis_org) * axis_ratio
                         for axis_vltg, axis_ratio, axis_org in zip(
                             (x_ao_int, y_ao_int, z_ao_int),
-                            self._app.devices.SCANNERS.um_V_ratio,
-                            self._app.devices.SCANNERS.origin,
+                            app.devices.SCANNERS.um_V_ratio,
+                            app.devices.SCANNERS.origin,
                         )
                     )
 
-                    self._app.gui.main.xAIV.setValue(x_ai)
-                    self._app.gui.main.yAIV.setValue(y_ai)
-                    self._app.gui.main.zAIV.setValue(z_ai)
+                    app.gui.main.xAIV.setValue(x_ai)
+                    app.gui.main.yAIV.setValue(y_ai)
+                    app.gui.main.zAIV.setValue(z_ai)
 
-                    self._app.gui.main.xAOVint.setValue(x_ao_int)
-                    self._app.gui.main.yAOVint.setValue(y_ao_int)
-                    self._app.gui.main.zAOVint.setValue(z_ao_int)
+                    app.gui.main.xAOVint.setValue(x_ao_int)
+                    app.gui.main.yAOVint.setValue(y_ao_int)
+                    app.gui.main.zAOVint.setValue(z_ao_int)
 
-                    self._app.gui.main.xAOum.setValue(x_um)
-                    self._app.gui.main.yAOum.setValue(y_um)
-                    self._app.gui.main.zAOum.setValue(z_um)
+                    app.gui.main.xAOum.setValue(x_um)
+                    app.gui.main.yAOum.setValue(y_um)
+                    app.gui.main.zAOum.setValue(z_um)
 
         def updt_meas_progbar(meas) -> NoReturn:
             """Doc."""
@@ -184,6 +185,22 @@ class Timeout:
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
+    async def _updt_um232h_status(self):
+        """Doc."""
+
+        um232_buff_wdgt = self._app.gui.main.um232buff
+        buff_sz = self._app.devices.UM232H.tx_size
+
+        while self.not_finished:
+            if self._app.devices.UM232H.error_dict is None:
+                rx_bytes = self._app.devices.UM232H.get_queue_status()
+                fill_perc = rx_bytes / buff_sz * 100
+                um232_buff_wdgt.setValue(fill_perc)
+                if fill_perc > 90:
+                    logging.warning("UM232H buffer might be overfilling")
+
+            await asyncio.sleep(consts.TIMEOUT)
+
     async def _update_avg_counts(self) -> NoReturn:
         """
         Read new counts, and dump buffer overflow.
@@ -206,7 +223,7 @@ class Timeout:
         main_gui = self._app.gui.main
 
         while self.not_finished:
-
+            #            print("dep obj: ", dep_dvc) # TESTESTEST
             if dep_dvc.error_dict is None:
 
                 temp, pow, curr = (
