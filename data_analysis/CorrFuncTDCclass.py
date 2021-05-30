@@ -95,9 +95,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         # Nfile = np.array(Nfile)
         # J = np.argsort(Nfile)
         # fpathes = fpathes[J]
-        fpathes.sort(
-            key=lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1]
-        )
+        fpathes.sort(key=lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1])
 
         for fpath in fpathes:
             if verbose:
@@ -152,9 +150,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                         AnglularScanSettings["LinearPart"]
                     )
                     P.LineEndAdder = LineEndAdder
-                    self.V_um_ms = (
-                        AnglularScanSettings["ActualSpeed"] / 1000
-                    )  # to um/ms
+                    self.V_um_ms = AnglularScanSettings["ActualSpeed"] / 1000  # to um/ms
                     rntime = P.runtime
                     Cnt, PixNoTot, pixNumber, LineNo = self.DoConvertAngularScanToImage(
                         rntime, AnglularScanSettings
@@ -187,18 +183,14 @@ class CorrFuncTDCclass(CorrFuncDataClass):
 
                         rntime = (
                             P.runtime
-                            + pixShift
-                            * self.LaserFreq
-                            / AnglularScanSettings["SampleFreq"]
+                            + pixShift * self.LaserFreq / AnglularScanSettings["SampleFreq"]
                         )
                         (
                             Cnt,
                             PixNoTot,
                             pixNumber,
                             LineNo,
-                        ) = self.DoConvertAngularScanToImage(
-                            rntime, AnglularScanSettings
-                        )
+                        ) = self.DoConvertAngularScanToImage(rntime, AnglularScanSettings)
 
                     else:
                         pixShift = 0
@@ -213,9 +205,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                         )  # minor filtering of outliers
                         CntDig = np.digitize(Cnt, bins=thresh)
                         plateauLevel = np.median(Cnt[CntDig == (classes - 1)])
-                        stdPlateau = stats.median_absolute_deviation(
-                            Cnt[CntDig == (classes - 1)]
-                        )
+                        stdPlateau = stats.median_absolute_deviation(Cnt[CntDig == (classes - 1)])
                         devCnt = Cnt - plateauLevel
                         BW = devCnt > -stdPlateau
                         BW = ndimage.binary_fill_holes(BW)
@@ -269,15 +259,11 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                             LineStartsNewIndex = np.ravel_multi_index(
                                 (j, k[0][0]), BW.shape, mode="raise", order="C"
                             )
-                            LineStartsNew = np.arange(
-                                LineStartsNewIndex, PixNoTot[-1], BW.size
-                            )
+                            LineStartsNew = np.arange(LineStartsNewIndex, PixNoTot[-1], BW.size)
                             LineStopsNewIndex = np.ravel_multi_index(
                                 (j, k[0][-1]), BW.shape, mode="raise", order="C"
                             )
-                            LineStopsNew = np.arange(
-                                LineStopsNewIndex, PixNoTot[-1], BW.size
-                            )
+                            LineStopsNew = np.arange(LineStopsNewIndex, PixNoTot[-1], BW.size)
                             LineStartLabels = np.append(
                                 LineStartLabels, (-j * np.ones(LineStartsNew.shape))
                             )
@@ -288,9 +274,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                             LineStarts = np.append(LineStarts, LineStartsNew)
                             LineStops = np.append(LineStops, LineStopsNew)
 
-                    ROI["row"].append(
-                        ROI["row"][0]
-                    )  # repeat first point to close the polygon
+                    ROI["row"].append(ROI["row"][0])  # repeat first point to close the polygon
                     ROI["col"].append(ROI["col"][0])
                     LineStartLabels = np.array(LineStartLabels)
                     LineStopLabels = np.array(LineStopLabels)
@@ -346,9 +330,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                     plt.subplot(1, 1, 1)
                     plt.imshow(Cnt)
                     P.Image = Cnt
-                    folderpath_fname = os.path.split(
-                        fpath
-                    )  # splits in folderpath and filename
+                    folderpath_fname = os.path.split(fpath)  # splits in folderpath and filename
                     plt.title(folderpath_fname[1])
                     # temporarily reverse rows again
                     BW[1::2, :] = np.flip(BW[1::2, :], 1)
@@ -370,14 +352,10 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                         prof = prof[P.BWmask[j] > 0]
                         C, lags = DoXcorr(prof, prof)
                         C = C / prof.mean() ** 2 - 1
-                        C[0] = (
-                            C[0] - 1 / prof.mean()
-                        )  # subtracting shot noise, small stuff really
+                        C[0] = C[0] - 1 / prof.mean()  # subtracting shot noise, small stuff really
                         P.ImageLineCorr.append(
                             {
-                                "lag": lags
-                                * 1000
-                                / AnglularScanSettings["SampleFreq"],  # in ms
+                                "lag": lags * 1000 / AnglularScanSettings["SampleFreq"],  # in ms
                                 "corrfunc": C,
                             }
                         )  # C/mean(prof).^2-1;
@@ -397,15 +375,13 @@ class CorrFuncTDCclass(CorrFuncDataClass):
     def DoConvertAngularScanToImage(self, rntime, AnglularScanSettings):
         """utility function for opening Angular Scans"""
 
-        PixNoTot = np.floor(
-            rntime * AnglularScanSettings["SampleFreq"] / self.LaserFreq
-        ).astype("int")
+        PixNoTot = np.floor(rntime * AnglularScanSettings["SampleFreq"] / self.LaserFreq).astype(
+            "int"
+        )
         pixNumber = np.mod(PixNoTot, AnglularScanSettings["PointsPerLineTotal"]).astype(
             "int"
         )  # to which pixel photon belongs
-        LineNoTot = np.floor(
-            PixNoTot / AnglularScanSettings["PointsPerLineTotal"]
-        ).astype("int")
+        LineNoTot = np.floor(PixNoTot / AnglularScanSettings["PointsPerLineTotal"]).astype("int")
         LineNo = np.mod(LineNoTot, AnglularScanSettings["NofLines"] + 1).astype(
             "int"
         )  # one more line is for return to starting positon
@@ -448,9 +424,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
             for P in self.data["Data"]:
                 time_stamps = np.diff(P.runtime)
                 mu = np.median(time_stamps) / np.log(2)
-                TotalDurationEstimate = (
-                    TotalDurationEstimate + mu * len(P.runtime) / self.LaserFreq
-                )
+                TotalDurationEstimate = TotalDurationEstimate + mu * len(P.runtime) / self.LaserFreq
 
             RunDuration = TotalDurationEstimate / NrunsRequested
             if verbose:
@@ -479,9 +453,7 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                 2
             )  # for exponential distribution MEDIAN and MAD are the same, but for
             # biexponential MAD seems more sensitive
-            maxTimeStamp = stats.expon.ppf(
-                1 - MaxOutlierProb / len(time_stamps), scale=mu
-            )
+            maxTimeStamp = stats.expon.ppf(1 - MaxOutlierProb / len(time_stamps), scale=mu)
             secEdges = np.asarray(time_stamps > maxTimeStamp).nonzero()[0]
             NoOutliers = len(secEdges)
             if NoOutliers > 0:
@@ -504,17 +476,13 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                     continue
 
                 NoSplits = np.ceil(SegmentTime / RunDuration).astype("int")
-                Splits = np.linspace(
-                    0, np.diff(sE)[0].astype("int"), NoSplits + 1, dtype="int"
-                )
+                Splits = np.linspace(0, np.diff(sE)[0].astype("int"), NoSplits + 1, dtype="int")
                 ts = time_stamps[sE[0] : sE[1]]
 
                 for k in range(NoSplits):
 
                     ts_split = ts[Splits[k] : Splits[k + 1]]
-                    self.duration = np.append(
-                        self.duration, ts_split.sum() / self.LaserFreq
-                    )
+                    self.duration = np.append(self.duration, ts_split.sum() / self.LaserFreq)
                     CF.DoSoftCrossCorrelator(
                         ts_split,
                         CorrelatorType.PhDelayCorrelator,

@@ -169,9 +169,7 @@ class Timeout:
                         progress = 0
                 elif meas.type == "SFCSImage":
                     progress = (
-                        meas.time_passed
-                        / meas.est_duration
-                        * meas.prog_bar_wdgt.obj.maximum()
+                        meas.time_passed / meas.est_duration * meas.prog_bar_wdgt.obj.maximum()
                     )
                 meas.prog_bar_wdgt.set(progress)
 
@@ -237,12 +235,8 @@ class Timeout:
                 main_gui.depActualCurr.setValue(curr)
 
                 if temp < dep_dvc.min_SHG_temp:
-                    main_gui.depTemp.setStyleSheet(
-                        "background-color: red; color: white;"
-                    )
+                    main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
                 else:
-                    main_gui.depTemp.setStyleSheet(
-                        "background-color: white; color: black;"
-                    )
+                    main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
             await asyncio.sleep(self.updt_intrvl["dep"])

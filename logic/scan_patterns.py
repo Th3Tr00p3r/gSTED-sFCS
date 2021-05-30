@@ -35,9 +35,7 @@ class ScanPatternAO:
             dim2_ao = np.empty(shape=(set_pnts_lines_odd.size * ppl,))
             for idx, odd_line_set_pnt in enumerate(set_pnts_lines_odd):
                 dim1_ao[idx * ppl : idx * ppl + ppl] = single_line_ao
-                dim2_ao[idx * ppl : idx * ppl + ppl] = [odd_line_set_pnt] * len(
-                    single_line_ao
-                )
+                dim2_ao[idx * ppl : idx * ppl + ppl] = [odd_line_set_pnt] * len(single_line_ao)
 
             return np.vstack((dim1_ao, dim2_ao))
 
@@ -86,18 +84,14 @@ class ScanPatternAO:
 
         ampl = params.dim2_um / dim_conv[1]
         if params.n_lines > 1:
-            vect = np.array(
-                [(val / (params.n_lines - 1)) - 0.5 for val in range(params.n_lines)]
-            )
+            vect = np.array([(val / (params.n_lines - 1)) - 0.5 for val in range(params.n_lines)])
         else:
             vect = 0
         set_pnts_lines_odd = curr_ao[1] + ampl * vect
 
         ampl = params.dim3_um / dim_conv[2]
         if params.n_planes > 1:
-            vect = np.array(
-                [(val / (params.n_planes - 1)) - 0.5 for val in range(params.n_planes)]
-            )
+            vect = np.array([(val / (params.n_planes - 1)) - 0.5 for val in range(params.n_planes)])
         else:
             vect = 0
         set_pnts_planes = curr_ao[2] + ampl * vect
@@ -143,82 +137,54 @@ class ScanPatternAO:
             ):
                 tot_len = min(
                     max_line_len,
-                    (max_line_len - line_shift * (min_n_lines - 1) * sin(ang_rad))
-                    / cos(ang_rad),
+                    (max_line_len - line_shift * (min_n_lines - 1) * sin(ang_rad)) / cos(ang_rad),
                 )
                 n_lines = max(
                     min_n_lines,
                     2
                     * int(
-                        (
-                            max_line_len
-                            / line_shift
-                            * (1 - abs(cos(ang_rad)))
-                            / sin(ang_rad)
-                            + 1
-                        )
-                        / 2
+                        (max_line_len / line_shift * (1 - abs(cos(ang_rad))) / sin(ang_rad) + 1) / 2
                     ),
                 )
             else:
                 tot_len = min(
                     max_line_len,
-                    (max_line_len - line_shift * (min_n_lines - 1) * cos(ang_rad))
-                    / sin(ang_rad),
+                    (max_line_len - line_shift * (min_n_lines - 1) * cos(ang_rad)) / sin(ang_rad),
                 )
                 n_lines = max(
                     min_n_lines,
                     2
                     * int(
-                        (
-                            max_line_len
-                            / line_shift
-                            * (1 - abs(sin(ang_rad)))
-                            / cos(ang_rad)
-                            + 1
-                        )
-                        / 2
+                        (max_line_len / line_shift * (1 - abs(sin(ang_rad))) / cos(ang_rad) + 1) / 2
                     ),
                 )
 
         elif 90 < ang_deg < 180:
-            if cos(2 * ang_rad) < sqrt(2) * cos(
-                pi - ang_rad + pi / 4
-            ) * max_line_len / (line_shift * (min_n_lines - 1)):
+            if cos(2 * ang_rad) < sqrt(2) * cos(pi - ang_rad + pi / 4) * max_line_len / (
+                line_shift * (min_n_lines - 1)
+            ):
                 tot_len = min(
                     max_line_len,
-                    (-max_line_len + line_shift * (min_n_lines - 1) * sin(ang_rad))
-                    / cos(ang_rad),
+                    (-max_line_len + line_shift * (min_n_lines - 1) * sin(ang_rad)) / cos(ang_rad),
                 )
                 n_lines = max(
                     min_n_lines,
                     2
                     * int(
-                        (
-                            max_line_len
-                            / line_shift
-                            * (1 - abs(cos(ang_rad)))
-                            / sin(ang_rad)
-                            + 1
-                        )
-                        / 2
+                        (max_line_len / line_shift * (1 - abs(cos(ang_rad))) / sin(ang_rad) + 1) / 2
                     ),
                 )
             else:
                 tot_len = min(
                     max_line_len,
-                    (max_line_len + line_shift * (min_n_lines - 1) * cos(ang_rad))
-                    / sin(ang_rad),
+                    (max_line_len + line_shift * (min_n_lines - 1) * cos(ang_rad)) / sin(ang_rad),
                 )
                 n_lines = max(
                     min_n_lines,
                     2
                     * int(
                         (
-                            max_line_len
-                            / line_shift
-                            * (1 - abs(sin(ang_rad)))
-                            / abs(cos(ang_rad))
+                            max_line_len / line_shift * (1 - abs(sin(ang_rad))) / abs(cos(ang_rad))
                             + 1
                         )
                         / 2
@@ -277,12 +243,8 @@ class ScanPatternAO:
                 XT = X2
                 YT = Y2
 
-            x_ao[:, line_idx] = XT[:] + (
-                line_idx - (n_lines + 1) / 2
-            ) * line_shift * sin(ang_rad)
-            y_ao[:, line_idx] = YT[:] - (
-                line_idx - (n_lines + 1) / 2
-            ) * line_shift * cos(ang_rad)
+            x_ao[:, line_idx] = XT[:] + (line_idx - (n_lines + 1) / 2) * line_shift * sin(ang_rad)
+            y_ao[:, line_idx] = YT[:] - (line_idx - (n_lines + 1) / 2) * line_shift * cos(ang_rad)
 
         # add one more line to walk back slowly to the beginning
         Xend = x_ao[-1, -2]

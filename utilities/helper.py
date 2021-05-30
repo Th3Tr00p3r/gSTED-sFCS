@@ -228,9 +228,7 @@ class QtWidgetAccess:
         """Get widget value"""
 
         if self.getter is not None:
-            wdgt = (
-                self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
-            )
+            wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
             return getattr(wdgt, self.getter)()
         else:
             return None

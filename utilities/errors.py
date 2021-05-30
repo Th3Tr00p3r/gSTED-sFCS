@@ -71,11 +71,7 @@ def dvc_err_chckr(nick_set: set = None) -> Callable:
             if nick_set is None:
                 nick_set = {func_args[0]}
 
-            txt = [
-                f"{nick} error.\n"
-                for nick in nick_set
-                if getattr(devices, nick).error_dict
-            ]
+            txt = [f"{nick} error.\n" for nick in nick_set if getattr(devices, nick).error_dict]
 
             if txt:
                 # if any errors found for specified devices
