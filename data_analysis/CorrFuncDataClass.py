@@ -35,10 +35,7 @@ class CorrFuncDataClass:
 
             AverageCF_CR = (CF_CR * weights).sum(0) / tot_weights
 
-            errorCF_CR = (
-                np.sqrt((weights ** 2 * (CF_CR - AverageCF_CR) ** 2).sum(0))
-                / tot_weights
-            )
+            errorCF_CR = np.sqrt((weights ** 2 * (CF_CR - AverageCF_CR) ** 2).sum(0)) / tot_weights
 
             return AverageCF_CR, errorCF_CR
 
@@ -73,9 +70,7 @@ class CorrFuncDataClass:
             self.CF_CR[self.Jgood, :], self.weights[self.Jgood, :]
         )
 
-        Jt = np.logical_and(
-            (self.lag > self.NormRange[0]), (self.lag < self.NormRange[1])
-        )
+        Jt = np.logical_and((self.lag > self.NormRange[0]), (self.lag < self.NormRange[1]))
         self.G0 = (self.AverageCF_CR[Jt] / self.errorCF_CR[Jt] ** 2).sum() / (
             1 / self.errorCF_CR[Jt] ** 2
         ).sum()
@@ -84,9 +79,7 @@ class CorrFuncDataClass:
         if not NoPlot:
             self.DoPlotCorrFunc()
 
-    def DoPlotCorrFunc(
-        self, Xfield="lag", Yfield="AverageCF_CR", Xscale="log", Yscale="linear"
-    ):
+    def DoPlotCorrFunc(self, Xfield="lag", Yfield="AverageCF_CR", Xscale="log", Yscale="linear"):
         X = getattr(self, Xfield)
         Y = getattr(self, Yfield)
         if Xscale == "log":

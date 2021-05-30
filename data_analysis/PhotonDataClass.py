@@ -25,9 +25,7 @@ class PhotonDataClass:
         sectionEdges.append(np.array([edgeStart, edgeStop]))
 
         while not dataEnd:
-            edgeStart, edgeStop, dataEnd = DoFindSectionEdge(
-                FPGAdata, edgeStop + 1, GroupLen
-            )
+            edgeStart, edgeStop, dataEnd = DoFindSectionEdge(FPGAdata, edgeStop + 1, GroupLen)
             sectionEdges.append(np.array([edgeStart, edgeStop]))
 
         SectionLength = np.array([np.diff(SE)[0] for SE in sectionEdges])
@@ -37,18 +35,14 @@ class PhotonDataClass:
         # patching: look at the largest section only
         SecInd = np.argmax(SectionLength)
         Ind = np.arange(sectionEdges[SecInd][0], sectionEdges[SecInd][1], GroupLen)
-        counter = (
-            FPGAdata[Ind + 1] * 256 ** 2 + FPGAdata[Ind + 2] * 256 + FPGAdata[Ind + 3]
-        )
+        counter = FPGAdata[Ind + 1] * 256 ** 2 + FPGAdata[Ind + 2] * 256 + FPGAdata[Ind + 3]
         time_stamps = np.diff(counter.astype(int))
 
         # find simple "inversions": the data with a missing byte
         # decrease in counter on data j+1, yet the next counter data (j+2) is
         # higher than j.
         J = np.where(
-            np.logical_and(
-                (time_stamps[:-1] < 0), (time_stamps[:-1] + time_stamps[1:] > 0)
-            )
+            np.logical_and((time_stamps[:-1] < 0), (time_stamps[:-1] + time_stamps[1:] > 0))
         )[0]
         if J.size != 0:
             if verbose:
@@ -91,9 +85,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
     # find brackets
     I_248 = np.where(data[sectionStart:] == 248)[0]
     I_254 = np.where(data[sectionStart:] == 254)[0]
-    II = np.intersect1d(
-        I_248, I_254 - GroupLen + 1, assume_unique=True
-    )  # find those in registry
+    II = np.intersect1d(I_248, I_254 - GroupLen + 1, assume_unique=True)  # find those in registry
     edgeStart = sectionStart + II[0]
     p248 = data[edgeStart::GroupLen]
     p254 = data[(edgeStart + GroupLen - 1) :: GroupLen]
@@ -111,16 +103,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
             elif len(kk248) == ii + 1:  # likely a singular problem
                 # just test the most significant bytes of the runtime are
                 # close
-                if (
-                    abs(
-                        np.diff(
-                            data(
-                                edgeStart + kk * GroupLen + np.array([-GroupLen + 1, 1])
-                            )
-                        )
-                    )
-                    < 3
-                ):
+                if abs(np.diff(data(edgeStart + kk * GroupLen + np.array([-GroupLen + 1, 1])))) < 3:
                     # single error: move on
                     logging.warning("(len(kk248) == ii+1):")
                     continue
@@ -132,16 +115,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
             ):  # likely a singular problem since further data are in registry
                 # just test the most significant bytes of the runtime are
                 # close
-                if (
-                    abs(
-                        np.diff(
-                            data(
-                                edgeStart + kk * GroupLen + np.array([-GroupLen + 1, 1])
-                            )
-                        )
-                    )
-                    < 3
-                ):
+                if abs(np.diff(data(edgeStart + kk * GroupLen + np.array([-GroupLen + 1, 1])))) < 3:
                     # single error: move on
                     logging.warning("elif np.diff(kk248[ii:(ii+2)]) > 1: ")
                     continue
@@ -172,16 +146,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
             elif kk < kk254[ii]:  # likely a singular error on 248 byte
                 # just test the most significant bytes of the runtime are
                 # close
-                if (
-                    abs(
-                        np.diff(
-                            data[
-                                edgeStart + kk * GroupLen + np.array([-GroupLen + 1, 1])
-                            ]
-                        )
-                    )
-                    < 3
-                ):
+                if abs(np.diff(data[edgeStart + kk * GroupLen + np.array([-GroupLen + 1, 1])])) < 3:
                     # single error: move on
                     logging.warning("elif (kk < kk254[ii]):")
                     continue
@@ -191,16 +156,7 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
             else:  # likely a signular mistake on 254 byte
                 # just test the most significant bytes of the runtime are
                 # close
-                if (
-                    abs(
-                        np.diff(
-                            data[
-                                edgeStart + kk * GroupLen + np.array([-GroupLen + 1, 1])
-                            ]
-                        )
-                    )
-                    < 3
-                ):
+                if abs(np.diff(data[edgeStart + kk * GroupLen + np.array([-GroupLen + 1, 1])])) < 3:
                     # single error: move on
                     logging.warning("else :")
                     continue

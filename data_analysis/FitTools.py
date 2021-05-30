@@ -52,9 +52,7 @@ def curvefitLims(
     #    print(yErr)
     fitFunc = globals()[fitName]
     #    print(fitName)
-    bta, covM = curve_fit(
-        fitFunc, x, y, p0=paramEstimates, sigma=yErr, absolute_sigma=True
-    )
+    bta, covM = curve_fit(fitFunc, x, y, p0=paramEstimates, sigma=yErr, absolute_sigma=True)
     #    print(bta)
     FitParam = dict()
     FitParam["beta"] = bta

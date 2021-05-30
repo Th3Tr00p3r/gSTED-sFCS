@@ -86,9 +86,7 @@ class NIDAQmx:
     def are_tasks_done(self, task_type: str) -> bool:
         """Doc."""
 
-        task_status = [
-            task.is_task_done() for task in getattr(self.tasks, task_type).values()
-        ]
+        task_status = [task.is_task_done() for task in getattr(self.tasks, task_type).values()]
         return task_status.count(1) == len(task_status)
 
     def close_tasks(self, task_type: str):
@@ -201,9 +199,7 @@ class NIDAQmx:
         ai_task = getattr(self.tasks, task_type)[task_name]
         return ai_task.read(number_of_samples_per_channel=n_samples)
 
-    def analog_write(
-        self, task_name: str, data: np.ndarray, auto_start=None
-    ) -> NoReturn:
+    def analog_write(self, task_name: str, data: np.ndarray, auto_start=None) -> NoReturn:
         """Doc."""
 
         ao_task = self.tasks.ao[task_name]

@@ -34,9 +34,7 @@ class MainWin:
     def restart(self) -> NoReturn:
         """Restart all devices (except camera) and the timeout loop."""
 
-        pressed = Question(
-            txt="Are you sure?", title="Restarting Application"
-        ).display()
+        pressed = Question(txt="Are you sure?", title="Restarting Application").display()
         if pressed == QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
 
@@ -68,9 +66,7 @@ class MainWin:
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chckr()
-    def dvc_toggle(
-        self, nick, toggle_mthd="toggle", leave_on=False, leave_off=False
-    ) -> NoReturn:
+    def dvc_toggle(self, nick, toggle_mthd="toggle", leave_on=False, leave_off=False) -> NoReturn:
         """Doc."""
 
         dvc = getattr(self._app.devices, nick)
@@ -155,9 +151,7 @@ class MainWin:
         scanners_dvc.start_write_task(data, type_str)
         scanners_dvc.toggle(True)  # restart cont. reading
 
-        logging.debug(
-            f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V"
-        )
+        logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V")
 
     @err_chckr({"SCANNERS"})
     def go_to_origin(self, which_axes: str) -> NoReturn:
@@ -175,9 +169,7 @@ class MainWin:
 
         self.move_scanners(which_axes)
 
-        logging.debug(
-            f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin"
-        )
+        logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin")
 
     @err_chckr({"SCANNERS"})
     def displace_scanner_axis(self, sign: int) -> NoReturn:
@@ -212,12 +204,8 @@ class MainWin:
 
         plane_idx = self._gui.numPlaneShown.value()
         try:
-            line_ticks_V = self._app.last_img_scn.plane_images_data[
-                plane_idx
-            ].line_ticks_V
-            row_ticks_V = self._app.last_img_scn.plane_images_data[
-                plane_idx
-            ].row_ticks_V
+            line_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].line_ticks_V
+            row_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].row_ticks_V
             plane_ticks = self._app.last_img_scn.set_pnts_planes
 
             coord_1, coord_2 = (
@@ -243,9 +231,7 @@ class MainWin:
 
             self.move_scanners(plane_type)
 
-            logging.debug(
-                f"{getattr(consts, 'SCANNERS').log_ref} moved to ROI ({vltgs})"
-            )
+            logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} moved to ROI ({vltgs})")
 
         except AttributeError:
             pass
@@ -255,9 +241,7 @@ class MainWin:
         """Doc."""
 
         self._app.devices.STAGE.move(dir=dir, steps=steps)
-        logging.info(
-            f"{getattr(consts, 'STAGE').log_ref} moved {str(steps)} steps {str(dir)}"
-        )
+        logging.info(f"{getattr(consts, 'STAGE').log_ref} moved {str(steps)} steps {str(dir)}")
 
     @err_chckr({"STAGE"})
     def release_stage(self):
@@ -290,17 +274,11 @@ class MainWin:
                 self._app.gui.main.imp.go_to_origin("XY")
                 pattern = self._gui.solScanType.currentText()
                 if pattern == "angular":
-                    scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(
-                        self._app
-                    )
+                    scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
                 elif pattern == "circle":
-                    scan_params = consts.SOL_CIRC_SCN_WDGT_COLL.read_namespace_from_gui(
-                        self._app
-                    )
+                    scan_params = consts.SOL_CIRC_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
                 elif pattern == "static":
-                    scan_params = consts.SOL_NO_SCN_WDGT_COLL.read_namespace_from_gui(
-                        self._app
-                    )
+                    scan_params = consts.SOL_NO_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
 
                 scan_params.pattern = pattern
 
@@ -327,18 +305,14 @@ class MainWin:
                 self._gui.startSolScan.setText("Stop \nScan")
                 self._gui.solScanMaxFileSize.setEnabled(False)
                 self._gui.solScanCalDur.setEnabled(False)
-                self._gui.solScanTotalDur.setEnabled(
-                    self._gui.repeatSolMeas.isChecked()
-                )
+                self._gui.solScanTotalDur.setEnabled(self._gui.repeatSolMeas.isChecked())
                 self._gui.solScanDurUnits.setEnabled(False)
                 self._gui.solScanFileTemplate.setEnabled(False)
 
             elif type == "SFCSImage":
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
-                    scan_params=consts.IMG_SCN_WDGT_COLL.read_namespace_from_gui(
-                        self._app
-                    ),
+                    scan_params=consts.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app),
                     **consts.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [
@@ -374,10 +348,7 @@ class MainWin:
 
         else:
             # other meas running
-            txt = (
-                f"Another type of measurement "
-                f"({current_type}) is currently running."
-            )
+            txt = f"Another type of measurement " f"({current_type}) is currently running."
             Notification(txt).display()
 
     def disp_scn_pttrn(self, pattern: str):
@@ -450,9 +421,7 @@ class MainWin:
                 return p
 
             elif method == "Both scans - averaged":
-                return (img_data.pic1 + img_data.pic2) / (
-                    img_data.norm1 + img_data.norm2
-                )
+                return (img_data.pic1 + img_data.pic2) / (img_data.norm1 + img_data.norm2)
 
         disp_mthd = self._gui.imgShowMethod.currentText()
         try:
@@ -507,9 +476,7 @@ class MainWin:
         """Doc."""
 
         self._gui.countsAvg.setValue(val)
-        self._app.timeout_loop.updt_intrvl["cntr_avg"] = (
-            val / 1000
-        )  # convert to seconds
+        self._app.timeout_loop.updt_intrvl["cntr_avg"] = val / 1000  # convert to seconds
 
     def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
         """Doc."""
@@ -525,9 +492,7 @@ class MainWin:
         consts.SOL_MEAS_WDGT_COLL.write_to_gui(
             self._app, consts.SOL_MEAS_WDGT_FILLOUT_DICT[curr_text]
         )
-        logging.debug(
-            f"Solution measurement preset configuration chosen: '{curr_text}'"
-        )
+        logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
 
 
 class SettWin:
@@ -551,8 +516,7 @@ class SettWin:
 
             if set(current_state) != set(last_loaded_state):
                 pressed = Question(
-                    "Keep changes if made? "
-                    "(otherwise, revert to last loaded settings file.)"
+                    "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
                 ).display()
                 if pressed == QMessageBox.No:
                     self.load(self._gui.settingsFileName.text())

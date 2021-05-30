@@ -31,40 +31,20 @@ class MainWin(QMainWindow):
 
         # scan patterns
         # image
-        self.imgScanDim1.valueChanged.connect(
-            lambda: self.display_scan_pattern("image")
-        )
-        self.imgScanDim2.valueChanged.connect(
-            lambda: self.display_scan_pattern("image")
-        )
-        self.imgScanNumLines.valueChanged.connect(
-            lambda: self.display_scan_pattern("image")
-        )
+        self.imgScanDim1.valueChanged.connect(lambda: self.display_scan_pattern("image"))
+        self.imgScanDim2.valueChanged.connect(lambda: self.display_scan_pattern("image"))
+        self.imgScanNumLines.valueChanged.connect(lambda: self.display_scan_pattern("image"))
         self.imgScanPPL.valueChanged.connect(lambda: self.display_scan_pattern("image"))
-        self.imgScanLinFrac.valueChanged.connect(
-            lambda: self.display_scan_pattern("image")
-        )
-        self.imgScanType.currentTextChanged.connect(
-            lambda: self.display_scan_pattern("image")
-        )
+        self.imgScanLinFrac.valueChanged.connect(lambda: self.display_scan_pattern("image"))
+        self.imgScanType.currentTextChanged.connect(lambda: self.display_scan_pattern("image"))
         # solution (angular)
-        self.maxLineLen.valueChanged.connect(
-            lambda: self.display_scan_pattern("angular")
-        )
+        self.maxLineLen.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
         self.angle.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
-        self.solLinFrac.valueChanged.connect(
-            lambda: self.display_scan_pattern("angular")
-        )
-        self.lineShift.valueChanged.connect(
-            lambda: self.display_scan_pattern("angular")
-        )
-        self.minNumLines.valueChanged.connect(
-            lambda: self.display_scan_pattern("angular")
-        )
+        self.solLinFrac.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
+        self.lineShift.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
+        self.minNumLines.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
         # solution (circle)
-        self.circDiameter.valueChanged.connect(
-            lambda: self.display_scan_pattern("circle")
-        )
+        self.circDiameter.valueChanged.connect(lambda: self.display_scan_pattern("circle"))
 
         # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.axisMoveUm_released(1))
@@ -185,9 +165,7 @@ class MainWin(QMainWindow):
 
         self.imp.toggle_meas("SFCSSolution")
 
-    def device_toggle_button_released(
-        self, dvc_nick: str, toggle_mthd: str
-    ) -> NoReturn:
+    def device_toggle_button_released(self, dvc_nick: str, toggle_mthd: str) -> NoReturn:
         """Turn devices On/Off."""
 
         self.imp.dvc_toggle(dvc_nick, toggle_mthd)
