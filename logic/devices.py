@@ -118,9 +118,7 @@ class Scanners(NIDAQmx):
                 **getattr(self, f"{axis}_ao_limits"),
                 "terminal_config": trm_cnfg,
             }
-            for axis, trm_cnfg, inst in zip(
-                "xyz", (diff, diff, rse), ("galvo", "galvo", "piezo")
-            )
+            for axis, trm_cnfg, inst in zip("xyz", (diff, diff, rse), ("galvo", "galvo", "piezo"))
         ]
 
         self.ao_chan_specs = [
@@ -244,9 +242,7 @@ class Scanners(NIDAQmx):
                     xy_chan_spcs.append(ax_chn_spcs)
                     if ao_data_xy.size == 0:
                         # first concatenate the X/Y data to empty array to have 1D array
-                        ao_data_xy = np.concatenate(
-                            (ao_data_xy, ao_data[ao_data_row_idx])
-                        )
+                        ao_data_xy = np.concatenate((ao_data_xy, ao_data[ao_data_row_idx]))
                     else:
                         # then, if XY scan, stack the Y data below the X data to have 2D array
                         ao_data_xy = np.vstack((ao_data_xy, ao_data[ao_data_row_idx]))
@@ -326,9 +322,7 @@ class Scanners(NIDAQmx):
         if ai_buffer_len > self.CONT_READ_BFFR_SZ:
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
 
-    def diff_to_rse(
-        self, read_samples: [list, list, list, list, list]
-    ) -> (float, float, float):
+    def diff_to_rse(self, read_samples: [list, list, list, list, list]) -> (float, float, float):
         """Doc."""
 
         read_samples = np.array(read_samples)
@@ -354,9 +348,7 @@ class Scanners(NIDAQmx):
 
         # 2D array
         if len(ao_data.shape) == 2:
-            diff_ao_data = np.empty(
-                shape=(ao_data.shape[0] * 2, ao_data.shape[1]), dtype=np.float
-            )
+            diff_ao_data = np.empty(shape=(ao_data.shape[0] * 2, ao_data.shape[1]), dtype=np.float)
             n_rows = ao_data.shape[0]
         # 1D array
         else:
@@ -381,9 +373,7 @@ class Counter(NIDAQmx):
             param_dict,
             task_types=("ci", "co"),
         )
-        self.cont_read_buffer = np.zeros(
-            shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32
-        )
+        self.cont_read_buffer = np.zeros(shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32)
 
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0

@@ -38,9 +38,7 @@ class UserDialog:
 class Error(UserDialog):
     """Doc."""
 
-    def __init__(
-        self, type="", msg="", tb="", module="", line="", custom_txt="", custom_title=""
-    ):
+    def __init__(self, type="", msg="", tb="", module="", line="", custom_txt="", custom_title=""):
 
         if type:
             super().__init__(

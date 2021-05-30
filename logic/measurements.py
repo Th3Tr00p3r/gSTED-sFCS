@@ -99,10 +99,7 @@ class Measurement:
         self._app.gui.main.imp.dvc_toggle("TDC")
 
         if timed:
-            while (
-                self.time_passed < self.duration * self.duration_multiplier
-                and self.is_running
-            ):
+            while self.time_passed < self.duration * self.duration_multiplier and self.is_running:
                 await read_and_track_time()
 
         else:
@@ -281,14 +278,10 @@ class SFCSImageMeasurement(Measurement):
         self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
-            self.scanners_dvc.ai_buffer.shape[0]
-            * 2
-            * (1 / (self.scan_params.dt - 1.5e-7))
+            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
         )
         self.est_duration = (
-            self.n_ao_samps
-            * self.scan_params.dt
-            * len(self.scan_params.set_pnts_planes)
+            self.n_ao_samps * self.scan_params.dt * len(self.scan_params.set_pnts_planes)
         )
         self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
 
@@ -503,8 +496,7 @@ class SFCSImageMeasurement(Measurement):
             # if not manually stopped
             # prepare data
             self.plane_images_data = [
-                self.prepare_image_data(plane_idx)
-                for plane_idx in range(self.scan_params.n_planes)
+                self.prepare_image_data(plane_idx) for plane_idx in range(self.scan_params.n_planes)
             ]
 
             # save data
@@ -536,9 +528,7 @@ class SFCSSolutionMeasurement(Measurement):
     }
 
     def __init__(self, app, scan_params, **kwargs):
-        super().__init__(
-            app=app, type="SFCSSolution", scan_params=scan_params, **kwargs
-        )
+        super().__init__(app=app, type="SFCSSolution", scan_params=scan_params, **kwargs)
         self.scan_params.scan_plane = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.scanning = not (self.scan_params.pattern == "static")
@@ -563,9 +553,7 @@ class SFCSSolutionMeasurement(Measurement):
         duration_in_seconds = int(self.total_duration * self.duration_multiplier)
         curr_datetime = datetime.datetime.now()
         start_time = datetime.datetime.now().time()
-        end_time = (
-            curr_datetime + datetime.timedelta(seconds=duration_in_seconds)
-        ).time()
+        end_time = (curr_datetime + datetime.timedelta(seconds=duration_in_seconds)).time()
         self.start_time_wdgt.set(start_time)
         self.end_time_wdgt.set(end_time)
 
@@ -612,10 +600,7 @@ class SFCSSolutionMeasurement(Measurement):
             )
         else:
             self.pxl_clk_dvc.low_ticks = (
-                int(
-                    (self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_Hz
-                )
-                - 2
+                int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_Hz) - 2
             )
         # create ao_buffer
         self.ao_buffer, self.scan_params = ScanPatternAO(
@@ -624,9 +609,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
-            self.scanners_dvc.ai_buffer.shape[0]
-            * 2
-            * (1 / (self.scan_params.dt - 1.5e-7))
+            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
         )
 
     def disp_ACF(self):

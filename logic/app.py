@@ -101,8 +101,7 @@ class App:
 
             if DVC_CONSTS.cls_xtra_args is not None:
                 x_args = [
-                    helper.deep_getattr(self, deep_attr)
-                    for deep_attr in DVC_CONSTS.cls_xtra_args
+                    helper.deep_getattr(self, deep_attr) for deep_attr in DVC_CONSTS.cls_xtra_args
                 ]
                 setattr(
                     self.devices,
@@ -192,9 +191,7 @@ class App:
     def exit_app(self, event):
         """Doc."""
 
-        pressed = Question(
-            txt="Are you sure you want to quit?", title="Quitting Program"
-        ).display()
+        pressed = Question(txt="Are you sure you want to quit?", title="Quitting Program").display()
         if pressed == QMessageBox.Yes:
             self.clean_up_app()
         else:
