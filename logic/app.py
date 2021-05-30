@@ -10,7 +10,7 @@ import yaml
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox
 
-import gui.gui as gui_module
+import gui.gui
 import gui.icons.icon_paths as icon
 import logic.devices as devices
 import utilities.constants as consts
@@ -34,11 +34,11 @@ class App:
 
         # init windows
         self.gui = SimpleNamespace()
-        self.gui.main = gui_module.MainWin(self)
+        self.gui.main = gui.gui.MainWin(self)
         self.gui.main.imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
-        self.gui.settings = gui_module.SettWin(self)
+        self.gui.settings = gui.gui.SettWin(self)
         self.gui.settings.imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
-        self.gui.camera = gui_module.CamWin(self)
+        self.gui.camera = gui.gui.CamWin(self)
         # ^(instantiated on pressing camera button)
 
         # create neccessary data folders based on settings paths
