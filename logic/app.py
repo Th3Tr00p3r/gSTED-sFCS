@@ -38,8 +38,7 @@ class App:
         self.gui.main.imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
         self.gui.settings = gui.gui.SettWin(self)
         self.gui.settings.imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
-        self.gui.camera = gui.gui.CamWin(self)
-        # ^(instantiated on pressing camera button)
+        self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
         # create neccessary data folders based on settings paths
         self.create_data_folders()
