@@ -158,20 +158,26 @@ class Timeout:
             """Doc."""
 
             if (self._app.devices.UM232H.error_dict is None) and meas.is_running:
-                if meas.type == "SFCSSolution":
-                    if not meas.cal:
+
+                try:
+                    if meas.type == "SFCSSolution":
+                        if not meas.cal:
+                            progress = (
+                                (meas.total_time_passed + meas.time_passed)
+                                / (meas.total_duration * meas.duration_multiplier)
+                                * meas.prog_bar_wdgt.obj.maximum()
+                            )
+                        else:
+                            progress = 0
+                    elif meas.type == "SFCSImage":
                         progress = (
-                            (meas.total_time_passed + meas.time_passed)
-                            / (meas.total_duration * meas.duration_multiplier)
-                            * meas.prog_bar_wdgt.obj.maximum()
+                            meas.time_passed / meas.est_duration * meas.prog_bar_wdgt.obj.maximum()
                         )
-                    else:
-                        progress = 0
-                elif meas.type == "SFCSImage":
-                    progress = (
-                        meas.time_passed / meas.est_duration * meas.prog_bar_wdgt.obj.maximum()
-                    )
-                meas.prog_bar_wdgt.set(progress)
+                    meas.prog_bar_wdgt.set(progress)
+
+                except AttributeError:
+                    # happens when depletion is turned on before beginning measurement (5 s wait)
+                    pass
 
         while self.not_finished:
 

@@ -455,6 +455,9 @@ class Counter(NIDAQmx):
             num_samps_read = self.counter_stream_read()
         except DaqError as exc:
             err_hndlr(exc, "fill_ci_buffer()", dvc=self)
+        except KeyError:
+            # TODO: figure out why this happens (during manual stop with device error)
+            pass
         else:
             self.ci_buffer = np.concatenate(
                 (self.ci_buffer, self.cont_read_buffer[:num_samps_read])

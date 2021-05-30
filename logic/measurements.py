@@ -139,22 +139,18 @@ class Measurement:
             if self.scan_params.exc_mode:
                 self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_off=True)
             if self.scan_params.dep_mode:
-                self._app.gui.main.imp.dvc_toggle(
-                    "DEP_SHUTTER", toggle_mthd="laser_toggle", leave_off=True
-                )
+                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_off=True)
         else:
             if self.scan_params.exc_mode:
                 self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
             if self.scan_params.dep_mode:
                 if self.laser_dvcs.dep.state is False:
                     logging.info(
-                        f"{consts.DEP_LASER.log_ref} isn't on. Turnning on and waiting 5 s before measurement."
+                        f"{consts.DEP_LASER.log_ref} isn't on. Turning on and waiting 5 s before measurement."
                     )
-                    self._app.gui.main.imp.dvc_toggle("DEP_LASER")
+                    self._app.gui.main.imp.dvc_toggle("DEP_LASER", toggle_mthd="laser_toggle")
                     await asyncio.sleep(5)
-                self._app.gui.main.imp.dvc_toggle(
-                    "DEP_SHUTTER", toggle_mthd="laser_toggle", leave_on=True
-                )
+                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
             self.get_laser_config()
 
     def get_laser_config(self) -> NoReturn:

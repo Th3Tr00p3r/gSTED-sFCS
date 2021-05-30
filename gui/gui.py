@@ -345,8 +345,8 @@ class CamWin(QWidget):
 
         # add matplotlib-ready widget (canvas) for showing camera output
         self.figure = plt.figure()
-        self.canvas = FigureCanvas(self._gui.figure)
-        self.gridLayout.addWidget(self._gui.canvas, 0, 1)
+        self.canvas = FigureCanvas(self.figure)
+        self.gridLayout.addWidget(self.canvas, 0, 1)
 
     def closeEvent(self, event: QEvent) -> NoReturn:
         """Doc."""
