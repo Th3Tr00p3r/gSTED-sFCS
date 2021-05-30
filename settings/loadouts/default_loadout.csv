@@ -33,8 +33,8 @@ axisMoveUm,0.0
 solMeasPreset,0
 solScanType,2
 solScanDurUnits,0
-imgScanType,0
 imgScanPreset,0
+imgScanType,1
 imgShowMethod,0
 axis,0
 repeatSolMeas,True
