@@ -5,10 +5,8 @@ import logging
 from typing import NoReturn
 
 import numpy as np
-import PyQt5.QtWidgets as QtWidgets
-from matplotlib import pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 import gui.icons.icon_paths as icon
 import logic.measurements as meas
@@ -28,18 +26,6 @@ class MainWin:
         self._app = app
         self._gui = gui
 
-        # status bar
-        self.statusBar = QtWidgets.QStatusBar()
-        self._gui.setStatusBar(self.statusBar)
-
-        # intialize gui
-        self._gui.actionLaser_Control.setChecked(True)
-        self._gui.actionStepper_Stage_Control.setChecked(True)
-        self._gui.stageButtonsGroup.setEnabled(False)
-        self._gui.acf.setLogMode(x=True)
-
-        self._gui.countsAvg.setValue(self._gui.countsAvgSlider.value())
-
     def close(self, event):
         """Doc."""
 
@@ -51,13 +37,13 @@ class MainWin:
         pressed = Question(
             txt="Are you sure?", title="Restarting Application"
         ).display()
-        if pressed == QtWidgets.QMessageBox.Yes:
+        if pressed == QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
 
     def save(self) -> NoReturn:
         """Doc."""
 
-        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+        file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Loadout",
             consts.LOADOUT_FOLDER_PATH,
@@ -71,7 +57,7 @@ class MainWin:
         """Doc."""
 
         if not file_path:
-            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Loadout",
                 consts.LOADOUT_FOLDER_PATH,
@@ -568,7 +554,7 @@ class SettWin:
                     "Keep changes if made? "
                     "(otherwise, revert to last loaded settings file.)"
                 ).display()
-                if pressed == QtWidgets.QMessageBox.No:
+                if pressed == QMessageBox.No:
                     self.load(self._gui.settingsFileName.text())
 
         else:
@@ -581,16 +567,14 @@ class SettWin:
         Show 'file_path' in 'settingsFileName' QLineEdit.
         """
 
-        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+        file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
             consts.SETTINGS_FOLDER_PATH,
             "CSV Files(*.csv *.txt)",
         )
         if file_path != "":
-            self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
-                file_path
-            )
+            self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
             helper.gui_to_csv(self._gui.frame, file_path)
             logging.debug(f"Settings file saved as: '{file_path}'")
 
@@ -602,16 +586,14 @@ class SettWin:
         """
 
         if not file_path:
-            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
                 consts.SETTINGS_FOLDER_PATH,
                 "CSV Files(*.csv *.txt)",
             )
         if file_path != "":
-            self._gui.frame.findChild(QtWidgets.QWidget, "settingsFileName").setText(
-                file_path
-            )
+            self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
             helper.csv_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
 
@@ -632,11 +614,6 @@ class CamWin:
         self._app = app
         self._gui = gui
         self._cam = None
-
-        # add matplotlib-ready widget (canvas) for showing camera output
-        self._gui.figure = plt.figure()
-        self._gui.canvas = FigureCanvas(self._gui.figure)
-        self._gui.gridLayout.addWidget(self._gui.canvas, 0, 1)
 
     def init_cam(self):
         """Doc."""

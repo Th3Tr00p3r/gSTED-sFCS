@@ -3,9 +3,11 @@
 
 from typing import NoReturn
 
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
-from PyQt5.QtWidgets import QDialog, QMainWindow, QWidget
+from PyQt5.QtWidgets import QDialog, QMainWindow, QStatusBar, QWidget
 
 import gui.icons  # this generates an icon resource file (see gui.py) as well as paths to all icons (see logic.py) # NOQA
 import logic.windows as wins_imp
@@ -98,6 +100,18 @@ class MainWin(QMainWindow):
         self.depShutterOn.released.connect(
             lambda: self.device_toggle_button_released("DEP_SHUTTER", "toggle")
         )
+
+        # status bar
+        self.setStatusBar(QStatusBar())
+
+        # intialize gui
+        self.actionLaser_Control.setChecked(True)
+        self.actionStepper_Stage_Control.setChecked(True)
+        self.stageButtonsGroup.setEnabled(False)
+        self.acf.setLogMode(x=True)
+        self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
+
+        self.countsAvg.setValue(self.countsAvgSlider.value())
 
     def closeEvent(self, event: QEvent) -> NoReturn:
         """Doc."""
@@ -341,7 +355,7 @@ class SettWin(QDialog):
 
 
 class CamWin(QWidget):
-    """ Documentation."""
+    """Doc."""
 
     def __init__(self, app, parent=None) -> NoReturn:
         """Doc."""
@@ -350,6 +364,11 @@ class CamWin(QWidget):
         uic.loadUi(consts.CAMERAWINDOW_UI_PATH, self)
         self.move(30, 180)
         self.imp = wins_imp.CamWin(self, app)
+
+        # add matplotlib-ready widget (canvas) for showing camera output
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self._gui.figure)
+        self.gridLayout.addWidget(self._gui.canvas, 0, 1)
 
     def closeEvent(self, event: QEvent) -> NoReturn:
         """Doc."""
