@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Devices Module."""
 import asyncio
-import re
+import logging
 import time
 from typing import NoReturn
 
@@ -46,7 +46,7 @@ class UM232H(Ftd2xx):
             TypeError,
             AttributeError,
         ) as exc:
-            err_hndlr(exc, "toggle()", dvc=self)
+            err_hndlr(exc, f"toggle({bool})", dvc=self)
 
     async def read_TDC(self):
         """Doc."""
@@ -565,7 +565,7 @@ class SimpleDO(NIDAQmx):
 class DepletionLaser(PyVISA):
     """Control depletion laser through pyVISA"""
 
-    min_SHG_temp = 52
+    min_SHG_temp = 53  # Celsius
 
     def __init__(self, param_dict):
         super().__init__(
@@ -586,13 +586,18 @@ class DepletionLaser(PyVISA):
 
         try:
             if bool is True:
-                self.open()
+                self.open_inst()
             else:
                 if self.state is True:
                     self.laser_toggle(False)
-                self.close()
+                try:
+                    self.close_inst()
+                except VisaIOError:
+                    logging.warning(
+                        "Depletion laser disconnected during operation. Reconnect and reopen application to fix."
+                    )
         except (VisaIOError, AttributeError) as exc:
-            err_hndlr(exc, "toggle()", dvc=self)
+            err_hndlr(exc, f"toggle({bool})", dvc=self)
         else:
             # state stays 'None' if open() fails
             self.state = False
@@ -604,7 +609,7 @@ class DepletionLaser(PyVISA):
         try:
             self.write(cmnd)
         except VisaIOError as exc:
-            err_hndlr(exc, "laser_toggle()", dvc=self)
+            err_hndlr(exc, f"laser_toggle({bool})", dvc=self)
         else:
             self.state = bool
 
@@ -631,7 +636,7 @@ class DepletionLaser(PyVISA):
             err_hndlr(exc, f"get_prop({prop})")
             return 0
         else:
-            return float(re.findall(r"-?\d+\.?\d*", response)[0])
+            return response
 
     def set_power(self, value_mW):
         """Doc."""
@@ -646,24 +651,24 @@ class DepletionLaser(PyVISA):
                 cmnd = f"Setpower 0 {value_mW}"
                 self.write(cmnd)
             except VisaIOError as exc:
-                err_hndlr(exc, "set_power()", dvc=self)
+                err_hndlr(exc, f"set_power({value_mW})", dvc=self)
         else:
             dialog.Error(error_txt="Power out of range").display()
 
-    def set_current(self, value_mW):
+    def set_current(self, value_mA):
         """Doc."""
 
         # check that value is within range
-        if 1500 <= value_mW <= 2500:
+        if 1500 <= value_mA <= 2500:
             try:
                 # change the mode to power
                 cmnd = "Powerenable 0"
                 self.write(cmnd)
                 # then set the power
-                cmnd = f"setLDcur 1 {value_mW}"
+                cmnd = f"setLDcur 1 {value_mA}"
                 self.write(cmnd)
             except VisaIOError as exc:
-                err_hndlr(exc, "set_current()", dvc=self)
+                err_hndlr(exc, f"set_current({value_mA})", dvc=self)
         else:
             dialog.Error(error_txt="Current out of range").display()
 
@@ -682,11 +687,11 @@ class StepperStage(PyVISA):
 
         try:
             if bool is True:
-                self.open()
+                self.open_inst()
             else:
-                self.close()
+                self.close_inst()
         except VisaIOError as exc:
-            err_hndlr(exc, "toggle()", dvc=self)
+            err_hndlr(exc, f"toggle({bool})", dvc=self)
         else:
             self.state = bool
 
@@ -702,7 +707,7 @@ class StepperStage(PyVISA):
         try:
             self.write(cmd_dict[dir])
         except VisaIOError as exc:
-            err_hndlr(exc, "move()", dvc=self)
+            err_hndlr(exc, f"move({dir},{steps})", dvc=self)
 
     def release(self):
         """Doc."""

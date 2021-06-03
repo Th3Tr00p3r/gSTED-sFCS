@@ -168,9 +168,6 @@ class App:
 
             self.init_devices()
 
-            #            self.timeout_loop._app = self # TESTESTEST
-            #            self.gui.main.imp._app = self # TESTESTEST
-
             # restart timeout loop
             self.timeout_loop = Timeout(self)
             self.timeout_loop.start()

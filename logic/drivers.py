@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Drivers Module."""
 
+import re
 from types import SimpleNamespace
 from typing import List, NoReturn
 
@@ -242,18 +243,23 @@ class PyVISA:
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.read_termination = read_termination
         self.write_termination = write_termination
-        self.rm = visa.ResourceManager()
+        self._rm = visa.ResourceManager()
 
-    def open(self) -> NoReturn:
+    def open_inst(self) -> NoReturn:
         """Doc."""
 
-        self._rsrc = self.rm.open_resource(
+        self._rsrc = self._rm.open_resource(
             self.address,
             read_termination=self.read_termination,
             write_termination=self.write_termination,
             timeout=50,  # ms
             open_timeout=50,  # ms
         )
+
+    def close_inst(self) -> NoReturn:
+        """Doc."""
+
+        self._rsrc.close()
 
     def write(self, cmnd: str) -> NoReturn:
         """Sends a command to the VISA instrument."""
@@ -263,12 +269,9 @@ class PyVISA:
     def query(self, cmnd: str) -> float:
         """Doc."""
 
-        return self._rsrc.query(cmnd)
-
-    def close(self) -> NoReturn:
-        """Doc."""
-
-        self._rsrc.close()
+        response = self._rsrc.query(cmnd)
+        extracted_float_strings = re.findall(r"-?\d+\.?\d*", response)
+        return float(extracted_float_strings[0])
 
     def flush(self) -> NoReturn:
         """Doc."""

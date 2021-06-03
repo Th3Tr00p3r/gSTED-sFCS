@@ -8,6 +8,7 @@ from collections import deque
 from typing import NoReturn
 
 import utilities.constants as consts
+from utilities.errors import err_hndlr
 
 
 class Timeout:
@@ -178,6 +179,8 @@ class Timeout:
                 except AttributeError:
                     # happens when depletion is turned on before beginning measurement (5 s wait)
                     pass
+                except Exception as exc:
+                    err_hndlr(exc, "updt_meas_progbar()", lvl="debug")
 
         while self.not_finished:
 
@@ -227,7 +230,6 @@ class Timeout:
         main_gui = self._app.gui.main
 
         while self.not_finished:
-            #            print("dep obj: ", dep_dvc) # TESTESTEST
             if dep_dvc.error_dict is None:
 
                 temp, pow, curr = (
