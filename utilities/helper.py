@@ -38,8 +38,8 @@ def timer(func) -> Callable:
     return wrapper_timer
 
 
-# print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTESTEST
-# tic = time.perf_counter() # TESTESTEST
+# print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
+# tic = time.perf_counter() # TESTING
 
 
 async def sync_to_thread(func):

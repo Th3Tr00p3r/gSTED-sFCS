@@ -25,7 +25,6 @@ def build_err_dict(exc: Exception) -> str:
     frmtd_tb = "\n".join(traceback.format_tb(tb))
     fname = os.path.split(tb.tb_frame.f_code.co_filename)[1]
     lineno = tb.tb_lineno
-
     return dict(type=exc_type, msg=str(exc), tb=frmtd_tb, module=fname, line=lineno)
 
 
@@ -34,9 +33,12 @@ def err_hndlr(exc, func, lvl="error", dvc=None, disp=False):
 
     err_dict = build_err_dict(exc)
 
-    if dvc is not None:
+    if dvc is not None:  # device error
         dvc_log_ref = getattr(consts, dvc.nick).log_ref
-        log_str = f"{err_dict['type']}: {dvc_log_ref} didn't respond to '{func}' ({err_dict['module']}, {err_dict['line']})"
+        log_str = (
+            f"{dvc_log_ref} didn't respond to '{func}' ({err_dict['module']}, {err_dict['line']}). "
+            f"[{err_dict['type']}: {err_dict['msg']}]"
+        )
         if lvl == "error":
             if dvc.error_dict is None:  # keep only first error
                 dvc.error_dict = err_dict
@@ -78,7 +80,6 @@ def dvc_err_chckr(nick_set: set = None) -> Callable:
                 txt.append("\nClick relevant LED for details.")
                 Error(custom_txt="".join(txt)).display()
                 return False
-
             else:
                 # no errors found
                 return True
