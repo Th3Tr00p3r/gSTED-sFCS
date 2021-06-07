@@ -1,34 +1,38 @@
+---
+
 version: 1
 formatters:
-  console_frmt:
-    format: '%(asctime)s - [%(levelname)s] - "%(message)s"'
-    datefmt: "[%H:%M:%S]"
-  debug_file_frmt:
-    format: '%(asctime)s - [%(levelname)-8s] - %(message)s (logged: %(filename)s, %(lineno)s)'
-    datefmt: "[%d-%b-%y] [%H:%M:%S]"
-  log_file_frmt:
-    format: '%(asctime)s - [%(levelname)-8s] - %(message)s'
-    datefmt: "[%d-%b-%y] [%H:%M:%S]"
+    console_frmt:
+        format: '%(asctime)s - [%(levelname)s] - "%(message)s"'
+        datefmt: '[%H:%M:%S]'
+    debug_file_frmt:
+        format: >
+            '%(asctime)s - [%(levelname)-8s] -
+            %(message)s (logged: %(filename)s, %(lineno)s)'
+        datefmt: '[%d-%b-%y] [%H:%M:%S]'
+    log_file_frmt:
+        format: '%(asctime)s - [%(levelname)-8s] - %(message)s'
+        datefmt: '[%d-%b-%y] [%H:%M:%S]'
 handlers:
-  console:
-    class: logging.StreamHandler
-    level: WARNING
-    formatter: console_frmt
-    stream: ext://sys.stdout
-  debug_file:
-    class: logging.handlers.TimedRotatingFileHandler
-    level: DEBUG
-    formatter: debug_file_frmt
-    filename: ./log/debug
-    backupCount: 10
-    when: 'D'
-  log_file:
-    class: logging.handlers.TimedRotatingFileHandler
-    level: INFO
-    formatter: log_file_frmt
-    filename: ./log/log
-    backupCount: 10
-    when: 'D'
+    console:
+        class: logging.StreamHandler
+        level: WARNING
+        formatter: console_frmt
+        stream: ext://sys.stdout
+    debug_file:
+        class: logging.handlers.TimedRotatingFileHandler
+        level: DEBUG
+        formatter: debug_file_frmt
+        filename: ./log/debug
+        backupCount: 10
+        when: D
+    log_file:
+        class: logging.handlers.TimedRotatingFileHandler
+        level: INFO
+        formatter: log_file_frmt
+        filename: ./log/log
+        backupCount: 10
+        when: D
 root:
-  level: DEBUG
-  handlers: [console, debug_file, log_file]
+    level: DEBUG
+    handlers: [console, debug_file, log_file]
