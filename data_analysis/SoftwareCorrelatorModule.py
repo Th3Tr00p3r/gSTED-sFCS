@@ -25,7 +25,7 @@ class CorrelatorType(enum.Enum):
 class SoftwareCorrelatorClass:
     def __init__(self):
         if platform == "win32":
-            lib_path = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
+            lib_path = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
         elif platform == "darwin":
             lib_path = "/Users/oleg/Documents/Python programming/Scanning setups Lab/gSTED-sFCS/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.so"
         self.libPath = lib_path
