@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Miscellaneous helper functions/classes"""
 
 from __future__ import annotations
@@ -15,8 +14,8 @@ from typing import Callable, List, NoReturn, Union
 import numpy as np
 import PyQt5.QtWidgets as QtWidgets
 import pyqtgraph as pg
+from PyQt5.QtGui import QIcon
 
-import gui.icons.icon_paths as icon_path
 import logic.app
 
 
@@ -183,8 +182,8 @@ class DeviceAttrs:
     class_name: str
     log_ref: str
     param_widgets: QtWidgetCollection
+    led_icon: QIcon
     cls_xtra_args: List[str] = None
-    led_icon_path: str = icon_path.LED_GREEN
 
 
 @dataclass

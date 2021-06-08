@@ -1,14 +1,11 @@
-# -*- coding: utf-8 -*-
 """ GUI windows implementations module. """
 
 import logging
 from typing import NoReturn
 
 import numpy as np
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
-import gui.icons.icon_paths as icon
 import logic.measurements as meas
 import utilities.constants as consts
 import utilities.helper as helper
@@ -78,15 +75,6 @@ class MainWin:
             getattr(dvc, toggle_mthd)(True)
 
             if dvc.state:  # if managed to turn ON
-                try:
-                    dvc.switch_widget.set(QIcon(icon.SWITCH_ON))
-                except AttributeError:
-                    # no switch
-                    pass
-
-                on_icon = QIcon(dvc.led_icon_path)
-                dvc.led_widget.set(on_icon)
-
                 logging.debug(f"{dvc.log_ref} toggled ON")
 
                 if nick == "STAGE":
@@ -96,14 +84,6 @@ class MainWin:
             getattr(dvc, toggle_mthd)(False)
 
             if not dvc.state:  # if managed to turn OFF
-                try:
-                    dvc.switch_widget.set(QIcon(icon.SWITCH_OFF))
-                except AttributeError:
-                    # no switch
-                    pass
-
-                dvc.led_widget.set(QIcon(icon.LED_OFF))
-
                 logging.debug(f"{dvc.log_ref} toggled OFF")
 
                 if nick == "STAGE":

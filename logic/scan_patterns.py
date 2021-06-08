@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """ scan patterns module. """
 
 from math import cos, pi, sin, sqrt

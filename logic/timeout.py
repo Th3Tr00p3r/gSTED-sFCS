@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Timeout module."""
 
 import asyncio
@@ -36,7 +35,7 @@ class Timeout:
             self._update_dep(),
             self._updt_current_state(),
             self._update_gui(),
-            self._updt_um232h_status(),
+            #            self._updt_um232h_status(),
         )
         logging.debug("_main function exited")
 
@@ -206,7 +205,7 @@ class Timeout:
                 if fill_perc > 90:
                     logging.warning("UM232H buffer might be overfilling")
 
-            await asyncio.sleep(consts.TIMEOUT)
+            await asyncio.sleep(self.updt_intrvl["gui"])
 
     async def _update_avg_counts(self) -> NoReturn:
         """

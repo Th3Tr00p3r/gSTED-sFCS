@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Devices Module."""
 import asyncio
 import logging
@@ -17,7 +16,35 @@ from utilities.errors import err_hndlr
 from utilities.helper import div_ceil, sync_to_thread
 
 
-class UM232H(Ftd2xx):
+class BaseDevice:
+    """Doc."""
+
+    def change_icons(self, command):
+        """Doc."""
+
+        def set_icon_wdgts(led_icon, has_switch: bool, switch_icon=None):
+            """Doc."""
+
+            self.led_widget.set(led_icon)
+            if has_switch:
+                self.switch_widget.set(switch_icon)
+
+        has_switch = hasattr(self, "switch_widget")
+        if command == "on":
+            set_icon_wdgts(self.led_icon, has_switch, consts.SWITCH_ON_ICON)
+        elif command == "off":
+            set_icon_wdgts(consts.LED_OFF_ICON, has_switch, consts.SWITCH_OFF_ICON)
+        elif command == "error":
+            set_icon_wdgts(consts.LED_ERROR_ICON, False)
+
+    def toggle(self, is_being_switched_on):
+        """Doc."""
+
+        self._toggle(is_being_switched_on)
+        self.change_icons("on" if is_being_switched_on else "off")
+
+
+class UM232H(BaseDevice, Ftd2xx):
     """
     Represents the FTDI chip used to transfer data from the FPGA
     to the PC.
@@ -29,9 +56,9 @@ class UM232H(Ftd2xx):
         )
 
         self.init_data()
-        self.toggle(True)
+        self._toggle(True)
 
-    def toggle(self, bool):
+    def _toggle(self, bool):
         """Doc."""
 
         try:
@@ -46,7 +73,7 @@ class UM232H(Ftd2xx):
             TypeError,
             AttributeError,
         ) as exc:
-            err_hndlr(exc, f"toggle({bool})", dvc=self)
+            err_hndlr(exc, f"_toggle({bool})", dvc=self)
 
     async def read_TDC(self):
         """Doc."""
@@ -80,7 +107,7 @@ class UM232H(Ftd2xx):
             err_hndlr(exc, "get_queue_status()", dvc=self)
 
 
-class Scanners(NIDAQmx):
+class Scanners(BaseDevice, NIDAQmx):
     """
     Scanners encompasses all analog focal point positioning devices
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
@@ -132,9 +159,9 @@ class Scanners(NIDAQmx):
 
         self.um_V_ratio = (self.x_um2V_const, self.y_um2V_const, self.z_um2V_const)
 
-        self.toggle(True)
+        self._toggle(True)
 
-    def toggle(self, bool):
+    def _toggle(self, bool):
         """Doc."""
 
         if bool:
@@ -143,7 +170,7 @@ class Scanners(NIDAQmx):
             try:
                 self.close_all_tasks()
             except DaqError as exc:
-                err_hndlr(exc, f"toggle({bool})", dvc=self)
+                err_hndlr(exc, f"_toggle({bool})", dvc=self)
 
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
@@ -360,7 +387,7 @@ class Scanners(NIDAQmx):
         return diff_ao_data
 
 
-class Counter(NIDAQmx):
+class Counter(BaseDevice, NIDAQmx):
     """
     Represents the detector which counts the green
     fluorescence photons coming from the sample.
@@ -389,9 +416,9 @@ class Counter(NIDAQmx):
             "count_direction": consts.NI.CountDirection.COUNT_UP,
         }
 
-        self.toggle(True)
+        self._toggle(True)
 
-    def toggle(self, bool):
+    def _toggle(self, bool):
         """Doc."""
 
         if bool:
@@ -400,7 +427,7 @@ class Counter(NIDAQmx):
             try:
                 self.close_all_tasks()
             except DaqError as exc:
-                err_hndlr(exc, f"toggle({bool})", dvc=self)
+                err_hndlr(exc, f"_toggle({bool})", dvc=self)
 
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
@@ -494,7 +521,7 @@ class Counter(NIDAQmx):
             self.ci_buffer = self.ci_buffer[-self.CONT_READ_BFFR_SZ :]
 
 
-class PixelClock(NIDAQmx):
+class PixelClock(BaseDevice, NIDAQmx):
     """
     The pixel clock is fed to the DAQ board from the FPGA.
     Base frequency is 4 MHz. Used for scans, where it is useful to
@@ -507,9 +534,9 @@ class PixelClock(NIDAQmx):
             task_types=("ci", "co"),
         )
 
-        self.toggle(False)
+        self._toggle(False)
 
-    def toggle(self, bool):
+    def _toggle(self, bool):
         """Doc."""
 
         try:
@@ -518,7 +545,7 @@ class PixelClock(NIDAQmx):
             else:
                 self.close_all_tasks()
         except DaqError as exc:
-            err_hndlr(exc, f"toggle({bool})", dvc=self)
+            err_hndlr(exc, f"_toggle({bool})", dvc=self)
         else:
             self.state = bool
 
@@ -545,7 +572,7 @@ class PixelClock(NIDAQmx):
             err_hndlr(exc, "_start_co_clock_sync()", dvc=self)
 
 
-class SimpleDO(NIDAQmx):
+class SimpleDO(BaseDevice, NIDAQmx):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
     def __init__(self, param_dict):
@@ -553,16 +580,16 @@ class SimpleDO(NIDAQmx):
             param_dict,
             task_types=("do"),
         )
-        self.toggle(False)
+        self._toggle(False)
 
-    def toggle(self, bool):
+    def _toggle(self, bool):
         """Doc."""
 
         self.digital_write(bool)
         self.state = bool
 
 
-class DepletionLaser(PyVISA):
+class DepletionLaser(BaseDevice, PyVISA):
     """Control depletion laser through pyVISA"""
 
     min_SHG_temp = 53  # Celsius
@@ -576,12 +603,12 @@ class DepletionLaser(PyVISA):
 
         self.updt_time = 0.3
         self.state = None
-        self.toggle(True)
+        self._toggle(True)
 
         if self.state is False:
             self.set_current(1500)
 
-    def toggle(self, bool):
+    def _toggle(self, bool):
         """Doc."""
 
         try:
@@ -597,7 +624,7 @@ class DepletionLaser(PyVISA):
                         "Depletion laser disconnected during operation. Reconnect and reopen application to fix."
                     )
         except (VisaIOError, AttributeError) as exc:
-            err_hndlr(exc, f"toggle({bool})", dvc=self)
+            err_hndlr(exc, f"_toggle({bool})", dvc=self)
         else:
             # state stays 'None' if open() fails
             self.state = False
@@ -612,6 +639,7 @@ class DepletionLaser(PyVISA):
             err_hndlr(exc, f"laser_toggle({bool})", dvc=self)
         else:
             self.state = bool
+            self.change_icons("on" if bool else "off")
 
     def get_prop(self, prop):
         """Doc."""
@@ -673,16 +701,16 @@ class DepletionLaser(PyVISA):
             dialog.Error(error_txt="Current out of range").display()
 
 
-class StepperStage(PyVISA):
+class StepperStage(BaseDevice, PyVISA):
     """Control stepper stage through Arduino chip using PyVISA."""
 
     def __init__(self, param_dict):
         super().__init__(param_dict)
 
-        self.toggle(True)
-        self.toggle(False)
+        self._toggle(True)
+        self._toggle(False)
 
-    def toggle(self, bool):
+    def _toggle(self, bool):
         """Doc."""
 
         try:
@@ -691,7 +719,7 @@ class StepperStage(PyVISA):
             else:
                 self.close_inst()
         except VisaIOError as exc:
-            err_hndlr(exc, f"toggle({bool})", dvc=self)
+            err_hndlr(exc, f"_toggle({bool})", dvc=self)
         else:
             self.state = bool
 
@@ -718,7 +746,7 @@ class StepperStage(PyVISA):
             err_hndlr(exc, "release()", dvc=self)
 
 
-class Camera(Instrumental):
+class Camera(BaseDevice, Instrumental):
     """Doc."""
 
     vid_intrvl = 0.3
@@ -733,7 +761,7 @@ class Camera(Instrumental):
         self.state = False
         self.vid_state = False
 
-    def toggle(self, bool):
+    def _toggle(self, bool):
         """Doc."""
 
         if bool:
