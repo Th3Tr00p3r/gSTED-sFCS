@@ -1,15 +1,28 @@
-# -*- coding: utf-8 -*-
-""" documentation."""
+"""icons"""
 
 import glob
 import os
 
+autogen_header = (
+    "This is an automatically generated file."
+    "\n"
+    "if needed, changes should be made in './icons/__init__.py'"
+    "\n\n"
+)
+
 
 def gen_icons_resource_file():
     """documentation."""
-    header = "<!DOCTYPE RCC>" + "\n" + '<RCC version="1.0">' + "\n" + "<qresource>" + "\n"
+    header = (
+        #        "<!--" + "\n"
+        #        f"{autogen_header}"
+        #        "-->"
+        #        "\n\n"
+        "<!DOCTYPE RCC>" + "\n"
+        '<RCC version="1.0">' + "\n"
+        "<qresource>" + "\n"
+    )
     footer = "</qresource>" + "\n" + "</RCC>" + "\n"
-
     icon_paths = glob.glob("./gui/icons/*.png")
 
     with open("./gui/icons/icons.qrc", "w") as f:
@@ -21,15 +34,7 @@ def gen_icons_resource_file():
 
 
 def gen_icon_paths_module():
-    header = (
-        "# -*- coding: utf-8 -*-\n"
-        + '"""\n'
-        + "Icon path constants\n"
-        + "(This is an automatically generated file.\n"
-        + "if needed, changes should be made in"
-        + "'./icons/__init__.py)\n\n'"
-        + '"""\n\n'
-    )
+    header = '"""' + "\n" f"{autogen_header}" '"""' + "\n\n"
     icon_paths = glob.glob("./gui/icons/*.png")
     with open("./gui/icons/icon_paths.py", "w") as f:
         f.write(header)
@@ -39,5 +44,6 @@ def gen_icon_paths_module():
             f.write(icon_fname_notype.upper() + " = '" + "./gui/icons/" + icon_fname + "'" + "\n")
 
 
+# Create the files
 gen_icons_resource_file()
 gen_icon_paths_module()

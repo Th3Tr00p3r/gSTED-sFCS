@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Error handeling."""
 
 import asyncio
@@ -10,9 +9,6 @@ import traceback
 from types import SimpleNamespace
 from typing import Callable
 
-from PyQt5.QtGui import QIcon
-
-import gui.icons.icon_paths as icon
 import utilities.constants as consts
 from utilities.dialog import Error
 
@@ -42,7 +38,7 @@ def err_hndlr(exc, func, lvl="error", dvc=None, disp=False):
         if lvl == "error":
             if dvc.error_dict is None:  # keep only first error
                 dvc.error_dict = err_dict
-            dvc.led_widget.set(QIcon(icon.LED_RED))
+            dvc.led_widget.set(consts.LED_ERROR_ICON)
 
     else:  # logic eror
         log_str = f"{err_dict['type']}: {err_dict['msg']} ({func}, {err_dict['module']}, {err_dict['line']})"

@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
 """ Global constants. """
 
 import nidaqmx.constants as NI  # NOQA
+from PyQt5.QtGui import QIcon
 
 import gui.icons.icon_paths as icon_path
 from utilities.helper import DeviceAttrs, QtWidgetCollection
@@ -40,6 +40,20 @@ LOADOUT_FOLDER_PATH = "./settings/loadouts/"
 DEFAULT_LOADOUT_FILE_PATH = "./settings/loadouts/default_loadout.csv"
 
 LOG_FOLDER_PATH = "./log/"
+
+# ------------------------------
+# GUI
+# ------------------------------
+try:
+    SWITCH_ON_ICON = QIcon(icon_path.SWITCH_ON)
+    SWITCH_OFF_ICON = QIcon(icon_path.SWITCH_OFF)
+    LED_ERROR_ICON = QIcon(icon_path.LED_RED)
+    LED_OFF_ICON = QIcon(icon_path.LED_OFF)
+    LED_GREEN_ICON = QIcon(icon_path.LED_GREEN)
+    LED_BLUE_ICON = QIcon(icon_path.LED_BLUE)
+    LED_ORANGE_ICON = QIcon(icon_path.LED_ORANGE)
+except Exception:
+    print("gotcha!")
 
 # ------------------------------
 # Sounds
@@ -103,7 +117,7 @@ SWITCH_COLL = QtWidgetCollection(
 EXC_LASER = DeviceAttrs(
     class_name="SimpleDO",
     log_ref="Excitation Laser",
-    led_icon_path=icon_path.LED_BLUE,
+    led_icon=LED_BLUE_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledExc", "icon", "main"),
         switch_widget=("excOnButton", "icon", "main"),
@@ -118,7 +132,7 @@ EXC_LASER = DeviceAttrs(
 DEP_LASER = DeviceAttrs(
     class_name="DepletionLaser",
     log_ref="Depletion Laser",
-    led_icon_path=icon_path.LED_ORANGE,
+    led_icon=LED_ORANGE_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledDep", "icon", "main"),
         switch_widget=("depEmissionOn", "icon", "main"),
@@ -130,6 +144,7 @@ DEP_LASER = DeviceAttrs(
 DEP_SHUTTER = DeviceAttrs(
     class_name="SimpleDO",
     log_ref="Shutter",
+    led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledShutter", "icon", "main"),
         switch_widget=("depShutterOn", "icon", "main"),
@@ -140,6 +155,7 @@ DEP_SHUTTER = DeviceAttrs(
 STAGE = DeviceAttrs(
     class_name="StepperStage",
     log_ref="Stage",
+    led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledStage", "icon", "main"),
         switch_widget=("stageOn", "icon", "main"),
@@ -151,6 +167,7 @@ COUNTER = DeviceAttrs(
     class_name="Counter",
     cls_xtra_args=["devices.SCANNERS.tasks.ai"],
     log_ref="Counter",
+    led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledCounter", "icon", "main"),
         pxl_clk=("counterPixelClockAddress", "text"),
@@ -167,6 +184,7 @@ COUNTER = DeviceAttrs(
 UM232H = DeviceAttrs(
     class_name="UM232H",
     log_ref="UM232H",
+    led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledUm232h", "icon", "main"),
         bit_mode=("um232BitMode", "text"),
@@ -181,6 +199,7 @@ UM232H = DeviceAttrs(
 TDC = DeviceAttrs(
     class_name="SimpleDO",
     log_ref="TDC",
+    led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledTdc", "icon", "main"),
         address=("TDCaddress", "text"),
@@ -195,6 +214,7 @@ CAMERA = DeviceAttrs(
     class_name="Camera",
     cls_xtra_args=["loop", "gui.camera"],
     log_ref="Camera",
+    led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledCam", "icon", "main"),
         model=("uc480PlaceHolder", "value"),
@@ -204,6 +224,7 @@ CAMERA = DeviceAttrs(
 SCANNERS = DeviceAttrs(
     class_name="Scanners",
     log_ref="Scanners",
+    led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledScn", "icon", "main"),
         ao_x_init_vltg=("xAOV", "value", "main"),
@@ -233,6 +254,7 @@ SCANNERS = DeviceAttrs(
 PXL_CLK = DeviceAttrs(
     class_name="PixelClock",
     log_ref="Pixel Clock",
+    led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
         led_widget=("ledPxlClk", "icon", "main"),
         low_ticks=("pixelClockLowTicks", "value"),

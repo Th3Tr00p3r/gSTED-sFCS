@@ -6,9 +6,7 @@ formatters:
         format: '%(asctime)s - [%(levelname)s] - "%(message)s"'
         datefmt: '[%H:%M:%S]'
     debug_file_frmt:
-        format: >
-            '%(asctime)s - [%(levelname)-8s] -
-            %(message)s (logged: %(filename)s, %(lineno)s)'
+        format: '%(asctime)s - [%(levelname)-8s] - %(message)s (logged: %(filename)s, %(lineno)s)'
         datefmt: '[%d-%b-%y] [%H:%M:%S]'
     log_file_frmt:
         format: '%(asctime)s - [%(levelname)-8s] - %(message)s'
