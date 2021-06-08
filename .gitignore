@@ -8,12 +8,14 @@ gui/icons/icons_rc.py # Auto-generated
 # Specific folders (idomich)
 data/
 log/
-# settings/
+
+# vim?
+.vim
 
 # test pics (idomich)
 *.png
 
-# pushed by oleg sometimes
+# pushed by oleg sometimes (idomich)
 .DS_Store
 
 # eric project folder (idomich)
