@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Logic Module."""
 
 import logging
@@ -7,11 +6,9 @@ import os
 from types import SimpleNamespace
 
 import yaml
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox
 
 import gui.gui
-import gui.icons.icon_paths as icon
 import logic.devices as devices
 import utilities.constants as consts
 import utilities.helper as helper
@@ -44,9 +41,9 @@ class App:
         self.create_data_folders()
 
         # either error or ON
-        self.gui.main.ledScn.setIcon(QIcon(icon.LED_GREEN))
-        self.gui.main.ledCounter.setIcon(QIcon(icon.LED_GREEN))
-        self.gui.main.ledUm232h.setIcon(QIcon(icon.LED_GREEN))
+        self.gui.main.ledScn.setIcon(consts.LED_GREEN_ICON)
+        self.gui.main.ledCounter.setIcon(consts.LED_GREEN_ICON)
+        self.gui.main.ledUm232h.setIcon(consts.LED_GREEN_ICON)
 
         self.init_devices()
         self.meas = Measurement(app=self, type=None)
@@ -96,7 +93,7 @@ class App:
             ).read_dict_from_gui(self)
             param_dict["nick"] = nick
             param_dict["log_ref"] = DVC_CONSTS.log_ref
-            param_dict["led_icon_path"] = DVC_CONSTS.led_icon_path
+            param_dict["led_icon"] = DVC_CONSTS.led_icon
 
             if DVC_CONSTS.cls_xtra_args is not None:
                 x_args = [
@@ -141,9 +138,9 @@ class App:
         def lights_out(gui):
             """turn OFF all device switch/LED icons"""
 
-            led_list = [QIcon(icon.LED_OFF)] * 6 + [QIcon(icon.LED_GREEN)] * 3
+            led_list = [consts.LED_OFF_ICON] * 6 + [consts.LED_GREEN_ICON] * 3
             consts.LED_COLL.write_to_gui(self, led_list)
-            consts.SWITCH_COLL.write_to_gui(self, QIcon(icon.SWITCH_OFF))
+            consts.SWITCH_COLL.write_to_gui(self, consts.SWITCH_OFF_ICON)
             gui.stageButtonsGroup.setEnabled(False)
 
         if restart:

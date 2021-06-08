@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Measurements Module."""
 
 import asyncio
@@ -13,10 +12,8 @@ from typing import NoReturn
 import numba as nb
 import numpy as np
 import scipy.io as sio
-from PyQt5.QtGui import QIcon
 from scipy.optimize import OptimizeWarning
 
-import gui.icons.icon_paths as icon_path
 import utilities.constants as consts
 from data_analysis import FitTools
 from data_analysis.CorrFuncTDCclass import CorrFuncTDCclass
@@ -614,14 +611,19 @@ class SFCSSolutionMeasurement(Measurement):
         def ACF(data):
             """Doc."""
 
-            p = PhotonDataClass()
-            p.DoConvertFPGAdataToPhotons(data)
-            s = CorrFuncTDCclass()
-            s.LaserFreq = self.tdc_dvc.laser_freq_MHz * 1e6
-            s.data["Data"].append(p)
-            s.DoCorrelateRegularData()
-            s.DoAverageCorr(NoPlot=True, use_numba=True)
-
+            # TODO - remove or narrow the exeption catching once errors are understood
+            # (without try/except my errors are lost somehow and the application gets stuck)
+            try:
+                p = PhotonDataClass()
+                p.DoConvertFPGAdataToPhotons(data)
+                s = CorrFuncTDCclass()
+                s.LaserFreq = self.tdc_dvc.laser_freq_MHz * 1e6
+                s.data["Data"].append(p)
+                s.DoCorrelateRegularData()
+                s.DoAverageCorr(NoPlot=True, use_numba=True)
+            except Exception as exc:
+                err_hndlr(exc, "ACF()", lvl="error")
+                return None
             return s
 
         if self.repeat is True:
@@ -632,7 +634,7 @@ class SFCSSolutionMeasurement(Measurement):
             except (RuntimeWarning, RuntimeError, OptimizeWarning) as exc:
                 # fit failed
                 err_hndlr(exc, "disp_ACF()", lvl="debug")
-                self.fit_led.set(QIcon(icon_path.LED_RED))
+                self.fit_led.set(consts.LED_ERROR_ICON)
                 g0, tau = s.G0, 0.1
                 self.g0_wdgt.set(s.G0)
                 self.tau_wdgt.set(0)
@@ -642,7 +644,7 @@ class SFCSSolutionMeasurement(Measurement):
                 )
             else:
                 # fit succeeded
-                self.fit_led.set(QIcon(icon_path.LED_OFF))
+                self.fit_led.set(consts.LED_OFF_ICON)
                 fit_params = s.FitParam["Diffusion3Dfit"]
                 g0, tau, _ = fit_params["beta"]
                 x, y = fit_params["x"], fit_params["y"]

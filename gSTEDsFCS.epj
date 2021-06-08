@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-05-02, 14:50:51"
+    "saved": "2021-06-08, 11:14:31"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -166,13 +166,10 @@
       "data_analysis/CorrFuncTDCclass.py",
       "data_analysis/MatlabUtilities.py",
       "data_analysis/PhotonDataClass.py",
-      "data_analysis/PhotonDataClass_old.py",
       "data_analysis/SoftwareCorrelatorModule.py",
-      "data_analysis/TestPythonFunctions.py",
       "data_analysis/CorrFuncDataClass.py",
-      "data_analysis/Debugging.py",
-      "data_analysis/Example_of_use_230421.py",
-      "data_analysis/FitTools.py"
+      "data_analysis/FitTools.py",
+      "gui/icons/icon_paths.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",

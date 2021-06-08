@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """ User dialog module. """
 
 from PyQt5.QtWidgets import QMessageBox
