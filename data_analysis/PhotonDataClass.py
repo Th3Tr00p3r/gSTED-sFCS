@@ -85,6 +85,8 @@ def DoFindSectionEdge(data, sectionStart, GroupLen):
     I_248 = np.where(data[sectionStart:] == 248)[0]
     I_254 = np.where(data[sectionStart:] == 254)[0]
     II = np.intersect1d(I_248, I_254 - GroupLen + 1, assume_unique=True)  # find those in registry
+    if not II.size:
+        raise RuntimeError("No data found! Check detector and FPGA.")
     edgeStart = sectionStart + II[0]
     p248 = data[edgeStart::GroupLen]
     p254 = data[(edgeStart + GroupLen - 1) :: GroupLen]

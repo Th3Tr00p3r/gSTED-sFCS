@@ -99,3 +99,12 @@ def dvc_err_chckr(nick_set: set = None) -> Callable:
         return inner_wrapper
 
     return outer_wrapper
+
+
+# TODO: Use this with all device malefunctions?
+class InstrumentError(Exception):
+    pass
+
+
+class FitError(Exception):
+    pass
