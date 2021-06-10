@@ -12,14 +12,13 @@ from typing import NoReturn
 import numba as nb
 import numpy as np
 import scipy.io as sio
-from scipy.optimize import OptimizeWarning
 
 import utilities.constants as consts
 from data_analysis import FitTools
 from data_analysis.CorrFuncTDCclass import CorrFuncTDCclass
 from data_analysis.PhotonDataClass import PhotonDataClass
 from logic.scan_patterns import ScanPatternAO
-from utilities.errors import err_hndlr
+from utilities.errors import FitError, err_hndlr
 from utilities.helper import ImageData, div_ceil, get_datetime_str
 
 
@@ -608,56 +607,58 @@ class SFCSSolutionMeasurement(Measurement):
     def disp_ACF(self):
         """Doc."""
 
-        def ACF(data):
+        def compute_acf(data):
             """Doc."""
 
-            # TODO - remove or narrow the exeption catching once errors are understood
-            # (without try/except my errors are lost somehow and the application gets stuck)
-            try:
-                p = PhotonDataClass()
-                p.DoConvertFPGAdataToPhotons(data)
-                s = CorrFuncTDCclass()
-                s.LaserFreq = self.tdc_dvc.laser_freq_MHz * 1e6
-                s.data["Data"].append(p)
-                s.DoCorrelateRegularData()
-                s.DoAverageCorr(NoPlot=True, use_numba=True)
-            except Exception as exc:
-                err_hndlr(exc, "ACF()", lvl="error")
-                return None
+            p = PhotonDataClass()
+            p.DoConvertFPGAdataToPhotons(data)
+            s = CorrFuncTDCclass()
+            s.LaserFreq = self.tdc_dvc.laser_freq_MHz * 1e6
+            s.data["Data"].append(p)
+            s.DoCorrelateRegularData()
+            s.DoAverageCorr(NoPlot=True, use_numba=True)
             return s
 
         if self.repeat is True:
             # display ACF for alignments
-            s = ACF(self.data_dvc.data)
             try:
-                s.DoFit(NoPlot=True)
-            except (RuntimeWarning, RuntimeError, OptimizeWarning) as exc:
-                # fit failed
-                err_hndlr(exc, "disp_ACF()", lvl="debug")
-                self.fit_led.set(consts.LED_ERROR_ICON)
-                g0, tau = s.G0, 0.1
-                self.g0_wdgt.set(s.G0)
-                self.tau_wdgt.set(0)
-                self.plot_wdgt.obj.plot(s.lag, s.AverageCF_CR, clear=True)
-                self.plot_wdgt.obj.plotItem.vb.setRange(
-                    xRange=(math.log(0.05), math.log(5)), yRange=(-g0 * 0.1, g0 * 1.3)
-                )
+                s = compute_acf(self.data_dvc.data)
+            except RuntimeError as exc:
+                # Something happend during data processing
+                err_hndlr(exc, "compute_acf()", lvl="error")
+            except Exception as exc:
+                # HANDLE ME!
+                err_hndlr(exc, "ACF()", lvl="error")
             else:
-                # fit succeeded
-                self.fit_led.set(consts.LED_OFF_ICON)
-                fit_params = s.FitParam["Diffusion3Dfit"]
-                g0, tau, _ = fit_params["beta"]
-                x, y = fit_params["x"], fit_params["y"]
-                fit_func = getattr(FitTools, fit_params["FitFunc"])
-                self.g0_wdgt.set(g0)
-                self.tau_wdgt.set(tau * 1e3)
-                self.plot_wdgt.obj.plot(x, y, clear=True)
-                y_fit = fit_func(x, *fit_params["beta"])
-                self.plot_wdgt.obj.plot(x, y_fit, pen="r")
-                self.plot_wdgt.obj.plotItem.autoRange()
-                logging.info(
-                    f"Aligning ({self.laser_config}): G0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
-                )
+                try:
+                    s.DoFit(NoPlot=True)
+                except FitError as exc:
+                    # fit failed
+                    err_hndlr(exc, "DoFit()", lvl="debug")
+                    self.fit_led.set(consts.LED_ERROR_ICON)
+                    g0, tau = s.G0, 0.1
+                    self.g0_wdgt.set(s.G0)
+                    self.tau_wdgt.set(0)
+                    self.plot_wdgt.obj.plot(s.lag, s.AverageCF_CR, clear=True)
+                    self.plot_wdgt.obj.plotItem.vb.setRange(
+                        xRange=(math.log(0.05), math.log(5)), yRange=(-g0 * 0.1, g0 * 1.3)
+                    )
+                else:
+                    # fit succeeded
+                    self.fit_led.set(consts.LED_OFF_ICON)
+                    fit_params = s.FitParam["Diffusion3Dfit"]
+                    g0, tau, _ = fit_params["beta"]
+                    x, y = fit_params["x"], fit_params["y"]
+                    fit_func = getattr(FitTools, fit_params["FitFunc"])
+                    self.g0_wdgt.set(g0)
+                    self.tau_wdgt.set(tau * 1e3)
+                    self.plot_wdgt.obj.plot(x, y, clear=True)
+                    y_fit = fit_func(x, *fit_params["beta"])
+                    self.plot_wdgt.obj.plot(x, y_fit, pen="r")
+                    self.plot_wdgt.obj.plotItem.autoRange()
+                    logging.info(
+                        f"Aligning ({self.laser_config}): G0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
+                    )
 
     def prep_data_dict(self) -> dict:
         """

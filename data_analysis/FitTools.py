@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import OptimizeWarning, curve_fit
 
-# from CellTrackModule import CellTrackClass
+from utilities.errors import FitError
 
 warnings.simplefilter("error", OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
@@ -51,7 +51,10 @@ def curvefitLims(
     #    print(yErr)
     fitFunc = globals()[fitName]
     #    print(fitName)
-    bta, covM = curve_fit(fitFunc, x, y, p0=paramEstimates, sigma=yErr, absolute_sigma=True)
+    try:
+        bta, covM = curve_fit(fitFunc, x, y, p0=paramEstimates, sigma=yErr, absolute_sigma=True)
+    except (RuntimeWarning, RuntimeError, OptimizeWarning):
+        raise FitError("curve_fit() failed.")
     #    print(bta)
     FitParam = dict()
     FitParam["beta"] = bta
