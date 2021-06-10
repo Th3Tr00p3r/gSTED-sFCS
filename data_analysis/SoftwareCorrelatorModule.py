@@ -5,7 +5,6 @@ Created on Sun Jan 17 14:08:54 2021
 @author: oleg
 """
 import enum
-import logging
 from ctypes import CDLL, c_double, c_int, c_long
 from sys import platform
 
@@ -75,20 +74,18 @@ class SoftwareCorrelatorClass:
 
         if CType == CorrelatorType.PhDelayCorrelator:
             if len(photonArray.shape) != 1:
-                raise Exception("Photon Array should be 1D for this correlator option!")
+                raise RuntimeError("Photon Array should be 1D for this correlator option!")
             self.countrate = Nentries / photonArray.sum() / timebase_ms * 1000
 
         elif CType == CorrelatorType.PhCountCorrelator:
             if len(photonArray.shape) != 1:
-                raise Exception("Photon Array should be 1D for this correlator option!")
+                raise RuntimeError("Photon Array should be 1D for this correlator option!")
             self.countrate = photonArray.sum() / Nentries / timebase_ms * 1000
 
         elif CType == CorrelatorType.PhDelayCrossCorrelator:
             if (len(photonArray.shape) == 1) or (photonArray.shape[0] != 3):
-                raise Exception(
-                    """Photon Array should have 3 rows for this correlator option!
-                                0st row with photon delay times, 1st (2nd)  row contains 1s
-                                for photons in channel A (B) and 0s for photons in channel B(A)"""
+                raise RuntimeError(
+                    "Photon Array should have 3 rows for this correlator option! 0st row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
                 )
             Duration_s = photonArray[0, :].sum() * timebase_ms / 1000
             self.countrateA = photonArray[1, :].sum() / Duration_s
@@ -96,9 +93,8 @@ class SoftwareCorrelatorClass:
 
         elif CType == CorrelatorType.PhDelayCorrelatorLines:
             if (len(photonArray.shape) == 1) or (photonArray.shape[0] != 2):
-                raise Exception(
-                    """Photon Array should have 2 rows for this correlator option!
-                                0st row with photon delay times, 1st row is 1 for valid lines"""
+                raise RuntimeError(
+                    "Photon Array should have 2 rows for this correlator option! 0st row with photon delay times, 1st row is 1 for valid lines"
                 )
             Valid = (photonArray[1, :] == 1) or (photonArray[1, :] == -2)
             Duration_s = photonArray[0, Valid].sum() * timebase_ms / 1000
@@ -106,11 +102,8 @@ class SoftwareCorrelatorClass:
 
         elif CType == CorrelatorType.PhDelayCrossCorrelatorLines:
             if (len(photonArray.shape) == 1) or (photonArray.shape[0] != 4):
-                raise Exception(
-                    """Photon Array should have 3 rows for this correlator option!
-                                0st row with photon delay times, 1st (2nd)  row contains 1s
-                                for photons in channel A (B) and 0s for photons in channel B(A),
-                                and 3rd column is 1s for valid lines"""
+                raise RuntimeError(
+                    "Photon Array should have 3 rows for this correlator option! 0st row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 3rd column is 1s for valid lines"
                 )
             Valid = (photonArray[3, :] == 1) or (photonArray[3, :] == -2)
             Duration_s = photonArray[0, Valid].sum() * timebase_ms / 1000
@@ -121,7 +114,7 @@ class SoftwareCorrelatorClass:
 
         self.SoftCorr(CType.value, Nentries, phHist, NoCorrChannels, self.corrPy)
         if NoCorrChannels[0] != self.TotalCorrChanLen:
-            logging.warning("Number of correlator channels inconsistent!")
+            raise ValueError("Number of correlator channels inconsistent!")
 
         self.lag = self.corrPy[1, :] * timebase_ms
         # corr.lag(corr.lag < 0) = 0; % fix zero channel time
