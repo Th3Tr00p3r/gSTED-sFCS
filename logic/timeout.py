@@ -199,7 +199,7 @@ class Timeout:
 
         while self.not_finished:
             if self._app.devices.UM232H.error_dict is None:
-                rx_bytes = self._app.devices.UM232H.get_queue_status()
+                rx_bytes = self._app.devices.UM232H.get_status()
                 fill_perc = rx_bytes / buff_sz * 100
                 um232_buff_wdgt.setValue(fill_perc)
                 if fill_perc > 90:

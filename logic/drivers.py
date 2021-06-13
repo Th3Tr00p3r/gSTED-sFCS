@@ -2,7 +2,7 @@
 
 import re
 from types import SimpleNamespace
-from typing import List, NoReturn, Tuple
+from typing import List, NoReturn
 
 import ftd2xx
 import nidaqmx as ni
@@ -44,13 +44,12 @@ class Ftd2xx:
         self._inst.setFlowControl(self.flow_ctrl)
         self._inst.setUSBParameters(self.tx_size)
 
-    async def read(self) -> Tuple[np.ndarray, int]:
+    async def read(self) -> np.ndarray:
         """Doc."""
 
         raw_bytes = await self._inst.read(self.n_bytes)
         read_bytes = np.frombuffer(raw_bytes, dtype=np.uint8)
-        n = len(read_bytes)
-        return read_bytes, n
+        return read_bytes
 
     def purge(self) -> NoReturn:
         """Doc."""
@@ -62,6 +61,11 @@ class Ftd2xx:
 
         self._inst.close()
         self.state = False
+
+    def get_queue_status(self) -> None:
+        """Doc."""
+
+        return self._inst.getQueueStatus()
 
 
 class NIDAQmx:
@@ -292,7 +296,7 @@ class Instrumental:
 
         try:
             self._inst = UC480_Camera(reopen_policy="new")
-        # general exc is due to bad error handeling in instrumental-lib...
+        # general 'Exception' is due to bad error handeling in instrumental-lib...
         except Exception:
             raise UC480Error(msg="Camera disconnected")
 

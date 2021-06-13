@@ -18,7 +18,7 @@ from data_analysis import FitTools
 from data_analysis.CorrFuncTDCclass import CorrFuncTDCclass
 from data_analysis.PhotonDataClass import PhotonDataClass
 from logic.scan_patterns import ScanPatternAO
-from utilities.errors import FitError, err_hndlr
+from utilities.errors import err_hndlr
 from utilities.helper import ImageData, div_ceil, get_datetime_str
 
 
@@ -632,7 +632,7 @@ class SFCSSolutionMeasurement(Measurement):
             else:
                 try:
                     s.DoFit(NoPlot=True)
-                except FitError as exc:
+                except FitTools.FitError as exc:
                     # fit failed
                     err_hndlr(exc, "DoFit()", lvl="debug")
                     self.fit_led.set(consts.LED_ERROR_ICON)
