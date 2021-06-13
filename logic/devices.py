@@ -1,12 +1,11 @@
 """Devices Module."""
 import asyncio
 import logging
+import sys
 import time
 from typing import NoReturn
 
 import numpy as np
-from ftd2xx.ftd2xx import DeviceError
-from nidaqmx.errors import DaqError
 from pyvisa.errors import VisaIOError
 
 import utilities.constants as consts
@@ -67,23 +66,22 @@ class UM232H(BaseDevice, Ftd2xx):
                 self.purge()
             else:
                 self.close()
-        except (
-            # TODO: disconnect cable and see what error is caused
-            DeviceError,
-            TypeError,
-            AttributeError,
-        ) as exc:
-            err_hndlr(exc, f"_toggle({bool})", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
+        else:
+            self.state = bool
 
     async def read_TDC(self):
         """Doc."""
 
         try:
-            byte_array, n = await self.read()
+            byte_array = await self.read()
             self.data = np.concatenate((self.data, byte_array), axis=0)
-            self.tot_bytes_read += n
-        except (DeviceError, AttributeError, OSError, ValueError) as exc:
-            err_hndlr(exc, "read_TDC()", dvc=self)
+            self.tot_bytes_read += len(byte_array)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
     def init_data(self):
         """Doc."""
@@ -95,16 +93,18 @@ class UM232H(BaseDevice, Ftd2xx):
         """Doc."""
         try:
             self.purge()
-        except DeviceError as exc:
-            err_hndlr(exc, "purge_buffers()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
-    def get_queue_status(self):
+    def get_status(self):
         """Doc."""
 
         try:
-            return self._inst.getQueueStatus()
-        except DeviceError as exc:
-            err_hndlr(exc, "get_queue_status()", dvc=self)
+            return self.get_queue_status()
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
 
 class Scanners(BaseDevice, NIDAQmx):
@@ -169,8 +169,9 @@ class Scanners(BaseDevice, NIDAQmx):
         else:
             try:
                 self.close_all_tasks()
-            except DaqError as exc:
-                err_hndlr(exc, f"_toggle({bool})", dvc=self)
+            except Exception as exc:
+                func_name = sys._getframe().f_code.co_name
+                err_hndlr(exc, func_name, dvc=self)
 
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
@@ -190,8 +191,9 @@ class Scanners(BaseDevice, NIDAQmx):
             )
             self.init_ai_buffer()
             self.start_tasks("ai")
-        except DaqError as exc:
-            err_hndlr(exc, "start_continuous_read_task()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> NoReturn:
         """Doc."""
@@ -205,8 +207,9 @@ class Scanners(BaseDevice, NIDAQmx):
                 timing_params=timing_params,
             )
             self.start_tasks("ai")
-        except DaqError as exc:
-            err_hndlr(exc, "start_scan_read_task()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
     def start_write_task(
         self,
@@ -254,8 +257,9 @@ class Scanners(BaseDevice, NIDAQmx):
                     self.start_tasks("ao")
                     self.wait_for_task("ao", task_name)
                     self.close_tasks("ao")
-                except DaqError as exc:
-                    err_hndlr(exc, "smooth_start()", dvc=self)
+                except Exception as exc:
+                    func_name = sys._getframe().f_code.co_name
+                    err_hndlr(exc, func_name, dvc=self)
 
         axes_to_use = consts.AXES_TO_BOOL_TUPLE_DICT[type]
 
@@ -309,8 +313,9 @@ class Scanners(BaseDevice, NIDAQmx):
             if start is True:
                 self.start_tasks("ao")
 
-        except DaqError as exc:
-            err_hndlr(exc, "start_write_task()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
     def init_ai_buffer(self) -> NoReturn:
         """Doc."""
@@ -336,8 +341,9 @@ class Scanners(BaseDevice, NIDAQmx):
 
         try:
             read_samples = self.analog_read(task_name, n_samples)
-        except DaqError as exc:
-            err_hndlr(exc, "fill_ai_buffer()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
         else:
             read_samples = read_samples[:3] + self.diff_to_rse(read_samples[3:])
             self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
@@ -426,8 +432,9 @@ class Counter(BaseDevice, NIDAQmx):
         else:
             try:
                 self.close_all_tasks()
-            except DaqError as exc:
-                err_hndlr(exc, f"_toggle({bool})", dvc=self)
+            except Exception as exc:
+                func_name = sys._getframe().f_code.co_name
+                err_hndlr(exc, func_name, dvc=self)
 
     def start_continuous_read_task(self) -> NoReturn:
         """Doc."""
@@ -449,8 +456,9 @@ class Counter(BaseDevice, NIDAQmx):
             )
             self.init_ci_buffer()
             self.start_tasks("ci")
-        except DaqError as exc:
-            err_hndlr(exc, "start_continuous_read_task()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> NoReturn:
         """Doc."""
@@ -468,8 +476,9 @@ class Counter(BaseDevice, NIDAQmx):
                 timing_params=timing_params,
             )
             self.start_tasks("ci")
-        except DaqError as exc:
-            err_hndlr(exc, "start_scan_read_task()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
     def fill_ci_buffer(
         self,
@@ -480,11 +489,9 @@ class Counter(BaseDevice, NIDAQmx):
 
         try:
             num_samps_read = self.counter_stream_read()
-        except DaqError as exc:
-            err_hndlr(exc, "fill_ci_buffer()", dvc=self)
-        except KeyError:
-            # TODO: figure out why this happens (during manual stop with device error)
-            pass
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
         else:
             self.ci_buffer = np.concatenate(
                 (self.ci_buffer, self.cont_read_buffer[:num_samps_read])
@@ -544,8 +551,9 @@ class PixelClock(BaseDevice, NIDAQmx):
                 self._start_co_clock_sync()
             else:
                 self.close_all_tasks()
-        except DaqError as exc:
-            err_hndlr(exc, f"_toggle({bool})", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
         else:
             self.state = bool
 
@@ -568,8 +576,9 @@ class PixelClock(BaseDevice, NIDAQmx):
                 clk_cnfg={"sample_mode": consts.NI.AcquisitionType.CONTINUOUS},
             )
             self.start_tasks("co")
-        except DaqError as exc:
-            err_hndlr(exc, "_start_co_clock_sync()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
 
 class SimpleDO(BaseDevice, NIDAQmx):
@@ -608,11 +617,11 @@ class DepletionLaser(BaseDevice, PyVISA):
         if self.state is False:
             self.set_current(1500)
 
-    def _toggle(self, bool):
+    def _toggle(self, is_being_switched_on):
         """Doc."""
 
         try:
-            if bool is True:
+            if is_being_switched_on:
                 self.open_inst()
             else:
                 if self.state is True:
@@ -623,23 +632,25 @@ class DepletionLaser(BaseDevice, PyVISA):
                     logging.warning(
                         "Depletion laser disconnected during operation. Reconnect and reopen application to fix."
                     )
-        except (VisaIOError, AttributeError) as exc:
-            err_hndlr(exc, f"_toggle({bool})", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
         else:
             # state stays 'None' if open() fails
             self.state = False
 
-    def laser_toggle(self, bool):
+    def laser_toggle(self, is_being_switched_on):
         """Doc."""
 
-        cmnd = f"setLDenable {int(bool)}"
+        cmnd = f"setLDenable {int(is_being_switched_on)}"
         try:
             self.write(cmnd)
-        except VisaIOError as exc:
-            err_hndlr(exc, f"laser_toggle({bool})", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
         else:
-            self.state = bool
-            self.change_icons("on" if bool else "off")
+            self.state = is_being_switched_on
+            self.change_icons("on" if is_being_switched_on else "off")
 
     def get_prop(self, prop):
         """Doc."""
@@ -654,14 +665,9 @@ class DepletionLaser(BaseDevice, PyVISA):
         try:
             self.flush()
             response = self.query(cmnd)
-        except VisaIOError as exc:
-            err_hndlr(exc, f"get_prop({prop})", dvc=self)
-            return 0
-        except IndexError as exc:
-            err_hndlr(exc, f"get_prop({prop})", lvl="warning", dvc=self)
-            return 0
-        except KeyError as exc:
-            err_hndlr(exc, f"get_prop({prop})")
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
             return 0
         else:
             return response
@@ -678,8 +684,9 @@ class DepletionLaser(BaseDevice, PyVISA):
                 # then set the power
                 cmnd = f"Setpower 0 {value_mW}"
                 self.write(cmnd)
-            except VisaIOError as exc:
-                err_hndlr(exc, f"set_power({value_mW})", dvc=self)
+            except Exception as exc:
+                func_name = sys._getframe().f_code.co_name
+                err_hndlr(exc, func_name, dvc=self)
         else:
             dialog.Error(error_txt="Power out of range").display()
 
@@ -695,8 +702,9 @@ class DepletionLaser(BaseDevice, PyVISA):
                 # then set the power
                 cmnd = f"setLDcur 1 {value_mA}"
                 self.write(cmnd)
-            except VisaIOError as exc:
-                err_hndlr(exc, f"set_current({value_mA})", dvc=self)
+            except Exception as exc:
+                func_name = sys._getframe().f_code.co_name
+                err_hndlr(exc, func_name, dvc=self)
         else:
             dialog.Error(error_txt="Current out of range").display()
 
@@ -718,8 +726,9 @@ class StepperStage(BaseDevice, PyVISA):
                 self.open_inst()
             else:
                 self.close_inst()
-        except VisaIOError as exc:
-            err_hndlr(exc, f"_toggle({bool})", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
         else:
             self.state = bool
 
@@ -734,16 +743,18 @@ class StepperStage(BaseDevice, PyVISA):
         }
         try:
             self.write(cmd_dict[dir])
-        except VisaIOError as exc:
-            err_hndlr(exc, f"move({dir},{steps})", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
     def release(self):
         """Doc."""
 
         try:
             self.write("ryx ")
-        except VisaIOError as exc:
-            err_hndlr(exc, "release()", dvc=self)
+        except Exception as exc:
+            func_name = sys._getframe().f_code.co_name
+            err_hndlr(exc, func_name, dvc=self)
 
 
 class Camera(BaseDevice, Instrumental):

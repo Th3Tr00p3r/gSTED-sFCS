@@ -32,7 +32,7 @@ def err_hndlr(exc, func, lvl="error", dvc=None, disp=False):
     if dvc is not None:  # device error
         dvc_log_ref = getattr(consts, dvc.nick).log_ref
         log_str = (
-            f"{dvc_log_ref} didn't respond to '{func}' ({err_dict['module']}, {err_dict['line']}). "
+            f"{dvc_log_ref} didn't respond to '{func}()' ({err_dict['module']}, {err_dict['line']}). "
             f"[{err_dict['type']}: {err_dict['msg']}]"
         )
         if lvl == "error":
@@ -41,7 +41,7 @@ def err_hndlr(exc, func, lvl="error", dvc=None, disp=False):
             dvc.led_widget.set(consts.LED_ERROR_ICON)
 
     else:  # logic eror
-        log_str = f"{err_dict['type']}: {err_dict['msg']} ({func}, {err_dict['module']}, {err_dict['line']})"
+        log_str = f"{err_dict['type']}: {err_dict['msg']} ({func}(), {err_dict['module']}, {err_dict['line']})"
         if disp:
             Error(**err_dict).display()
 
@@ -99,12 +99,3 @@ def dvc_err_chckr(nick_set: set = None) -> Callable:
         return inner_wrapper
 
     return outer_wrapper
-
-
-# TODO: Use this with all device malefunctions?
-class InstrumentError(Exception):
-    pass
-
-
-class FitError(Exception):
-    pass

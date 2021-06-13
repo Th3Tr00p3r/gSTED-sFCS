@@ -10,9 +10,6 @@ import numpy as np
 
 
 class PhotonDataClass:
-
-    # def __init__(self):
-
     def DoConvertFPGAdataToPhotons(self, FPGAdata, Version=3, verbose=False):
         if Version >= 2:
             GroupLen = 7

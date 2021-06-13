@@ -1,8 +1,6 @@
 # Auto-Generated (idomich)
 lextab.py
 yacctab.py
-gui/icons/icon_paths.py
-gui/icons/icons.qrc 
 
 # Specific folders (idomich)
 data/

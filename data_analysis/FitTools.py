@@ -11,10 +11,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import OptimizeWarning, curve_fit
 
-from utilities.errors import FitError
-
 warnings.simplefilter("error", OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
+
+
+class FitError(Exception):
+    pass
 
 
 def curvefitLims(
