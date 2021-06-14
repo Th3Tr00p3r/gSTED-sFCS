@@ -14,9 +14,9 @@ import numpy as np
 import scipy.io as sio
 
 import utilities.constants as consts
-from data_analysis import FitTools
-from data_analysis.CorrFuncTDCclass import CorrFuncTDCclass
-from data_analysis.PhotonDataClass import PhotonDataClass
+from data_analysis import fit_tools
+from data_analysis.correlation_function import CorrFuncTDC
+from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
 from utilities.errors import err_hndlr
 from utilities.helper import ImageData, div_ceil, get_datetime_str
@@ -610,9 +610,9 @@ class SFCSSolutionMeasurement(Measurement):
         def compute_acf(data):
             """Doc."""
 
-            p = PhotonDataClass()
-            p.do_convert_fpga_data_to_photons(data)
-            s = CorrFuncTDCclass()
+            p = PhotonData()
+            p.convert_fpga_data_to_photons(data)
+            s = CorrFuncTDC()
             s.laser_freq = self.tdc_dvc.laser_freq_MHz * 1e6
             s.data["data"].append(p)
             s.correlate_regular_data()
@@ -634,7 +634,7 @@ class SFCSSolutionMeasurement(Measurement):
             else:
                 try:
                     s.do_fit(no_plot=True)
-                except FitTools.FitError as exc:
+                except fit_tools.FitError as exc:
                     # fit failed
                     func_name = sys._getframe().f_code.co_name
                     err_hndlr(exc, func_name, lvl="debug")
@@ -652,7 +652,7 @@ class SFCSSolutionMeasurement(Measurement):
                     fit_params = s.fit_param["Diffusion3Dfit"]
                     g0, tau, _ = fit_params["beta"]
                     x, y = fit_params["x"], fit_params["y"]
-                    fit_func = getattr(FitTools, fit_params["fit_func"])
+                    fit_func = getattr(fit_tools, fit_params["fit_func"])
                     self.g0_wdgt.set(g0)
                     self.tau_wdgt.set(tau * 1e3)
                     self.plot_wdgt.obj.plot(x, y, clear=True)
