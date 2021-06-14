@@ -1,7 +1,5 @@
 """ GUI Module. """
 
-from typing import NoReturn
-
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5 import uic
@@ -18,7 +16,7 @@ from utilities.helper import ImageDisplay
 class MainWin(QMainWindow):
     """Doc."""
 
-    def __init__(self, app, parent: None = None) -> NoReturn:
+    def __init__(self, app, parent: None = None) -> None:
         super(MainWin, self).__init__(parent)
         uic.loadUi(consts.MAINWINDOW_UI_PATH, self)
         self.move(600, 30)
@@ -92,103 +90,103 @@ class MainWin(QMainWindow):
 
         self.countsAvg.setValue(self.countsAvgSlider.value())
 
-    def closeEvent(self, event: QEvent) -> NoReturn:
+    def closeEvent(self, event: QEvent) -> None:
         """Doc."""
 
         self.imp.close(event)
 
     @pyqtSlot()
-    def on_actionRestart_triggered(self) -> NoReturn:
+    def on_actionRestart_triggered(self) -> None:
         """Doc."""
 
         self.imp.restart()
 
     @pyqtSlot()
-    def on_actionLoadLoadout_triggered(self) -> NoReturn:
+    def on_actionLoadLoadout_triggered(self) -> None:
         """Doc."""
 
         self.imp.load()
 
     @pyqtSlot()
-    def on_actionSaveLoadout_triggered(self) -> NoReturn:
+    def on_actionSaveLoadout_triggered(self) -> None:
         """Doc."""
 
         self.imp.save()
 
     @pyqtSlot(int)
-    def on_minNumLines_valueChanged(self, val: int) -> NoReturn:
+    def on_minNumLines_valueChanged(self, val: int) -> None:
         """Allow only even values"""
 
         if val % 2:
             self.minNumLines.setValue(val - 1)
 
-    def display_scan_pattern(self, pattern: str) -> NoReturn:
+    def display_scan_pattern(self, pattern: str) -> None:
         """Doc."""
 
         self.imp.disp_scn_pttrn(pattern)
 
     @pyqtSlot()
-    def on_roiImgScn_released(self) -> NoReturn:
+    def on_roiImgScn_released(self) -> None:
         """Doc."""
 
         self.imp.roi_to_scan()
 
     @pyqtSlot(int)
-    def on_imgShowMethod_currentIndexChanged(self) -> NoReturn:
+    def on_imgShowMethod_currentIndexChanged(self) -> None:
         """Doc."""
 
         plane_idx = self.numPlaneShownChoice.value()
         self.imp.disp_plane_img(plane_idx)
 
     @pyqtSlot(int)
-    def on_numPlaneShownChoice_sliderMoved(self, val: int) -> NoReturn:
+    def on_numPlaneShownChoice_sliderMoved(self, val: int) -> None:
         """Doc."""
 
         self.imp.plane_choice_changed(val)
 
     @pyqtSlot(float)
-    def on_solScanTotalDur_valueChanged(self, float) -> NoReturn:
+    def on_solScanTotalDur_valueChanged(self, float) -> None:
         """Doc."""
 
         self.imp.change_meas_dur(float)
 
     @pyqtSlot()
-    def on_startImgScan_released(self) -> NoReturn:
+    def on_startImgScan_released(self) -> None:
         """Begin/end Image SFCS measurement"""
 
         self.imp.toggle_meas("SFCSImage")
 
     @pyqtSlot()
-    def on_startSolScan_released(self) -> NoReturn:
+    def on_startSolScan_released(self) -> None:
         """Begin/end SFCS measurement."""
 
         self.imp.toggle_meas("SFCSSolution")
 
-    def device_toggle_button_released(self, dvc_nick: str, toggle_mthd: str) -> NoReturn:
+    def device_toggle_button_released(self, dvc_nick: str, toggle_mthd: str) -> None:
         """Turn devices On/Off."""
 
         self.imp.dvc_toggle(dvc_nick, toggle_mthd)
 
     @pyqtSlot()
-    def on_powMode_released(self) -> NoReturn:
+    def on_powMode_released(self) -> None:
         """Switch between power/current depletion laser settings"""
 
         self.depModeStacked.setCurrentIndex(1)
 
     @pyqtSlot()
-    def on_currMode_released(self) -> NoReturn:
+    def on_currMode_released(self) -> None:
         """Switch between power/current depletion laser settings"""
 
         self.depModeStacked.setCurrentIndex(0)
 
     @pyqtSlot()
-    def on_depApplySettings_released(self) -> NoReturn:
+    def on_depApplySettings_released(self) -> None:
         """Apply current/power mode and value"""
 
         self.imp.dep_sett_apply()
 
     @pyqtSlot(int)
-    def on_solScanType_currentIndexChanged(self, index: int) -> NoReturn:
+    def on_solScanType_currentIndexChanged(self, index: int) -> None:
         """
         Change stacked widget 'solScanParamsStacked' index
         according to index of the combo box 'solScanTypeCombox'.
@@ -197,49 +195,49 @@ class MainWin(QMainWindow):
         self.solScanParamsStacked.setCurrentIndex(index)
 
     @pyqtSlot(str)
-    def on_solScanType_currentTextChanged(self, txt: str) -> NoReturn:
+    def on_solScanType_currentTextChanged(self, txt: str) -> None:
         """Doc."""
 
         self.imp.disp_scn_pttrn(txt)
 
     @pyqtSlot(str)
-    def on_imgScanPreset_currentTextChanged(self, curr_txt: str) -> NoReturn:
+    def on_imgScanPreset_currentTextChanged(self, curr_txt: str) -> None:
         """Doc."""
 
         self.imp.fill_img_scan_preset_gui(curr_txt)
 
     @pyqtSlot(str)
-    def on_solMeasPreset_currentTextChanged(self, curr_txt: str) -> NoReturn:
+    def on_solMeasPreset_currentTextChanged(self, curr_txt: str) -> None:
         """Doc."""
 
         self.imp.fill_sol_meas_preset_gui(curr_txt)
 
     @pyqtSlot()
-    def on_actionSettings_triggered(self) -> NoReturn:
+    def on_actionSettings_triggered(self) -> None:
         """Show settings window"""
 
         self.imp.open_settwin()
 
     @pyqtSlot(bool)
-    def on_actionLaser_Control_toggled(self, p0: bool) -> NoReturn:
+    def on_actionLaser_Control_toggled(self, p0: bool) -> None:
         """Show/hide stepper laser control dock"""
 
         self.laserDock.setVisible(p0)
 
     @pyqtSlot(bool)
-    def on_actionStepper_Stage_Control_toggled(self, p0: bool) -> NoReturn:
+    def on_actionStepper_Stage_Control_toggled(self, p0: bool) -> None:
         """Show/hide stepper stage control dock"""
 
         self.stepperDock.setVisible(p0)
 
     @pyqtSlot()
-    def on_actionCamera_Control_triggered(self) -> NoReturn:
+    def on_actionCamera_Control_triggered(self) -> None:
         """Instantiate 'CameraWindow' object and show it"""
 
         self._loop.create_task(self.imp.open_camwin())
 
     @pyqtSlot(int)
-    def on_countsAvgSlider_valueChanged(self, val: int) -> NoReturn:
+    def on_countsAvgSlider_valueChanged(self, val: int) -> None:
         """Doc."""
 
         self.imp.cnts_avg_sldr_changed(val)
@@ -248,7 +246,7 @@ class MainWin(QMainWindow):
     # LEDS
     # -----------------------------------------------------------------------
 
-    def leds_clicked(self) -> NoReturn:
+    def leds_clicked(self) -> None:
         """Doc."""
 
         self.imp.led_clicked(str(self.sender().objectName()))
@@ -257,18 +255,18 @@ class MainWin(QMainWindow):
     # Position Control
     # -----------------------------------------------------------------------
 
-    def origin_released(self, axes: str) -> NoReturn:
+    def origin_released(self, axes: str) -> None:
         """Doc."""
 
         self.imp.go_to_origin(axes)
 
     @pyqtSlot()
-    def on_goTo_released(self) -> NoReturn:
+    def on_goTo_released(self) -> None:
         """Doc."""
 
         self.imp.move_scanners()
 
-    def axisMoveUm_released(self, sign: int) -> NoReturn:
+    def axisMoveUm_released(self, sign: int) -> None:
         """Doc."""
 
         self.imp.displace_scanner_axis(sign)
@@ -278,18 +276,18 @@ class MainWin(QMainWindow):
     # -----------------------------------------------------------------------
 
     @pyqtSlot()
-    def on_stageOn_released(self) -> NoReturn:
+    def on_stageOn_released(self) -> None:
         """Doc."""
 
         self.imp.dvc_toggle("STAGE")
 
-    def stageMove_released(self, dir: str) -> NoReturn:
+    def stageMove_released(self, dir: str) -> None:
         """Doc."""
 
         self.imp.move_stage(dir=dir, steps=self.stageSteps.value())
 
     @pyqtSlot()
-    def on_stageRelease_released(self) -> NoReturn:
+    def on_stageRelease_released(self) -> None:
         """Doc."""
 
         self.imp.release_stage()
@@ -298,33 +296,33 @@ class MainWin(QMainWindow):
 class SettWin(QDialog):
     """ Documentation."""
 
-    def __init__(self, app, parent=None) -> NoReturn:
+    def __init__(self, app, parent=None) -> None:
         """Doc."""
 
         super(SettWin, self).__init__(parent)
         uic.loadUi(consts.SETTINGSWINDOW_UI_PATH, self)
         self.imp = wins_imp.SettWin(self, app)
 
-    def closeEvent(self, event: QEvent) -> NoReturn:
+    def closeEvent(self, event: QEvent) -> None:
         """Doc."""
 
         self.imp.clean_up()
         self.imp.check_on_close = True
 
     @pyqtSlot()
-    def on_saveButton_released(self) -> NoReturn:
+    def on_saveButton_released(self) -> None:
         """Save settings as .csv"""
 
         self.imp.save()
 
     @pyqtSlot()
-    def on_loadButton_released(self) -> NoReturn:
+    def on_loadButton_released(self) -> None:
         """load settings .csv file"""
 
         self.imp.load()
 
     @pyqtSlot()
-    def on_confirmButton_released(self) -> NoReturn:
+    def on_confirmButton_released(self) -> None:
         """Doc."""
 
         self.imp.confirm()
@@ -334,7 +332,7 @@ class SettWin(QDialog):
 class CamWin(QWidget):
     """Doc."""
 
-    def __init__(self, app, parent=None) -> NoReturn:
+    def __init__(self, app, parent=None) -> None:
         """Doc."""
 
         super(CamWin, self).__init__(parent, Qt.WindowStaysOnTopHint)
@@ -347,19 +345,19 @@ class CamWin(QWidget):
         self.canvas = FigureCanvas(self.figure)
         self.gridLayout.addWidget(self.canvas, 0, 1)
 
-    def closeEvent(self, event: QEvent) -> NoReturn:
+    def closeEvent(self, event: QEvent) -> None:
         """Doc."""
 
         self.imp.clean_up()
 
     @pyqtSlot()
-    def on_shootButton_released(self) -> NoReturn:
+    def on_shootButton_released(self) -> None:
         """Doc."""
 
         self.imp.shoot()
 
     @pyqtSlot()
-    def on_videoButton_released(self) -> NoReturn:
+    def on_videoButton_released(self) -> None:
         """Doc."""
 
         self.imp.toggle_video()

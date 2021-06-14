@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import sys
 from collections import deque
 from typing import NoReturn
 
@@ -13,7 +14,7 @@ from utilities.errors import err_hndlr
 class Timeout:
     """Doc."""
 
-    def __init__(self, app) -> NoReturn:
+    def __init__(self, app) -> None:
         """Doc."""
 
         self._app = app
@@ -26,7 +27,7 @@ class Timeout:
         }
 
     # MAIN
-    async def _main(self) -> NoReturn:
+    async def _main(self) -> None:
         """Doc."""
 
         await asyncio.gather(
@@ -35,23 +36,23 @@ class Timeout:
             self._update_dep(),
             self._updt_current_state(),
             self._update_gui(),
-            #            self._updt_um232h_status(),
+            self._updt_um232h_status(),
         )
         logging.debug("_main function exited")
 
-    def start(self) -> NoReturn:
+    def start(self) -> None:
         """Doc."""
 
         self.not_finished = True
         self._app.loop.create_task(self._main())
         logging.debug("Starting main timer.")
 
-    def finish(self) -> NoReturn:
+    def finish(self) -> None:
         """Doc."""
 
         self.not_finished = False
 
-    async def _updt_current_state(self) -> NoReturn:
+    async def _updt_current_state(self) -> None:
         """Doc."""
 
         def get_last_line(file_path) -> str:
@@ -94,32 +95,32 @@ class Timeout:
 
             await asyncio.sleep(0.3)
 
-    async def _updt_CI_and_AI(self) -> NoReturn:
+    async def _updt_CI_and_AI(self) -> None:
         """Doc."""
 
         while self.not_finished:
 
             # COUNTER
-            if self._app.devices.COUNTER.error_dict is None:
+            if not self._app.devices.COUNTER.error_dict:
                 self._app.devices.COUNTER.fill_ci_buffer()
                 if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
                     self._app.devices.COUNTER.dump_ci_buff_overflow()
 
             # AI
-            if self._app.devices.SCANNERS.error_dict is None:
+            if not self._app.devices.SCANNERS.error_dict:
                 self._app.devices.SCANNERS.fill_ai_buffer()
                 if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
                     self._app.devices.SCANNERS.dump_ai_buff_overflow()
 
             await asyncio.sleep(consts.TIMEOUT)
 
-    async def _update_gui(self) -> NoReturn:
+    async def _update_gui(self) -> None:
         """Doc."""
 
         def updt_scn_pos(app):
             """Doc."""
 
-            if app.devices.SCANNERS.error_dict is None:
+            if not app.devices.SCANNERS.error_dict:
                 try:
                     (
                         x_ai,
@@ -137,7 +138,7 @@ class Timeout:
                         (axis_vltg - axis_org) * axis_ratio
                         for axis_vltg, axis_ratio, axis_org in zip(
                             (x_ao_int, y_ao_int, z_ao_int),
-                            app.devices.SCANNERS.um_V_ratio,
+                            app.devices.SCANNERS.um_v_ratio,
                             app.devices.SCANNERS.origin,
                         )
                     )
@@ -154,10 +155,10 @@ class Timeout:
                     app.gui.main.yAOum.setValue(y_um)
                     app.gui.main.zAOum.setValue(z_um)
 
-        def updt_meas_progbar(meas) -> NoReturn:
+        def updt_meas_progbar(meas) -> None:
             """Doc."""
 
-            if (self._app.devices.UM232H.error_dict is None) and meas.is_running:
+            if (not self._app.devices.UM232H.error_dict) and meas.is_running:
 
                 try:
                     if meas.type == "SFCSSolution":
@@ -179,7 +180,8 @@ class Timeout:
                     # happens when depletion is turned on before beginning measurement (5 s wait)
                     pass
                 except Exception as exc:
-                    err_hndlr(exc, "updt_meas_progbar()", lvl="debug")
+                    func_name = sys._getframe().f_code.co_name
+                    err_hndlr(exc, func_name, lvl="debug")
 
         while self.not_finished:
 
@@ -198,7 +200,7 @@ class Timeout:
         buff_sz = self._app.devices.UM232H.tx_size
 
         while self.not_finished:
-            if self._app.devices.UM232H.error_dict is None:
+            if not self._app.devices.UM232H.error_dict:
                 rx_bytes = self._app.devices.UM232H.get_status()
                 fill_perc = rx_bytes / buff_sz * 100
                 um232_buff_wdgt.setValue(fill_perc)
@@ -207,7 +209,7 @@ class Timeout:
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
-    async def _update_avg_counts(self) -> NoReturn:
+    async def _update_avg_counts(self) -> None:
         """
         Read new counts, and dump buffer overflow.
         if update ready also average and show in GUI.
@@ -216,20 +218,20 @@ class Timeout:
 
         cntr_dvc = self._app.devices.COUNTER
         while self.not_finished:
-            if cntr_dvc.error_dict is None:
+            if not cntr_dvc.error_dict:
                 cntr_dvc.average_counts()
                 self._app.gui.main.counts.setValue(cntr_dvc.avg_cnt_rate)
 
             await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
-    async def _update_dep(self) -> NoReturn:
+    async def _update_dep(self) -> None:
         """Update depletion laser GUI"""
 
         dep_dvc = self._app.devices.DEP_LASER
         main_gui = self._app.gui.main
 
         while self.not_finished:
-            if dep_dvc.error_dict is None:
+            if not dep_dvc.error_dict:
 
                 temp, pow, curr = (
                     dep_dvc.get_prop("temp"),

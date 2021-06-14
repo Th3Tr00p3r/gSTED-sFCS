@@ -33,20 +33,22 @@ sys.path.append(os.path.dirname(__file__))
 
 
 class CorrFuncTDCclass(CorrFuncDataClass):
+    """Doc."""
+
     def __init__(self):
         self.data = {
-            "Version": 2,
-            "LineEndAdder": 1000,
-            "Data": list(),
+            "version": 2,
+            "line_end_adder": 1000,
+            "data": list(),
         }  # dictionary to hold the data
 
-        self.TDCcalib = dict()  # dictionary for TDC calibration
+        self.tdc_calib = dict()  # dictionary for TDC calibration
 
-        self.IsDataOnDisk = False  # saving data on disk to free RAM
-        self.DataFileNameOnDisk = ""
-        self.DataNameOnDisk = ""
-        self.AfterPulseParam = (
-            "MultiExponentFit",
+        self.is_data_on_disk = False  # saving data on disk to free RAM
+        self.data_filename_on_disk = ""
+        self.data_name_on_disk = ""
+        self.after_pulse_param = (
+            "multi_exponent_fit",
             1e5
             * np.array(
                 [
@@ -62,28 +64,28 @@ class CorrFuncTDCclass(CorrFuncDataClass):
             ),
         )
 
-    def DoReadFPGAdata(
+    def read_fpga_data(
         self,
         fpathtmpl,
-        FixShift=False,
-        LineEndAdder=1000,
-        ROISelection="auto",
+        fix_shift=False,
+        line_end_adder=1000,
+        roi_selection="auto",
         verbose=False,
     ):
+        """Doc."""
+
         if verbose:
             print("Loading FPGA data...")
         # fpathtmpl : template of complete path to data
 
-        fpathes = glob.glob(fpathtmpl)
-        assert fpathes, "No files found! Check file template!"
+        if not (fpathes := glob.glob(fpathtmpl)):
+            logging.warning("No files found! Check file template!")
 
-        # order filenames
-        folderpath_fnametmpl = os.path.split(
-            fpathtmpl
-        )  # splits in folderpath and filename template
-        fnametmpl, file_extension = os.path.splitext(
-            folderpath_fnametmpl[1]
-        )  # splits filename template into the name template proper and its extension
+        # order filenames -
+        # splits in folderpath and filename template
+        folderpath_fnametmpl = os.path.split(fpathtmpl)
+        # splits filename template into the name template proper and its extension
+        fnametmpl, file_extension = os.path.splitext(folderpath_fnametmpl[1])
 
         # Nfile = list()
         # for fpath in fpathes:
@@ -99,24 +101,24 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         for fpath in fpathes:
             if verbose:
                 print(f"Loading {fpath}")
-            folderpath_fname = os.path.split(fpath)  # splits in folderpath and filename
-            fname, file_extension = os.path.splitext(
-                folderpath_fname[1]
-            )  # splits filename into the name proper and its extension
+            # splits in folderpath and filename
+            folderpath_fname = os.path.split(fpath)
+            # splits filename into the name proper and its extension
+            fname, file_extension = os.path.splitext(folderpath_fname[1])
 
             # test type of file and open accordingly
             if file_extension == ".mat":
                 filedict = loadmat(fpath)
-                if "SystemInfo" in filedict.keys():
-                    SystemInfo = filedict["SystemInfo"]
-                    if "AfterPulseParam" in SystemInfo.keys():
-                        self.AfterPulseParam = SystemInfo["AfterPulseParam"]
+                if "system_info" in filedict.keys():
+                    system_info = filedict["system_info"]
+                    if "after_pulse_param" in system_info.keys():
+                        self.after_pulse_param = system_info["after_pulse_param"]
 
                 # patching for new parameters
 
-                if isinstance(self.AfterPulseParam, np.ndarray):
-                    self.AfterPulseParam = (
-                        "MultiExponentFit",
+                if isinstance(self.after_pulse_param, np.ndarray):
+                    self.after_pulse_param = (
+                        "multi_exponent_fit",
                         np.array(
                             1e5
                             * [
@@ -132,394 +134,402 @@ class CorrFuncTDCclass(CorrFuncDataClass):
                         ),
                     )
 
-                FullData = filedict["FullData"]
-                P = PhotonDataClass()
-                P.DoConvertFPGAdataToPhotons(
-                    np.array(FullData["Data"]).astype("B"), Version=FullData["Version"]
+                full_data = filedict["full_data"]
+                p = PhotonDataClass()
+                p.do_convert_fpga_data_to_photons(
+                    np.array(full_data["data"]).astype("B"), version=full_data["version"]
                 )
-                self.LaserFreq = FullData["LaserFreq"] * 1e6
-                self.FPGAfreq = FullData["FpgaFreq"] * 1e6
+                self.laser_freq = full_data["laser_freq"] * 1e6
+                self.fpga_freq = full_data["fpga_freq"] * 1e6
 
-                if "CircleSpeed_um_sec" in FullData.keys():
-                    self.V_um_ms = FullData["CircleSpeed_um_sec"] / 1000  # to um/ms
+                if "circle_speed_um_sec" in full_data.keys():
+                    self.v_um_ms = full_data["circle_speed_um_sec"] / 1000  # to um/ms
 
-                if "AnglularScanSettings" in FullData.keys():  # angular scan
-                    AnglularScanSettings = FullData["AnglularScanSettings"]
-                    AnglularScanSettings["LinearPart"] = np.array(
-                        AnglularScanSettings["LinearPart"]
+                if "angular_scan_settings" in full_data.keys():  # angular scan
+                    angular_scan_settings = full_data["angular_scan_settings"]
+                    angular_scan_settings["linear_part"] = np.array(
+                        angular_scan_settings["linear_part"]
                     )
-                    P.LineEndAdder = LineEndAdder
-                    self.V_um_ms = AnglularScanSettings["ActualSpeed"] / 1000  # to um/ms
-                    rntime = P.runtime
-                    Cnt, PixNoTot, pixNumber, LineNo = self.DoConvertAngularScanToImage(
-                        rntime, AnglularScanSettings
+                    p.line_end_adder = line_end_adder
+                    self.v_um_ms = angular_scan_settings["actual_speed"] / 1000  # to um/ms
+                    runtime = p.runtime
+                    cnt, n_pix_tot, n_pix, line_num = self.convert_angular_scan_to_image(
+                        runtime, angular_scan_settings
                     )
 
-                    # PixNoTot = np.floor(rntime*AnglularScanSettings['SampleFreq']/self.LaserFreq)
-                    # pixNumber = mod(PixNoTot, AnglularScanSettings['PointsPerLineTotal']) #to which pixel photon belongs
-                    # LineNoTot = np.floor(PixNoTot/AnglularScanSettings['PointsPerLineTotal'])
-                    # LineNo = np.mod(LineNoTot, AnglularScanSettings['NofLines']+1) # one more line is for return to starting positon
-                    # Cnt = np.empty((AnglularScanSettings['NofLines']+1, AnglularScanSettings['PointsPerLineTotal']), dtype = 'int')
-                    # for j in range(AnglularScanSettings['NofLines']+1):
-                    #     belongToLine = (LineNo.astype('int') == j)
-                    #     CntLine, bins = np.histogram(pixNumber[belongToLine].astype('int'),
-                    #                         bins = np.arange(-0.5, AnglularScanSettings['PointsPerLineTotal']))
-                    #     Cnt[j, :] = CntLine
+                    # n_pix_tot = np.floor(runtime*angular_scan_settings['sample_freq']/self.laser_freq)
+                    # n_pix = mod(n_pix_tot, angular_scan_settings['points_per_line_total']) #to which pixel photon belongs
+                    # line_num_tot = np.floor(n_pix_tot/angular_scan_settings['points_per_line_total'])
+                    # line_num = np.mod(line_num_tot, angular_scan_settings['n_lines']+1) # one more line is for return to starting positon
+                    # cnt = np.empty((angular_scan_settings['n_lines']+1, angular_scan_settings['points_per_line_total']), dtype = 'int')
+                    # for j in range(angular_scan_settings['n_lines']+1):
+                    #     belong_to_line = (line_num.astype('int') == j)
+                    #     cnt_line, bins = np.histogram(n_pix[belong_to_line].astype('int'),
+                    #                         bins = np.arange(-0.5, angular_scan_settings['points_per_line_total']))
+                    #     cnt[j, :] = cnt_line
 
-                    if FixShift:
+                    if fix_shift:
                         score = list()
-                        pixShifts = list()
-                        minPixShift = -np.round(Cnt.shape[1] / 2)
-                        maxPixShift = minPixShift + Cnt.shape[1] + 1
-                        for pixShift in np.arange(minPixShift, maxPixShift).astype(int):
-                            Cnt2 = np.roll(Cnt, pixShift)
-                            diffCnt2 = (Cnt2[:-1:2, :] - np.flip(Cnt2[1::2, :], 1)) ** 2
-                            score.append(diffCnt2.sum())
-                            pixShifts.append(pixShift)
+                        pix_shifts = list()
+                        min_pix_shift = -np.round(cnt.shape[1] / 2)
+                        max_pix_shift = min_pix_shift + cnt.shape[1] + 1
+                        for pix_shift in np.arange(min_pix_shift, max_pix_shift).astype(int):
+                            cnt2 = np.roll(cnt, pix_shift)
+                            diff_cnt2 = (cnt2[:-1:2, :] - np.flip(cnt2[1::2, :], 1)) ** 2
+                            score.append(diff_cnt2.sum())
+                            pix_shifts.append(pix_shift)
                         score = np.array(score)
-                        pixShifts = np.array(pixShifts)
-                        pixShift = pixShifts[score.argmin()]
+                        pix_shifts = np.array(pix_shifts)
+                        pix_shift = pix_shifts[score.argmin()]
 
-                        rntime = (
-                            P.runtime
-                            + pixShift * self.LaserFreq / AnglularScanSettings["SampleFreq"]
+                        runtime = (
+                            p.runtime
+                            + pix_shift * self.laser_freq / angular_scan_settings["sample_freq"]
                         )
                         (
-                            Cnt,
-                            PixNoTot,
-                            pixNumber,
-                            LineNo,
-                        ) = self.DoConvertAngularScanToImage(rntime, AnglularScanSettings)
+                            cnt,
+                            n_pix_tot,
+                            n_pix,
+                            line_num,
+                        ) = self.convert_angular_scan_to_image(runtime, angular_scan_settings)
 
                     else:
-                        pixShift = 0
+                        pix_shift = 0
 
                     # invert every second line
-                    Cnt[1::2, :] = np.flip(Cnt[1::2, :], 1)
+                    cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
 
-                    if ROISelection == "auto":
+                    if roi_selection == "auto":
                         classes = 4
                         thresh = skifilt.threshold_multiotsu(
-                            skifilt.median(Cnt), classes
+                            skifilt.median(cnt), classes
                         )  # minor filtering of outliers
-                        CntDig = np.digitize(Cnt, bins=thresh)
-                        plateauLevel = np.median(Cnt[CntDig == (classes - 1)])
-                        stdPlateau = stats.median_absolute_deviation(Cnt[CntDig == (classes - 1)])
-                        devCnt = Cnt - plateauLevel
-                        BW = devCnt > -stdPlateau
-                        BW = ndimage.binary_fill_holes(BW)
-                        Ropen = 3
-                        diskOpen = morphology.selem.disk(Ropen)
-                        BW = morphology.opening(BW, selem=diskOpen)
+                        cnt_dig = np.digitize(cnt, bins=thresh)
+                        plateau_lvl = np.median(cnt[cnt_dig == (classes - 1)])
+                        std_plateau = stats.median_absolute_deviation(cnt[cnt_dig == (classes - 1)])
+                        dev_cnt = cnt - plateau_lvl
+                        bw = dev_cnt > -std_plateau
+                        bw = ndimage.binary_fill_holes(bw)
+                        disk_open = morphology.selem.disk(radius=3)
+                        bw = morphology.opening(bw, selem=disk_open)
 
-                    # elif  ROISelection == 'manual'):
+                    # elif  roi_selection == 'manual'):
                     #      subplot(1, 1, 1)
-                    #     imagesc(Cnt)
+                    #     imagesc(cnt)
                     #     title('Use polygon tool to make selection', 'FontSize', 20)
                     #     figure(gcf)
 
-                    #     if exist('ROI'),
-                    #         hPoly = impoly(gca, ROI);
+                    #     if exist('roi'),
+                    #         hPoly = impoly(gca, roi);
                     #     else
                     #         hPoly = impoly;
                     #     end;
-                    #     BW = hPoly.createMask;
-                    #     ROI = hPoly.getPosition;
+                    #     bw = hPoly.createMask;
+                    #     roi = hPoly.getPosition;
 
-                    BW[1::2, :] = np.flip(BW[1::2, :], 1)
+                    bw[1::2, :] = np.flip(bw[1::2, :], 1)
                     # cut edges
-                    BWtemp = np.zeros(BW.shape)
-                    BWtemp[:, AnglularScanSettings["LinearPart"].astype("int")] = BW[
-                        :, AnglularScanSettings["LinearPart"].astype("int")
+                    bw_temp = np.zeros(bw.shape)
+                    bw_temp[:, angular_scan_settings["linear_part"].astype("int")] = bw[
+                        :, angular_scan_settings["linear_part"].astype("int")
                     ]
-                    BW = BWtemp
+                    bw = bw_temp
                     # discard short and fill long rows
-                    M2 = np.sum(BW, axis=1)
-                    BW[M2 < 0.5 * M2.max(), :] = False
-                    LineStarts = np.array([], dtype="int")
-                    LineStops = np.array([], dtype="int")
-                    LineStartLabels = np.array([], dtype="int")
-                    LineStopLabels = np.array([], dtype="int")
+                    m2 = np.sum(bw, axis=1)
+                    bw[m2 < 0.5 * m2.max(), :] = False
+                    line_starts = np.array([], dtype="int")
+                    line_stops = np.array([], dtype="int")
+                    line_start_lables = np.array([], dtype="int")
+                    line_stop_labels = np.array([], dtype="int")
 
-                    assert (
-                        LineEndAdder > BW.shape[0]
-                    ), "Number of lines larger than LineEndAdder! Increase LineEndAdder."
+                    if not (line_end_adder > bw.shape[0]):
+                        logging.warning(
+                            "Number of lines larger than line_end_adder! Increase line_end_adder."
+                        )
 
-                    ROI = {"row": list(), "col": list()}
-                    for j in range(BW.shape[0]):
-                        k = BW[j, :].nonzero()
+                    roi = {"row": list(), "col": list()}
+                    for j in range(bw.shape[0]):
+                        k = bw[j, :].nonzero()
                         if k[0].size > 0:  # k is a tuple
-                            BW[j, k[0][0] : k[0][-1]] = True
-                            ROI["row"].insert(0, j)
-                            ROI["col"].insert(0, k[0][0])
-                            ROI["row"].append(j)
-                            ROI["col"].append(k[0][-1])
+                            bw[j, k[0][0] : k[0][-1]] = True
+                            roi["row"].insert(0, j)
+                            roi["col"].insert(0, k[0][0])
+                            roi["row"].append(j)
+                            roi["col"].append(k[0][-1])
 
-                            LineStartsNewIndex = np.ravel_multi_index(
-                                (j, k[0][0]), BW.shape, mode="raise", order="C"
+                            line_starts_new_index = np.ravel_multi_index(
+                                (j, k[0][0]), bw.shape, mode="raise", order="C"
                             )
-                            LineStartsNew = np.arange(LineStartsNewIndex, PixNoTot[-1], BW.size)
-                            LineStopsNewIndex = np.ravel_multi_index(
-                                (j, k[0][-1]), BW.shape, mode="raise", order="C"
+                            line_starts_new = np.arange(
+                                line_starts_new_index, n_pix_tot[-1], bw.size
                             )
-                            LineStopsNew = np.arange(LineStopsNewIndex, PixNoTot[-1], BW.size)
-                            LineStartLabels = np.append(
-                                LineStartLabels, (-j * np.ones(LineStartsNew.shape))
+                            line_stops_new_index = np.ravel_multi_index(
+                                (j, k[0][-1]), bw.shape, mode="raise", order="C"
                             )
-                            LineStopLabels = np.append(
-                                LineStopLabels,
-                                ((-j - LineEndAdder) * np.ones(LineStopsNew.shape)),
+                            line_stops_new = np.arange(line_stops_new_index, n_pix_tot[-1], bw.size)
+                            line_start_lables = np.append(
+                                line_start_lables, (-j * np.ones(line_starts_new.shape))
                             )
-                            LineStarts = np.append(LineStarts, LineStartsNew)
-                            LineStops = np.append(LineStops, LineStopsNew)
+                            line_stop_labels = np.append(
+                                line_stop_labels,
+                                ((-j - line_end_adder) * np.ones(line_stops_new.shape)),
+                            )
+                            line_starts = np.append(line_starts, line_starts_new)
+                            line_stops = np.append(line_stops, line_stops_new)
 
-                    ROI["row"].append(ROI["row"][0])  # repeat first point to close the polygon
-                    ROI["col"].append(ROI["col"][0])
-                    LineStartLabels = np.array(LineStartLabels)
-                    LineStopLabels = np.array(LineStopLabels)
-                    LineStarts = np.array(LineStarts)
-                    LineStops = np.array(LineStops)
-                    rntimeLineStarts = np.round(
-                        LineStarts * self.LaserFreq / AnglularScanSettings["SampleFreq"]
+                    # repeat first point to close the polygon
+                    roi["row"].append(roi["row"][0])
+                    roi["col"].append(roi["col"][0])
+
+                    line_start_lables = np.array(line_start_lables)
+                    line_stop_labels = np.array(line_stop_labels)
+                    line_starts = np.array(line_starts)
+                    line_stops = np.array(line_stops)
+                    runtime_line_starts = np.round(
+                        line_starts * self.laser_freq / angular_scan_settings["sample_freq"]
                     )
-                    rntimeLineStops = np.round(
-                        LineStops * self.LaserFreq / AnglularScanSettings["SampleFreq"]
+                    runtime_line_stops = np.round(
+                        line_stops * self.laser_freq / angular_scan_settings["sample_freq"]
                     )
 
-                    rntime = np.hstack((rntimeLineStarts, rntimeLineStops, rntime))
-                    Jsort = np.argsort(rntime)
-                    rntime = rntime[Jsort]
-                    LineNo = np.hstack(
+                    runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
+                    j_sort = np.argsort(runtime)
+                    runtime = runtime[j_sort]
+                    line_num = np.hstack(
                         (
-                            LineStartLabels,
-                            LineStopLabels,
-                            LineNo * BW[LineNo, pixNumber].flatten(),
+                            line_start_lables,
+                            line_stop_labels,
+                            line_num * bw[line_num, n_pix].flatten(),
                         )
                     )
-                    P.LineNo = LineNo[Jsort]
-                    Coarse = np.hstack(
+                    p.line_num = line_num[j_sort]
+                    coarse = np.hstack(
                         (
-                            np.full(rntimeLineStarts.shape, np.nan),
-                            np.full(rntimeLineStops.shape, np.nan),
-                            P.coarse,
+                            np.full(runtime_line_starts.shape, np.nan),
+                            np.full(runtime_line_stops.shape, np.nan),
+                            p.coarse,
                         )
                     )
-                    P.coarse = Coarse[Jsort]
-                    Coarse = np.hstack(
+                    p.coarse = coarse[j_sort]
+                    coarse = np.hstack(
                         (
-                            np.full(rntimeLineStarts.shape, np.nan),
-                            np.full(rntimeLineStops.shape, np.nan),
-                            P.coarse2,
+                            np.full(runtime_line_starts.shape, np.nan),
+                            np.full(runtime_line_stops.shape, np.nan),
+                            p.coarse2,
                         )
                     )
-                    P.coarse2 = Coarse[Jsort]
-                    Fine = np.hstack(
+                    p.coarse2 = coarse[j_sort]
+                    fine = np.hstack(
                         (
-                            np.full(rntimeLineStarts.shape, np.nan),
-                            np.full(rntimeLineStops.shape, np.nan),
-                            P.fine,
+                            np.full(runtime_line_starts.shape, np.nan),
+                            np.full(runtime_line_stops.shape, np.nan),
+                            p.fine,
                         )
                     )
-                    P.fine = Fine[Jsort]
-                    P.runtime = rntime
+                    p.fine = fine[j_sort]
+                    p.runtime = runtime
 
                     # add line starts/stops to photon runtimes
 
-                    self.AnglularScanSettings = AnglularScanSettings
+                    self.angular_scan_settings = angular_scan_settings
                     plt.subplot(1, 1, 1)
-                    plt.imshow(Cnt)
-                    P.Image = Cnt
+                    plt.imshow(cnt)
+                    p.image = cnt
                     folderpath_fname = os.path.split(fpath)  # splits in folderpath and filename
                     plt.title(folderpath_fname[1])
                     # temporarily reverse rows again
-                    BW[1::2, :] = np.flip(BW[1::2, :], 1)
-                    P.BWmask = BW
-                    # ROI1 = segmentation.find_boundaries(BW)
-                    ROI1 = {"row": np.array(ROI["row"]), "col": np.array(ROI["col"])}
-                    plt.plot(ROI1["col"], ROI1["row"], color="white")
+                    bw[1::2, :] = np.flip(bw[1::2, :], 1)
+                    p.bw_mask = bw
+                    # roi1 = segmentation.find_boundaries(bw)
+                    roi1 = {"row": np.array(roi["row"]), "col": np.array(roi["col"])}
+                    plt.plot(roi1["col"], roi1["row"], color="white")
                     # now back
-                    BW[1::2, :] = np.flip(BW[1::2, :], 1)
-                    ROI2 = {"row": np.array(ROI["row"]), "col": np.array(ROI["col"])}
-                    plt.plot(ROI2["col"], ROI2["row"], color="white")
+                    bw[1::2, :] = np.flip(bw[1::2, :], 1)
+                    roi2 = {"row": np.array(roi["row"]), "col": np.array(roi["col"])}
+                    plt.plot(roi2["col"], roi2["row"], color="white")
 
                     # get image line correlation to subtract trends
-                    Img = P.Image * P.BWmask
-                    # lineNos = find(sum(P.BWmask, 2));
-                    P.ImageLineCorr = list()
-                    for j in range(ROI1["row"].min(), ROI1["row"].max() + 1):
-                        prof = Img[j]
-                        prof = prof[P.BWmask[j] > 0]
-                        C, lags = DoXcorr(prof, prof)
-                        C = C / prof.mean() ** 2 - 1
-                        C[0] = C[0] - 1 / prof.mean()  # subtracting shot noise, small stuff really
-                        P.ImageLineCorr.append(
+                    img = p.image * p.bw_mask
+                    # lineNos = find(sum(p.bw_mask, 2));
+                    p.image_line_corr = list()
+                    for j in range(roi1["row"].min(), roi1["row"].max() + 1):
+                        prof = img[j]
+                        prof = prof[p.bw_mask[j] > 0]
+                        c, lags = do_x_corr(prof, prof)
+                        c = c / prof.mean() ** 2 - 1
+                        c[0] = c[0] - 1 / prof.mean()  # subtracting shot noise, small stuff really
+                        p.image_line_corr.append(
                             {
-                                "lag": lags * 1000 / AnglularScanSettings["SampleFreq"],  # in ms
-                                "corrfunc": C,
+                                "lag": lags * 1000 / angular_scan_settings["sample_freq"],  # in ms
+                                "corrfunc": c,
                             }
-                        )  # C/mean(prof).^2-1;
+                        )  # c/mean(prof).^2-1;
 
                     plt.show()
                     plt.figure()
 
             # for key in self.data:
-            #     if not hasattr(P, key):
-            #         setattr(P, key, self.data[key])
+            #     if not hasattr(p, key):
+            #         setattr(p, key, self.data[key])
 
-            #                P = orderfields(P, obj.data);
-            P.fname = fname
-            P.fpath = fpath
-            self.data["Data"].append(P)
+            #                p = orderfields(p, obj.data);
+            p.fname = fname
+            p.fpath = fpath
+            self.data["data"].append(p)
 
-    def DoConvertAngularScanToImage(self, rntime, AnglularScanSettings):
+    def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
         """utility function for opening Angular Scans"""
 
-        PixNoTot = np.floor(rntime * AnglularScanSettings["SampleFreq"] / self.LaserFreq).astype(
-            "int"
-        )
-        pixNumber = np.mod(PixNoTot, AnglularScanSettings["PointsPerLineTotal"]).astype(
+        n_pix_tot = np.floor(
+            runtime * angular_scan_settings["sample_freq"] / self.laser_freq
+        ).astype("int")
+        n_pix = np.mod(n_pix_tot, angular_scan_settings["points_per_line_total"]).astype(
             "int"
         )  # to which pixel photon belongs
-        LineNoTot = np.floor(PixNoTot / AnglularScanSettings["PointsPerLineTotal"]).astype("int")
-        LineNo = np.mod(LineNoTot, AnglularScanSettings["NofLines"] + 1).astype(
+        line_num_tot = np.floor(n_pix_tot / angular_scan_settings["points_per_line_total"]).astype(
+            "int"
+        )
+        line_num = np.mod(line_num_tot, angular_scan_settings["n_lines"] + 1).astype(
             "int"
         )  # one more line is for return to starting positon
-        Cnt = np.empty(
+        cnt = np.empty(
             (
-                AnglularScanSettings["NofLines"] + 1,
-                AnglularScanSettings["PointsPerLineTotal"],
+                angular_scan_settings["n_lines"] + 1,
+                angular_scan_settings["points_per_line_total"],
             ),
             dtype="int",
         )
-        for j in range(AnglularScanSettings["NofLines"] + 1):
-            belongToLine = LineNo.astype("int") == j
-            CntLine, bins = np.histogram(
-                pixNumber[belongToLine].astype("int"),
-                bins=np.arange(-0.5, AnglularScanSettings["PointsPerLineTotal"]),
+        for j in range(angular_scan_settings["n_lines"] + 1):
+            belong_to_line = line_num.astype("int") == j
+            cnt_line, bins = np.histogram(
+                n_pix[belong_to_line].astype("int"),
+                bins=np.arange(-0.5, angular_scan_settings["points_per_line_total"]),
             )
-            Cnt[j, :] = CntLine
+            cnt[j, :] = cnt_line
 
-        return Cnt, PixNoTot, pixNumber, LineNo
+        return cnt, n_pix_tot, n_pix, line_num
 
-    def DoCorrelateRegularData(
+    def correlate_regular_data(
         self,
-        RunDuration=-1,
-        MinTimeFrac=0.5,
-        MaxOutlierProb=1e-5,
-        NrunsRequested=60,
+        run_duration=-1,
+        min_time_frac=0.5,
+        max_outlier_prob=1e-5,
+        n_runs_requested=60,
         verbose=False,
     ):
 
-        # if self.IsDataOnDisk:
+        # if self.is_data_on_disk:
         #     self.DoLoadDataFromDisk
         #     DumpDataToDiskAfter = True
         # else:
         #     DumpDataToDiskAfter = False
 
-        CF = SoftwareCorrelatorClass()
+        cf = SoftwareCorrelatorClass()
 
-        if RunDuration < 0:  # auto determination of run duration
-            TotalDurationEstimate = 0
-            for P in self.data["Data"]:
-                time_stamps = np.diff(P.runtime)
+        if run_duration < 0:  # auto determination of run duration
+            total_duration_estimate = 0
+            for p in self.data["data"]:
+                time_stamps = np.diff(p.runtime)
                 mu = np.median(time_stamps) / np.log(2)
-                TotalDurationEstimate = TotalDurationEstimate + mu * len(P.runtime) / self.LaserFreq
+                total_duration_estimate = (
+                    total_duration_estimate + mu * len(p.runtime) / self.laser_freq
+                )
 
-            RunDuration = TotalDurationEstimate / NrunsRequested
+            run_duration = total_duration_estimate / n_runs_requested
             if verbose:
-                print(f"Auto determination of run duration = {RunDuration}")
+                print(f"Auto determination of run duration: {run_duration} s")
 
-        self.RequestedDuration = RunDuration
-        self.MinDurationFraction = MinTimeFrac
+        self.requested_duration = run_duration
+        self.min_duration_frac = min_time_frac
         self.duration = np.array([])
         self.lag = np.array([])
         self.corrfunc = list()
         self.weights = list()
-        self.CF_CR = list()
+        self.cf_cr = list()
         self.countrate = np.array([])
 
-        self.TotalDurationSkipped = 0
+        self.total_duration_skipped = 0
 
-        for P in self.data["Data"]:
+        for p in self.data["data"]:
 
             if verbose:
-                print(f"Correlating {P.fname}")
+                print(f"Correlating {p.fname}...")
             # find additional outliers
-            time_stamps = np.diff(P.runtime)
+            time_stamps = np.diff(p.runtime)
+            # for exponential distribution MEDIAN and MAD are the same, but for
+            # biexponential MAD seems more sensitive
             mu = np.maximum(
                 np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()
-            ) / np.log(
-                2
-            )  # for exponential distribution MEDIAN and MAD are the same, but for
-            # biexponential MAD seems more sensitive
-            maxTimeStamp = stats.expon.ppf(1 - MaxOutlierProb / len(time_stamps), scale=mu)
-            secEdges = np.asarray(time_stamps > maxTimeStamp).nonzero()[0]
-            NoOutliers = len(secEdges)
-            if NoOutliers > 0:
+            ) / np.log(2)
+            max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
+            sec_edges = np.asarray(time_stamps > max_time_stamp).nonzero()[0]
+            no_outliers = len(sec_edges)
+            if no_outliers > 0:
                 if verbose:
-                    print(f"{NoOutliers} of all outliers")
+                    print(f"{no_outliers} of all outliers")
 
-            secEdges = np.append(np.insert(secEdges, 0, 0), len(time_stamps))
-            P.AllSectionEdges = np.array([secEdges[:-1], secEdges[1:]]).T
+            sec_edges = np.append(np.insert(sec_edges, 0, 0), len(time_stamps))
+            p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
 
-            for j, sE in enumerate(P.AllSectionEdges):
+            for j, se in enumerate(p.all_section_edges):
 
-                # split into segments of approx time of RunDuration
-                SegmentTime = (P.runtime[sE[1]] - P.runtime[sE[0]]) / self.LaserFreq
-                if SegmentTime < MinTimeFrac * RunDuration:
+                # split into segments of approx time of run_duration
+                segment_time = (p.runtime[se[1]] - p.runtime[se[0]]) / self.laser_freq
+                if segment_time < min_time_frac * run_duration:
                     if verbose:
                         print(
-                            f"Duration of segment No. {j} of file {P.fname} is {SegmentTime}s: too short. Skipping..."
+                            f"Duration of segment No. {j} of file {p.fname} is {segment_time}s: too short. Skipping..."
                         )
-                    self.TotalDurationSkipped = self.TotalDurationSkipped + SegmentTime
+                    self.total_duration_skipped = self.total_duration_skipped + segment_time
                     continue
 
-                NoSplits = np.ceil(SegmentTime / RunDuration).astype("int")
-                Splits = np.linspace(0, np.diff(sE)[0].astype("int"), NoSplits + 1, dtype="int")
-                ts = time_stamps[sE[0] : sE[1]]
+                no_splits = np.ceil(segment_time / run_duration).astype("int")
+                splits = np.linspace(0, np.diff(se)[0].astype("int"), no_splits + 1, dtype="int")
+                ts = time_stamps[se[0] : se[1]]
 
-                for k in range(NoSplits):
+                for k in range(no_splits):
 
-                    ts_split = ts[Splits[k] : Splits[k + 1]]
-                    self.duration = np.append(self.duration, ts_split.sum() / self.LaserFreq)
-                    CF.DoSoftCrossCorrelator(
+                    ts_split = ts[splits[k] : splits[k + 1]]
+                    self.duration = np.append(self.duration, ts_split.sum() / self.laser_freq)
+                    cf.do_soft_cross_correlator(
                         ts_split,
-                        CorrelatorType.PhDelayCorrelator,
-                        timebase_ms=1000 / self.LaserFreq,
+                        CorrelatorType.PH_DELAY_CORRELATOR,
+                        timebase_ms=1000 / self.laser_freq,
                     )  # time base of 20MHz to ms
-                    if len(self.lag) < len(CF.lag):
-                        self.lag = CF.lag
-                        if self.AfterPulseParam[0] == "MultiExponentFit":
+                    if len(self.lag) < len(cf.lag):
+                        self.lag = cf.lag
+                        if self.after_pulse_param[0] == "multi_exponent_fit":
                             # work with any number of exponents
                             # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
-                            beta = self.AfterPulseParam[1]
-                            self.AfterPulse = np.dot(
+                            beta = self.after_pulse_param[1]
+                            self.after_pulse = np.dot(
                                 beta[::2], np.exp(-np.outer(beta[1::2], self.lag))
                             )
 
-                    self.corrfunc.append(CF.corrfunc)
-                    self.weights.append(CF.weights)
-                    self.countrate = np.append(self.countrate, CF.countrate)
-                    self.CF_CR.append(
-                        CF.countrate * CF.corrfunc - self.AfterPulse[: CF.corrfunc.size]
+                    self.corrfunc.append(cf.corrfunc)
+                    self.weights.append(cf.weights)
+                    self.countrate = np.append(self.countrate, cf.countrate)
+                    self.cf_cr.append(
+                        cf.countrate * cf.corrfunc - self.after_pulse[: cf.corrfunc.size]
                     )
 
-        for ind in range(len(self.corrfunc)):  # zero pad
-            padLen = len(self.lag) - len(self.corrfunc[ind])
-            self.corrfunc[ind] = np.pad(self.corrfunc[ind], (0, padLen), "constant")
-            self.weights[ind] = np.pad(self.weights[ind], (0, padLen), "constant")
-            self.CF_CR[ind] = np.pad(self.CF_CR[ind], (0, padLen), "constant")
+        # zero pad
+        for ind in range(len(self.corrfunc)):
+            pad_len = len(self.lag) - len(self.corrfunc[ind])
+            self.corrfunc[ind] = np.pad(self.corrfunc[ind], (0, pad_len), "constant")
+            self.weights[ind] = np.pad(self.weights[ind], (0, pad_len), "constant")
+            self.cf_cr[ind] = np.pad(self.cf_cr[ind], (0, pad_len), "constant")
 
         self.corrfunc = np.array(self.corrfunc)
         self.weights = np.array(self.weights)
-        self.CF_CR = np.array(self.CF_CR)
+        self.cf_cr = np.array(self.cf_cr)
 
-        self.TotalDuration = self.duration.sum()
+        self.total_duration = self.duration.sum()
         if verbose:
-            print(f"{self.TotalDurationSkipped}s skipped out of {self.TotalDuration}s.")
+            print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
 
-        # if ~isempty(obj.V_um_ms)
-        #     obj.DoSetVelocity(obj.V_um_ms);
+        # if ~isempty(obj.v_um_ms)
+        #     obj.DoSetVelocity(obj.v_um_ms);
         # end
 
         # if DumpDataToDiskAfter
@@ -527,13 +537,13 @@ class CorrFuncTDCclass(CorrFuncDataClass):
         # end
 
 
-def DoXcorr(a, b):
-    """does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
+def do_x_corr(a, b):
+    """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
     if a.size != b.size:
         logging.warning("For unequal lengths of a, b the meaning of lags is not clear!")
-    C = np.correlate(a, b, mode="full")
-    C = C[np.floor(C.size / 2).astype("int") :]
-    lags = np.arange(C.size)
+    c = np.correlate(a, b, mode="full")
+    c = c[np.floor(c.size / 2).astype("int") :]
+    lags = np.arange(c.size)
 
-    return C, lags
+    return c, lags

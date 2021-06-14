@@ -20,66 +20,66 @@ class FitError(Exception):
 
 
 def curvefitLims(
-    fitName,
-    paramEstimates,
+    fit_name,
+    param_estimates,
     xs,
     ys,
-    ysErrs,
-    XLim=[],
-    YLim=[],
-    NoPlot=False,
-    XScale="log",
-    YScale="linear",
+    ys_errors,
+    x_lim=[],
+    y_lim=[],
+    no_plot=False,
+    x_scale="log",
+    y_scale="linear",
 ):
     """Doc."""
 
-    if len(YLim) == 0:
-        YLim = np.array([np.NINF, np.Inf])
-    elif len(YLim) == 1:
-        YLim = np.array([YLim, np.Inf])
+    if len(y_lim) == 0:
+        y_lim = np.array([np.NINF, np.Inf])
+    elif len(y_lim) == 1:
+        y_lim = np.array([y_lim, np.Inf])
 
-    if len(XLim) == 0:
-        XLim = np.array([np.NINF, np.Inf])
-    elif len(XLim) == 1:
-        XLim = np.array([XLim, np.Inf])
+    if len(x_lim) == 0:
+        x_lim = np.array([np.NINF, np.Inf])
+    elif len(x_lim) == 1:
+        x_lim = np.array([x_lim, np.Inf])
 
-    inLims = (xs >= XLim[0]) & (xs <= XLim[1]) & (ys >= YLim[0]) & (ys <= YLim[1])
-    isfiniteErr = (ysErrs > 0) & np.isfinite(ysErrs)
-    # print(inLims)
-    x = xs[inLims & isfiniteErr]
+    in_lims = (xs >= x_lim[0]) & (xs <= x_lim[1]) & (ys >= y_lim[0]) & (ys <= y_lim[1])
+    isfiniteErr = (ys_errors > 0) & np.isfinite(ys_errors)
+    # print(in_lims)
+    x = xs[in_lims & isfiniteErr]
     #   print(x)
-    y = ys[inLims & isfiniteErr]
-    yErr = ysErrs[inLims & isfiniteErr]
+    y = ys[in_lims & isfiniteErr]
+    yErr = ys_errors[in_lims & isfiniteErr]
     #    print(yErr)
-    fitFunc = globals()[fitName]
-    #    print(fitName)
+    fitFunc = globals()[fit_name]
+    #    print(fit_name)
     try:
-        bta, covM = curve_fit(fitFunc, x, y, p0=paramEstimates, sigma=yErr, absolute_sigma=True)
+        bta, covM = curve_fit(fitFunc, x, y, p0=param_estimates, sigma=yErr, absolute_sigma=True)
     except (RuntimeWarning, RuntimeError, OptimizeWarning):
         raise FitError("curve_fit() failed.")
     #    print(bta)
-    FitParam = dict()
-    FitParam["beta"] = bta
-    FitParam["errorBeta"] = np.sqrt(np.diag(covM))
-    chiSqArray = np.square((fitFunc(x, *bta) - y) / yErr)
-    FitParam["chiSqNorm"] = chiSqArray.sum() / x.size
-    FitParam["x"] = x
-    FitParam["y"] = y
-    FitParam["XLim"] = XLim
-    FitParam["YLim"] = YLim
-    FitParam["FitFunc"] = fitName
-    # print(FitParam)
+    fit_param = dict()
+    fit_param["beta"] = bta
+    fit_param["errorBeta"] = np.sqrt(np.diag(covM))
+    chi_sq_arr = np.square((fitFunc(x, *bta) - y) / yErr)
+    fit_param["chi_sq_norm"] = chi_sq_arr.sum() / x.size
+    fit_param["x"] = x
+    fit_param["y"] = y
+    fit_param["x_lim"] = x_lim
+    fit_param["y_lim"] = y_lim
+    fit_param["fit_func"] = fit_name
+    # print(fit_param)
 
-    if not NoPlot:
-        plt.errorbar(xs, ys, ysErrs, fmt=".")
-        plt.plot(xs[inLims], fitFunc(xs[inLims], *bta), zorder=10)
-        plt.xscale(XScale)
-        plt.yscale(YScale)
+    if not no_plot:
+        plt.errorbar(xs, ys, ys_errors, fmt=".")
+        plt.plot(xs[in_lims], fitFunc(xs[in_lims], *bta), zorder=10)
+        plt.xscale(x_scale)
+        plt.yscale(y_scale)
         plt.gcf().canvas.draw()
         plt.autoscale()
         plt.show()
 
-    return FitParam
+    return fit_param
 
 
 # Fit functions
@@ -91,16 +91,16 @@ def PowerFit(t, a, n):
     return a * t ** n
 
 
-def Diffusion3Dfit(t, A, tau, wSq):
-    return A / (1 + t / tau) / np.sqrt(1 + t / tau / wSq)
+def Diffusion3Dfit(t, A, tau, w_sq):
+    return A / (1 + t / tau) / np.sqrt(1 + t / tau / w_sq)
 
 
-def WeightedAverage(ListOfDataVectors, ListOfDataErrors):
+def WeightedAverage(data_vectors_list, data_errors_list):
     """Doc."""
 
-    DataVectors = np.array(ListOfDataVectors)
-    DataErrors = np.array(ListOfDataErrors)
-    weights = DataErrors ** (-2)
-    WA = np.sum(DataVectors * weights, 0) / np.sum(weights, 0)
-    WE = np.sum(weights, 0) ** (-2)
-    return WA, WE
+    data_vectors = np.array(data_vectors_list)
+    data_errors = np.array(data_errors_list)
+    weights = data_errors ** (-2)
+    wa = np.sum(data_vectors * weights, 0) / np.sum(weights, 0)
+    we = np.sum(weights, 0) ** (-2)
+    return wa, we
