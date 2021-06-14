@@ -3,7 +3,6 @@ import asyncio
 import logging
 import sys
 import time
-from typing import NoReturn
 
 import numpy as np
 from pyvisa.errors import VisaIOError
@@ -157,7 +156,7 @@ class Scanners(BaseDevice, NIDAQmx):
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
 
-        self.um_V_ratio = (self.x_um2V_const, self.y_um2V_const, self.z_um2V_const)
+        self.um_v_ratio = (self.x_um2V_const, self.y_um2V_const, self.z_um2V_const)
 
         self._toggle(True)
 
@@ -173,7 +172,7 @@ class Scanners(BaseDevice, NIDAQmx):
                 func_name = sys._getframe().f_code.co_name
                 err_hndlr(exc, func_name, dvc=self)
 
-    def start_continuous_read_task(self) -> NoReturn:
+    def start_continuous_read_task(self) -> None:
         """Doc."""
 
         task_name = "Continuous AI"
@@ -195,7 +194,7 @@ class Scanners(BaseDevice, NIDAQmx):
             func_name = sys._getframe().f_code.co_name
             err_hndlr(exc, func_name, dvc=self)
 
-    def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> NoReturn:
+    def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
 
         try:
@@ -218,12 +217,12 @@ class Scanners(BaseDevice, NIDAQmx):
         samp_clk_cnfg_xy: dict = {},
         samp_clk_cnfg_z: dict = {},
         start=True,
-    ) -> NoReturn:
+    ) -> None:
         """Doc."""
 
         def smooth_start(
             axis: str, ao_chan_specs: dict, final_pos: float, step_sz: float = 0.25
-        ) -> NoReturn:
+        ) -> None:
             """Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)"""
 
             try:
@@ -317,7 +316,7 @@ class Scanners(BaseDevice, NIDAQmx):
             func_name = sys._getframe().f_code.co_name
             err_hndlr(exc, func_name, dvc=self)
 
-    def init_ai_buffer(self) -> NoReturn:
+    def init_ai_buffer(self) -> None:
         """Doc."""
 
         try:
@@ -330,7 +329,7 @@ class Scanners(BaseDevice, NIDAQmx):
 
     def fill_ai_buffer(
         self, task_name: str = "Continuous AI", n_samples=consts.NI.READ_ALL_AVAILABLE
-    ) -> NoReturn:
+    ) -> None:
         """Doc."""
 
         #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
@@ -436,7 +435,7 @@ class Counter(BaseDevice, NIDAQmx):
                 func_name = sys._getframe().f_code.co_name
                 err_hndlr(exc, func_name, dvc=self)
 
-    def start_continuous_read_task(self) -> NoReturn:
+    def start_continuous_read_task(self) -> None:
         """Doc."""
 
         task_name = "Continuous CI"
@@ -460,7 +459,7 @@ class Counter(BaseDevice, NIDAQmx):
             func_name = sys._getframe().f_code.co_name
             err_hndlr(exc, func_name, dvc=self)
 
-    def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> NoReturn:
+    def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
 
         try:
@@ -498,7 +497,7 @@ class Counter(BaseDevice, NIDAQmx):
             )
             self.num_reads_since_avg += num_samps_read
 
-    def average_counts(self) -> NoReturn:
+    def average_counts(self) -> None:
         """Doc."""
 
         actual_intrvl = time.perf_counter() - self.last_avg_time
@@ -516,7 +515,7 @@ class Counter(BaseDevice, NIDAQmx):
         self.avg_cnt_rate = avg_cnt_rate
         self.last_avg_time = time.perf_counter()
 
-    def init_ci_buffer(self) -> NoReturn:
+    def init_ci_buffer(self) -> None:
         """Doc."""
 
         self.ci_buffer = np.empty(shape=(0,))
@@ -557,7 +556,7 @@ class PixelClock(BaseDevice, NIDAQmx):
         else:
             self.state = bool
 
-    def _start_co_clock_sync(self) -> NoReturn:
+    def _start_co_clock_sync(self) -> None:
         """Doc."""
 
         task_name = "Pixel Clock CO"

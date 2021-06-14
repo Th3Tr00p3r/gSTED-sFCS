@@ -9,7 +9,7 @@ import functools
 import time
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Callable, List, NoReturn, Union
+from typing import Callable, List, Union
 
 import numpy as np
 import PyQt5.QtWidgets as QtWidgets
@@ -41,7 +41,7 @@ def timer(func) -> Callable:
 # tic = time.perf_counter() # TESTING
 
 
-async def sync_to_thread(func):
+async def sync_to_thread(func) -> None:
     """
     This is a workaround -
     asyncio.to_thread() must be awaited, but toggle_video needs to be
@@ -232,7 +232,7 @@ class QtWidgetAccess:
         else:
             return None
 
-    def set(self, arg, parent_gui=None) -> NoReturn:
+    def set(self, arg, parent_gui=None) -> None:
         """Set widget property"""
 
         wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
@@ -269,7 +269,7 @@ class QtWidgetCollection:
 
         return self
 
-    def write_to_gui(self, app: logic.app.App, new_vals) -> NoReturn:
+    def write_to_gui(self, app: logic.app.App, new_vals) -> None:
         """
         Fill widget collection with values from dict/list, or a single value for all.
         if new_vals is a list, the values will be inserted in the order of vars(self).keys().

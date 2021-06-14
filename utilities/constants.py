@@ -41,19 +41,19 @@ DEFAULT_LOADOUT_FILE_PATH = "./settings/loadouts/default_loadout.csv"
 
 LOG_FOLDER_PATH = "./log/"
 
+SOFT_CORR_DYNAMIC_LIB_PATH = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
+
 # ------------------------------
 # GUI
 # ------------------------------
-try:
-    SWITCH_ON_ICON = QIcon(icon_path.SWITCH_ON)
-    SWITCH_OFF_ICON = QIcon(icon_path.SWITCH_OFF)
-    LED_ERROR_ICON = QIcon(icon_path.LED_RED)
-    LED_OFF_ICON = QIcon(icon_path.LED_OFF)
-    LED_GREEN_ICON = QIcon(icon_path.LED_GREEN)
-    LED_BLUE_ICON = QIcon(icon_path.LED_BLUE)
-    LED_ORANGE_ICON = QIcon(icon_path.LED_ORANGE)
-except Exception:
-    print("gotcha!")
+
+SWITCH_ON_ICON = QIcon(icon_path.SWITCH_ON)
+SWITCH_OFF_ICON = QIcon(icon_path.SWITCH_OFF)
+LED_ERROR_ICON = QIcon(icon_path.LED_RED)
+LED_OFF_ICON = QIcon(icon_path.LED_OFF)
+LED_GREEN_ICON = QIcon(icon_path.LED_GREEN)
+LED_BLUE_ICON = QIcon(icon_path.LED_BLUE)
+LED_ORANGE_ICON = QIcon(icon_path.LED_ORANGE)
 
 # ------------------------------
 # Sounds
@@ -268,7 +268,7 @@ PXL_CLK = DeviceAttrs(
 )
 
 # ----------------------------------------------
-# Measurements
+# Measurement Widget Collections
 # ----------------------------------------------
 
 SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
@@ -358,23 +358,9 @@ IMG_MEAS_WDGT_COLL = QtWidgetCollection(
 # Presets
 # ----------------------------------------------
 
-# TODO: make laser modes into a QButtonGroup in gui.py, then can treat as a single parameter
 IMG_SCN_WDGT_FILLOUT_DICT = {
     "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
-    "MFC - XY compartment": [
-        1,
-        0,
-        0,
-        "XY",
-        70,
-        70,
-        0,
-        80,
-        1000,
-        20,
-        0.9,
-        1,
-    ],
+    "MFC - XY compartment": [1, 0, 0, "XY", 70, 70, 0, 80, 1000, 20, 0.9, 1],
     "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
     "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
     "GB - XY single bead": [1, 0, 0, "XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],

@@ -1,5 +1,6 @@
 """ scan patterns module. """
 
+import logging
 from math import cos, pi, sin, sqrt
 
 import numba as nb
@@ -7,22 +8,22 @@ import numpy as np
 
 
 class ScanPatternAO:
-    def __init__(self, pattern: str, scan_params, um_V_ratio):
+    def __init__(self, pattern: str, scan_params, um_v_ratio):
         self.pattern = pattern
         self.scan_params = scan_params
-        self.um_V_ratio = um_V_ratio
+        self.um_v_ratio = um_v_ratio
 
     def calculate_ao(self):
         """Doc."""
 
         if self.pattern == "image":
-            return self.calc_image_pattern(self.scan_params, self.um_V_ratio)
+            return self.calc_image_pattern(self.scan_params, self.um_v_ratio)
         if self.pattern == "angular":
-            return self.calc_angular_pattern(self.scan_params, self.um_V_ratio)
+            return self.calc_angular_pattern(self.scan_params, self.um_v_ratio)
         if self.pattern == "circle":
-            return self.calc_circle_pattern(self.scan_params, self.um_V_ratio)
+            return self.calc_circle_pattern(self.scan_params, self.um_v_ratio)
 
-    def calc_image_pattern(self, params, um_V_ratio):
+    def calc_image_pattern(self, params, um_v_ratio):
         # TODO: this function needs better documentation, starting with some comments
         """Doc."""
 
@@ -42,13 +43,13 @@ class ScanPatternAO:
 
         # order according to relevant plane dimensions
         if params.scan_plane == "XY":
-            dim_conv = tuple(self.um_V_ratio[i] for i in (0, 1, 2))
+            dim_conv = tuple(self.um_v_ratio[i] for i in (0, 1, 2))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "XYZ")
         if params.scan_plane == "YZ":
-            dim_conv = tuple(self.um_V_ratio[i] for i in (1, 2, 0))
+            dim_conv = tuple(self.um_v_ratio[i] for i in (1, 2, 0))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "YZX")
         if params.scan_plane == "XZ":
-            dim_conv = tuple(self.um_V_ratio[i] for i in (0, 2, 1))
+            dim_conv = tuple(self.um_v_ratio[i] for i in (0, 2, 1))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "XZY")
 
         T = params.ppl
@@ -112,7 +113,7 @@ class ScanPatternAO:
             set_pnts_planes,
         )
 
-    def calc_angular_pattern(self, params, um_V_ratio):
+    def calc_angular_pattern(self, params, um_v_ratio):
         """Doc."""
 
         # argument definitions (for better readability
@@ -125,7 +126,9 @@ class ScanPatternAO:
         samp_freq_Hz = params.ao_samp_freq_Hz
         max_scan_freq_Hz = params.max_scan_freq_Hz
 
-        assert 0 <= ang_deg <= 180, "The scan angle should be in [0, 180] range!"
+        if not (0 <= ang_deg <= 180):
+            ang_deg = ang_deg % 180
+            logging.warning("The scan angle should be in [0, 180] range!")
 
         if (ang_deg == 0) or (ang_deg == 90):
             tot_len = max_line_len
@@ -197,9 +200,8 @@ class ScanPatternAO:
         scan_freq_Hz = samp_freq_Hz / tot_ppl / 2
 
         # TODO: ask Oleg about this (max y freq?)
-        assert (
-            scan_freq_Hz < max_scan_freq_Hz
-        ), f"scan frequency is over {max_scan_freq_Hz}. ({scan_freq_Hz} Hz)"
+        if scan_freq_Hz > max_scan_freq_Hz:
+            logging.warning(f"scan frequency is over {max_scan_freq_Hz}. ({scan_freq_Hz} Hz)")
 
         T = tot_ppl
         ppl = T * f / (2 - f)  # make ppl in linear part
@@ -252,9 +254,9 @@ class ScanPatternAO:
         y_ao[:, line_idx + 1] = Yend + np.arange(T) * (y_ao[0, 0] - Yend) / T
 
         # convert to voltages
-        x_um_V_ratio, y_um_V_ratio, _ = um_V_ratio
-        x_ao = x_ao / x_um_V_ratio
-        y_ao = y_ao / y_um_V_ratio
+        x_um_v_ratio, y_um_v_ratio, _ = um_v_ratio
+        x_ao = x_ao / x_um_v_ratio
+        y_ao = y_ao / y_um_v_ratio
 
         ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
 
@@ -272,7 +274,7 @@ class ScanPatternAO:
 
         return ao_buffer, params
 
-    def calc_circle_pattern(self, params, um_V_ratio):
+    def calc_circle_pattern(self, params, um_v_ratio):
         """Doc."""
 
         # argument definitions (for better readability
@@ -284,9 +286,9 @@ class ScanPatternAO:
         scan_freq_Hz = speed / tot_len
         n_samps = int(samp_freq_Hz / scan_freq_Hz)
 
-        x_um_V_ratio, y_um_V_ratio, _ = um_V_ratio
-        R_Vx = R_um / x_um_V_ratio
-        R_Vy = R_um / y_um_V_ratio
+        x_um_v_ratio, y_um_v_ratio, _ = um_v_ratio
+        R_Vx = R_um / x_um_v_ratio
+        R_Vy = R_um / y_um_v_ratio
 
         ao_buffer = np.array(
             [

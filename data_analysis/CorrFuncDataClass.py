@@ -17,47 +17,52 @@ sys.path.append(os.path.dirname(__file__))
 
 
 class CorrFuncDataClass:
-    def DoAverageCorr(
+    """Doc."""
+
+    def do_average_corr(
         self,
-        Rejection=2,
-        NormRange=np.array([1e-3, 2e-3]),
-        DeleteList=[],
-        NoPlot=False,
+        rejection=2,
+        norm_range=np.array([1e-3, 2e-3]),
+        delete_list=[],
+        no_plot=False,
         use_numba=False,
     ):
+        """Doc."""
 
         # enable 'use_numba' for speed-up
-        def calc_weighted_avg(CF_CR, weights):
+        def calc_weighted_avg(cf_cr, weights):
             """Doc."""
 
             tot_weights = weights.sum(0)
 
-            AverageCF_CR = (CF_CR * weights).sum(0) / tot_weights
+            average_cf_cr = (cf_cr * weights).sum(0) / tot_weights
 
-            errorCF_CR = np.sqrt((weights ** 2 * (CF_CR - AverageCF_CR) ** 2).sum(0)) / tot_weights
+            error_cf_cr = (
+                np.sqrt((weights ** 2 * (cf_cr - average_cf_cr) ** 2).sum(0)) / tot_weights
+            )
 
-            return AverageCF_CR, errorCF_CR
+            return average_cf_cr, error_cf_cr
 
-        self.Rejection = Rejection
-        self.NormRange = NormRange
-        self.DeleteList = DeleteList
-        self.AverageAllCF_CR = (self.CF_CR * self.weights).sum(0) / self.weights.sum(0)
-        self.MedianAllCF_CR = np.median(self.CF_CR, 0)
+        self.rejection = rejection
+        self.norm_range = norm_range
+        self.delete_list = delete_list
+        self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
+        self.median_all_cf_cr = np.median(self.cf_cr, 0)
         JJ = np.logical_and(
-            (self.lag > NormRange[1]), (self.lag < 100)
+            (self.lag > norm_range[1]), (self.lag < 100)
         )  # work in the relevant part
         self.score = (
-            (1 / np.var(self.CF_CR[:, JJ], 0))
-            * (self.CF_CR[:, JJ] - self.MedianAllCF_CR[JJ]) ** 2
+            (1 / np.var(self.cf_cr[:, JJ], 0))
+            * (self.cf_cr[:, JJ] - self.median_all_cf_cr[JJ]) ** 2
             / len(JJ)
         )
-        if len(DeleteList) == 0:
-            self.Jgood = np.where(self.score < self.Rejection)[0]
-            self.Jbad = np.where(self.score >= self.Rejection)[0]
+        if len(delete_list) == 0:
+            self.j_good = np.where(self.score < self.rejection)[0]
+            self.j_bad = np.where(self.score >= self.rejection)[0]
         else:
-            self.Jbad = DeleteList
-            self.Jgood = np.array(
-                [i for i in range(self.CF_CR.shape[0]) if i not in DeleteList]
+            self.j_bad = delete_list
+            self.j_good = np.array(
+                [i for i in range(self.cf_cr.shape[0]) if i not in delete_list]
             ).astype("int")
 
         if use_numba:
@@ -65,88 +70,90 @@ class CorrFuncDataClass:
         else:
             func = calc_weighted_avg
 
-        self.AverageCF_CR, self.errorCF_CR = func(
-            self.CF_CR[self.Jgood, :], self.weights[self.Jgood, :]
+        self.average_cf_cr, self.error_cf_cr = func(
+            self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
-        Jt = np.logical_and((self.lag > self.NormRange[0]), (self.lag < self.NormRange[1]))
-        self.G0 = (self.AverageCF_CR[Jt] / self.errorCF_CR[Jt] ** 2).sum() / (
-            1 / self.errorCF_CR[Jt] ** 2
+        Jt = np.logical_and((self.lag > self.norm_range[0]), (self.lag < self.norm_range[1]))
+        self.g0 = (self.average_cf_cr[Jt] / self.error_cf_cr[Jt] ** 2).sum() / (
+            1 / self.error_cf_cr[Jt] ** 2
         ).sum()
-        self.Normalized = self.AverageCF_CR / self.G0
-        self.errorNormalized = self.errorCF_CR / self.G0
-        if not NoPlot:
-            self.DoPlotCorrFunc()
+        self.normalized = self.average_cf_cr / self.g0
+        self.error_normalized = self.error_cf_cr / self.g0
+        if not no_plot:
+            self.do_plot_corr_func()
 
-    def DoPlotCorrFunc(self, Xfield="lag", Yfield="AverageCF_CR", Xscale="log", Yscale="linear"):
-        X = getattr(self, Xfield)
-        Y = getattr(self, Yfield)
-        if Xscale == "log":
-            X = X[1:]  # remove zero point data
-            Y = Y[1:]
-        plt.plot(X, Y, "o")  # skip 0 lag time
-        plt.xlabel(Xfield)
-        plt.ylabel(Yfield)
-        plt.gca().set_xscale(Xscale)
-        plt.gca().set_yscale(Yscale)
+    def do_plot_corr_func(
+        self, x_field="lag", y_field="average_cf_cr", x_scale="log", y_scale="linear"
+    ):
+        x = getattr(self, x_field)
+        y = getattr(self, y_field)
+        if x_scale == "log":
+            x = x[1:]  # remove zero point data
+            y = y[1:]
+        plt.plot(x, y, "o")  # skip 0 lag time
+        plt.xlabel(x_field)
+        plt.ylabel(y_field)
+        plt.gca().set_x_scale(x_scale)
+        plt.gca().set_y_scale(y_scale)
         plt.show()
 
-    def DoFit(
+    def do_fit(
         self,
-        Xfield="lag",
-        Yfield="AverageCF_CR",
-        YerrorField="errorCF_CR",
-        FitFunc="Diffusion3Dfit",
-        ConstantParam={},
-        FitParamEstimate=None,
-        FitRange=[1e-3, 100],
-        NoPlot=False,
-        Xscale="log",
-        Yscale="linear",
+        x_field="lag",
+        y_field="average_cf_cr",
+        y_error_field="error_cf_cr",
+        fit_func="Diffusion3Dfit",
+        constant_param={},
+        fit_param_estimate=None,
+        fit_range=[1e-3, 100],
+        no_plot=False,
+        x_scale="log",
+        y_scale="linear",
     ):
 
-        # [DynRange, IsDynRangeInput] = ParseInputs('Dynamic Range', [], varargin); % variable FitRange: give either a scalar or a vector of two
+        # [DynRange, IsDynRangeInput] = ParseInputs('Dynamic Range', [], varargin); % variable fit_range: give either a scalar or a vector of two
         # DynRangeBetaParam = ParseInputs('Dynamic Range parameter', 2, varargin); %the parameter in beta on which to do dynamic range
         # MaxIter = 3;
-        # lsqcurvefitParam = ParseInputs('lsqcurvefitParam', {}, varargin);
+        # lsqcurvefit_param = ParseInputs('lsqcurvefit_param', {}, varargin);
 
-        if FitParamEstimate is None:
-            FitParamEstimate = [self.G0, 0.035, 30]
+        if not fit_param_estimate:
+            fit_param_estimate = [self.g0, 0.035, 30]
 
-        X = getattr(self, Xfield)
-        Y = getattr(self, Yfield)
-        errorY = getattr(self, YerrorField)
-        if Xscale == "log":
-            X = X[1:]  # remove zero point data
-            Y = Y[1:]
+        x = getattr(self, x_field)
+        y = getattr(self, y_field)
+        errorY = getattr(self, y_error_field)
+        if x_scale == "log":
+            x = x[1:]  # remove zero point data
+            y = y[1:]
             errorY = errorY[1:]
 
         FP = curvefitLims(
-            FitFunc,
-            FitParamEstimate,
-            X,
-            Y,
+            fit_func,
+            fit_param_estimate,
+            x,
+            y,
             errorY,
-            XLim=FitRange,
-            NoPlot=NoPlot,
-            XScale=Xscale,
-            YScale=Yscale,
+            x_lim=fit_range,
+            no_plot=no_plot,
+            x_scale=x_scale,
+            y_scale=y_scale,
         )
 
         # if ~isempty(DynRange), % do dynamic range iterations
         #     for iter = 1:MaxIter;
-        #         FitRange(1) = FP.beta(DynRangeBetaParam)/DynRange(1);
-        #         FitRange(2) = FP.beta(DynRangeBetaParam)*DynRange(end);
-        #         J = find((X>FitRange(1)) & (X < FitRange(2)));
-        #         FP = nlinfitWeight2(X(J), Y(J), FitFunc, FP.beta, errorY(J), param, lsqcurvefitParam{:});
+        #         fit_range(1) = FP.beta(DynRangeBetaParam)/DynRange(1);
+        #         fit_range(2) = FP.beta(DynRangeBetaParam)*DynRange(end);
+        #         J = find((X>fit_range(1)) & (X < fit_range(2)));
+        #         FP = nlinfitWeight2(X(J), Y(J), fit_func, FP.beta, errorY(J), param, lsqcurvefit_param{:});
         #     end
         # end
 
-        # FP.FitRange = FitRange;
+        # FP.fit_range = fit_range;
         # FP.constParam = param;
 
-        # self.DoPlotCorrFunc()
-        if not hasattr(self, "FitParam"):
-            self.FitParam = dict()
+        # self.do_plot_corr_func()
+        if not hasattr(self, "fit_param"):
+            self.fit_param = dict()
 
-        self.FitParam[FP["FitFunc"]] = FP
+        self.fit_param[FP["fit_func"]] = FP
