@@ -1,7 +1,6 @@
 """ GUI windows implementations module. """
 
 import logging
-from typing import NoReturn
 
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
@@ -28,14 +27,14 @@ class MainWin:
 
         self._app.exit_app(event)
 
-    def restart(self) -> NoReturn:
+    def restart(self) -> None:
         """Restart all devices (except camera) and the timeout loop."""
 
         pressed = Question(txt="Are you sure?", title="Restarting Application").display()
         if pressed == QMessageBox.Yes:
             self._app.clean_up_app(restart=True)
 
-    def save(self) -> NoReturn:
+    def save(self) -> None:
         """Doc."""
 
         file_path, _ = QFileDialog.getSaveFileName(
@@ -48,7 +47,7 @@ class MainWin:
             helper.gui_to_csv(self._gui, file_path)
             logging.debug(f"Loadout saved as: '{file_path}'")
 
-    def load(self, file_path="") -> NoReturn:
+    def load(self, file_path="") -> None:
         """Doc."""
 
         if not file_path:
@@ -62,8 +61,8 @@ class MainWin:
             helper.csv_to_gui(file_path, self._gui)
             logging.debug(f"Loadout loaded: '{file_path}'")
 
-    @err_chckr()
-    def dvc_toggle(self, nick, toggle_mthd="toggle", leave_on=False, leave_off=False) -> NoReturn:
+    @err_chckr()  # TODO: instead of wrapping windows.py functions, consider wrapping devices.py functions instead
+    def dvc_toggle(self, nick, toggle_mthd="toggle", leave_on=False, leave_off=False) -> None:
         """Doc."""
 
         dvc = getattr(self._app.devices, nick)
@@ -94,7 +93,7 @@ class MainWin:
                     self._gui.depActualCurr.setValue(0)
                     self._gui.depActualPow.setValue(0)
 
-    def led_clicked(self, led_obj_name) -> NoReturn:
+    def led_clicked(self, led_obj_name) -> None:
         """Doc."""
 
         LED_NAME_DVC_NICK_DICT = helper.inv_dict(consts.DVC_NICK_LED_NAME_DICT)
@@ -115,7 +114,7 @@ class MainWin:
             self._app.devices.DEP_LASER.set_power(val)
 
     @err_chckr({"SCANNERS"})
-    def move_scanners(self, axes_used: str = "XYZ") -> NoReturn:
+    def move_scanners(self, axes_used: str = "XYZ") -> None:
         """Doc."""
 
         scanners_dvc = self._app.devices.SCANNERS
@@ -134,7 +133,7 @@ class MainWin:
         logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V")
 
     @err_chckr({"SCANNERS"})
-    def go_to_origin(self, which_axes: str) -> NoReturn:
+    def go_to_origin(self, which_axes: str) -> None:
         """Doc."""
 
         scanners_dvc = self._app.devices.SCANNERS
@@ -152,7 +151,7 @@ class MainWin:
         logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin")
 
     @err_chckr({"SCANNERS"})
-    def displace_scanner_axis(self, sign: int) -> NoReturn:
+    def displace_scanner_axis(self, sign: int) -> None:
         """Doc."""
 
         um_disp = sign * self._gui.axisMoveUm.value()
@@ -161,7 +160,7 @@ class MainWin:
             scanners_dvc = self._app.devices.SCANNERS
             axis = self._gui.axis.currentText()
             current_vltg = scanners_dvc.ai_buffer[3:, -1][consts.AX_IDX[axis]]
-            um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_V_ratio))[axis]
+            um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
             delta_vltg = um_disp / um_V_RATIO
 
             axis_ao_limits = getattr(scanners_dvc, f"{axis.lower()}_ao_limits")
@@ -248,7 +247,7 @@ class MainWin:
     def toggle_meas(self, type):
         """Doc."""
 
-        if (current_type := self._app.meas.type) is None:
+        if not (current_type := self._app.meas.type):
             # no meas running
             if type == "SFCSSolution":
                 self._app.gui.main.imp.go_to_origin("XY")
@@ -351,8 +350,8 @@ class MainWin:
             scan_params = scan_params_coll.read_namespace_from_gui(self._app)
 
             try:
-                um_V_ratio = self._app.devices.SCANNERS.um_V_ratio
-                ao, *_ = ScanPatternAO(pattern, scan_params, um_V_ratio).calculate_ao()
+                um_v_ratio = self._app.devices.SCANNERS.um_v_ratio
+                ao, *_ = ScanPatternAO(pattern, scan_params, um_v_ratio).calculate_ao()
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.plot(x_data, y_data, clear=True)
 
@@ -458,7 +457,7 @@ class MainWin:
         self._gui.countsAvg.setValue(val)
         self._app.timeout_loop.updt_intrvl["cntr_avg"] = val / 1000  # convert to seconds
 
-    def fill_img_scan_preset_gui(self, curr_text: str) -> NoReturn:
+    def fill_img_scan_preset_gui(self, curr_text: str) -> None:
         """Doc."""
 
         consts.IMG_SCN_WDGT_COLL.write_to_gui(
@@ -466,7 +465,7 @@ class MainWin:
         )
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
 
-    def fill_sol_meas_preset_gui(self, curr_text: str) -> NoReturn:
+    def fill_sol_meas_preset_gui(self, curr_text: str) -> None:
         """Doc."""
 
         consts.SOL_MEAS_WDGT_COLL.write_to_gui(

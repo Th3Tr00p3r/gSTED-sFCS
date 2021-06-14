@@ -2,7 +2,7 @@
 
 import re
 from types import SimpleNamespace
-from typing import List, NoReturn
+from typing import List
 
 import ftd2xx
 import nidaqmx as ni
@@ -51,12 +51,12 @@ class Ftd2xx:
         read_bytes = np.frombuffer(raw_bytes, dtype=np.uint8)
         return read_bytes
 
-    def purge(self) -> NoReturn:
+    def purge(self) -> None:
         """Doc."""
 
         self._inst.purge(ftd2xx.defines.PURGE_RX)
 
-    def close(self) -> NoReturn:
+    def close(self) -> None:
         """Doc."""
 
         self._inst.close()
@@ -179,7 +179,7 @@ class NIDAQmx:
 
         self.tasks.ci[name] = task
 
-    def create_co_task(self, name: str, chan_spec: dict, clk_cnfg: dict):
+    def create_co_task(self, name: str, chan_spec: dict, clk_cnfg: dict) -> None:
         """Doc."""
 
         task = ni.Task(new_task_name=name)
@@ -203,7 +203,7 @@ class NIDAQmx:
         ai_task = getattr(self.tasks, task_type)[task_name]
         return ai_task.read(number_of_samples_per_channel=n_samples)
 
-    def analog_write(self, task_name: str, data: np.ndarray, auto_start=None) -> NoReturn:
+    def analog_write(self, task_name: str, data: np.ndarray, auto_start=None) -> None:
         """Doc."""
 
         ao_task = self.tasks.ao[task_name]
@@ -212,7 +212,7 @@ class NIDAQmx:
         else:
             ao_task.write(data, timeout=self.AO_TIMEOUT)
 
-    def counter_stream_read(self):
+    def counter_stream_read(self) -> int:
         """
          Reads all available samples on board into self.cont_read_buffer
          (1D NumPy array, overwritten each read), and returns the
@@ -225,7 +225,7 @@ class NIDAQmx:
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
 
-    def digital_write(self, bool):
+    def digital_write(self, bool) -> None:
         """Doc."""
 
         with ni.Task() as do_task:
@@ -248,7 +248,7 @@ class PyVISA:
         self.write_termination = write_termination
         self._rm = visa.ResourceManager()
 
-    def open_inst(self) -> NoReturn:
+    def open_inst(self) -> None:
         """Doc."""
 
         self._rsrc = self._rm.open_resource(
@@ -259,12 +259,12 @@ class PyVISA:
             open_timeout=50,  # ms
         )
 
-    def close_inst(self) -> NoReturn:
+    def close_inst(self) -> None:
         """Doc."""
 
         self._rsrc.close()
 
-    def write(self, cmnd: str) -> NoReturn:
+    def write(self, cmnd: str) -> None:
         """Sends a command to the VISA instrument."""
 
         self._rsrc.write(cmnd)
@@ -276,7 +276,7 @@ class PyVISA:
         extracted_float_strings = re.findall(r"-?\d+\.?\d*", response)
         return float(extracted_float_strings[0])
 
-    def flush(self) -> NoReturn:
+    def flush(self) -> None:
         """Doc."""
 
         mask = visa.constants.BufferOperation(4) | visa.constants.BufferOperation(6)

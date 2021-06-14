@@ -36,7 +36,7 @@ def err_hndlr(exc, func, lvl="error", dvc=None, disp=False):
             f"[{err_dict['type']}: {err_dict['msg']}]"
         )
         if lvl == "error":
-            if dvc.error_dict is None:  # keep only first error
+            if not dvc.error_dict:  # keep only first error
                 dvc.error_dict = err_dict
             dvc.led_widget.set(consts.LED_ERROR_ICON)
 
@@ -66,7 +66,7 @@ def dvc_err_chckr(nick_set: set = None) -> Callable:
             and displays informative error messages to user.
             """
 
-            if nick_set is None:
+            if not nick_set:
                 nick_set = {func_args[0]}
 
             txt = [f"{nick} error.\n" for nick in nick_set if getattr(devices, nick).error_dict]
