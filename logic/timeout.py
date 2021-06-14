@@ -5,7 +5,6 @@ import logging
 import os
 import sys
 from collections import deque
-from typing import NoReturn
 
 import utilities.constants as consts
 from utilities.errors import err_hndlr
@@ -36,7 +35,7 @@ class Timeout:
             self._update_dep(),
             self._updt_current_state(),
             self._update_gui(),
-            self._updt_um232h_status(),
+            #            self._updt_um232h_status(),
         )
         logging.debug("_main function exited")
 
@@ -180,8 +179,7 @@ class Timeout:
                     # happens when depletion is turned on before beginning measurement (5 s wait)
                     pass
                 except Exception as exc:
-                    func_name = sys._getframe().f_code.co_name
-                    err_hndlr(exc, func_name, lvl="debug")
+                    err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
 
         while self.not_finished:
 

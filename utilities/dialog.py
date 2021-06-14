@@ -37,12 +37,15 @@ class UserDialog:
 class Error(UserDialog):
     """Doc."""
 
-    def __init__(self, type="", msg="", tb="", module="", line="", custom_txt="", custom_title=""):
+    def __init__(
+        self, type="", loc="", msg="", tb="", module="", line="", custom_txt="", custom_title=""
+    ):
 
         if type:
+            location_string = " -> ".join([f"{filename}, {lineno}" for filename, lineno in loc[:2]])
             super().__init__(
                 msg_icon=QMessageBox.Critical,
-                msg_title=f"{type}: {custom_title} ({module}, {line})",
+                msg_title=f"{type}: {custom_title} ({location_string})",
                 msg_text=msg,
                 msg_det=tb,
             )
