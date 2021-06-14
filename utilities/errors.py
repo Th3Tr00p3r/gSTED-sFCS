@@ -19,20 +19,41 @@ def build_err_dict(exc: Exception) -> str:
     exc_type, _, tb = sys.exc_info()
     exc_type = exc_type.__name__
     frmtd_tb = "\n".join(traceback.format_tb(tb))
-    fname = os.path.split(tb.tb_frame.f_code.co_filename)[1]
-    lineno = tb.tb_lineno
-    return dict(type=exc_type, msg=str(exc), tb=frmtd_tb, module=fname, line=lineno)
+    # show the first 'n' existing levels of traceback for module and line number
+    exc_loc = []
+    while tb is not None:
+        filename = os.path.split(tb.tb_frame.f_code.co_filename)[1]
+        lineno = tb.tb_lineno
+        exc_loc.append((filename, lineno))
+        tb = tb.tb_next
+    return dict(type=exc_type, loc=exc_loc, msg=str(exc), tb=frmtd_tb)
 
 
-def err_hndlr(exc, func, lvl="error", dvc=None, disp=False):
+def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False):
     """Doc."""
 
+    def get_frame_details(frame, locals):
+        """
+        Create a set of all argument names except 'self', and use them to filter the 'locals()' dictionary,
+        leaving only external arguments and their values in the final string. Also get the function name.
+        """
+
+        frame_code = frame.f_code
+        func_name = frame_code.co_name
+        func_arg_names = set(frame_code.co_varnames[: frame_code.co_argcount]) - {"self"}
+        arg_string = ", ".join(
+            [f"{key}={str(val)}" for key, val in locals.items() if key in func_arg_names]
+        )
+        return f"{func_name}({arg_string})"
+
     err_dict = build_err_dict(exc)
+    func_string = get_frame_details(func_frame, func_locals)
+    location_string = " -> ".join([f"{filename}, {lineno}" for filename, lineno in err_dict["loc"]])
 
     if dvc is not None:  # device error
         dvc_log_ref = getattr(consts, dvc.nick).log_ref
         log_str = (
-            f"{dvc_log_ref} didn't respond to '{func}()' ({err_dict['module']}, {err_dict['line']}). "
+            f"{dvc_log_ref} didn't respond to '{func_string}' ({location_string}). "
             f"[{err_dict['type']}: {err_dict['msg']}]"
         )
         if lvl == "error":
@@ -41,7 +62,7 @@ def err_hndlr(exc, func, lvl="error", dvc=None, disp=False):
             dvc.led_widget.set(consts.LED_ERROR_ICON)
 
     else:  # logic eror
-        log_str = f"{err_dict['type']}: {err_dict['msg']} ({func}(), {err_dict['module']}, {err_dict['line']})"
+        log_str = f"{err_dict['type']}: {err_dict['msg']} ({func_string}, {location_string})"
         if disp:
             Error(**err_dict).display()
 
