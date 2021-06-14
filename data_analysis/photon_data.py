@@ -9,10 +9,10 @@ import logging
 import numpy as np
 
 
-class PhotonDataClass:
+class PhotonData:
     """Doc."""
 
-    def do_convert_fpga_data_to_photons(self, fpga_data, version=3, verbose=False):
+    def convert_fpga_data_to_photons(self, fpga_data, version=3, verbose=False):
         """Doc."""
 
         if version >= 2:
@@ -83,12 +83,12 @@ class PhotonDataClass:
 def find_section_edge(data, section_start, group_len):
     data_end = False
     # find brackets
-    I_248 = np.where(data[section_start:] == 248)[0]
-    I_254 = np.where(data[section_start:] == 254)[0]
-    II = np.intersect1d(I_248, I_254 - group_len + 1, assume_unique=True)  # find those in registry
-    if not II.size:
+    i_248 = np.where(data[section_start:] == 248)[0]
+    i_254 = np.where(data[section_start:] == 254)[0]
+    ii = np.intersect1d(i_248, i_254 - group_len + 1, assume_unique=True)  # find those in registry
+    if not ii.size:
         raise RuntimeError("No data found! Check detector and FPGA.")
-    edge_start = section_start + II[0]
+    edge_start = section_start + ii[0]
     p248 = data[edge_start::group_len]
     p254 = data[(edge_start + group_len - 1) :: group_len]
     kk248 = np.where(p248 != 248)[0]

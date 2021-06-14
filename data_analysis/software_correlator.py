@@ -4,6 +4,7 @@ Created on Sun Jan 17 14:08:54 2021
 
 @author: oleg
 """
+
 import enum
 import sys
 from ctypes import CDLL, c_double, c_int, c_long
@@ -23,7 +24,7 @@ class CorrelatorType(enum.Enum):
     PH_DELAY_CROSS_CORRELATOR_LINES = 6  # as PH_COUNT_CROSS_CORRELATOR with an additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
 
 
-class SoftwareCorrelatorClass:
+class SoftwareCorrelator:
     """Doc."""
 
     def __init__(self):
@@ -33,7 +34,7 @@ class SoftwareCorrelatorClass:
             lib_path = "/Users/oleg/Documents/Python programming/Scanning setups Lab/gSTED-sFCS/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.so"
         self.lib_path = lib_path
         soft_corr_dynamic_lib = CDLL(lib_path, winmode=0)
-        get_corr_params = soft_corr_dynamic_lib.get_correlator_params
+        get_corr_params = soft_corr_dynamic_lib.getCorrelatorParams
         get_corr_params.restype = None
         get_corr_params.argtypes = [ndpointer(c_int), ndpointer(c_int)]
         doub_size = np.zeros(1, dtype=np.int32)
