@@ -19,7 +19,7 @@ class FitError(Exception):
     pass
 
 
-def curvefitLims(
+def curve_fit_lims(
     fit_name,
     param_estimates,
     xs,
@@ -44,24 +44,25 @@ def curvefitLims(
         x_lim = np.array([x_lim, np.Inf])
 
     in_lims = (xs >= x_lim[0]) & (xs <= x_lim[1]) & (ys >= y_lim[0]) & (ys <= y_lim[1])
-    isfiniteErr = (ys_errors > 0) & np.isfinite(ys_errors)
+    is_finite_err = (ys_errors > 0) & np.isfinite(ys_errors)
     # print(in_lims)
-    x = xs[in_lims & isfiniteErr]
+    x = xs[in_lims & is_finite_err]
     #   print(x)
-    y = ys[in_lims & isfiniteErr]
-    yErr = ys_errors[in_lims & isfiniteErr]
-    #    print(yErr)
-    fitFunc = globals()[fit_name]
+    y = ys[in_lims & is_finite_err]
+    y_err = ys_errors[in_lims & is_finite_err]
+    #    print(y_err)
+    fit_func = globals()[fit_name]
     #    print(fit_name)
     try:
-        bta, covM = curve_fit(fitFunc, x, y, p0=param_estimates, sigma=yErr, absolute_sigma=True)
+        bta, cov_mat = curve_fit(
+            fit_func, x, y, p0=param_estimates, sigma=y_err, absolute_sigma=True
+        )
+        fit_param = dict()
+        fit_param["beta"] = bta
+        fit_param["errorBeta"] = np.sqrt(np.diag(cov_mat))
     except (RuntimeWarning, RuntimeError, OptimizeWarning):
         raise FitError("curve_fit() failed.")
-    #    print(bta)
-    fit_param = dict()
-    fit_param["beta"] = bta
-    fit_param["errorBeta"] = np.sqrt(np.diag(covM))
-    chi_sq_arr = np.square((fitFunc(x, *bta) - y) / yErr)
+    chi_sq_arr = np.square((fit_func(x, *bta) - y) / y_err)
     fit_param["chi_sq_norm"] = chi_sq_arr.sum() / x.size
     fit_param["x"] = x
     fit_param["y"] = y
@@ -72,7 +73,7 @@ def curvefitLims(
 
     if not no_plot:
         plt.errorbar(xs, ys, ys_errors, fmt=".")
-        plt.plot(xs[in_lims], fitFunc(xs[in_lims], *bta), zorder=10)
+        plt.plot(xs[in_lims], fit_func(xs[in_lims], *bta), zorder=10)
         plt.xscale(x_scale)
         plt.yscale(y_scale)
         plt.gcf().canvas.draw()

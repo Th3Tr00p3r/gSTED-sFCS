@@ -566,8 +566,7 @@ class SFCSSolutionMeasurement(Measurement):
         try:
             self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
         except ZeroDivisionError as exc:
-            func_name = sys._getframe().f_code.co_name
-            err_hndlr(exc, func_name)
+            err_hndlr(exc, locals(), sys._getframe())
             return
 
         if self.save_intrvl > self.total_duration:
@@ -625,19 +624,16 @@ class SFCSSolutionMeasurement(Measurement):
                 s = compute_acf(self.data_dvc.data)
             except RuntimeError as exc:
                 # Something happend during data processing
-                func_name = sys._getframe().f_code.co_name
-                err_hndlr(exc, func_name, lvl="error")
+                err_hndlr(exc, locals(), sys._getframe())
             except Exception as exc:
                 # TODO: HANDLE ME!
-                func_name = sys._getframe().f_code.co_name
-                err_hndlr(exc, func_name, lvl="error")
+                err_hndlr(exc, locals(), sys._getframe())
             else:
                 try:
                     s.do_fit(no_plot=True)
                 except fit_tools.FitError as exc:
                     # fit failed
-                    func_name = sys._getframe().f_code.co_name
-                    err_hndlr(exc, func_name, lvl="debug")
+                    err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
                     self.fit_led.set(consts.LED_ERROR_ICON)
                     g0, tau = s.g0, 0.1
                     self.g0_wdgt.set(s.g0)
@@ -764,49 +760,53 @@ class SFCSSolutionMeasurement(Measurement):
         if self.is_running:
             logging.info(f"Running {self.type} measurement")
 
-        for file_num in range(1, num_files + 1):
+        try:  # TESTESTEST`
+            for file_num in range(1, num_files + 1):
 
-            if self.is_running:
+                if self.is_running:
 
-                self.file_num_wdgt.set(file_num)
+                    self.file_num_wdgt.set(file_num)
 
-                self.start_time = time.perf_counter()
-                self.time_passed = 0
+                    self.start_time = time.perf_counter()
+                    self.time_passed = 0
 
-                # reading
-                await self.record_data(timed=True)
+                    # reading
+                    await self.record_data(timed=True)
 
-                self.total_time_passed += self.time_passed
+                    self.total_time_passed += self.time_passed
 
-                # collect final ai/CI
-                self.counter_dvc.fill_ci_buffer()
-                self.scanners_dvc.fill_ai_buffer()
+                    # collect final ai/CI
+                    self.counter_dvc.fill_ci_buffer()
+                    self.scanners_dvc.fill_ai_buffer()
 
-                if self.scanning:
-                    # save just one full pattern of ai
-                    self.scanners_dvc.ai_buffer = self.scanners_dvc.ai_buffer[
-                        :, : self.ao_buffer.shape[1]
-                    ]
+                    if self.scanning:
+                        # save just one full pattern of ai
+                        self.scanners_dvc.ai_buffer = self.scanners_dvc.ai_buffer[
+                            :, : self.ao_buffer.shape[1]
+                        ]
 
-                # reset timers for alignment measurements
-                if self.repeat:
-                    self.total_time_passed = 0
-                    self.set_current_and_end_times()
+                    # reset timers for alignment measurements
+                    if self.repeat:
+                        self.total_time_passed = 0
+                        self.set_current_and_end_times()
 
-                # save and display data
-                if self.is_running or not self.repeat:
-                    # if not manually stopped while aligning
-                    self.save_data(self.prep_data_dict(), self.build_filename(file_num))
-                    self.disp_ACF()
+                    # save and display data
+                    if self.is_running or not self.repeat:
+                        # if not manually stopped while aligning
+                        self.save_data(self.prep_data_dict(), self.build_filename(file_num))
+                        self.disp_ACF()
 
-                # initialize data buffers for next file
-                self.data_dvc.init_data()
-                self.data_dvc.purge_buffers()
-                self.scanners_dvc.init_ai_buffer()
-                self.counter_dvc.init_ci_buffer()
+                    # initialize data buffers for next file
+                    self.data_dvc.init_data()
+                    self.data_dvc.purge_buffers()
+                    self.scanners_dvc.init_ai_buffer()
+                    self.counter_dvc.init_ci_buffer()
 
-            else:
-                break
+                else:
+                    break
+
+        except Exception as exc:  # TESTESTEST
+            err_hndlr(exc, locals(), sys._getframe())
 
         await self.toggle_lasers(finish=True)
 

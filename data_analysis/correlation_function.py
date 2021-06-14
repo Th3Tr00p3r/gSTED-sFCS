@@ -18,7 +18,7 @@ from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
-from data_analysis.fit_tools import curvefitLims
+from data_analysis.fit_tools import curve_fit_lims
 from data_analysis.matlab_utilities import (
     loadmat,  # loads matfiles with structures (scipy.io does not do structures)
 )
@@ -144,7 +144,7 @@ class CorrFuncData:
             y = y[1:]
             errorY = errorY[1:]
 
-        FP = curvefitLims(
+        FP = curve_fit_lims(
             fit_func,
             fit_param_estimate,
             x,
@@ -627,11 +627,11 @@ class CorrFuncTDC(CorrFuncData):
                     self.total_duration_skipped = self.total_duration_skipped + segment_time
                     continue
 
-                no_splits = np.ceil(segment_time / run_duration).astype("int")
-                splits = np.linspace(0, np.diff(se)[0].astype("int"), no_splits + 1, dtype="int")
+                n_splits = np.ceil(segment_time / run_duration).astype("int")
+                splits = np.linspace(0, np.diff(se)[0].astype("int"), n_splits + 1, dtype="int")
                 ts = time_stamps[se[0] : se[1]]
 
-                for k in range(no_splits):
+                for k in range(n_splits):
 
                     ts_split = ts[splits[k] : splits[k + 1]]
                     self.duration = np.append(self.duration, ts_split.sum() / self.laser_freq)
