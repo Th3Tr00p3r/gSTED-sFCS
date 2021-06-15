@@ -56,11 +56,11 @@ class UM232H(BaseDevice, Ftd2xx):
         self.init_data()
         self._toggle(True)
 
-    def _toggle(self, bool):
+    def _toggle(self, is_being_switched_on):
         """Doc."""
 
         try:
-            if bool:
+            if is_being_switched_on:
                 self.open()
                 self.purge()
             else:
@@ -68,7 +68,7 @@ class UM232H(BaseDevice, Ftd2xx):
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            self.state = bool
+            self.state = is_being_switched_on
 
     async def read_TDC(self):
         """Doc."""
@@ -156,10 +156,10 @@ class Scanners(BaseDevice, NIDAQmx):
 
         self._toggle(True)
 
-    def _toggle(self, bool):
+    def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        if bool:
+        if is_being_switched_on:
             self.start_continuous_read_task()
         else:
             try:
@@ -413,10 +413,10 @@ class Counter(BaseDevice, NIDAQmx):
 
         self._toggle(True)
 
-    def _toggle(self, bool):
+    def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        if bool:
+        if is_being_switched_on:
             self.start_continuous_read_task()
         else:
             try:
@@ -528,18 +528,18 @@ class PixelClock(BaseDevice, NIDAQmx):
 
         self._toggle(False)
 
-    def _toggle(self, bool):
+    def _toggle(self, is_being_switched_on):
         """Doc."""
 
         try:
-            if bool:
+            if is_being_switched_on:
                 self._start_co_clock_sync()
             else:
                 self.close_all_tasks()
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            self.state = bool
+            self.state = is_being_switched_on
 
     def _start_co_clock_sync(self) -> None:
         """Doc."""
@@ -574,11 +574,11 @@ class SimpleDO(BaseDevice, NIDAQmx):
         )
         self._toggle(False)
 
-    def _toggle(self, bool):
+    def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        self.digital_write(bool)
-        self.state = bool
+        self.digital_write(is_being_switched_on)
+        self.state = is_being_switched_on
 
 
 class DepletionLaser(BaseDevice, PyVISA):
@@ -698,18 +698,18 @@ class StepperStage(BaseDevice, PyVISA):
         self._toggle(True)
         self._toggle(False)
 
-    def _toggle(self, bool):
+    def _toggle(self, is_being_switched_on):
         """Doc."""
 
         try:
-            if bool is True:
+            if is_being_switched_on:
                 self.open_inst()
             else:
                 self.close_inst()
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            self.state = bool
+            self.state = is_being_switched_on
 
     def move(self, dir, steps):
         """Doc."""
@@ -749,14 +749,14 @@ class Camera(BaseDevice, Instrumental):
         self.state = False
         self.vid_state = False
 
-    def _toggle(self, bool):
+    def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        if bool:
+        if is_being_switched_on:
             self.init_cam()
         else:
             self.close_cam()
-        self.state = bool
+        self.state = is_being_switched_on
 
     async def shoot(self):
         """Doc."""
