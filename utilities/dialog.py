@@ -37,9 +37,7 @@ class UserDialog:
 class Error(UserDialog):
     """Doc."""
 
-    def __init__(
-        self, type="", loc="", msg="", tb="", module="", line="", custom_txt="", custom_title=""
-    ):
+    def __init__(self, type="", loc="", msg="", tb="", custom_txt="", custom_title=""):
 
         if type:
             location_string = " -> ".join([f"{filename}, {lineno}" for filename, lineno in loc[:2]])

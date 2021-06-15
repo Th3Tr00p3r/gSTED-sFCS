@@ -119,7 +119,7 @@ class CorrFuncData:
         x_field="lag",
         y_field="average_cf_cr",
         y_error_field="error_cf_cr",
-        fit_func="Diffusion3Dfit",
+        fit_func="diffusion_3d_fit",
         constant_param={},
         fit_param_estimate=None,
         fit_range=[1e-3, 100],
