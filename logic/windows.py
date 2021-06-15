@@ -114,23 +114,26 @@ class MainWin:
             self._app.devices.DEP_LASER.set_power(val)
 
     @err_chckr({"SCANNERS"})
-    def move_scanners(self, axes_used: str = "XYZ") -> None:
+    def move_scanners(self, axes_used: str = "XYZ", destination=None) -> None:
         """Doc."""
 
         scanners_dvc = self._app.devices.SCANNERS
 
-        curr_pos = tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
+        if destination is None:
+            # if no destination is specified, use the AO from the GUI
+            destination = tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
+
         data = []
         type_str = ""
-        for ax, curr_ax_val in zip("XYZ", curr_pos):
+        for ax, vltg_V in zip("XYZ", destination):
             if ax in axes_used:
-                data.append([curr_ax_val])
+                data.append([vltg_V])
                 type_str += ax
 
         scanners_dvc.start_write_task(data, type_str)
         scanners_dvc.toggle(True)  # restart cont. reading
 
-        logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(curr_pos)} V")
+        logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(destination)} V")
 
     @err_chckr({"SCANNERS"})
     def go_to_origin(self, which_axes: str) -> None:
@@ -250,7 +253,6 @@ class MainWin:
         if not (current_type := self._app.meas.type):
             # no meas running
             if type == "SFCSSolution":
-                self._app.gui.main.imp.go_to_origin("XY")
                 pattern = self._gui.solScanType.currentText()
                 if pattern == "angular":
                     scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
@@ -289,9 +291,11 @@ class MainWin:
                 self._gui.solScanFileTemplate.setEnabled(False)
 
             elif type == "SFCSImage":
+                initial_pos = tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
                     scan_params=consts.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app),
+                    initial_pos=initial_pos,
                     **consts.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [

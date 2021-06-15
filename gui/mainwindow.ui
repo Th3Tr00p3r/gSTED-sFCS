@@ -5900,8 +5900,8 @@ Buffer</string>
           </property>
           <property name="maximumSize">
            <size>
-            <width>30</width>
-            <height>30</height>
+            <width>999</width>
+            <height>999</height>
            </size>
           </property>
           <property name="font">
@@ -5924,8 +5924,8 @@ Buffer</string>
           </property>
           <property name="iconSize">
            <size>
-            <width>32</width>
-            <height>32</height>
+            <width>41</width>
+            <height>41</height>
            </size>
           </property>
           <property name="checkable">
@@ -6037,8 +6037,8 @@ Buffer</string>
             </property>
             <property name="maximumSize">
              <size>
-              <width>30</width>
-              <height>30</height>
+              <width>999</width>
+              <height>999</height>
              </size>
             </property>
             <property name="font">
@@ -6061,8 +6061,8 @@ Buffer</string>
             </property>
             <property name="iconSize">
              <size>
-              <width>32</width>
-              <height>32</height>
+              <width>41</width>
+              <height>41</height>
              </size>
             </property>
             <property name="flat">
@@ -6314,8 +6314,8 @@ Settings</string>
             </property>
             <property name="maximumSize">
              <size>
-              <width>30</width>
-              <height>30</height>
+              <width>999</width>
+              <height>999</height>
              </size>
             </property>
             <property name="font">
@@ -6338,8 +6338,8 @@ Settings</string>
             </property>
             <property name="iconSize">
              <size>
-              <width>32</width>
-              <height>32</height>
+              <width>41</width>
+              <height>41</height>
              </size>
             </property>
             <property name="flat">
