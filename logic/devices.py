@@ -711,6 +711,7 @@ class StepperStage(BaseDevice, PyVISA):
         else:
             self.state = is_being_switched_on
 
+    # TODO: try to make this async and include a 'release' command after async-sleeping for some time
     def move(self, dir, steps):
         """Doc."""
 
