@@ -35,7 +35,7 @@ class Timeout:
             self._update_dep(),
             self._updt_current_state(),
             self._update_gui(),
-            #            self._updt_um232h_status(),
+            self._updt_um232h_status(),
         )
         logging.debug("_main function exited")
 
