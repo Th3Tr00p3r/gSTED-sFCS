@@ -13,7 +13,7 @@ class ScanPatternAO:
         self.scan_params = scan_params
         self.um_v_ratio = um_v_ratio
 
-    def calculate_ao(self):
+    def calculate_pattern(self):
         """Doc."""
 
         if self.pattern == "image":

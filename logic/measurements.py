@@ -268,7 +268,7 @@ class SFCSImageMeasurement(Measurement):
             self.scan_params.set_pnts_lines_odd,
             self.scan_params.set_pnts_lines_even,
             self.scan_params.set_pnts_planes,
-        ) = ScanPatternAO("image", self.scan_params, self.um_v_ratio).calculate_ao()
+        ) = ScanPatternAO("image", self.scan_params, self.um_v_ratio).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
@@ -611,7 +611,7 @@ class SFCSSolutionMeasurement(Measurement):
         # create ao_buffer
         self.ao_buffer, self.scan_params = ScanPatternAO(
             self.scan_params.pattern, self.scan_params, self.um_v_ratio
-        ).calculate_ao()
+        ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
