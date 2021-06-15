@@ -9,6 +9,8 @@ from PyQt5.QtWidgets import QDialog, QMainWindow, QStatusBar, QWidget
 import gui.icons  # this generates an icon resource file (see gui.py) as well as paths to all icons (see logic.py) # NOQA
 import logic.windows as wins_imp
 import utilities.constants as consts
+
+# TODO: icons_rc.py does not auto-generate (used to?)
 from gui.icons import icons_rc  # for initial icons loadout # NOQA
 from utilities.helper import ImageDisplay
 

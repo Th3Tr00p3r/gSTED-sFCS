@@ -201,7 +201,7 @@ class NIDAQmx:
         #        return num_samps_read
 
         ai_task = getattr(self.tasks, task_type)[task_name]
-        return ai_task.read(number_of_samples_per_channel=n_samples)
+        return np.array(ai_task.read(number_of_samples_per_channel=n_samples))
 
     def analog_write(self, task_name: str, data: np.ndarray, auto_start=None) -> None:
         """Doc."""
