@@ -19,9 +19,9 @@ from skimage import filters as skifilt
 from skimage import morphology
 
 from data_analysis.fit_tools import curve_fit_lims
-from data_analysis.matlab_utilities import (
-    loadmat,  # loads matfiles with structures (scipy.io does not do structures)
-)
+
+# loads matfiles with structures (scipy.io does not do structures)
+from data_analysis.matlab_utilities import loadmat
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 

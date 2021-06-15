@@ -14,10 +14,10 @@ autogen_header = (
 def gen_icons_resource_file():
     """documentation."""
     header = (
-        #        "<!--" + "\n"
-        #        f"{autogen_header}"
-        #        "-->"
-        #        "\n\n"
+        "<!--" + "\n"
+        f"{autogen_header}"
+        "-->"
+        "\n\n"
         "<!DOCTYPE RCC>" + "\n"
         '<RCC version="1.0">' + "\n"
         "<qresource>" + "\n"
@@ -29,7 +29,7 @@ def gen_icons_resource_file():
         f.write(header)
         for icon_path in icon_paths:
             _, icon_fname = os.path.split(icon_path)
-            f.write("<file>" + icon_fname + "</file>" + "\n")
+            f.write(f"<file>{icon_fname}</file>" + "\n")
         f.write(footer)
 
 
@@ -41,7 +41,7 @@ def gen_icon_paths_module():
         for icon_path in icon_paths:
             _, icon_fname = os.path.split(icon_path)
             icon_fname_notype = os.path.splitext(icon_fname)[0]
-            f.write(icon_fname_notype.upper() + " = '" + "./gui/icons/" + icon_fname + "'" + "\n")
+            f.write(f'{icon_fname_notype.upper()} = "./gui/icons/{icon_fname}"' + "\n")
 
 
 # Create the files
