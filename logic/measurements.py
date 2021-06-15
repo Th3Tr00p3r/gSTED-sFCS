@@ -645,7 +645,7 @@ class SFCSSolutionMeasurement(Measurement):
                 else:
                     # fit succeeded
                     self.fit_led.set(consts.LED_OFF_ICON)
-                    fit_params = s.fit_param["Diffusion3Dfit"]
+                    fit_params = s.fit_param["diffusion_3d_fit"]
                     g0, tau, _ = fit_params["beta"]
                     x, y = fit_params["x"], fit_params["y"]
                     fit_func = getattr(fit_tools, fit_params["fit_func"])

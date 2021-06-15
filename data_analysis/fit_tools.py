@@ -84,19 +84,19 @@ def curve_fit_lims(
 
 
 # Fit functions
-def LinearFit(t, a, b):
+def linear_fit(t, a, b):
     return a * t + b
 
 
-def PowerFit(t, a, n):
+def power_fit(t, a, n):
     return a * t ** n
 
 
-def Diffusion3Dfit(t, A, tau, w_sq):
+def diffusion_3d_fit(t, A, tau, w_sq):
     return A / (1 + t / tau) / np.sqrt(1 + t / tau / w_sq)
 
 
-def WeightedAverage(data_vectors_list, data_errors_list):
+def weighted_average(data_vectors_list, data_errors_list):
     """Doc."""
 
     data_vectors = np.array(data_vectors_list)
