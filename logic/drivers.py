@@ -296,8 +296,8 @@ class Instrumental:
 
         try:
             self._inst = UC480_Camera(reopen_policy="new")
-        # general 'Exception' is due to bad error handeling in instrumental-lib...
         except Exception:
+            # general 'Exception' is due to bad error handeling in instrumental-lib...
             raise UC480Error(msg="Camera disconnected")
 
     def close_cam(self):

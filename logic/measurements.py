@@ -25,6 +25,8 @@ from utilities.helper import ImageData, div_ceil, get_datetime_str
 class Measurement:
     """Base class for measurements"""
 
+    # TODO: consider making this a context manager?
+
     def __init__(self, app, type: str, scan_params=None, **kwargs):
 
         self._app = app
@@ -34,7 +36,8 @@ class Measurement:
         self.data_dvc = app.devices.UM232H
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.COUNTER
-        if scan_params is not None:
+        if scan_params:
+            # if scanning
             self.pxl_clk_dvc = app.devices.PXL_CLK
             self.scanners_dvc = app.devices.SCANNERS
             self.scan_params = scan_params
@@ -187,7 +190,7 @@ class Measurement:
             start=False,
         )
 
-        ao_clk_src = self.scanners_dvc.tasks.ao["ao XY"].timing.samp_clk_term
+        ao_clk_src = self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term
 
         self.scanners_dvc.start_scan_read_task(
             samp_clk_cnfg={},
@@ -376,10 +379,14 @@ class SFCSImageMeasurement(Measurement):
     def keep_last_meas(self):
         """Doc."""
 
-        self._app.last_img_scn = SimpleNamespace()
-        self._app.last_img_scn.plane_type = self.scan_params.scan_plane
-        self._app.last_img_scn.plane_images_data = self.plane_images_data
-        self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
+        try:
+            self._app.last_img_scn.plane_type = self.scan_params.scan_plane
+            self._app.last_img_scn.plane_images_data = self.plane_images_data
+            self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
+        except AttributeError:
+            # create a namespace if doesn't exist and restart function
+            self._app.last_img_scn = SimpleNamespace()
+            self.keep_last_meas()
 
     def prep_data_dict(self) -> dict:
         """
@@ -453,34 +460,40 @@ class SFCSImageMeasurement(Measurement):
         self.start_time = time.perf_counter()
         self.time_passed = 0
         logging.info(f"Running {self.type} measurement")
-        for plane_idx in range(n_planes):
 
-            if self.is_running:
+        try:  # TESTESTEST
 
-                self.change_plane(plane_idx)
-                self.curr_plane_wdgt.set(plane_idx)
+            for plane_idx in range(n_planes):
 
-                self.init_scan_tasks("FINITE")
-                self.scanners_dvc.start_tasks("ao")
+                if self.is_running:
 
-                # collect initial ai/CI to avoid possible overflow
-                self.counter_dvc.fill_ci_buffer()
-                self.scanners_dvc.fill_ai_buffer()
+                    self.change_plane(plane_idx)
+                    self.curr_plane_wdgt.set(plane_idx)
 
-                self.data_dvc.purge_buffers()
+                    self.init_scan_tasks("FINITE")
+                    self.scanners_dvc.start_tasks("ao")
 
-                # recording
-                await self.record_data(timed=False)
+                    # collect initial ai/CI to avoid possible overflow
+                    self.counter_dvc.fill_ci_buffer()
+                    self.scanners_dvc.fill_ai_buffer()
 
-                # collect final ai/CI
-                self.counter_dvc.fill_ci_buffer()
-                self.scanners_dvc.fill_ai_buffer()
+                    self.data_dvc.purge_buffers()
 
-                self.plane_data.append(self.data_dvc.data)
-                self.data_dvc.init_data()
+                    # recording
+                    await self.record_data(timed=False)
 
-            else:
-                break
+                    # collect final ai/CI
+                    self.counter_dvc.fill_ci_buffer()
+                    self.scanners_dvc.fill_ai_buffer()
+
+                    self.plane_data.append(self.data_dvc.data)
+                    self.data_dvc.init_data()
+
+                else:
+                    break
+
+        except Exception as exc:  # TESTESTEST
+            err_hndlr(exc, locals(), sys._getframe())
 
         # finished measurement
         if self.is_running:
@@ -504,6 +517,7 @@ class SFCSImageMeasurement(Measurement):
         await self.toggle_lasers(finish=True)
         self.return_to_regular_tasks()
         self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+        self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)
@@ -524,6 +538,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.scanning = not (self.scan_params.pattern == "static")
         self.cal = False
+        self._app.gui.main.imp.go_to_origin("XY")
 
     def build_filename(self, file_no: int) -> str:
 
@@ -622,11 +637,7 @@ class SFCSSolutionMeasurement(Measurement):
             # display ACF for alignments
             try:
                 s = compute_acf(self.data_dvc.data)
-            except RuntimeError as exc:
-                # Something happend during data processing
-                err_hndlr(exc, locals(), sys._getframe())
             except Exception as exc:
-                # TODO: HANDLE ME!
                 err_hndlr(exc, locals(), sys._getframe())
             else:
                 try:
@@ -813,6 +824,7 @@ class SFCSSolutionMeasurement(Measurement):
         if self.scanning:
             self.return_to_regular_tasks()
             self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+            self._app.gui.main.imp.go_to_origin("XY")
 
         if self.is_running:  # if not manually stopped
             self._app.gui.main.imp.toggle_meas(self.type)
