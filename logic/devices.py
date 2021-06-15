@@ -216,7 +216,8 @@ class Scanners(BaseDevice, NIDAQmx):
         def smooth_start(
             axis: str, ao_chan_specs: dict, final_pos: float, step_sz: float = 0.25
         ) -> None:
-            """Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)"""
+            """Doc."""
+            # TODO: Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)
 
             try:
                 init_pos = self.ai_buffer[3:, -1][consts.AX_IDX[axis]]
@@ -227,10 +228,11 @@ class Scanners(BaseDevice, NIDAQmx):
             n_steps = div_ceil(total_dist, step_sz)
 
             if n_steps < 2:
+                # one small step needs no smoothing
                 return
 
             else:
-                ao_data = np.linspace(init_pos, final_pos, n_steps).tolist()
+                ao_data = np.linspace(init_pos, final_pos, n_steps)
                 # move
                 task_name = "Smooth AO Z"
                 try:
@@ -334,7 +336,9 @@ class Scanners(BaseDevice, NIDAQmx):
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            read_samples = read_samples[:3] + self.diff_to_rse(read_samples[3:])
+            read_samples = np.concatenate(
+                (read_samples[:3, :], self.diff_to_rse(read_samples[3:, :])), axis=0
+            )
             self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
 
     def dump_ai_buff_overflow(self):
@@ -344,15 +348,14 @@ class Scanners(BaseDevice, NIDAQmx):
         if ai_buffer_len > self.CONT_READ_BFFR_SZ:
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
 
-    def diff_to_rse(self, read_samples: [list, list, list, list, list]) -> (float, float, float):
+    def diff_to_rse(self, read_samples: np.ndarray) -> np.ndarray:
         """Doc."""
 
-        read_samples = np.array(read_samples)
         rse_samples = np.empty(shape=(3, read_samples.shape[1]), dtype=np.float)
         rse_samples[0, :] = (read_samples[0, :] - read_samples[1, :]) / 2
         rse_samples[1, :] = (read_samples[2, :] - read_samples[3, :]) / 2
         rse_samples[2, :] = read_samples[4, :]
-        return rse_samples.tolist()
+        return rse_samples
 
     def limit_ao_data(self, ao_task, ao_data: np.ndarray) -> np.ndarray:
         ao_min = ao_task.channels.ao_min
@@ -368,17 +371,19 @@ class Scanners(BaseDevice, NIDAQmx):
         [[0.5, 0.7, -0.2], [-0.5, -0.7, 0.2], [0.1, 0., 0.], [-0.1, 0., 0.]]
         """
 
-        # 2D array
         if len(ao_data.shape) == 2:
+            # 2D array
             diff_ao_data = np.empty(shape=(ao_data.shape[0] * 2, ao_data.shape[1]), dtype=np.float)
             n_rows = ao_data.shape[0]
-        # 1D array
+            for row_idx in range(n_rows):
+                diff_ao_data[row_idx * 2] = ao_data[row_idx]
+                diff_ao_data[row_idx * 2 + 1] = -ao_data[row_idx]
         else:
+            # 1D array
+            # TODO: can be coded better
             diff_ao_data = np.empty(shape=(2, ao_data.size), dtype=np.float)
-            n_rows = 1
-        for row_idx in range(n_rows):
-            diff_ao_data[row_idx * 2] = ao_data[row_idx]
-            diff_ao_data[row_idx * 2 + 1] = -ao_data[row_idx]
+            diff_ao_data[0, :] = ao_data
+            diff_ao_data[1, :] = -ao_data
         return diff_ao_data
 
 
@@ -648,6 +653,8 @@ class DepletionLaser(BaseDevice, PyVISA):
         try:
             self.flush()
             response = self.query(cmnd)
+        except IndexError:
+            return 0
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
             return 0
