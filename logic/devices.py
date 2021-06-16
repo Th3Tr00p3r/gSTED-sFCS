@@ -1,6 +1,5 @@
 """Devices Module."""
 import asyncio
-import logging
 import sys
 import time
 
@@ -35,11 +34,17 @@ class BaseDevice:
         elif command == "error":
             set_icon_wdgts(consts.LED_ERROR_ICON, False)
 
-    def toggle(self, is_being_switched_on):
+    def toggle(self, is_being_switched_on, should_change_icons=True):
         """Doc."""
 
-        self._toggle(is_being_switched_on)
-        self.change_icons("on" if is_being_switched_on else "off")
+        try:
+            self._toggle(is_being_switched_on)
+        except Exception as exc:
+            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+        else:
+            self.state = is_being_switched_on
+            if should_change_icons:
+                self.change_icons("on" if is_being_switched_on else "off")
 
 
 class UM232H(BaseDevice, Ftd2xx):
@@ -54,21 +59,16 @@ class UM232H(BaseDevice, Ftd2xx):
         )
 
         self.init_data()
-        self._toggle(True)
+        self.toggle(True)
 
     def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        try:
-            if is_being_switched_on:
-                self.open()
-                self.purge()
-            else:
-                self.close()
-        except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+        if is_being_switched_on:
+            self.open()
+            self.purge()
         else:
-            self.state = is_being_switched_on
+            self.close()
 
     async def read_TDC(self):
         """Doc."""
@@ -154,7 +154,7 @@ class Scanners(BaseDevice, NIDAQmx):
 
         self.um_v_ratio = (self.x_um2V_const, self.y_um2V_const, self.z_um2V_const)
 
-        self._toggle(True)
+        self.toggle(True)
 
     def _toggle(self, is_being_switched_on):
         """Doc."""
@@ -162,31 +162,25 @@ class Scanners(BaseDevice, NIDAQmx):
         if is_being_switched_on:
             self.start_continuous_read_task()
         else:
-            try:
-                self.close_all_tasks()
-            except Exception as exc:
-                err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            self.close_all_tasks()
 
     def start_continuous_read_task(self) -> None:
         """Doc."""
 
         task_name = "Continuous AI"
 
-        try:
-            self.close_tasks("ai")
-            self.create_ai_task(
-                name=task_name,
-                chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
-                samp_clk_cnfg={
-                    "rate": self.MIN_OUTPUT_RATE_Hz,
-                    "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
-                    "samps_per_chan": self.CONT_READ_BFFR_SZ,
-                },
-            )
-            self.init_ai_buffer()
-            self.start_tasks("ai")
-        except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+        self.close_tasks("ai")
+        self.create_ai_task(
+            name=task_name,
+            chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
+            samp_clk_cnfg={
+                "rate": self.MIN_OUTPUT_RATE_Hz,
+                "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
+                "samps_per_chan": self.CONT_READ_BFFR_SZ,
+            },
+        )
+        self.init_ai_buffer()
+        self.start_tasks("ai")
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
@@ -405,8 +399,12 @@ class Counter(BaseDevice, NIDAQmx):
         self.last_avg_time = time.perf_counter()
         self.num_reads_since_avg = 0
 
-        self.ai_cont_rate = scanners_ai_tasks["Continuous AI"].timing.samp_clk_rate
-        self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
+        try:
+            self.ai_cont_rate = scanners_ai_tasks["Continuous AI"].timing.samp_clk_rate
+            self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
+        except KeyError:
+            exc = RuntimeError("Counter can't be synced since scanners failed to Initialize")
+            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
         self.ci_chan_specs = {
             "name_to_assign_to_channel": "photon counter",
@@ -416,7 +414,7 @@ class Counter(BaseDevice, NIDAQmx):
             "count_direction": consts.NI.CountDirection.COUNT_UP,
         }
 
-        self._toggle(True)
+        self.toggle(True)
 
     def _toggle(self, is_being_switched_on):
         """Doc."""
@@ -424,33 +422,27 @@ class Counter(BaseDevice, NIDAQmx):
         if is_being_switched_on:
             self.start_continuous_read_task()
         else:
-            try:
-                self.close_all_tasks()
-            except Exception as exc:
-                err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            self.close_all_tasks()
 
     def start_continuous_read_task(self) -> None:
         """Doc."""
 
         task_name = "Continuous CI"
 
-        try:
-            self.close_tasks("ci")
-            self.create_ci_task(
-                name=task_name,
-                chan_specs=self.ci_chan_specs,
-                chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
-                samp_clk_cnfg={
-                    "rate": self.ai_cont_rate,
-                    "source": self.ai_cont_src,
-                    "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
-                    "samps_per_chan": self.CONT_READ_BFFR_SZ,
-                },
-            )
-            self.init_ci_buffer()
-            self.start_tasks("ci")
-        except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+        self.close_tasks("ci")
+        self.create_ci_task(
+            name=task_name,
+            chan_specs=self.ci_chan_specs,
+            chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
+            samp_clk_cnfg={
+                "rate": self.ai_cont_rate,
+                "source": self.ai_cont_src,
+                "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
+                "samps_per_chan": self.CONT_READ_BFFR_SZ,
+            },
+        )
+        self.init_ci_buffer()
+        self.start_tasks("ci")
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
@@ -531,20 +523,15 @@ class PixelClock(BaseDevice, NIDAQmx):
             task_types=("ci", "co"),
         )
 
-        self._toggle(False)
+        self.toggle(False)
 
     def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        try:
-            if is_being_switched_on:
-                self._start_co_clock_sync()
-            else:
-                self.close_all_tasks()
-        except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+        if is_being_switched_on:
+            self._start_co_clock_sync()
         else:
-            self.state = is_being_switched_on
+            self.close_all_tasks()
 
     def _start_co_clock_sync(self) -> None:
         """Doc."""
@@ -577,13 +564,12 @@ class SimpleDO(BaseDevice, NIDAQmx):
             param_dict,
             task_types=("do"),
         )
-        self._toggle(False)
+        self.toggle(False)
 
     def _toggle(self, is_being_switched_on):
         """Doc."""
 
         self.digital_write(is_being_switched_on)
-        self.state = is_being_switched_on
 
 
 class DepletionLaser(BaseDevice, PyVISA):
@@ -600,7 +586,7 @@ class DepletionLaser(BaseDevice, PyVISA):
 
         self.updt_time = 0.3
         self.state = None
-        self._toggle(True)
+        self.toggle(True, should_change_icons=False)
 
         if self.state is False:
             self.set_current(1500)
@@ -608,25 +594,19 @@ class DepletionLaser(BaseDevice, PyVISA):
     def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        try:
-            if is_being_switched_on:
-                self.open_inst()
-            else:
-                if self.state is True:
-                    self.laser_toggle(False)
-                try:
-                    self.close_inst()
-                except VisaIOError:
-                    logging.warning(
-                        "Depletion laser disconnected during operation. Reconnect and reopen application to fix."
-                    )
-                except AttributeError:
-                    logging.debug("Depletion laser failed to open, not need to close.")
-        except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+        if is_being_switched_on:
+            self.open_inst()
         else:
-            # state stays 'None' if open() fails
-            self.state = False
+            if self.state is True:
+                self.laser_toggle(False)
+            try:
+                self.close_inst()
+            except VisaIOError:
+                raise RuntimeError(
+                    "Depletion laser disconnected during operation. Reconnect and reopen application to fix."
+                )
+            except AttributeError:
+                raise RuntimeError("Depletion laser failed to open, no need to close.")
 
     def laser_toggle(self, is_being_switched_on):
         """Doc."""
@@ -637,7 +617,7 @@ class DepletionLaser(BaseDevice, PyVISA):
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            self.state = is_being_switched_on
+            self.emission_state = is_being_switched_on
             self.change_icons("on" if is_being_switched_on else "off")
 
     def get_prop(self, prop):
@@ -702,21 +682,13 @@ class StepperStage(BaseDevice, PyVISA):
     def __init__(self, param_dict):
         super().__init__(param_dict)
 
-        self._toggle(True)
-        self._toggle(False)
+        self.toggle(True)
+        self.toggle(False)
 
     def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        try:
-            if is_being_switched_on:
-                self.open_inst()
-            else:
-                self.close_inst()
-        except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
-        else:
-            self.state = is_being_switched_on
+        self.open_inst() if is_being_switched_on else self.close_inst()
 
     # TODO: try to make this async and include a 'release' command after async-sleeping for some time
     def move(self, dir, steps):
@@ -760,11 +732,7 @@ class Camera(BaseDevice, Instrumental):
     def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        if is_being_switched_on:
-            self.init_cam()
-        else:
-            self.close_cam()
-        self.state = is_being_switched_on
+        self.init_cam() if is_being_switched_on else self.close_cam()
 
     async def shoot(self):
         """Doc."""
