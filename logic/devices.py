@@ -4,6 +4,7 @@ import sys
 import time
 
 import numpy as np
+from nidaqmx.errors import DaqError
 from pyvisa.errors import VisaIOError
 
 import utilities.constants as consts
@@ -11,6 +12,10 @@ import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from utilities.errors import err_hndlr
 from utilities.helper import div_ceil, sync_to_thread
+
+# TODO: refactoring - toggling should be seperate from opening/closing connection with device.
+# this would make redundent many flag arguments I have in dvc_toggle(), device_toggle_button_released(), toggle() etc.
+# and would make a distinction between toggle vs. "connect" (e.g), which would be clearer, cleaner and more modular.
 
 
 class BaseDevice:
@@ -160,27 +165,33 @@ class Scanners(BaseDevice, NIDAQmx):
         """Doc."""
 
         if is_being_switched_on:
-            self.start_continuous_read_task()
+            try:
+                self.start_continuous_read_task()
+            except DaqError:
+                raise
         else:
             self.close_all_tasks()
 
     def start_continuous_read_task(self) -> None:
         """Doc."""
 
-        task_name = "Continuous AI"
+        try:
+            task_name = "Continuous AI"
 
-        self.close_tasks("ai")
-        self.create_ai_task(
-            name=task_name,
-            chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
-            samp_clk_cnfg={
-                "rate": self.MIN_OUTPUT_RATE_Hz,
-                "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
-                "samps_per_chan": self.CONT_READ_BFFR_SZ,
-            },
-        )
-        self.init_ai_buffer()
-        self.start_tasks("ai")
+            self.close_tasks("ai")
+            self.create_ai_task(
+                name=task_name,
+                chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
+                samp_clk_cnfg={
+                    "rate": self.MIN_OUTPUT_RATE_Hz,
+                    "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
+                    "samps_per_chan": self.CONT_READ_BFFR_SZ,
+                },
+            )
+            self.init_ai_buffer()
+            self.start_tasks("ai")
+        except DaqError as exc:
+            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
@@ -194,7 +205,7 @@ class Scanners(BaseDevice, NIDAQmx):
                 timing_params=timing_params,
             )
             self.start_tasks("ai")
-        except Exception as exc:
+        except DaqError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
     def start_write_task(
@@ -429,20 +440,23 @@ class Counter(BaseDevice, NIDAQmx):
 
         task_name = "Continuous CI"
 
-        self.close_tasks("ci")
-        self.create_ci_task(
-            name=task_name,
-            chan_specs=self.ci_chan_specs,
-            chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
-            samp_clk_cnfg={
-                "rate": self.ai_cont_rate,
-                "source": self.ai_cont_src,
-                "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
-                "samps_per_chan": self.CONT_READ_BFFR_SZ,
-            },
-        )
-        self.init_ci_buffer()
-        self.start_tasks("ci")
+        try:
+            self.close_tasks("ci")
+            self.create_ci_task(
+                name=task_name,
+                chan_specs=self.ci_chan_specs,
+                chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
+                samp_clk_cnfg={
+                    "rate": self.ai_cont_rate,
+                    "source": self.ai_cont_src,
+                    "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
+                    "samps_per_chan": self.CONT_READ_BFFR_SZ,
+                },
+            )
+            self.init_ci_buffer()
+            self.start_tasks("ci")
+        except DaqError as exc:
+            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
@@ -460,7 +474,7 @@ class Counter(BaseDevice, NIDAQmx):
                 timing_params=timing_params,
             )
             self.start_tasks("ci")
-        except Exception as exc:
+        except DaqError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
     def fill_ci_buffer(
@@ -586,6 +600,7 @@ class DepletionLaser(BaseDevice, PyVISA):
 
         self.updt_time = 0.3
         self.state = None
+        self.emission_state = False
         self.toggle(True, should_change_icons=False)
 
         if self.state is False:
