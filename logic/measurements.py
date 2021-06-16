@@ -142,11 +142,13 @@ class Measurement:
             if self.scan_params.exc_mode:
                 self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
             if self.scan_params.dep_mode:
-                if self.laser_dvcs.dep.state is False:
+                if self.laser_dvcs.dep.emission_state is False:
                     logging.info(
                         f"{consts.DEP_LASER.log_ref} isn't on. Turning on and waiting 5 s before measurement."
                     )
-                    self._app.gui.main.imp.dvc_toggle("DEP_LASER", toggle_mthd="laser_toggle")
+                    self._app.gui.main.imp.dvc_toggle(
+                        "DEP_LASER", toggle_mthd="laser_toggle", state_attr="emission_state"
+                    )
                     await asyncio.sleep(5)
                 self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
             self.get_laser_config()
@@ -155,7 +157,7 @@ class Measurement:
         """Doc."""
 
         exc_state = self._app.devices.EXC_LASER.state
-        dep_state = self._app.devices.DEP_LASER.state
+        dep_state = self._app.devices.DEP_LASER.emission_state
         if exc_state and dep_state:
             laser_config = "sted"
         elif exc_state:
@@ -312,7 +314,7 @@ class SFCSImageMeasurement(Measurement):
                 pic[K[j], :] = temp_counts
                 norm[K[j], :] = temp_num
 
-            return pic, norm
+            return pic.T, norm.T
 
         n_lines = self.scan_params.n_lines
         pxl_sz = self.scan_params.dim2_um / (n_lines - 1)
@@ -461,39 +463,34 @@ class SFCSImageMeasurement(Measurement):
         self.time_passed = 0
         logging.info(f"Running {self.type} measurement")
 
-        try:  # TESTESTEST
+        for plane_idx in range(n_planes):
 
-            for plane_idx in range(n_planes):
+            if self.is_running:
 
-                if self.is_running:
+                self.change_plane(plane_idx)
+                self.curr_plane_wdgt.set(plane_idx)
 
-                    self.change_plane(plane_idx)
-                    self.curr_plane_wdgt.set(plane_idx)
+                self.init_scan_tasks("FINITE")
+                self.scanners_dvc.start_tasks("ao")
 
-                    self.init_scan_tasks("FINITE")
-                    self.scanners_dvc.start_tasks("ao")
+                # collect initial ai/CI to avoid possible overflow
+                self.counter_dvc.fill_ci_buffer()
+                self.scanners_dvc.fill_ai_buffer()
 
-                    # collect initial ai/CI to avoid possible overflow
-                    self.counter_dvc.fill_ci_buffer()
-                    self.scanners_dvc.fill_ai_buffer()
+                self.data_dvc.purge_buffers()
 
-                    self.data_dvc.purge_buffers()
+                # recording
+                await self.record_data(timed=False)
 
-                    # recording
-                    await self.record_data(timed=False)
+                # collect final ai/CI
+                self.counter_dvc.fill_ci_buffer()
+                self.scanners_dvc.fill_ai_buffer()
 
-                    # collect final ai/CI
-                    self.counter_dvc.fill_ci_buffer()
-                    self.scanners_dvc.fill_ai_buffer()
+                self.plane_data.append(self.data_dvc.data)
+                self.data_dvc.init_data()
 
-                    self.plane_data.append(self.data_dvc.data)
-                    self.data_dvc.init_data()
-
-                else:
-                    break
-
-        except Exception as exc:  # TESTESTEST
-            err_hndlr(exc, locals(), sys._getframe())
+            else:
+                break
 
         # finished measurement
         if self.is_running:

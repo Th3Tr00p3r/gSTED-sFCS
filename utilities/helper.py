@@ -68,16 +68,20 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
             try:
                 if not child.isReadOnly():
                     # only save editable QSpinBox/QLineEdit
-                    if hasattr(child, "value"):  # QSpinBox
+                    if hasattr(child, "value"):
+                        # QSpinBox
                         val = child.value()
-                    else:  # QLineEdit
+                    else:
+                        # QLineEdit
                         val = child.text()
                     rows.append((child.objectName(), str(val)))
             except AttributeError:
                 # if doesn't have a isReadOnly attribute (QComboBox/QCheckBox)
-                if hasattr(child, "currentIndex"):  # QComboBox
+                if hasattr(child, "currentIndex"):
+                    # QComboBox
                     val = child.currentIndex()
-                elif hasattr(child, "isChecked"):  # QCheckBox
+                elif hasattr(child, "isChecked"):
+                    # QCheckBox
                     val = child.isChecked()
                 else:
                     continue
@@ -140,15 +144,6 @@ def div_ceil(x: int, y: int) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
     return int(x // y + (x % y > 0))
-
-
-def limit(val: float, min: float, max: float) -> float:
-    if min <= val <= max:
-        return val
-    elif val < min:
-        return min
-    else:
-        return max
 
 
 def get_datetime_str() -> str:
@@ -353,6 +348,14 @@ class ImageDisplay:
             self.hLine = pg.InfiniteLine(angle=0, movable=True)
             self.vb.addItem(self.vLine)
             self.vb.addItem(self.hLine)
+            try:
+                # keep crosshair at last position
+                x_pos, y_pos = self.last_roi
+                self.vLine.setPos(x_pos)
+                self.hLine.setPos(y_pos)
+            except AttributeError:
+                # case first image since application loaded (no last_roi)
+                pass
             self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
 
     def mouseClicked(self, evt):
@@ -367,5 +370,6 @@ class ImageDisplay:
         else:
             if self.vb.sceneBoundingRect().contains(pos):
                 mousePoint = self.vb.mapSceneToView(pos)
-                self.vLine.setPos(mousePoint.x() + 0.5)
+                self.vLine.setPos(mousePoint.x())
                 self.hLine.setPos(mousePoint.y())
+                self.last_roi = (mousePoint.x(), mousePoint.y())
