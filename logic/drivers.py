@@ -8,7 +8,7 @@ import ftd2xx
 import nidaqmx as ni
 import numpy as np
 import pyvisa as visa
-from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error
+from instrumental.drivers.cameras import uc480
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
 
 from utilities.helper import trans_dict
@@ -262,7 +262,10 @@ class PyVISA:
     def close_inst(self) -> None:
         """Doc."""
 
-        self._rsrc.close()
+        try:
+            self._rsrc.close()
+        except AttributeError:
+            raise RuntimeError("Instrument was never opened")
 
     def write(self, cmnd: str) -> None:
         """Sends a command to the VISA instrument."""
@@ -295,10 +298,10 @@ class Instrumental:
         """Doc."""
 
         try:
-            self._inst = UC480_Camera(reopen_policy="new")
+            self._inst = uc480.UC480_Camera(reopen_policy="new")
         except Exception:
             # general 'Exception' is due to bad error handeling in instrumental-lib...
-            raise UC480Error(msg="Camera disconnected")
+            raise uc480.UC480Error(msg="Camera disconnected")
 
     def close_cam(self):
         """Doc."""
