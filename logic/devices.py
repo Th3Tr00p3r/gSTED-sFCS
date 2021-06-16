@@ -646,7 +646,7 @@ class DepletionLaser(BaseDevice, PyVISA):
         cmnd = prop_cmnd_dict[prop]
 
         try:
-            self.flush()
+            self.flush()  # get fresh response
             response = self.query(cmnd)
         except IndexError:
             return 0

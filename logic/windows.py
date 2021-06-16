@@ -68,16 +68,17 @@ class MainWin:
         """Doc."""
 
         dvc = getattr(self._app.devices, nick)
-        state = getattr(dvc, state_attr)
 
-        if (leave_on and state is True) or (leave_off and state is False):
+        if (leave_on and getattr(dvc, state_attr) is True) or (
+            leave_off and getattr(dvc, state_attr) is False
+        ):
             return
 
-        if state is False:
+        if getattr(dvc, state_attr) is False:
             # switch ON
             getattr(dvc, toggle_mthd)(True)
 
-            if state:  # if managed to turn ON
+            if getattr(dvc, state_attr):  # if managed to turn ON
                 logging.debug(f"{dvc.log_ref} toggled ON")
 
                 if nick == "STAGE":
@@ -87,7 +88,7 @@ class MainWin:
             # switch OFF
             getattr(dvc, toggle_mthd)(False)
 
-            if state is False:
+            if getattr(dvc, state_attr) is False:
                 # if managed to turn OFF
                 logging.debug(f"{dvc.log_ref} toggled OFF")
 
