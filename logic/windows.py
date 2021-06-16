@@ -62,34 +62,40 @@ class MainWin:
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     @err_chckr()  # TODO: instead of wrapping windows.py functions, consider wrapping devices.py functions instead
-    def dvc_toggle(self, nick, toggle_mthd="toggle", leave_on=False, leave_off=False) -> None:
+    def dvc_toggle(
+        self, nick, toggle_mthd="toggle", state_attr="state", leave_on=False, leave_off=False
+    ) -> None:
         """Doc."""
 
         dvc = getattr(self._app.devices, nick)
+        state = getattr(dvc, state_attr)
 
-        if (leave_on and dvc.state is True) or (leave_off and dvc.state is False):
+        if (leave_on and state is True) or (leave_off and state is False):
             return
 
-        if dvc.state is False:  # switch ON
+        if state is False:
+            # switch ON
             getattr(dvc, toggle_mthd)(True)
 
-            if dvc.state:  # if managed to turn ON
+            if state:  # if managed to turn ON
                 logging.debug(f"{dvc.log_ref} toggled ON")
 
                 if nick == "STAGE":
                     self._gui.stageButtonsGroup.setEnabled(True)
 
-        else:  # switch OFF
+        else:
+            # switch OFF
             getattr(dvc, toggle_mthd)(False)
 
-            if not dvc.state:  # if managed to turn OFF
+            if state is False:
+                # if managed to turn OFF
                 logging.debug(f"{dvc.log_ref} toggled OFF")
 
                 if nick == "STAGE":
                     self._gui.stageButtonsGroup.setEnabled(False)
 
-                # set curr/pow values to zero when depletion is turned OFF
                 if nick == "DEP_LASER":
+                    # set curr/pow values to zero when depletion is turned OFF
                     self._gui.depActualCurr.setValue(0)
                     self._gui.depActualPow.setValue(0)
 

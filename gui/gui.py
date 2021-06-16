@@ -70,14 +70,14 @@ class MainWin(QMainWindow):
         self.stageRight.released.connect(lambda: self.stageMove_released("RIGHT"))
 
         # Device Toggling
-        self.excOnButton.released.connect(
-            lambda: self.device_toggle_button_released("EXC_LASER", "toggle")
-        )
+        self.excOnButton.released.connect(lambda: self.device_toggle_button_released("EXC_LASER"))
         self.depEmissionOn.released.connect(
-            lambda: self.device_toggle_button_released("DEP_LASER", "laser_toggle")
+            lambda: self.device_toggle_button_released(
+                "DEP_LASER", "laser_toggle", "emission_state"
+            )
         )
         self.depShutterOn.released.connect(
-            lambda: self.device_toggle_button_released("DEP_SHUTTER", "toggle")
+            lambda: self.device_toggle_button_released("DEP_SHUTTER")
         )
 
         # status bar
@@ -164,10 +164,12 @@ class MainWin(QMainWindow):
 
         self.imp.toggle_meas("SFCSSolution")
 
-    def device_toggle_button_released(self, dvc_nick: str, toggle_mthd: str) -> None:
+    def device_toggle_button_released(
+        self, dvc_nick: str, toggle_mthd: str = "toggle", state_attr="state"
+    ) -> None:
         """Turn devices On/Off."""
 
-        self.imp.dvc_toggle(dvc_nick, toggle_mthd)
+        self.imp.dvc_toggle(dvc_nick, toggle_mthd, state_attr)
 
     @pyqtSlot()
     def on_powMode_released(self) -> None:
