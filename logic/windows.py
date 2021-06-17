@@ -5,6 +5,7 @@ import logging
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
+import logic.devices as dvcs
 import logic.measurements as meas
 import utilities.constants as consts
 import utilities.helper as helper
@@ -40,7 +41,7 @@ class MainWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Loadout",
-            consts.LOADOUT_FOLDER_PATH,
+            consts.LOADOUT_DIR_PATH,
             "CSV Files(*.csv *.txt)",
         )
         if file_path != "":
@@ -54,7 +55,7 @@ class MainWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Loadout",
-                consts.LOADOUT_FOLDER_PATH,
+                consts.LOADOUT_DIR_PATH,
                 "CSV Files(*.csv *.txt)",
             )
         if file_path != "":
@@ -140,7 +141,7 @@ class MainWin:
         scanners_dvc.start_write_task(data, type_str)
         scanners_dvc.toggle(True)  # restart cont. reading
 
-        logging.debug(f"{getattr(consts, 'scanners').log_ref} were moved to {str(destination)} V")
+        logging.debug(f"{getattr(dvcs, 'scanners').log_ref} were moved to {str(destination)} V")
 
     @err_chckr({"scanners"})
     def go_to_origin(self, which_axes: str) -> None:
@@ -524,7 +525,7 @@ class SettWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
-            consts.SETTINGS_FOLDER_PATH,
+            consts.SETTINGS_DIR_PATH,
             "CSV Files(*.csv *.txt)",
         )
         if file_path != "":
@@ -543,7 +544,7 @@ class SettWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
-                consts.SETTINGS_FOLDER_PATH,
+                consts.SETTINGS_DIR_PATH,
                 "CSV Files(*.csv *.txt)",
             )
         if file_path != "":
