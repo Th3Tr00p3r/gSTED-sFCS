@@ -12,7 +12,7 @@ from ctypes import CDLL, c_double, c_int, c_long
 import numpy as np
 from numpy.ctypeslib import ndpointer
 
-import utilities.constants as consts
+SOFT_CORR_DYNAMIC_LIB_PATH = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
 
 
 class CorrelatorType(enum.Enum):
@@ -29,7 +29,7 @@ class SoftwareCorrelator:
 
     def __init__(self):
         if sys.platform == "win32":
-            lib_path = consts.SOFT_CORR_DYNAMIC_LIB_PATH
+            lib_path = SOFT_CORR_DYNAMIC_LIB_PATH
         elif sys.platform == "darwin":
             lib_path = "/Users/oleg/Documents/Python programming/Scanning setups Lab/gSTED-sFCS/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.so"
         self.lib_path = lib_path

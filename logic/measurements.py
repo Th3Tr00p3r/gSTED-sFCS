@@ -13,13 +13,14 @@ import numba as nb
 import numpy as np
 import scipy.io as sio
 
+import gui.gui
 import utilities.constants as consts
 from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
 from utilities.errors import err_hndlr
-from utilities.helper import ImageData, div_ceil, get_datetime_str
+from utilities.helper import ImageData, div_ceil, get_datetime_str, paths_to_icons
 
 
 class Measurement:
@@ -34,6 +35,7 @@ class Measurement:
         self.tdc_dvc = app.devices.TDC
         self.pxl_clk_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
+        self.icon_dict = paths_to_icons(gui.ICON_PATHS_DICT)  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
         if scan_params:
@@ -643,7 +645,7 @@ class SFCSSolutionMeasurement(Measurement):
                 except fit_tools.FitError as exc:
                     # fit failed
                     err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
-                    self.fit_led.set(consts.LED_ERROR_ICON)
+                    self.fit_led.set(self.icon_dict["led_error"])
                     g0, tau = s.g0, 0.1
                     self.g0_wdgt.set(s.g0)
                     self.tau_wdgt.set(0)
@@ -653,7 +655,7 @@ class SFCSSolutionMeasurement(Measurement):
                     )
                 else:
                     # fit succeeded
-                    self.fit_led.set(consts.LED_OFF_ICON)
+                    self.fit_led.set(self.icon_dict["led_off"])
                     fit_params = s.fit_param["diffusion_3d_fit"]
                     g0, tau, _ = fit_params["beta"]
                     x, y = fit_params["x"], fit_params["y"]

@@ -1,21 +1,178 @@
 """Devices Module."""
+
 import asyncio
 import sys
 import time
+from dataclasses import dataclass
+from typing import List
 
 import numpy as np
 from nidaqmx.errors import DaqError
 from pyvisa.errors import VisaIOError
 
+import gui.gui
 import utilities.constants as consts
 import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from utilities.errors import err_hndlr
-from utilities.helper import div_ceil, sync_to_thread
+from utilities.helper import (
+    QtWidgetCollection,
+    div_ceil,
+    paths_to_icons,
+    sync_to_thread,
+)
 
 # TODO: refactoring - toggling should be seperate from opening/closing connection with device.
 # this would make redundent many flag arguments I have in dvc_toggle(), device_toggle_button_released(), toggle() etc.
 # and would make a distinction between toggle vs. "connect" (e.g), which would be clearer, cleaner and more modular.
+
+
+@dataclass
+class DeviceAttrs:
+    class_name: str
+    log_ref: str
+    param_widgets: QtWidgetCollection
+    led_color: str = "green"
+    cls_xtra_args: List[str] = None
+
+
+DEVICE_ATTR_DICT = {
+    "exc_laser": DeviceAttrs(
+        class_name="SimpleDO",
+        log_ref="Excitation Laser",
+        led_color="blue",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledExc", "icon", "main"),
+            switch_widget=("excOnButton", "icon", "main"),
+            model=("excMod", "text"),
+            trg_src=("excTriggerSrc", "currentText"),
+            ext_trg_addr=("excTriggerExtAddr", "text"),
+            int_trg_addr=("excTriggerIntAddr", "text"),
+            address=("excAddr", "text"),
+        ),
+    ),
+    "dep_shutter": DeviceAttrs(
+        class_name="SimpleDO",
+        log_ref="Shutter",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledShutter", "icon", "main"),
+            switch_widget=("depShutterOn", "icon", "main"),
+            address=("depShutterAddr", "text"),
+        ),
+    ),
+    "TDC": DeviceAttrs(
+        class_name="SimpleDO",
+        log_ref="TDC",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledTdc", "icon", "main"),
+            address=("TDCaddress", "text"),
+            data_vrsn=("TDCdataVersion", "text"),
+            laser_freq_MHz=("TDClaserFreq", "value"),
+            fpga_freq_MHz=("TDCFPGAFreq", "value"),
+            tdc_vrsn=("TDCversion", "value"),
+        ),
+    ),
+    "dep_laser": DeviceAttrs(
+        class_name="DepletionLaser",
+        log_ref="Depletion Laser",
+        led_color="orange",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledDep", "icon", "main"),
+            switch_widget=("depEmissionOn", "icon", "main"),
+            model=("depMod", "text"),
+            address=("depAddr", "text"),
+        ),
+    ),
+    "stage": DeviceAttrs(
+        class_name="StepperStage",
+        log_ref="Stage",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledStage", "icon", "main"),
+            switch_widget=("stageOn", "icon", "main"),
+            address=("arduinoAddr", "text"),
+        ),
+    ),
+    "UM232H": DeviceAttrs(
+        class_name="UM232H",
+        log_ref="UM232H",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledUm232h", "icon", "main"),
+            bit_mode=("um232BitMode", "text"),
+            timeout_ms=("um232Timeout", "value"),
+            ltncy_tmr_val=("um232LatencyTimerVal", "value"),
+            flow_ctrl=("um232FlowControl", "text"),
+            tx_size=("um232TxSize", "value"),
+            n_bytes=("um232NumBytes", "value"),
+        ),
+    ),
+    "camera": DeviceAttrs(
+        class_name="Camera",
+        cls_xtra_args=["loop", "gui.camera"],
+        log_ref="Camera",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledCam", "icon", "main"),
+            model=("uc480PlaceHolder", "value"),
+        ),
+    ),
+    "scanners": DeviceAttrs(
+        class_name="Scanners",
+        log_ref="Scanners",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledScn", "icon", "main"),
+            ao_x_init_vltg=("xAOV", "value", "main"),
+            ao_y_init_vltg=("yAOV", "value", "main"),
+            ao_z_init_vltg=("zAOV", "value", "main"),
+            x_um2V_const=("xConv", "value"),
+            y_um2V_const=("yConv", "value"),
+            z_um2V_const=("zConv", "value"),
+            ai_x_addr=("AIXaddr", "text"),
+            ai_y_addr=("AIYaddr", "text"),
+            ai_z_addr=("AIZaddr", "text"),
+            ai_laser_mon_addr=("AIlaserMonAddr", "text"),
+            ai_clk_div=("AIclkDiv", "value"),
+            ai_trg_src=("AItrigSrc", "text"),
+            ao_x_addr=("AOXaddr", "text"),
+            ao_y_addr=("AOYaddr", "text"),
+            ao_z_addr=("AOZaddr", "text"),
+            ao_int_x_addr=("AOXintAddr", "text"),
+            ao_int_y_addr=("AOYintAddr", "text"),
+            ao_int_z_addr=("AOZintAddr", "text"),
+            ao_dig_trg_src=("AOdigTrigSrc", "text"),
+            ao_trg_edge=("AOtriggerEdge", "currentText"),
+            ao_wf_type=("AOwfType", "currentText"),
+        ),
+    ),
+    "photon_detector": DeviceAttrs(
+        class_name="PhotonDetector",
+        cls_xtra_args=["devices.scanners.tasks.ai"],
+        log_ref="Photon Detector",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledCounter", "icon", "main"),
+            pxl_clk=("counterPixelClockAddress", "text"),
+            pxl_clk_output=("pixelClockCounterIntOutputAddress", "text"),
+            trggr=("counterTriggerAddress", "text"),
+            trggr_armstart_digedge=("counterTriggerArmStartDigEdgeSrc", "text"),
+            trggr_edge=("counterTriggerEdge", "currentText"),
+            address=("counterAddress", "text"),
+            CI_cnt_edges_term=("counterCIcountEdgesTerm", "text"),
+            CI_dup_prvnt=("counterCIdupCountPrevention", "isChecked"),
+        ),
+    ),
+    "pixel_clock": DeviceAttrs(
+        class_name="PixelClock",
+        log_ref="Pixel Clock",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledPxlClk", "icon", "main"),
+            low_ticks=("pixelClockLowTicks", "value"),
+            high_ticks=("pixelClockHighTicks", "value"),
+            cntr_addr=("pixelClockCounterAddress", "text"),
+            tick_src=("pixelClockSrcOfTicks", "text"),
+            out_term=("pixelClockOutput", "text"),
+            out_ext_term=("pixelClockOutputExt", "text"),
+            freq_MHz=("pixelClockFreq", "value"),
+        ),
+    ),
+}
 
 
 class BaseDevice:
@@ -31,13 +188,17 @@ class BaseDevice:
             if has_switch:
                 self.switch_widget.set(switch_icon)
 
+        if not hasattr(self, "icon_dict"):
+            # get icons
+            self.icon_dict = paths_to_icons(gui.ICON_PATHS_DICT)
+
         has_switch = hasattr(self, "switch_widget")
         if command == "on":
-            set_icon_wdgts(self.led_icon, has_switch, consts.SWITCH_ON_ICON)
+            set_icon_wdgts(self.led_icon, has_switch, self.icon_dict["switch_on"])
         elif command == "off":
-            set_icon_wdgts(consts.LED_OFF_ICON, has_switch, consts.SWITCH_OFF_ICON)
+            set_icon_wdgts(self.icon_dict["led_off"], has_switch, self.icon_dict["switch_off"])
         elif command == "error":
-            set_icon_wdgts(consts.LED_ERROR_ICON, False)
+            set_icon_wdgts(self.icon_dict["led_error"], False)
 
     def toggle(self, is_being_switched_on, should_change_icons=True):
         """Doc."""
@@ -402,7 +563,7 @@ class Scanners(BaseDevice, NIDAQmx):
         return diff_ao_data
 
 
-class Counter(BaseDevice, NIDAQmx):
+class PhotonDetector(BaseDevice, NIDAQmx):
     """
     Represents the detector which counts the green
     fluorescence photons coming from the sample.
@@ -424,7 +585,9 @@ class Counter(BaseDevice, NIDAQmx):
             self.ai_cont_rate = scanners_ai_tasks["Continuous AI"].timing.samp_clk_rate
             self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
         except KeyError:
-            exc = RuntimeError("Counter can't be synced since scanners failed to Initialize")
+            exc = RuntimeError(
+                f"{self.log_ref} can't be synced because {Scanners.log_ref} failed to Initialize"
+            )
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
         self.ci_chan_specs = {
