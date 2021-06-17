@@ -9,6 +9,8 @@ from collections import deque
 import utilities.constants as consts
 from utilities.errors import err_hndlr
 
+TIMEOUT = 0.010  # seconds (10 ms)
+
 
 class Timeout:
     """Doc."""
@@ -21,8 +23,8 @@ class Timeout:
         # initial intervals (some change during run)
         self.updt_intrvl = {
             "gui": 0.2,
-            "dep": self._app.devices.DEP_LASER.updt_time,
-            "cntr_avg": self._app.devices.COUNTER.updt_time,
+            "dep": self._app.devices.dep_laser.updt_time,
+            "cntr_avg": self._app.devices.photon_detector.updt_time,
         }
 
     # MAIN
@@ -99,19 +101,19 @@ class Timeout:
 
         while self.not_finished:
 
-            # COUNTER
-            if not self._app.devices.COUNTER.error_dict:
-                self._app.devices.COUNTER.fill_ci_buffer()
+            # photon_detector
+            if not self._app.devices.photon_detector.error_dict:
+                self._app.devices.photon_detector.fill_ci_buffer()
                 if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
-                    self._app.devices.COUNTER.dump_ci_buff_overflow()
+                    self._app.devices.photon_detector.dump_ci_buff_overflow()
 
             # AI
-            if not self._app.devices.SCANNERS.error_dict:
-                self._app.devices.SCANNERS.fill_ai_buffer()
+            if not self._app.devices.scanners.error_dict:
+                self._app.devices.scanners.fill_ai_buffer()
                 if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
-                    self._app.devices.SCANNERS.dump_ai_buff_overflow()
+                    self._app.devices.scanners.dump_ai_buff_overflow()
 
-            await asyncio.sleep(consts.TIMEOUT)
+            await asyncio.sleep(TIMEOUT)
 
     async def _update_gui(self) -> None:
         """Doc."""
@@ -119,7 +121,7 @@ class Timeout:
         def updt_scn_pos(app):
             """Doc."""
 
-            if not app.devices.SCANNERS.error_dict:
+            if not app.devices.scanners.error_dict:
                 try:
                     (
                         x_ai,
@@ -128,7 +130,7 @@ class Timeout:
                         x_ao_int,
                         y_ao_int,
                         z_ao_int,
-                    ) = app.devices.SCANNERS.ai_buffer[:, -1]
+                    ) = app.devices.scanners.ai_buffer[:, -1]
                 except IndexError:
                     # AI buffer has just been initialized
                     pass
@@ -137,8 +139,8 @@ class Timeout:
                         (axis_vltg - axis_org) * axis_ratio
                         for axis_vltg, axis_ratio, axis_org in zip(
                             (x_ao_int, y_ao_int, z_ao_int),
-                            app.devices.SCANNERS.um_v_ratio,
-                            app.devices.SCANNERS.origin,
+                            app.devices.scanners.um_v_ratio,
+                            app.devices.scanners.ORIGIN,
                         )
                     )
 
@@ -183,7 +185,7 @@ class Timeout:
 
         while self.not_finished:
 
-            # SCANNERS
+            # scanners
             updt_scn_pos(self._app)
 
             # Measurement progress bar
@@ -214,7 +216,7 @@ class Timeout:
 
         """
 
-        cntr_dvc = self._app.devices.COUNTER
+        cntr_dvc = self._app.devices.photon_detector
         while self.not_finished:
             if not cntr_dvc.error_dict:
                 cntr_dvc.average_counts()
@@ -225,7 +227,7 @@ class Timeout:
     async def _update_dep(self) -> None:
         """Update depletion laser GUI"""
 
-        dep_dvc = self._app.devices.DEP_LASER
+        dep_dvc = self._app.devices.dep_laser
         main_gui = self._app.gui.main
 
         while self.not_finished:

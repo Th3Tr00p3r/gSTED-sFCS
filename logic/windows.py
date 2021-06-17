@@ -81,7 +81,7 @@ class MainWin:
             if getattr(dvc, state_attr):  # if managed to turn ON
                 logging.debug(f"{dvc.log_ref} toggled ON")
 
-                if nick == "STAGE":
+                if nick == "stage":
                     self._gui.stageButtonsGroup.setEnabled(True)
 
         else:
@@ -92,10 +92,10 @@ class MainWin:
                 # if managed to turn OFF
                 logging.debug(f"{dvc.log_ref} toggled OFF")
 
-                if nick == "STAGE":
+                if nick == "stage":
                     self._gui.stageButtonsGroup.setEnabled(False)
 
-                if nick == "DEP_LASER":
+                if nick == "dep_laser":
                     # set curr/pow values to zero when depletion is turned OFF
                     self._gui.depActualCurr.setValue(0)
                     self._gui.depActualPow.setValue(0)
@@ -109,22 +109,22 @@ class MainWin:
         if err_dict is not None:
             Error(**err_dict, custom_title=getattr(consts, dvc_nick).log_ref).display()
 
-    @err_chckr({"DEP_LASER"})
+    @err_chckr({"dep_laser"})
     def dep_sett_apply(self):
         """Doc."""
 
         if self._gui.currMode.isChecked():  # current mode
             val = self._gui.depCurr.value()
-            self._app.devices.DEP_LASER.set_current(val)
+            self._app.devices.dep_laser.set_current(val)
         else:  # power mode
             val = self._gui.depPow.value()
-            self._app.devices.DEP_LASER.set_power(val)
+            self._app.devices.dep_laser.set_power(val)
 
-    @err_chckr({"SCANNERS"})
+    @err_chckr({"scanners"})
     def move_scanners(self, axes_used: str = "XYZ", destination=None) -> None:
         """Doc."""
 
-        scanners_dvc = self._app.devices.SCANNERS
+        scanners_dvc = self._app.devices.scanners
 
         if destination is None:
             # if no destination is specified, use the AO from the GUI
@@ -140,40 +140,40 @@ class MainWin:
         scanners_dvc.start_write_task(data, type_str)
         scanners_dvc.toggle(True)  # restart cont. reading
 
-        logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} were moved to {str(destination)} V")
+        logging.debug(f"{getattr(consts, 'scanners').log_ref} were moved to {str(destination)} V")
 
-    @err_chckr({"SCANNERS"})
+    @err_chckr({"scanners"})
     def go_to_origin(self, which_axes: str) -> None:
         """Doc."""
 
-        scanners_dvc = self._app.devices.SCANNERS
+        scanners_dvc = self._app.devices.scanners
 
         for axis, is_chosen, org_axis_vltg in zip(
             "xyz",
-            consts.AXES_TO_BOOL_TUPLE_DICT[which_axes],
-            scanners_dvc.origin,
+            scanners_dvc.AXES_TO_BOOL_TUPLE_DICT[which_axes],
+            scanners_dvc.ORIGIN,
         ):
             if is_chosen:
                 getattr(self._gui, f"{axis}AOV").setValue(org_axis_vltg)
 
         self.move_scanners(which_axes)
 
-        logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} sent to {which_axes} origin")
+        logging.debug(f"{getattr(consts, 'scanners').log_ref} sent to {which_axes} origin")
 
-    @err_chckr({"SCANNERS"})
+    @err_chckr({"scanners"})
     def displace_scanner_axis(self, sign: int) -> None:
         """Doc."""
 
         um_disp = sign * self._gui.axisMoveUm.value()
 
         if um_disp != 0.0:
-            scanners_dvc = self._app.devices.SCANNERS
+            scanners_dvc = self._app.devices.scanners
             axis = self._gui.axis.currentText()
-            current_vltg = scanners_dvc.ai_buffer[3:, -1][consts.AX_IDX[axis]]
+            current_vltg = scanners_dvc.ai_buffer[3:, -1][scanners_dvc.AXIS_INDEX[axis]]
             um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
             delta_vltg = um_disp / um_V_RATIO
 
-            axis_ao_limits = getattr(scanners_dvc, f"{axis.lower()}_ao_limits")
+            axis_ao_limits = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS")
             new_vltg = helper.limit(
                 (current_vltg + delta_vltg),
                 axis_ao_limits["min_val"],
@@ -184,10 +184,10 @@ class MainWin:
             self.move_scanners(axis)
 
             logging.debug(
-                f"{getattr(consts, 'SCANNERS').log_ref}({axis}) was displaced {str(um_disp)} um"
+                f"{getattr(consts, 'scanners').log_ref}({axis}) was displaced {str(um_disp)} um"
             )
 
-    @err_chckr({"SCANNERS"})
+    @err_chckr({"scanners"})
     def roi_to_scan(self):
         """Doc"""
 
@@ -220,24 +220,24 @@ class MainWin:
 
             self.move_scanners(plane_type)
 
-            logging.debug(f"{getattr(consts, 'SCANNERS').log_ref} moved to ROI ({vltgs})")
+            logging.debug(f"{getattr(consts, 'scanners').log_ref} moved to ROI ({vltgs})")
 
         except AttributeError:
             pass
 
-    @err_chckr({"STAGE"})
+    @err_chckr({"stage"})
     def move_stage(self, dir: str, steps: int):
         """Doc."""
 
-        self._app.devices.STAGE.move(dir=dir, steps=steps)
-        logging.info(f"{getattr(consts, 'STAGE').log_ref} moved {str(steps)} steps {str(dir)}")
+        self._app.devices.stage.move(dir=dir, steps=steps)
+        logging.info(f"{getattr(consts, 'stage').log_ref} moved {str(steps)} steps {str(dir)}")
 
-    @err_chckr({"STAGE"})
+    @err_chckr({"stage"})
     def release_stage(self):
         """Doc."""
 
-        self._app.devices.STAGE.release()
-        logging.info(f"{getattr(consts, 'STAGE').log_ref} released")
+        self._app.devices.stage.release()
+        logging.info(f"{getattr(consts, 'stage').log_ref} released")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -253,7 +253,7 @@ class MainWin:
             self._gui.stepperDock.setVisible(True)
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
-    @err_chckr({"TDC", "UM232H", "SCANNERS", "COUNTER"})
+    @err_chckr({"TDC", "UM232H", "scanners", "photon_detector"})
     def toggle_meas(self, type):
         """Doc."""
 
@@ -361,7 +361,7 @@ class MainWin:
             scan_params = scan_params_coll.read_namespace_from_gui(self._app)
 
             try:
-                um_v_ratio = self._app.devices.SCANNERS.um_v_ratio
+                um_v_ratio = self._app.devices.scanners.um_v_ratio
                 ao, *_ = ScanPatternAO(pattern, scan_params, um_v_ratio).calculate_pattern()
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.plot(x_data, y_data, clear=True)
@@ -450,7 +450,7 @@ class MainWin:
         self._app.gui.settings.show()
         self._app.gui.settings.activateWindow()
 
-    @err_chckr({"CAMERA"})
+    @err_chckr({"camera"})
     async def open_camwin(self):
         # TODO: simply making this func async doesn't help. the blocking function here is 'UC480_Camera(reopen_policy="new")'
         # from 'drivers.py', and I can't yet see a way to make it async (since I don't want to touch the API) I should try threading for this.
@@ -461,7 +461,7 @@ class MainWin:
         self._app.gui.camera.activateWindow()
         self._app.gui.camera.imp.init_cam()
 
-    @err_chckr({"COUNTER"})
+    @err_chckr({"photon_detector"})
     def cnts_avg_sldr_changed(self, val):
         """Doc."""
 
@@ -572,8 +572,8 @@ class CamWin:
     def init_cam(self):
         """Doc."""
 
-        self._cam = self._app.devices.CAMERA
-        self._app.gui.main.imp.dvc_toggle("CAMERA")
+        self._cam = self._app.devices.camera
+        self._app.gui.main.imp.dvc_toggle("camera")
         #        self._cam.video_timer.timeout.connect(self._video_timeout)
         logging.debug("Camera connection opened")
 
@@ -582,12 +582,12 @@ class CamWin:
 
         if self._cam is not None:
             self.toggle_video()
-            self._app.gui.main.imp.dvc_toggle("CAMERA")
+            self._app.gui.main.imp.dvc_toggle("camera")
             self._app.gui.main.actionCamera_Control.setEnabled(True)
             self._cam = None
             logging.debug("Camera connection closed")
 
-    @err_chckr({"CAMERA"})
+    @err_chckr({"camera"})
     def toggle_video(self):
         """Doc."""
 
@@ -611,7 +611,7 @@ class CamWin:
 
             logging.debug("Camera video mode OFF")
 
-    @err_chckr({"CAMERA"})
+    @err_chckr({"camera"})
     def shoot(self):
         """Doc."""
 

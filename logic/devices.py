@@ -113,10 +113,20 @@ class Scanners(BaseDevice, NIDAQmx):
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
     """
 
-    origin = (0.0, 0.0, 5.0)
-    x_ao_limits = {"min_val": -5.0, "max_val": 5.0}
-    y_ao_limits = {"min_val": -5.0, "max_val": 5.0}
-    z_ao_limits = {"min_val": 0.0, "max_val": 10.0}
+    AXIS_INDEX = {"x": 0, "y": 1, "z": 2, "X": 0, "Y": 1, "Z": 2}
+    AXES_TO_BOOL_TUPLE_DICT = {
+        "X": (True, False, False),
+        "Y": (False, True, False),
+        "Z": (False, False, True),
+        "XY": (True, True, False),
+        "XZ": (True, False, True),
+        "YZ": (False, True, True),
+        "XYZ": (True, True, True),
+    }
+    ORIGIN = (0.0, 0.0, 5.0)
+    X_AO_LIMITS = {"min_val": -5.0, "max_val": 5.0}
+    Y_AO_LIMITS = {"min_val": -5.0, "max_val": 5.0}
+    Z_AO_LIMITS = {"min_val": 0.0, "max_val": 10.0}
 
     def __init__(self, param_dict):
         super().__init__(
@@ -142,7 +152,7 @@ class Scanners(BaseDevice, NIDAQmx):
             {
                 "physical_channel": getattr(self, f"ao_int_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} internal AO",
-                **getattr(self, f"{axis}_ao_limits"),
+                **getattr(self, f"{axis.upper()}_AO_LIMITS"),
                 "terminal_config": trm_cnfg,
             }
             for axis, trm_cnfg, inst in zip("xyz", (diff, diff, rse), ("galvo", "galvo", "piezo"))
@@ -152,7 +162,7 @@ class Scanners(BaseDevice, NIDAQmx):
             {
                 "physical_channel": getattr(self, f"ao_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} AO",
-                **getattr(self, f"{axis}_ao_limits"),
+                **getattr(self, f"{axis.upper()}_AO_LIMITS"),
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
@@ -225,9 +235,9 @@ class Scanners(BaseDevice, NIDAQmx):
             # TODO: Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)
 
             try:
-                init_pos = self.ai_buffer[3:, -1][consts.AX_IDX[axis]]
+                init_pos = self.ai_buffer[3:, -1][self.AXIS_INDEX[axis]]
             except IndexError:
-                init_pos = self.last_int_ao[consts.AX_IDX[axis]]
+                init_pos = self.last_int_ao[self.AXIS_INDEX[axis]]
 
             total_dist = abs(final_pos - init_pos)
             n_steps = div_ceil(total_dist, step_sz)
@@ -259,7 +269,7 @@ class Scanners(BaseDevice, NIDAQmx):
                 except Exception as exc:
                     err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
-        axes_to_use = consts.AXES_TO_BOOL_TUPLE_DICT[type]
+        axes_to_use = self.AXES_TO_BOOL_TUPLE_DICT[type]
 
         xy_chan_spcs = []
         z_chan_spcs = []
