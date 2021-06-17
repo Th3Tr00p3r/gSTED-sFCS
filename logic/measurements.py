@@ -35,11 +35,11 @@ class Measurement:
         self.pxl_clk_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
         [setattr(self, key, val) for key, val in kwargs.items()]
-        self.counter_dvc = app.devices.COUNTER
+        self.counter_dvc = app.devices.photon_detector
         if scan_params:
             # if scanning
-            self.pxl_clk_dvc = app.devices.PXL_CLK
-            self.scanners_dvc = app.devices.SCANNERS
+            self.pxl_clk_dvc = app.devices.pixel_clock
+            self.scanners_dvc = app.devices.scanners
             self.scan_params = scan_params
             self.um_v_ratio = tuple(
                 getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
@@ -58,9 +58,9 @@ class Measurement:
                 xyz_um_to_v=self.um_v_ratio,
             )
         self.laser_dvcs = SimpleNamespace()
-        self.laser_dvcs.exc = app.devices.EXC_LASER
-        self.laser_dvcs.dep = app.devices.DEP_LASER
-        self.laser_dvcs.dep_shutter = app.devices.DEP_SHUTTER
+        self.laser_dvcs.exc = app.devices.exc_laser
+        self.laser_dvcs.dep = app.devices.dep_laser
+        self.laser_dvcs.dep_shutter = app.devices.dep_shutter
         self.is_running = False
 
     async def start(self):
@@ -135,29 +135,30 @@ class Measurement:
 
         if finish:
             if self.scan_params.exc_mode:
-                self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_off=True)
+                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
             if self.scan_params.dep_mode:
-                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_off=True)
+                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
         else:
             if self.scan_params.exc_mode:
-                self._app.gui.main.imp.dvc_toggle("EXC_LASER", leave_on=True)
+                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
             if self.scan_params.dep_mode:
                 if self.laser_dvcs.dep.emission_state is False:
                     logging.info(
-                        f"{consts.DEP_LASER.log_ref} isn't on. Turning on and waiting 5 s before measurement."
+                        f"{consts.dep_laser.log_ref} isn't on. Turning on and waiting 5 s before measurement."
                     )
                     self._app.gui.main.imp.dvc_toggle(
-                        "DEP_LASER", toggle_mthd="laser_toggle", state_attr="emission_state"
+                        "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
                     )
                     await asyncio.sleep(5)
-                self._app.gui.main.imp.dvc_toggle("DEP_SHUTTER", leave_on=True)
+                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
             self.get_laser_config()
 
     def get_laser_config(self) -> None:
         """Doc."""
 
-        exc_state = self._app.devices.EXC_LASER.state
-        dep_state = self._app.devices.DEP_LASER.emission_state
+        exc_state = self._app.devices.exc_laser.state
+        dep_state = self._app.devices.dep_laser.emission_state
+
         if exc_state and dep_state:
             laser_config = "sted"
         elif exc_state:
@@ -450,7 +451,7 @@ class SFCSImageMeasurement(Measurement):
 
         await self.toggle_lasers()
         self.setup_scan()
-        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+        self._app.gui.main.imp.dvc_toggle("pixel_clock")
 
         self.data_dvc.init_data()
         self.data_dvc.purge_buffers()
@@ -513,7 +514,7 @@ class SFCSImageMeasurement(Measurement):
         # return to stand-by state
         await self.toggle_lasers(finish=True)
         self.return_to_regular_tasks()
-        self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+        self._app.gui.main.imp.dvc_toggle("pixel_clock")
         self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
 
         if self.is_running:  # if not manually stopped
@@ -748,7 +749,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.scanning:
             self.setup_scan()
-            self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+            self._app.gui.main.imp.dvc_toggle("pixel_clock")
 
         self.data_dvc.init_data()
         self.data_dvc.purge_buffers()
@@ -820,7 +821,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.scanning:
             self.return_to_regular_tasks()
-            self._app.gui.main.imp.dvc_toggle("PXL_CLK")
+            self._app.gui.main.imp.dvc_toggle("pixel_clock")
             self._app.gui.main.imp.go_to_origin("XY")
 
         if self.is_running:  # if not manually stopped

@@ -70,14 +70,14 @@ class MainWin(QMainWindow):
         self.stageRight.released.connect(lambda: self.stageMove_released("RIGHT"))
 
         # Device Toggling
-        self.excOnButton.released.connect(lambda: self.device_toggle_button_released("EXC_LASER"))
+        self.excOnButton.released.connect(lambda: self.device_toggle_button_released("exc_laser"))
         self.depEmissionOn.released.connect(
             lambda: self.device_toggle_button_released(
-                "DEP_LASER", "laser_toggle", "emission_state"
+                "dep_laser", "laser_toggle", "emission_state"
             )
         )
         self.depShutterOn.released.connect(
-            lambda: self.device_toggle_button_released("DEP_SHUTTER")
+            lambda: self.device_toggle_button_released("dep_shutter")
         )
 
         # status bar
@@ -283,7 +283,7 @@ class MainWin(QMainWindow):
     def on_stageOn_released(self) -> None:
         """Doc."""
 
-        self.imp.dvc_toggle("STAGE")
+        self.imp.dvc_toggle("stage")
 
     def stageMove_released(self, dir: str) -> None:
         """Doc."""

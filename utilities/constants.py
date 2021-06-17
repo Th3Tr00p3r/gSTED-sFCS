@@ -7,24 +7,6 @@ import gui.icons.icon_paths as icon_path
 from utilities.helper import DeviceAttrs, QtWidgetCollection
 
 # ------------------------------
-# General
-# ------------------------------
-
-TIMEOUT = 0.010  # seconds (10 ms)
-
-AX_IDX = {"x": 0, "y": 1, "z": 2, "X": 0, "Y": 1, "Z": 2}
-
-AXES_TO_BOOL_TUPLE_DICT = {
-    "X": (True, False, False),
-    "Y": (False, True, False),
-    "Z": (False, False, True),
-    "XY": (True, True, False),
-    "XZ": (True, False, True),
-    "YZ": (False, True, True),
-    "XYZ": (True, True, True),
-}
-
-# ------------------------------
 # Paths
 # ------------------------------
 
@@ -69,16 +51,16 @@ MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
 # ------------------------------
 
 DVC_NICKS_TUPLE = (
-    "EXC_LASER",
-    "DEP_SHUTTER",
+    "exc_laser",
+    "dep_shutter",
     "TDC",
-    "DEP_LASER",
-    "STAGE",
+    "dep_laser",
+    "stage",
     "UM232H",
-    "CAMERA",
-    "SCANNERS",
-    "COUNTER",
-    "PXL_CLK",
+    "camera",
+    "scanners",
+    "photon_detector",
+    "pixel_clock",
 )
 
 LED_COLL = QtWidgetCollection(
@@ -95,16 +77,16 @@ LED_COLL = QtWidgetCollection(
 )
 
 DVC_NICK_LED_NAME_DICT = {
-    "EXC_LASER": "ledExc",
-    "DEP_SHUTTER": "ledShutter",
+    "exc_laser": "ledExc",
+    "dep_shutter": "ledShutter",
     "TDC": "ledTdc",
-    "DEP_LASER": "ledDep",
-    "STAGE": "ledStage",
+    "dep_laser": "ledDep",
+    "stage": "ledStage",
     "UM232H": "ledUm232h",
-    "CAMERA": "ledCam",
-    "SCANNERS": "ledScn",
-    "COUNTER": "ledCounter",
-    "PXL_CLK": "ledPxlClk",
+    "camera": "ledCam",
+    "scanners": "ledScn",
+    "photon_detector": "ledCounter",
+    "pixel_clock": "ledPxlClk",
 }
 
 SWITCH_COLL = QtWidgetCollection(
@@ -114,7 +96,7 @@ SWITCH_COLL = QtWidgetCollection(
     stage=("stageOn", "icon", "main"),
 )
 
-EXC_LASER = DeviceAttrs(
+exc_laser = DeviceAttrs(
     class_name="SimpleDO",
     log_ref="Excitation Laser",
     led_icon=LED_BLUE_ICON,
@@ -129,7 +111,7 @@ EXC_LASER = DeviceAttrs(
     ),
 )
 
-DEP_LASER = DeviceAttrs(
+dep_laser = DeviceAttrs(
     class_name="DepletionLaser",
     log_ref="Depletion Laser",
     led_icon=LED_ORANGE_ICON,
@@ -141,7 +123,7 @@ DEP_LASER = DeviceAttrs(
     ),
 )
 
-DEP_SHUTTER = DeviceAttrs(
+dep_shutter = DeviceAttrs(
     class_name="SimpleDO",
     log_ref="Shutter",
     led_icon=LED_GREEN_ICON,
@@ -152,7 +134,7 @@ DEP_SHUTTER = DeviceAttrs(
     ),
 )
 
-STAGE = DeviceAttrs(
+stage = DeviceAttrs(
     class_name="StepperStage",
     log_ref="Stage",
     led_icon=LED_GREEN_ICON,
@@ -163,9 +145,9 @@ STAGE = DeviceAttrs(
     ),
 )
 
-COUNTER = DeviceAttrs(
+photon_detector = DeviceAttrs(
     class_name="Counter",
-    cls_xtra_args=["devices.SCANNERS.tasks.ai"],
+    cls_xtra_args=["devices.scanners.tasks.ai"],
     log_ref="Counter",
     led_icon=LED_GREEN_ICON,
     param_widgets=QtWidgetCollection(
@@ -210,7 +192,7 @@ TDC = DeviceAttrs(
     ),
 )
 
-CAMERA = DeviceAttrs(
+camera = DeviceAttrs(
     class_name="Camera",
     cls_xtra_args=["loop", "gui.camera"],
     log_ref="Camera",
@@ -221,7 +203,7 @@ CAMERA = DeviceAttrs(
     ),
 )
 
-SCANNERS = DeviceAttrs(
+scanners = DeviceAttrs(
     class_name="Scanners",
     log_ref="Scanners",
     led_icon=LED_GREEN_ICON,
@@ -251,7 +233,7 @@ SCANNERS = DeviceAttrs(
     ),
 )
 
-PXL_CLK = DeviceAttrs(
+pixel_clock = DeviceAttrs(
     class_name="PixelClock",
     log_ref="Pixel Clock",
     led_icon=LED_GREEN_ICON,
