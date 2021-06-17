@@ -81,7 +81,7 @@ class Timeout:
             if buffer_deque.maxlen != new_maxlen:
                 buffer_deque = deque(buffer_deque, maxlen=new_maxlen)
 
-            last_line = get_last_line(consts.LOG_FOLDER_PATH + "log")
+            last_line = get_last_line(consts.LOG_DIR_PATH + "log")
 
             if last_line.find("INFO") != -1:
                 line_time = last_line[12:23]

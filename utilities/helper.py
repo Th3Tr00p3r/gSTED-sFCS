@@ -41,6 +41,12 @@ def timer(func) -> Callable:
 # tic = time.perf_counter() # TESTING
 
 
+def paths_to_icons(paths_dict) -> dict:
+    """Doc."""
+
+    return {key: QIcon(val) for key, val in paths_dict.items()}
+
+
 async def sync_to_thread(func) -> None:
     """
     This is a workaround -
@@ -169,16 +175,6 @@ def trans_dict(dct: dict, val_trans_dct: dict) -> dict:
         if org_val in val_trans_dct.keys():
             dct[org_key] = val_trans_dct[org_val]
     return dct
-
-
-@dataclass
-class DeviceAttrs:
-
-    class_name: str
-    log_ref: str
-    param_widgets: QtWidgetCollection
-    led_icon: QIcon
-    cls_xtra_args: List[str] = None
 
 
 @dataclass

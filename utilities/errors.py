@@ -9,6 +9,9 @@ import traceback
 from types import SimpleNamespace
 from typing import Callable
 
+from PyQt5.QtGui import QIcon
+
+import gui
 import utilities.constants as consts
 from utilities.dialog import Error
 
@@ -59,7 +62,7 @@ def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False):
         if lvl == "error":
             if not dvc.error_dict:  # keep only first error
                 dvc.error_dict = err_dict
-            dvc.led_widget.set(consts.LED_ERROR_ICON)
+            dvc.led_widget.set(QIcon(gui.ICON_PATHS_DICT["led_error"]))
 
     else:  # logic eror
         log_str = f"{err_dict['type']}: {err_dict['msg']} ({func_string}, {location_string})"

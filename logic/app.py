@@ -29,6 +29,9 @@ class App:
         self.config_logging()
         logging.info("Application Started")
 
+        # get icons
+        self.icon_dict = helper.paths_to_icons(gui.ICON_PATHS_DICT)
+
         # init windows
         self.gui = SimpleNamespace()
         self.gui.main = gui.gui.MainWin(self)
@@ -41,9 +44,9 @@ class App:
         self.create_data_folders()
 
         # either error or ON
-        self.gui.main.ledScn.setIcon(consts.LED_GREEN_ICON)
-        self.gui.main.ledCounter.setIcon(consts.LED_GREEN_ICON)
-        self.gui.main.ledUm232h.setIcon(consts.LED_GREEN_ICON)
+        self.gui.main.ledScn.setIcon(self.icon_dict["led_green"])
+        self.gui.main.ledCounter.setIcon(self.icon_dict["led_green"])
+        self.gui.main.ledUm232h.setIcon(self.icon_dict["led_green"])
 
         self.init_devices()
         self.meas = Measurement(app=self, type=None)
@@ -86,18 +89,18 @@ class App:
 
         self.devices = SimpleNamespace()
         for nick in consts.DVC_NICKS_TUPLE:
-            DVC_CONSTS = getattr(consts, nick)
-            dvc_class = getattr(devices, DVC_CONSTS.class_name)
-            param_dict = DVC_CONSTS.param_widgets.hold_objects(
+            dvc_attrs = devices.DEVICE_ATTR_DICT[nick]
+            dvc_class = getattr(devices, dvc_attrs.class_name)
+            param_dict = dvc_attrs.param_widgets.hold_objects(
                 self, ["led_widget", "switch_widget"]
             ).read_dict_from_gui(self)
             param_dict["nick"] = nick
-            param_dict["log_ref"] = DVC_CONSTS.log_ref
-            param_dict["led_icon"] = DVC_CONSTS.led_icon
+            param_dict["log_ref"] = dvc_attrs.log_ref
+            param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
 
-            if DVC_CONSTS.cls_xtra_args is not None:
+            if dvc_attrs.cls_xtra_args is not None:
                 x_args = [
-                    helper.deep_getattr(self, deep_attr) for deep_attr in DVC_CONSTS.cls_xtra_args
+                    helper.deep_getattr(self, deep_attr) for deep_attr in dvc_attrs.cls_xtra_args
                 ]
                 setattr(
                     self.devices,
@@ -135,13 +138,13 @@ class App:
                     # mainwindows and widgets close with close()
                     getattr(self.gui, win_key).close()
 
-        def lights_out(gui):
+        def lights_out(gui_wdgt):
             """turn OFF all device switch/LED icons"""
 
-            led_list = [consts.LED_OFF_ICON] * 6 + [consts.LED_GREEN_ICON] * 3
-            consts.LED_COLL.write_to_gui(self, led_list)
-            consts.SWITCH_COLL.write_to_gui(self, consts.SWITCH_OFF_ICON)
-            gui.stageButtonsGroup.setEnabled(False)
+            led_list = [self.icon_dict["led_off"]] * 6 + [self.icon_dict["led_green"]] * 3
+            consts.LED_WDGT_COLL.write_to_gui(self, led_list)
+            consts.SWITCH_WDGT_COLL.write_to_gui(self, self.icon_dict["switch_off"])
+            gui_wdgt.stageButtonsGroup.setEnabled(False)
 
         if restart:
             # restarting

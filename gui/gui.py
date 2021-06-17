@@ -6,12 +6,8 @@ from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QDialog, QMainWindow, QStatusBar, QWidget
 
-import gui.icons  # this generates an icon resource file (see gui.py) as well as paths to all icons (see logic.py) # NOQA
 import logic.windows as wins_imp
 import utilities.constants as consts
-
-# TODO: icons_rc.py does not auto-generate (used to?)
-from gui.icons import icons_rc  # for initial icons loadout # NOQA
 from utilities.helper import ImageDisplay
 
 
@@ -19,6 +15,7 @@ class MainWin(QMainWindow):
     """Doc."""
 
     def __init__(self, app, parent: None = None) -> None:
+
         super(MainWin, self).__init__(parent)
         uic.loadUi(consts.MAINWINDOW_UI_PATH, self)
         self.move(600, 30)
