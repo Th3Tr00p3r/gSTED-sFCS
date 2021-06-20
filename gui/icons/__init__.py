@@ -1,7 +1,9 @@
 """Icons Initialization"""
 
 import glob
+import logging
 import os
+import subprocess
 
 
 def gen_icons_resource_file():
@@ -18,15 +20,19 @@ def gen_icons_resource_file():
         f.write(footer)
 
     # call pyrcc5 to compile Qt .qrc files (icons) before loading anything
-    current_dir_path = os.getcwd()
-    icon_dir_path = current_dir_path + "\\gui\\icons"
-    if " " in current_dir_path:
-        pyrcc5_command = f'"{icon_dir_path}\\pyrcc5" -o "{icon_dir_path}\\icons_rc.py" "{icon_dir_path}\\icons.qrc"'
-    else:
-        pyrcc5_command = (
-            f"{icon_dir_path}\\pyrcc5 -o {icon_dir_path}\\icons_rc.py {icon_dir_path}\\icons.qrc"
-        )
-    os.system(pyrcc5_command)
+    icon_dir_path = os.getcwd() + "\\gui\\icons"
+    binary_path = icon_dir_path + "\\pyrcc5"
+    source_path = icon_dir_path + "\\icons.qrc"
+    destination_path = icon_dir_path + "\\icons_rc.py"
+    #    pyrcc5_command_list = [binary_path, '-o', destination_path, source_path]
+    pyrcc5_command = f'"{binary_path}" -o "{destination_path}" "{source_path}"'
+    try:
+        subprocess.run(pyrcc5_command, check=True, shell=True)
+    except subprocess.CalledProcessError:
+        logging.warning(f"Unable to generate {destination_path}. older file will be used.")
+
+
+#    os.system(pyrcc5_command)
 
 
 def gen_icon_paths_dict():
