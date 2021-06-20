@@ -6,9 +6,20 @@ from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QDialog, QMainWindow, QStatusBar, QWidget
 
+# for initial icons loadout
+import gui.icons  # NOQA
 import logic.windows as wins_imp
-import utilities.constants as consts
+from gui.icons import icons_rc  # NOQA
 from utilities.helper import ImageDisplay
+
+MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
+SETTINGSWINDOW_UI_PATH = "./gui/settingswindow.ui"
+CAMERAWINDOW_UI_PATH = "./gui/camerawindow.ui"
+
+# MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
+#                        from PyQt5.QtMultimedia import QSound
+#                                if self.time_passed == self.duration_spinbox.value():
+#                                    QSound.play(MEAS_COMPLETE_SOUND);
 
 
 class MainWin(QMainWindow):
@@ -17,7 +28,7 @@ class MainWin(QMainWindow):
     def __init__(self, app, parent: None = None) -> None:
 
         super(MainWin, self).__init__(parent)
-        uic.loadUi(consts.MAINWINDOW_UI_PATH, self)
+        uic.loadUi(MAINWINDOW_UI_PATH, self)
         self.move(600, 30)
         self.imp = wins_imp.MainWin(self, app)
         self._loop = app.loop
@@ -301,7 +312,7 @@ class SettWin(QDialog):
         """Doc."""
 
         super(SettWin, self).__init__(parent)
-        uic.loadUi(consts.SETTINGSWINDOW_UI_PATH, self)
+        uic.loadUi(SETTINGSWINDOW_UI_PATH, self)
         self.imp = wins_imp.SettWin(self, app)
 
     def closeEvent(self, event: QEvent) -> None:
@@ -337,7 +348,7 @@ class CamWin(QWidget):
         """Doc."""
 
         super(CamWin, self).__init__(parent, Qt.WindowStaysOnTopHint)
-        uic.loadUi(consts.CAMERAWINDOW_UI_PATH, self)
+        uic.loadUi(CAMERAWINDOW_UI_PATH, self)
         self.move(30, 180)
         self.imp = wins_imp.CamWin(self, app)
 

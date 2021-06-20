@@ -1,51 +1,10 @@
-""" Global constants. """
-
-import nidaqmx.constants as NI  # NOQA
+""" Widget Collections """
 
 from utilities.helper import QtWidgetCollection
 
 # ------------------------------
-# Paths
-# ------------------------------
-
-MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
-SETTINGSWINDOW_UI_PATH = "./gui/settingswindow.ui"
-CAMERAWINDOW_UI_PATH = "./gui/camerawindow.ui"
-ERRORSWINDOW_UI_PATH = "./gui/errorswindow.ui"
-LOGWINDOW_UI_PATH = "./gui/logwindow.ui"
-
-SETTINGS_DIR_PATH = "./settings/"
-DEFAULT_SETTINGS_FILE_PATH = "./settings/default_settings.csv"
-LOADOUT_DIR_PATH = "./settings/loadouts/"
-DEFAULT_LOADOUT_FILE_PATH = "./settings/loadouts/default_loadout.csv"
-
-LOG_DIR_PATH = "./log/"
-
-# ------------------------------
-# Sounds
-# ------------------------------
-
-MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
-#                        from PyQt5.QtMultimedia import QSound
-#                                if self.time_passed == self.duration_spinbox.value():
-#                                    QSound.play(consts.MEAS_COMPLETE_SOUND);
-
-# ------------------------------
 # Devices
 # ------------------------------
-
-DVC_NICKS_TUPLE = (
-    "exc_laser",
-    "dep_shutter",
-    "TDC",
-    "dep_laser",
-    "stage",
-    "UM232H",
-    "camera",
-    "scanners",
-    "photon_detector",
-    "pixel_clock",
-)
 
 LED_WDGT_COLL = QtWidgetCollection(
     exc=("ledExc", "icon", "main"),
@@ -59,19 +18,6 @@ LED_WDGT_COLL = QtWidgetCollection(
     um232=("ledUm232h", "icon", "main"),
     pxl_clk=("ledPxlClk", "icon", "main"),
 )
-
-DVC_NICK_LED_NAME_DICT = {
-    "exc_laser": "ledExc",
-    "dep_shutter": "ledShutter",
-    "TDC": "ledTdc",
-    "dep_laser": "ledDep",
-    "stage": "ledStage",
-    "UM232H": "ledUm232h",
-    "camera": "ledCam",
-    "scanners": "ledScn",
-    "photon_detector": "ledCounter",
-    "pixel_clock": "ledPxlClk",
-}
 
 SWITCH_WDGT_COLL = QtWidgetCollection(
     exc=("excOnButton", "icon", "main"),
@@ -166,37 +112,3 @@ IMG_MEAS_WDGT_COLL = QtWidgetCollection(
     image_wdgt=("imgScanPlot", None, "main"),
     pattern_wdgt=("imgScanPattern", None, "main"),
 )
-
-# ----------------------------------------------
-# Presets
-# ----------------------------------------------
-
-IMG_SCN_WDGT_FILLOUT_DICT = {
-    "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
-    "MFC - XY compartment": [1, 0, 0, "XY", 70, 70, 0, 80, 1000, 20, 0.9, 1],
-    "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
-    "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
-    "GB - XY single bead": [1, 0, 0, "XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],
-    "GB - YZ single bead": [1, 0, 0, "YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
-}
-
-SOL_MEAS_WDGT_FILLOUT_DICT = {
-    "Standard Alignment": {
-        "scan_type": "static",
-        "repeat": True,
-        "duration_units": "seconds",
-        "total_duration": 10,
-    },
-    "Standard Angular": {
-        "scan_type": "angular",
-        "repeat": False,
-        "duration_units": "hours",
-        "total_duration": 1,
-    },
-    "Standard Circular": {
-        "scan_type": "circle",
-        "repeat": False,
-        "duration_units": "hours",
-        "total_duration": 1,
-    },
-}

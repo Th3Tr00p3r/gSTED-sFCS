@@ -9,12 +9,13 @@ import sys
 import time
 from types import SimpleNamespace
 
+import nidaqmx.constants as ni_consts
 import numba as nb
 import numpy as np
 import scipy.io as sio
 
 import gui.gui
-import utilities.constants as consts
+import logic.devices as dvcs
 from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
@@ -35,7 +36,7 @@ class Measurement:
         self.tdc_dvc = app.devices.TDC
         self.pxl_clk_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
-        self.icon_dict = paths_to_icons(gui.ICON_PATHS_DICT)  # get icons
+        self.icon_dict = paths_to_icons(gui.icons.ICON_PATHS_DICT)  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
         if scan_params:
@@ -146,7 +147,7 @@ class Measurement:
             if self.scan_params.dep_mode:
                 if self.laser_dvcs.dep.emission_state is False:
                     logging.info(
-                        f"{consts.dep_laser.log_ref} isn't on. Turning on and waiting 5 s before measurement."
+                        f"{dvcs.DEVICE_ATTR_DICT['dep_laser'].log_ref} isn't on. Turning on and waiting 5 s before measurement."
                     )
                     self._app.gui.main.imp.dvc_toggle(
                         "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
@@ -175,7 +176,7 @@ class Measurement:
     def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""
 
-        ao_sample_mode = getattr(consts.NI.AcquisitionType, ao_sample_mode)
+        ao_sample_mode = getattr(ni_consts.AcquisitionType, ao_sample_mode)
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
@@ -200,9 +201,9 @@ class Measurement:
         self.scanners_dvc.start_scan_read_task(
             samp_clk_cnfg={},
             timing_params={
-                "samp_quant_samp_mode": consts.NI.AcquisitionType.CONTINUOUS,
+                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
-                "samp_timing_type": consts.NI.SampleTimingType.SAMPLE_CLOCK,
+                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
                 "ai_conv_rate": self.ai_conv_rate,
             },
@@ -211,9 +212,9 @@ class Measurement:
         self.counter_dvc.start_scan_read_task(
             samp_clk_cnfg={},
             timing_params={
-                "samp_quant_samp_mode": consts.NI.AcquisitionType.CONTINUOUS,
+                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
                 "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
-                "samp_timing_type": consts.NI.SampleTimingType.SAMPLE_CLOCK,
+                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
             },
         )

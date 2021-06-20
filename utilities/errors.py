@@ -62,7 +62,7 @@ def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False):
         if lvl == "error":
             if not dvc.error_dict:  # keep only first error
                 dvc.error_dict = err_dict
-            dvc.led_widget.set(QIcon(gui.ICON_PATHS_DICT["led_red"]))
+            dvc.led_widget.set(QIcon(gui.icons.ICON_PATHS_DICT["led_red"]))
 
     else:  # logic eror
         log_str = f"{err_dict['type']}: {err_dict['msg']} ({func_string}, {location_string})"

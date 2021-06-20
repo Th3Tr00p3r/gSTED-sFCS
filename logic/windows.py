@@ -7,11 +7,14 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 import logic.devices as dvcs
 import logic.measurements as meas
-import utilities.constants as consts
 import utilities.helper as helper
+import utilities.widget_collections as wdgt_colls
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import dvc_err_chckr as err_chckr
+
+SETTINGS_DIR_PATH = "./settings/"
+LOADOUT_DIR_PATH = "./settings/loadouts/"
 
 
 class MainWin:
@@ -41,7 +44,7 @@ class MainWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Loadout",
-            consts.LOADOUT_DIR_PATH,
+            LOADOUT_DIR_PATH,
             "CSV Files(*.csv *.txt)",
         )
         if file_path != "":
@@ -55,7 +58,7 @@ class MainWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Loadout",
-                consts.LOADOUT_DIR_PATH,
+                LOADOUT_DIR_PATH,
                 "CSV Files(*.csv *.txt)",
             )
         if file_path != "":
@@ -104,8 +107,20 @@ class MainWin:
     def led_clicked(self, led_obj_name) -> None:
         """Doc."""
 
-        LED_NAME_DVC_NICK_DICT = helper.inv_dict(consts.DVC_NICK_LED_NAME_DICT)
-        dvc_nick = LED_NAME_DVC_NICK_DICT[led_obj_name]
+        led_name_to_nick_dict = {
+            "ledExc": "exc_laser",
+            "ledShutter": "dep_shutter",
+            "ledTdc": "TDC",
+            "ledDep": "dep_laser",
+            "ledStage": "stage",
+            "ledUm232h": "UM232H",
+            "ledCam": "camera",
+            "ledScn": "scanners",
+            "ledCounter": "photon_detector",
+            "ledPxlClk": "pixel_clock",
+        }
+
+        dvc_nick = led_name_to_nick_dict[led_obj_name]
         err_dict = getattr(self._app.devices, dvc_nick).error_dict
         if err_dict is not None:
             Error(**err_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref).display()
@@ -267,18 +282,22 @@ class MainWin:
             if type == "SFCSSolution":
                 pattern = self._gui.solScanType.currentText()
                 if pattern == "angular":
-                    scan_params = consts.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
+                    scan_params = wdgt_colls.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(
+                        self._app
+                    )
                 elif pattern == "circle":
-                    scan_params = consts.SOL_CIRC_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
+                    scan_params = wdgt_colls.SOL_CIRC_SCN_WDGT_COLL.read_namespace_from_gui(
+                        self._app
+                    )
                 elif pattern == "static":
-                    scan_params = consts.SOL_NO_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
+                    scan_params = wdgt_colls.SOL_NO_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
 
                 scan_params.pattern = pattern
 
                 self._app.meas = meas.SFCSSolutionMeasurement(
                     app=self._app,
                     scan_params=scan_params,
-                    **consts.SOL_MEAS_WDGT_COLL.hold_objects(
+                    **wdgt_colls.SOL_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [
                             "prog_bar_wdgt",
@@ -306,9 +325,9 @@ class MainWin:
                 initial_pos = tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
-                    scan_params=consts.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app),
+                    scan_params=wdgt_colls.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app),
                     initial_pos=initial_pos,
-                    **consts.IMG_MEAS_WDGT_COLL.hold_objects(
+                    **wdgt_colls.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
                         [
                             "prog_bar_wdgt",
@@ -350,13 +369,13 @@ class MainWin:
         """Doc."""
 
         if pattern == "image":
-            scan_params_coll = consts.IMG_SCN_WDGT_COLL
+            scan_params_coll = wdgt_colls.IMG_SCN_WDGT_COLL
             plt_wdgt = self._gui.imgScanPattern
         elif pattern == "angular":
-            scan_params_coll = consts.SOL_ANG_SCN_WDGT_COLL
+            scan_params_coll = wdgt_colls.SOL_ANG_SCN_WDGT_COLL
             plt_wdgt = self._gui.solScanPattern
         elif pattern == "circle":
-            scan_params_coll = consts.SOL_CIRC_SCN_WDGT_COLL
+            scan_params_coll = wdgt_colls.SOL_CIRC_SCN_WDGT_COLL
             plt_wdgt = self._gui.solScanPattern
         elif pattern == "static":
             scan_params_coll = None
@@ -476,17 +495,43 @@ class MainWin:
     def fill_img_scan_preset_gui(self, curr_text: str) -> None:
         """Doc."""
 
-        consts.IMG_SCN_WDGT_COLL.write_to_gui(
-            self._app, consts.IMG_SCN_WDGT_FILLOUT_DICT[curr_text]
-        )
+        img_scn_wdgt_fillout_dict = {
+            "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
+            "MFC - XY compartment": [1, 0, 0, "XY", 70, 70, 0, 80, 1000, 20, 0.9, 1],
+            "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
+            "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
+            "GB - XY single bead": [1, 0, 0, "XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],
+            "GB - YZ single bead": [1, 0, 0, "YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
+        }
+
+        wdgt_colls.IMG_SCN_WDGT_COLL.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
 
     def fill_sol_meas_preset_gui(self, curr_text: str) -> None:
         """Doc."""
 
-        consts.SOL_MEAS_WDGT_COLL.write_to_gui(
-            self._app, consts.SOL_MEAS_WDGT_FILLOUT_DICT[curr_text]
-        )
+        sol_meas_wdgt_fillout_dict = {
+            "Standard Alignment": {
+                "scan_type": "static",
+                "repeat": True,
+                "duration_units": "seconds",
+                "total_duration": 10,
+            },
+            "Standard Angular": {
+                "scan_type": "angular",
+                "repeat": False,
+                "duration_units": "hours",
+                "total_duration": 1,
+            },
+            "Standard Circular": {
+                "scan_type": "circle",
+                "repeat": False,
+                "duration_units": "hours",
+                "total_duration": 1,
+            },
+        }
+
+        wdgt_colls.SOL_MEAS_WDGT_COLL.write_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
 
 
@@ -529,7 +574,7 @@ class SettWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
-            consts.SETTINGS_DIR_PATH,
+            SETTINGS_DIR_PATH,
             "CSV Files(*.csv *.txt)",
         )
         if file_path != "":
@@ -548,7 +593,7 @@ class SettWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
-                consts.SETTINGS_DIR_PATH,
+                SETTINGS_DIR_PATH,
                 "CSV Files(*.csv *.txt)",
             )
         if file_path != "":
