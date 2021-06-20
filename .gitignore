@@ -11,9 +11,6 @@ log/
 # vim?
 .vim
 
-# test pics (idomich)
-*.png
-
 # pushed by oleg sometimes (idomich)
 .DS_Store
 
