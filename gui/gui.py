@@ -1,16 +1,16 @@
 """ GUI Module. """
 
+import numpy as np
+import pyqtgraph as pg
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QDialog, QMainWindow, QStatusBar, QWidget
 
-# for initial icons loadout
-import gui.icons  # NOQA
+import gui.icons  # for initial icons loadout # NOQA
 import logic.windows as wins_imp
-from gui.icons import icons_rc  # NOQA
-from utilities.helper import ImageDisplay
+from gui.icons import icons_rc  # for initial icons loadout # NOQA
 
 MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
 SETTINGSWINDOW_UI_PATH = "./gui/settingswindow.ui"
@@ -373,3 +373,63 @@ class CamWin(QWidget):
         """Doc."""
 
         self.imp.toggle_video()
+
+
+class ImageDisplay:
+    """Doc."""
+
+    def __init__(self, layout):
+        glw = pg.GraphicsLayoutWidget()
+        self.vb = glw.addViewBox()
+        self.hist = pg.HistogramLUTItem()
+        glw.addItem(self.hist)
+        layout.addWidget(glw)
+
+    def add_image(self, image: np.ndarray, limit_zoomout=True, crosshair=True):
+        """Doc."""
+
+        image_item = pg.ImageItem(image)
+        self.vb.addItem(image_item)
+        self.hist.setImageItem(image_item)
+
+        if limit_zoomout:
+            self.vb.setLimits(
+                xMin=0,
+                xMax=image.shape[0],
+                minXRange=0,
+                maxXRange=image.shape[0],
+                yMin=0,
+                yMax=image.shape[1],
+                minYRange=0,
+                maxYRange=image.shape[1],
+            )
+        if crosshair:
+            self.vLine = pg.InfiniteLine(angle=90, movable=True)
+            self.hLine = pg.InfiniteLine(angle=0, movable=True)
+            self.vb.addItem(self.vLine)
+            self.vb.addItem(self.hLine)
+            try:
+                # keep crosshair at last position
+                x_pos, y_pos = self.last_roi
+                self.vLine.setPos(x_pos)
+                self.hLine.setPos(y_pos)
+            except AttributeError:
+                # case first image since application loaded (no last_roi)
+                pass
+            self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
+
+    def mouseClicked(self, evt):
+        """Doc."""
+        # TODO: selected position is not accurate for some reason.
+
+        try:
+            pos = evt.pos()
+        except AttributeError:
+            # outside image
+            pass
+        else:
+            if self.vb.sceneBoundingRect().contains(pos):
+                mousePoint = self.vb.mapSceneToView(pos)
+                self.vLine.setPos(mousePoint.x())
+                self.hLine.setPos(mousePoint.y())
+                self.last_roi = (mousePoint.x(), mousePoint.y())
