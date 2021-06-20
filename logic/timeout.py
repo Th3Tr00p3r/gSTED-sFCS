@@ -6,10 +6,10 @@ import os
 import sys
 from collections import deque
 
-import utilities.constants as consts
 from utilities.errors import err_hndlr
 
 TIMEOUT = 0.010  # seconds (10 ms)
+LOG_DIR_PATH = "./log/"
 
 
 class Timeout:
@@ -81,7 +81,7 @@ class Timeout:
             if buffer_deque.maxlen != new_maxlen:
                 buffer_deque = deque(buffer_deque, maxlen=new_maxlen)
 
-            last_line = get_last_line(consts.LOG_DIR_PATH + "log")
+            last_line = get_last_line(LOG_DIR_PATH + "log")
 
             if last_line.find("INFO") != -1:
                 line_time = last_line[12:23]

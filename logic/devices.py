@@ -6,12 +6,12 @@ import time
 from dataclasses import dataclass
 from typing import List
 
+import nidaqmx.constants as ni_consts
 import numpy as np
 from nidaqmx.errors import DaqError
 from pyvisa.errors import VisaIOError
 
 import gui.gui
-import utilities.constants as consts
 import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from utilities.errors import err_hndlr
@@ -190,7 +190,7 @@ class BaseDevice:
 
         if not hasattr(self, "icon_dict"):
             # get icons
-            self.icon_dict = paths_to_icons(gui.ICON_PATHS_DICT)
+            self.icon_dict = paths_to_icons(gui.icons.ICON_PATHS_DICT)
 
         has_switch = hasattr(self, "switch_widget")
         if command == "on":
@@ -296,8 +296,8 @@ class Scanners(BaseDevice, NIDAQmx):
             task_types=("ai", "ao"),
         )
 
-        rse = consts.NI.TerminalConfiguration.RSE
-        diff = consts.NI.TerminalConfiguration.DIFFERENTIAL
+        rse = ni_consts.TerminalConfiguration.RSE
+        diff = ni_consts.TerminalConfiguration.DIFFERENTIAL
 
         self.ai_chan_specs = [
             {
@@ -356,7 +356,7 @@ class Scanners(BaseDevice, NIDAQmx):
                 chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
                 samp_clk_cnfg={
                     "rate": self.MIN_OUTPUT_RATE_Hz,
-                    "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
+                    "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                     "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 },
             )
@@ -420,7 +420,7 @@ class Scanners(BaseDevice, NIDAQmx):
                         samp_clk_cnfg={
                             "rate": self.MIN_OUTPUT_RATE_Hz,  # WHY? see CreateAOTask.vi
                             "samps_per_chan": n_steps,
-                            "sample_mode": consts.NI.AcquisitionType.FINITE,
+                            "sample_mode": ni_consts.AcquisitionType.FINITE,
                         },
                     )
                     ao_data = self.limit_ao_data(ao_task, ao_data)
@@ -498,7 +498,7 @@ class Scanners(BaseDevice, NIDAQmx):
             self.ai_buffer = np.empty(shape=(6, 0), dtype=np.float)
 
     def fill_ai_buffer(
-        self, task_name: str = "Continuous AI", n_samples=consts.NI.READ_ALL_AVAILABLE
+        self, task_name: str = "Continuous AI", n_samples=ni_consts.READ_ALL_AVAILABLE
     ) -> None:
         """Doc."""
 
@@ -594,9 +594,9 @@ class PhotonDetector(BaseDevice, NIDAQmx):
         self.ci_chan_specs = {
             "name_to_assign_to_channel": "photon counter",
             "counter": self.address,
-            "edge": consts.NI.Edge.RISING,
+            "edge": ni_consts.Edge.RISING,
             "initial_count": 0,
-            "count_direction": consts.NI.CountDirection.COUNT_UP,
+            "count_direction": ni_consts.CountDirection.COUNT_UP,
         }
 
         self.toggle(True)
@@ -623,7 +623,7 @@ class PhotonDetector(BaseDevice, NIDAQmx):
                 samp_clk_cnfg={
                     "rate": self.ai_cont_rate,
                     "source": self.ai_cont_src,
-                    "sample_mode": consts.NI.AcquisitionType.CONTINUOUS,
+                    "sample_mode": ni_consts.AcquisitionType.CONTINUOUS,
                     "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 },
             )
@@ -642,7 +642,7 @@ class PhotonDetector(BaseDevice, NIDAQmx):
                 chan_specs=self.ci_chan_specs,
                 chan_xtra_params={
                     "ci_count_edges_term": self.CI_cnt_edges_term,
-                    "ci_data_xfer_mech": consts.NI.DataTransferActiveTransferMode.DMA,
+                    "ci_data_xfer_mech": ni_consts.DataTransferActiveTransferMode.DMA,
                 },
                 samp_clk_cnfg=samp_clk_cnfg,
                 timing_params=timing_params,
@@ -654,7 +654,7 @@ class PhotonDetector(BaseDevice, NIDAQmx):
     def fill_ci_buffer(
         self,
         task_name: str = "Continuous CI",
-        n_samples=consts.NI.READ_ALL_AVAILABLE,
+        n_samples=ni_consts.READ_ALL_AVAILABLE,
     ):
         """Doc."""
 
@@ -737,7 +737,7 @@ class PixelClock(BaseDevice, NIDAQmx):
                     "low_ticks": self.low_ticks,
                     "high_ticks": self.high_ticks,
                 },
-                clk_cnfg={"sample_mode": consts.NI.AcquisitionType.CONTINUOUS},
+                clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
             )
             self.start_tasks("co")
         except Exception as exc:
