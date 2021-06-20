@@ -4,16 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import csv
-import datetime
 import functools
 import time
-from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Callable, List, Union
 
-import numpy as np
 import PyQt5.QtWidgets as QtWidgets
-import pyqtgraph as pg
 from PyQt5.QtGui import QIcon
 
 import logic.app
@@ -152,12 +148,6 @@ def div_ceil(x: int, y: int) -> int:
     return int(x // y + (x % y > 0))
 
 
-def get_datetime_str() -> str:
-    """Return current date and time string in the format DDMMYY_HHMMSS"""
-
-    return datetime.datetime.now().strftime("%d%m_%H%M%S")
-
-
 def trans_dict(dct: dict, val_trans_dct: dict) -> dict:
     """
     Updates values of dict according to another dict:
@@ -171,18 +161,9 @@ def trans_dict(dct: dict, val_trans_dct: dict) -> dict:
     return dct
 
 
-@dataclass
-class ImageData:
-
-    pic1: np.ndarray
-    norm1: np.ndarray
-    pic2: np.ndarray
-    norm2: np.ndarray
-    line_ticks_V: np.ndarray
-    row_ticks_V: np.ndarray
-
-
 class QtWidgetAccess:
+    """Doc."""
+
     def __init__(self, obj_name: str, getter: str, gui_parent_name: str = "settings"):
         self.obj_name = obj_name
         if getter is not None:
@@ -303,63 +284,3 @@ class QtWidgetCollection:
             else:
                 setattr(wdgt_val_ns, attr_name, wdgt.get(parent_gui))
         return wdgt_val_ns
-
-
-class ImageDisplay:
-    """Doc."""
-
-    def __init__(self, layout):
-        glw = pg.GraphicsLayoutWidget()
-        self.vb = glw.addViewBox()
-        self.hist = pg.HistogramLUTItem()
-        glw.addItem(self.hist)
-        layout.addWidget(glw)
-
-    def add_image(self, image: np.ndarray, limit_zoomout=True, crosshair=True):
-        """Doc."""
-
-        image_item = pg.ImageItem(image)
-        self.vb.addItem(image_item)
-        self.hist.setImageItem(image_item)
-
-        if limit_zoomout:
-            self.vb.setLimits(
-                xMin=0,
-                xMax=image.shape[0],
-                minXRange=0,
-                maxXRange=image.shape[0],
-                yMin=0,
-                yMax=image.shape[1],
-                minYRange=0,
-                maxYRange=image.shape[1],
-            )
-        if crosshair:
-            self.vLine = pg.InfiniteLine(angle=90, movable=True)
-            self.hLine = pg.InfiniteLine(angle=0, movable=True)
-            self.vb.addItem(self.vLine)
-            self.vb.addItem(self.hLine)
-            try:
-                # keep crosshair at last position
-                x_pos, y_pos = self.last_roi
-                self.vLine.setPos(x_pos)
-                self.hLine.setPos(y_pos)
-            except AttributeError:
-                # case first image since application loaded (no last_roi)
-                pass
-            self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
-
-    def mouseClicked(self, evt):
-        """Doc."""
-        # TODO: selected position is not accurate for some reason.
-
-        try:
-            pos = evt.pos()
-        except AttributeError:
-            # outside image
-            pass
-        else:
-            if self.vb.sceneBoundingRect().contains(pos):
-                mousePoint = self.vb.mapSceneToView(pos)
-                self.vLine.setPos(mousePoint.x())
-                self.hLine.setPos(mousePoint.y())
-                self.last_roi = (mousePoint.x(), mousePoint.y())

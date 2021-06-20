@@ -7,6 +7,7 @@ import math
 import pickle
 import sys
 import time
+from dataclasses import dataclass
 from types import SimpleNamespace
 
 import nidaqmx.constants as ni_consts
@@ -21,7 +22,7 @@ from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
 from utilities.errors import err_hndlr
-from utilities.helper import ImageData, div_ceil, get_datetime_str, paths_to_icons
+from utilities.helper import div_ceil, paths_to_icons
 
 
 class Measurement:
@@ -234,7 +235,10 @@ class SFCSImageMeasurement(Measurement):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
 
     def build_filename(self) -> str:
-        return f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_plane}_{get_datetime_str()}"
+        datetime_str = datetime.datetime.now().strftime("%d%m_%H%M%S")
+        return (
+            f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_plane}_{datetime_str}"
+        )
 
     def setup_scan(self):
         """Doc."""
@@ -300,6 +304,16 @@ class SFCSImageMeasurement(Measurement):
 
     def prepare_image_data(self, plane_idx):
         """Doc."""
+
+        @dataclass
+        class ImageData:
+
+            pic1: np.ndarray
+            norm1: np.ndarray
+            pic2: np.ndarray
+            norm2: np.ndarray
+            line_ticks_V: np.ndarray
+            row_ticks_V: np.ndarray
 
         @nb.njit(cache=True)
         def calc_pic(K, counts, x, x_min, n_lines, pxls_pl, pxl_sz_V, Ic):
