@@ -11,8 +11,6 @@ import yaml
 from PyQt5.QtWidgets import QApplication
 from qasync import QEventLoop
 
-from logic.app import App
-
 
 def config_logging():
     """Configure the logging package for the whole application."""
@@ -25,6 +23,8 @@ def config_logging():
 if __name__ == "__main__":
 
     config_logging()
+
+    from logic.app import App
 
     app = QApplication(sys.argv)
     loop = QEventLoop(app)
