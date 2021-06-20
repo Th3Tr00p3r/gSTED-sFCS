@@ -158,12 +158,6 @@ def get_datetime_str() -> str:
     return datetime.datetime.now().strftime("%d%m_%H%M%S")
 
 
-def inv_dict(dct: dict) -> dict:
-    """Inverts a Python dictionary. Expects mapping to be 1-to-1"""
-
-    return {val: key for key, val in dct.items()}
-
-
 def trans_dict(dct: dict, val_trans_dct: dict) -> dict:
     """
     Updates values of dict according to another dict:

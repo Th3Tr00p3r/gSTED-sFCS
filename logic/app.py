@@ -10,11 +10,26 @@ from PyQt5.QtWidgets import QMessageBox
 
 import gui.gui
 import logic.devices as dvcs
-import utilities.constants as consts
 import utilities.helper as helper
+import utilities.widget_collections as wdgt_colls
 from logic.measurements import Measurement
 from logic.timeout import Timeout
 from utilities.dialog import Question
+
+DEFAULT_LOADOUT_FILE_PATH = "./settings/loadouts/default_loadout.csv"
+DEFAULT_SETTINGS_FILE_PATH = "./settings/default_settings.csv"
+DVC_NICKS = (
+    "exc_laser",
+    "dep_shutter",
+    "TDC",
+    "dep_laser",
+    "stage",
+    "UM232H",
+    "camera",
+    "scanners",
+    "photon_detector",
+    "pixel_clock",
+)
 
 
 class App:
@@ -30,14 +45,14 @@ class App:
         logging.info("Application Started")
 
         # get icons
-        self.icon_dict = helper.paths_to_icons(gui.ICON_PATHS_DICT)
+        self.icon_dict = helper.paths_to_icons(gui.icons.ICON_PATHS_DICT)
 
         # init windows
         self.gui = SimpleNamespace()
         self.gui.main = gui.gui.MainWin(self)
-        self.gui.main.imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
+        self.gui.main.imp.load(DEFAULT_LOADOUT_FILE_PATH)
         self.gui.settings = gui.gui.SettWin(self)
-        self.gui.settings.imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
+        self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
         # create neccessary data folders based on settings paths
@@ -59,7 +74,7 @@ class App:
 
         # FINALLY
         self.gui.main.imp.disp_scn_pttrn("image")
-        sol_pattern = consts.SOL_MEAS_WDGT_COLL.read_namespace_from_gui(self).scan_type
+        sol_pattern = wdgt_colls.SOL_MEAS_WDGT_COLL.read_namespace_from_gui(self).scan_type
         self.gui.main.imp.disp_scn_pttrn(sol_pattern)
         self.gui.main.show()
 
@@ -88,7 +103,7 @@ class App:
         """
 
         self.devices = SimpleNamespace()
-        for nick in consts.DVC_NICKS_TUPLE:
+        for nick in DVC_NICKS:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
             param_dict = dvc_attrs.param_widgets.hold_objects(
@@ -98,7 +113,7 @@ class App:
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
 
-            if dvc_attrs.cls_xtra_args is not None:
+            if dvc_attrs.cls_xtra_args:
                 x_args = [
                     helper.deep_getattr(self, deep_attr) for deep_attr in dvc_attrs.cls_xtra_args
                 ]
@@ -123,7 +138,7 @@ class App:
         def close_all_dvcs(app):
             """Doc."""
 
-            for nick in consts.DVC_NICKS_TUPLE:
+            for nick in DVC_NICKS:
                 dvc = getattr(app.devices, nick)
                 dvc.toggle(False)
 
@@ -142,8 +157,8 @@ class App:
             """turn OFF all device switch/LED icons"""
 
             led_list = [self.icon_dict["led_off"]] * 6 + [self.icon_dict["led_green"]] * 3
-            consts.LED_WDGT_COLL.write_to_gui(self, led_list)
-            consts.SWITCH_WDGT_COLL.write_to_gui(self, self.icon_dict["switch_off"])
+            wdgt_colls.LED_WDGT_COLL.write_to_gui(self, led_list)
+            wdgt_colls.SWITCH_WDGT_COLL.write_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
         if restart:
@@ -163,8 +178,8 @@ class App:
             lights_out(self.gui.main)
             self.gui.main.depActualCurr.setValue(0)
             self.gui.main.depActualPow.setValue(0)
-            self.gui.main.imp.load(consts.DEFAULT_LOADOUT_FILE_PATH)
-            #            self.gui.settings.imp.load(consts.DEFAULT_SETTINGS_FILE_PATH)
+            self.gui.main.imp.load(DEFAULT_LOADOUT_FILE_PATH)
+            #            self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
 
             self.init_devices()
 
