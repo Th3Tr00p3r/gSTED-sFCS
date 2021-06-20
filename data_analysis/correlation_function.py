@@ -8,7 +8,7 @@ Created on Fri Apr 23 12:11:40 2021
 import glob
 import logging
 import os
-import re  # regular expressions
+import re
 import sys
 
 import matplotlib.pyplot as plt
@@ -19,9 +19,9 @@ from skimage import filters as skifilt
 from skimage import morphology
 
 from data_analysis.fit_tools import curve_fit_lims
-
-# loads matfiles with structures (scipy.io does not do structures)
-from data_analysis.matlab_utilities import loadmat
+from data_analysis.matlab_utilities import (
+    loadmat,  # loads matfiles with structures (scipy.io does not do structures)
+)
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 
@@ -45,9 +45,8 @@ class CorrFuncData:
     ):
         """Doc."""
 
-        # enable 'use_numba' for speed-up
         def calc_weighted_avg(cf_cr, weights):
-            """Doc."""
+            """Note: enable 'use_numba' for speed-up"""
 
             tot_weights = weights.sum(0)
 
@@ -218,7 +217,7 @@ class CorrFuncTDC(CorrFuncData):
         """Doc."""
 
         if verbose:
-            print("Loading FPGA data...")
+            logging.info("Loading FPGA data...")
         # fpathtmpl : template of complete path to data
 
         if not (fpathes := glob.glob(fpathtmpl)):
@@ -243,7 +242,7 @@ class CorrFuncTDC(CorrFuncData):
 
         for fpath in fpathes:
             if verbose:
-                print(f"Loading {fpath}")
+                logging.info(f"Loading {fpath}")
             # splits in folderpath and filename
             folderpath_fname = os.path.split(fpath)
             # splits filename into the name proper and its extension
@@ -259,7 +258,6 @@ class CorrFuncTDC(CorrFuncData):
                 # TODO: add python loading
 
                 # patching for new parameters
-
                 if isinstance(self.after_pulse_param, np.ndarray):
                     self.after_pulse_param = (
                         "multi_exponent_fit",
@@ -581,7 +579,7 @@ class CorrFuncTDC(CorrFuncData):
 
             run_duration = total_duration_estimate / n_runs_requested
             if verbose:
-                print(f"Auto determination of run duration: {run_duration} s")
+                logging.info(f"Auto determination of run duration: {run_duration} s")
 
         self.requested_duration = run_duration
         self.min_duration_frac = min_time_frac
@@ -597,7 +595,7 @@ class CorrFuncTDC(CorrFuncData):
         for p in self.data["data"]:
 
             if verbose:
-                print(f"Correlating {p.fname}...")
+                logging.info(f"Correlating {p.fname}...")
             # find additional outliers
             time_stamps = np.diff(p.runtime)
             # for exponential distribution MEDIAN and MAD are the same, but for
@@ -610,7 +608,7 @@ class CorrFuncTDC(CorrFuncData):
             no_outliers = len(sec_edges)
             if no_outliers > 0:
                 if verbose:
-                    print(f"{no_outliers} of all outliers")
+                    logging.info(f"{no_outliers} of all outliers")
 
             sec_edges = np.append(np.insert(sec_edges, 0, 0), len(time_stamps))
             p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
@@ -621,7 +619,7 @@ class CorrFuncTDC(CorrFuncData):
                 segment_time = (p.runtime[se[1]] - p.runtime[se[0]]) / self.laser_freq
                 if segment_time < min_time_frac * run_duration:
                     if verbose:
-                        print(
+                        logging.info(
                             f"Duration of segment No. {j} of file {p.fname} is {segment_time}s: too short. Skipping..."
                         )
                     self.total_duration_skipped = self.total_duration_skipped + segment_time
@@ -670,7 +668,7 @@ class CorrFuncTDC(CorrFuncData):
 
         self.total_duration = self.duration.sum()
         if verbose:
-            print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
+            logging.info(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
 
         # if ~isempty(obj.v_um_ms)
         #     obj.DoSetVelocity(obj.v_um_ms);
