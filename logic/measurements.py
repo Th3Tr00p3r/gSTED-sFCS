@@ -645,7 +645,7 @@ class SFCSSolutionMeasurement(Measurement):
                 except fit_tools.FitError as exc:
                     # fit failed
                     err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
-                    self.fit_led.set(self.icon_dict["led_error"])
+                    self.fit_led.set(self.icon_dict["led_red"])
                     g0, tau = s.g0, 0.1
                     self.g0_wdgt.set(s.g0)
                     self.tau_wdgt.set(0)
