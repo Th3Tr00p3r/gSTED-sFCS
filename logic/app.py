@@ -9,7 +9,7 @@ import yaml
 from PyQt5.QtWidgets import QMessageBox
 
 import gui.gui
-import logic.devices as devices
+import logic.devices as dvcs
 import utilities.constants as consts
 import utilities.helper as helper
 from logic.measurements import Measurement
@@ -89,8 +89,8 @@ class App:
 
         self.devices = SimpleNamespace()
         for nick in consts.DVC_NICKS_TUPLE:
-            dvc_attrs = devices.DEVICE_ATTR_DICT[nick]
-            dvc_class = getattr(devices, dvc_attrs.class_name)
+            dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
+            dvc_class = getattr(dvcs, dvc_attrs.class_name)
             param_dict = dvc_attrs.param_widgets.hold_objects(
                 self, ["led_widget", "switch_widget"]
             ).read_dict_from_gui(self)
