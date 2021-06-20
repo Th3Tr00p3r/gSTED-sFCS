@@ -108,7 +108,7 @@ class MainWin:
         dvc_nick = LED_NAME_DVC_NICK_DICT[led_obj_name]
         err_dict = getattr(self._app.devices, dvc_nick).error_dict
         if err_dict is not None:
-            Error(**err_dict, custom_title=getattr(consts, dvc_nick).log_ref).display()
+            Error(**err_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref).display()
 
     @err_chckr({"dep_laser"})
     def dep_sett_apply(self):
@@ -141,7 +141,9 @@ class MainWin:
         scanners_dvc.start_write_task(data, type_str)
         scanners_dvc.toggle(True)  # restart cont. reading
 
-        logging.debug(f"{getattr(dvcs, 'scanners').log_ref} were moved to {str(destination)} V")
+        logging.debug(
+            f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} were moved to {str(destination)} V"
+        )
 
     @err_chckr({"scanners"})
     def go_to_origin(self, which_axes: str) -> None:
@@ -159,7 +161,7 @@ class MainWin:
 
         self.move_scanners(which_axes)
 
-        logging.debug(f"{getattr(consts, 'scanners').log_ref} sent to {which_axes} origin")
+        logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} sent to {which_axes} origin")
 
     @err_chckr({"scanners"})
     def displace_scanner_axis(self, sign: int) -> None:
@@ -185,7 +187,7 @@ class MainWin:
             self.move_scanners(axis)
 
             logging.debug(
-                f"{getattr(consts, 'scanners').log_ref}({axis}) was displaced {str(um_disp)} um"
+                f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref}({axis}) was displaced {str(um_disp)} um"
             )
 
     @err_chckr({"scanners"})
@@ -221,7 +223,7 @@ class MainWin:
 
             self.move_scanners(plane_type)
 
-            logging.debug(f"{getattr(consts, 'scanners').log_ref} moved to ROI ({vltgs})")
+            logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} moved to ROI ({vltgs})")
 
         except AttributeError:
             pass
@@ -231,14 +233,16 @@ class MainWin:
         """Doc."""
 
         self._app.devices.stage.move(dir=dir, steps=steps)
-        logging.info(f"{getattr(consts, 'stage').log_ref} moved {str(steps)} steps {str(dir)}")
+        logging.info(
+            f"{dvcs.DEVICE_ATTR_DICT['stage'].log_ref} moved {str(steps)} steps {str(dir)}"
+        )
 
     @err_chckr({"stage"})
     def release_stage(self):
         """Doc."""
 
         self._app.devices.stage.release()
-        logging.info(f"{getattr(consts, 'stage').log_ref} released")
+        logging.info(f"{dvcs.DEVICE_ATTR_DICT['stage'].log_ref} released")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""

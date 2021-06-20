@@ -5,7 +5,7 @@ import os
 
 # call pyrcc5 to compile Qt .qrc files (icons) before loading anything
 icon_dir_path = f"{os.getcwd()}/gui/icons"
-os.system(f"{icon_dir_path}/pyrcc5 -o {icon_dir_path}/icons_rc.py {icon_dir_path}/icons.qrc")
+os.system(f'"{icon_dir_path}/pyrcc5" -o "{icon_dir_path}/icons_rc.py" "{icon_dir_path}/icons.qrc"')
 
 # for initial icons loadout
 from gui.icons import icons_rc  # NOQA

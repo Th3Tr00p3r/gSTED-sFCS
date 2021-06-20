@@ -198,7 +198,7 @@ class BaseDevice:
         elif command == "off":
             set_icon_wdgts(self.icon_dict["led_off"], has_switch, self.icon_dict["switch_off"])
         elif command == "error":
-            set_icon_wdgts(self.icon_dict["led_error"], False)
+            set_icon_wdgts(self.icon_dict["led_red"], False)
 
     def toggle(self, is_being_switched_on, should_change_icons=True):
         """Doc."""
@@ -208,9 +208,10 @@ class BaseDevice:
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            self.state = is_being_switched_on
-            if should_change_icons:
-                self.change_icons("on" if is_being_switched_on else "off")
+            if not self.error_dict:
+                self.state = is_being_switched_on
+                if should_change_icons:
+                    self.change_icons("on" if is_being_switched_on else "off")
 
 
 class UM232H(BaseDevice, Ftd2xx):
@@ -586,7 +587,7 @@ class PhotonDetector(BaseDevice, NIDAQmx):
             self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
         except KeyError:
             exc = RuntimeError(
-                f"{self.log_ref} can't be synced because {Scanners.log_ref} failed to Initialize"
+                f"{self.log_ref} can't be synced because {DEVICE_ATTR_DICT['scanners'].log_ref} failed to Initialize"
             )
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
