@@ -774,10 +774,9 @@ class DepletionLaser(BaseDevice, PyVISA):
 
         self.updt_time = 0.3
         self.state = None
-        self.emission_state = False
         self.toggle(True, should_change_icons=False)
 
-        if self.state is False:
+        if self.state:
             self.set_current(1500)
 
     def _toggle(self, is_being_switched_on):
@@ -785,6 +784,7 @@ class DepletionLaser(BaseDevice, PyVISA):
 
         if is_being_switched_on:
             self.open_inst()
+            self.laser_toggle(False)
         else:
             if self.state is True:
                 self.laser_toggle(False)
