@@ -84,9 +84,6 @@ SOL_MEAS_WDGT_COLL = QtWidgetCollection(
 )
 
 IMG_SCN_WDGT_COLL = QtWidgetCollection(
-    exc_mode=("imgScanModeExc", "isChecked", "main"),
-    dep_mode=("imgScanModeDep", "isChecked", "main"),
-    sted_mode=("imgScanModeSted", "isChecked", "main"),
     scan_plane=("imgScanType", "currentText", "main"),
     dim1_um=("imgScanDim1", "value", "main"),
     dim2_um=("imgScanDim2", "value", "main"),
