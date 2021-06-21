@@ -28,7 +28,11 @@ from utilities.helper import div_ceil, paths_to_icons
 class Measurement:
     """Base class for measurements"""
 
-    # TODO: consider making this a context manager?
+    led_mode_dict = {
+        (1, 0, 0): "Exc",
+        (0, 1, 0): "Dep",
+        (0, 0, 1): "Sted",
+    }
 
     def __init__(self, app, type: str, scan_params=None, **kwargs):
 
@@ -45,6 +49,11 @@ class Measurement:
             self.pxl_clk_dvc = app.devices.pixel_clock
             self.scanners_dvc = app.devices.scanners
             self.scan_params = scan_params
+            (
+                self.scan_params.exc_mode,
+                self.scan_params.dep_mode,
+                self.scan_params.sted_mode,
+            ) = self.laser_mode
             self.um_v_ratio = tuple(
                 getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
             )
@@ -547,7 +556,7 @@ class SFCSImageMeasurement(Measurement):
         self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
 
         if self.is_running:  # if not manually stopped
-            self._app.gui.main.imp.toggle_meas(self.type)
+            self._app.gui.main.imp.toggle_meas(self.type, self.led_mode_dict[self.laser_mode])
 
 
 class SFCSSolutionMeasurement(Measurement):
@@ -838,7 +847,7 @@ class SFCSSolutionMeasurement(Measurement):
                     self.data_dvc.init_data()
                     self.data_dvc.purge_buffers()
                     self.scanners_dvc.init_ai_buffer()
-                    self.counter_dvc.init_ci_buffer()
+                #                    self.counter_dvc.init_ci_buffer()
 
                 else:
                     break
