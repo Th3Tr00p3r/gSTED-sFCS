@@ -1,9 +1,11 @@
 """Logic Module."""
 
 import logging
+import logging.config
 import os
 from types import SimpleNamespace
 
+import yaml
 from PyQt5.QtWidgets import QMessageBox
 
 import gui.gui
@@ -35,6 +37,8 @@ class App:
 
     def __init__(self, loop):
         """Doc."""
+
+        self.config_logging()
 
         self.loop = loop
 
@@ -77,6 +81,13 @@ class App:
         self.timeout_loop.start()
 
         logging.info("Application Started")
+
+    def config_logging(self):
+        """Configure the logging package for the whole application."""
+
+        with open("logging_config.yaml", "r") as f:
+            config = yaml.safe_load(f.read())
+            logging.config.dictConfig(config)
 
     def create_data_folders(self):
         """Doc."""

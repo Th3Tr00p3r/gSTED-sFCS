@@ -3,12 +3,12 @@
 import asyncio
 import logging
 import os
-
-# import time
 import sys
 from collections import deque
 
 from utilities.errors import err_hndlr
+
+# import time
 
 TIMEOUT = 0.010  # seconds (10 ms)
 LOG_PATH = "./log/log"
@@ -49,7 +49,7 @@ class Timeout:
             self._update_dep(),
             self._updt_current_state(),
             self._update_gui(),
-            self._updt_um232h_status(),
+            #            self._updt_um232h_status(),
         )
         logging.debug("_main function exited")
 
@@ -97,7 +97,7 @@ class Timeout:
             # photon_detector
             if not self._app.devices.photon_detector.error_dict:
                 self._app.devices.photon_detector.fill_ci_buffer()
-                if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
+                if self._app.meas.type not in {"SFCSImage"}:
                     self._app.devices.photon_detector.dump_ci_buff_overflow()
 
             # AI
@@ -255,4 +255,4 @@ def updt_meas_progbar(meas) -> None:
         pass
 
     except Exception as exc:
-        err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
+        err_hndlr(exc, locals(), sys._getframe())

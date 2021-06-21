@@ -110,7 +110,6 @@ class MainWin:
 
         led_name_to_nick_dict = {
             "ledExc": "exc_laser",
-            "ledShutter": "dep_shutter",
             "ledTdc": "TDC",
             "ledDep": "dep_laser",
             "ledStage": "stage",
@@ -275,7 +274,7 @@ class MainWin:
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
     @err_chckr({"TDC", "UM232H", "scanners", "photon_detector"})
-    def toggle_meas(self, type):
+    def toggle_meas(self, type, laser_mode=None):
         """Doc."""
 
         if not (current_type := self._app.meas.type):
@@ -327,6 +326,11 @@ class MainWin:
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
                     scan_params=wdgt_colls.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app),
+                    laser_mode=(
+                        (laser_mode == "Exc"),
+                        (laser_mode == "Dep"),
+                        (laser_mode == "Sted"),
+                    ),
                     initial_pos=initial_pos,
                     **wdgt_colls.IMG_MEAS_WDGT_COLL.hold_objects(
                         self._app,
@@ -340,7 +344,12 @@ class MainWin:
                         ],
                     ).read_dict_from_gui(self._app),
                 )
-                self._gui.startImgScan.setText("Stop \nScan")
+
+                self._gui.startImgScanExc.setEnabled(False)
+                self._gui.startImgScanDep.setEnabled(False)
+                self._gui.startImgScanSted.setEnabled(False)
+                helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setEnabled")(True)
+                helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")("Stop \nScan")
 
             self._app.loop.create_task(self._app.meas.start())
 
@@ -357,7 +366,12 @@ class MainWin:
                 self._gui.solScanFileTemplate.setEnabled(True)
 
             elif type == "SFCSImage":
-                self._gui.startImgScan.setText("Start \nScan")
+                self._gui.startImgScanExc.setEnabled(True)
+                self._gui.startImgScanDep.setEnabled(True)
+                self._gui.startImgScanSted.setEnabled(True)
+                helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")(
+                    f"{laser_mode} \nScan"
+                )
 
             self._app.meas.stop()
 
