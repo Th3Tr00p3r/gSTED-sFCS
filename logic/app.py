@@ -162,7 +162,7 @@ class App:
             close_all_dvcs(self)
 
             # finish current timeout loop
-            self.timeout_loop.finish()
+            self.timeout_loop.not_finished = False
 
             lights_out(self.gui.main)
             self.gui.main.depActualCurr.setValue(0)
@@ -179,7 +179,7 @@ class App:
             logging.info("Restarting application.")
 
         else:  # exiting
-            self.timeout_loop.finish()
+            self.timeout_loop.not_finished = False
 
             if self.meas.type is not None:
                 self.gui.main.imp.toggle_meas(self.meas.type)
