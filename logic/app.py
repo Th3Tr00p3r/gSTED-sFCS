@@ -12,7 +12,6 @@ import gui.gui
 import logic.devices as dvcs
 import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
-from logic.measurements import Measurement
 from logic.timeout import Timeout
 from utilities.dialog import Question
 
@@ -42,6 +41,8 @@ class App:
 
         self.loop = loop
 
+        self.meas = SimpleNamespace(type=None, is_running=False)
+
         # get icons
         self.icon_dict = helper.paths_to_icons(gui.icons.ICON_PATHS_DICT)
 
@@ -62,7 +63,6 @@ class App:
         self.gui.main.ledUm232h.setIcon(self.icon_dict["led_green"])
 
         self.init_devices()
-        self.meas = Measurement(app=self, type=None)
 
         # init AO as origin (actual AO is measured in internal AO if last position is needed)
         [
@@ -72,7 +72,7 @@ class App:
 
         # FINALLY
         self.gui.main.imp.disp_scn_pttrn("image")
-        sol_pattern = wdgt_colls.SOL_MEAS_WDGT_COLL.read_namespace_from_gui(self).scan_type
+        sol_pattern = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self).scan_type
         self.gui.main.imp.disp_scn_pttrn(sol_pattern)
         self.gui.main.show()
 
@@ -157,8 +157,8 @@ class App:
             """turn OFF all device switch/LED icons"""
 
             led_list = [self.icon_dict["led_off"]] * 6 + [self.icon_dict["led_green"]] * 3
-            wdgt_colls.LED_WDGT_COLL.write_to_gui(self, led_list)
-            wdgt_colls.SWITCH_WDGT_COLL.write_to_gui(self, self.icon_dict["switch_off"])
+            wdgt_colls.led_wdgts.write_to_gui(self, led_list)
+            wdgt_colls.switch_wdgts.write_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
         if restart:
@@ -168,7 +168,7 @@ class App:
                 self.gui.camera.close()
 
             if self.meas.type is not None:
-                self.gui.main.imp.toggle_meas(self.meas.type)
+                self.gui.main.imp.toggle_meas(self.meas.type, self.meas.laser_mode)
 
             close_all_dvcs(self)
 
@@ -193,7 +193,7 @@ class App:
             self.timeout_loop.not_finished = False
 
             if self.meas.type is not None:
-                self.gui.main.imp.toggle_meas(self.meas.type)
+                self.gui.main.imp.toggle_meas(self.meas.type, self.meas.laser_mode)
 
             close_all_wins(self)
             close_all_dvcs(self)
