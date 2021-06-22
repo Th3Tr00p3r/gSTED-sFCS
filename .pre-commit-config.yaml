@@ -4,8 +4,8 @@ repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: v4.0.1
       hooks:
-          - id: fix-encoding-pragma
-            args: [--remove] # python3 files don't use this
+          # - id: fix-encoding-pragma
+            # args: [--remove] # python3 files don't use this
           - id: check-added-large-files
             args: [--maxkb=1000]
 
