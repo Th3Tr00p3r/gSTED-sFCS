@@ -54,7 +54,7 @@ SOL_CIRC_SCN_WDGT_COLL = QtWidgetCollection(
 )
 
 SOL_NO_SCN_WDGT_COLL = QtWidgetCollection(
-    # TODO: move laser modes to SOL_MEAS_WDGT_COLL (also from 2 collections above)
+    # TODO: move laser modes to SOL_MEAS_WDGT_COLL (also from 2 collections above) - or switch to buttons, same as image scan
     exc_mode=("solScanModeExc", "isChecked", "main"),
     dep_mode=("solScanModeDep", "isChecked", "main"),
     sted_mode=("solScanModeSted", "isChecked", "main"),
@@ -93,9 +93,10 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     line_freq_Hz=("imgScanLineFreq", "value", "main"),
     lin_frac=("imgScanLinFrac", "value", "main"),
     n_planes=("imgScanNumPlanes", "value", "main"),
-    curr_ao_x=("xAOV", "value", "main"),
-    curr_ao_y=("yAOV", "value", "main"),
-    curr_ao_z=("zAOV", "value", "main"),
+    curr_ao_x=("xAOVint", "value", "main"),
+    curr_ao_y=("yAOVint", "value", "main"),
+    curr_ao_z=("zAOVint", "value", "main"),
+    auto_cross=("autoCrosshair", "isChecked", "main"),
 )
 
 IMG_MEAS_WDGT_COLL = QtWidgetCollection(
