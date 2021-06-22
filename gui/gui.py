@@ -90,10 +90,23 @@ class MainWin(QMainWindow):
             lambda: self.device_toggle_button_released("dep_shutter")
         )
 
-        # Image scan
-        self.startImgScanExc.released.connect(lambda: self.image_scam_button_released("Exc"))
-        self.startImgScanDep.released.connect(lambda: self.image_scam_button_released("Dep"))
-        self.startImgScanSted.released.connect(lambda: self.image_scam_button_released("Sted"))
+        # Image Scan
+        self.startImgScanExc.released.connect(lambda: self.scan_button_released("SFCSImage", "Exc"))
+        self.startImgScanDep.released.connect(lambda: self.scan_button_released("SFCSImage", "Dep"))
+        self.startImgScanSted.released.connect(
+            lambda: self.scan_button_released("SFCSImage", "Sted")
+        )
+
+        # Solution Scan
+        self.startSolScanExc.released.connect(
+            lambda: self.scan_button_released("SFCSSolution", "Exc")
+        )
+        self.startSolScanDep.released.connect(
+            lambda: self.scan_button_released("SFCSSolution", "Dep")
+        )
+        self.startSolScanSted.released.connect(
+            lambda: self.scan_button_released("SFCSSolution", "Sted")
+        )
 
         # status bar
         self.setStatusBar(QStatusBar())
@@ -167,16 +180,10 @@ class MainWin(QMainWindow):
 
         self.imp.change_meas_dur(float)
 
-    def image_scam_button_released(self, laser_mode: str) -> None:
-        """Begin/end Image SFCS measurement"""
+    def scan_button_released(self, meas_type: str, laser_mode: str) -> None:
+        """Begin/end SFCS measurement"""
 
-        self.imp.toggle_meas("SFCSImage", laser_mode)
-
-    @pyqtSlot()
-    def on_startSolScan_released(self) -> None:
-        """Begin/end SFCS measurement."""
-
-        self.imp.toggle_meas("SFCSSolution")
+        self.imp.toggle_meas(meas_type, laser_mode)
 
     def device_toggle_button_released(
         self, dvc_nick: str, toggle_mthd: str = "toggle", state_attr="state"
