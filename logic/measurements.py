@@ -67,7 +67,7 @@ class Measurement:
                     -10.762333427569356,
                     -7.426041455313178,
                 ],
-                AI_ScalingXYZ=[1.243, 1.239, 1],
+                AI_ScalingXYZ=[1.243, 1.239, 1],  # TODO: what's that?
                 xyz_um_to_v=self.um_v_ratio,
             )
         self.laser_dvcs = SimpleNamespace()
@@ -408,6 +408,9 @@ class SFCSImageMeasurement(Measurement):
         pic1, norm1 = calc_pic(K, counts1, x1, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
         pic2, norm2 = calc_pic(K, counts2, x2, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
 
+        if pic1.shape[0] != pic1.shape[1]:
+            logging.warning(f"image shape is not square ({pic1.shape}), figure this out.")
+
         line_scale_V = x_min + np.arange(pxls_pl) * pxl_sz_V
         row_scale_V = self.scan_params.set_pnts_lines_odd
 
@@ -547,7 +550,8 @@ class SFCSImageMeasurement(Measurement):
             mid_plane = int(len(self.scan_params.set_pnts_planes) // 2)
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
-            self._app.gui.main.imp.disp_plane_img(mid_plane)
+            should_display_autocross = self.scan_params.auto_cross and self.scan_params.exc_mode
+            self._app.gui.main.imp.disp_plane_img(mid_plane, auto_cross=should_display_autocross)
 
         # return to stand-by state
         await self.toggle_lasers(finish=True)

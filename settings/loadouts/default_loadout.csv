@@ -33,8 +33,9 @@ axisMoveUm,0.0
 solMeasPreset,0
 solScanType,2
 solScanDurUnits,0
-imgScanPreset,0
 imgScanType,1
+imgScanPreset,0
 imgShowMethod,0
 axis,0
 repeatSolMeas,True
+autoCrosshair,True

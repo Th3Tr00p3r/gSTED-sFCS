@@ -1,6 +1,7 @@
 """ GUI windows implementations module. """
 
 import logging
+from typing import Tuple
 
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
@@ -112,6 +113,7 @@ class MainWin:
             "ledExc": "exc_laser",
             "ledTdc": "TDC",
             "ledDep": "dep_laser",
+            "ledShutter": "dep_shutter",
             "ledStage": "stage",
             "ledUm232h": "UM232H",
             "ledCam": "camera",
@@ -182,6 +184,14 @@ class MainWin:
     def displace_scanner_axis(self, sign: int) -> None:
         """Doc."""
 
+        def limit(val: float, min: float, max: float) -> float:
+            if min <= val <= max:
+                return val
+            elif val < max:
+                return min
+            else:
+                return max
+
         um_disp = sign * self._gui.axisMoveUm.value()
 
         if um_disp != 0.0:
@@ -192,7 +202,7 @@ class MainWin:
             delta_vltg = um_disp / um_V_RATIO
 
             axis_ao_limits = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS")
-            new_vltg = helper.limit(
+            new_vltg = limit(
                 (current_vltg + delta_vltg),
                 axis_ao_limits["min_val"],
                 axis_ao_limits["max_val"],
@@ -233,8 +243,10 @@ class MainWin:
             elif plane_type == "YZ":
                 vltgs = (dim3_vltg, dim1_vltg, dim2_vltg)
 
-            for axis, vltg in zip("XYZ", vltgs):
+            [
                 getattr(self._gui, f"{axis.lower()}AOV").setValue(vltg)
+                for axis, vltg in zip("XYZ", vltgs)
+            ]
 
             self.move_scanners(plane_type)
 
@@ -322,7 +334,11 @@ class MainWin:
                 self._gui.solScanFileTemplate.setEnabled(False)
 
             elif type == "SFCSImage":
-                initial_pos = tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
+                initial_pos = tuple(getattr(self._gui, f"{ax}AOVint").value() for ax in "xyz")
+                [
+                    getattr(self._gui, f"{ax}AOVint").setValue(vltg)
+                    for ax, vltg in zip("xyz", initial_pos)
+                ]
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
                     scan_params=wdgt_colls.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app),
@@ -413,10 +429,7 @@ class MainWin:
             # no scan
             plt_wdgt.plot([], [], clear=True)
 
-    def disp_plane_img(
-        self,
-        plane_idx,
-    ):
+    def disp_plane_img(self, plane_idx, auto_cross=False):
         """Doc."""
 
         def build_image(img_data, method):
@@ -452,6 +465,34 @@ class MainWin:
             elif method == "Both scans - averaged":
                 return (img_data.pic1 + img_data.pic2) / (img_data.norm1 + img_data.norm2)
 
+        def auto_crosshair_position(image: np.ndarray) -> Tuple[float, float]:
+            """
+            Gets the current image, calculates its weighted mean
+            location and returns the position to which to move the crosshair.
+            (later perhaps using gaussian fit?)
+
+            """
+
+            # Use some good-old heuristic thresholding
+            n, bin_edges = np.histogram(image.ravel())
+            T = 1
+            for i in range(1, len(n)):
+                if n[i] <= n.max() * 0.1:
+                    if n[i + 1] >= n[i] * 10:
+                        continue
+                    else:
+                        T = i
+                        break
+                else:
+                    continue
+            thresh = (bin_edges[T] - bin_edges[T - 1]) / 2
+            image[image < thresh] = 0
+
+            # calculate the weighted mean
+            x = 1 / image.sum() * np.dot(np.arange(image.shape[1]), image.sum(axis=0))
+            y = 1 / image.sum() * np.dot(np.arange(image.shape[0]), image.sum(axis=1))
+            return (x, y)
+
         disp_mthd = self._gui.imgShowMethod.currentText()
         try:
             image_data = self._app.last_img_scn.plane_images_data[plane_idx]
@@ -461,6 +502,8 @@ class MainWin:
         else:
             image = build_image(image_data, disp_mthd)
             self._gui.imgScanPlot.add_image(image)
+            if auto_cross:
+                self._gui.imgScanPlot.move_crosshair(auto_crosshair_position(image))
 
     def plane_choice_changed(self, plane_idx):
         """Doc."""
@@ -511,12 +554,12 @@ class MainWin:
         """Doc."""
 
         img_scn_wdgt_fillout_dict = {
-            "Locate Plane - YZ Coarse": [1, 0, 0, "YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
-            "MFC - XY compartment": [1, 0, 0, "XY", 70, 70, 0, 80, 1000, 20, 0.9, 1],
-            "GB -  XY Coarse": [0, 1, 0, "XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
-            "GB - XY bead area": [1, 0, 0, "XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
-            "GB - XY single bead": [1, 0, 0, "XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],
-            "GB - YZ single bead": [1, 0, 0, "YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
+            "Locate Plane - YZ Coarse": ["YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
+            "MFC - XY compartment": ["XY", 70, 70, 0, 80, 1000, 20, 0.9, 1],
+            "GB -  XY Coarse": ["XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
+            "GB - XY bead area": ["XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
+            "GB - XY single bead": ["XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],
+            "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
         }
 
         wdgt_colls.IMG_SCN_WDGT_COLL.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
