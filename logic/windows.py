@@ -1,6 +1,7 @@
 """ GUI windows implementations module. """
 
 import logging
+from types import SimpleNamespace
 from typing import Tuple
 
 import numpy as np
@@ -286,30 +287,27 @@ class MainWin:
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
     @err_chckr({"TDC", "UM232H", "scanners", "photon_detector"})
-    def toggle_meas(self, type, laser_mode=None):
+    def toggle_meas(self, meas_type, laser_mode):
         """Doc."""
 
         if not (current_type := self._app.meas.type):
             # no meas running
-            if type == "SFCSSolution":
+            if meas_type == "SFCSSolution":
                 pattern = self._gui.solScanType.currentText()
                 if pattern == "angular":
-                    scan_params = wdgt_colls.SOL_ANG_SCN_WDGT_COLL.read_namespace_from_gui(
-                        self._app
-                    )
+                    scan_params = wdgt_colls.sol_ang_scan_wdgts.read_namespace_from_gui(self._app)
                 elif pattern == "circle":
-                    scan_params = wdgt_colls.SOL_CIRC_SCN_WDGT_COLL.read_namespace_from_gui(
-                        self._app
-                    )
+                    scan_params = wdgt_colls.sol_circ_scan_wdgts.read_namespace_from_gui(self._app)
                 elif pattern == "static":
-                    scan_params = wdgt_colls.SOL_NO_SCN_WDGT_COLL.read_namespace_from_gui(self._app)
+                    scan_params = SimpleNamespace()
 
                 scan_params.pattern = pattern
 
                 self._app.meas = meas.SFCSSolutionMeasurement(
                     app=self._app,
                     scan_params=scan_params,
-                    **wdgt_colls.SOL_MEAS_WDGT_COLL.hold_objects(
+                    laser_mode=laser_mode,
+                    **wdgt_colls.sol_meas_wdgts.hold_objects(
                         self._app,
                         [
                             "prog_bar_wdgt",
@@ -326,14 +324,19 @@ class MainWin:
                     ).read_dict_from_gui(self._app),
                 )
 
-                self._gui.startSolScan.setText("Stop \nScan")
+                self._gui.startSolScanExc.setEnabled(False)
+                self._gui.startSolScanDep.setEnabled(False)
+                self._gui.startSolScanSted.setEnabled(False)
+                helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setEnabled")(True)
+                helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")("Stop \nScan")
+
                 self._gui.solScanMaxFileSize.setEnabled(False)
                 self._gui.solScanCalDur.setEnabled(False)
                 self._gui.solScanTotalDur.setEnabled(self._gui.repeatSolMeas.isChecked())
                 self._gui.solScanDurUnits.setEnabled(False)
                 self._gui.solScanFileTemplate.setEnabled(False)
 
-            elif type == "SFCSImage":
+            elif meas_type == "SFCSImage":
                 initial_pos = tuple(getattr(self._gui, f"{ax}AOVint").value() for ax in "xyz")
                 [
                     getattr(self._gui, f"{ax}AOVint").setValue(vltg)
@@ -341,14 +344,10 @@ class MainWin:
                 ]
                 self._app.meas = meas.SFCSImageMeasurement(
                     app=self._app,
-                    scan_params=wdgt_colls.IMG_SCN_WDGT_COLL.read_namespace_from_gui(self._app),
-                    laser_mode=(
-                        (laser_mode == "Exc"),
-                        (laser_mode == "Dep"),
-                        (laser_mode == "Sted"),
-                    ),
+                    scan_params=wdgt_colls.img_scan_wdgts.read_namespace_from_gui(self._app),
+                    laser_mode=laser_mode,
                     initial_pos=initial_pos,
-                    **wdgt_colls.IMG_MEAS_WDGT_COLL.hold_objects(
+                    **wdgt_colls.img_meas_wdgts.hold_objects(
                         self._app,
                         [
                             "prog_bar_wdgt",
@@ -369,11 +368,16 @@ class MainWin:
 
             self._app.loop.create_task(self._app.meas.start())
 
-        elif current_type == type:
+        elif current_type == meas_type:
             # manual shutdown
-            if type == "SFCSSolution":
+            if meas_type == "SFCSSolution":
+                self._gui.startSolScanExc.setEnabled(True)
+                self._gui.startSolScanDep.setEnabled(True)
+                self._gui.startSolScanSted.setEnabled(True)
+                helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")(
+                    f"{laser_mode} \nScan"
+                )
                 self._gui.imp.go_to_origin("XY")
-                self._gui.startSolScan.setText("Start \nScan")
                 # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanCalDur.setEnabled(True)
@@ -381,7 +385,7 @@ class MainWin:
                 self._gui.solScanDurUnits.setEnabled(True)
                 self._gui.solScanFileTemplate.setEnabled(True)
 
-            elif type == "SFCSImage":
+            elif meas_type == "SFCSImage":
                 self._gui.startImgScanExc.setEnabled(True)
                 self._gui.startImgScanDep.setEnabled(True)
                 self._gui.startImgScanSted.setEnabled(True)
@@ -400,13 +404,13 @@ class MainWin:
         """Doc."""
 
         if pattern == "image":
-            scan_params_coll = wdgt_colls.IMG_SCN_WDGT_COLL
+            scan_params_coll = wdgt_colls.img_scan_wdgts
             plt_wdgt = self._gui.imgScanPattern
         elif pattern == "angular":
-            scan_params_coll = wdgt_colls.SOL_ANG_SCN_WDGT_COLL
+            scan_params_coll = wdgt_colls.sol_ang_scan_wdgts
             plt_wdgt = self._gui.solScanPattern
         elif pattern == "circle":
-            scan_params_coll = wdgt_colls.SOL_CIRC_SCN_WDGT_COLL
+            scan_params_coll = wdgt_colls.sol_circ_scan_wdgts
             plt_wdgt = self._gui.solScanPattern
         elif pattern == "static":
             scan_params_coll = None
@@ -518,13 +522,9 @@ class MainWin:
     def change_meas_dur(self, new_dur: float):
         """Allow duration change during run only for alignment measurements"""
 
-        try:
-            if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
-                self._app.meas.total_duration = new_dur
-                self._app.meas.duration = new_dur
-        except AttributeError:
-            # meas no yet defined (this is due to loading preset on startup)
-            pass
+        if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
+            self._app.meas.total_duration = new_dur
+            self._app.meas.duration = new_dur
 
     def open_settwin(self):
         """Doc."""
@@ -562,7 +562,7 @@ class MainWin:
             "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
         }
 
-        wdgt_colls.IMG_SCN_WDGT_COLL.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
+        wdgt_colls.img_scan_wdgts.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
 
     def fill_sol_meas_preset_gui(self, curr_text: str) -> None:
@@ -589,7 +589,7 @@ class MainWin:
             },
         }
 
-        wdgt_colls.SOL_MEAS_WDGT_COLL.write_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
+        wdgt_colls.sol_meas_wdgts.write_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
 
 

@@ -47,7 +47,7 @@ class Timeout:
             self._updt_CI_and_AI(),
             self._update_avg_counts(),
             self._update_dep(),
-            self._updt_current_state(),
+            self._updt_application_log(),
             self._update_gui(),
             #            self._updt_um232h_status(),
         )
@@ -60,7 +60,7 @@ class Timeout:
         self._app.loop.create_task(self._main())
         logging.debug("Starting main timer.")
 
-    async def _updt_current_state(self) -> None:
+    async def _updt_application_log(self) -> None:
         """Doc."""
 
         while self.not_finished:

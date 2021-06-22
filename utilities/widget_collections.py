@@ -6,7 +6,7 @@ from utilities.helper import QtWidgetCollection
 # Devices
 # ------------------------------
 
-LED_WDGT_COLL = QtWidgetCollection(
+led_wdgts = QtWidgetCollection(
     exc=("ledExc", "icon", "main"),
     dep=("ledDep", "icon", "main"),
     shutter=("ledShutter", "icon", "main"),
@@ -19,7 +19,7 @@ LED_WDGT_COLL = QtWidgetCollection(
     pxl_clk=("ledPxlClk", "icon", "main"),
 )
 
-SWITCH_WDGT_COLL = QtWidgetCollection(
+switch_wdgts = QtWidgetCollection(
     exc=("excOnButton", "icon", "main"),
     dep=("depEmissionOn", "icon", "main"),
     shutter=("depShutterOn", "icon", "main"),
@@ -30,10 +30,7 @@ SWITCH_WDGT_COLL = QtWidgetCollection(
 # Measurement Widget Collections
 # ----------------------------------------------
 
-SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
-    exc_mode=("solScanModeExc", "isChecked", "main"),
-    dep_mode=("solScanModeDep", "isChecked", "main"),
-    sted_mode=("solScanModeSted", "isChecked", "main"),
+sol_ang_scan_wdgts = QtWidgetCollection(
     max_line_len_um=("maxLineLen", "value", "main"),
     ao_samp_freq_Hz=("angAoSampFreq", "value", "main"),
     angle_deg=("angle", "value", "main"),
@@ -44,23 +41,13 @@ SOL_ANG_SCN_WDGT_COLL = QtWidgetCollection(
     max_scan_freq_Hz=("maxScanFreq", "value", "main"),
 )
 
-SOL_CIRC_SCN_WDGT_COLL = QtWidgetCollection(
-    exc_mode=("solScanModeExc", "isChecked", "main"),
-    dep_mode=("solScanModeDep", "isChecked", "main"),
-    sted_mode=("solScanModeSted", "isChecked", "main"),
+sol_circ_scan_wdgts = QtWidgetCollection(
     ao_samp_freq_Hz=("circAoSampFreq", "value", "main"),
     diameter_um=("circDiameter", "value", "main"),
     speed_um_s=("circSpeed", "value", "main"),
 )
 
-SOL_NO_SCN_WDGT_COLL = QtWidgetCollection(
-    # TODO: move laser modes to SOL_MEAS_WDGT_COLL (also from 2 collections above) - or switch to buttons, same as image scan
-    exc_mode=("solScanModeExc", "isChecked", "main"),
-    dep_mode=("solScanModeDep", "isChecked", "main"),
-    sted_mode=("solScanModeSted", "isChecked", "main"),
-)
-
-SOL_MEAS_WDGT_COLL = QtWidgetCollection(
+sol_meas_wdgts = QtWidgetCollection(
     scan_type=("solScanType", "currentText", "main"),
     file_template=("solScanFileTemplate", "text", "main"),
     repeat=("repeatSolMeas", "isChecked", "main"),
@@ -83,7 +70,7 @@ SOL_MEAS_WDGT_COLL = QtWidgetCollection(
     fit_led=("ledFit", "icon", "main"),
 )
 
-IMG_SCN_WDGT_COLL = QtWidgetCollection(
+img_scan_wdgts = QtWidgetCollection(
     scan_plane=("imgScanType", "currentText", "main"),
     dim1_um=("imgScanDim1", "value", "main"),
     dim2_um=("imgScanDim2", "value", "main"),
@@ -99,7 +86,7 @@ IMG_SCN_WDGT_COLL = QtWidgetCollection(
     auto_cross=("autoCrosshair", "isChecked", "main"),
 )
 
-IMG_MEAS_WDGT_COLL = QtWidgetCollection(
+img_meas_wdgts = QtWidgetCollection(
     file_template=("imgScanFileTemplate", "text", "main"),
     save_path=("imgDataPath", "text", "settings"),
     save_frmt=("saveFormat", "currentText", "settings"),

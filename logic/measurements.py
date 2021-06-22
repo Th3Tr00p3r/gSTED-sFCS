@@ -28,12 +28,6 @@ from utilities.helper import div_ceil, paths_to_icons
 class Measurement:
     """Base class for measurements"""
 
-    led_mode_dict = {
-        (1, 0, 0): "Exc",
-        (0, 1, 0): "Dep",
-        (0, 0, 1): "Sted",
-    }
-
     def __init__(self, app, type: str, scan_params=None, **kwargs):
 
         self._app = app
@@ -49,11 +43,6 @@ class Measurement:
             self.pxl_clk_dvc = app.devices.pixel_clock
             self.scanners_dvc = app.devices.scanners
             self.scan_params = scan_params
-            (
-                self.scan_params.exc_mode,
-                self.scan_params.dep_mode,
-                self.scan_params.sted_mode,
-            ) = self.laser_mode
             self.um_v_ratio = tuple(
                 getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
             )
@@ -70,10 +59,11 @@ class Measurement:
                 AI_ScalingXYZ=[1.243, 1.239, 1],  # TODO: what's that?
                 xyz_um_to_v=self.um_v_ratio,
             )
-        self.laser_dvcs = SimpleNamespace()
-        self.laser_dvcs.exc = app.devices.exc_laser
-        self.laser_dvcs.dep = app.devices.dep_laser
-        self.laser_dvcs.dep_shutter = app.devices.dep_shutter
+        self.laser_dvcs = SimpleNamespace(
+            exc=app.devices.exc_laser,
+            dep=app.devices.dep_laser,
+            dep_shutter=app.devices.dep_shutter,
+        )
         self.is_running = False
 
     async def start(self):
@@ -142,36 +132,43 @@ class Measurement:
     async def toggle_lasers(self, finish=False) -> None:
         """Doc."""
 
-        if self.scan_params.sted_mode:
-            self.scan_params.exc_mode = True
-            self.scan_params.dep_mode = True
+        async def prep_dep():
+            """Doc."""
+
+            logging.info(
+                f"{dvcs.DEVICE_ATTR_DICT['dep_laser'].log_ref} isn't on. Turning on and waiting 5 s before measurement."
+            )
+            self._app.gui.main.imp.dvc_toggle(
+                "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
+            )
+            await asyncio.sleep(5)
 
         if finish:
-            if self.scan_params.exc_mode:
+            # measurement finishing
+            if self.laser_mode == "Exc":
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
-            if self.scan_params.dep_mode:
+            elif self.laser_mode == "Dep":
+                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
+            elif self.laser_mode == "Sted":
+                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
         else:
-            if self.scan_params.exc_mode:
-                # turn excitation ON
+            # measurement begins
+            if self.laser_mode == "Exc":
+                # turn excitation ON and depletion shutter OFF
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
-            else:
-                # turn excitation OFF
-                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
-            if self.scan_params.dep_mode:
-                # turn depletion ON
-                if self.laser_dvcs.dep.emission_state is False:
-                    logging.info(
-                        f"{dvcs.DEVICE_ATTR_DICT['dep_laser'].log_ref} isn't on. Turning on and waiting 5 s before measurement."
-                    )
-                    self._app.gui.main.imp.dvc_toggle(
-                        "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
-                    )
-                    await asyncio.sleep(5)
-                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
-            else:
-                # turn depletion OFF
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
+            elif self.laser_mode == "Dep":
+                await prep_dep() if self.laser_dvcs.dep.emission_state is False else None
+                # turn depletion shutter ON and excitation OFF
+                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
+                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
+            elif self.laser_mode == "Sted":
+                await prep_dep() if self.laser_dvcs.dep.emission_state is False else None
+                # turn both depletion shutter and excitation ON
+                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
+                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
+
             self.get_laser_config()
 
     def get_laser_config(self) -> None:
@@ -550,7 +547,7 @@ class SFCSImageMeasurement(Measurement):
             mid_plane = int(len(self.scan_params.set_pnts_planes) // 2)
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
-            should_display_autocross = self.scan_params.auto_cross and self.scan_params.exc_mode
+            should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "Exc")
             self._app.gui.main.imp.disp_plane_img(mid_plane, auto_cross=should_display_autocross)
 
         # return to stand-by state
@@ -560,7 +557,7 @@ class SFCSImageMeasurement(Measurement):
         self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
 
         if self.is_running:  # if not manually stopped
-            self._app.gui.main.imp.toggle_meas(self.type, self.led_mode_dict[self.laser_mode])
+            self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode)
 
 
 class SFCSSolutionMeasurement(Measurement):
@@ -867,4 +864,4 @@ class SFCSSolutionMeasurement(Measurement):
             self._app.gui.main.imp.go_to_origin("XY")
 
         if self.is_running:  # if not manually stopped
-            self._app.gui.main.imp.toggle_meas(self.type)
+            self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode)
