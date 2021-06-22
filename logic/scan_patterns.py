@@ -8,6 +8,8 @@ import numpy as np
 
 
 class ScanPatternAO:
+    """Doc."""
+
     def __init__(self, pattern: str, scan_params, um_v_ratio):
         self.pattern = pattern
         self.scan_params = scan_params

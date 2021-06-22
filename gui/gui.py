@@ -1,5 +1,7 @@
 """ GUI Module. """
 
+from typing import Tuple
+
 import numpy as np
 import pyqtgraph as pg
 from matplotlib import pyplot as plt
@@ -392,6 +394,7 @@ class ImageDisplay:
     def add_image(self, image: np.ndarray, limit_zoomout=True, crosshair=True):
         """Doc."""
 
+        self.vb.clear()
         image_item = pg.ImageItem(image)
         self.vb.addItem(image_item)
         self.hist.setImageItem(image_item)
@@ -414,13 +417,20 @@ class ImageDisplay:
             self.vb.addItem(self.hLine)
             try:
                 # keep crosshair at last position
-                x_pos, y_pos = self.last_roi
-                self.vLine.setPos(x_pos)
-                self.hLine.setPos(y_pos)
+                self.move_crosshair(self.last_roi)
             except AttributeError:
                 # case first image since application loaded (no last_roi)
                 pass
             self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
+
+        self.vb.autoRange()
+
+    def move_crosshair(self, loc: Tuple[float, float]):
+        """Doc."""
+
+        self.vLine.setPos(loc[0])
+        self.hLine.setPos(loc[1])
+        self.last_roi = loc
 
     def mouseClicked(self, evt):
         """Doc."""
@@ -432,8 +442,6 @@ class ImageDisplay:
             # outside image
             pass
         else:
-            if self.vb.sceneBoundingRect().contains(pos):
-                mousePoint = self.vb.mapSceneToView(pos)
-                self.vLine.setPos(mousePoint.x())
-                self.hLine.setPos(mousePoint.y())
-                self.last_roi = (mousePoint.x(), mousePoint.y())
+            #            if self.vb.sceneBoundingRect().contains(pos):
+            mousePoint = self.vb.mapSceneToView(pos)
+            self.move_crosshair(loc=(mousePoint.x(), mousePoint.y()))
