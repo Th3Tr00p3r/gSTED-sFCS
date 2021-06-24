@@ -100,10 +100,12 @@ class Measurement:
         self._app.gui.main.imp.dvc_toggle("TDC")
 
         if timed:
+            # Solution
             while self.time_passed < self.duration * self.duration_multiplier and self.is_running:
                 await read_and_track_time()
 
         else:
+            # Image
             while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
                 await read_and_track_time()
 

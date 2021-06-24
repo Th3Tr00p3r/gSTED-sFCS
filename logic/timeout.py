@@ -43,14 +43,19 @@ class Timeout:
     async def _main(self) -> None:
         """Doc."""
 
-        await asyncio.gather(
-            self._updt_CI_and_AI(),
-            self._update_avg_counts(),
-            self._update_dep(),
-            self._updt_application_log(),
-            self._update_gui(),
-            #            self._updt_um232h_status(),
-        )
+        try:  # TESTESTEST
+            await asyncio.gather(
+                self._updt_CI_and_AI(),
+                self._update_avg_counts(),
+                self._update_dep(),
+                self._updt_application_log(),
+                self._update_gui(),
+                # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
+            )
+        except Exception as exc:  # TESTESTEST
+            print("Caught something in timeout module")
+            err_hndlr(exc, locals(), sys._getframe(), dvc=self)  # TESTESTEST
+
         logging.debug("_main function exited")
 
     def start(self) -> None:
@@ -91,7 +96,7 @@ class Timeout:
 
         while self.not_finished:
 
-            #            elapsed = time.perf_counter() - tic
+            #            elapsed = time.perf_counter() - tic # TESTING`
             #            print(f"elapsed to timeout ratio: {elapsed/TIMEOUT:0.3f}") # TESTING
 
             # photon_detector
