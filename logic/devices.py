@@ -845,7 +845,7 @@ class DepletionLaser(BaseDevice, PyVISA):
             except Exception as exc:
                 err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            dialog.Error(error_txt="Power out of range").display()
+            dialog.Error(custom_txt="Power out of range").display()
 
     def set_current(self, value_mA):
         """Doc."""
@@ -862,7 +862,7 @@ class DepletionLaser(BaseDevice, PyVISA):
             except Exception as exc:
                 err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            dialog.Error(error_txt="Current out of range").display()
+            dialog.Error(custom_txt="Current out of range").display()
 
 
 class StepperStage(BaseDevice, PyVISA):
