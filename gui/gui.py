@@ -366,6 +366,7 @@ class CamWin(QWidget):
         self.imp = wins_imp.CamWin(self, app)
 
         # add matplotlib-ready widget (canvas) for showing camera output
+        # TODO: replace this with ImageDisplay
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         self.gridLayout.addWidget(self.canvas, 0, 1)
