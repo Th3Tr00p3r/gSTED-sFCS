@@ -177,7 +177,11 @@ class Measurement:
         """Doc."""
 
         exc_state = self._app.devices.exc_laser.state
-        dep_state = self._app.devices.dep_laser.emission_state
+        try:
+            dep_state = self._app.devices.dep_laser.emission_state
+        except AttributeError:
+            # dep error on startup, emission should be off
+            dep_state = False
 
         if exc_state and dep_state:
             laser_config = "sted"
