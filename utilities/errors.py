@@ -32,7 +32,7 @@ def build_err_dict(exc: Exception) -> str:
     return dict(type=exc_type, loc=exc_loc, msg=str(exc), tb=frmtd_tb)
 
 
-def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False):
+def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False) -> str:
     """Doc."""
 
     def get_frame_details(frame, locals):
@@ -70,6 +70,8 @@ def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False):
             Error(**err_dict).display()
 
     getattr(logging, lvl)(log_str, exc_info=False)
+
+    return log_str
 
 
 # TODO: allow toggle(off) on error!

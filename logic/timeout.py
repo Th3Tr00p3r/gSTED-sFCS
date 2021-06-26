@@ -53,8 +53,8 @@ class Timeout:
                 # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
             )
         except Exception as exc:  # TESTESTEST
-            print("Caught something in timeout module")
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)  # TESTESTEST
+            print("Caught something in timeout module")  # TESTESTEST
+            err_hndlr(exc, locals(), sys._getframe())  # TESTESTEST
 
         logging.debug("_main function exited")
 
@@ -150,6 +150,7 @@ class Timeout:
         """
 
         while self.not_finished:
+
             if not self.cntr_dvc.error_dict:
                 self.cntr_dvc.average_counts()
                 self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate)
@@ -252,7 +253,7 @@ def updt_meas_progbar(meas) -> None:
             else:
                 progress = 0
         elif meas.type == "SFCSImage":
-            progress = meas.time_passed / meas.est_duration * meas.prog_bar_wdgt.obj.maximum()
+            progress = meas.time_passed / meas.est_total_duration * meas.prog_bar_wdgt.obj.maximum()
         meas.prog_bar_wdgt.set(progress)
 
     except AttributeError:
