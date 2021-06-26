@@ -73,27 +73,27 @@ def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False):
 
 
 # TODO: allow toggle(off) on error!
-def dvc_err_chckr(nick_set: set = None) -> Callable:
+def dvc_err_chckr(*nick_list: str) -> Callable:
     """
     Decorator for clean handeling of GUI interactions with errorneous devices.
     Checks for errors in devices associated with 'func' and shows error box
     if exist.
 
-    nick_set - a set of all device nicks to check for errors
+    nick_list - a set of all device nicks to check for errors
         before attempting the decorated func()
     """
 
     def outer_wrapper(func) -> Callable:
-        def check(nick_set, devices: SimpleNamespace, func_args) -> bool:
+        def check(nick_list, devices: SimpleNamespace, func_args) -> bool:
             """
             Checks for error in specified devices
             and displays informative error messages to user.
             """
 
-            if not nick_set:
-                nick_set = {func_args[0]}
+            if not nick_list:
+                nick_list = {func_args[0]}
 
-            txt = [f"{nick} error.\n" for nick in nick_set if getattr(devices, nick).error_dict]
+            txt = [f"{nick} error.\n" for nick in nick_list if getattr(devices, nick).error_dict]
 
             if txt:
                 # if any errors found for specified devices
@@ -109,7 +109,7 @@ def dvc_err_chckr(nick_set: set = None) -> Callable:
             @functools.wraps(func)
             async def inner_wrapper(self, *args, **kwargs):
 
-                if check(nick_set, self._app.devices, args) is True:
+                if check(nick_list, self._app.devices, args) is True:
                     return await func(self, *args, **kwargs)
 
         else:
@@ -117,7 +117,7 @@ def dvc_err_chckr(nick_set: set = None) -> Callable:
             @functools.wraps(func)
             def inner_wrapper(self, *args, **kwargs):
 
-                if check(nick_set, self._app.devices, args) is True:
+                if check(nick_list, self._app.devices, args) is True:
                     return func(self, *args, **kwargs)
 
         return inner_wrapper
