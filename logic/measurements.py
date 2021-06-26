@@ -28,6 +28,8 @@ from utilities.helper import div_ceil, paths_to_icons
 class Measurement:
     """Base class for measurements"""
 
+    # TODO: raise measurement error when something happens during measurement which interrupts it, and use it to automatically stop it (as for dep lasers or scanners being OFF)
+
     def __init__(self, app, type: str, scan_params=None, **kwargs):
 
         self._app = app
@@ -213,7 +215,6 @@ class Measurement:
 
             if curr_emission_state() != self.laser_mode:
                 # cancel measurement if relevant lasers are not ON,
-                # TODO: and notify user
                 raise MeasurementError(
                     f"Requested laser mode ({self.laser_mode}) was not attained."
                 )

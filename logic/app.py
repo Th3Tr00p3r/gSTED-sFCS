@@ -37,8 +37,6 @@ class App:
     def __init__(self, loop):
         """Doc."""
 
-        self.exiting = False
-
         self.config_logging()
 
         self.loop = loop
@@ -208,12 +206,17 @@ class App:
     def exit_app(self, event):
         """Doc."""
 
-        if not self.exiting:
-            pressed = Question(
-                txt="Are you sure you want to quit?", title="Quitting Program"
-            ).display()
-            if pressed == QMessageBox.Yes:
-                self.exiting = True
-                self.loop.create_task(self.clean_up_app())
-            else:
-                event.ignore()
+        try:
+            if not self.exiting:
+                pressed = Question(
+                    txt="Are you sure you want to quit?", title="Quitting Program"
+                ).display()
+                if pressed == QMessageBox.Yes:
+                    self.exiting = True
+                    self.loop.create_task(self.clean_up_app())
+                else:
+                    event.ignore()
+        except AttributeError:
+            # this is to save defining the 'self.exiting' flag at __init__
+            self.exiting = False
+            self.exit_app(event)
