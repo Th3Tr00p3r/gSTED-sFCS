@@ -32,6 +32,7 @@ class Measurement:
 
         self._app = app
         self.type = type
+        self.meas_error = False
         self.tdc_dvc = app.devices.TDC
         self.pxl_clk_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
@@ -106,6 +107,7 @@ class Measurement:
 
         else:
             # Image
+            # TODO: fix bug where if scanners are off the 'done' signal is probably never sent? (could to timeout with 'est_duration'!)
             while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
                 await read_and_track_time()
 
@@ -134,6 +136,25 @@ class Measurement:
     async def toggle_lasers(self, finish=False) -> None:
         """Doc."""
 
+        def curr_emission_state() -> str:
+            """Doc."""
+
+            exc_state = self._app.devices.exc_laser.state
+            try:
+                dep_state = self._app.devices.dep_laser.emission_state
+            except AttributeError:
+                # dep error on startup, emission should be off
+                dep_state = False
+
+            if exc_state and dep_state:
+                return "sted"
+            elif exc_state:
+                return "exc"
+            elif dep_state:
+                return "dep"
+            else:
+                return "nolaser"
+
         async def prep_dep():
             """Doc."""
 
@@ -147,52 +168,34 @@ class Measurement:
 
         if finish:
             # measurement finishing
-            if self.laser_mode == "Exc":
+            if self.laser_mode == "exc":
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
-            elif self.laser_mode == "Dep":
+            elif self.laser_mode == "dep":
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
-            elif self.laser_mode == "Sted":
+            elif self.laser_mode == "sted":
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
         else:
             # measurement begins
-            if self.laser_mode == "Exc":
+            if self.laser_mode == "exc":
                 # turn excitation ON and depletion shutter OFF
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
-            elif self.laser_mode == "Dep":
+            elif self.laser_mode == "dep":
                 await prep_dep() if self.laser_dvcs.dep.emission_state is False else None
                 # turn depletion shutter ON and excitation OFF
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
-            elif self.laser_mode == "Sted":
+            elif self.laser_mode == "sted":
                 await prep_dep() if self.laser_dvcs.dep.emission_state is False else None
                 # turn both depletion shutter and excitation ON
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
 
-            self.get_laser_config()
-
-    def get_laser_config(self) -> None:
-        """Doc."""
-
-        exc_state = self._app.devices.exc_laser.state
-        try:
-            dep_state = self._app.devices.dep_laser.emission_state
-        except AttributeError:
-            # dep error on startup, emission should be off
-            dep_state = False
-
-        if exc_state and dep_state:
-            laser_config = "sted"
-        elif exc_state:
-            laser_config = "exc"
-        elif dep_state:
-            laser_config = "dep"
-        else:
-            laser_config = "nolaser"
-
-        self.laser_config = laser_config
+            if curr_emission_state() != self.laser_mode:
+                # cancel measurement if relevant lasers are not ON,
+                # TODO: and notify user
+                self.meas_error = True
 
     def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""
@@ -257,7 +260,7 @@ class SFCSImageMeasurement(Measurement):
     def build_filename(self) -> str:
         datetime_str = datetime.datetime.now().strftime("%d%m_%H%M%S")
         return (
-            f"{self.file_template}_{self.laser_config}_{self.scan_params.scan_plane}_{datetime_str}"
+            f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{datetime_str}"
         )
 
     def setup_scan(self):
@@ -507,7 +510,7 @@ class SFCSImageMeasurement(Measurement):
         try:  # TESTESTEST
             for plane_idx in range(n_planes):
 
-                if self.is_running:
+                if self.is_running and not self.meas_error:
 
                     self.change_plane(plane_idx)
                     self.curr_plane_wdgt.set(plane_idx)
@@ -538,7 +541,7 @@ class SFCSImageMeasurement(Measurement):
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)  # TESTESTEST
 
         # finished measurement
-        if self.is_running:
+        if self.is_running and not self.meas_error:
             # if not manually stopped
             # prepare data
             self.plane_images_data = [
@@ -562,8 +565,8 @@ class SFCSImageMeasurement(Measurement):
         self._app.gui.main.imp.dvc_toggle("pixel_clock")
         self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
 
-        if self.is_running:  # if not manually stopped
-            self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode)
+        if self.is_running or self.meas_error:  # if not manually stopped, or if an error occured
+            self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
 
 
 class SFCSSolutionMeasurement(Measurement):
@@ -591,7 +594,7 @@ class SFCSSolutionMeasurement(Measurement):
         if self.repeat is True:
             file_no = 0
 
-        return f"{self.file_template}_{self.scan_type}_{self.laser_config}_{file_no}"
+        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{file_no}"
 
     def set_current_and_end_times(self) -> None:
         """
@@ -710,7 +713,7 @@ class SFCSSolutionMeasurement(Measurement):
                     self.plot_wdgt.obj.plot(x, y_fit, pen="r")
                     self.plot_wdgt.obj.plotItem.autoRange()
                     logging.info(
-                        f"Aligning ({self.laser_config}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
+                        f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
                     )
 
     def prep_data_dict(self) -> dict:
@@ -785,7 +788,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         # calibrating save-intervals/num_files
         # TODO: test if non-scanning calibration gives good enough approximation for file size, if not, consider scanning inside cal function
-        if not self.repeat:
+        if not self.repeat and not self.meas_error:
             num_files = await self.calibrate_num_files()
         else:
             # if alignment measurement
@@ -817,7 +820,7 @@ class SFCSSolutionMeasurement(Measurement):
         try:  # TESTESTEST`
             for file_num in range(1, num_files + 1):
 
-                if self.is_running:
+                if self.is_running and not self.meas_error:
 
                     self.file_num_wdgt.set(file_num)
 
@@ -869,5 +872,5 @@ class SFCSSolutionMeasurement(Measurement):
             self._app.gui.main.imp.dvc_toggle("pixel_clock")
             self._app.gui.main.imp.go_to_origin("XY")
 
-        if self.is_running:  # if not manually stopped
-            self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode)
+        if self.is_running or self.meas_error:  # if not manually stopped, or if there was an error
+            self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
