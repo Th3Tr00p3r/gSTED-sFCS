@@ -183,7 +183,7 @@ class MainWin(QMainWindow):
     def scan_button_released(self, meas_type: str, laser_mode: str) -> None:
         """Begin/end SFCS measurement"""
 
-        self.imp.toggle_meas(meas_type, laser_mode)
+        self._loop.create_task(self.imp.toggle_meas(meas_type, laser_mode))
 
     def device_toggle_button_released(
         self, dvc_nick: str, toggle_mthd: str = "toggle", state_attr="state"
