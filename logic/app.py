@@ -37,6 +37,8 @@ class App:
     def __init__(self, loop):
         """Doc."""
 
+        self.exiting = False
+
         self.config_logging()
 
         self.loop = loop
@@ -132,7 +134,7 @@ class App:
                     dvc_class(param_dict),
                 )
 
-    def clean_up_app(self, restart=False):
+    async def clean_up_app(self, restart=False):
         """Doc."""
 
         def close_all_dvcs(app):
@@ -168,7 +170,9 @@ class App:
                 self.gui.camera.close()
 
             if self.meas.type is not None:
-                self.gui.main.imp.toggle_meas(self.meas.type, self.meas.laser_mode)
+                await self.gui.main.imp.toggle_meas(
+                    self.meas.type, self.meas.laser_mode.capitalize()
+                )
 
             close_all_dvcs(self)
 
@@ -193,7 +197,9 @@ class App:
             self.timeout_loop.not_finished = False
 
             if self.meas.type is not None:
-                self.gui.main.imp.toggle_meas(self.meas.type, self.meas.laser_mode)
+                await self.gui.main.imp.toggle_meas(
+                    self.meas.type, self.meas.laser_mode.capitalize()
+                )
 
             close_all_wins(self)
             close_all_dvcs(self)
@@ -202,8 +208,12 @@ class App:
     def exit_app(self, event):
         """Doc."""
 
-        pressed = Question(txt="Are you sure you want to quit?", title="Quitting Program").display()
-        if pressed == QMessageBox.Yes:
-            self.clean_up_app()
-        else:
-            event.ignore()
+        if not self.exiting:
+            pressed = Question(
+                txt="Are you sure you want to quit?", title="Quitting Program"
+            ).display()
+            if pressed == QMessageBox.Yes:
+                self.exiting = True
+                self.loop.create_task(self.clean_up_app())
+            else:
+                event.ignore()

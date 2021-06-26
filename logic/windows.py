@@ -38,7 +38,7 @@ class MainWin:
 
         pressed = Question(txt="Are you sure?", title="Restarting Application").display()
         if pressed == QMessageBox.Yes:
-            self._app.clean_up_app(restart=True)
+            self._app.loop.create_task(self._app.clean_up_app(restart=True))
 
     def save(self) -> None:
         """Doc."""
@@ -287,7 +287,7 @@ class MainWin:
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
     @err_chckr("TDC", "UM232H", "scanners", "photon_detector")
-    def toggle_meas(self, meas_type, laser_mode):
+    async def toggle_meas(self, meas_type, laser_mode):
         """Doc."""
 
         if not (current_type := self._app.meas.type):
@@ -393,7 +393,9 @@ class MainWin:
                     f"{laser_mode} \nScan"
                 )
 
-            self._app.meas.stop()
+            if self._app.meas.is_running:
+                # manual stop
+                await self._app.meas.stop()
 
         else:
             # other meas running

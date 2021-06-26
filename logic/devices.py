@@ -764,6 +764,8 @@ class DepletionLaser(BaseDevice, PyVISA):
     """Control depletion laser through pyVISA"""
 
     min_SHG_temp = 53  # Celsius
+    power_limits_mW = dict(low=99, high=1000)
+    current_limits_mA = dict(low=1500, high=2500)
 
     def __init__(self, param_dict):
         super().__init__(
@@ -835,7 +837,7 @@ class DepletionLaser(BaseDevice, PyVISA):
         """Doc."""
 
         # check that value is within range
-        if 99 <= value_mW <= 1000:
+        if self.power_limits_mW["low"] <= value_mW <= self.power_limits_mW["high"]:
             try:
                 # change the mode to power
                 cmnd = "Powerenable 1"
@@ -846,13 +848,15 @@ class DepletionLaser(BaseDevice, PyVISA):
             except Exception as exc:
                 err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            dialog.Error(custom_txt="Power out of range").display()
+            dialog.Error(
+                custom_txt=f"Power out of range [{self.power_limits_mW['low']}, {self.power_limits_mW['high']}]"
+            ).display()
 
     def set_current(self, value_mA):
         """Doc."""
 
         # check that value is within range
-        if 1500 <= value_mA <= 2500:
+        if self.current_limits_mA["low"] <= value_mA <= self.current_limits_mA["high"]:
             try:
                 # change the mode to power
                 cmnd = "Powerenable 0"
@@ -863,7 +867,9 @@ class DepletionLaser(BaseDevice, PyVISA):
             except Exception as exc:
                 err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            dialog.Error(custom_txt="Current out of range").display()
+            dialog.Error(
+                custom_txt=f"Current out of range [{self.current_limits_mA['low']}, {self.current_limits_mA['high']}]"
+            ).display()
 
 
 class StepperStage(BaseDevice, PyVISA):

@@ -32,9 +32,7 @@ class Measurement:
 
         self._app = app
         self.type = type
-        self.meas_error = False
         self.tdc_dvc = app.devices.TDC
-        self.pxl_clk_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
         self.icon_dict = paths_to_icons(gui.icons.ICON_PATHS_DICT)  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
@@ -74,10 +72,25 @@ class Measurement:
         logging.info(f"{self.type} measurement started")
         await self.run()
 
-    def stop(self):
+    async def stop(self):
         """Doc."""
 
+        await self.toggle_lasers(finish=True)
+
+        self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
+
+        if self.scanning:
+            self.return_to_regular_tasks()
+            self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_off=True)
+
+            if self.type == "SFCSSolution":
+                self._app.gui.main.imp.go_to_origin("XY")
+
+            elif self.type == "SFCSImage":
+                self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
+
         self.is_running = False
+        await self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
         self.prog_bar_wdgt.set(0)
         logging.info(f"{self.type} measurement stopped")
         self._app.meas.type = None
@@ -98,7 +111,7 @@ class Measurement:
                 # abort measurement in case of UM232H error
                 self.is_running = False
 
-        self._app.gui.main.imp.dvc_toggle("TDC")
+        self._app.gui.main.imp.dvc_toggle("TDC", leave_on=True)
 
         if timed:
             # Solution
@@ -108,10 +121,16 @@ class Measurement:
         else:
             # Image
             # TODO: fix bug where if scanners are off the 'done' signal is probably never sent? (could to timeout with 'est_duration'!)
-            while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
+            while (
+                self.is_running
+                and not self.scanners_dvc.are_tasks_done("ao")
+                and not (overdue := self.time_passed > (self.est_plane_duration * 1.1))
+            ):
                 await read_and_track_time()
+            if overdue:
+                raise MeasurementError("Tasks are overdue. Check that scanners are turned ON")
 
-        self._app.gui.main.imp.dvc_toggle("TDC")
+        self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
         await read_and_track_time()
 
     def save_data(self, data_dict: dict, file_name: str) -> None:
@@ -195,7 +214,9 @@ class Measurement:
             if curr_emission_state() != self.laser_mode:
                 # cancel measurement if relevant lasers are not ON,
                 # TODO: and notify user
-                self.meas_error = True
+                raise MeasurementError(
+                    f"Requested laser mode ({self.laser_mode}) was not attained."
+                )
 
     def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""
@@ -256,6 +277,7 @@ class SFCSImageMeasurement(Measurement):
 
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
+        self.scanning = True
 
     def build_filename(self) -> str:
         datetime_str = datetime.datetime.now().strftime("%d%m_%H%M%S")
@@ -307,9 +329,8 @@ class SFCSImageMeasurement(Measurement):
         self.ai_conv_rate = (
             self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
         )
-        self.est_duration = (
-            self.n_ao_samps * self.scan_params.dt * len(self.scan_params.set_pnts_planes)
-        )
+        self.est_plane_duration = self.n_ao_samps * self.scan_params.dt
+        self.est_total_duration = self.est_plane_duration * len(self.scan_params.set_pnts_planes)
         self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
 
     def change_plane(self, plane_idx):
@@ -492,9 +513,15 @@ class SFCSImageMeasurement(Measurement):
     async def run(self):
         """Doc."""
 
-        await self.toggle_lasers()
+        try:
+            await self.toggle_lasers()
+        except MeasurementError as exc:
+            await self.stop()
+            err_hndlr(exc, locals(), sys._getframe())
+            return
+
         self.setup_scan()
-        self._app.gui.main.imp.dvc_toggle("pixel_clock")
+        self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
 
         self.data_dvc.init_data()
         self.data_dvc.purge_buffers()
@@ -510,7 +537,7 @@ class SFCSImageMeasurement(Measurement):
         try:  # TESTESTEST
             for plane_idx in range(n_planes):
 
-                if self.is_running and not self.meas_error:
+                if self.is_running:
 
                     self.change_plane(plane_idx)
                     self.curr_plane_wdgt.set(plane_idx)
@@ -537,11 +564,16 @@ class SFCSImageMeasurement(Measurement):
                 else:
                     break
 
+        except MeasurementError as exc:
+            await self.stop()
+            err_hndlr(exc, locals(), sys._getframe())
+            return
+
         except Exception as exc:  # TESTESTEST
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)  # TESTESTEST
+            err_hndlr(exc, locals(), sys._getframe())  # TESTESTEST
 
         # finished measurement
-        if self.is_running and not self.meas_error:
+        if self.is_running:
             # if not manually stopped
             # prepare data
             self.plane_images_data = [
@@ -559,14 +591,8 @@ class SFCSImageMeasurement(Measurement):
             should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "Exc")
             self._app.gui.main.imp.disp_plane_img(mid_plane, auto_cross=should_display_autocross)
 
-        # return to stand-by state
-        await self.toggle_lasers(finish=True)
-        self.return_to_regular_tasks()
-        self._app.gui.main.imp.dvc_toggle("pixel_clock")
-        self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
-
-        if self.is_running or self.meas_error:  # if not manually stopped, or if an error occured
-            self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
+        if self.is_running:  # if not manually before completion
+            await self.stop()
 
 
 class SFCSSolutionMeasurement(Measurement):
@@ -784,11 +810,16 @@ class SFCSSolutionMeasurement(Measurement):
         self.set_current_and_end_times()
 
         # turn on lasers
-        await self.toggle_lasers()
+        try:
+            await self.toggle_lasers()
+        except MeasurementError as exc:
+            await self.stop()
+            err_hndlr(exc, locals(), sys._getframe())
+            return
 
         # calibrating save-intervals/num_files
         # TODO: test if non-scanning calibration gives good enough approximation for file size, if not, consider scanning inside cal function
-        if not self.repeat and not self.meas_error:
+        if not self.repeat:
             num_files = await self.calibrate_num_files()
         else:
             # if alignment measurement
@@ -797,7 +828,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.scanning:
             self.setup_scan()
-            self._app.gui.main.imp.dvc_toggle("pixel_clock")
+            self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
 
         self.data_dvc.init_data()
         self.data_dvc.purge_buffers()
@@ -820,7 +851,7 @@ class SFCSSolutionMeasurement(Measurement):
         try:  # TESTESTEST`
             for file_num in range(1, num_files + 1):
 
-                if self.is_running and not self.meas_error:
+                if self.is_running:
 
                     self.file_num_wdgt.set(file_num)
 
@@ -865,12 +896,9 @@ class SFCSSolutionMeasurement(Measurement):
         except Exception as exc:  # TESTESTEST
             err_hndlr(exc, locals(), sys._getframe())
 
-        await self.toggle_lasers(finish=True)
+        if self.is_running:  # if not manually stopped
+            await self.stop()
 
-        if self.scanning:
-            self.return_to_regular_tasks()
-            self._app.gui.main.imp.dvc_toggle("pixel_clock")
-            self._app.gui.main.imp.go_to_origin("XY")
 
-        if self.is_running or self.meas_error:  # if not manually stopped, or if there was an error
-            self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
+class MeasurementError(Exception):
+    pass
