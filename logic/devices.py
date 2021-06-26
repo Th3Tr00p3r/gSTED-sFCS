@@ -774,6 +774,7 @@ class DepletionLaser(BaseDevice, PyVISA):
 
         self.updt_time = 0.3
         self.state = None
+        self.emission_state = None
         self.toggle(True, should_change_icons=False)
 
         if self.state:
