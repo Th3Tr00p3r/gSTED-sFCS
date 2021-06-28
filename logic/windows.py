@@ -9,11 +9,11 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 import logic.devices as dvcs
 import logic.measurements as meas
+import utilities.errors as errors
 import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
-from utilities.errors import dvc_err_chckr
 
 SETTINGS_DIR_PATH = "./settings/"
 LOADOUT_DIR_PATH = "./settings/loadouts/"
@@ -67,11 +67,10 @@ class MainWin:
             helper.csv_to_gui(file_path, self._gui)
             logging.debug(f"Loadout loaded: '{file_path}'")
 
-    @dvc_err_chckr()  # TODO: instead of wrapping windows.py functions, consider wrapping devices.py functions
     def dvc_toggle(
         self, nick, toggle_mthd="toggle", state_attr="state", leave_on=False, leave_off=False
-    ) -> None:
-        """Doc."""
+    ) -> bool:
+        """Returns False in case operation fails"""
 
         dvc = getattr(self._app.devices, nick)
         is_dvc_on = getattr(dvc, state_attr)
@@ -81,7 +80,10 @@ class MainWin:
 
         if not is_dvc_on:
             # switch ON
-            getattr(dvc, toggle_mthd)(True)
+            try:
+                getattr(dvc, toggle_mthd)(True)
+            except errors.DeviceError:
+                return False
             is_dvc_on = getattr(dvc, state_attr)
 
             if is_dvc_on:  # if managed to turn ON
@@ -92,7 +94,10 @@ class MainWin:
 
         else:
             # switch OFF
-            getattr(dvc, toggle_mthd)(False)
+            try:
+                getattr(dvc, toggle_mthd)(False)
+            except errors.DeviceError:
+                return False
             is_dvc_on = getattr(dvc, state_attr)
 
             if not is_dvc_on:
@@ -128,18 +133,19 @@ class MainWin:
         if err_dict is not None:
             Error(**err_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref).display()
 
-    @dvc_err_chckr("dep_laser")
     def dep_sett_apply(self):
         """Doc."""
 
-        if self._gui.currMode.isChecked():  # current mode
-            val = self._gui.depCurr.value()
-            self._app.devices.dep_laser.set_current(val)
-        else:  # power mode
-            val = self._gui.depPow.value()
-            self._app.devices.dep_laser.set_power(val)
+        try:
+            if self._gui.currMode.isChecked():  # current mode
+                val = self._gui.depCurr.value()
+                self._app.devices.dep_laser.set_current(val)
+            else:  # power mode
+                val = self._gui.depPow.value()
+                self._app.devices.dep_laser.set_power(val)
+        except errors.DeviceError:
+            pass
 
-    @dvc_err_chckr("scanners")
     def move_scanners(self, axes_used: str = "XYZ", destination=None) -> None:
         """Doc."""
 
@@ -163,7 +169,6 @@ class MainWin:
             f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} were moved to {str(destination)} V"
         )
 
-    @dvc_err_chckr("scanners")
     def go_to_origin(self, which_axes: str) -> None:
         """Doc."""
 
@@ -181,7 +186,6 @@ class MainWin:
 
         logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} sent to {which_axes} origin")
 
-    @dvc_err_chckr("scanners")
     def displace_scanner_axis(self, sign: int) -> None:
         """Doc."""
 
@@ -216,7 +220,6 @@ class MainWin:
                 f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref}({axis}) was displaced {str(um_disp)} um"
             )
 
-    @dvc_err_chckr("scanners")
     def roi_to_scan(self):
         """Doc"""
 
@@ -256,7 +259,6 @@ class MainWin:
         except AttributeError:
             pass
 
-    @dvc_err_chckr("stage")
     def move_stage(self, dir: str, steps: int):
         """Doc."""
 
@@ -265,7 +267,6 @@ class MainWin:
             f"{dvcs.DEVICE_ATTR_DICT['stage'].log_ref} moved {str(steps)} steps {str(dir)}"
         )
 
-    @dvc_err_chckr("stage")
     def release_stage(self):
         """Doc."""
 
@@ -286,7 +287,6 @@ class MainWin:
             self._gui.stepperDock.setVisible(True)
             self._gui.actionStepper_Stage_Control.setChecked(True)
 
-    @dvc_err_chckr("TDC", "UM232H", "scanners", "photon_detector")
     async def toggle_meas(self, meas_type, laser_mode):
         """Doc."""
 
@@ -534,7 +534,6 @@ class MainWin:
         self._app.gui.settings.show()
         self._app.gui.settings.activateWindow()
 
-    @dvc_err_chckr("camera")
     async def open_camwin(self):
         # TODO: simply making this func async doesn't help. the blocking function here is 'UC480_Camera(reopen_policy="new")'
         # from 'drivers.py', and I can't yet see a way to make it async (since I don't want to touch the API) I should try threading for this.
@@ -545,7 +544,6 @@ class MainWin:
         self._app.gui.camera.activateWindow()
         self._app.gui.camera.imp.init_cam()
 
-    @dvc_err_chckr("photon_detector")
     def cnts_avg_sldr_changed(self, val):
         """Doc."""
 
@@ -697,7 +695,6 @@ class CamWin:
             self._cam = None
             logging.debug("Camera connection closed")
 
-    @dvc_err_chckr("camera")
     def toggle_video(self):
         """Doc."""
 
@@ -721,7 +718,6 @@ class CamWin:
 
             logging.debug("Camera video mode OFF")
 
-    @dvc_err_chckr("camera")
     def shoot(self):
         """Doc."""
 
