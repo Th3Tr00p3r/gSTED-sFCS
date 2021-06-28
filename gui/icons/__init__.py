@@ -35,16 +35,15 @@ def gen_icons_resource_file():
 #    os.system(pyrcc5_command)
 
 
-def gen_icon_paths_dict():
+def gen_icon_paths_dict(dir_path="./gui/icons", filetype="png"):
     """Doc."""
-    # TODO: make this a more general fucntion - accept args for filetype (png), path to look in etc.
 
     icon_paths_dict = {}
-    icon_paths = glob.glob("./gui/icons/*.png")
+    icon_paths = glob.glob(f"{dir_path}/*.{filetype}")
     for icon_path in icon_paths:
         _, icon_fname = os.path.split(icon_path)
         icon_fname_notype = os.path.splitext(icon_fname)[0]
-        icon_paths_dict[icon_fname_notype] = f"./gui/icons/{icon_fname}"
+        icon_paths_dict[icon_fname_notype] = f"{dir_path}/{icon_fname}"
     return icon_paths_dict
 
 
