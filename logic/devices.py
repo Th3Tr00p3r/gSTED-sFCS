@@ -14,7 +14,7 @@ from pyvisa.errors import VisaIOError
 import gui.gui
 import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
-from utilities.errors import err_hndlr
+from utilities.errors import DeviceCheckerMetaClass, err_hndlr
 from utilities.helper import (
     QtWidgetCollection,
     div_ceil,
@@ -214,7 +214,7 @@ class BaseDevice:
                     self.change_icons("on" if is_being_switched_on else "off")
 
 
-class UM232H(BaseDevice, Ftd2xx):
+class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """
     Represents the FTDI chip used to transfer data from the FPGA
     to the PC.
@@ -269,7 +269,7 @@ class UM232H(BaseDevice, Ftd2xx):
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
 
-class Scanners(BaseDevice, NIDAQmx):
+class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     """
     Scanners encompasses all analog focal point positioning devices
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
@@ -564,7 +564,7 @@ class Scanners(BaseDevice, NIDAQmx):
         return diff_ao_data
 
 
-class PhotonDetector(BaseDevice, NIDAQmx):
+class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     """
     Represents the detector which counts the green
     fluorescence photons coming from the sample.
@@ -698,7 +698,7 @@ class PhotonDetector(BaseDevice, NIDAQmx):
             self.ci_buffer = self.ci_buffer[-self.CONT_READ_BFFR_SZ :]
 
 
-class PixelClock(BaseDevice, NIDAQmx):
+class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     """
     The pixel clock is fed to the DAQ board from the FPGA.
     Base frequency is 4 MHz. Used for scans, where it is useful to
@@ -744,7 +744,7 @@ class PixelClock(BaseDevice, NIDAQmx):
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
 
-class SimpleDO(BaseDevice, NIDAQmx):
+class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
     def __init__(self, param_dict):
@@ -760,7 +760,7 @@ class SimpleDO(BaseDevice, NIDAQmx):
         self.digital_write(is_being_switched_on)
 
 
-class DepletionLaser(BaseDevice, PyVISA):
+class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control depletion laser through pyVISA"""
 
     min_SHG_temp = 53  # Celsius
@@ -872,7 +872,7 @@ class DepletionLaser(BaseDevice, PyVISA):
             ).display()
 
 
-class StepperStage(BaseDevice, PyVISA):
+class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control stepper stage through Arduino chip using PyVISA."""
 
     def __init__(self, param_dict):
@@ -910,7 +910,7 @@ class StepperStage(BaseDevice, PyVISA):
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
 
-class Camera(BaseDevice, Instrumental):
+class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
     vid_intrvl = 0.3

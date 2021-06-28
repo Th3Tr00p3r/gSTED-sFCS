@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 import traceback
-from types import SimpleNamespace
+from types import FunctionType
 from typing import Callable
 
 from PyQt5.QtGui import QIcon
@@ -75,53 +75,69 @@ def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False) -
 
 
 # TODO: allow toggle(off) on error!
-def dvc_err_chckr(*nick_list: str) -> Callable:
+def device_error_checker(func) -> Callable:
     """
     Decorator for clean handeling of GUI interactions with errorneous devices.
     Checks for errors in devices associated with 'func' and shows error box
     if exist.
 
-    nick_list - a set of all device nicks to check for errors
-        before attempting the decorated func()
     """
 
-    def outer_wrapper(func) -> Callable:
-        def check(nick_list, devices: SimpleNamespace, func_args) -> bool:
-            """
-            Checks for error in specified devices
-            and displays informative error messages to user.
-            """
+    if asyncio.iscoroutinefunction(func):
 
-            if not nick_list:
-                nick_list = {func_args[0]}
+        @functools.wraps(func)
+        async def wrapper(self, *args, **kwargs):
 
-            txt = [f"{nick} error.\n" for nick in nick_list if getattr(devices, nick).error_dict]
-
-            if txt:
-                # if any errors found for specified devices
-                txt.append("\nClick relevant LED for details.")
-                Error(custom_txt="".join(txt)).display()
-                return False
-            else:
-                # no errors found
-                return True
-
-        if asyncio.iscoroutinefunction(func):
-
-            @functools.wraps(func)
-            async def inner_wrapper(self, *args, **kwargs):
-
-                if check(nick_list, self._app.devices, args) is True:
+            try:
+                if not self.error_dict:
                     return await func(self, *args, **kwargs)
+                else:
+                    if (func.__name__ == "_toggle") and (args[0] is False):
+                        # if toggling off
+                        pass
+                    else:
+                        self.error_display.set(
+                            f"{self.log_ref} error. Click relevant LED for details."
+                        )
+                        raise DeviceError
+            except AttributeError:
+                # if not hasattr(self, "error_dict")
+                return await func(self, *args, **kwargs)
 
-        else:
+    else:
 
-            @functools.wraps(func)
-            def inner_wrapper(self, *args, **kwargs):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
 
-                if check(nick_list, self._app.devices, args) is True:
+            try:
+                if not self.error_dict:
                     return func(self, *args, **kwargs)
+                else:
+                    if (func.__name__ == "_toggle") and (args[0] is False):
+                        # if toggling off
+                        pass
+                    else:
+                        self.error_display.set(
+                            f"{self.log_ref} error. Click relevant LED for details."
+                        )
+                        raise DeviceError
+            except AttributeError:
+                # if not hasattr(self, "error_dict")
+                return func(self, *args, **kwargs)
 
-        return inner_wrapper
+    return wrapper
 
-    return outer_wrapper
+
+class DeviceCheckerMetaClass(type):
+    def __new__(meta, classname, bases, classDict):
+        newClassDict = {}
+        for attributeName, attribute in classDict.items():
+            if isinstance(attribute, FunctionType):
+                # replace it with a wrapped version
+                attribute = device_error_checker(attribute)
+            newClassDict[attributeName] = attribute
+        return type.__new__(meta, classname, bases, newClassDict)
+
+
+class DeviceError(Exception):
+    pass
