@@ -31,7 +31,7 @@ class UserDialog:
     def display(self):
         """Doc."""
 
-        return self._msg_box.exec_()
+        return self._msg_box.exec_()  # warning: blocks!
 
 
 class Error(UserDialog):

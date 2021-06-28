@@ -21,7 +21,7 @@ from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
-from utilities.errors import err_hndlr
+from utilities.errors import DeviceError, err_hndlr
 from utilities.helper import div_ceil, paths_to_icons
 
 
@@ -75,7 +75,10 @@ class Measurement:
     async def stop(self):
         """Doc."""
 
-        await self.toggle_lasers(finish=True)
+        try:
+            await self.toggle_lasers(finish=True)
+        except DeviceError:
+            pass
 
         self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
 
@@ -181,13 +184,14 @@ class Measurement:
         async def prep_dep():
             """Doc."""
 
-            logging.info(
-                f"{dvcs.DEVICE_ATTR_DICT['dep_laser'].log_ref} isn't on. Turning on and waiting 5 s before measurement."
-            )
-            self._app.gui.main.imp.dvc_toggle(
+            toggle_succeeded = self._app.gui.main.imp.dvc_toggle(
                 "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
             )
-            await asyncio.sleep(5)
+            if toggle_succeeded:
+                logging.info(
+                    f"{dvcs.DEVICE_ATTR_DICT['dep_laser'].log_ref} isn't on. Turning on and waiting 5 s before measurement."
+                )
+                await asyncio.sleep(5)
 
         if finish:
             # measurement finishing
@@ -205,12 +209,12 @@ class Measurement:
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "dep":
-                await prep_dep() if self.laser_dvcs.dep.emission_state is False else None
+                await prep_dep() if not self.laser_dvcs.dep.emission_state else None
                 # turn depletion shutter ON and excitation OFF
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "sted":
-                await prep_dep() if self.laser_dvcs.dep.emission_state is False else None
+                await prep_dep() if not self.laser_dvcs.dep.emission_state else None
                 # turn both depletion shutter and excitation ON
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
@@ -518,7 +522,7 @@ class SFCSImageMeasurement(Measurement):
 
         try:
             await self.toggle_lasers()
-        except MeasurementError as exc:
+        except (MeasurementError, DeviceError) as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
             return
@@ -815,7 +819,7 @@ class SFCSSolutionMeasurement(Measurement):
         # turn on lasers
         try:
             await self.toggle_lasers()
-        except MeasurementError as exc:
+        except (MeasurementError, DeviceError) as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
             return
