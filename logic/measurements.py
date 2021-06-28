@@ -122,7 +122,6 @@ class Measurement:
 
         else:
             # Image
-            # TODO: fix bug where if scanners are off the 'done' signal is probably never sent? (could to timeout with 'est_duration'!)
             while (
                 self.is_running
                 and not self.scanners_dvc.are_tasks_done("ao")
@@ -130,7 +129,9 @@ class Measurement:
             ):
                 await read_and_track_time()
             if overdue:
-                raise MeasurementError("Tasks are overdue. Check that scanners are turned ON")
+                raise MeasurementError(
+                    "Tasks are overdue. Check that all relevant devices are turned ON"
+                )
 
         self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
         await read_and_track_time()
@@ -162,7 +163,10 @@ class Measurement:
 
             exc_state = self._app.devices.exc_laser.state
             try:
-                dep_state = self._app.devices.dep_laser.emission_state
+                dep_state = (
+                    self._app.devices.dep_laser.emission_state
+                    and self._app.devices.dep_shutter.state
+                )
             except AttributeError:
                 # dep error on startup, emission should be off
                 dep_state = False

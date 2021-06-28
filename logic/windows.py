@@ -95,7 +95,7 @@ class MainWin:
             getattr(dvc, toggle_mthd)(False)
             is_dvc_on = getattr(dvc, state_attr)
 
-            if is_dvc_on:
+            if not is_dvc_on:
                 # if managed to turn OFF
                 logging.debug(f"{dvc.log_ref} toggled OFF")
 
