@@ -179,6 +179,8 @@ class App:
 
             close_all_dvcs(self)
 
+            self.gui.main.deviceErrorDisplay.setText("")
+
             # finish current timeout loop
             self.timeout_loop.not_finished = False
 

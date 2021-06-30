@@ -885,7 +885,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         self.open_inst() if is_being_switched_on else self.close_inst()
 
     # TODO: try to make this async and include a 'release' command after async-sleeping for some time
-    def move(self, dir, steps):
+    async def move(self, dir, steps):
         """Doc."""
 
         cmd_dict = {
@@ -896,14 +896,8 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         }
         try:
             self.write(cmd_dict[dir])
-        except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
-
-    def release(self):
-        """Doc."""
-
-        try:
-            self.write("ryx ")
+            await asyncio.sleep(500 * 1e-3)
+            self.write("ryx ")  # release
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
