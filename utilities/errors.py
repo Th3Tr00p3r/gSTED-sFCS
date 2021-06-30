@@ -16,7 +16,7 @@ import logic.devices as dvcs
 from utilities.dialog import Error
 
 
-def build_err_dict(exc: Exception) -> str:
+def build_error_dict(exc: Exception) -> str:
     """Doc."""
 
     exc_type, _, tb = sys.exc_info()
@@ -49,25 +49,27 @@ def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False) -
         )
         return f"{func_name}({arg_string})"
 
-    err_dict = build_err_dict(exc)
+    error_dict = build_error_dict(exc)
     func_string = get_frame_details(func_frame, func_locals)
-    location_string = " -> ".join([f"{filename}, {lineno}" for filename, lineno in err_dict["loc"]])
+    location_string = " -> ".join(
+        [f"{filename}, {lineno}" for filename, lineno in error_dict["loc"]]
+    )
 
     if dvc is not None:  # device error
         dvc_log_ref = dvcs.DEVICE_ATTR_DICT[dvc.nick].log_ref
         log_str = (
             f"{dvc_log_ref} didn't respond to '{func_string}' ({location_string}). "
-            f"[{err_dict['type']}: {err_dict['msg']}]"
+            f"[{error_dict['type']}: {error_dict['msg']}]"
         )
         if lvl == "error":
             if not dvc.error_dict:  # keep only first error
-                dvc.error_dict = err_dict
+                dvc.error_dict = error_dict
             dvc.led_widget.set(QIcon(gui.icons.ICON_PATHS_DICT["led_red"]))
 
     else:  # logic eror
-        log_str = f"{err_dict['type']}: {err_dict['msg']} ({func_string}, {location_string})"
+        log_str = f"{error_dict['type']}: {error_dict['msg']} ({func_string}, {location_string})"
         if disp:
-            Error(**err_dict).display()
+            Error(**error_dict).display()
 
     getattr(logging, lvl)(log_str, exc_info=False)
 
@@ -99,7 +101,7 @@ def device_error_checker(func) -> Callable:
                         self.error_display.set(
                             f"{self.log_ref} error. Click relevant LED for details."
                         )
-                        raise DeviceError
+                        raise DeviceError(self.error_dict["msg"])
             except AttributeError:
                 # if not hasattr(self, "error_dict")
                 return await func(self, *args, **kwargs)
@@ -120,7 +122,7 @@ def device_error_checker(func) -> Callable:
                         self.error_display.set(
                             f"{self.log_ref} error. Click relevant LED for details."
                         )
-                        raise DeviceError
+                        raise DeviceError(self.error_dict["msg"])
             except AttributeError:
                 # if not hasattr(self, "error_dict")
                 return func(self, *args, **kwargs)
@@ -128,6 +130,7 @@ def device_error_checker(func) -> Callable:
     return wrapper
 
 
+# TODO: probably makes more sense to just decorate the relevant methods?
 class DeviceCheckerMetaClass(type):
     def __new__(meta, classname, bases, classDict):
         newClassDict = {}
