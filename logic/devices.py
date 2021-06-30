@@ -79,8 +79,7 @@ DEVICE_ATTR_DICT = {
         param_widgets=QtWidgetCollection(
             led_widget=("ledDep", "icon", "main"),
             switch_widget=("depEmissionOn", "icon", "main"),
-            model=("depMod", "text"),
-            address=("depAddr", "text"),
+            model_query=("depModelQuery", "text"),
         ),
     ),
     "stage": DeviceAttrs(
@@ -768,6 +767,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     current_limits_mA = dict(low=1500, high=2500)
 
     def __init__(self, param_dict):
+
         super().__init__(
             param_dict,
             read_termination="\r",
@@ -818,18 +818,16 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         prop_cmnd_dict = {
             "temp": "SHGtemp",
             "curr": "LDcurrent 1",
-            "pow": "Power 0",
+            "pow": "power 0",
         }
         cmnd = prop_cmnd_dict[prop]
 
         try:
             self.flush()  # get fresh response
             response = self.query(cmnd)
-        except IndexError:
-            return 0
-        except Exception as exc:
+        except RuntimeError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
-            return 0
+            raise
         else:
             return response
 
@@ -840,10 +838,10 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         if self.power_limits_mW["low"] <= value_mW <= self.power_limits_mW["high"]:
             try:
                 # change the mode to power
-                cmnd = "Powerenable 1"
+                cmnd = "powerenable 1"
                 self.write(cmnd)
                 # then set the power
-                cmnd = f"Setpower 0 {value_mW}"
+                cmnd = f"setpower 0 {value_mW}"
                 self.write(cmnd)
             except Exception as exc:
                 err_hndlr(exc, locals(), sys._getframe(), dvc=self)
@@ -859,7 +857,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         if self.current_limits_mA["low"] <= value_mA <= self.current_limits_mA["high"]:
             try:
                 # change the mode to power
-                cmnd = "Powerenable 0"
+                cmnd = "powerenable 0"
                 self.write(cmnd)
                 # then set the power
                 cmnd = f"setLDcur 1 {value_mA}"
