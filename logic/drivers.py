@@ -11,6 +11,7 @@ import pyvisa as visa
 from instrumental.drivers.cameras import uc480
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
 
+from utilities.errors import DeviceError
 from utilities.helper import trans_dict
 
 
@@ -37,7 +38,10 @@ class Ftd2xx:
     def open(self):
         """Doc."""
 
-        self._inst = ftd2xx.aio.openEx(self.serial)
+        try:
+            self._inst = ftd2xx.aio.openEx(self.serial)
+        except AttributeError:
+            raise DeviceError(f"{self.log_ref} is not plugged in.")
         self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
         self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
         self._inst.setLatencyTimer(self.ltncy_tmr_val)
@@ -248,6 +252,35 @@ class PyVISA:
         self.write_termination = write_termination
         self._rm = visa.ResourceManager()
 
+        # auto-find serial connection for depletion laser
+        if hasattr(self, "model_query"):
+            self.autofind_address()
+
+    def autofind_address(self) -> None:
+        """Doc."""
+
+        resource_name_tuple = self._rm.list_resources()  # list all resources
+        inst_list = [
+            self._rm.open_resource(
+                resource_name,
+                read_termination=self.read_termination,
+                write_termination=self.write_termination,
+                timeout=50,  # ms
+                open_timeout=50,  # ms
+            )
+            for resource_name in resource_name_tuple
+        ]  # open and save them in a list
+
+        for idx, inst in enumerate(inst_list):
+            try:
+                self.model = inst.query(self.model_query)
+            except visa.errors.VisaIOError:
+                pass
+            else:
+                self.address = resource_name_tuple[idx]
+                break
+        [inst.close() for inst in inst_list]  # close all saved resources
+
     def open_inst(self) -> None:
         """Doc."""
 
@@ -275,15 +308,26 @@ class PyVISA:
     def query(self, cmnd: str) -> float:
         """Doc."""
 
-        response = self._rsrc.query(cmnd)
-        extracted_float_strings = re.findall(r"-?\d+\.?\d*", response)
-        return float(extracted_float_strings[0])
+        try:
+            response = self._rsrc.query(cmnd)
+        except visa.errors.VisaIOError:
+            raise RuntimeError(f"{self.log_ref} disconnected! Reconnect and restart.")
+        else:
+            try:
+                extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
+            except IndexError:  # TESTESTEST
+                print("DEP INDEX ERROR!")  # TESTESTEST
+                return 0  # TESTESTEST
+            return float(extracted_float_string)
 
     def flush(self) -> None:
         """Doc."""
 
         mask = visa.constants.BufferOperation(4) | visa.constants.BufferOperation(6)
-        self._rsrc.flush(mask)
+        try:
+            self._rsrc.flush(mask)
+        except visa.errors.VisaIOError:
+            raise RuntimeError(f"{self.log_ref} disconnected! Reconnect and restart.")
 
 
 class Instrumental:

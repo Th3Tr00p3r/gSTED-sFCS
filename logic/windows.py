@@ -129,9 +129,9 @@ class MainWin:
         }
 
         dvc_nick = led_name_to_nick_dict[led_obj_name]
-        err_dict = getattr(self._app.devices, dvc_nick).error_dict
-        if err_dict is not None:
-            Error(**err_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref).display()
+        error_dict = getattr(self._app.devices, dvc_nick).error_dict
+        if error_dict is not None:
+            Error(**error_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref).display()
 
     def dep_sett_apply(self):
         """Doc."""

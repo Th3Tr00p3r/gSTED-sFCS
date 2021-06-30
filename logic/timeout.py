@@ -53,7 +53,6 @@ class Timeout:
                 # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
             )
         except Exception as exc:  # TESTESTEST
-            print("Caught something in timeout module")  # TESTESTEST
             err_hndlr(exc, locals(), sys._getframe())  # TESTESTEST
 
         logging.debug("_main function exited")

@@ -53,6 +53,7 @@ class App:
         self.gui.settings = gui.gui.SettWin(self)
         self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
+        print("GUI initialized.")
 
         # create neccessary data folders based on settings paths
         self.create_data_folders()
@@ -63,6 +64,7 @@ class App:
         self.gui.main.ledUm232h.setIcon(self.icon_dict["led_green"])
 
         self.init_devices()
+        print("Devices initialized.")
 
         # init AO as origin (actual AO is measured in internal AO if last position is needed)
         [
@@ -79,7 +81,7 @@ class App:
         # set up main timeout event
         self.timeout_loop = Timeout(self)
         self.timeout_loop.start()
-
+        print("Timeout loop initialized.")
         logging.info("Application Started")
 
     def config_logging(self):
@@ -205,6 +207,7 @@ class App:
             close_all_wins(self)
             close_all_dvcs(self)
             logging.info("Quitting application.")
+            print("Application closed.")
 
     def exit_app(self, event):
         """Doc."""
