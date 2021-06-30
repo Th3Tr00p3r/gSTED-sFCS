@@ -262,7 +262,7 @@ class MainWin:
     def move_stage(self, dir: str, steps: int):
         """Doc."""
 
-        self._app.devices.stage.move(dir=dir, steps=steps)
+        self._app.loop.create_task(self._app.devices.stage.move(dir=dir, steps=steps))
         logging.info(
             f"{dvcs.DEVICE_ATTR_DICT['stage'].log_ref} moved {str(steps)} steps {str(dir)}"
         )
