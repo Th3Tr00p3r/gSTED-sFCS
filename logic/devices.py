@@ -9,12 +9,11 @@ from typing import List
 import nidaqmx.constants as ni_consts
 import numpy as np
 from nidaqmx.errors import DaqError
-from pyvisa.errors import VisaIOError
 
 import gui.gui
 import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
-from utilities.errors import DeviceCheckerMetaClass, err_hndlr
+from utilities.errors import DeviceCheckerMetaClass, DeviceError, err_hndlr
 from utilities.helper import (
     QtWidgetCollection,
     div_ceil,
@@ -791,14 +790,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         else:
             if self.state is True:
                 self.laser_toggle(False)
-            try:
-                self.close_inst()
-            except VisaIOError:
-                raise RuntimeError(
-                    "Depletion laser disconnected during operation. Reconnect and reopen application to fix."
-                )
-            except AttributeError:
-                raise RuntimeError("Depletion laser failed to open, no need to close.")
+            self.close_inst()
 
     def laser_toggle(self, is_being_switched_on):
         """Doc."""
@@ -825,7 +817,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         try:
             self.flush()  # get fresh response
             response = self.query(cmnd)
-        except RuntimeError as exc:
+        except DeviceError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
             raise
         else:
