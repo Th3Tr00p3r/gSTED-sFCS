@@ -119,9 +119,7 @@ def device_error_checker(func) -> Callable:
                         # if toggling off
                         pass
                     else:
-                        self.error_display.set(
-                            f"{self.log_ref} error. Click relevant LED for details."
-                        )
+                        self.error_display.set(f"{self.log_ref} error. Click LED for details.")
                         raise DeviceError(self.error_dict["msg"])
             except AttributeError:
                 # if not hasattr(self, "error_dict")

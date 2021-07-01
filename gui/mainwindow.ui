@@ -22,7 +22,7 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout_7">
     <item row="0" column="0">
-     <layout class="QVBoxLayout" name="verticalLayout_72" stretch="1,0">
+     <layout class="QVBoxLayout" name="verticalLayout_72" stretch="0,0">
       <property name="spacing">
        <number>0</number>
       </property>
@@ -4563,11 +4563,6 @@ Pattern:</string>
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="tab_2">
-         <attribute name="title">
-          <string>Debugging</string>
-         </attribute>
-        </widget>
        </widget>
       </item>
       <item>
@@ -4911,7 +4906,7 @@ Buffer</string>
             </property>
             <property name="minimumSize">
              <size>
-              <width>0</width>
+              <width>260</width>
               <height>30</height>
              </size>
             </property>

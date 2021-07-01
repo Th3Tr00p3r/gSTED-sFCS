@@ -76,7 +76,7 @@ class MainWin:
         is_dvc_on = getattr(dvc, state_attr)
 
         if (leave_on and is_dvc_on) or (leave_off and not is_dvc_on):
-            return
+            return True
 
         if not is_dvc_on:
             # switch ON
@@ -84,13 +84,13 @@ class MainWin:
                 getattr(dvc, toggle_mthd)(True)
             except errors.DeviceError:
                 return False
-            is_dvc_on = getattr(dvc, state_attr)
 
-            if is_dvc_on:  # if managed to turn ON
+            if (is_dvc_on := getattr(dvc, state_attr)) :
+                # if managed to turn ON
                 logging.debug(f"{dvc.log_ref} toggled ON")
-
                 if nick == "stage":
                     self._gui.stageButtonsGroup.setEnabled(True)
+                return True
 
         else:
             # switch OFF
@@ -98,9 +98,8 @@ class MainWin:
                 getattr(dvc, toggle_mthd)(False)
             except errors.DeviceError:
                 return False
-            is_dvc_on = getattr(dvc, state_attr)
 
-            if not is_dvc_on:
+            if not (is_dvc_on := getattr(dvc, state_attr)):
                 # if managed to turn OFF
                 logging.debug(f"{dvc.log_ref} toggled OFF")
 
@@ -111,6 +110,8 @@ class MainWin:
                     # set curr/pow values to zero when depletion is turned OFF
                     self._gui.depActualCurr.setValue(0)
                     self._gui.depActualPow.setValue(0)
+
+                return True
 
     def led_clicked(self, led_obj_name) -> None:
         """Doc."""
