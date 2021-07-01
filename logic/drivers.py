@@ -254,46 +254,61 @@ class PyVISA:
 
         # auto-find serial connection for depletion laser
         if hasattr(self, "model_query"):
-            try:
-                self.autofind_address()
-            except visa.errors.VisaIOError:
-                raise RuntimeError("Resources are being used by another program...")
+            self.autofind_address()
 
     def autofind_address(self) -> None:
         """Doc."""
 
-        resource_name_tuple = self._rm.list_resources()  # list all resources
-        inst_list = [
-            self._rm.open_resource(
-                resource_name,
-                read_termination=self.read_termination,
-                write_termination=self.write_termination,
-                timeout=50,  # ms
-                open_timeout=50,  # ms
-            )
-            for resource_name in resource_name_tuple
-        ]  # open and save them in a list
+        # list all resource addresses
+        resource_address_tuple = self._rm.list_resources()
 
+        # open and save the opened ones in a list
+        inst_list = []
+        for resource_name in resource_address_tuple:
+            try:
+                # try to open instrument
+                inst = self._rm.open_resource(
+                    resource_name,
+                    read_termination=self.read_termination,
+                    write_termination=self.write_termination,
+                    timeout=50,  # ms
+                    open_timeout=50,  # ms
+                )
+            except visa.errors.VisaIOError:
+                # failed to open instrument, skip
+                pass
+            else:
+                # managed to open instrument, add to list.
+                inst_list.append(inst)
+
+        # 'model_query' the opened devices, and whoever responds is the one
         for idx, inst in enumerate(inst_list):
             try:
                 self.model = inst.query(self.model_query)
             except visa.errors.VisaIOError:
                 pass
             else:
-                self.address = resource_name_tuple[idx]
+                self.address = resource_address_tuple[idx]
                 break
-        [inst.close() for inst in inst_list]  # close all saved resources
+
+        # close all saved resources
+        [inst.close() for inst in inst_list]
 
     def open_inst(self) -> None:
         """Doc."""
 
-        self._rsrc = self._rm.open_resource(
-            self.address,
-            read_termination=self.read_termination,
-            write_termination=self.write_termination,
-            timeout=50,  # ms
-            open_timeout=50,  # ms
-        )
+        try:
+            self._rsrc = self._rm.open_resource(
+                self.address,
+                read_termination=self.read_termination,
+                write_termination=self.write_termination,
+                timeout=50,  # ms
+                open_timeout=50,  # ms
+            )
+        except AttributeError:
+            raise DeviceError(
+                f"{self.log_ref} couldn't be opened - it is either unplugged or the address is used by another process"
+            )
 
     def close_inst(self) -> None:
         """Doc."""
@@ -301,7 +316,9 @@ class PyVISA:
         try:
             self._rsrc.close()
         except AttributeError:
-            raise RuntimeError("Instrument was never opened")
+            raise DeviceError(f"{self.log_ref} was never opened")
+        except visa.errors.VisaIOError:
+            raise DeviceError(f"{self.log_ref} disconnected during operation.")
 
     def write(self, cmnd: str) -> None:
         """Sends a command to the VISA instrument."""
@@ -314,7 +331,7 @@ class PyVISA:
         try:
             response = self._rsrc.query(cmnd)
         except visa.errors.VisaIOError:
-            raise RuntimeError(f"{self.log_ref} disconnected! Reconnect and restart.")
+            raise DeviceError(f"{self.log_ref} disconnected! Reconnect and restart.")
         else:
             try:
                 extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
@@ -330,7 +347,7 @@ class PyVISA:
         try:
             self._rsrc.flush(mask)
         except visa.errors.VisaIOError:
-            raise RuntimeError(f"{self.log_ref} disconnected! Reconnect and restart.")
+            raise DeviceError(f"{self.log_ref} disconnected! Reconnect and restart.")
 
 
 class Instrumental:
