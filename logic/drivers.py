@@ -254,7 +254,10 @@ class PyVISA:
 
         # auto-find serial connection for depletion laser
         if hasattr(self, "model_query"):
-            self.autofind_address()
+            try:
+                self.autofind_address()
+            except visa.errors.VisaIOError:
+                raise RuntimeError("Resources are being used by another program...")
 
     def autofind_address(self) -> None:
         """Doc."""

@@ -11,11 +11,9 @@ from qasync import QEventLoop
 
 if __name__ == "__main__":
 
-    print("Initializing Application...")
-
+    print("Initializing Application.")
+    print("Importing App object...")
     from logic.app import App
-
-    print("App object imported.")
 
     app = QApplication(sys.argv)
     loop = QEventLoop(app)
