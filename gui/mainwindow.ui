@@ -4571,7 +4571,7 @@ Pattern:</string>
        </widget>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_39" stretch="0,0,0">
+       <layout class="QHBoxLayout" name="horizontalLayout_39" stretch="10,0,3">
         <property name="spacing">
          <number>0</number>
         </property>
@@ -4977,8 +4977,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -5050,8 +5050,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -5123,8 +5123,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -5196,8 +5196,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -5269,8 +5269,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="font">
@@ -5347,8 +5347,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -5420,8 +5420,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -5461,7 +5461,7 @@ Buffer</string>
               <item>
                <widget class="QLabel" name="label_114">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
@@ -5493,8 +5493,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -5566,8 +5566,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
@@ -5639,8 +5639,8 @@ Buffer</string>
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>30</width>
-                  <height>30</height>
+                  <width>60</width>
+                  <height>60</height>
                  </size>
                 </property>
                 <property name="styleSheet">
