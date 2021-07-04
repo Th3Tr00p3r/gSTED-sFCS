@@ -379,7 +379,7 @@ class MainWin:
                     f"{laser_mode} \nScan"
                 )
                 self._gui.imp.go_to_origin("XY")
-                # TODO: add all of the following to a QButtonsGroup and en/disable them together (see gui.py)
+                # TODO: add all of the following to a QButtonsGroup and en/disable them together
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanCalDur.setEnabled(True)
                 self._gui.solScanTotalDur.setEnabled(True)
@@ -400,9 +400,8 @@ class MainWin:
 
         else:
             # other meas running
-            logging.warning(
-                f"Another type of measurement " f"({current_type}) is currently running."
-            )
+            txt = f"Another type of measurement " f"({current_type}) is currently running."
+            Notification(txt).display()
 
     def disp_scn_pttrn(self, pattern: str):
         """Doc."""

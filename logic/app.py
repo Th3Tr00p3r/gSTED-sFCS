@@ -37,7 +37,7 @@ class App:
     def __init__(self, loop):
         """Doc."""
 
-        self._config_logging()
+        self.config_logging()
 
         self.loop = loop
 
@@ -56,7 +56,7 @@ class App:
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
         # create neccessary data folders based on settings paths
-        self._create_data_folders()
+        self.create_data_folders()
 
         # either error or ON
         self.gui.main.ledScn.setIcon(self.icon_dict["led_green"])
@@ -64,7 +64,7 @@ class App:
         self.gui.main.ledUm232h.setIcon(self.icon_dict["led_green"])
 
         print("Initializing Devices...")
-        self._init_devices()
+        self.init_devices()
 
         # init AO as origin (actual AO is measured in internal AO if last position is needed)
         [
@@ -81,25 +81,26 @@ class App:
         # set up main timeout event
         print("Initializing timeout loop...")
         self.timeout_loop = Timeout(self)
+        self.timeout_loop.start()
 
         print("Done.")
         logging.info("Application Started")
 
-    def _config_logging(self):
+    def config_logging(self):
         """Configure the logging package for the whole application."""
 
         with open("logging_config.yaml", "r") as f:
             config = yaml.safe_load(f.read())
             logging.config.dictConfig(config)
 
-    def _create_data_folders(self):
+    def create_data_folders(self):
         """Doc."""
 
         for gui_object_name in {"solDataPath", "imgDataPath", "camDataPath"}:
             rel_path = getattr(self.gui.settings, gui_object_name).text()
             os.makedirs(rel_path, exist_ok=True)
 
-    def _init_devices(self):
+    def init_devices(self):
         """
         Goes through a list of device nicknames,
         instantiating a driver object for each device.
@@ -191,10 +192,11 @@ class App:
             self.gui.main.imp.load(DEFAULT_LOADOUT_FILE_PATH)
             #            self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
 
-            self._init_devices()
+            self.init_devices()
 
             # restart timeout loop
             self.timeout_loop = Timeout(self)
+            self.timeout_loop.start()
 
             logging.info("Restarting application.")
 
