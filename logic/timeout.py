@@ -40,6 +40,11 @@ class Timeout:
         self.cntr_dvc = self._app.devices.photon_detector
         self.dep_dvc = self._app.devices.dep_laser
 
+        # start
+        self.not_finished = True
+        self._app.loop.create_task(self.timeout())
+        logging.debug("Initiating timeout function.")
+
     # MAIN
     async def timeout(self) -> None:
         """awaits all individual async loops, each with its own repeat time."""
@@ -54,13 +59,6 @@ class Timeout:
         )
 
         logging.debug("timeout function exited")
-
-    def start(self) -> None:
-        """Doc."""
-
-        self.not_finished = True
-        self._app.loop.create_task(self.timeout())
-        logging.debug("Initiating timeout function.")
 
     async def _updt_application_log(self) -> None:
         """Doc."""
