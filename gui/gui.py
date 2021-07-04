@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
-from PyQt5.QtWidgets import QDialog, QMainWindow, QStatusBar, QWidget
+from PyQt5.QtWidgets import QButtonGroup, QDialog, QMainWindow, QStatusBar, QWidget
 
 import gui.icons  # for initial icons loadout # NOQA
 import logic.windows as wins_imp
@@ -56,6 +56,10 @@ class MainWin(QMainWindow):
         self.circDiameter.valueChanged.connect(lambda: self.display_scan_pattern("circle"))
 
         # Positioning/Scanners
+        self.axesGroup = QButtonGroup()
+        self.axesGroup.addButton(self.posAxisX)
+        self.axesGroup.addButton(self.posAxisY)
+        self.axesGroup.addButton(self.posAxisZ)
         self.axisMoveUp.released.connect(lambda: self.axisMoveUm_released(1))
         self.axisMoveDown.released.connect(lambda: self.axisMoveUm_released(-1))
         self.goToOrg.released.connect(lambda: self.origin_released("XYZ"))

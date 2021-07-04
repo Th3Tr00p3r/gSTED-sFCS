@@ -142,3 +142,7 @@ class DeviceCheckerMetaClass(type):
 
 class DeviceError(Exception):
     pass
+
+
+class IOError(Exception):
+    pass
