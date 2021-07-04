@@ -6,7 +6,7 @@ import os
 import sys
 from collections import deque
 
-from utilities.errors import err_hndlr
+from utilities.errors import DeviceError, err_hndlr
 
 # import time
 
@@ -40,29 +40,26 @@ class Timeout:
         self.dep_dvc = self._app.devices.dep_laser
 
     # MAIN
-    async def _main(self) -> None:
-        """Doc."""
+    async def timeout(self) -> None:
+        """awaits all individual async loops, each with its own repeat time."""
 
-        try:  # TESTESTEST
-            await asyncio.gather(
-                self._updt_CI_and_AI(),
-                self._update_avg_counts(),
-                self._update_dep(),
-                self._updt_application_log(),
-                self._update_gui(),
-                # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
-            )
-        except Exception as exc:  # TESTESTEST
-            err_hndlr(exc, locals(), sys._getframe())  # TESTESTEST
+        await asyncio.gather(
+            self._updt_CI_and_AI(),
+            self._update_avg_counts(),
+            self._update_dep(),
+            self._updt_application_log(),
+            self._update_gui(),
+            # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
+        )
 
-        logging.debug("_main function exited")
+        logging.debug("timeout function exited")
 
     def start(self) -> None:
         """Doc."""
 
         self.not_finished = True
-        self._app.loop.create_task(self._main())
-        logging.debug("Starting main timer.")
+        self._app.loop.create_task(self.timeout())
+        logging.debug("Initiating timeout function.")
 
     async def _updt_application_log(self) -> None:
         """Doc."""
@@ -132,14 +129,21 @@ class Timeout:
         """Doc."""
 
         while self.not_finished:
-            if not self._app.devices.UM232H.error_dict:
+
+            try:
                 rx_bytes = self._app.devices.UM232H.get_status()
+
+            except DeviceError:
+                pass
+
+            else:
                 fill_perc = rx_bytes / self.um232_buff_sz * 100
                 self.um232_buff_wdgt.setValue(fill_perc)
                 if fill_perc > 90:
                     logging.warning("UM232H buffer might be overfilling")
 
-            await asyncio.sleep(self.updt_intrvl["gui"])
+            finally:
+                await asyncio.sleep(self.updt_intrvl["gui"])
 
     async def _update_avg_counts(self) -> None:
         """
@@ -150,24 +154,35 @@ class Timeout:
 
         while self.not_finished:
 
-            if not self.cntr_dvc.error_dict:
+            try:
                 self.cntr_dvc.average_counts()
+
+            except DeviceError:
+                pass
+
+            else:
                 self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate)
 
-            await asyncio.sleep(self.updt_intrvl["cntr_avg"])
+            finally:
+                await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
     async def _update_dep(self) -> None:
         """Update depletion laser GUI"""
 
         while self.not_finished:
-            if not self.dep_dvc.error_dict:
 
+            try:
                 temp, pow, curr = (
                     self.dep_dvc.get_prop("temp"),
                     self.dep_dvc.get_prop("pow"),
                     self.dep_dvc.get_prop("curr"),
                 )
 
+            except DeviceError:
+                # do nothing if error in depletion laser
+                pass
+
+            else:
                 self.main_gui.depTemp.setValue(temp)
                 self.main_gui.depActualPow.setValue(pow)
                 self.main_gui.depActualCurr.setValue(curr)
@@ -177,7 +192,8 @@ class Timeout:
                 else:
                     self.main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
-            await asyncio.sleep(self.updt_intrvl["dep"])
+            finally:
+                await asyncio.sleep(self.updt_intrvl["dep"])
 
 
 def get_last_line(file_path) -> str:

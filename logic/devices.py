@@ -13,7 +13,7 @@ from nidaqmx.errors import DaqError
 import gui.gui
 import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
-from utilities.errors import DeviceCheckerMetaClass, DeviceError, err_hndlr
+from utilities.errors import DeviceCheckerMetaClass, IOError, err_hndlr
 from utilities.helper import (
     QtWidgetCollection,
     div_ceil,
@@ -335,10 +335,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         if is_being_switched_on:
-            try:
-                self.start_continuous_read_task()
-            except DaqError:
-                raise
+            self.start_continuous_read_task()
         else:
             self.close_all_tasks()
 
@@ -817,9 +814,8 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         try:
             self.flush()  # get fresh response
             response = self.query(cmnd)
-        except DeviceError as exc:
+        except IOError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
-            raise
         else:
             return response
 
