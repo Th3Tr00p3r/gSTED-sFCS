@@ -12,7 +12,7 @@ from instrumental.drivers.cameras import uc480
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
 
 from utilities.errors import IOError
-from utilities.helper import trans_dict
+from utilities.helper import translate_dict
 
 
 class Ftd2xx:
@@ -24,7 +24,7 @@ class Ftd2xx:
     }
 
     def __init__(self, param_dict):
-        param_dict = trans_dict(param_dict, self.ftd2xx_dict)
+        param_dict = translate_dict(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
 
@@ -335,9 +335,9 @@ class PyVISA:
         else:
             try:
                 extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
-            except IndexError:  # TESTESTEST
-                print("DEP INDEX ERROR!\n" * 10)  # TESTESTEST
-                return 0  # TESTESTEST
+            except IndexError:
+                # rarely happens
+                return 0
             return float(extracted_float_string)
 
     def flush(self) -> None:
