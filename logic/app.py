@@ -81,7 +81,6 @@ class App:
         # set up main timeout event
         print("Initializing timeout loop...")
         self.timeout_loop = Timeout(self)
-        self.timeout_loop.start()
 
         print("Done.")
         logging.info("Application Started")
@@ -196,7 +195,6 @@ class App:
 
             # restart timeout loop
             self.timeout_loop = Timeout(self)
-            self.timeout_loop.start()
 
             logging.info("Restarting application.")
 
