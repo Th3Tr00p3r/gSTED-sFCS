@@ -462,6 +462,7 @@ class SFCSImageMeasurement(Measurement):
             self._app.last_img_scn = SimpleNamespace()
             self.keep_last_meas()
 
+    # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:
         """
         Prepare the full measurement data, in a way that
@@ -749,6 +750,7 @@ class SFCSSolutionMeasurement(Measurement):
                         f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
                     )
 
+    # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:
         """
         Prepare the full measurement data, in a way that
