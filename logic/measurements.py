@@ -286,230 +286,239 @@ class SFCSImageMeasurement(Measurement):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
         self.scanning = True
 
-    async def run(self):  # noqa: C901
+    def build_filename(self) -> str:
+        datetime_str = datetime.datetime.now().strftime("%d%m_%H%M%S")
+        return (
+            f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{datetime_str}"
+        )
+
+    def setup_scan(self):
         """Doc."""
 
-        def setup_scan():
+        def sync_line_freq(line_freq: int, ppl: int, pxl_clk_freq: int) -> (int, int):
             """Doc."""
 
-            def sync_line_freq(line_freq: int, ppl: int, pxl_clk_freq: int) -> (int, int):
-                """Doc."""
+            point_freq = line_freq * ppl
+            clk_div = round(pxl_clk_freq / point_freq)
+            syncd_line_freq = pxl_clk_freq / (clk_div * ppl)
+            return syncd_line_freq, clk_div
 
-                point_freq = line_freq * ppl
-                clk_div = round(pxl_clk_freq / point_freq)
-                syncd_line_freq = pxl_clk_freq / (clk_div * ppl)
-                return syncd_line_freq, clk_div
-
-            def fix_ppl(min_freq: int, line_freq: int, ppl: int) -> int:
-                """Doc."""
-
-                ratio = round(min_freq / line_freq)
-                if ratio > ppl:
-                    return div_ceil(ratio, 2) * 2
-                else:
-                    return div_ceil(ppl, 2) * 2
-
-            # fix line freq, pxl clk low ticks, and ppl
-            self.line_freq, clk_div = sync_line_freq(
-                self.scan_params.line_freq_Hz,
-                self.scan_params.ppl,
-                self.pxl_clk_dvc.freq_MHz * 1e6,
-            )
-            self.pxl_clk_dvc.low_ticks = clk_div - 2
-            self.ppl = fix_ppl(
-                self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
-                self.scan_params.line_freq_Hz,
-                self.scan_params.ppl,
-            )
-            # create ao_buffer
-            (
-                self.ao_buffer,
-                self.scan_params.set_pnts_lines_odd,
-                self.scan_params.set_pnts_lines_even,
-                self.scan_params.set_pnts_planes,
-            ) = ScanPatternAO("image", self.scan_params, self.um_v_ratio).calculate_pattern()
-            self.n_ao_samps = self.ao_buffer.shape[1]
-            # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-            self.ai_conv_rate = (
-                self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
-            )
-            self.est_plane_duration = self.n_ao_samps * self.scan_params.dt
-            self.est_total_duration = self.est_plane_duration * len(
-                self.scan_params.set_pnts_planes
-            )
-            self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
-
-        def change_plane(plane_idx):
+        def fix_ppl(min_freq: int, line_freq: int, ppl: int) -> int:
             """Doc."""
 
-            for axis in "XYZ":
-                if axis not in self.scan_params.scan_plane:
-                    plane_axis = axis
-                    break
-
-            self.scanners_dvc.start_write_task(
-                ao_data=[[self.scan_params.set_pnts_planes[plane_idx]]],
-                type=plane_axis,
-            )
-
-        def prepare_image_data(plane_idx):
-            """Doc."""
-
-            @nb.njit(cache=True)
-            def calc_pic(K, counts, x, x_min, n_lines, pxls_pl, pxl_sz_V, Ic):
-                """Doc."""
-
-                pic = np.zeros((n_lines, pxls_pl))
-                norm = np.zeros((n_lines, pxls_pl))
-                for j in K:
-                    temp_counts = np.zeros(pxls_pl)
-                    temp_num = np.zeros(pxls_pl)
-                    for i in range(Ic):
-                        idx = int((x[i, j] - x_min) / pxl_sz_V) + 1
-                        if 0 <= idx < pxls_pl:
-                            temp_counts[idx] = temp_counts[idx] + counts[i, j]
-                            temp_num[idx] = temp_num[idx] + 1
-                    pic[K[j], :] = temp_counts
-                    norm[K[j], :] = temp_num
-
-                return pic.T, norm.T
-
-            n_lines = self.scan_params.n_lines
-            pxl_sz = self.scan_params.dim2_um / (n_lines - 1)
-            scan_plane = self.scan_params.scan_plane
-            ppl = self.scan_params.ppl
-            ao = self.ao_buffer[0, :ppl]
-            counts = self.counter_dvc.ci_buffer
-
-            if scan_plane in {"XY", "XZ"}:
-                xc = self.scan_params.curr_ao_x
-                um_per_V = self.um_v_ratio[0]
-
-            elif scan_plane == "YZ":
-                xc = self.scan_params.curr_ao_y
-                um_per_V = self.um_v_ratio[1]
-
-            pxl_sz_V = pxl_sz / um_per_V
-            line_len_V = (self.scan_params.dim1_um) / um_per_V
-
-            ppp = n_lines * ppl
-            j0 = plane_idx * ppp
-            J = np.arange(ppp) + j0
-
-            if plane_idx == 0:  # if first plane
-                counts = np.concatenate([[0], counts[J]])
-                counts = np.diff(counts)
+            ratio = round(min_freq / line_freq)
+            if ratio > ppl:
+                return div_ceil(ratio, 2) * 2
             else:
-                counts = np.concatenate([[j0], counts[J]])
-                counts = np.diff(counts)
+                return div_ceil(ppl, 2) * 2
 
-            counts = counts.reshape(ppl, n_lines, order="F")
+        # fix line freq, pxl clk low ticks, and ppl
+        self.line_freq, clk_div = sync_line_freq(
+            self.scan_params.line_freq_Hz,
+            self.scan_params.ppl,
+            self.pxl_clk_dvc.freq_MHz * 1e6,
+        )
+        self.pxl_clk_dvc.low_ticks = clk_div - 2
+        self.ppl = fix_ppl(
+            self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
+            self.scan_params.line_freq_Hz,
+            self.scan_params.ppl,
+        )
+        # create ao_buffer
+        (
+            self.ao_buffer,
+            self.scan_params.set_pnts_lines_odd,
+            self.scan_params.set_pnts_lines_even,
+            self.scan_params.set_pnts_planes,
+        ) = ScanPatternAO("image", self.scan_params, self.um_v_ratio).calculate_pattern()
+        self.n_ao_samps = self.ao_buffer.shape[1]
+        # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
+        self.ai_conv_rate = (
+            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
+        )
+        self.est_plane_duration = self.n_ao_samps * self.scan_params.dt
+        self.est_total_duration = self.est_plane_duration * len(self.scan_params.set_pnts_planes)
+        self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
 
-            x = np.tile(ao[:].T, (1, n_lines))
-            x = x.reshape(ppl, n_lines, order="F")
+    def change_plane(self, plane_idx):
+        """Doc."""
 
-            Ic = int(ppl / 2)
-            x1 = x[:Ic, :]
-            x2 = x[-1 : Ic - 1 : -1, :]
-            counts1 = counts[:Ic, :]
-            counts2 = counts[-1 : Ic - 1 : -1, :]
+        for axis in "XYZ":
+            if axis not in self.scan_params.scan_plane:
+                plane_axis = axis
+                break
 
-            x_min = xc - line_len_V / 2
-            pxls_pl = int(line_len_V / pxl_sz_V) + 1
+        self.scanners_dvc.start_write_task(
+            ao_data=[[self.scan_params.set_pnts_planes[plane_idx]]],
+            type=plane_axis,
+        )
 
-            # even and odd planes are scanned in the opposite directions
-            if plane_idx % 2:
-                # odd (backwards)
-                K = np.arange(n_lines - 1, -1, -1)
-            else:
-                # even (forwards)
-                K = np.arange(n_lines)
+    def prepare_image_data(self, plane_idx):
+        """Doc."""
 
-            # TODO: test if this fixes flipped photos on GB
-            #        K = np.arange(n_lines) # TESTESTEST
+        @dataclass
+        class ImageData:
 
-            pic1, norm1 = calc_pic(K, counts1, x1, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
-            pic2, norm2 = calc_pic(K, counts2, x2, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
+            pic1: np.ndarray
+            norm1: np.ndarray
+            pic2: np.ndarray
+            norm2: np.ndarray
+            line_ticks_V: np.ndarray
+            row_ticks_V: np.ndarray
 
-            if pic1.shape[0] != pic1.shape[1]:
-                # TODO: figure this out!
-                logging.warning(f"image shape is not square ({pic1.shape}), figure this out.")
+        @nb.njit(cache=True)
+        def calc_pic(K, counts, x, x_min, n_lines, pxls_pl, pxl_sz_V, Ic):
+            """Doc."""
 
-            line_scale_V = x_min + np.arange(pxls_pl) * pxl_sz_V
-            row_scale_V = self.scan_params.set_pnts_lines_odd
+            pic = np.zeros((n_lines, pxls_pl))
+            norm = np.zeros((n_lines, pxls_pl))
+            for j in K:
+                temp_counts = np.zeros(pxls_pl)
+                temp_num = np.zeros(pxls_pl)
+                for i in range(Ic):
+                    idx = int((x[i, j] - x_min) / pxl_sz_V) + 1
+                    if 0 <= idx < pxls_pl:
+                        temp_counts[idx] = temp_counts[idx] + counts[i, j]
+                        temp_num[idx] = temp_num[idx] + 1
+                pic[K[j], :] = temp_counts
+                norm[K[j], :] = temp_num
 
-            return ImageData(pic1, norm1, pic2, norm2, line_scale_V, row_scale_V)
+            return pic.T, norm.T
 
-        def prep_data_dict() -> dict:
-            """
-            Prepare the full measurement data, in a way that
-            matches current MATLAB analysis
-            """
+        n_lines = self.scan_params.n_lines
+        pxl_sz = self.scan_params.dim2_um / (n_lines - 1)
+        scan_plane = self.scan_params.scan_plane
+        ppl = self.scan_params.ppl
+        ao = self.ao_buffer[0, :ppl]
+        counts = self.counter_dvc.ci_buffer
 
-            def prep_scan_params() -> dict:
+        if scan_plane in {"XY", "XZ"}:
+            xc = self.scan_params.curr_ao_x
+            um_per_V = self.um_v_ratio[0]
 
-                return {
-                    "dim1_lines_um": self.scan_params.dim1_um,
-                    "dim2_col_um": self.scan_params.dim2_um,
-                    "dim3_um": self.scan_params.dim3_um,
-                    "lines": self.scan_params.n_lines,
-                    "planes": self.scan_params.n_planes,
-                    "line_freq_hz": self.scan_params.line_freq_Hz,
-                    "points_per_line": self.scan_params.ppl,
-                    "scan_type": self.scan_params.scan_plane + "scan",
-                    "offset_aox": self.scan_params.curr_ao_x,
-                    "offset_aoy": self.scan_params.curr_ao_y,
-                    "offset_aoz": self.scan_params.curr_ao_z,
-                    "offset_aix": self.scan_params.curr_ao_x,  # check
-                    "offset_aiy": self.scan_params.curr_ao_y,  # check
-                    "offset_aiz": self.scan_params.curr_ao_z,  # check
-                    "what_stage": "Galvanometers",
-                    "linear_frac": self.scan_params.lin_frac,
-                }
+        elif scan_plane == "YZ":
+            xc = self.scan_params.curr_ao_y
+            um_per_V = self.um_v_ratio[1]
 
-            def prep_tdc_scan_data() -> dict:
+        pxl_sz_V = pxl_sz / um_per_V
+        line_len_V = (self.scan_params.dim1_um) / um_per_V
 
-                return {
-                    "plane": np.array([data for data in self.plane_data], dtype=np.object),
-                    "data_version": self.tdc_dvc.data_vrsn,
-                    "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
-                    "pix_freq": self.pxl_clk_dvc.freq_MHz,
-                    "laser_freq": self.tdc_dvc.laser_freq_MHz,
-                    "version": self.tdc_dvc.tdc_vrsn,
-                }
+        ppp = n_lines * ppl
+        j0 = plane_idx * ppp
+        J = np.arange(ppp) + j0
+
+        if plane_idx == 0:  # if first plane
+            counts = np.concatenate([[0], counts[J]])
+            counts = np.diff(counts)
+        else:
+            counts = np.concatenate([[j0], counts[J]])
+            counts = np.diff(counts)
+
+        counts = counts.reshape(ppl, n_lines, order="F")
+
+        x = np.tile(ao[:].T, (1, n_lines))
+        x = x.reshape(ppl, n_lines, order="F")
+
+        Ic = int(ppl / 2)
+        x1 = x[:Ic, :]
+        x2 = x[-1 : Ic - 1 : -1, :]
+        counts1 = counts[:Ic, :]
+        counts2 = counts[-1 : Ic - 1 : -1, :]
+
+        x_min = xc - line_len_V / 2
+        pxls_pl = int(line_len_V / pxl_sz_V) + 1
+
+        # even and odd planes are scanned in the opposite directions
+        if plane_idx % 2:
+            # odd (backwards)
+            K = np.arange(n_lines - 1, -1, -1)
+        else:
+            # even (forwards)
+            K = np.arange(n_lines)
+
+        # TODO: test if this fixes flipped photos on GB
+        #        K = np.arange(n_lines) # TESTESTEST
+
+        pic1, norm1 = calc_pic(K, counts1, x1, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
+        pic2, norm2 = calc_pic(K, counts2, x2, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
+
+        if pic1.shape[0] != pic1.shape[1]:
+            logging.warning(f"image shape is not square ({pic1.shape}), figure this out.")
+
+        line_scale_V = x_min + np.arange(pxls_pl) * pxl_sz_V
+        row_scale_V = self.scan_params.set_pnts_lines_odd
+
+        return ImageData(pic1, norm1, pic2, norm2, line_scale_V, row_scale_V)
+
+    def keep_last_meas(self):
+        """Doc."""
+
+        try:
+            self._app.last_img_scn.plane_type = self.scan_params.scan_plane
+            self._app.last_img_scn.plane_images_data = self.plane_images_data
+            self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
+        except AttributeError:
+            # create a namespace if doesn't exist and restart function
+            self._app.last_img_scn = SimpleNamespace()
+            self.keep_last_meas()
+
+    def prep_data_dict(self) -> dict:
+        """
+        Prepare the full measurement data, in a way that
+        matches current MATLAB analysis
+        """
+
+        def prep_scan_params() -> dict:
 
             return {
-                "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,
-                "tdc_scan_data": prep_tdc_scan_data(),
-                "version": self.tdc_dvc.tdc_vrsn,
-                "ai": self.scanners_dvc.ai_buffer,
-                "cnt": self.counter_dvc.ci_buffer,
-                "scan_param": prep_scan_params(),
-                "pid": [],  # check
-                "ao": self.ao_buffer,
-                "sp": [],  # check
-                "log": [],  # info in mat filename
-                "lines_odd": self.scan_params.set_pnts_lines_odd,
-                "is_fast_scan": True,
-                "system_info": self.sys_info,
-                "xyz_um_to_v": self.um_v_ratio,
+                "dim1_lines_um": self.scan_params.dim1_um,
+                "dim2_col_um": self.scan_params.dim2_um,
+                "dim3_um": self.scan_params.dim3_um,
+                "lines": self.scan_params.n_lines,
+                "planes": self.scan_params.n_planes,
+                "line_freq_hz": self.scan_params.line_freq_Hz,
+                "points_per_line": self.scan_params.ppl,
+                "scan_type": self.scan_params.scan_plane + "scan",
+                "offset_aox": self.scan_params.curr_ao_x,
+                "offset_aoy": self.scan_params.curr_ao_y,
+                "offset_aoz": self.scan_params.curr_ao_z,
+                "offset_aix": self.scan_params.curr_ao_x,  # check
+                "offset_aiy": self.scan_params.curr_ao_y,  # check
+                "offset_aiz": self.scan_params.curr_ao_z,  # check
+                "what_stage": "Galvanometers",
+                "linear_frac": self.scan_params.lin_frac,
             }
 
-        def build_filename() -> str:
-            datetime_str = datetime.datetime.now().strftime("%d%m_%H%M%S")
-            return f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{datetime_str}"
+        def prep_tdc_scan_data() -> dict:
 
-        def keep_last_meas():
-            """Doc."""
+            return {
+                "plane": np.array([data for data in self.plane_data], dtype=np.object),
+                "data_version": self.tdc_dvc.data_vrsn,
+                "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
+                "pix_freq": self.pxl_clk_dvc.freq_MHz,
+                "laser_freq": self.tdc_dvc.laser_freq_MHz,
+                "version": self.tdc_dvc.tdc_vrsn,
+            }
 
-            try:
-                self._app.last_img_scn.plane_type = self.scan_params.scan_plane
-                self._app.last_img_scn.plane_images_data = self.plane_images_data
-                self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
-            except AttributeError:
-                # create a namespace if doesn't exist and restart function
-                self._app.last_img_scn = SimpleNamespace()
-                keep_last_meas()
+        return {
+            "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,
+            "tdc_scan_data": prep_tdc_scan_data(),
+            "version": self.tdc_dvc.tdc_vrsn,
+            "ai": self.scanners_dvc.ai_buffer,
+            "cnt": self.counter_dvc.ci_buffer,
+            "scan_param": prep_scan_params(),
+            "pid": [],  # check
+            "ao": self.ao_buffer,
+            "sp": [],  # check
+            "log": [],  # info in mat filename
+            "lines_odd": self.scan_params.set_pnts_lines_odd,
+            "is_fast_scan": True,
+            "system_info": self.sys_info,
+            "xyz_um_to_v": self.um_v_ratio,
+        }
+
+    async def run(self):
+        """Doc."""
 
         try:
             await self.toggle_lasers()
@@ -518,7 +527,7 @@ class SFCSImageMeasurement(Measurement):
             err_hndlr(exc, locals(), sys._getframe())
             return
 
-        setup_scan()
+        self.setup_scan()
         self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
 
         self.data_dvc.init_data()
@@ -537,7 +546,7 @@ class SFCSImageMeasurement(Measurement):
 
                 if self.is_running:
 
-                    change_plane(plane_idx)
+                    self.change_plane(plane_idx)
                     self.curr_plane_wdgt.set(plane_idx)
 
                     self.init_scan_tasks("FINITE")
@@ -575,12 +584,12 @@ class SFCSImageMeasurement(Measurement):
             # if not manually stopped
             # prepare data
             self.plane_images_data = [
-                prepare_image_data(plane_idx) for plane_idx in range(self.scan_params.n_planes)
+                self.prepare_image_data(plane_idx) for plane_idx in range(self.scan_params.n_planes)
             ]
 
             # save data
-            self.save_data(prep_data_dict(), build_filename())
-            keep_last_meas()
+            self.save_data(self.prep_data_dict(), self.build_filename())
+            self.keep_last_meas()
 
             # show middle plane
             mid_plane = int(len(self.scan_params.set_pnts_planes) // 2)
@@ -610,202 +619,202 @@ class SFCSSolutionMeasurement(Measurement):
         self.cal = False
         self._app.gui.main.imp.go_to_origin("XY")
 
-    async def run(self):  # noqa: C901
+    def build_filename(self, file_no: int) -> str:
+
+        if not self.file_template:
+            self.file_template = "sol"
+
+        if self.repeat is True:
+            file_no = 0
+
+        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{file_no}"
+
+    def set_current_and_end_times(self) -> None:
+        """
+        Given a duration in seconds, returns a tuple (current_time, end_time)
+        in datetime.time format, where end_time is current_time + duration_in_seconds.
+        """
+
+        duration_in_seconds = int(self.total_duration * self.duration_multiplier)
+        curr_datetime = datetime.datetime.now()
+        start_time = datetime.datetime.now().time()
+        end_time = (curr_datetime + datetime.timedelta(seconds=duration_in_seconds)).time()
+        self.start_time_wdgt.set(start_time)
+        self.end_time_wdgt.set(end_time)
+
+    async def calibrate_num_files(self):
         """Doc."""
 
-        def setup_scan():
-            """Doc."""
+        saved_dur_mul = self.duration_multiplier
+        self.duration = self.cal_duration
+        self.duration_multiplier = 1  # in seconds
+        self.start_time = time.perf_counter()
+        self.time_passed = 0
+        self.cal = True
+        logging.info(f"Calibrating file intervals for {self.type} measurement")
 
-            # make sure divisablility, then sync pixel clock with ao sample clock
-            if (self.pxl_clk_dvc.freq_MHz * 1e6) % self.scan_params.ao_samp_freq_Hz != 0:
-                raise ValueError(
-                    f"Pixel clock ({self.pxl_clk_dvc.freq_MHz} Hz) and ao samplng ({self.scan_params.ao_samp_freq_Hz} Hz) frequencies aren't divisible."
-                )
-            else:
-                self.pxl_clk_dvc.low_ticks = (
-                    int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_Hz) - 2
-                )
-            # create ao_buffer
-            self.ao_buffer, self.scan_params = ScanPatternAO(
-                self.scan_params.pattern, self.scan_params, self.um_v_ratio
-            ).calculate_pattern()
-            self.n_ao_samps = self.ao_buffer.shape[1]
-            # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-            self.ai_conv_rate = (
-                self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
+        await self.record_data(timed=True)  # reading
+
+        self.cal = False
+        bps = self.data_dvc.tot_bytes_read / self.time_passed
+        try:
+            self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
+        except ZeroDivisionError as exc:
+            err_hndlr(exc, locals(), sys._getframe())
+            return
+
+        if self.save_intrvl > self.total_duration:
+            self.save_intrvl = self.total_duration
+
+        self.cal_save_intrvl_wdgt.set(self.save_intrvl)
+        self.duration = self.save_intrvl
+        self.duration_multiplier = saved_dur_mul
+
+        # determining number of files
+        num_files = int(math.ceil(self.total_duration / self.save_intrvl))
+        self.total_files_wdgt.set(num_files)
+        return num_files
+
+    def setup_scan(self):
+        """Doc."""
+
+        # make sure divisablility, then sync pixel clock with ao sample clock
+        if (self.pxl_clk_dvc.freq_MHz * 1e6) % self.scan_params.ao_samp_freq_Hz != 0:
+            raise ValueError(
+                f"Pixel clock ({self.pxl_clk_dvc.freq_MHz} Hz) and ao samplng ({self.scan_params.ao_samp_freq_Hz} Hz) frequencies aren't divisible."
             )
+        else:
+            self.pxl_clk_dvc.low_ticks = (
+                int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_Hz) - 2
+            )
+        # create ao_buffer
+        self.ao_buffer, self.scan_params = ScanPatternAO(
+            self.scan_params.pattern, self.scan_params, self.um_v_ratio
+        ).calculate_pattern()
+        self.n_ao_samps = self.ao_buffer.shape[1]
+        # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
+        self.ai_conv_rate = (
+            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
+        )
 
-        async def calibrate_num_files() -> int:
+    def disp_ACF(self):
+        """Doc."""
+
+        def compute_acf(data):
             """Doc."""
 
-            saved_dur_mul = self.duration_multiplier
-            self.duration = self.cal_duration
-            self.duration_multiplier = 1  # in seconds
-            self.start_time = time.perf_counter()
-            self.time_passed = 0
-            self.cal = True
-            logging.info(f"Calibrating file intervals for {self.type} measurement")
+            p = PhotonData()
+            p.convert_fpga_data_to_photons(data)
+            s = CorrFuncTDC()
+            s.laser_freq = self.tdc_dvc.laser_freq_MHz * 1e6
+            s.data["data"].append(p)
+            s.correlate_regular_data()
+            s.do_average_corr(no_plot=True, use_numba=True)
+            return s
 
-            await self.record_data(timed=True)  # reading
-
-            self.cal = False
-            bps = self.data_dvc.tot_bytes_read / self.time_passed
+        if self.repeat is True:
+            # display ACF for alignments
             try:
-                self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
-            except ZeroDivisionError as exc:
+                s = compute_acf(self.data_dvc.data)
+            except Exception as exc:
                 err_hndlr(exc, locals(), sys._getframe())
-                return
-
-            if self.save_intrvl > self.total_duration:
-                self.save_intrvl = self.total_duration
-
-            self.cal_save_intrvl_wdgt.set(self.save_intrvl)
-            self.duration = self.save_intrvl
-            self.duration_multiplier = saved_dur_mul
-
-            # determining number of files
-            num_files = int(math.ceil(self.total_duration / self.save_intrvl))
-            self.total_files_wdgt.set(num_files)
-            return num_files
-
-        def set_current_and_end_times() -> None:
-            """
-            Given a duration in seconds, returns a tuple (current_time, end_time)
-            in datetime.time format, where end_time is current_time + duration_in_seconds.
-            """
-
-            duration_in_seconds = int(self.total_duration * self.duration_multiplier)
-            curr_datetime = datetime.datetime.now()
-            start_time = datetime.datetime.now().time()
-            end_time = (curr_datetime + datetime.timedelta(seconds=duration_in_seconds)).time()
-            self.start_time_wdgt.set(start_time)
-            self.end_time_wdgt.set(end_time)
-
-        def disp_ACF():
-            """Doc."""
-
-            def compute_acf(data):
-                """Doc."""
-
-                p = PhotonData()
-                p.convert_fpga_data_to_photons(data)
-                s = CorrFuncTDC()
-                s.laser_freq = self.tdc_dvc.laser_freq_MHz * 1e6
-                s.data["data"].append(p)
-                s.correlate_regular_data()
-                s.do_average_corr(no_plot=True, use_numba=True)
-                return s
-
-            if self.repeat is True:
-                # display ACF for alignments
-                try:
-                    s = compute_acf(self.data_dvc.data)
-                except Exception as exc:
-                    err_hndlr(exc, locals(), sys._getframe())
-                else:
-                    try:
-                        s.do_fit(no_plot=True)
-                    except fit_tools.FitError as exc:
-                        # fit failed
-                        err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
-                        self.fit_led.set(self.icon_dict["led_red"])
-                        g0, tau = s.g0, 0.1
-                        self.g0_wdgt.set(s.g0)
-                        self.tau_wdgt.set(0)
-                        self.plot_wdgt.obj.plot(s.lag, s.average_cf_cr, clear=True)
-                        self.plot_wdgt.obj.plotItem.vb.setRange(
-                            xRange=(math.log(0.05), math.log(5)), yRange=(-g0 * 0.1, g0 * 1.3)
-                        )
-                    else:
-                        # fit succeeded
-                        self.fit_led.set(self.icon_dict["led_off"])
-                        fit_params = s.fit_param["diffusion_3d_fit"]
-                        g0, tau, _ = fit_params["beta"]
-                        x, y = fit_params["x"], fit_params["y"]
-                        fit_func = getattr(fit_tools, fit_params["fit_func"])
-                        self.g0_wdgt.set(g0)
-                        self.tau_wdgt.set(tau * 1e3)
-                        self.plot_wdgt.obj.plot(x, y, clear=True)
-                        y_fit = fit_func(x, *fit_params["beta"])
-                        self.plot_wdgt.obj.plot(x, y_fit, pen="r")
-                        self.plot_wdgt.obj.plotItem.autoRange()
-                        logging.info(
-                            f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
-                        )
-
-        def prep_data_dict() -> dict:
-            """
-            Prepare the full measurement data, in a way that
-            matches current MATLAB analysis
-            """
-
-            def prep_ang_scan_sett_dict():
-                return {
-                    "x": self.ao_buffer[0, :],
-                    "y": self.ao_buffer[1, :],
-                    "actual_speed": self.scan_params.eff_speed_um_s,
-                    "scan_freq": self.scan_params.scan_freq_Hz,
-                    "sample_freq": self.scan_params.ao_samp_freq_Hz,
-                    "points_per_line_total": self.scan_params.tot_ppl,
-                    "points_per_line": self.scan_params.ppl,
-                    "n_lines": self.scan_params.n_lines,
-                    "line_length": self.scan_params.lin_len,
-                    "total_length": self.scan_params.tot_len,
-                    "max_line_length": self.scan_params.max_line_len_um,
-                    "line_shift": self.scan_params.line_shift_um,
-                    "angle_degrees": self.scan_params.angle_deg,
-                    "linear_frac": self.scan_params.lin_frac,
-                    "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,  # already in full_data
-                    "linear_part": self.scan_params.lin_part,
-                    "x_lim": self.scan_params.x_lim,
-                    "y_lim": self.scan_params.y_lim,
-                }
-
-            if self.scanning:
-                full_data = {
-                    "data": self.data_dvc.data,
-                    "data_version": self.tdc_dvc.data_vrsn,
-                    "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
-                    "pix_freq": self.pxl_clk_dvc.freq_MHz,
-                    "laser_freq": self.tdc_dvc.laser_freq_MHz,
-                    "version": self.tdc_dvc.tdc_vrsn,
-                    "ai": self.scanners_dvc.ai_buffer,
-                    "ao": self.ao_buffer,
-                    "avg_cnt_rate": self.counter_dvc.avg_cnt_rate,
-                }
-                if self.scan_params.pattern == "circle":
-                    full_data["circle_speed_um_sec"] = self.scan_params.speed_um_s
-                    full_data["angular_scan_settings"] = []
-                else:
-                    full_data["circle_speed_um_sec"] = 0
-                    full_data["angular_scan_settings"] = prep_ang_scan_sett_dict()
-
-                return {"full_data": full_data, "system_info": self.sys_info}
-
             else:
-                full_data = {
-                    "data": self.data_dvc.data,
-                    "data_version": self.tdc_dvc.data_vrsn,
-                    "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
-                    "laser_freq": self.tdc_dvc.laser_freq_MHz,
-                    "version": self.tdc_dvc.tdc_vrsn,
-                    "avg_cnt_rate": self.counter_dvc.avg_cnt_rate,
-                }
+                try:
+                    s.do_fit(no_plot=True)
+                except fit_tools.FitError as exc:
+                    # fit failed
+                    err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
+                    self.fit_led.set(self.icon_dict["led_red"])
+                    g0, tau = s.g0, 0.1
+                    self.g0_wdgt.set(s.g0)
+                    self.tau_wdgt.set(0)
+                    self.plot_wdgt.obj.plot(s.lag, s.average_cf_cr, clear=True)
+                    self.plot_wdgt.obj.plotItem.vb.setRange(
+                        xRange=(math.log(0.05), math.log(5)), yRange=(-g0 * 0.1, g0 * 1.3)
+                    )
+                else:
+                    # fit succeeded
+                    self.fit_led.set(self.icon_dict["led_off"])
+                    fit_params = s.fit_param["diffusion_3d_fit"]
+                    g0, tau, _ = fit_params["beta"]
+                    x, y = fit_params["x"], fit_params["y"]
+                    fit_func = getattr(fit_tools, fit_params["fit_func"])
+                    self.g0_wdgt.set(g0)
+                    self.tau_wdgt.set(tau * 1e3)
+                    self.plot_wdgt.obj.plot(x, y, clear=True)
+                    y_fit = fit_func(x, *fit_params["beta"])
+                    self.plot_wdgt.obj.plot(x, y_fit, pen="r")
+                    self.plot_wdgt.obj.plotItem.autoRange()
+                    logging.info(
+                        f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
+                    )
 
-                return {"full_data": full_data}
+    def prep_data_dict(self) -> dict:
+        """
+        Prepare the full measurement data, in a way that
+        matches current MATLAB analysis
+        """
 
-        def build_filename(file_no: int) -> str:
+        def prep_ang_scan_sett_dict():
+            return {
+                "x": self.ao_buffer[0, :],
+                "y": self.ao_buffer[1, :],
+                "actual_speed": self.scan_params.eff_speed_um_s,
+                "scan_freq": self.scan_params.scan_freq_Hz,
+                "sample_freq": self.scan_params.ao_samp_freq_Hz,
+                "points_per_line_total": self.scan_params.tot_ppl,
+                "points_per_line": self.scan_params.ppl,
+                "n_lines": self.scan_params.n_lines,
+                "line_length": self.scan_params.lin_len,
+                "total_length": self.scan_params.tot_len,
+                "max_line_length": self.scan_params.max_line_len_um,
+                "line_shift": self.scan_params.line_shift_um,
+                "angle_degrees": self.scan_params.angle_deg,
+                "linear_frac": self.scan_params.lin_frac,
+                "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,  # already in full_data
+                "linear_part": self.scan_params.lin_part,
+                "x_lim": self.scan_params.x_lim,
+                "y_lim": self.scan_params.y_lim,
+            }
 
-            if not self.file_template:
-                self.file_template = "sol"
+        if self.scanning:
+            full_data = {
+                "data": self.data_dvc.data,
+                "data_version": self.tdc_dvc.data_vrsn,
+                "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
+                "pix_freq": self.pxl_clk_dvc.freq_MHz,
+                "laser_freq": self.tdc_dvc.laser_freq_MHz,
+                "version": self.tdc_dvc.tdc_vrsn,
+                "ai": self.scanners_dvc.ai_buffer,
+                "ao": self.ao_buffer,
+                "avg_cnt_rate": self.counter_dvc.avg_cnt_rate,
+            }
+            if self.scan_params.pattern == "circle":
+                full_data["circle_speed_um_sec"] = self.scan_params.speed_um_s
+                full_data["angular_scan_settings"] = []
+            else:
+                full_data["circle_speed_um_sec"] = 0
+                full_data["angular_scan_settings"] = prep_ang_scan_sett_dict()
 
-            if self.repeat is True:
-                file_no = 0
+            return {"full_data": full_data, "system_info": self.sys_info}
 
-            return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{file_no}"
+        else:
+            full_data = {
+                "data": self.data_dvc.data,
+                "data_version": self.tdc_dvc.data_vrsn,
+                "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
+                "laser_freq": self.tdc_dvc.laser_freq_MHz,
+                "version": self.tdc_dvc.tdc_vrsn,
+                "avg_cnt_rate": self.counter_dvc.avg_cnt_rate,
+            }
+
+            return {"full_data": full_data}
+
+    async def run(self):
+        """Doc."""
 
         # initialize gui start/end times
-        set_current_and_end_times()
+        self.set_current_and_end_times()
 
         # turn on lasers
         try:
@@ -818,14 +827,14 @@ class SFCSSolutionMeasurement(Measurement):
         # calibrating save-intervals/num_files
         # TODO: test if non-scanning calibration gives good enough approximation for file size, if not, consider scanning inside cal function
         if not self.repeat:
-            num_files = await calibrate_num_files()
+            num_files = await self.calibrate_num_files()
         else:
             # if alignment measurement
             num_files = 999
             self.duration = self.total_duration
 
         if self.scanning:
-            setup_scan()
+            self.setup_scan()
             self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
 
         self.data_dvc.init_data()
@@ -874,13 +883,13 @@ class SFCSSolutionMeasurement(Measurement):
                     # reset timers for alignment measurements
                     if self.repeat:
                         self.total_time_passed = 0
-                        set_current_and_end_times()
+                        self.set_current_and_end_times()
 
                     # save and display data
                     if self.is_running or not self.repeat:
                         # if not manually stopped while aligning
-                        self.save_data(prep_data_dict(), build_filename(file_num))
-                        disp_ACF()
+                        self.save_data(self.prep_data_dict(), self.build_filename(file_num))
+                        self.disp_ACF()
 
                     # initialize data buffers for next file
                     self.data_dvc.init_data()
@@ -900,13 +909,3 @@ class SFCSSolutionMeasurement(Measurement):
 
 class MeasurementError(Exception):
     pass
-
-
-@dataclass
-class ImageData:
-    pic1: np.ndarray
-    norm1: np.ndarray
-    pic2: np.ndarray
-    norm2: np.ndarray
-    line_ticks_V: np.ndarray
-    row_ticks_V: np.ndarray

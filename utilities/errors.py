@@ -76,6 +76,7 @@ def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False) -
     return log_str
 
 
+# TODO: allow toggle(off) on error!
 def device_error_checker(func) -> Callable:
     """
     Decorator for clean handeling of GUI interactions with errorneous devices.
@@ -127,6 +128,7 @@ def device_error_checker(func) -> Callable:
     return wrapper
 
 
+# TODO: probably makes more sense to just decorate the relevant methods?
 class DeviceCheckerMetaClass(type):
     def __new__(meta, classname, bases, classDict):
         newClassDict = {}
