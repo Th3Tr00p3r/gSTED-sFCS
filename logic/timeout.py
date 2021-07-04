@@ -9,6 +9,7 @@ from collections import deque
 from utilities.errors import DeviceError, err_hndlr
 
 # import time
+# import numpy as np
 
 TIMEOUT = 0.010  # seconds (10 ms)
 LOG_PATH = "./log/log"
@@ -88,12 +89,18 @@ class Timeout:
     async def _updt_CI_and_AI(self) -> None:
         """Doc."""
 
+        #        N_TOC = 100 # TESTING
+        #        tocs = np.zeros(shape=(N_TOC,)) # TESTING
+        #        toc_idx = 0 # TESTING
         #        tic = time.perf_counter() # TESTING
 
         while self.not_finished:
 
-            #            elapsed = time.perf_counter() - tic # TESTING`
-            #            print(f"elapsed to timeout ratio: {elapsed/TIMEOUT:0.3f}") # TESTING
+            #            if toc_idx == N_TOC: # TESTING
+            #                print(f"average timeout elapsed: {tocs.mean()}. Should be: {TIMEOUT}") # TESTING
+            #                toc_idx = 0 # TESTING
+            #            tocs[toc_idx] = time.perf_counter() - tic # TESTING
+            #            toc_idx += 1 # TESTING
 
             # photon_detector
             if not self._app.devices.photon_detector.error_dict:
