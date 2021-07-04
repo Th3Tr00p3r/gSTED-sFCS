@@ -418,7 +418,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                             "sample_mode": ni_consts.AcquisitionType.FINITE,
                         },
                     )
-                    ao_data = self.limit_ao_data(ao_task, ao_data)
+                    ao_data = self._limit_ao_data(ao_task, ao_data)
                     self.analog_write(task_name, ao_data, auto_start=False)
                     self.start_tasks("ao")
                     self.wait_for_task("ao", task_name)
@@ -461,8 +461,8 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     chan_specs=xy_chan_spcs,
                     samp_clk_cnfg=samp_clk_cnfg_xy,
                 )
-                ao_data_xy = self.limit_ao_data(ao_task, ao_data_xy)
-                ao_data_xy = self.diff_vltg_data(ao_data_xy)
+                ao_data_xy = self._limit_ao_data(ao_task, ao_data_xy)
+                ao_data_xy = self._diff_vltg_data(ao_data_xy)
                 self.analog_write(xy_task_name, ao_data_xy)
 
             if z_chan_spcs:
@@ -472,7 +472,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     chan_specs=z_chan_spcs,
                     samp_clk_cnfg=samp_clk_cnfg_z,
                 )
-                ao_data_z = self.limit_ao_data(ao_task, ao_data_z)
+                ao_data_z = self._limit_ao_data(ao_task, ao_data_z)
                 self.analog_write(z_task_name, ao_data_z)
 
             if start is True:
@@ -509,7 +509,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
             read_samples = np.concatenate(
-                (read_samples[:3, :], self.diff_to_rse(read_samples[3:, :])), axis=0
+                (read_samples[:3, :], self._diff_to_rse(read_samples[3:, :])), axis=0
             )
             self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
 
@@ -520,7 +520,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         if ai_buffer_len > self.CONT_READ_BFFR_SZ:
             self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
 
-    def diff_to_rse(self, read_samples: np.ndarray) -> np.ndarray:
+    def _diff_to_rse(self, read_samples: np.ndarray) -> np.ndarray:
         """Doc."""
 
         rse_samples = np.empty(shape=(3, read_samples.shape[1]), dtype=np.float)
@@ -529,12 +529,12 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         rse_samples[2, :] = read_samples[4, :]
         return rse_samples
 
-    def limit_ao_data(self, ao_task, ao_data: np.ndarray) -> np.ndarray:
+    def _limit_ao_data(self, ao_task, ao_data: np.ndarray) -> np.ndarray:
         ao_min = ao_task.channels.ao_min
         ao_max = ao_task.channels.ao_max
         return np.clip(ao_data, ao_min, ao_max)
 
-    def diff_vltg_data(self, ao_data: np.ndarray) -> np.ndarray:
+    def _diff_vltg_data(self, ao_data: np.ndarray) -> np.ndarray:
         """
         For each row in 'ao_data', add the negative of that row
         as a row right after it, e.g.:
@@ -552,7 +552,6 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 diff_ao_data[row_idx * 2 + 1] = -ao_data[row_idx]
         else:
             # 1D array
-            # TODO: can be coded better
             diff_ao_data = np.empty(shape=(2, ao_data.size), dtype=np.float)
             diff_ao_data[0, :] = ao_data
             diff_ao_data[1, :] = -ao_data
@@ -872,7 +871,6 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
         self.open_inst() if is_being_switched_on else self.close_inst()
 
-    # TODO: try to make this async and include a 'release' command after async-sleeping for some time
     async def move(self, dir, steps):
         """Doc."""
 
