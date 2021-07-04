@@ -181,18 +181,6 @@ class Measurement:
             else:
                 return "nolaser"
 
-        async def prep_dep():
-            """Doc."""
-
-            toggle_succeeded = self._app.gui.main.imp.dvc_toggle(
-                "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
-            )
-            if toggle_succeeded:
-                logging.info(
-                    f"{dvcs.DEVICE_ATTR_DICT['dep_laser'].log_ref} isn't on. Turning on and waiting 5 s before measurement."
-                )
-                await asyncio.sleep(5)
-
         if finish:
             # measurement finishing
             if self.laser_mode == "exc":
@@ -209,12 +197,12 @@ class Measurement:
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "dep":
-                await prep_dep() if not self.laser_dvcs.dep.emission_state else None
+                await self.prep_dep() if not self.laser_dvcs.dep.emission_state else None
                 # turn depletion shutter ON and excitation OFF
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "sted":
-                await prep_dep() if not self.laser_dvcs.dep.emission_state else None
+                await self.prep_dep() if not self.laser_dvcs.dep.emission_state else None
                 # turn both depletion shutter and excitation ON
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
@@ -224,6 +212,28 @@ class Measurement:
                 raise MeasurementError(
                     f"Requested laser mode ({self.laser_mode}) was not attained."
                 )
+
+    async def prep_dep(self):
+        """Doc."""
+
+        toggle_succeeded = self._app.gui.main.imp.dvc_toggle(
+            "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
+        )
+        if toggle_succeeded:
+            logging.info(
+                f"{dvcs.DEVICE_ATTR_DICT['dep_laser'].log_ref} isn't on. Turning on and waiting 5 s before measurement."
+            )
+            if self.type == "SFCSImage" and self.laser_mode == "dep":
+                button = self._app.gui.main.startImgScanDep
+            elif self.type == "SFCSImage" and self.laser_mode == "sted":
+                button = self._app.gui.main.startImgScanSted
+            elif self.type == "SFCSSolution" and self.laser_mode == "dep":
+                button = self._app.gui.main.startSolScanDep
+            elif self.type == "SFCSSolution" and self.laser_mode == "sted":
+                button = self._app.gui.main.startSolScanSted
+            button.setEnabled(False)
+            await asyncio.sleep(5)
+            button.setEnabled(True)
 
     def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""
@@ -521,20 +531,19 @@ class SFCSImageMeasurement(Measurement):
     async def run(self):
         """Doc."""
 
+        self.setup_scan()
+
         try:
             await self.toggle_lasers()
+            self.data_dvc.init_data()
+            self.data_dvc.purge_buffers()
+            self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
+            self.scanners_dvc.init_ai_buffer()
+            self.counter_dvc.init_ci_buffer()
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
             return
-
-        self.setup_scan()
-        self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
-
-        self.data_dvc.init_data()
-        self.data_dvc.purge_buffers()
-        self.scanners_dvc.init_ai_buffer()
-        self.counter_dvc.init_ci_buffer()
 
         n_planes = self.scan_params.n_planes
         self.plane_data = []
@@ -835,14 +844,19 @@ class SFCSSolutionMeasurement(Measurement):
             num_files = 999
             self.duration = self.total_duration
 
-        if self.scanning:
-            self.setup_scan()
-            self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
+        try:
+            if self.scanning:
+                self.setup_scan()
+                self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
 
-        self.data_dvc.init_data()
-        self.data_dvc.purge_buffers()
-        self.scanners_dvc.init_ai_buffer()
-        self.counter_dvc.init_ci_buffer()
+            self.data_dvc.init_data()
+            self.data_dvc.purge_buffers()
+            self.scanners_dvc.init_ai_buffer()
+            self.counter_dvc.init_ci_buffer()
+        except DeviceError as exc:
+            await self.stop()
+            err_hndlr(exc, locals(), sys._getframe())
+            return
 
         if self.scanning:
             self.init_scan_tasks("CONTINUOUS")

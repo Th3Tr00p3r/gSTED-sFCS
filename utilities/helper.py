@@ -162,17 +162,17 @@ def div_ceil(x: int, y: int) -> int:
     return int(x // y + (x % y > 0))
 
 
-def trans_dict(dct: dict, val_trans_dct: dict) -> dict:
+def translate_dict(original_dict: dict, trans_dict: dict) -> dict:
     """
     Updates values of dict according to another dict:
     val_trans_dct.keys() are the values to update,
     and val_trans_dct.values() are the new values.
     """
 
-    for org_key, org_val in dct.items():
-        if org_val in val_trans_dct.keys():
-            dct[org_key] = val_trans_dct[org_val]
-    return dct
+    return {
+        key: (trans_dict[val] if val in trans_dict.keys() else val)
+        for key, val in original_dict.items()
+    }
 
 
 class QtWidgetAccess:
