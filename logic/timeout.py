@@ -40,6 +40,11 @@ class Timeout:
         self.cntr_dvc = self._app.devices.photon_detector
         self.dep_dvc = self._app.devices.dep_laser
 
+        # start
+        self.not_finished = True
+        self._app.loop.create_task(self.timeout())
+        logging.debug("Initiating timeout function.")
+
     # MAIN
     async def timeout(self) -> None:
         """awaits all individual async loops, each with its own repeat time."""
@@ -55,15 +60,25 @@ class Timeout:
 
         logging.debug("timeout function exited")
 
-    def start(self) -> None:
-        """Doc."""
-
-        self.not_finished = True
-        self._app.loop.create_task(self.timeout())
-        logging.debug("Initiating timeout function.")
-
     async def _updt_application_log(self) -> None:
         """Doc."""
+
+        def get_last_line(file_path) -> str:
+            """
+            Return the last line of a text file.
+            (https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python)
+            """
+
+            try:
+                with open(file_path, "rb") as f:
+                    f.seek(-2, os.SEEK_END)
+                    while f.read(1) != b"\n":
+                        f.seek(-2, os.SEEK_CUR)
+                    last_line = f.readline().decode()
+            except FileNotFoundError:
+                return "Log File Not Found!!!"
+            else:
+                return last_line
 
         while self.not_finished:
 
@@ -120,6 +135,73 @@ class Timeout:
 
     async def _update_gui(self) -> None:
         """Doc."""
+
+        def updt_scn_pos(app):
+            """Doc."""
+
+            try:
+                (
+                    x_ai,
+                    y_ai,
+                    z_ai,
+                    x_ao_int,
+                    y_ao_int,
+                    z_ao_int,
+                ) = app.devices.scanners.ai_buffer[:, -1]
+
+            except IndexError:
+                # AI buffer has just been initialized
+                pass
+
+            else:
+                (x_um, y_um, z_um) = tuple(
+                    (axis_vltg - axis_org) * axis_ratio
+                    for axis_vltg, axis_ratio, axis_org in zip(
+                        (x_ao_int, y_ao_int, z_ao_int),
+                        app.devices.scanners.um_v_ratio,
+                        app.devices.scanners.ORIGIN,
+                    )
+                )
+
+                app.gui.main.xAIV.setValue(x_ai)
+                app.gui.main.yAIV.setValue(y_ai)
+                app.gui.main.zAIV.setValue(z_ai)
+
+                app.gui.main.xAOVint.setValue(x_ao_int)
+                app.gui.main.yAOVint.setValue(y_ao_int)
+                app.gui.main.zAOVint.setValue(z_ao_int)
+
+                app.gui.main.xAOum.setValue(x_um)
+                app.gui.main.yAOum.setValue(y_um)
+                app.gui.main.zAOum.setValue(z_um)
+
+        def updt_meas_progbar(meas) -> None:
+            """Doc."""
+
+            try:
+                if meas.type == "SFCSSolution":
+                    if not meas.cal:
+                        progress = (
+                            (meas.total_time_passed + meas.time_passed)
+                            / (meas.total_duration * meas.duration_multiplier)
+                            * meas.prog_bar_wdgt.obj.maximum()
+                        )
+                    else:
+                        progress = 0
+                elif meas.type == "SFCSImage":
+                    progress = (
+                        meas.time_passed
+                        / meas.est_total_duration
+                        * meas.prog_bar_wdgt.obj.maximum()
+                    )
+                meas.prog_bar_wdgt.set(progress)
+
+            except AttributeError:
+                # happens when depletion is turned on before beginning measurement (5 s wait)
+                pass
+
+            except Exception as exc:
+                err_hndlr(exc, locals(), sys._getframe())
 
         while self.not_finished:
 
@@ -201,86 +283,3 @@ class Timeout:
 
             finally:
                 await asyncio.sleep(self.updt_intrvl["dep"])
-
-
-def get_last_line(file_path) -> str:
-    """
-    Return the last line of a text file.
-    (https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python)
-    """
-
-    try:
-        with open(file_path, "rb") as f:
-            f.seek(-2, os.SEEK_END)
-            while f.read(1) != b"\n":
-                f.seek(-2, os.SEEK_CUR)
-            last_line = f.readline().decode()
-    except FileNotFoundError:
-        return "Log File Not Found!!!"
-    else:
-        return last_line
-
-
-def updt_scn_pos(app):
-    """Doc."""
-
-    try:
-        (
-            x_ai,
-            y_ai,
-            z_ai,
-            x_ao_int,
-            y_ao_int,
-            z_ao_int,
-        ) = app.devices.scanners.ai_buffer[:, -1]
-
-    except IndexError:
-        # AI buffer has just been initialized
-        pass
-
-    else:
-        (x_um, y_um, z_um) = tuple(
-            (axis_vltg - axis_org) * axis_ratio
-            for axis_vltg, axis_ratio, axis_org in zip(
-                (x_ao_int, y_ao_int, z_ao_int),
-                app.devices.scanners.um_v_ratio,
-                app.devices.scanners.ORIGIN,
-            )
-        )
-
-        app.gui.main.xAIV.setValue(x_ai)
-        app.gui.main.yAIV.setValue(y_ai)
-        app.gui.main.zAIV.setValue(z_ai)
-
-        app.gui.main.xAOVint.setValue(x_ao_int)
-        app.gui.main.yAOVint.setValue(y_ao_int)
-        app.gui.main.zAOVint.setValue(z_ao_int)
-
-        app.gui.main.xAOum.setValue(x_um)
-        app.gui.main.yAOum.setValue(y_um)
-        app.gui.main.zAOum.setValue(z_um)
-
-
-def updt_meas_progbar(meas) -> None:
-    """Doc."""
-
-    try:
-        if meas.type == "SFCSSolution":
-            if not meas.cal:
-                progress = (
-                    (meas.total_time_passed + meas.time_passed)
-                    / (meas.total_duration * meas.duration_multiplier)
-                    * meas.prog_bar_wdgt.obj.maximum()
-                )
-            else:
-                progress = 0
-        elif meas.type == "SFCSImage":
-            progress = meas.time_passed / meas.est_total_duration * meas.prog_bar_wdgt.obj.maximum()
-        meas.prog_bar_wdgt.set(progress)
-
-    except AttributeError:
-        # happens when depletion is turned on before beginning measurement (5 s wait)
-        pass
-
-    except Exception as exc:
-        err_hndlr(exc, locals(), sys._getframe())
