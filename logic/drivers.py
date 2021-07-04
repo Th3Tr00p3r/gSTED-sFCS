@@ -11,7 +11,7 @@ import pyvisa as visa
 from instrumental.drivers.cameras import uc480
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
 
-from utilities.errors import DeviceError
+from utilities.errors import IOError
 from utilities.helper import trans_dict
 
 
@@ -41,7 +41,7 @@ class Ftd2xx:
         try:
             self._inst = ftd2xx.aio.openEx(self.serial)
         except AttributeError:
-            raise DeviceError(f"{self.log_ref} is not plugged in.")
+            raise IOError(f"{self.log_ref} is not plugged in.")
         self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
         self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
         self._inst.setLatencyTimer(self.ltncy_tmr_val)
@@ -306,8 +306,8 @@ class PyVISA:
                 open_timeout=50,  # ms
             )
         except AttributeError:
-            raise DeviceError(
-                f"{self.log_ref} couldn't be opened - it is either unplugged or the address is used by another process"
+            raise IOError(
+                f"{self.log_ref} couldn't be opened - it is either turned off, unplugged or the address is used by another process"
             )
 
     def close_inst(self) -> None:
@@ -316,9 +316,9 @@ class PyVISA:
         try:
             self._rsrc.close()
         except AttributeError:
-            raise DeviceError(f"{self.log_ref} was never opened")
+            raise IOError(f"{self.log_ref} was never opened")
         except visa.errors.VisaIOError:
-            raise DeviceError(f"{self.log_ref} disconnected during operation.")
+            raise IOError(f"{self.log_ref} disconnected during operation.")
 
     def write(self, cmnd: str) -> None:
         """Sends a command to the VISA instrument."""
@@ -331,12 +331,12 @@ class PyVISA:
         try:
             response = self._rsrc.query(cmnd)
         except visa.errors.VisaIOError:
-            raise DeviceError(f"{self.log_ref} disconnected! Reconnect and restart.")
+            raise IOError(f"{self.log_ref} disconnected! Reconnect and restart.")
         else:
             try:
                 extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
             except IndexError:  # TESTESTEST
-                print("DEP INDEX ERROR!")  # TESTESTEST
+                print("DEP INDEX ERROR!\n" * 10)  # TESTESTEST
                 return 0  # TESTESTEST
             return float(extracted_float_string)
 
@@ -347,7 +347,7 @@ class PyVISA:
         try:
             self._rsrc.flush(mask)
         except visa.errors.VisaIOError:
-            raise DeviceError(f"{self.log_ref} disconnected! Reconnect and restart.")
+            raise IOError(f"{self.log_ref} disconnected! Reconnect and restart.")
 
 
 class Instrumental:

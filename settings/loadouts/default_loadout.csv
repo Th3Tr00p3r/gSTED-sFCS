@@ -1,5 +1,6 @@
 solScanFileTemplate,
 imgScanFileTemplate,imgScan
+deviceErrorDisplay,
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -36,6 +37,10 @@ solScanDurUnits,0
 imgScanType,1
 imgScanPreset,0
 imgShowMethod,0
-axis,0
 repeatSolMeas,True
 autoCrosshair,True
+currMode,True
+powMode,False
+posAxisZ,False
+posAxisY,False
+posAxisX,True

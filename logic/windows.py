@@ -202,7 +202,7 @@ class MainWin:
 
         if um_disp != 0.0:
             scanners_dvc = self._app.devices.scanners
-            axis = self._gui.axis.currentText()
+            axis = self._gui.axesGroup.checkedButton().text()
             current_vltg = scanners_dvc.ai_buffer[3:, -1][scanners_dvc.AXIS_INDEX[axis]]
             um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
             delta_vltg = um_disp / um_V_RATIO

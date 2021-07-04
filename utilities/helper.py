@@ -75,7 +75,8 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
     l3 = parent_wdgt.findChildren(QtWidgets.QDoubleSpinBox)
     l4 = parent_wdgt.findChildren(QtWidgets.QComboBox)
     l5 = parent_wdgt.findChildren(QtWidgets.QCheckBox)
-    children_list = l1 + l2 + l3 + l4 + l5
+    l6 = parent_wdgt.findChildren(QtWidgets.QRadioButton)
+    children_list = l1 + l2 + l3 + l4 + l5 + l6
 
     rows = []
     for child in children_list:
@@ -96,7 +97,7 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
                     # QComboBox
                     val = child.currentIndex()
                 elif hasattr(child, "isChecked"):
-                    # QCheckBox
+                    # QCheckBox, QRadioButton
                     val = child.isChecked()
                 else:
                     continue
@@ -138,7 +139,7 @@ def csv_to_gui(file_path, gui_parent):
                 child.setValue(float(val))
             elif hasattr(child, "currentIndex"):  # QComboBox
                 child.setCurrentIndex(int(val))
-            elif hasattr(child, "isChecked"):  # QCheckBox
+            elif hasattr(child, "isChecked"):  # QCheckBox, QRadioButton
                 child.setChecked(bool(val))
             elif hasattr(child, "text"):  # QLineEdit
                 child.setText(val)
