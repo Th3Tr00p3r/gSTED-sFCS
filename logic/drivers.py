@@ -254,9 +254,9 @@ class PyVISA:
 
         # auto-find serial connection for depletion laser
         if hasattr(self, "model_query"):
-            self.autofind_address()
+            self._autofind_address()
 
-    def autofind_address(self) -> None:
+    def _autofind_address(self) -> None:
         """Doc."""
 
         # list all resource addresses
