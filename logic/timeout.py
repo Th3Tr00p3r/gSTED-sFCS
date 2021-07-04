@@ -42,8 +42,8 @@ class Timeout:
 
         # start
         self.not_finished = True
-        self._app.loop.create_task(self.timeout())
         logging.debug("Initiating timeout function.")
+        self._app.loop.create_task(self.timeout())
 
     # MAIN
     async def timeout(self) -> None:
