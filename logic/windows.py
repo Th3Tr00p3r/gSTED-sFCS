@@ -170,6 +170,7 @@ class MainWin:
             f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} were moved to {str(destination)} V"
         )
 
+    # TODO: implement a 'go_to_last_position' - same as origin, just need to save last location each time (if it's not the origin)
     def go_to_origin(self, which_axes: str) -> None:
         """Doc."""
 
@@ -437,6 +438,7 @@ class MainWin:
             # no scan
             plt_wdgt.plot([], [], clear=True)
 
+    # TODO: auto_cross not working!!!
     def disp_plane_img(self, plane_idx, auto_cross=False):
         """Doc."""
 

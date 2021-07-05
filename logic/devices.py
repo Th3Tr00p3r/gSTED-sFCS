@@ -685,6 +685,12 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         self.ci_buffer = np.empty(shape=(0,))
 
+    # TODO: try using constant-size numpy arrays, and see if there's a numpy method
+    # equivalent to MATLAB'S 'rotate' which inserts new elements while throwing away as many of the oldest elements.
+    # with this I will be able to stop using the 'dump' methods, and also avoid using 'concatenate' for all my buffers.
+    # for the UM232H array I can define an array size proportionally to the count rate and measurement time.
+    # This way, instead of re-allocating memory each concatenation, I can allocate space only for the new readings, then
+    # 'rotate' them into the existing array?
     def dump_ci_buff_overflow(self):
         """Doc."""
 
