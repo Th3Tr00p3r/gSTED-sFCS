@@ -438,7 +438,6 @@ class MainWin:
             # no scan
             plt_wdgt.plot([], [], clear=True)
 
-    # TODO: auto_cross not working!!!
     def disp_plane_img(self, plane_idx, auto_cross=False):
         """Doc."""
 
