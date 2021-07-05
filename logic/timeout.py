@@ -34,7 +34,6 @@ class Timeout:
         maxlen = self._app.gui.main.logNumLinesSlider.value()
         self.log_buffer_deque = deque([""], maxlen=maxlen)
 
-        self.um232_buff_wdgt = self._app.gui.main.um232buff
         self.um232_buff_sz = self._app.devices.UM232H.tx_size
 
         self.cntr_dvc = self._app.devices.photon_detector
@@ -209,7 +208,6 @@ class Timeout:
 
             # photon_detector count rate
             try:
-                # TODO: change GUI of count rate avg interval from slider to combox with choices - 200 ms, 500 ms, 1 s, 2 s, 5 s
                 self.cntr_dvc.average_counts(self.updt_intrvl["cntr_avg"])
             except DeviceError:
                 pass
@@ -235,7 +233,6 @@ class Timeout:
 
             else:
                 fill_perc = rx_bytes / self.um232_buff_sz * 100
-                self.um232_buff_wdgt.setValue(fill_perc)
                 if fill_perc > 90:
                     logging.warning("UM232H buffer might be overfilling")
 
