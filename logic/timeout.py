@@ -51,7 +51,6 @@ class Timeout:
 
         await asyncio.gather(
             self._updt_CI_and_AI(),
-            self._update_avg_counts(),
             self._update_dep(),
             self._updt_application_log(),
             self._update_gui(),
@@ -208,6 +207,15 @@ class Timeout:
             # scanners
             updt_scn_pos(self._app)
 
+            # photon_detector count rate
+            try:
+                # TODO: change GUI of count rate avg interval from slider to combox with choices - 200 ms, 500 ms, 1 s, 2 s, 5 s
+                self.cntr_dvc.average_counts(self.updt_intrvl["cntr_avg"])
+            except DeviceError:
+                pass
+            else:
+                self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate)
+
             # Measurement progress bar
             if self._app.meas.is_running:
                 updt_meas_progbar(self._app.meas)
@@ -233,27 +241,6 @@ class Timeout:
 
             finally:
                 await asyncio.sleep(self.updt_intrvl["gui"])
-
-    async def _update_avg_counts(self) -> None:
-        """
-        Read new counts, and dump buffer overflow.
-        if update ready also average and show in GUI.
-
-        """
-
-        while self.not_finished:
-
-            try:
-                self.cntr_dvc.average_counts()
-
-            except DeviceError:
-                pass
-
-            else:
-                self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate)
-
-            finally:
-                await asyncio.sleep(self.updt_intrvl["cntr_avg"])
 
     async def _update_dep(self) -> None:
         """Update depletion laser GUI"""

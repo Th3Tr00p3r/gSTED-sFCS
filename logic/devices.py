@@ -662,23 +662,21 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             )
             self.num_reads_since_avg += num_samps_read
 
-    def average_counts(self) -> None:
+    def average_counts(self, interval: float) -> None:
         """Doc."""
 
-        actual_intrvl = time.perf_counter() - self.last_avg_time
-        start_idx = len(self.ci_buffer) - self.num_reads_since_avg
+        self.num_reads_in_interval = div_ceil(interval, (1 / self.ai_cont_rate))
+        start_idx = len(self.ci_buffer) - self.num_reads_in_interval
 
         if start_idx > 0:
             avg_cnt_rate = (
-                self.ci_buffer[-1] - self.ci_buffer[-(self.num_reads_since_avg + 1)]
-            ) / actual_intrvl
+                self.ci_buffer[-1] - self.ci_buffer[-(self.num_reads_in_interval + 1)]
+            ) / interval
             avg_cnt_rate = avg_cnt_rate / 1000  # Hz -> KHz
         else:
             avg_cnt_rate = 0
 
-        self.num_reads_since_avg = 0
         self.avg_cnt_rate = avg_cnt_rate
-        self.last_avg_time = time.perf_counter()
 
     def init_ci_buffer(self) -> None:
         """Doc."""
