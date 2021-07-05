@@ -27,8 +27,8 @@ class Timeout:
         # initial intervals (some change during run)
         self.updt_intrvl = {
             "gui": 0.2,
-            "dep": self._app.devices.dep_laser.updt_time,
-            "cntr_avg": self._app.devices.photon_detector.updt_time,
+            "dep": self._app.devices.dep_laser.UPDATE_TIME,
+            "cntr_avg": self._app.devices.photon_detector.UPDATE_TIME,
         }
 
         maxlen = self._app.gui.main.logNumLinesSlider.value()
@@ -118,8 +118,8 @@ class Timeout:
             # photon_detector
             if not self._app.devices.photon_detector.error_dict:
                 self._app.devices.photon_detector.fill_ci_buffer()
-                if self._app.meas.type not in {"SFCSImage"}:
-                    self._app.devices.photon_detector.dump_ci_buff_overflow()
+            #                if self._app.meas.type not in {"SFCSImage"}:
+            #                    self._app.devices.photon_detector.dump_ci_buff_overflow()
 
             # AI
             if not self._app.devices.scanners.error_dict:
@@ -260,7 +260,7 @@ class Timeout:
                 self.main_gui.depActualPow.setValue(pow)
                 self.main_gui.depActualCurr.setValue(curr)
 
-                if temp < self.dep_dvc.min_SHG_temp:
+                if temp < self.dep_dvc.MIN_SHG_TEMP:
                     self.main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
                 else:
                     self.main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
