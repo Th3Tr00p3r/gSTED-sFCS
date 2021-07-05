@@ -400,7 +400,7 @@ class SFCSImageMeasurement(Measurement):
         scan_plane = self.scan_params.scan_plane
         ppl = self.scan_params.ppl
         ao = self.ao_buffer[0, :ppl]
-        counts = self.counter_dvc.ci_buffer
+        counts = np.array(self.counter_dvc.ci_buffer)
 
         if scan_plane in {"XY", "XZ"}:
             xc = self.scan_params.curr_ao_x
@@ -516,7 +516,7 @@ class SFCSImageMeasurement(Measurement):
             "tdc_scan_data": prep_tdc_scan_data(),
             "version": self.tdc_dvc.tdc_vrsn,
             "ai": self.scanners_dvc.ai_buffer,
-            "cnt": self.counter_dvc.ci_buffer,
+            "cnt": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
             "scan_param": prep_scan_params(),
             "pid": [],  # check
             "ao": self.ao_buffer,
@@ -539,7 +539,7 @@ class SFCSImageMeasurement(Measurement):
             self.data_dvc.purge_buffers()
             self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
             self.scanners_dvc.init_ai_buffer()
-            self.counter_dvc.init_ci_buffer()
+            self.counter_dvc.init_ci_buffer()  # TODO: estimate the needed size
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
@@ -852,7 +852,7 @@ class SFCSSolutionMeasurement(Measurement):
             self.data_dvc.init_data()
             self.data_dvc.purge_buffers()
             self.scanners_dvc.init_ai_buffer()
-            self.counter_dvc.init_ci_buffer()
+            self.counter_dvc.init_ci_buffer()  # TODO: estimate the needed size
         except DeviceError as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
