@@ -122,8 +122,6 @@ class MainWin(QMainWindow):
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
-        self.countsAvg.setValue(self.countsAvgSlider.value())
-
     def closeEvent(self, event: QEvent) -> None:
         """Doc."""
 
@@ -265,11 +263,11 @@ class MainWin(QMainWindow):
 
         self._loop.create_task(self.imp.open_camwin())
 
-    @pyqtSlot(int)
-    def on_countsAvgSlider_valueChanged(self, val: int) -> None:
+    @pyqtSlot(str)
+    def on_avgInterval_currentTextChanged(self, val: str) -> None:
         """Doc."""
 
-        self.imp.cnts_avg_sldr_changed(val)
+        self.imp.counts_avg_interval_changed(int(val))
 
     # -----------------------------------------------------------------------
     # LEDS

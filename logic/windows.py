@@ -548,10 +548,9 @@ class MainWin:
         self._app.gui.camera.activateWindow()
         self._app.gui.camera.imp.init_cam()
 
-    def cnts_avg_sldr_changed(self, val):
+    def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
 
-        self._gui.countsAvg.setValue(val)
         self._app.timeout_loop.updt_intrvl["cntr_avg"] = val / 1000  # convert to seconds
 
     def fill_img_scan_preset_gui(self, curr_text: str) -> None:
