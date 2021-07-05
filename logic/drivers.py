@@ -51,6 +51,8 @@ class Ftd2xx:
     async def read(self) -> np.ndarray:
         """Doc."""
 
+        # TODO: fix bug where something here blocks - I think it's some error in the async read function.
+        # check this out: https://docs.python.org/3/library/asyncio-dev.html#detect-never-retrieved-exceptions
         raw_bytes = await self._inst.read(self.n_bytes)
         read_bytes = np.frombuffer(raw_bytes, dtype=np.uint8)
         return read_bytes
