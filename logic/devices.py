@@ -3,6 +3,7 @@
 import asyncio
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass
 from typing import List
 
@@ -513,6 +514,12 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             )
             self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
 
+    # TODO: try using constant-size numpy arrays, and see if there's a numpy method
+    # equivalent to MATLAB'S 'rotate' which inserts new elements while throwing away as many of the oldest elements.
+    # with this I will be able to stop using the 'dump' methods, and also avoid using 'concatenate' for all my buffers.
+    # for the UM232H array I can define an array size proportionally to the count rate and measurement time.
+    # This way, instead of re-allocating memory each concatenation, I can allocate space only for the new readings, then
+    # 'rotate' them into the existing array?
     def dump_ai_buff_overflow(self):
         """Doc."""
 
@@ -564,7 +571,8 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     fluorescence photons coming from the sample.
     """
 
-    updt_time = 0.2
+    UPDATE_TIME = 0.2
+    CI_BUFFER_SIZE = int(1e4)
 
     def __init__(self, param_dict, scanners_ai_tasks):
         super().__init__(
@@ -621,7 +629,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 },
             )
-            self.init_ci_buffer()
+            self.init_ci_buffer(self.CI_BUFFER_SIZE)
             self.start_tasks("ci")
         except DaqError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
@@ -657,9 +665,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            self.ci_buffer = np.concatenate(
-                (self.ci_buffer, self.cont_read_buffer[:num_samps_read])
-            )
+            self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
             self.num_reads_since_avg += num_samps_read
 
     def average_counts(self, interval: float) -> None:
@@ -678,22 +684,13 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         self.avg_cnt_rate = avg_cnt_rate
 
-    def init_ci_buffer(self) -> None:
+    def init_ci_buffer(self, size: int = None) -> None:
         """Doc."""
 
-        self.ci_buffer = np.empty(shape=(0,))
-
-    # TODO: try using constant-size numpy arrays, and see if there's a numpy method
-    # equivalent to MATLAB'S 'rotate' which inserts new elements while throwing away as many of the oldest elements.
-    # with this I will be able to stop using the 'dump' methods, and also avoid using 'concatenate' for all my buffers.
-    # for the UM232H array I can define an array size proportionally to the count rate and measurement time.
-    # This way, instead of re-allocating memory each concatenation, I can allocate space only for the new readings, then
-    # 'rotate' them into the existing array?
-    def dump_ci_buff_overflow(self):
-        """Doc."""
-
-        if len(self.ci_buffer) > self.CONT_READ_BFFR_SZ:
-            self.ci_buffer = self.ci_buffer[-self.CONT_READ_BFFR_SZ :]
+        if size is not None:
+            self.ci_buffer = deque([], maxlen=size)
+        else:
+            self.ci_buffer = deque([])
 
 
 class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
@@ -761,7 +758,8 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control depletion laser through pyVISA"""
 
-    min_SHG_temp = 53  # Celsius
+    UPDATE_TIME = 0.3
+    MIN_SHG_TEMP = 53  # Celsius
     power_limits_mW = dict(low=99, high=1000)
     current_limits_mA = dict(low=1500, high=2500)
 
@@ -773,7 +771,6 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             write_termination="\r",
         )
 
-        self.updt_time = 0.3
         self.state = None
         self.emission_state = None
         self.toggle(True, should_change_icons=False)
