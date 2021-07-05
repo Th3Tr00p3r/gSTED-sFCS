@@ -605,7 +605,7 @@ class SFCSImageMeasurement(Measurement):
             mid_plane = int(len(self.scan_params.set_pnts_planes) // 2)
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
-            should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "Exc")
+            should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "exc")
             self._app.gui.main.imp.disp_plane_img(mid_plane, auto_cross=should_display_autocross)
 
         if self.is_running:  # if not manually before completion
