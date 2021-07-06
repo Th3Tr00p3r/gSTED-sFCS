@@ -37,10 +37,13 @@ solScanDurUnits,0
 imgScanType,1
 imgScanPreset,0
 imgShowMethod,0
-repeatSolMeas,True
-autoCrosshair,True
+avgInterval,0
+repeatSolMeas,False
+autoCrosshair,False
 currMode,True
 powMode,False
 posAxisZ,False
 posAxisY,False
 posAxisX,True
+numPlaneShownChoice,0
+logNumLinesSlider,50

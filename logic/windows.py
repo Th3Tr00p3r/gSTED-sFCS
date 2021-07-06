@@ -147,6 +147,7 @@ class MainWin:
         except errors.DeviceError:
             pass
 
+    # TODO: only turn on LED while actually moving (also during scan)
     def move_scanners(self, axes_used: str = "XYZ", destination=None) -> None:
         """Doc."""
 
@@ -261,6 +262,7 @@ class MainWin:
         except AttributeError:
             pass
 
+    # TODO: only turn on LED while actually moving
     def move_stage(self, dir: str, steps: int):
         """Doc."""
 
