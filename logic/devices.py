@@ -694,6 +694,9 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control stepper stage through Arduino chip using PyVISA."""
 
+    # TODO: add support for saving all movements done since init
+    # and add button to move back to origin. also save to file and rewrite only when moving after app opens again
+
     def __init__(self, param_dict):
         super().__init__(param_dict)
 
