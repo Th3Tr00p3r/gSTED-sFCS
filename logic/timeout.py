@@ -11,6 +11,7 @@ from utilities.errors import DeviceError, err_hndlr
 # import time
 # import numpy as np
 
+
 TIMEOUT = 0.010  # seconds (10 ms)
 LOG_PATH = "./log/log"
 
@@ -102,7 +103,7 @@ class Timeout:
     async def _updt_CI_and_AI(self) -> None:
         """Doc."""
 
-        #        N_TOC = 100 # TESTING
+        #        N_TOC = 10 # TESTING
         #        tocs = np.zeros(shape=(N_TOC,)) # TESTING
         #        toc_idx = 0 # TESTING
         #        tic = time.perf_counter() # TESTING
@@ -110,7 +111,7 @@ class Timeout:
         while self.not_finished:
 
             #            if toc_idx == N_TOC: # TESTING
-            #                print(f"average timeout elapsed: {tocs.mean()}. Should be: {TIMEOUT}") # TESTING
+            #                print(f"average timeout elapsed: {tocs.mean()*1e3:.2f} ms. Should be: {TIMEOUT*1e3:.2f} ms") # TESTING
             #                toc_idx = 0 # TESTING
             #            tocs[toc_idx] = time.perf_counter() - tic # TESTING
             #            toc_idx += 1 # TESTING
