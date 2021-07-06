@@ -76,32 +76,30 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
     l4 = parent_wdgt.findChildren(QtWidgets.QComboBox)
     l5 = parent_wdgt.findChildren(QtWidgets.QCheckBox)
     l6 = parent_wdgt.findChildren(QtWidgets.QRadioButton)
-    children_list = l1 + l2 + l3 + l4 + l5 + l6
+    l7 = parent_wdgt.findChildren(QtWidgets.QSlider)
+    children_list = l1 + l2 + l3 + l4 + l5 + l6 + l7
 
     rows = []
     for child in children_list:
         if not child.objectName() == "qt_spinbox_lineedit":
-            try:
-                if not child.isReadOnly():
-                    # only save editable QSpinBox/QLineEdit
-                    if hasattr(child, "value"):
-                        # QSpinBox
-                        val = child.value()
-                    else:
-                        # QLineEdit
-                        val = child.text()
-                    rows.append((child.objectName(), str(val)))
-            except AttributeError:
-                # if doesn't have a isReadOnly attribute (QComboBox/QCheckBox)
-                if hasattr(child, "currentIndex"):
-                    # QComboBox
-                    val = child.currentIndex()
-                elif hasattr(child, "isChecked"):
-                    # QCheckBox, QRadioButton
-                    val = child.isChecked()
-                else:
-                    continue
-                rows.append((child.objectName(), str(val)))
+            if hasattr(child, "value") and hasattr(child, "isReadOnly") and not child.isReadOnly():
+                # editable QSpinBox
+                val = child.value()
+            elif hasattr(child, "text") and hasattr(child, "isReadOnly") and not child.isReadOnly():
+                # editable QLineEdit
+                val = child.text()
+            elif hasattr(child, "currentIndex"):
+                # QComboBox
+                val = child.currentIndex()
+            elif hasattr(child, "isChecked"):
+                # QCheckBox, QRadioButton
+                val = child.isChecked()
+            elif hasattr(child, "tickPosition"):
+                # QSlider
+                val = child.value()
+            else:
+                continue
+            rows.append((child.objectName(), str(val)))
     return rows
 
 
@@ -137,12 +135,14 @@ def csv_to_gui(file_path, gui_parent):
         if not child == "nullptr":
             if hasattr(child, "value"):  # QSpinBox
                 child.setValue(float(val))
+            elif hasattr(child, "text"):  # QLineEdit
+                child.setText(val)
             elif hasattr(child, "currentIndex"):  # QComboBox
                 child.setCurrentIndex(int(val))
             elif hasattr(child, "isChecked"):  # QCheckBox, QRadioButton
                 child.setChecked(bool(val))
-            elif hasattr(child, "text"):  # QLineEdit
-                child.setText(val)
+            elif hasattr(child, "tickPosition"):  # QSlider
+                child.setTickPosition(val)
 
 
 def deep_getattr(object, deep_attr_name: str, recursion=False):
