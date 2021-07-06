@@ -135,10 +135,6 @@ class NIDAQmx:
 
         self.tasks.ai[name] = task
 
-        #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
-        #        self.sreader = AnalogMultiChannelReader(self.in_tasks.in_stream)
-        #        self.sreader.verify_array_shape = False
-
     def create_ao_task(
         self,
         name: str,

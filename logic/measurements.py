@@ -539,7 +539,7 @@ class SFCSImageMeasurement(Measurement):
             self.data_dvc.purge_buffers()
             self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
             self.scanners_dvc.init_ai_buffer()
-            self.counter_dvc.init_ci_buffer()  # TODO: estimate the needed size
+            self.counter_dvc.init_ci_buffer()
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
@@ -852,7 +852,7 @@ class SFCSSolutionMeasurement(Measurement):
             self.data_dvc.init_data()
             self.data_dvc.purge_buffers()
             self.scanners_dvc.init_ai_buffer()
-            self.counter_dvc.init_ci_buffer()  # TODO: estimate the needed size
+            self.counter_dvc.init_ci_buffer()
         except DeviceError as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
