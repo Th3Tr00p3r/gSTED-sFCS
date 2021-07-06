@@ -89,6 +89,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         else:
             self.close()
 
+    # TODO: only turn on LED while actually reading
     async def read_TDC(self):
         """Doc."""
 
