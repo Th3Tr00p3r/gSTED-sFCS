@@ -197,15 +197,6 @@ class NIDAQmx:
     def analog_read(self, task_name: str, n_samples, task_type="ai"):
         """Doc."""
 
-        #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
-        #        import numpy as np
-        #        self.ai_buffer = np.empty(shape=(3, 10000), dtype=np.float)
-        #        num_samps_read = self.sreader.read_many_sample(
-        #            self.ai_buffer,
-        #            number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
-        #        )
-        #        return num_samps_read
-
         ai_task = getattr(self.tasks, task_type)[task_name]
         return np.array(ai_task.read(number_of_samples_per_channel=n_samples))
 

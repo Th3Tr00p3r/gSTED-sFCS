@@ -27,153 +27,6 @@ from utilities.helper import (
 # and would make a distinction between toggle vs. "connect" (e.g), which would be clearer, cleaner and more modular.
 
 
-@dataclass
-class DeviceAttrs:
-    class_name: str
-    log_ref: str
-    param_widgets: QtWidgetCollection
-    led_color: str = "green"
-    cls_xtra_args: List[str] = None
-
-
-DEVICE_ATTR_DICT = {
-    "exc_laser": DeviceAttrs(
-        class_name="SimpleDO",
-        log_ref="Excitation Laser",
-        led_color="blue",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledExc", "icon", "main"),
-            switch_widget=("excOnButton", "icon", "main"),
-            model=("excMod", "text"),
-            trg_src=("excTriggerSrc", "currentText"),
-            ext_trg_addr=("excTriggerExtAddr", "text"),
-            int_trg_addr=("excTriggerIntAddr", "text"),
-            address=("excAddr", "text"),
-        ),
-    ),
-    "dep_shutter": DeviceAttrs(
-        class_name="SimpleDO",
-        log_ref="Shutter",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledShutter", "icon", "main"),
-            switch_widget=("depShutterOn", "icon", "main"),
-            address=("depShutterAddr", "text"),
-        ),
-    ),
-    "TDC": DeviceAttrs(
-        class_name="SimpleDO",
-        log_ref="TDC",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledTdc", "icon", "main"),
-            address=("TDCaddress", "text"),
-            data_vrsn=("TDCdataVersion", "text"),
-            laser_freq_MHz=("TDClaserFreq", "value"),
-            fpga_freq_MHz=("TDCFPGAFreq", "value"),
-            tdc_vrsn=("TDCversion", "value"),
-        ),
-    ),
-    "dep_laser": DeviceAttrs(
-        class_name="DepletionLaser",
-        log_ref="Depletion Laser",
-        led_color="orange",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledDep", "icon", "main"),
-            switch_widget=("depEmissionOn", "icon", "main"),
-            model_query=("depModelQuery", "text"),
-        ),
-    ),
-    "stage": DeviceAttrs(
-        class_name="StepperStage",
-        log_ref="Stage",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledStage", "icon", "main"),
-            switch_widget=("stageOn", "icon", "main"),
-            address=("arduinoAddr", "text"),
-        ),
-    ),
-    "UM232H": DeviceAttrs(
-        class_name="UM232H",
-        log_ref="UM232H",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledUm232h", "icon", "main"),
-            bit_mode=("um232BitMode", "text"),
-            timeout_ms=("um232Timeout", "value"),
-            ltncy_tmr_val=("um232LatencyTimerVal", "value"),
-            flow_ctrl=("um232FlowControl", "text"),
-            tx_size=("um232TxSize", "value"),
-            n_bytes=("um232NumBytes", "value"),
-        ),
-    ),
-    "camera": DeviceAttrs(
-        class_name="Camera",
-        cls_xtra_args=["loop", "gui.camera"],
-        log_ref="Camera",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledCam", "icon", "main"),
-            model=("uc480PlaceHolder", "value"),
-        ),
-    ),
-    "scanners": DeviceAttrs(
-        class_name="Scanners",
-        log_ref="Scanners",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledScn", "icon", "main"),
-            ao_x_init_vltg=("xAOV", "value", "main"),
-            ao_y_init_vltg=("yAOV", "value", "main"),
-            ao_z_init_vltg=("zAOV", "value", "main"),
-            x_um2V_const=("xConv", "value"),
-            y_um2V_const=("yConv", "value"),
-            z_um2V_const=("zConv", "value"),
-            ai_x_addr=("AIXaddr", "text"),
-            ai_y_addr=("AIYaddr", "text"),
-            ai_z_addr=("AIZaddr", "text"),
-            ai_laser_mon_addr=("AIlaserMonAddr", "text"),
-            ai_clk_div=("AIclkDiv", "value"),
-            ai_trg_src=("AItrigSrc", "text"),
-            ao_x_addr=("AOXaddr", "text"),
-            ao_y_addr=("AOYaddr", "text"),
-            ao_z_addr=("AOZaddr", "text"),
-            ao_int_x_addr=("AOXintAddr", "text"),
-            ao_int_y_addr=("AOYintAddr", "text"),
-            ao_int_z_addr=("AOZintAddr", "text"),
-            ao_dig_trg_src=("AOdigTrigSrc", "text"),
-            ao_trg_edge=("AOtriggerEdge", "currentText"),
-            ao_wf_type=("AOwfType", "currentText"),
-        ),
-    ),
-    "photon_detector": DeviceAttrs(
-        class_name="PhotonDetector",
-        cls_xtra_args=["devices.scanners.tasks.ai"],
-        log_ref="Photon Detector",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledCounter", "icon", "main"),
-            pxl_clk=("counterPixelClockAddress", "text"),
-            pxl_clk_output=("pixelClockCounterIntOutputAddress", "text"),
-            trggr=("counterTriggerAddress", "text"),
-            trggr_armstart_digedge=("counterTriggerArmStartDigEdgeSrc", "text"),
-            trggr_edge=("counterTriggerEdge", "currentText"),
-            address=("counterAddress", "text"),
-            CI_cnt_edges_term=("counterCIcountEdgesTerm", "text"),
-            CI_dup_prvnt=("counterCIdupCountPrevention", "isChecked"),
-        ),
-    ),
-    "pixel_clock": DeviceAttrs(
-        class_name="PixelClock",
-        log_ref="Pixel Clock",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledPxlClk", "icon", "main"),
-            low_ticks=("pixelClockLowTicks", "value"),
-            high_ticks=("pixelClockHighTicks", "value"),
-            cntr_addr=("pixelClockCounterAddress", "text"),
-            tick_src=("pixelClockSrcOfTicks", "text"),
-            out_term=("pixelClockOutput", "text"),
-            out_ext_term=("pixelClockOutputExt", "text"),
-            freq_MHz=("pixelClockFreq", "value"),
-        ),
-    ),
-}
-
-
 class BaseDevice:
     """Doc."""
 
@@ -241,7 +94,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
         try:
             byte_array = await self.read()
-            self.data = np.concatenate((self.data, byte_array), axis=0)
+            self.data.extend(byte_array)
             self.tot_bytes_read += len(byte_array)
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
@@ -249,7 +102,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     def init_data(self):
         """Doc."""
 
-        self.data = np.empty(shape=(0,), dtype=np.uint8)
+        self.data = []
         self.tot_bytes_read = 0
 
     def purge_buffers(self):
@@ -288,6 +141,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     X_AO_LIMITS = {"min_val": -5.0, "max_val": 5.0}
     Y_AO_LIMITS = {"min_val": -5.0, "max_val": 5.0}
     Z_AO_LIMITS = {"min_val": 0.0, "max_val": 10.0}
+    AI_BUFFER_SIZE = int(1e4)
 
     def __init__(self, param_dict):
         super().__init__(
@@ -356,7 +210,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 },
             )
-            self.init_ai_buffer()
+            self.init_ai_buffer(self.AI_BUFFER_SIZE)
             self.start_tasks("ai")
         except DaqError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
@@ -393,7 +247,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             # TODO: Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)
 
             try:
-                init_pos = self.ai_buffer[3:, -1][self.AXIS_INDEX[axis]]
+                init_pos = self.ai_buffer[-1][3:][self.AXIS_INDEX[axis]]
             except IndexError:
                 init_pos = self.last_int_ao[self.AXIS_INDEX[axis]]
 
@@ -482,59 +336,37 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
-    def init_ai_buffer(self) -> None:
+    def init_ai_buffer(self, size: int = None) -> None:
         """Doc."""
 
         try:
-            self.last_int_ao = self.ai_buffer[3:, -1]
+            self.last_int_ao = self.ai_buffer[-1][3:]
         except (AttributeError, IndexError):
             # case ai_buffer not created yet, or just created and not populated yet
             pass
         finally:
-            self.ai_buffer = np.empty(shape=(6, 0), dtype=np.float)
+            if size is not None:
+                self.ai_buffer = deque([], maxlen=size)
+            else:
+                self.ai_buffer = []
 
     def fill_ai_buffer(
         self, task_name: str = "Continuous AI", n_samples=ni_consts.READ_ALL_AVAILABLE
     ) -> None:
         """Doc."""
 
-        #        # TODO: stream reading currently not working for some reason - reading only one channel, the other two stay at zero
-        #        num_samps_read = self.read()
-        #        self.ai_buffer = np.concatenate(
-        #        (self.ai_buffer, self.read_buffer[:, :num_samps_read]), axis=1
-        #        )
-
         try:
             read_samples = self.analog_read(task_name, n_samples)
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
         else:
-            read_samples = np.concatenate(
-                (read_samples[:3, :], self._diff_to_rse(read_samples[3:, :])), axis=0
-            )
-            self.ai_buffer = np.concatenate((self.ai_buffer, read_samples), axis=1)
+            read_samples = self._diff_to_rse(read_samples.T.tolist())
+            self.ai_buffer.extend(read_samples)
 
-    # TODO: try using constant-size numpy arrays, and see if there's a numpy method
-    # equivalent to MATLAB'S 'rotate' which inserts new elements while throwing away as many of the oldest elements.
-    # with this I will be able to stop using the 'dump' methods, and also avoid using 'concatenate' for all my buffers.
-    # for the UM232H array I can define an array size proportionally to the count rate and measurement time.
-    # This way, instead of re-allocating memory each concatenation, I can allocate space only for the new readings, then
-    # 'rotate' them into the existing array?
-    def dump_ai_buff_overflow(self):
+    def _diff_to_rse(self, read_samples: list) -> np.ndarray:
         """Doc."""
 
-        ai_buffer_len = self.ai_buffer.shape[1]
-        if ai_buffer_len > self.CONT_READ_BFFR_SZ:
-            self.ai_buffer = self.ai_buffer[:, -self.CONT_READ_BFFR_SZ :]
-
-    def _diff_to_rse(self, read_samples: np.ndarray) -> np.ndarray:
-        """Doc."""
-
-        rse_samples = np.empty(shape=(3, read_samples.shape[1]), dtype=np.float)
-        rse_samples[0, :] = (read_samples[0, :] - read_samples[1, :]) / 2
-        rse_samples[1, :] = (read_samples[2, :] - read_samples[3, :]) / 2
-        rse_samples[2, :] = read_samples[4, :]
-        return rse_samples
+        return [s[:3] + [(s[3] - s[4]) / 2, (s[5] - s[6]) / 2] + [s[7]] for s in read_samples]
 
     def _limit_ao_data(self, ao_task, ao_data: np.ndarray) -> np.ndarray:
         ao_min = ao_task.channels.ao_min
@@ -589,7 +421,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
         except KeyError:
             exc = RuntimeError(
-                f"{self.log_ref} can't be synced because {DEVICE_ATTR_DICT['scanners'].log_ref} failed to Initialize"
+                f"{self.log_ref} can't be synced because scanners failed to Initialize"
             )
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
@@ -690,7 +522,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         if size is not None:
             self.ci_buffer = deque([], maxlen=size)
         else:
-            self.ci_buffer = deque([])
+            self.ci_buffer = []
 
 
 class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
@@ -948,3 +780,150 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         ax = self._gui.figure.add_subplot(111)
         ax.imshow(img)
         self._gui.canvas.draw()
+
+
+@dataclass
+class DeviceAttrs:
+    class_name: str
+    log_ref: str
+    param_widgets: QtWidgetCollection
+    led_color: str = "green"
+    cls_xtra_args: List[str] = None
+
+
+DEVICE_ATTR_DICT = {
+    "exc_laser": DeviceAttrs(
+        class_name="SimpleDO",
+        log_ref="Excitation Laser",
+        led_color="blue",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledExc", "icon", "main"),
+            switch_widget=("excOnButton", "icon", "main"),
+            model=("excMod", "text"),
+            trg_src=("excTriggerSrc", "currentText"),
+            ext_trg_addr=("excTriggerExtAddr", "text"),
+            int_trg_addr=("excTriggerIntAddr", "text"),
+            address=("excAddr", "text"),
+        ),
+    ),
+    "dep_shutter": DeviceAttrs(
+        class_name="SimpleDO",
+        log_ref="Shutter",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledShutter", "icon", "main"),
+            switch_widget=("depShutterOn", "icon", "main"),
+            address=("depShutterAddr", "text"),
+        ),
+    ),
+    "TDC": DeviceAttrs(
+        class_name="SimpleDO",
+        log_ref="TDC",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledTdc", "icon", "main"),
+            address=("TDCaddress", "text"),
+            data_vrsn=("TDCdataVersion", "text"),
+            laser_freq_MHz=("TDClaserFreq", "value"),
+            fpga_freq_MHz=("TDCFPGAFreq", "value"),
+            tdc_vrsn=("TDCversion", "value"),
+        ),
+    ),
+    "dep_laser": DeviceAttrs(
+        class_name="DepletionLaser",
+        log_ref="Depletion Laser",
+        led_color="orange",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledDep", "icon", "main"),
+            switch_widget=("depEmissionOn", "icon", "main"),
+            model_query=("depModelQuery", "text"),
+        ),
+    ),
+    "stage": DeviceAttrs(
+        class_name="StepperStage",
+        log_ref="Stage",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledStage", "icon", "main"),
+            switch_widget=("stageOn", "icon", "main"),
+            address=("arduinoAddr", "text"),
+        ),
+    ),
+    "UM232H": DeviceAttrs(
+        class_name="UM232H",
+        log_ref="UM232H",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledUm232h", "icon", "main"),
+            bit_mode=("um232BitMode", "text"),
+            timeout_ms=("um232Timeout", "value"),
+            ltncy_tmr_val=("um232LatencyTimerVal", "value"),
+            flow_ctrl=("um232FlowControl", "text"),
+            tx_size=("um232TxSize", "value"),
+            n_bytes=("um232NumBytes", "value"),
+        ),
+    ),
+    "camera": DeviceAttrs(
+        class_name="Camera",
+        cls_xtra_args=["loop", "gui.camera"],
+        log_ref="Camera",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledCam", "icon", "main"),
+            model=("uc480PlaceHolder", "value"),
+        ),
+    ),
+    "scanners": DeviceAttrs(
+        class_name="Scanners",
+        log_ref="Scanners",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledScn", "icon", "main"),
+            ao_x_init_vltg=("xAOV", "value", "main"),
+            ao_y_init_vltg=("yAOV", "value", "main"),
+            ao_z_init_vltg=("zAOV", "value", "main"),
+            x_um2V_const=("xConv", "value"),
+            y_um2V_const=("yConv", "value"),
+            z_um2V_const=("zConv", "value"),
+            ai_x_addr=("AIXaddr", "text"),
+            ai_y_addr=("AIYaddr", "text"),
+            ai_z_addr=("AIZaddr", "text"),
+            ai_laser_mon_addr=("AIlaserMonAddr", "text"),
+            ai_clk_div=("AIclkDiv", "value"),
+            ai_trg_src=("AItrigSrc", "text"),
+            ao_x_addr=("AOXaddr", "text"),
+            ao_y_addr=("AOYaddr", "text"),
+            ao_z_addr=("AOZaddr", "text"),
+            ao_int_x_addr=("AOXintAddr", "text"),
+            ao_int_y_addr=("AOYintAddr", "text"),
+            ao_int_z_addr=("AOZintAddr", "text"),
+            ao_dig_trg_src=("AOdigTrigSrc", "text"),
+            ao_trg_edge=("AOtriggerEdge", "currentText"),
+            ao_wf_type=("AOwfType", "currentText"),
+        ),
+    ),
+    "photon_detector": DeviceAttrs(
+        class_name="PhotonDetector",
+        cls_xtra_args=["devices.scanners.tasks.ai"],
+        log_ref="Photon Detector",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledCounter", "icon", "main"),
+            pxl_clk=("counterPixelClockAddress", "text"),
+            pxl_clk_output=("pixelClockCounterIntOutputAddress", "text"),
+            trggr=("counterTriggerAddress", "text"),
+            trggr_armstart_digedge=("counterTriggerArmStartDigEdgeSrc", "text"),
+            trggr_edge=("counterTriggerEdge", "currentText"),
+            address=("counterAddress", "text"),
+            CI_cnt_edges_term=("counterCIcountEdgesTerm", "text"),
+            CI_dup_prvnt=("counterCIdupCountPrevention", "isChecked"),
+        ),
+    ),
+    "pixel_clock": DeviceAttrs(
+        class_name="PixelClock",
+        log_ref="Pixel Clock",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledPxlClk", "icon", "main"),
+            low_ticks=("pixelClockLowTicks", "value"),
+            high_ticks=("pixelClockHighTicks", "value"),
+            cntr_addr=("pixelClockCounterAddress", "text"),
+            tick_src=("pixelClockSrcOfTicks", "text"),
+            out_term=("pixelClockOutput", "text"),
+            out_ext_term=("pixelClockOutputExt", "text"),
+            freq_MHz=("pixelClockFreq", "value"),
+        ),
+    ),
+}
