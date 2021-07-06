@@ -115,17 +115,13 @@ class Timeout:
             #            tocs[toc_idx] = time.perf_counter() - tic # TESTING
             #            toc_idx += 1 # TESTING
 
-            # photon_detector
+            # CI (Photon Detector)
             if not self._app.devices.photon_detector.error_dict:
                 self._app.devices.photon_detector.fill_ci_buffer()
-            #                if self._app.meas.type not in {"SFCSImage"}:
-            #                    self._app.devices.photon_detector.dump_ci_buff_overflow()
 
-            # AI
+            # AI (Scanners)
             if not self._app.devices.scanners.error_dict:
                 self._app.devices.scanners.fill_ai_buffer()
-                if self._app.meas.type not in {"SFCSSolution", "SFCSImage"}:
-                    self._app.devices.scanners.dump_ai_buff_overflow()
 
             #            tic = time.perf_counter() # TESTING
 
@@ -145,7 +141,7 @@ class Timeout:
                     x_ao_int,
                     y_ao_int,
                     z_ao_int,
-                ) = app.devices.scanners.ai_buffer[:, -1]
+                ) = app.devices.scanners.ai_buffer[-1]
 
             except IndexError:
                 # AI buffer has just been initialized
