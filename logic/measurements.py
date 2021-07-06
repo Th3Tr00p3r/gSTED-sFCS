@@ -344,7 +344,7 @@ class SFCSImageMeasurement(Measurement):
         self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
-            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
+            len(self.scanners_dvc.ai_buffer[0]) * 2 * (1 / (self.scan_params.dt - 1.5e-7))
         )
         self.est_plane_duration = self.n_ao_samps * self.scan_params.dt
         self.est_total_duration = self.est_plane_duration * len(self.scan_params.set_pnts_planes)
@@ -515,7 +515,7 @@ class SFCSImageMeasurement(Measurement):
             "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,
             "tdc_scan_data": prep_tdc_scan_data(),
             "version": self.tdc_dvc.tdc_vrsn,
-            "ai": self.scanners_dvc.ai_buffer,
+            "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
             "cnt": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
             "scan_param": prep_scan_params(),
             "pid": [],  # check
@@ -704,7 +704,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = (
-            self.scanners_dvc.ai_buffer.shape[0] * 2 * (1 / (self.scan_params.dt - 1.5e-7))
+            len(self.scanners_dvc.ai_buffer[0]) * 2 * (1 / (self.scan_params.dt - 1.5e-7))
         )
 
     def disp_ACF(self):
@@ -714,7 +714,7 @@ class SFCSSolutionMeasurement(Measurement):
             """Doc."""
 
             p = PhotonData()
-            p.convert_fpga_data_to_photons(data)
+            p.convert_fpga_data_to_photons(np.array(data, dtype=np.uint8))
             s = CorrFuncTDC()
             s.laser_freq = self.tdc_dvc.laser_freq_MHz * 1e6
             s.data["data"].append(p)
@@ -790,13 +790,13 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.scanning:
             full_data = {
-                "data": self.data_dvc.data,
+                "data": np.array(self.data_dvc.data, dtype=np.uint8),
                 "data_version": self.tdc_dvc.data_vrsn,
                 "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
                 "pix_freq": self.pxl_clk_dvc.freq_MHz,
                 "laser_freq": self.tdc_dvc.laser_freq_MHz,
                 "version": self.tdc_dvc.tdc_vrsn,
-                "ai": self.scanners_dvc.ai_buffer,
+                "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
                 "ao": self.ao_buffer,
                 "avg_cnt_rate": self.counter_dvc.avg_cnt_rate,
             }
@@ -811,7 +811,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         else:
             full_data = {
-                "data": self.data_dvc.data,
+                "data": np.array(self.data_dvc.data, dtype=np.uint8),
                 "data_version": self.tdc_dvc.data_vrsn,
                 "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
                 "laser_freq": self.tdc_dvc.laser_freq_MHz,
