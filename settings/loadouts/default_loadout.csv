@@ -19,10 +19,10 @@ currPlane,0
 depPow,130
 depCurr,1500
 stageSteps,250
-solScanMaxFileSize,20.0
+solScanMaxFileSize,15.0
 solScanCalDur,3.0
 solLinFrac,0.9
-solScanTotalDur,10.0
+solScanTotalDur,20.0
 imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
@@ -31,17 +31,17 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,0.0
-solMeasPreset,0
-solScanType,2
-solScanDurUnits,0
-imgScanType,1
-imgScanPreset,0
-imgShowMethod,0
-avgInterval,0
-repeatSolMeas,False
-autoCrosshair,False
-currMode,True
-powMode,False
+solMeasPreset,Standard Alignment
+solScanType,static
+solScanDurUnits,seconds
+imgScanType,YZ
+imgScanPreset,Locate Plane - YZ Coarse
+imgShowMethod,Forward scan - actual counts per pixel
+avgInterval,200
+repeatSolMeas,True
+autoCrosshair,True
+currMode,False
+powMode,True
 posAxisZ,False
 posAxisY,False
 posAxisX,True
