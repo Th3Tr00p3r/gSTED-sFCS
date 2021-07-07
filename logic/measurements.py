@@ -34,7 +34,7 @@ class Measurement:
         self.type = type
         self.tdc_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
-        self.icon_dict = paths_to_icons(gui.icons.ICON_PATHS_DICT)  # get icons
+        self.icon_dict = paths_to_icons(gui.icons.icon_paths_dict)  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
 
@@ -292,7 +292,7 @@ class SFCSImageMeasurement(Measurement):
         self.scanning = True
 
     def build_filename(self) -> str:
-        datetime_str = datetime.datetime.now().strftime("%d%m_%H%M%S")
+        datetime_str = datetime.datetime.now().strftime("%d%m%H%M%S")
         return (
             f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{datetime_str}"
         )
@@ -628,14 +628,16 @@ class SFCSSolutionMeasurement(Measurement):
         self._app.gui.main.imp.go_to_origin("XY")
 
     def build_filename(self, file_no: int) -> str:
+        """Doc."""
 
+        datetime_str = datetime.datetime.now().strftime("%d%m%H%M%S")
         if not self.file_template:
             self.file_template = "sol"
 
         if self.repeat is True:
             file_no = 0
 
-        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{file_no}"
+        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{datetime_str}_{file_no}"
 
     def set_current_and_end_times(self) -> None:
         """

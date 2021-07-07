@@ -44,7 +44,7 @@ class App:
         self.meas = SimpleNamespace(type=None, is_running=False)
 
         # get icons
-        self.icon_dict = helper.paths_to_icons(gui.icons.ICON_PATHS_DICT)
+        self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)
 
         # init windows
         print("Initializing GUI...")
