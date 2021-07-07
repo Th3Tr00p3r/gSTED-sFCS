@@ -317,7 +317,7 @@ class MainWin:
                             "prog_bar_wdgt",
                             "start_time_wdgt",
                             "end_time_wdgt",
-                            "cal_save_intrvl_wdgt",
+                            "calibrated_save_intrvl_mins_wdgt",
                             "total_files_wdgt",
                             "file_num_wdgt",
                             "g0_wdgt",

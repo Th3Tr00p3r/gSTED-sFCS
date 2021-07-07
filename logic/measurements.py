@@ -111,6 +111,7 @@ class Measurement:
                 await self.data_dvc.read_TDC()
                 self.time_passed = time.perf_counter() - self.start_time
             else:
+                # TODO: try to use try-except block instead of condition on error_dict
                 # abort measurement in case of UM232H error
                 self.is_running = False
 
@@ -118,7 +119,7 @@ class Measurement:
 
         if timed:
             # Solution
-            while self.time_passed < self.duration * self.duration_multiplier and self.is_running:
+            while self.time_passed < self.duration and self.is_running:
                 await read_and_track_time()
 
         else:
@@ -655,9 +656,9 @@ class SFCSSolutionMeasurement(Measurement):
     async def calibrate_num_files(self):
         """Doc."""
 
-        saved_dur_mul = self.duration_multiplier
+        original_duration_multiplier = self.duration_multiplier
         self.duration = self.cal_duration
-        self.duration_multiplier = 1  # in seconds
+        self.duration_multiplier = 1  # seconds
         self.start_time = time.perf_counter()
         self.time_passed = 0
         self.cal = True
@@ -665,23 +666,26 @@ class SFCSSolutionMeasurement(Measurement):
 
         await self.record_data(timed=True)  # reading
 
+        self.duration_multiplier = original_duration_multiplier
+
         self.cal = False
-        bps = self.data_dvc.tot_bytes_read / self.time_passed
+        bytes_per_second = self.data_dvc.tot_bytes_read / self.time_passed
         try:
-            self.save_intrvl = self.max_file_size * 10 ** 6 / bps / saved_dur_mul
+            save_intrvl_s = self.max_file_size_mb * 1e6 / bytes_per_second
         except ZeroDivisionError as exc:
             err_hndlr(exc, locals(), sys._getframe())
             return
 
-        if self.save_intrvl > self.total_duration:
-            self.save_intrvl = self.total_duration
+        total_duration_s = self.total_duration * self.duration_multiplier
 
-        self.cal_save_intrvl_wdgt.set(self.save_intrvl)
-        self.duration = self.save_intrvl
-        self.duration_multiplier = saved_dur_mul
+        if save_intrvl_s > total_duration_s:
+            save_intrvl_s = total_duration_s
+
+        self.calibrated_save_intrvl_mins_wdgt.set(save_intrvl_s / 60)
+        self.duration = save_intrvl_s
 
         # determining number of files
-        num_files = int(math.ceil(self.total_duration / self.save_intrvl))
+        num_files = int(math.ceil(total_duration_s / save_intrvl_s))
         self.total_files_wdgt.set(num_files)
         return num_files
 
@@ -841,8 +845,8 @@ class SFCSSolutionMeasurement(Measurement):
             num_files = await self.calibrate_num_files()
         else:
             # if alignment measurement
-            num_files = 999
-            self.duration = self.total_duration
+            num_files = 9999
+            self.duration = self.total_duration * self.duration_multiplier
 
         try:
             if self.scanning:
@@ -874,6 +878,8 @@ class SFCSSolutionMeasurement(Measurement):
         try:  # TESTESTEST`
             for file_num in range(1, num_files + 1):
 
+                print(f"file_num: {file_num}")  # TESTESTEST
+
                 if self.is_running:
 
                     self.file_num_wdgt.set(file_num)
@@ -885,6 +891,8 @@ class SFCSSolutionMeasurement(Measurement):
                     await self.record_data(timed=True)
 
                     self.total_time_passed += self.time_passed
+
+                    print(f"total_time_passed: {self.total_time_passed}")  # TESTESTEST
 
                     # collect final ai/CI
                     self.counter_dvc.fill_ci_buffer()
