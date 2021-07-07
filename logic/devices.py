@@ -42,7 +42,7 @@ class BaseDevice:
 
         if not hasattr(self, "icon_dict"):
             # get icons
-            self.icon_dict = paths_to_icons(gui.icons.ICON_PATHS_DICT)
+            self.icon_dict = paths_to_icons(gui.icons.icon_paths_dict)
 
         has_switch = hasattr(self, "switch_widget")
         if command == "on":

@@ -49,4 +49,4 @@ def gen_icon_paths_dict(dir_path="./gui/icons", filetype="png"):
 
 # Create resource (.qrc) file
 gen_icons_resource_file()
-ICON_PATHS_DICT = gen_icon_paths_dict()
+icon_paths_dict = gen_icon_paths_dict()
