@@ -128,11 +128,13 @@ class Timeout:
 
             await asyncio.sleep(TIMEOUT)
 
-    async def _update_gui(self) -> None:
+    async def _update_gui(self) -> None:  # noqa: C901
         """Doc."""
 
-        def updt_scn_pos(app):
+        def updt_scn_pos():
             """Doc."""
+
+            app = self._app
 
             try:
                 (
@@ -170,14 +172,42 @@ class Timeout:
                 app.gui.main.yAOum.setValue(y_um)
                 app.gui.main.zAOum.setValue(z_um)
 
-        def updt_meas_progbar(meas) -> None:
+        def update_avg_counts() -> None:
             """Doc."""
+
+            meas = self._app.meas
+
+            try:
+                if meas.is_running and meas.scanning:
+                    if meas.type == "SFCSSolution":
+                        self.cntr_dvc.average_counts(
+                            interval=self.updt_intrvl["cntr_avg"],
+                            rate=meas.scan_params.ao_samp_freq_Hz,
+                        )
+
+                    elif meas.type == "SFCSImage":
+                        self.cntr_dvc.average_counts(
+                            interval=self.updt_intrvl["cntr_avg"],
+                            rate=meas.scan_params.line_freq_Hz * meas.scan_params.ppl,
+                        )
+                else:
+                    self.cntr_dvc.average_counts(interval=self.updt_intrvl["cntr_avg"])
+
+            except DeviceError:
+                pass
+            else:
+                self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate)
+
+        def updt_meas_progbar() -> None:
+            """Doc."""
+
+            meas = self._app.meas
 
             try:
                 if meas.type == "SFCSSolution":
-                    if not meas.cal:
+                    if not self._app.meas.cal:
                         progress = (
-                            (meas.total_time_passed + meas.time_passed)
+                            (meas.total_time_passed_s + meas.time_passed_s)
                             / (meas.total_duration * meas.duration_multiplier)
                             * meas.prog_bar_wdgt.obj.maximum()
                         )
@@ -185,8 +215,8 @@ class Timeout:
                         progress = 0
                 elif meas.type == "SFCSImage":
                     progress = (
-                        meas.time_passed
-                        / meas.est_total_duration
+                        meas.time_passed_s
+                        / meas.est_total_duration_s
                         * meas.prog_bar_wdgt.obj.maximum()
                     )
                 meas.prog_bar_wdgt.set(progress)
@@ -201,19 +231,14 @@ class Timeout:
         while self.not_finished:
 
             # scanners
-            updt_scn_pos(self._app)
+            updt_scn_pos()
 
             # photon_detector count rate
-            try:
-                self.cntr_dvc.average_counts(self.updt_intrvl["cntr_avg"])
-            except DeviceError:
-                pass
-            else:
-                self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate)
+            update_avg_counts()
 
             # Measurement progress bar
             if self._app.meas.is_running:
-                updt_meas_progbar(self._app.meas)
+                updt_meas_progbar()
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 

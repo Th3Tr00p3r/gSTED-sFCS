@@ -86,24 +86,27 @@ class NIDAQmx:
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.tasks = SimpleNamespace()
         self.task_types = task_types
-        [setattr(self.tasks, type, {}) for type in self.task_types]
+        [setattr(self.tasks, type, []) for type in self.task_types]
 
     def start_tasks(self, task_type: str):
         """Doc."""
 
-        [task.start() for task in getattr(self.tasks, task_type).values()]
+        task_list = getattr(self.tasks, task_type)
+        [task.start() for task in task_list]
 
     def are_tasks_done(self, task_type: str) -> bool:
         """Doc."""
 
-        task_status = [task.is_task_done() for task in getattr(self.tasks, task_type).values()]
+        task_list = getattr(self.tasks, task_type)
+        task_status = [task.is_task_done() for task in task_list]
         return task_status.count(1) == len(task_status)
 
     def close_tasks(self, task_type: str):
         """Doc."""
 
-        [task.close() for task in getattr(self.tasks, task_type).values()]
-        setattr(self.tasks, task_type, {})
+        task_list = getattr(self.tasks, task_type)
+        [task.close() for task in task_list]
+        setattr(self.tasks, task_type, [])
 
     def close_all_tasks(self):
         """Doc."""
@@ -114,7 +117,10 @@ class NIDAQmx:
     def wait_for_task(self, task_type: str, task_name: str):
         """Doc."""
 
-        getattr(self.tasks, task_type)[task_name].wait_until_done(timeout=3)
+        task_list = getattr(self.tasks, task_type)
+        [task.wait_until_done(timeout=3) for task in task_list if (task.name == task_name)]
+
+    #        getattr(self.tasks, task_type)[task_name].wait_until_done(timeout=3)
 
     def create_ai_task(
         self,
@@ -133,7 +139,7 @@ class NIDAQmx:
         for key, val in timing_params.items():
             setattr(task.timing, key, val)
 
-        self.tasks.ai[name] = task
+        self.tasks.ai.append(task)
 
     def create_ao_task(
         self,
@@ -151,7 +157,7 @@ class NIDAQmx:
             task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
         for key, val in timing_params.items():
             setattr(task.timing, key, val)
-        self.tasks.ao[name] = task
+        self.tasks.ao.append(task)
         return task
 
     def create_ci_task(
@@ -179,7 +185,7 @@ class NIDAQmx:
         task.sr = CounterReader(task.in_stream)
         task.sr.verify_array_shape = False
 
-        self.tasks.ci[name] = task
+        self.tasks.ci.append(task)
 
     def create_co_task(self, name: str, chan_spec: dict, clk_cnfg: dict) -> None:
         """Doc."""
@@ -188,18 +194,20 @@ class NIDAQmx:
         task.co_channels.add_co_pulse_chan_ticks(**chan_spec)
         task.timing.cfg_implicit_timing(**clk_cnfg)
 
-        self.tasks.co[name] = task
+        self.tasks.co.append(task)
 
-    def analog_read(self, task_name: str, n_samples, task_type="ai"):
+    def analog_read(self, task_name: str, n_samples):
         """Doc."""
 
-        ai_task = getattr(self.tasks, task_type)[task_name]
+        ai_task = [task for task in self.tasks.ai if (task.name == task_name)][0]
+        #        ai_task = getattr(self.tasks, task_type)[task_name]
         return np.array(ai_task.read(number_of_samples_per_channel=n_samples))
 
     def analog_write(self, task_name: str, data: np.ndarray, auto_start=None) -> None:
         """Doc."""
 
-        ao_task = self.tasks.ao[task_name]
+        ao_task = [task for task in self.tasks.ao if (task.name == task_name)][0]
+        #        ao_task = self.tasks.ao[task_name]
         if auto_start is not None:
             ao_task.write(data, auto_start=auto_start, timeout=self.AO_TIMEOUT)
         else:
@@ -212,7 +220,7 @@ class NIDAQmx:
         number of samples read.
         """
 
-        ci_task = self.tasks.ci["Continuous CI"]
+        ci_task = self.tasks.ci[0]  # only ever one task
         return ci_task.sr.read_many_sample_uint32(
             self.cont_read_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,

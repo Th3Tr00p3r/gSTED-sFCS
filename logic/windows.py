@@ -370,7 +370,7 @@ class MainWin:
                 helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setEnabled")(True)
                 helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")("Stop \nScan")
 
-            self._app.loop.create_task(self._app.meas.start())
+            self._app.loop.create_task(self._app.meas.run())
 
         elif current_type == meas_type:
             # manual shutdown
@@ -526,7 +526,7 @@ class MainWin:
             # no scan performed since app init
             pass
 
-    def change_meas_dur(self, new_dur: float):
+    def change_meas_duration(self, new_dur: float):
         """Allow duration change during run only for alignment measurements"""
 
         if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
