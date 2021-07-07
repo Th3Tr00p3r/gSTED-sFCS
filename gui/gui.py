@@ -20,7 +20,7 @@ CAMERAWINDOW_UI_PATH = "./gui/camerawindow.ui"
 
 # MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
 #                        from PyQt5.QtMultimedia import QSound
-#                                if self.time_passed == self.duration_spinbox.value():
+#                                if self.time_passed_s == self.duration_spinbox.value():
 #                                    QSound.play(MEAS_COMPLETE_SOUND);
 
 
@@ -180,7 +180,7 @@ class MainWin(QMainWindow):
     def on_solScanTotalDur_valueChanged(self, float) -> None:
         """Doc."""
 
-        self.imp.change_meas_dur(float)
+        self.imp.change_meas_duration(float)
 
     def scan_button_released(self, meas_type: str, laser_mode: str) -> None:
         """Begin/end SFCS measurement"""

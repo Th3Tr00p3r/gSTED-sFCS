@@ -410,6 +410,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def __init__(self, param_dict, scanners_ai_tasks):
         super().__init__(
             param_dict,
+            # TODO: remove "co" - creates an error since task_types is expected to be an iterable - geeralize that if easy.
             task_types=("ci", "co"),
         )
         self.cont_read_buffer = np.zeros(shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32)
@@ -418,9 +419,10 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         self.num_reads_since_avg = 0
 
         try:
-            self.ai_cont_rate = scanners_ai_tasks["Continuous AI"].timing.samp_clk_rate
-            self.ai_cont_src = scanners_ai_tasks["Continuous AI"].timing.samp_clk_term
-        except KeyError:
+            cont_ai_task = [task for task in scanners_ai_tasks if (task.name == "Continuous AI")][0]
+            self.ai_cont_rate = cont_ai_task.timing.samp_clk_rate
+            self.ai_cont_src = cont_ai_task.timing.samp_clk_term
+        except IndexError:
             exc = RuntimeError(
                 f"{self.log_ref} can't be synced because scanners failed to Initialize"
             )
@@ -447,12 +449,10 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def start_continuous_read_task(self) -> None:
         """Doc."""
 
-        task_name = "Continuous CI"
-
         try:
             self.close_tasks("ci")
             self.create_ci_task(
-                name=task_name,
+                name="Continuous CI",
                 chan_specs=self.ci_chan_specs,
                 chan_xtra_params={"ci_count_edges_term": self.CI_cnt_edges_term},
                 samp_clk_cnfg={
@@ -473,7 +473,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         try:
             self.close_tasks("ci")
             self.create_ci_task(
-                name="Continuous CI",
+                name="Scan CI",
                 chan_specs=self.ci_chan_specs,
                 chan_xtra_params={
                     "ci_count_edges_term": self.CI_cnt_edges_term,
@@ -486,11 +486,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         except DaqError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
-    def fill_ci_buffer(
-        self,
-        task_name: str = "Continuous CI",
-        n_samples=ni_consts.READ_ALL_AVAILABLE,
-    ):
+    def fill_ci_buffer(self, n_samples=ni_consts.READ_ALL_AVAILABLE):
         """Doc."""
 
         try:
@@ -501,10 +497,13 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
             self.num_reads_since_avg += num_samps_read
 
-    def average_counts(self, interval: float) -> None:
+    def average_counts(self, interval: float, rate=None) -> None:
         """Doc."""
 
-        self.num_reads_in_interval = div_ceil(interval, (1 / self.ai_cont_rate))
+        if rate is None:
+            rate = self.tasks.ci[-1].timing.samp_clk_rate
+
+        self.num_reads_in_interval = div_ceil(interval, (1 / rate))
         start_idx = len(self.ci_buffer) - self.num_reads_in_interval
 
         if start_idx > 0:

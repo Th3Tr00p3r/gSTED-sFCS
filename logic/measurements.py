@@ -28,7 +28,7 @@ from utilities.helper import div_ceil, paths_to_icons
 class Measurement:
     """Base class for measurements"""
 
-    def __init__(self, app, type: str, scan_params=None, **kwargs):
+    def __init__(self, app, type: str, scan_params, **kwargs):
 
         self._app = app
         self.type = type
@@ -37,40 +37,33 @@ class Measurement:
         self.icon_dict = paths_to_icons(gui.icons.ICON_PATHS_DICT)  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
-        if scan_params:
-            # if scanning
-            self.pxl_clk_dvc = app.devices.pixel_clock
-            self.scanners_dvc = app.devices.scanners
-            self.scan_params = scan_params
-            self.um_v_ratio = tuple(
-                getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
-            )
-            self.sys_info = dict(
-                Setup="STED with galvos",
-                after_pulse_param=[
-                    -0.004057535648770,
-                    -0.107704707102406,
-                    -1.069455813887638,
-                    -4.827204349438697,
-                    -10.762333427569356,
-                    -7.426041455313178,
-                ],
-                AI_ScalingXYZ=[1.243, 1.239, 1],  # TODO: what's that?
-                xyz_um_to_v=self.um_v_ratio,
-            )
+
+        self.pxl_clk_dvc = app.devices.pixel_clock
+        self.scanners_dvc = app.devices.scanners
+        self.scan_params = scan_params
+        self.um_v_ratio = tuple(
+            getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
+        )
+        self.sys_info = dict(
+            Setup="STED with galvos",
+            after_pulse_param=[
+                -0.004057535648770,
+                -0.107704707102406,
+                -1.069455813887638,
+                -4.827204349438697,
+                -10.762333427569356,
+                -7.426041455313178,
+            ],
+            AI_ScalingXYZ=[1.243, 1.239, 1],  # TODO: what's that?
+            xyz_um_to_v=self.um_v_ratio,
+        )
+
         self.laser_dvcs = SimpleNamespace(
             exc=app.devices.exc_laser,
             dep=app.devices.dep_laser,
             dep_shutter=app.devices.dep_shutter,
         )
         self.is_running = False
-
-    async def start(self):
-        """Doc."""
-
-        self.is_running = True
-        logging.info(f"{self.type} measurement started")
-        await self.run()
 
     async def stop(self):
         """Doc."""
@@ -107,19 +100,19 @@ class Measurement:
         async def read_and_track_time():
             """Doc."""
 
-            if not self.data_dvc.error_dict:
+            try:
                 await self.data_dvc.read_TDC()
-                self.time_passed = time.perf_counter() - self.start_time
+            # TODO: limit exception handling
+            except Exception:
+                raise MeasurementError
             else:
-                # TODO: try to use try-except block instead of condition on error_dict
-                # abort measurement in case of UM232H error
-                self.is_running = False
+                self.time_passed_s = time.perf_counter() - self.start_time
 
         self._app.gui.main.imp.dvc_toggle("TDC", leave_on=True)
 
         if timed:
             # Solution
-            while self.time_passed < self.duration and self.is_running:
+            while self.time_passed_s < self.duration and self.is_running:
                 await read_and_track_time()
 
         else:
@@ -127,7 +120,7 @@ class Measurement:
             while (
                 self.is_running
                 and not self.scanners_dvc.are_tasks_done("ao")
-                and not (overdue := self.time_passed > (self.est_plane_duration * 1.1))
+                and not (overdue := self.time_passed_s > (self.est_plane_duration * 1.1))
             ):
                 await read_and_track_time()
             if overdue:
@@ -160,7 +153,7 @@ class Measurement:
     async def toggle_lasers(self, finish=False) -> None:
         """Doc."""
 
-        def curr_emission_state() -> str:
+        def current_emission_state() -> str:
             """Doc."""
 
             exc_state = self._app.devices.exc_laser.state
@@ -208,7 +201,7 @@ class Measurement:
                 self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
 
-            if curr_emission_state() != self.laser_mode:
+            if current_emission_state() != self.laser_mode:
                 # cancel measurement if relevant lasers are not ON,
                 raise MeasurementError(
                     f"Requested laser mode ({self.laser_mode}) was not attained."
@@ -259,7 +252,8 @@ class Measurement:
             start=False,
         )
 
-        ao_clk_src = self.scanners_dvc.tasks.ao["AO XY"].timing.samp_clk_term
+        xy_ao_task = [task for task in self.scanners_dvc.tasks.ao if (task.name == "AO XY")][0]
+        ao_clk_src = xy_ao_task.timing.samp_clk_term
 
         self.scanners_dvc.start_scan_read_task(
             samp_clk_cnfg={},
@@ -324,7 +318,7 @@ class SFCSImageMeasurement(Measurement):
                 return div_ceil(ppl, 2) * 2
 
         # fix line freq, pxl clk low ticks, and ppl
-        self.line_freq, clk_div = sync_line_freq(
+        self.scan_params.line_freq_Hz, clk_div = sync_line_freq(
             self.scan_params.line_freq_Hz,
             self.scan_params.ppl,
             self.pxl_clk_dvc.freq_MHz * 1e6,
@@ -348,7 +342,7 @@ class SFCSImageMeasurement(Measurement):
             len(self.scanners_dvc.ai_buffer[0]) * 2 * (1 / (self.scan_params.dt - 1.5e-7))
         )
         self.est_plane_duration = self.n_ao_samps * self.scan_params.dt
-        self.est_total_duration = self.est_plane_duration * len(self.scan_params.set_pnts_planes)
+        self.est_total_duration_s = self.est_plane_duration * len(self.scan_params.set_pnts_planes)
         self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
 
     def change_plane(self, plane_idx):
@@ -541,16 +535,19 @@ class SFCSImageMeasurement(Measurement):
             self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
             self.scanners_dvc.init_ai_buffer()
             self.counter_dvc.init_ci_buffer()
+
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
             return
 
-        n_planes = self.scan_params.n_planes
-        self.plane_data = []
-        self.start_time = time.perf_counter()
-        self.time_passed = 0
-        logging.info(f"Running {self.type} measurement")
+        else:
+            n_planes = self.scan_params.n_planes
+            self.plane_data = []
+            self.start_time = time.perf_counter()
+            self.time_passed_s = 0
+            self.is_running = True
+            logging.info(f"Running {self.type} measurement")
 
         try:  # TESTESTEST
             for plane_idx in range(n_planes):
@@ -660,7 +657,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.duration = self.cal_duration
         self.duration_multiplier = 1  # seconds
         self.start_time = time.perf_counter()
-        self.time_passed = 0
+        self.time_passed_s = 0
         self.cal = True
         logging.info(f"Calibrating file intervals for {self.type} measurement")
 
@@ -669,7 +666,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.duration_multiplier = original_duration_multiplier
 
         self.cal = False
-        bytes_per_second = self.data_dvc.tot_bytes_read / self.time_passed
+        bytes_per_second = self.data_dvc.tot_bytes_read / self.time_passed_s
         try:
             save_intrvl_s = self.max_file_size_mb * 1e6 / bytes_per_second
         except ZeroDivisionError as exc:
@@ -857,42 +854,39 @@ class SFCSSolutionMeasurement(Measurement):
             self.data_dvc.purge_buffers()
             self.scanners_dvc.init_ai_buffer()
             self.counter_dvc.init_ci_buffer()
+
+            if self.scanning:
+                self.init_scan_tasks("CONTINUOUS")
+                self.scanners_dvc.start_tasks("ao")
+
+            # collect initial ai/CI to avoid possible overflow
+            self.counter_dvc.fill_ci_buffer()
+            self.scanners_dvc.fill_ai_buffer()
+
         except DeviceError as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
             return
 
-        if self.scanning:
-            self.init_scan_tasks("CONTINUOUS")
-            self.scanners_dvc.start_tasks("ao")
-
-        # collect initial ai/CI to avoid possible overflow
-        self.counter_dvc.fill_ci_buffer()
-        self.scanners_dvc.fill_ai_buffer()
-
-        self.total_time_passed = 0
-
-        if self.is_running:
+        else:
+            self.is_running = True
+            self.total_time_passed_s = 0
             logging.info(f"Running {self.type} measurement")
 
         try:  # TESTESTEST`
             for file_num in range(1, num_files + 1):
-
-                print(f"file_num: {file_num}")  # TESTESTEST
 
                 if self.is_running:
 
                     self.file_num_wdgt.set(file_num)
 
                     self.start_time = time.perf_counter()
-                    self.time_passed = 0
+                    self.time_passed_s = 0
 
                     # reading
                     await self.record_data(timed=True)
 
-                    self.total_time_passed += self.time_passed
-
-                    print(f"total_time_passed: {self.total_time_passed}")  # TESTESTEST
+                    self.total_time_passed_s += self.time_passed_s
 
                     # collect final ai/CI
                     self.counter_dvc.fill_ci_buffer()
@@ -906,7 +900,7 @@ class SFCSSolutionMeasurement(Measurement):
 
                     # reset timers for alignment measurements
                     if self.repeat:
-                        self.total_time_passed = 0
+                        self.total_time_passed_s = 0
                         self.set_current_and_end_times()
 
                     # save and display data
