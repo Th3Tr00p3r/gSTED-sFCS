@@ -432,8 +432,9 @@ class MainWin:
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.plot(x_data, y_data, clear=True)
 
-            except AttributeError:
-                # devices not yet initialized
+            except (AttributeError, ZeroDivisionError):
+                # AttributeError - devices not yet initialized
+                # ZeroDivisionError - loadout has bad values
                 pass
 
         else:
@@ -576,20 +577,14 @@ class MainWin:
             "Standard Alignment": {
                 "scan_type": "static",
                 "repeat": True,
-                "duration_units": "seconds",
-                "total_duration": 10,
             },
             "Standard Angular": {
                 "scan_type": "angular",
                 "repeat": False,
-                "duration_units": "hours",
-                "total_duration": 1,
             },
             "Standard Circular": {
                 "scan_type": "circle",
                 "repeat": False,
-                "duration_units": "hours",
-                "total_duration": 1,
             },
         }
 
