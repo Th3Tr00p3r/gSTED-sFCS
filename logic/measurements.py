@@ -637,7 +637,7 @@ class SFCSSolutionMeasurement(Measurement):
         if self.repeat is True:
             file_no = 0
 
-        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{datetime_str}_{file_no}"
+        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{file_no}_{datetime_str}"
 
     def set_current_and_end_times(self) -> None:
         """
