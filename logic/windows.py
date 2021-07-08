@@ -19,9 +19,18 @@ SETTINGS_DIR_PATH = "./settings/"
 LOADOUT_DIR_PATH = "./settings/loadouts/"
 
 
+# TODO: refactoring - this is getting too big, I need to think on how to break it down.
+# Perhaps I can divide MainWin into seperate classes for each tab (image, solution, analysis).
+# That would require either replacing the gui.main object with 3 different ones (gui.image_tab, gui.solution_tab, gui.analysis_tab)
+# or adding 3 seperate namespaces to main (gui.main.image_tab, etc.).
+# MainWin would still need to exist for restart/closing/loadouts/other general stuff such as device/measurement toggling, somehow.
+# It would also make sense to rename this module 'gui_implementation.py' or something.
 class MainWin:
     """Doc."""
 
+    ####################
+    ## General
+    ####################
     def __init__(self, gui, app):
         """Doc."""
 
@@ -223,45 +232,6 @@ class MainWin:
                 f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref}({axis}) was displaced {str(um_disp)} um"
             )
 
-    def roi_to_scan(self):
-        """Doc"""
-
-        plane_idx = self._gui.numPlaneShown.value()
-        try:
-            line_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].line_ticks_V
-            row_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].row_ticks_V
-            plane_ticks = self._app.last_img_scn.set_pnts_planes
-
-            coord_1, coord_2 = (
-                round(self._gui.imgScanPlot.vLine.value()) - 1,
-                round(self._gui.imgScanPlot.hLine.value()) - 1,
-            )
-
-            dim1_vltg = line_ticks_V[coord_1]
-            dim2_vltg = row_ticks_V[coord_2]
-            dim3_vltg = plane_ticks[plane_idx]
-
-            plane_type = self._app.last_img_scn.plane_type
-
-            if plane_type == "XY":
-                vltgs = (dim1_vltg, dim2_vltg, dim3_vltg)
-            elif plane_type == "XZ":
-                vltgs = (dim1_vltg, dim3_vltg, dim2_vltg)
-            elif plane_type == "YZ":
-                vltgs = (dim3_vltg, dim1_vltg, dim2_vltg)
-
-            [
-                getattr(self._gui, f"{axis.lower()}AOV").setValue(vltg)
-                for axis, vltg in zip("XYZ", vltgs)
-            ]
-
-            self.move_scanners(plane_type)
-
-            logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} moved to ROI ({vltgs})")
-
-        except AttributeError:
-            pass
-
     # TODO: only turn on LED while actually moving
     def move_stage(self, dir: str, steps: int):
         """Doc."""
@@ -270,12 +240,6 @@ class MainWin:
         logging.info(
             f"{dvcs.DEVICE_ATTR_DICT['stage'].log_ref} moved {str(steps)} steps {str(dir)}"
         )
-
-    def release_stage(self):
-        """Doc."""
-
-        self._app.devices.stage.release()
-        logging.info(f"{dvcs.DEVICE_ATTR_DICT['stage'].log_ref} released")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -441,6 +405,69 @@ class MainWin:
             # no scan
             plt_wdgt.plot([], [], clear=True)
 
+    def open_settwin(self):
+        """Doc."""
+
+        self._app.gui.settings.show()
+        self._app.gui.settings.activateWindow()
+
+    async def open_camwin(self):
+        # TODO: simply making this func async doesn't help. the blocking function here is 'UC480_Camera(reopen_policy="new")'
+        # from 'drivers.py', and I can't yet see a way to make it async (since I don't want to touch the API) I should try threading for this.
+        """Doc."""
+
+        self._gui.actionCamera_Control.setEnabled(False)
+        self._app.gui.camera.show()
+        self._app.gui.camera.activateWindow()
+        self._app.gui.camera.imp.init_cam()
+
+    def counts_avg_interval_changed(self, val: int) -> None:
+        """Doc."""
+
+        self._app.timeout_loop.updt_intrvl["cntr_avg"] = val / 1000  # convert to seconds
+
+    ####################
+    ## Image Tab
+    ####################
+    def roi_to_scan(self):
+        """Doc"""
+
+        plane_idx = self._gui.numPlaneShown.value()
+        try:
+            line_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].line_ticks_V
+            row_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].row_ticks_V
+            plane_ticks = self._app.last_img_scn.set_pnts_planes
+
+            coord_1, coord_2 = (
+                round(self._gui.imgScanPlot.vLine.value()) - 1,
+                round(self._gui.imgScanPlot.hLine.value()) - 1,
+            )
+
+            dim1_vltg = line_ticks_V[coord_1]
+            dim2_vltg = row_ticks_V[coord_2]
+            dim3_vltg = plane_ticks[plane_idx]
+
+            plane_type = self._app.last_img_scn.plane_type
+
+            if plane_type == "XY":
+                vltgs = (dim1_vltg, dim2_vltg, dim3_vltg)
+            elif plane_type == "XZ":
+                vltgs = (dim1_vltg, dim3_vltg, dim2_vltg)
+            elif plane_type == "YZ":
+                vltgs = (dim3_vltg, dim1_vltg, dim2_vltg)
+
+            [
+                getattr(self._gui, f"{axis.lower()}AOV").setValue(vltg)
+                for axis, vltg in zip("XYZ", vltgs)
+            ]
+
+            self.move_scanners(plane_type)
+
+            logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} moved to ROI ({vltgs})")
+
+        except AttributeError:
+            pass
+
     def disp_plane_img(self, plane_idx, auto_cross=False):
         """Doc."""
 
@@ -527,34 +554,6 @@ class MainWin:
             # no scan performed since app init
             pass
 
-    def change_meas_duration(self, new_dur: float):
-        """Allow duration change during run only for alignment measurements"""
-
-        if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
-            self._app.meas.total_duration = new_dur
-            self._app.meas.duration = new_dur
-
-    def open_settwin(self):
-        """Doc."""
-
-        self._app.gui.settings.show()
-        self._app.gui.settings.activateWindow()
-
-    async def open_camwin(self):
-        # TODO: simply making this func async doesn't help. the blocking function here is 'UC480_Camera(reopen_policy="new")'
-        # from 'drivers.py', and I can't yet see a way to make it async (since I don't want to touch the API) I should try threading for this.
-        """Doc."""
-
-        self._gui.actionCamera_Control.setEnabled(False)
-        self._app.gui.camera.show()
-        self._app.gui.camera.activateWindow()
-        self._app.gui.camera.imp.init_cam()
-
-    def counts_avg_interval_changed(self, val: int) -> None:
-        """Doc."""
-
-        self._app.timeout_loop.updt_intrvl["cntr_avg"] = val / 1000  # convert to seconds
-
     def fill_img_scan_preset_gui(self, curr_text: str) -> None:
         """Doc."""
 
@@ -569,6 +568,16 @@ class MainWin:
 
         wdgt_colls.img_scan_wdgts.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
+
+    ####################
+    ## Solution Tab
+    ####################
+    def change_meas_duration(self, new_dur: float):
+        """Allow duration change during run only for alignment measurements"""
+
+        if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
+            self._app.meas.total_duration = new_dur
+            self._app.meas.duration = new_dur
 
     def fill_sol_meas_preset_gui(self, curr_text: str) -> None:
         """Doc."""
@@ -590,6 +599,10 @@ class MainWin:
 
         wdgt_colls.sol_meas_wdgts.write_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
+
+    ####################
+    ## Analysis Tab
+    ####################
 
 
 class SettWin:
