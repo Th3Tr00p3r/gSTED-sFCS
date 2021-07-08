@@ -4571,407 +4571,320 @@ Pattern:</string>
           <item row="0" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_28" stretch="1,100">
             <item>
-             <widget class="QGroupBox" name="groupBox_13">
-              <property name="title">
-               <string>File Handling</string>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_62">
-               <item>
-                <widget class="QGroupBox" name="groupBox_8">
-                 <property name="title">
-                  <string>Raw Data</string>
-                 </property>
-                 <layout class="QVBoxLayout" name="verticalLayout_63">
-                  <item>
-                   <widget class="QGroupBox" name="groupBox_5">
-                    <property name="title">
-                     <string>Import</string>
-                    </property>
-                    <layout class="QVBoxLayout" name="verticalLayout_61">
+             <layout class="QVBoxLayout" name="verticalLayout_64" stretch="0,0,0,1">
+              <item>
+               <widget class="QGroupBox" name="groupBox_5">
+                <property name="title">
+                 <string>Import Raw Measurement Data</string>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_61">
+                 <item>
+                  <layout class="QGridLayout" name="gridLayout_10">
+                   <item row="0" column="0">
+                    <layout class="QHBoxLayout" name="horizontalLayout_8">
                      <item>
-                      <layout class="QGridLayout" name="gridLayout_10">
-                       <item row="0" column="0">
-                        <layout class="QHBoxLayout" name="horizontalLayout_8">
-                         <item>
-                          <widget class="QRadioButton" name="radioButton_2">
-                           <property name="minimumSize">
-                            <size>
-                             <width>79</width>
-                             <height>30</height>
-                            </size>
-                           </property>
-                           <property name="text">
-                            <string>Image
+                      <widget class="QRadioButton" name="radioButton_2">
+                       <property name="minimumSize">
+                        <size>
+                         <width>79</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>Image
 Data</string>
-                           </property>
-                           <property name="checked">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QRadioButton" name="radioButton">
-                           <property name="minimumSize">
-                            <size>
-                             <width>87</width>
-                             <height>30</height>
-                            </size>
-                           </property>
-                           <property name="text">
-                            <string>Solution
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QRadioButton" name="radioButton">
+                       <property name="minimumSize">
+                        <size>
+                         <width>87</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>Solution
 Data</string>
-                           </property>
-                           <property name="checked">
-                            <bool>false</bool>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QPushButton" name="pushButton">
-                         <property name="minimumSize">
-                          <size>
-                           <width>87</width>
-                           <height>23</height>
-                          </size>
-                         </property>
+                       </property>
+                       <property name="checked">
+                        <bool>false</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QPushButton" name="pushButton">
+                     <property name="minimumSize">
+                      <size>
+                       <width>87</width>
+                       <height>23</height>
+                      </size>
+                     </property>
+                     <property name="text">
+                      <string>Open Directory</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0" colspan="2">
+                    <layout class="QHBoxLayout" name="horizontalLayout_15">
+                     <item>
+                      <layout class="QVBoxLayout" name="verticalLayout_5">
+                       <item>
+                        <widget class="QLabel" name="label">
                          <property name="text">
-                          <string>Open Directory</string>
+                          <string>Day</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0" colspan="2">
-                        <layout class="QHBoxLayout" name="horizontalLayout_15">
-                         <item>
-                          <layout class="QVBoxLayout" name="verticalLayout_5">
-                           <item>
-                            <widget class="QLabel" name="label">
-                             <property name="text">
-                              <string>Day</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QComboBox" name="comboBox">
-                             <property name="minimumSize">
-                              <size>
-                               <width>0</width>
-                               <height>20</height>
-                              </size>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </item>
-                         <item>
-                          <layout class="QVBoxLayout" name="verticalLayout_51">
-                           <item>
-                            <widget class="QLabel" name="label_2">
-                             <property name="text">
-                              <string>Month</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QComboBox" name="comboBox_2">
-                             <property name="minimumSize">
-                              <size>
-                               <width>0</width>
-                               <height>20</height>
-                              </size>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </item>
-                         <item>
-                          <layout class="QVBoxLayout" name="verticalLayout_56">
-                           <item>
-                            <widget class="QLabel" name="label_3">
-                             <property name="text">
-                              <string>Year</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QComboBox" name="comboBox_3">
-                             <property name="minimumSize">
-                              <size>
-                               <width>0</width>
-                               <height>20</height>
-                              </size>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="2" column="0" colspan="2">
-                        <layout class="QGridLayout" name="gridLayout_6" columnstretch="10,1">
-                         <property name="spacing">
-                          <number>0</number>
+                       <item>
+                        <widget class="QComboBox" name="comboBox">
+                         <property name="minimumSize">
+                          <size>
+                           <width>0</width>
+                           <height>20</height>
+                          </size>
                          </property>
-                         <item row="0" column="0">
-                          <widget class="QLabel" name="label_8">
-                           <property name="text">
-                            <string>File Template</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
-                          <widget class="QComboBox" name="comboBox_4">
-                           <property name="minimumSize">
-                            <size>
-                             <width>0</width>
-                             <height>20</height>
-                            </size>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QPushButton" name="pushButton_2">
-                           <property name="minimumSize">
-                            <size>
-                             <width>33</width>
-                             <height>23</height>
-                            </size>
-                           </property>
-                           <property name="maximumSize">
-                            <size>
-                             <width>40</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="text">
-                            <string>Edit</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
+                        </widget>
                        </item>
                       </layout>
                      </item>
                      <item>
-                      <widget class="QStackedWidget" name="stackedWidget">
-                       <property name="frameShape">
-                        <enum>QFrame::Panel</enum>
-                       </property>
-                       <property name="frameShadow">
-                        <enum>QFrame::Raised</enum>
-                       </property>
-                       <property name="currentIndex">
-                        <number>1</number>
-                       </property>
-                       <widget class="QWidget" name="image">
-                        <layout class="QGridLayout" name="gridLayout_8">
-                         <item row="0" column="0">
-                          <widget class="QPushButton" name="pushButton_4">
-                           <property name="text">
-                            <string>Load Image Data</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </widget>
-                       <widget class="QWidget" name="solution">
-                        <layout class="QHBoxLayout" name="horizontalLayout_27">
-                         <item>
-                          <widget class="QPushButton" name="pushButton_3">
-                           <property name="minimumSize">
-                            <size>
-                             <width>83</width>
-                             <height>34</height>
-                            </size>
-                           </property>
-                           <property name="text">
-                            <string>Import Solution
-Measurement</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QCheckBox" name="checkBox">
-                           <property name="text">
-                            <string>Calibration</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </widget>
-                      </widget>
+                      <layout class="QVBoxLayout" name="verticalLayout_51">
+                       <item>
+                        <widget class="QLabel" name="label_2">
+                         <property name="text">
+                          <string>Month</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QComboBox" name="comboBox_2">
+                         <property name="minimumSize">
+                          <size>
+                           <width>0</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QVBoxLayout" name="verticalLayout_56">
+                       <item>
+                        <widget class="QLabel" name="label_3">
+                         <property name="text">
+                          <string>Year</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QComboBox" name="comboBox_3">
+                         <property name="minimumSize">
+                          <size>
+                           <width>0</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
                      </item>
                     </layout>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QGroupBox" name="groupBox_7">
-                    <property name="title">
-                     <string>Imported</string>
-                    </property>
-                    <layout class="QGridLayout" name="gridLayout_11">
+                   </item>
+                   <item row="2" column="0" colspan="2">
+                    <layout class="QGridLayout" name="gridLayout_6" columnstretch="10,1">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
                      <item row="0" column="0">
-                      <widget class="QStackedWidget" name="stackedWidget_2">
-                       <property name="frameShape">
-                        <enum>QFrame::NoFrame</enum>
+                      <widget class="QLabel" name="label_8">
+                       <property name="text">
+                        <string>File Template</string>
                        </property>
-                       <property name="frameShadow">
-                        <enum>QFrame::Plain</enum>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QComboBox" name="comboBox_4">
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>20</height>
+                        </size>
                        </property>
-                       <property name="currentIndex">
-                        <number>1</number>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QPushButton" name="pushButton_2">
+                       <property name="minimumSize">
+                        <size>
+                         <width>33</width>
+                         <height>23</height>
+                        </size>
                        </property>
-                       <widget class="QWidget" name="image_2">
-                        <layout class="QGridLayout" name="gridLayout_13">
-                         <item row="0" column="0">
-                          <widget class="QPushButton" name="pushButton_5">
-                           <property name="text">
-                            <string>Load Image Data</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </widget>
-                       <widget class="QWidget" name="solution_2">
-                        <layout class="QGridLayout" name="gridLayout_16">
-                         <item row="0" column="1" alignment="Qt::AlignHCenter">
-                          <widget class="QLabel" name="label_11">
-                           <property name="text">
-                            <string>Excitation</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="2" alignment="Qt::AlignHCenter">
-                          <widget class="QLabel" name="label_12">
-                           <property name="text">
-                            <string>STED</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
-                          <widget class="QLabel" name="label_9">
-                           <property name="minimumSize">
-                            <size>
-                             <width>54</width>
-                             <height>0</height>
-                            </size>
-                           </property>
-                           <property name="maximumSize">
-                            <size>
-                             <width>54</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="text">
-                            <string>Sample</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QLineEdit" name="lineEdit">
-                           <property name="readOnly">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="2">
-                          <widget class="QLineEdit" name="lineEdit_4">
-                           <property name="readOnly">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="0">
-                          <widget class="QLabel" name="label_10">
-                           <property name="minimumSize">
-                            <size>
-                             <width>54</width>
-                             <height>0</height>
-                            </size>
-                           </property>
-                           <property name="maximumSize">
-                            <size>
-                             <width>54</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="text">
-                            <string>Calibration</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QLineEdit" name="lineEdit_2">
-                           <property name="readOnly">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="2">
-                          <widget class="QLineEdit" name="lineEdit_3">
-                           <property name="readOnly">
-                            <bool>true</bool>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </widget>
+                       <property name="maximumSize">
+                        <size>
+                         <width>40</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>Edit</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <widget class="QStackedWidget" name="importStacked">
+                   <property name="frameShape">
+                    <enum>QFrame::Panel</enum>
+                   </property>
+                   <property name="frameShadow">
+                    <enum>QFrame::Raised</enum>
+                   </property>
+                   <property name="currentIndex">
+                    <number>1</number>
+                   </property>
+                   <widget class="QWidget" name="image">
+                    <layout class="QGridLayout" name="gridLayout_8">
+                     <item row="0" column="0">
+                      <widget class="QPushButton" name="pushButton_4">
+                       <property name="text">
+                        <string>Load Image Data</string>
+                       </property>
                       </widget>
                      </item>
                     </layout>
                    </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item>
-                <widget class="QGroupBox" name="groupBox_9">
-                 <property name="title">
-                  <string>Analyzed Data</string>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_32">
-                  <item>
-                   <widget class="QPushButton" name="pushButton_6">
-                    <property name="text">
-                     <string>Load</string>
-                    </property>
+                   <widget class="QWidget" name="solution">
+                    <layout class="QHBoxLayout" name="horizontalLayout_27">
+                     <item>
+                      <widget class="QPushButton" name="pushButton_3">
+                       <property name="minimumSize">
+                        <size>
+                         <width>83</width>
+                         <height>34</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>Import Solution
+Measurement</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkBox">
+                       <property name="text">
+                        <string>Calibration</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="pushButton_7">
-                    <property name="text">
-                     <string>Save</string>
-                    </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_7">
+                <property name="title">
+                 <string>Select Imported Measurement Data</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_11">
+                 <item row="0" column="0">
+                  <widget class="QStackedWidget" name="selectionStacked">
+                   <property name="frameShape">
+                    <enum>QFrame::NoFrame</enum>
+                   </property>
+                   <property name="frameShadow">
+                    <enum>QFrame::Plain</enum>
+                   </property>
+                   <property name="currentIndex">
+                    <number>1</number>
+                   </property>
+                   <widget class="QWidget" name="image_2">
+                    <layout class="QGridLayout" name="gridLayout_13">
+                     <item row="0" column="0">
+                      <widget class="QPushButton" name="pushButton_5">
+                       <property name="text">
+                        <string/>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item>
-                <spacer name="verticalSpacer_2">
-                 <property name="orientation">
-                  <enum>Qt::Vertical</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>40</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </widget>
+                   <widget class="QWidget" name="solution_2">
+                    <layout class="QGridLayout" name="gridLayout_16">
+                     <item row="0" column="0">
+                      <widget class="QComboBox" name="comboBox_5">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_9">
+                <property name="title">
+                 <string>Import/Export Analyzed Data</string>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_32">
+                 <item>
+                  <widget class="QPushButton" name="pushButton_6">
+                   <property name="text">
+                    <string>Load</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="pushButton_7">
+                   <property name="text">
+                    <string>Save</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_2">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
             </item>
             <item>
              <widget class="QGroupBox" name="groupBox_12">
               <property name="title">
-               <string>Analysis</string>
+               <string>Measurement Analysis</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_20">
                <item row="0" column="0">
-                <widget class="QStackedWidget" name="stackedWidget_3">
+                <widget class="QStackedWidget" name="analysisStacked">
                  <property name="currentIndex">
                   <number>1</number>
                  </property>
@@ -4979,21 +4892,517 @@ Measurement</string>
                  <widget class="QWidget" name="solution">
                   <layout class="QGridLayout" name="gridLayout_21">
                    <item row="0" column="0">
-                    <widget class="QTabWidget" name="tabWidget_2">
-                     <property name="currentIndex">
-                      <number>1</number>
-                     </property>
-                     <widget class="QWidget" name="overview">
-                      <attribute name="title">
-                       <string>Overview</string>
-                      </attribute>
-                     </widget>
-                     <widget class="QWidget" name="gating">
-                      <attribute name="title">
-                       <string>Time Gating</string>
-                      </attribute>
-                     </widget>
-                    </widget>
+                    <layout class="QVBoxLayout" name="verticalLayout_66" stretch="100,1">
+                     <item>
+                      <widget class="QTabWidget" name="tabWidget_2">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="currentIndex">
+                        <number>0</number>
+                       </property>
+                       <widget class="QWidget" name="tab_3">
+                        <attribute name="title">
+                         <string>Scan Images</string>
+                        </attribute>
+                        <layout class="QGridLayout" name="gridLayout_27">
+                         <item row="0" column="0">
+                          <layout class="QVBoxLayout" name="verticalLayout_71" stretch="100,1">
+                           <item>
+                            <layout class="QGridLayout" name="solAnalysisScanImageLayout" rowstretch="0" columnstretch="0">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                            </layout>
+                           </item>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_51" stretch="100,1,1,100">
+                             <item>
+                              <spacer name="horizontalSpacer_2">
+                               <property name="orientation">
+                                <enum>Qt::Horizontal</enum>
+                               </property>
+                               <property name="sizeHint" stdset="0">
+                                <size>
+                                 <width>40</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                              </spacer>
+                             </item>
+                             <item>
+                              <layout class="QVBoxLayout" name="verticalLayout_70">
+                               <item>
+                                <layout class="QVBoxLayout" name="verticalLayout_68">
+                                 <property name="spacing">
+                                  <number>0</number>
+                                 </property>
+                                 <property name="sizeConstraint">
+                                  <enum>QLayout::SetDefaultConstraint</enum>
+                                 </property>
+                                 <item>
+                                  <widget class="QLabel" name="label_84">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="text">
+                                    <string>File #</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QSpinBox" name="spinBox_4">
+                                   <property name="readOnly">
+                                    <bool>false</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::UpDownArrows</enum>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                </layout>
+                               </item>
+                               <item>
+                                <widget class="QCheckBox" name="checkBox_2">
+                                 <property name="text">
+                                  <string>Mask</string>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item>
+                              <layout class="QVBoxLayout" name="verticalLayout_74">
+                               <item>
+                                <widget class="QPushButton" name="pushButton_8">
+                                 <property name="text">
+                                  <string>Ignore File</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QPushButton" name="pushButton_9">
+                                 <property name="text">
+                                  <string>Reset</string>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item>
+                              <spacer name="horizontalSpacer_5">
+                               <property name="orientation">
+                                <enum>Qt::Horizontal</enum>
+                               </property>
+                               <property name="sizeHint" stdset="0">
+                                <size>
+                                 <width>40</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                              </spacer>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </widget>
+                       <widget class="QWidget" name="overview">
+                        <attribute name="title">
+                         <string>ACF Averaging</string>
+                        </attribute>
+                       </widget>
+                       <widget class="QWidget" name="gating">
+                        <attribute name="title">
+                         <string>Time Gating</string>
+                        </attribute>
+                       </widget>
+                      </widget>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_50">
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_13">
+                         <property name="title">
+                          <string>Individual Measurement Properties</string>
+                         </property>
+                         <layout class="QHBoxLayout" name="horizontalLayout_41" stretch="1,1,1">
+                          <item>
+                           <widget class="QGroupBox" name="groupBox_15">
+                            <property name="title">
+                             <string>General</string>
+                            </property>
+                            <layout class="QVBoxLayout" name="verticalLayout_63">
+                             <item>
+                              <layout class="QVBoxLayout" name="verticalLayout_69">
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
+                               <property name="sizeConstraint">
+                                <enum>QLayout::SetDefaultConstraint</enum>
+                               </property>
+                               <item>
+                                <widget class="QLabel" name="label_78">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="text">
+                                  <string>Duration (min)</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_2">
+                                 <property name="frame">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="readOnly">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="buttonSymbols">
+                                  <enum>QAbstractSpinBox::NoButtons</enum>
+                                 </property>
+                                 <property name="decimals">
+                                  <number>1</number>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item>
+                              <layout class="QVBoxLayout" name="verticalLayout_65">
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
+                               <property name="sizeConstraint">
+                                <enum>QLayout::SetDefaultConstraint</enum>
+                               </property>
+                               <item>
+                                <widget class="QLabel" name="label_68">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="text">
+                                  <string>Files</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QSpinBox" name="spinBox">
+                                 <property name="readOnly">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="buttonSymbols">
+                                  <enum>QAbstractSpinBox::NoButtons</enum>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item>
+                              <spacer name="verticalSpacer_3">
+                               <property name="orientation">
+                                <enum>Qt::Vertical</enum>
+                               </property>
+                               <property name="sizeHint" stdset="0">
+                                <size>
+                                 <width>20</width>
+                                 <height>27</height>
+                                </size>
+                               </property>
+                              </spacer>
+                             </item>
+                            </layout>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QGroupBox" name="groupBox_8">
+                            <property name="title">
+                             <string>Mean ACF</string>
+                            </property>
+                            <layout class="QVBoxLayout" name="verticalLayout_62">
+                             <item>
+                              <layout class="QHBoxLayout" name="horizontalLayout_33">
+                               <item>
+                                <widget class="QLabel" name="label_61">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="text">
+                                  <string>G0</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf">
+                                 <property name="frame">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="readOnly">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="buttonSymbols">
+                                  <enum>QAbstractSpinBox::NoButtons</enum>
+                                 </property>
+                                 <property name="decimals">
+                                  <number>1</number>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item>
+                              <layout class="QHBoxLayout" name="horizontalLayout_30">
+                               <item>
+                                <widget class="QLabel" name="label_63">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="text">
+                                  <string>Decay
+Time (us)</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QDoubleSpinBox" name="solAnalysisMeanDecay">
+                                 <property name="frame">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="readOnly">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="buttonSymbols">
+                                  <enum>QAbstractSpinBox::NoButtons</enum>
+                                 </property>
+                                 <property name="decimals">
+                                  <number>1</number>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item>
+                              <layout class="QHBoxLayout" name="horizontalLayout_34">
+                               <item>
+                                <widget class="QLabel" name="label_69">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="text">
+                                  <string>&quot;Good&quot; Rows</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QSpinBox" name="spinBox_2">
+                                 <property name="readOnly">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="buttonSymbols">
+                                  <enum>QAbstractSpinBox::NoButtons</enum>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                             <item>
+                              <layout class="QHBoxLayout" name="horizontalLayout_40">
+                               <item>
+                                <widget class="QLabel" name="label_71">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="text">
+                                  <string>&quot;Bad&quot; Rows</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QSpinBox" name="spinBox_3">
+                                 <property name="readOnly">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="buttonSymbols">
+                                  <enum>QAbstractSpinBox::NoButtons</enum>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                            </layout>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QGroupBox" name="groupBox_14">
+                            <property name="title">
+                             <string>Scan Settings</string>
+                            </property>
+                            <layout class="QGridLayout" name="gridLayout_26">
+                             <item row="0" column="0">
+                              <widget class="QPlainTextEdit" name="plainTextEdit"/>
+                             </item>
+                            </layout>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_16">
+                         <property name="title">
+                          <string>Combined Measurements Properties</string>
+                         </property>
+                         <widget class="QWidget" name="layoutWidget">
+                          <property name="geometry">
+                           <rect>
+                            <x>20</x>
+                            <y>30</y>
+                            <width>121</width>
+                            <height>41</height>
+                           </rect>
+                          </property>
+                          <layout class="QHBoxLayout" name="horizontalLayout_42">
+                           <item>
+                            <widget class="QLabel" name="label_82">
+                             <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                               <horstretch>0</horstretch>
+                               <verstretch>0</verstretch>
+                              </sizepolicy>
+                             </property>
+                             <property name="text">
+                              <string>Calibration
+Exc/STED
+Ratio</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_3">
+                             <property name="frame">
+                              <bool>true</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>true</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="decimals">
+                              <number>1</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                         <widget class="QWidget" name="layoutWidget_2">
+                          <property name="geometry">
+                           <rect>
+                            <x>20</x>
+                            <y>80</y>
+                            <width>121</width>
+                            <height>41</height>
+                           </rect>
+                          </property>
+                          <layout class="QHBoxLayout" name="horizontalLayout_43">
+                           <item>
+                            <widget class="QLabel" name="label_83">
+                             <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                               <horstretch>0</horstretch>
+                               <verstretch>0</verstretch>
+                              </sizepolicy>
+                             </property>
+                             <property name="text">
+                              <string>TDC Cal.
+Gating &gt; (ns)</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_4">
+                             <property name="frame">
+                              <bool>true</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>true</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="decimals">
+                              <number>1</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                         <widget class="QGroupBox" name="groupBox_17">
+                          <property name="geometry">
+                           <rect>
+                            <x>20</x>
+                            <y>130</y>
+                            <width>128</width>
+                            <height>53</height>
+                           </rect>
+                          </property>
+                          <property name="title">
+                           <string>gSTED Resoultion (nm)</string>
+                          </property>
+                          <layout class="QHBoxLayout" name="horizontalLayout_44">
+                           <item>
+                            <widget class="QComboBox" name="solAnalysis">
+                             <property name="placeholderText">
+                              <string>Lifetime</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QDoubleSpinBox" name="solAnalysisRes">
+                             <property name="frame">
+                              <bool>true</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>true</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="decimals">
+                              <number>1</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
                    </item>
                   </layout>
                  </widget>
