@@ -313,12 +313,6 @@ class MainWin(QMainWindow):
 
         self.imp.move_stage(dir=dir, steps=self.stageSteps.value())
 
-    @pyqtSlot()
-    def on_stageRelease_released(self) -> None:
-        """Doc."""
-
-        self.imp.release_stage()
-
 
 class SettWin(QDialog):
     """ Documentation."""
