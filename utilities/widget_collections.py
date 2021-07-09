@@ -27,6 +27,17 @@ switch_wdgts = QtWidgetCollection(
 )
 
 # ----------------------------------------------
+# Analysis Widget Collections
+# ----------------------------------------------
+
+data_import_wdgts = QtWidgetCollection(
+    data_days=("dataDay", "currentText", "main"),
+    data_months=("dataMonth", "currentText", "main"),
+    data_years=("dataYear", "currentText", "main"),
+    data_template=("dataTemplate", "currentText", "main"),
+)
+
+# ----------------------------------------------
 # Measurement Widget Collections
 # ----------------------------------------------
 
