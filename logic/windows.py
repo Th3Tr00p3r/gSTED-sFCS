@@ -608,7 +608,7 @@ class MainWin:
     def populate_data_dates(self, data_type: str) -> None:
         """Doc."""
 
-        def get_folder_date_parts(data_path, month: int = None, year: int = None) -> list:
+        def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
             """
             Inputs:
                 main_data_path - string containing the path to the main data folder.
@@ -666,30 +666,30 @@ class MainWin:
             # return unique date parts, sorted in descending order
             return sorted(set(date_item_list), reverse=True)
 
+        # define widgets
         data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        years_combobox = data_import_wdgts.data_years.obj
+        months_combobox = data_import_wdgts.data_months.obj
+        days_combobox = data_import_wdgts.data_days.obj
 
         if data_type == "solution":
 
-            data_import_wdgts.data_years.obj.clear()
-            data_import_wdgts.data_months.obj.clear()
-            data_import_wdgts.data_days.obj.clear()
+            years_combobox.clear()
+            months_combobox.clear()
+            days_combobox.clear()
 
             save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
-            dir_years_descending = get_folder_date_parts(save_path)
+            dir_years = dir_date_parts(save_path)
             try:
-                data_import_wdgts.data_years.obj.addItems(dir_years_descending)
+                years_combobox.addItems(dir_years)
             except TypeError:
-                # no directories found... (dir_years_descending is None)
+                # no directories found... (dir_years is None)
                 pass
             else:
-                dir_months_descending = get_folder_date_parts(
-                    save_path, year=dir_years_descending[0]
-                )
-                data_import_wdgts.data_months.obj.addItems(dir_months_descending)
-                dir_days_descending = get_folder_date_parts(
-                    save_path, year=dir_years_descending[0], month=dir_months_descending[0]
-                )
-                data_import_wdgts.data_days.obj.addItems(dir_days_descending)
+                dir_months = dir_date_parts(save_path, year=dir_years[0])
+                months_combobox.addItems(dir_months)
+                dir_days = dir_date_parts(save_path, year=dir_years[0], month=dir_months[0])
+                days_combobox.addItems(dir_days)
 
 
 class SettWin:
