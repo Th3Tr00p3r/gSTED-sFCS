@@ -4570,8 +4570,14 @@ Pattern:</string>
          <layout class="QGridLayout" name="gridLayout_22">
           <item row="0" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_28" stretch="1,100">
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_64" stretch="0,0,0,1">
+              <property name="spacing">
+               <number>0</number>
+              </property>
               <item>
                <widget class="QGroupBox" name="groupBox_5">
                 <property name="title">
@@ -4580,10 +4586,13 @@ Pattern:</string>
                 <layout class="QVBoxLayout" name="verticalLayout_61">
                  <item>
                   <layout class="QGridLayout" name="gridLayout_10">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
                    <item row="0" column="0">
                     <layout class="QHBoxLayout" name="horizontalLayout_8">
                      <item>
-                      <widget class="QRadioButton" name="radioButton_2">
+                      <widget class="QRadioButton" name="imageDataImport">
                        <property name="minimumSize">
                         <size>
                          <width>79</width>
@@ -4600,7 +4609,7 @@ Data</string>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QRadioButton" name="radioButton">
+                      <widget class="QRadioButton" name="solDataImport">
                        <property name="minimumSize">
                         <size>
                          <width>87</width>
@@ -4619,7 +4628,7 @@ Data</string>
                     </layout>
                    </item>
                    <item row="0" column="1">
-                    <widget class="QPushButton" name="pushButton">
+                    <widget class="QPushButton" name="openDir">
                      <property name="minimumSize">
                       <size>
                        <width>87</width>
@@ -4643,7 +4652,7 @@ Data</string>
                         </widget>
                        </item>
                        <item>
-                        <widget class="QComboBox" name="comboBox">
+                        <widget class="QComboBox" name="dataDay">
                          <property name="minimumSize">
                           <size>
                            <width>0</width>
@@ -4664,7 +4673,7 @@ Data</string>
                         </widget>
                        </item>
                        <item>
-                        <widget class="QComboBox" name="comboBox_2">
+                        <widget class="QComboBox" name="dataMonth">
                          <property name="minimumSize">
                           <size>
                            <width>0</width>
@@ -4685,7 +4694,7 @@ Data</string>
                         </widget>
                        </item>
                        <item>
-                        <widget class="QComboBox" name="comboBox_3">
+                        <widget class="QComboBox" name="dataYear">
                          <property name="minimumSize">
                           <size>
                            <width>0</width>
@@ -4711,7 +4720,7 @@ Data</string>
                       </widget>
                      </item>
                      <item row="1" column="0">
-                      <widget class="QComboBox" name="comboBox_4">
+                      <widget class="QComboBox" name="dataTemplate">
                        <property name="minimumSize">
                         <size>
                          <width>0</width>
@@ -4721,7 +4730,7 @@ Data</string>
                       </widget>
                      </item>
                      <item row="1" column="1">
-                      <widget class="QPushButton" name="pushButton_2">
+                      <widget class="QPushButton" name="dataTemplateEdit">
                        <property name="minimumSize">
                         <size>
                          <width>33</width>
@@ -4768,7 +4777,7 @@ Data</string>
                    <widget class="QWidget" name="solution">
                     <layout class="QHBoxLayout" name="horizontalLayout_27">
                      <item>
-                      <widget class="QPushButton" name="pushButton_3">
+                      <widget class="QPushButton" name="importSolData">
                        <property name="minimumSize">
                         <size>
                          <width>83</width>
@@ -4782,7 +4791,7 @@ Measurement</string>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QCheckBox" name="checkBox">
+                      <widget class="QCheckBox" name="isDataCalibration">
                        <property name="text">
                         <string>Calibration</string>
                        </property>
@@ -4801,6 +4810,9 @@ Measurement</string>
                  <string>Select Imported Measurement Data</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_11">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
                  <item row="0" column="0">
                   <widget class="QStackedWidget" name="selectionStacked">
                    <property name="frameShape">
@@ -4826,7 +4838,7 @@ Measurement</string>
                    <widget class="QWidget" name="solution_2">
                     <layout class="QGridLayout" name="gridLayout_16">
                      <item row="0" column="0">
-                      <widget class="QComboBox" name="comboBox_5">
+                      <widget class="QComboBox" name="importedDataTemplates">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -4845,6 +4857,9 @@ Measurement</string>
                  <string>Import/Export Analyzed Data</string>
                 </property>
                 <layout class="QHBoxLayout" name="horizontalLayout_32">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
                  <item>
                   <widget class="QPushButton" name="pushButton_6">
                    <property name="text">
@@ -4893,6 +4908,9 @@ Measurement</string>
                   <layout class="QGridLayout" name="gridLayout_21">
                    <item row="0" column="0">
                     <layout class="QVBoxLayout" name="verticalLayout_66" stretch="100,1">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
                      <item>
                       <widget class="QTabWidget" name="tabWidget_2">
                        <property name="enabled">
@@ -4908,6 +4926,9 @@ Measurement</string>
                         <layout class="QGridLayout" name="gridLayout_27">
                          <item row="0" column="0">
                           <layout class="QVBoxLayout" name="verticalLayout_71" stretch="100,1">
+                           <property name="spacing">
+                            <number>0</number>
+                           </property>
                            <item>
                             <layout class="QGridLayout" name="solAnalysisScanImageLayout" rowstretch="0" columnstretch="0">
                              <property name="spacing">
@@ -4917,6 +4938,9 @@ Measurement</string>
                            </item>
                            <item>
                             <layout class="QHBoxLayout" name="horizontalLayout_51" stretch="100,1,1,100">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
                              <item>
                               <spacer name="horizontalSpacer_2">
                                <property name="orientation">
@@ -5018,6 +5042,9 @@ Measurement</string>
                         <layout class="QGridLayout" name="gridLayout_28">
                          <item row="0" column="0">
                           <layout class="QVBoxLayout" name="verticalLayout_76" stretch="100,1,1">
+                           <property name="spacing">
+                            <number>0</number>
+                           </property>
                            <item>
                             <layout class="QGridLayout" name="solAnalysisAveragingLayout" rowstretch="0" columnstretch="0">
                              <property name="spacing">
@@ -5071,8 +5098,14 @@ Measurement</string>
                               <string>Row Discrimination</string>
                              </property>
                              <layout class="QHBoxLayout" name="horizontalLayout_54">
+                              <property name="spacing">
+                               <number>0</number>
+                              </property>
                               <item>
                                <layout class="QVBoxLayout" name="verticalLayout_75">
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
                                 <item>
                                  <widget class="QRadioButton" name="radioButton_3">
                                   <property name="text">
@@ -5214,6 +5247,9 @@ Mean ACF</string>
                      </item>
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_50">
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
                        <item>
                         <widget class="QGroupBox" name="groupBox_13">
                          <property name="title">
@@ -5226,6 +5262,9 @@ Mean ACF</string>
                              <string>General</string>
                             </property>
                             <layout class="QVBoxLayout" name="verticalLayout_63">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
                              <item>
                               <layout class="QVBoxLayout" name="verticalLayout_69">
                                <property name="spacing">
@@ -5306,7 +5345,7 @@ Mean ACF</string>
                                <property name="sizeHint" stdset="0">
                                 <size>
                                  <width>20</width>
-                                 <height>27</height>
+                                 <height>21</height>
                                 </size>
                                </property>
                               </spacer>
@@ -5320,6 +5359,9 @@ Mean ACF</string>
                              <string>Mean ACF</string>
                             </property>
                             <layout class="QVBoxLayout" name="verticalLayout_62">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
                              <item>
                               <layout class="QHBoxLayout" name="horizontalLayout_33">
                                <item>
@@ -5450,6 +5492,9 @@ Time (us)</string>
                              <string>Scan Settings</string>
                             </property>
                             <layout class="QGridLayout" name="gridLayout_26">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
                              <item row="0" column="0">
                               <widget class="QPlainTextEdit" name="plainTextEdit"/>
                              </item>
@@ -5464,129 +5509,112 @@ Time (us)</string>
                          <property name="title">
                           <string>Combined Measurements Properties</string>
                          </property>
-                         <widget class="QWidget" name="layoutWidget">
-                          <property name="geometry">
-                           <rect>
-                            <x>20</x>
-                            <y>30</y>
-                            <width>121</width>
-                            <height>41</height>
-                           </rect>
+                         <layout class="QGridLayout" name="gridLayout_30">
+                          <property name="spacing">
+                           <number>0</number>
                           </property>
-                          <layout class="QHBoxLayout" name="horizontalLayout_42">
-                           <item>
-                            <widget class="QLabel" name="label_82">
-                             <property name="sizePolicy">
-                              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                               <horstretch>0</horstretch>
-                               <verstretch>0</verstretch>
-                              </sizepolicy>
-                             </property>
-                             <property name="text">
-                              <string>Calibration
+                          <item row="0" column="0">
+                           <layout class="QHBoxLayout" name="horizontalLayout_42">
+                            <item>
+                             <widget class="QLabel" name="label_82">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="text">
+                               <string>Calibration
 Exc/STED
 Ratio</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_3">
-                             <property name="frame">
-                              <bool>true</bool>
-                             </property>
-                             <property name="readOnly">
-                              <bool>true</bool>
-                             </property>
-                             <property name="buttonSymbols">
-                              <enum>QAbstractSpinBox::NoButtons</enum>
-                             </property>
-                             <property name="decimals">
-                              <number>1</number>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </widget>
-                         <widget class="QWidget" name="layoutWidget_2">
-                          <property name="geometry">
-                           <rect>
-                            <x>20</x>
-                            <y>80</y>
-                            <width>121</width>
-                            <height>41</height>
-                           </rect>
-                          </property>
-                          <layout class="QHBoxLayout" name="horizontalLayout_43">
-                           <item>
-                            <widget class="QLabel" name="label_83">
-                             <property name="sizePolicy">
-                              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                               <horstretch>0</horstretch>
-                               <verstretch>0</verstretch>
-                              </sizepolicy>
-                             </property>
-                             <property name="text">
-                              <string>TDC Cal.
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_3">
+                              <property name="frame">
+                               <bool>true</bool>
+                              </property>
+                              <property name="readOnly">
+                               <bool>true</bool>
+                              </property>
+                              <property name="buttonSymbols">
+                               <enum>QAbstractSpinBox::NoButtons</enum>
+                              </property>
+                              <property name="decimals">
+                               <number>1</number>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item row="1" column="0">
+                           <layout class="QHBoxLayout" name="horizontalLayout_43">
+                            <item>
+                             <widget class="QLabel" name="label_83">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="text">
+                               <string>TDC Cal.
 Gating &gt; (ns)</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_4">
-                             <property name="frame">
-                              <bool>true</bool>
-                             </property>
-                             <property name="readOnly">
-                              <bool>true</bool>
-                             </property>
-                             <property name="buttonSymbols">
-                              <enum>QAbstractSpinBox::NoButtons</enum>
-                             </property>
-                             <property name="decimals">
-                              <number>1</number>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </widget>
-                         <widget class="QGroupBox" name="groupBox_17">
-                          <property name="geometry">
-                           <rect>
-                            <x>20</x>
-                            <y>130</y>
-                            <width>128</width>
-                            <height>53</height>
-                           </rect>
-                          </property>
-                          <property name="title">
-                           <string>gSTED Resoultion (nm)</string>
-                          </property>
-                          <layout class="QHBoxLayout" name="horizontalLayout_44">
-                           <item>
-                            <widget class="QComboBox" name="solAnalysis">
-                             <property name="placeholderText">
-                              <string>Lifetime</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QDoubleSpinBox" name="solAnalysisRes">
-                             <property name="frame">
-                              <bool>true</bool>
-                             </property>
-                             <property name="readOnly">
-                              <bool>true</bool>
-                             </property>
-                             <property name="buttonSymbols">
-                              <enum>QAbstractSpinBox::NoButtons</enum>
-                             </property>
-                             <property name="decimals">
-                              <number>1</number>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </widget>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_4">
+                              <property name="frame">
+                               <bool>true</bool>
+                              </property>
+                              <property name="readOnly">
+                               <bool>true</bool>
+                              </property>
+                              <property name="buttonSymbols">
+                               <enum>QAbstractSpinBox::NoButtons</enum>
+                              </property>
+                              <property name="decimals">
+                               <number>1</number>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item row="2" column="0">
+                           <widget class="QGroupBox" name="groupBox_17">
+                            <property name="title">
+                             <string>gSTED Resoultion (nm)</string>
+                            </property>
+                            <layout class="QHBoxLayout" name="horizontalLayout_44">
+                             <item>
+                              <widget class="QComboBox" name="solAnalysis">
+                               <property name="placeholderText">
+                                <string>Lifetime</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="solAnalysisRes">
+                               <property name="frame">
+                                <bool>true</bool>
+                               </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="decimals">
+                                <number>1</number>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
+                          </item>
+                         </layout>
                         </widget>
                        </item>
                       </layout>
