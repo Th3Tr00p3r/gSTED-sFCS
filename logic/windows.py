@@ -673,23 +673,24 @@ class MainWin:
         days_combobox = data_import_wdgts.data_days.obj
 
         if data_type == "solution":
-
-            years_combobox.clear()
-            months_combobox.clear()
-            days_combobox.clear()
-
             save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+        elif data_type == "image":
+            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+
+        years_combobox.clear()
+        months_combobox.clear()
+        days_combobox.clear()
+
+        try:
             dir_years = dir_date_parts(save_path)
-            try:
-                years_combobox.addItems(dir_years)
-            except TypeError:
-                # no directories found... (dir_years is None)
-                pass
-            else:
-                dir_months = dir_date_parts(save_path, year=dir_years[0])
-                months_combobox.addItems(dir_months)
-                dir_days = dir_date_parts(save_path, year=dir_years[0], month=dir_months[0])
-                days_combobox.addItems(dir_days)
+            years_combobox.addItems(dir_years)
+            dir_months = dir_date_parts(save_path, year=dir_years[0])
+            months_combobox.addItems(dir_months)
+            dir_days = dir_date_parts(save_path, year=dir_years[0], month=dir_months[0])
+            days_combobox.addItems(dir_days)
+        except (TypeError, IndexError):
+            # no directories found... (dir_years is None or [])
+            pass
 
 
 class SettWin:
