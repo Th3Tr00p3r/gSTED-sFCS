@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import logging
 import math
+import os
 import pickle
 import sys
 import time
@@ -133,13 +134,19 @@ class Measurement:
 
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
-        Save measurement data as a .mat (MATLAB) file or a
+        Create a directory of today's date, and there
+        save measurement data as a .mat file or a
         .pkl file. .mat files can be analyzed in MATLAB using our
         current MATLAB-based analysis (or later in Python using sio.loadmat()).
         Note: saving as .mat takes longer
         """
+        # TODO: does not handle overnight measurements during which the date changes (who cares)
 
-        file_path = self.save_path + file_name
+        today_date_path = datetime.datetime.now().strftime("%d_%m_%y/")
+        today_dir = self.save_path + today_date_path
+        os.makedirs(today_dir, exist_ok=True)
+
+        file_path = today_dir + file_name
 
         if self.save_frmt == "MATLAB":
             # .mat

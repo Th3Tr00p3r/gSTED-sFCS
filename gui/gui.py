@@ -38,6 +38,10 @@ class MainWin(QMainWindow):
         # graphics
         self.imgScanPlot = ImageDisplay(layout=self.imageLayout)
 
+        # TODO: refactoring - it's stupid to connect signals to dummy functions in this module
+        # (which simply call other functions in the implementation module) change the connections to lead
+        # straight to the implementation fucntions.
+
         # scan patterns
         # image
         self.imgScanDim1.valueChanged.connect(lambda: self.display_scan_pattern("image"))
@@ -65,6 +69,10 @@ class MainWin(QMainWindow):
         self.goToOrg.released.connect(lambda: self.origin_released("XYZ"))
         self.goToOrgXY.released.connect(lambda: self.origin_released("XY"))
         self.goToOrgZ.released.connect(lambda: self.origin_released("Z"))
+
+        # Analysis GUI
+        self.imageDataImport.released.connect(lambda: self.imp.populate_data_dates("image"))
+        self.solDataImport.released.connect(lambda: self.imp.populate_data_dates("solution"))
 
         # Device LEDs
         self.ledExc.clicked.connect(self.leds_clicked)
