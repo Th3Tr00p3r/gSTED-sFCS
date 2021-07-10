@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import functools
+import os
 import time
 from types import SimpleNamespace
 from typing import Callable, List, Union
@@ -190,6 +191,63 @@ def translate_dict(original_dict: dict, trans_dict: dict) -> dict:
         key: (trans_dict[val] if val in trans_dict.keys() else val)
         for key, val in original_dict.items()
     }
+
+
+def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
+    """
+    Inputs:
+        main_data_path - string containing the path to the main data folder.
+        month - integer month to search for. if None, will return months matching the year.
+        year - integer year to search for. If None, will return years of all subfolders.
+
+    Returns:
+        a sorted list of strings containing all relevant dates parts in the folder.
+
+    Examples:
+        say in folder 'main_data_path' we have the folders: 11_01_2019, 15_01_2019, 20_02_2019, 05_08_2018.
+        get_folder_dates(main_data_path, month=1, year=2019) will return ['11', '15'].
+        get_folder_dates(main_data_path, year=2019) will return ['1', '2'].
+        get_folder_dates(main_data_path) will return ['2018', '2019'].
+
+    """
+
+    if month and year is None:
+        raise ValueError("Month was supplied while year was not.")
+
+    dir_name_list = [
+        item for item in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, item))
+    ]
+
+    dir_date_dict_list = [
+        {
+            date_key: date_val.lstrip("0")
+            for date_key, date_val in zip(("day", "month", "year"), dir_name.split("_"))
+        }
+        for dir_name in dir_name_list
+    ]
+
+    # get matching days
+    if year and month:
+        date_item_list = [
+            dir_date_dict["day"]
+            for dir_date_dict in dir_date_dict_list
+            if (dir_date_dict["month"] == month) and (dir_date_dict["year"] == year)
+        ]
+
+    # get matching months
+    elif year:
+        date_item_list = [
+            dir_date_dict["month"]
+            for dir_date_dict in dir_date_dict_list
+            if dir_date_dict["year"] == year
+        ]
+
+    # get all existing years
+    else:
+        date_item_list = [dir_date_dict["year"] for dir_date_dict in dir_date_dict_list]
+
+    # return unique date parts, sorted in descending order
+    return sorted(set(date_item_list), reverse=True)
 
 
 class QtWidgetAccess:

@@ -2,6 +2,8 @@
 
 import logging
 import os
+import re
+from collections.abc import Iterable
 from types import SimpleNamespace
 from typing import Tuple
 
@@ -605,89 +607,128 @@ class MainWin:
     ## Analysis Tab
     ####################
 
-    def populate_data_dates(self, data_type: str) -> None:
+    def populate_all_data_dates(self) -> None:
         """Doc."""
-
-        def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
-            """
-            Inputs:
-                main_data_path - string containing the path to the main data folder.
-                month - integer month to search for. if None, will return months matching the year.
-                year - integer year to search for. If None, will return years of all subfolders.
-
-            Returns:
-                a sorted list of strings containing all relevant dates parts in the folder.
-
-            Examples:
-                say in folder 'main_data_path' we have the folders: 11_01_2019, 15_01_2019, 20_02_2019, 05_08_2018.
-                get_folder_dates(main_data_path, month=1, year=2019) will return ['11', '15'].
-                get_folder_dates(main_data_path, year=2019) will return ['1', '2'].
-                get_folder_dates(main_data_path) will return ['2018', '2019'].
-
-            """
-
-            if month and year is None:
-                raise ValueError("Month was supplied while year was not.")
-
-            dir_name_list = [
-                item
-                for item in os.listdir(data_path)
-                if os.path.isdir(os.path.join(data_path, item))
-            ]
-
-            dir_date_dict_list = [
-                {
-                    date_key: date_val.lstrip("0")
-                    for date_key, date_val in zip(("day", "month", "year"), dir_name.split("_"))
-                }
-                for dir_name in dir_name_list
-            ]
-
-            # get matching days
-            if year and month:
-                date_item_list = [
-                    dir_date_dict["day"]
-                    for dir_date_dict in dir_date_dict_list
-                    if (dir_date_dict["month"] == month) and (dir_date_dict["year"] == year)
-                ]
-
-            # get matching months
-            elif year:
-                date_item_list = [
-                    dir_date_dict["month"]
-                    for dir_date_dict in dir_date_dict_list
-                    if dir_date_dict["year"] == year
-                ]
-
-            # get all existing years
-            else:
-                date_item_list = [dir_date_dict["year"] for dir_date_dict in dir_date_dict_list]
-
-            # return unique date parts, sorted in descending order
-            return sorted(set(date_item_list), reverse=True)
 
         # define widgets
         data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        is_image_type = data_import_wdgts.is_image_type.get()
+        is_solution_type = data_import_wdgts.is_solution_type.get()
         years_combobox = data_import_wdgts.data_years.obj
         months_combobox = data_import_wdgts.data_months.obj
         days_combobox = data_import_wdgts.data_days.obj
 
-        if data_type == "solution":
-            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
-        elif data_type == "image":
+        if is_image_type:
             save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+        elif is_solution_type:
+            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
 
         years_combobox.clear()
         months_combobox.clear()
         days_combobox.clear()
 
         try:
-            dir_years = dir_date_parts(save_path)
+            dir_years = helper.dir_date_parts(save_path)
             years_combobox.addItems(dir_years)
-            dir_months = dir_date_parts(save_path, year=dir_years[0])
+        #            dir_months = helper.dir_date_parts(save_path, year=dir_years[0])
+        #            months_combobox.addItems(dir_months)
+        #            dir_days = helper.dir_date_parts(save_path, year=dir_years[0], month=dir_months[0])
+        #            days_combobox.addItems(dir_days)
+        except (TypeError, IndexError):
+            # no directories found... (dir_years is None or [])
+            pass
+
+    def populate_data_dates_from_year(self, year: str) -> None:
+        """Doc."""
+
+        if not year:
+            # ignore if combobox was just cleared
+            return
+
+        # define widgets
+        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, ["data_months"])
+        is_image_type = data_import_wdgts.is_image_type.get()
+        is_solution_type = data_import_wdgts.is_solution_type.get()
+        months_combobox = data_import_wdgts.data_months.obj
+
+        if is_image_type:
+            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+        elif is_solution_type:
+            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+
+        months_combobox.clear()
+
+        try:
+            dir_months = helper.dir_date_parts(save_path, year=year)
             months_combobox.addItems(dir_months)
-            dir_days = dir_date_parts(save_path, year=dir_years[0], month=dir_months[0])
+        except (TypeError, IndexError):
+            # no directories found... (dir_years is None or [])
+            pass
+
+    def populate_data_dates_from_month(self, month: str) -> None:
+        """Doc."""
+
+        if not month:
+            # ignore if combobox was just cleared
+            return
+
+        # define widgets
+        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, ["data_days"])
+        is_image_type = data_import_wdgts.is_image_type.get()
+        is_solution_type = data_import_wdgts.is_solution_type.get()
+        year = data_import_wdgts.data_years.get()
+        days_combobox = data_import_wdgts.data_days.obj
+
+        if is_image_type:
+            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+        elif is_solution_type:
+            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+
+        days_combobox.clear()
+
+        try:
+            dir_days = helper.dir_date_parts(save_path, year=year, month=month)
             days_combobox.addItems(dir_days)
+        except (TypeError, IndexError):
+            # no directories found... (dir_years is None or [])
+            pass
+
+    def populate_data_templates_from_day(self, day: str) -> None:
+        """Doc."""
+
+        def dir_templates(dir_path: str) -> Iterable:
+            """Doc."""
+
+            dir_name_set = {
+                re.sub("_+[0-9]+.pkl", ".pkl", item)
+                for item in os.listdir(dir_path)
+                if item.endswith(".pkl")
+            }
+            return dir_name_set
+
+        if not day:
+            # ignore if combobox was just cleared
+            return
+
+        # define widgets
+        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, ["data_templates"])
+        is_image_type = data_import_wdgts.is_image_type.get()
+        is_solution_type = data_import_wdgts.is_solution_type.get()
+        year = data_import_wdgts.data_years.get()
+        month = data_import_wdgts.data_months.get()
+        templates_combobox = data_import_wdgts.data_templates.obj
+
+        if is_image_type:
+            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+        elif is_solution_type:
+            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+
+        templates_combobox.clear()
+
+        try:
+            dir_path = os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}")
+            templates = dir_templates(dir_path)
+            templates_combobox.addItems(templates)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
             pass
