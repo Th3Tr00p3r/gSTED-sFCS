@@ -71,8 +71,12 @@ class MainWin(QMainWindow):
         self.goToOrgZ.released.connect(lambda: self.origin_released("Z"))
 
         # Analysis GUI
-        self.imageDataImport.released.connect(lambda: self.imp.populate_data_dates("image"))
-        self.solDataImport.released.connect(lambda: self.imp.populate_data_dates("solution"))
+        self.analysisDataTypeGroup = QButtonGroup()
+        self.analysisDataTypeGroup.addButton(self.imageDataImport)
+        self.analysisDataTypeGroup.addButton(self.solDataImport)
+        self.analysisDataTypeGroup.buttonReleased.connect(self.imp.populate_all_data_dates)
+        #        self.imageDataImport.released.connect(lambda: self.imp.populate_all_data_dates("image"))
+        #        self.solDataImport.released.connect(lambda: self.imp.populate_all_data_dates("solution"))
 
         # Device LEDs
         self.ledExc.clicked.connect(self.leds_clicked)
@@ -129,6 +133,24 @@ class MainWin(QMainWindow):
         self.stageButtonsGroup.setEnabled(False)
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
+
+    @pyqtSlot(str)
+    def on_dataYear_currentTextChanged(self, year: str) -> None:
+        """Doc."""
+
+        self.imp.populate_data_dates_from_year(year)
+
+    @pyqtSlot(str)
+    def on_dataMonth_currentTextChanged(self, month: str) -> None:
+        """Doc."""
+
+        self.imp.populate_data_dates_from_month(month)
+
+    @pyqtSlot(str)
+    def on_dataDay_currentTextChanged(self, day: str) -> None:
+        """Doc."""
+
+        self.imp.populate_data_templates_from_day(day)
 
     def closeEvent(self, event: QEvent) -> None:
         """Doc."""

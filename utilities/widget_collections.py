@@ -31,10 +31,12 @@ switch_wdgts = QtWidgetCollection(
 # ----------------------------------------------
 
 data_import_wdgts = QtWidgetCollection(
+    is_image_type=("imageDataImport", "isChecked", "main"),
+    is_solution_type=("solDataImport", "isChecked", "main"),
     data_days=("dataDay", "currentText", "main"),
     data_months=("dataMonth", "currentText", "main"),
     data_years=("dataYear", "currentText", "main"),
-    data_template=("dataTemplate", "currentText", "main"),
+    data_templates=("dataTemplate", "currentText", "main"),
 )
 
 # ----------------------------------------------
