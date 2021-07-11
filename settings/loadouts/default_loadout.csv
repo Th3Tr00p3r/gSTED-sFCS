@@ -1,6 +1,6 @@
 solScanFileTemplate,
 imgScanFileTemplate,imgScan
-deviceErrorDisplay,
+deviceErrorDisplay,Depletion Laser error. Click LED for details.
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -16,6 +16,8 @@ imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
+spinBox_4,0
+spinBox_5,0
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -27,6 +29,7 @@ imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
+doubleSpinBox,0.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -37,9 +40,23 @@ solScanDurUnits,seconds
 imgScanType,YZ
 imgScanPreset,Locate Plane - YZ Coarse
 imgShowMethod,Forward scan - actual counts per pixel
+dataDay,
+dataMonth,
+dataYear,
+dataTemplate,
+importedDataTemplates,
+solAnalysis,Lifetime
 avgInterval,200
 repeatSolMeas,True
 autoCrosshair,True
+isDataCalibration,False
+checkBox_2,False
+checkBox_3,True
+imageDataImport,True
+solDataImport,False
+radioButton_3,False
+radioButton_4,False
+radioButton_5,False
 currMode,False
 powMode,True
 posAxisZ,False
