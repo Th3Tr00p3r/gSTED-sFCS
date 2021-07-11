@@ -4569,7 +4569,7 @@ Pattern:</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_22">
           <item row="0" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_28" stretch="1,100">
+           <layout class="QHBoxLayout" name="horizontalLayout_28" stretch="1,1000">
             <property name="spacing">
              <number>0</number>
             </property>
@@ -4584,28 +4584,71 @@ Pattern:</string>
                  <string>Import Raw Measurement Data</string>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_61">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
                  <item>
-                  <layout class="QGridLayout" name="gridLayout_10">
+                  <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,1,10,1">
                    <property name="spacing">
                     <number>0</number>
                    </property>
-                   <item row="0" column="1">
-                    <widget class="QPushButton" name="openDir">
-                     <property name="minimumSize">
-                      <size>
-                       <width>87</width>
-                       <height>23</height>
-                      </size>
+                   <item>
+                    <widget class="QGroupBox" name="groupBox_19">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
                      </property>
-                     <property name="text">
-                      <string>Open Directory</string>
+                     <property name="title">
+                      <string>Data Type</string>
                      </property>
+                     <layout class="QHBoxLayout" name="horizontalLayout_8">
+                      <property name="spacing">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QRadioButton" name="imageDataImport">
+                        <property name="minimumSize">
+                         <size>
+                          <width>79</width>
+                          <height>30</height>
+                         </size>
+                        </property>
+                        <property name="text">
+                         <string>Image</string>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QRadioButton" name="solDataImport">
+                        <property name="minimumSize">
+                         <size>
+                          <width>87</width>
+                          <height>30</height>
+                         </size>
+                        </property>
+                        <property name="text">
+                         <string>Solution</string>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </widget>
                    </item>
-                   <item row="1" column="0" colspan="2">
+                   <item>
                     <layout class="QHBoxLayout" name="horizontalLayout_15">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
                      <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_5">
+                      <layout class="QVBoxLayout" name="verticalLayout_51">
                        <item>
                         <widget class="QLabel" name="label">
                          <property name="text">
@@ -4626,7 +4669,7 @@ Pattern:</string>
                       </layout>
                      </item>
                      <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_51">
+                      <layout class="QVBoxLayout" name="verticalLayout_56">
                        <item>
                         <widget class="QLabel" name="label_2">
                          <property name="text">
@@ -4647,7 +4690,7 @@ Pattern:</string>
                       </layout>
                      </item>
                      <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_56">
+                      <layout class="QVBoxLayout" name="verticalLayout_77">
                        <item>
                         <widget class="QLabel" name="label_3">
                          <property name="text">
@@ -4667,20 +4710,60 @@ Pattern:</string>
                        </item>
                       </layout>
                      </item>
-                    </layout>
-                   </item>
-                   <item row="2" column="0" colspan="2">
-                    <layout class="QGridLayout" name="gridLayout_6" columnstretch="10,1">
-                     <property name="spacing">
-                      <number>0</number>
-                     </property>
-                     <item row="0" column="0">
-                      <widget class="QLabel" name="label_8">
+                     <item>
+                      <widget class="QPushButton" name="openDir">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>87</width>
+                         <height>23</height>
+                        </size>
+                       </property>
                        <property name="text">
-                        <string>File Template</string>
+                        <string>Open Directory</string>
                        </property>
                       </widget>
                      </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QPlainTextEdit" name="plainTextEdit_2">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="maximumSize">
+                      <size>
+                       <width>99999</width>
+                       <height>150</height>
+                      </size>
+                     </property>
+                     <property name="frameShape">
+                      <enum>QFrame::Panel</enum>
+                     </property>
+                     <property name="frameShadow">
+                      <enum>QFrame::Sunken</enum>
+                     </property>
+                     <property name="readOnly">
+                      <bool>true</bool>
+                     </property>
+                     <property name="placeholderText">
+                      <string>Measurement log file contents</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QGridLayout" name="gridLayout_10" columnstretch="10,0">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
                      <item row="1" column="0">
                       <widget class="QComboBox" name="dataTemplate">
                        <property name="minimumSize">
@@ -4710,48 +4793,14 @@ Pattern:</string>
                        </property>
                       </widget>
                      </item>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label_10">
+                       <property name="text">
+                        <string>File Template</string>
+                       </property>
+                      </widget>
+                     </item>
                     </layout>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QGroupBox" name="groupBox_19">
-                     <property name="title">
-                      <string>Data Type</string>
-                     </property>
-                     <layout class="QHBoxLayout" name="horizontalLayout_8">
-                      <item>
-                       <widget class="QRadioButton" name="imageDataImport">
-                        <property name="minimumSize">
-                         <size>
-                          <width>79</width>
-                          <height>30</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>Image</string>
-                        </property>
-                        <property name="checked">
-                         <bool>false</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QRadioButton" name="solDataImport">
-                        <property name="minimumSize">
-                         <size>
-                          <width>87</width>
-                          <height>30</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>Solution</string>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
                    </item>
                   </layout>
                  </item>
@@ -4920,7 +4969,7 @@ Measurement</string>
                         <bool>true</bool>
                        </property>
                        <property name="currentIndex">
-                        <number>1</number>
+                        <number>0</number>
                        </property>
                        <widget class="QWidget" name="tab_3">
                         <attribute name="title">
