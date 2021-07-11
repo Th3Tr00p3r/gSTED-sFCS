@@ -47,7 +47,7 @@ class App:
         self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)
 
         # init windows
-        print("Initializing GUI...")
+        print("Initializing GUI...", end=" ")
         self.gui = SimpleNamespace()
         self.gui.main = gui.gui.MainWin(self)
         self.gui.main.imp.load(DEFAULT_LOADOUT_FILE_PATH)
@@ -63,8 +63,11 @@ class App:
         self.gui.main.ledCounter.setIcon(self.icon_dict["led_green"])
         self.gui.main.ledUm232h.setIcon(self.icon_dict["led_green"])
 
-        print("Initializing Devices...")
+        print("Done.")
+
+        print("Initializing Devices...", end=" ")
         self.init_devices()
+        print("Done.")
 
         # init AO as origin (actual AO is measured in internal AO if last position is needed)
         [
@@ -79,10 +82,11 @@ class App:
         self.gui.main.show()
 
         # set up main timeout event
-        print("Initializing timeout loop...")
+        print("Initializing timeout loop...", end=" ")
         self.timeout_loop = Timeout(self)
-
         print("Done.")
+
+        print("Application Initialized.")
         logging.info("Application Started")
 
     def config_logging(self):

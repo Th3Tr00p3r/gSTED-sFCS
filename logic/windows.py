@@ -16,6 +16,7 @@ import logic.measurements as meas
 import utilities.errors as errors
 import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
+from data_analysis.correlation_function import CorrFuncTDC
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
 
@@ -622,8 +623,10 @@ class MainWin:
 
         if is_image_type:
             save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            data_import_wdgts.import_stacked.set(0)
         elif is_solution_type:
             save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            data_import_wdgts.import_stacked.set(1)
 
         years_combobox.clear()
         months_combobox.clear()
@@ -716,6 +719,7 @@ class MainWin:
 
         if not day:
             # ignore if combobox was just cleared
+            self._app.analysis_dir_path = None
             return
 
         # define widgets
@@ -734,8 +738,10 @@ class MainWin:
         templates_combobox.clear()
 
         try:
-            dir_path = os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}")
-            templates = pkl_and_mat_templates(dir_path)
+            self._app.analysis_dir_path = os.path.join(
+                save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}"
+            )
+            templates = pkl_and_mat_templates(self._app.analysis_dir_path)
             templates_combobox.addItems(templates)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
@@ -744,28 +750,30 @@ class MainWin:
     def open_data_dir(self) -> None:
         """Doc."""
 
-        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
-        is_image_type = data_import_wdgts.is_image_type.get()
-        is_solution_type = data_import_wdgts.is_solution_type.get()
-        day = data_import_wdgts.data_days.get()
-        month = data_import_wdgts.data_months.get()
-        year = data_import_wdgts.data_years.get()
-
-        if is_image_type:
-            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
-        elif is_solution_type:
-            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
-
-        dir_path = os.path.realpath(
-            os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}")
-        )
-        if os.path.isdir(dir_path):
+        try:
+            dir_path = os.path.realpath(self._app.analysis_dir_path)
+        except (AttributeError, TypeError):
+            # self._app.analysis_dir_path does not yet exist or is None (no date dir found)
+            pass
+        else:
             webbrowser.open(dir_path)
 
     def import_sol_data(self) -> None:
         """Doc."""
 
-        pass
+        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        current_template = data_import_wdgts.data_templates.get()
+        #        is_calibration = data_import_wdgts.is_calibration.get()
+
+        # convert formats e.g: 'sol_static_exc (.pkl)' ---> 'sol_static_exc_*.pkl'.
+        current_template = re.sub(" \\(\\.pkl\\)", "_*.pkl", current_template)
+        current_template = re.sub(" \\(\\.mat\\)", "_*.mat", current_template)
+
+        s = CorrFuncTDC()
+        s.read_fpga_data(os.path.join(self._app.analysis_dir_path, current_template))
+
+        print("HEY")  # TESTESTEST
+        print("HO")  # TESTESTEST
 
 
 class SettWin:
