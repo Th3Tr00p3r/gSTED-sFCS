@@ -762,6 +762,11 @@ class MainWin:
         if os.path.isdir(dir_path):
             webbrowser.open(dir_path)
 
+    def import_sol_data(self) -> None:
+        """Doc."""
+
+        pass
+
 
 class SettWin:
     """Doc."""

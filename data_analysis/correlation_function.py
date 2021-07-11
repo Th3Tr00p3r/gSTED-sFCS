@@ -36,7 +36,7 @@ sys.path.append(os.path.dirname(__file__))
 class CorrFuncData:
     """Doc."""
 
-    def do_average_corr(
+    def average_correlation(
         self,
         rejection=2,
         norm_range=np.array([1e-3, 2e-3]),
@@ -85,7 +85,6 @@ class CorrFuncData:
             func = nb.njit(calc_weighted_avg, cache=True)
         else:
             func = calc_weighted_avg
-
         self.average_cf_cr, self.error_cf_cr = func(
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
@@ -97,9 +96,9 @@ class CorrFuncData:
         self.normalized = self.average_cf_cr / self.g0
         self.error_normalized = self.error_cf_cr / self.g0
         if not no_plot:
-            self.do_plot_corr_func()
+            self.plot_correlation_function()
 
-    def do_plot_corr_func(
+    def plot_correlation_function(
         self, x_field="lag", y_field="average_cf_cr", x_scale="log", y_scale="linear"
     ):
         x = getattr(self, x_field)
@@ -114,7 +113,7 @@ class CorrFuncData:
         plt.gca().set_y_scale(y_scale)
         plt.show()
 
-    def do_fit(
+    def fit_correlation_function(
         self,
         x_field="lag",
         y_field="average_cf_cr",
@@ -168,7 +167,7 @@ class CorrFuncData:
         # FP.fit_range = fit_range;
         # FP.constParam = param;
 
-        # self.do_plot_corr_func()
+        # self.plot_correlation_function()
         if not hasattr(self, "fit_param"):
             self.fit_param = dict()
 

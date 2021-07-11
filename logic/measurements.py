@@ -729,7 +729,7 @@ class SFCSSolutionMeasurement(Measurement):
             s.laser_freq = self.tdc_dvc.laser_freq_MHz * 1e6
             s.data["data"].append(p)
             s.correlate_regular_data()
-            s.do_average_corr(no_plot=True, use_numba=True)
+            s.average_correlation(no_plot=True, use_numba=True)
             return s
 
         if self.repeat is True:
@@ -740,7 +740,7 @@ class SFCSSolutionMeasurement(Measurement):
                 err_hndlr(exc, locals(), sys._getframe())
             else:
                 try:
-                    s.do_fit(no_plot=True)
+                    s.fit_correlation_function(no_plot=True)
                 except fit_tools.FitError as exc:
                     # fit failed
                     err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
