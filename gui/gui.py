@@ -135,6 +135,12 @@ class MainWin(QMainWindow):
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
     @pyqtSlot()
+    def on_importSolData_released(self) -> None:
+        """Doc."""
+
+        self.imp.import_sol_data()
+
+    @pyqtSlot()
     def on_openDir_released(self) -> None:
         """Doc."""
 
