@@ -47,8 +47,9 @@ def timer(func) -> Callable:
     return wrapper_timer
 
 
-# print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
+# import time # TESTING
 # tic = time.perf_counter() # TESTING
+# print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
 
 
 def paths_to_icons(paths_dict) -> dict:
@@ -180,7 +181,7 @@ def div_ceil(x: int, y: int) -> int:
     return int(x // y + (x % y > 0))
 
 
-def translate_dict(original_dict: dict, trans_dict: dict) -> dict:
+def translate_dict_values(original_dict: dict, trans_dict: dict) -> dict:
     """
     Updates values of dict according to another dict:
     val_trans_dct.keys() are the values to update,
