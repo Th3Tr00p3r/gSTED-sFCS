@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import webbrowser
 from collections.abc import Iterable
 from types import SimpleNamespace
 from typing import Tuple
@@ -617,6 +618,7 @@ class MainWin:
         years_combobox = data_import_wdgts.data_years.obj
         months_combobox = data_import_wdgts.data_months.obj
         days_combobox = data_import_wdgts.data_days.obj
+        templates_combobox = data_import_wdgts.data_templates.obj
 
         if is_image_type:
             save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
@@ -626,6 +628,7 @@ class MainWin:
         years_combobox.clear()
         months_combobox.clear()
         days_combobox.clear()
+        templates_combobox.clear()
 
         try:
             dir_years = helper.dir_date_parts(save_path)
@@ -696,15 +699,20 @@ class MainWin:
     def populate_data_templates_from_day(self, day: str) -> None:
         """Doc."""
 
-        def dir_templates(dir_path: str) -> Iterable:
+        def pkl_and_mat_templates(dir_path: str) -> Iterable:
             """Doc."""
 
-            dir_name_set = {
-                re.sub("_+[0-9]+.pkl", ".pkl", item)
+            pkl_template_set = {
+                re.sub("_+[0-9]+.pkl", " (.pkl)", item)
                 for item in os.listdir(dir_path)
                 if item.endswith(".pkl")
             }
-            return dir_name_set
+            mat_template_set = {
+                re.sub("_+[0-9]+.mat", " (.mat)", item)
+                for item in os.listdir(dir_path)
+                if item.endswith(".mat")
+            }
+            return pkl_template_set.union(mat_template_set)
 
         if not day:
             # ignore if combobox was just cleared
@@ -727,11 +735,32 @@ class MainWin:
 
         try:
             dir_path = os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}")
-            templates = dir_templates(dir_path)
+            templates = pkl_and_mat_templates(dir_path)
             templates_combobox.addItems(templates)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
             pass
+
+    def open_data_dir(self) -> None:
+        """Doc."""
+
+        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        is_image_type = data_import_wdgts.is_image_type.get()
+        is_solution_type = data_import_wdgts.is_solution_type.get()
+        day = data_import_wdgts.data_days.get()
+        month = data_import_wdgts.data_months.get()
+        year = data_import_wdgts.data_years.get()
+
+        if is_image_type:
+            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+        elif is_solution_type:
+            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+
+        dir_path = os.path.realpath(
+            os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}")
+        )
+        if os.path.isdir(dir_path):
+            webbrowser.open(dir_path)
 
 
 class SettWin:

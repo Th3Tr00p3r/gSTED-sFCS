@@ -134,6 +134,12 @@ class MainWin(QMainWindow):
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
+    @pyqtSlot()
+    def on_openDir_released(self) -> None:
+        """Doc."""
+
+        self.imp.open_data_dir()
+
     @pyqtSlot(str)
     def on_dataYear_currentTextChanged(self, year: str) -> None:
         """Doc."""
