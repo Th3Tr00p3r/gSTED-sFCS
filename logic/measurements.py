@@ -46,7 +46,7 @@ class Measurement:
             getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
         )
         self.sys_info = dict(
-            Setup="STED with galvos",
+            setup="STED with galvos",
             after_pulse_param=[
                 -0.004057535648770,
                 -0.107704707102406,
@@ -55,7 +55,7 @@ class Measurement:
                 -10.762333427569356,
                 -7.426041455313178,
             ],
-            AI_ScalingXYZ=[1.243, 1.239, 1],  # TODO: what's that?
+            ai_scaling_xyz=[1.243, 1.239, 1],  # TODO: what's that?
             xyz_um_to_v=self.um_v_ratio,
         )
 
@@ -508,13 +508,12 @@ class SFCSImageMeasurement(Measurement):
                 "plane": np.array([data for data in self.plane_data], dtype=np.object),
                 "data_version": self.tdc_dvc.data_vrsn,
                 "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
-                "pix_freq": self.pxl_clk_dvc.freq_MHz,
+                "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,
                 "laser_freq": self.tdc_dvc.laser_freq_MHz,
                 "version": self.tdc_dvc.tdc_vrsn,
             }
 
         return {
-            "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,
             "tdc_scan_data": prep_tdc_scan_data(),
             "version": self.tdc_dvc.tdc_vrsn,
             "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
@@ -792,7 +791,6 @@ class SFCSSolutionMeasurement(Measurement):
                 "line_shift": self.scan_params.line_shift_um,
                 "angle_degrees": self.scan_params.angle_deg,
                 "linear_frac": self.scan_params.lin_frac,
-                "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,  # already in full_data
                 "linear_part": self.scan_params.lin_part,
                 "x_lim": self.scan_params.x_lim,
                 "y_lim": self.scan_params.y_lim,
@@ -803,7 +801,7 @@ class SFCSSolutionMeasurement(Measurement):
                 "data": np.array(self.data_dvc.data, dtype=np.uint8),
                 "data_version": self.tdc_dvc.data_vrsn,
                 "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
-                "pix_freq": self.pxl_clk_dvc.freq_MHz,
+                "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,
                 "laser_freq": self.tdc_dvc.laser_freq_MHz,
                 "version": self.tdc_dvc.tdc_vrsn,
                 "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
@@ -829,7 +827,7 @@ class SFCSSolutionMeasurement(Measurement):
                 "avg_cnt_rate": self.counter_dvc.avg_cnt_rate,
             }
 
-            return {"full_data": full_data}
+            return {"full_data": full_data, "system_info": self.sys_info}
 
     async def run(self):
         """Doc."""

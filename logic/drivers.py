@@ -12,7 +12,7 @@ from instrumental.drivers.cameras import uc480
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
 
 from utilities.errors import IOError
-from utilities.helper import translate_dict
+from utilities.helper import translate_dict_values
 
 
 class Ftd2xx:
@@ -24,7 +24,7 @@ class Ftd2xx:
     }
 
     def __init__(self, param_dict):
-        param_dict = translate_dict(param_dict, self.ftd2xx_dict)
+        param_dict = translate_dict_values(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
 

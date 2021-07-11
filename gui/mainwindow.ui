@@ -4588,7 +4588,7 @@ Pattern:</string>
                   <number>0</number>
                  </property>
                  <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,1,10,1">
+                  <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,0,10,1">
                    <property name="spacing">
                     <number>0</number>
                    </property>
@@ -4643,74 +4643,62 @@ Pattern:</string>
                     </widget>
                    </item>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_15">
+                    <layout class="QGridLayout" name="gridLayout_6">
                      <property name="spacing">
                       <number>0</number>
                      </property>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_51">
-                       <item>
-                        <widget class="QLabel" name="label">
-                         <property name="text">
-                          <string>Day</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QComboBox" name="dataDay">
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label">
+                       <property name="text">
+                        <string>Day</string>
+                       </property>
+                      </widget>
                      </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_56">
-                       <item>
-                        <widget class="QLabel" name="label_2">
-                         <property name="text">
-                          <string>Month</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QComboBox" name="dataMonth">
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
+                     <item row="0" column="1">
+                      <widget class="QLabel" name="label_2">
+                       <property name="text">
+                        <string>Month</string>
+                       </property>
+                      </widget>
                      </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_77">
-                       <item>
-                        <widget class="QLabel" name="label_3">
-                         <property name="text">
-                          <string>Year</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QComboBox" name="dataYear">
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
+                     <item row="0" column="2">
+                      <widget class="QLabel" name="label_3">
+                       <property name="text">
+                        <string>Year</string>
+                       </property>
+                      </widget>
                      </item>
-                     <item>
+                     <item row="1" column="0">
+                      <widget class="QComboBox" name="dataDay">
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QComboBox" name="dataMonth">
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="2">
+                      <widget class="QComboBox" name="dataYear">
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="3">
                       <widget class="QPushButton" name="openDir">
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
@@ -4720,8 +4708,8 @@ Pattern:</string>
                        </property>
                        <property name="minimumSize">
                         <size>
-                         <width>87</width>
-                         <height>23</height>
+                         <width>0</width>
+                         <height>0</height>
                         </size>
                        </property>
                        <property name="text">

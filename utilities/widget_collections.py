@@ -42,6 +42,8 @@ data_import_wdgts = QtWidgetCollection(
     data_months=("dataMonth", "currentText", "main"),
     data_years=("dataYear", "currentText", "main"),
     data_templates=("dataTemplate", "currentText", "main"),
+    import_stacked=("importStacked", "currentIndex", "main"),
+    is_calibration=("isDataCalibration", "isChecked", "main"),
 )
 
 # ----------------------------------------------

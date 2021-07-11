@@ -23,6 +23,10 @@ from data_analysis.fit_tools import curve_fit_lims
 from data_analysis.matlab_utilities import (
     loadmat,  # loads matfiles with structures (scipy.io does not do structures)
 )
+from data_analysis.matlab_utilities import (
+    legacy_matlab_naming_trans_dict,
+    translate_dict_keys,
+)
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 
@@ -212,12 +216,10 @@ class CorrFuncTDC(CorrFuncData):
         fix_shift=False,
         line_end_adder=1000,
         roi_selection="auto",
-        verbose=False,
     ):
         """Doc."""
 
-        if verbose:
-            logging.info("Loading FPGA data...")
+        print("Loading FPGA data:")
         # fpathtmpl : template of complete path to data
 
         if not (fpathes := glob.glob(fpathtmpl)):
@@ -225,9 +227,9 @@ class CorrFuncTDC(CorrFuncData):
 
         # order filenames -
         # splits in folderpath and filename template
-        folderpath_fnametmpl = os.path.split(fpathtmpl)
+        folderpath, fnametmpl = os.path.split(fpathtmpl)
         # splits filename template into the name template proper and its extension
-        fnametmpl, file_extension = os.path.splitext(folderpath_fnametmpl[1])
+        fnametmpl, file_extension = os.path.splitext(fnametmpl)
 
         # Nfile = list()
         # for fpath in fpathes:
@@ -238,11 +240,11 @@ class CorrFuncTDC(CorrFuncData):
         # Nfile = np.array(Nfile)
         # J = np.argsort(Nfile)
         # fpathes = fpathes[J]
-        fpathes.sort(key=lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1])
+        fpathes.sort(key=lambda fpath: re.split(f"_(\\d+){file_extension}", fpath)[1])
+        #        fpathes.sort(key=lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1])
 
         for fpath in fpathes:
-            if verbose:
-                logging.info(f"Loading {fpath}")
+            print(f"Loading '{fpath}'...", end=" ")
             # splits in folderpath and filename
             folderpath_fname = os.path.split(fpath)
             # splits filename into the name proper and its extension
@@ -254,6 +256,10 @@ class CorrFuncTDC(CorrFuncData):
                     filedict = pickle.load(f)
             elif file_extension == ".mat":
                 filedict = loadmat(fpath)
+                # back-compatibility with old-style naming
+            filedict = translate_dict_keys(filedict, legacy_matlab_naming_trans_dict)
+
+            print("Done.")
 
             system_info = filedict["system_info"]
             if "after_pulse_param" in system_info.keys():
@@ -279,10 +285,14 @@ class CorrFuncTDC(CorrFuncData):
                 )
 
             full_data = filedict["full_data"]
+
+            print("Converting raw data to photons...", end=" ")
             p = PhotonData()
             p.convert_fpga_data_to_photons(
                 np.array(full_data["data"]).astype("B"), version=full_data["version"]
             )
+            print("Done.")
+
             self.laser_freq = full_data["laser_freq"] * 1e6
             self.fpga_freq = full_data["fpga_freq"] * 1e6
 
@@ -343,11 +353,19 @@ class CorrFuncTDC(CorrFuncData):
                 # invert every second line
                 cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
 
+                print("ROI selection...", end=" ")
+
                 if roi_selection == "auto":
                     classes = 4
+                    import time  # TESTING
+
+                    tic = time.perf_counter()  # TESTING
                     thresh = skifilt.threshold_multiotsu(
                         skifilt.median(cnt), classes
                     )  # minor filtering of outliers
+                    print(
+                        f"threshold_multiotsu timing: {(time.perf_counter() - tic)*1e3:0.4f} ms"
+                    )  # TESTING
                     cnt_dig = np.digitize(cnt, bins=thresh)
                     plateau_lvl = np.median(cnt[cnt_dig == (classes - 1)])
                     std_plateau = stats.median_absolute_deviation(cnt[cnt_dig == (classes - 1)])
@@ -356,6 +374,8 @@ class CorrFuncTDC(CorrFuncData):
                     bw = ndimage.binary_fill_holes(bw)
                     disk_open = morphology.selem.disk(radius=3)
                     bw = morphology.opening(bw, selem=disk_open)
+
+                print("Done.")
 
                 # elif  roi_selection == 'manual'):
                 #      subplot(1, 1, 1)
@@ -391,7 +411,7 @@ class CorrFuncTDC(CorrFuncData):
                         "Number of lines larger than line_end_adder! Increase line_end_adder."
                     )
 
-                roi = {"row": list(), "col": list()}
+                roi = {"row": [], "col": []}
                 for j in range(bw.shape[0]):
                     k = bw[j, :].nonzero()
                     if k[0].size > 0:  # k is a tuple
@@ -559,6 +579,7 @@ class CorrFuncTDC(CorrFuncData):
         n_runs_requested=60,
         verbose=False,
     ):
+        """Correlates Data for static (regular) FCS"""
 
         # if self.is_data_on_disk:
         #     self.DoLoadDataFromDisk
@@ -579,7 +600,7 @@ class CorrFuncTDC(CorrFuncData):
 
             run_duration = total_duration_estimate / n_runs_requested
             if verbose:
-                logging.info(f"Auto determination of run duration: {run_duration} s")
+                print(f"Auto determination of run duration: {run_duration} s")
 
         self.requested_duration = run_duration
         self.min_duration_frac = min_time_frac
@@ -595,7 +616,7 @@ class CorrFuncTDC(CorrFuncData):
         for p in self.data["data"]:
 
             if verbose:
-                logging.info(f"Correlating {p.fname}...")
+                print(f"Correlating {p.fname}...")
             # find additional outliers
             time_stamps = np.diff(p.runtime)
             # for exponential distribution MEDIAN and MAD are the same, but for
@@ -608,7 +629,7 @@ class CorrFuncTDC(CorrFuncData):
             no_outliers = len(sec_edges)
             if no_outliers > 0:
                 if verbose:
-                    logging.info(f"{no_outliers} of all outliers")
+                    print(f"{no_outliers} of all outliers")
 
             sec_edges = np.append(np.insert(sec_edges, 0, 0), len(time_stamps))
             p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
@@ -619,7 +640,7 @@ class CorrFuncTDC(CorrFuncData):
                 segment_time = (p.runtime[se[1]] - p.runtime[se[0]]) / self.laser_freq
                 if segment_time < min_time_frac * run_duration:
                     if verbose:
-                        logging.info(
+                        print(
                             f"Duration of segment No. {j} of file {p.fname} is {segment_time}s: too short. Skipping..."
                         )
                     self.total_duration_skipped = self.total_duration_skipped + segment_time
@@ -668,7 +689,7 @@ class CorrFuncTDC(CorrFuncData):
 
         self.total_duration = self.duration.sum()
         if verbose:
-            logging.info(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
+            print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
 
         # if ~isempty(obj.v_um_ms)
         #     obj.DoSetVelocity(obj.v_um_ms);
