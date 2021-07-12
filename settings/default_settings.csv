@@ -57,4 +57,4 @@ excTriggerSrc,0
 saveFormat,0
 AOtriggerEdge,0
 AOwfType,0
-counterCIdupCountPrevention,True
+counterCIdupCountPrevention,1

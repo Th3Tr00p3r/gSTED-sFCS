@@ -89,7 +89,7 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
         if child_class == "QComboBox":
             val = child.currentText()
         elif child_class in {"QCheckBox", "QRadioButton"}:
-            val = child.isChecked()
+            val = int(child.isChecked())
         elif child_class == "QSlider":
             val = child.value()
         elif child_class in {"QSpinBox", "QDoubleSpinBox"} and not child.isReadOnly():
@@ -136,7 +136,6 @@ def csv_to_gui(file_path, gui_parent):
 
     for row in rows:
         wdgt_name, val = row
-
         child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
         child_class = child.__class__.__name__
 
@@ -149,7 +148,7 @@ def csv_to_gui(file_path, gui_parent):
         elif child_class == "QComboBox":
             child.setCurrentText(val)
         elif child_class in {"QCheckBox", "QRadioButton"}:
-            child.setChecked(bool(val))
+            child.setChecked(int(val))
 
 
 def deep_getattr(object, deep_attr_name: str, recursion=False):
@@ -215,8 +214,12 @@ def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
     if month and year is None:
         raise ValueError("Month was supplied while year was not.")
 
+    # list all non-empty directories in 'data_path'
     dir_name_list = [
-        item for item in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, item))
+        item
+        for item in os.listdir(data_path)
+        if os.path.isdir(os.path.join(data_path, item))
+        and os.listdir(os.path.join(data_path, item))
     ]
 
     dir_date_dict_list = [
@@ -232,7 +235,7 @@ def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
         date_item_list = [
             dir_date_dict["day"]
             for dir_date_dict in dir_date_dict_list
-            if (dir_date_dict["month"] == month) and (dir_date_dict["year"] == year)
+            if (dir_date_dict.get("month") == month) and (dir_date_dict.get("year") == year)
         ]
 
     # get matching months
@@ -240,12 +243,16 @@ def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
         date_item_list = [
             dir_date_dict["month"]
             for dir_date_dict in dir_date_dict_list
-            if dir_date_dict["year"] == year
+            if dir_date_dict.get("year") == year
         ]
 
     # get all existing years
     else:
-        date_item_list = [dir_date_dict["year"] for dir_date_dict in dir_date_dict_list]
+        date_item_list = [
+            dir_date_dict.get("year")
+            for dir_date_dict in dir_date_dict_list
+            if dir_date_dict.get("year") is not None
+        ]
 
     # return unique date parts, sorted in descending order
     return sorted(set(date_item_list), reverse=True)
