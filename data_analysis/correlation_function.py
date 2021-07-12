@@ -338,7 +338,7 @@ class CorrFuncTDC(CorrFuncData):
                 bw[1::2, :] = np.flip(bw[1::2, :], 1)
                 # cut edges
                 bw_temp = np.zeros(bw.shape)
-                bw_temp[:, angular_scan_settings["linear_part"].astype("int")] = bw[
+                bw[:, angular_scan_settings["linear_part"].astype("int")] = bw[
                     :, angular_scan_settings["linear_part"].astype("int")
                 ]
                 bw = bw_temp
@@ -383,6 +383,7 @@ class CorrFuncTDC(CorrFuncData):
                         line_starts = np.append(line_starts, line_starts_new)
                         line_stops = np.append(line_stops, line_stops_new)
 
+                # TODO: find out what causes the ROI to be empty (bw is emoty), and raise a descent exception or handle the IndexError
                 # repeat first point to close the polygon
                 roi["row"].append(roi["row"][0])
                 roi["col"].append(roi["col"][0])
