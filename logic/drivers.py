@@ -126,8 +126,6 @@ class NIDAQmx:
         task_list = getattr(self.tasks, task_type)
         [task.wait_until_done(timeout=3) for task in task_list if (task.name == task_name)]
 
-    #        getattr(self.tasks, task_type)[task_name].wait_until_done(timeout=3)
-
     def create_ai_task(
         self,
         name: str,
@@ -138,14 +136,22 @@ class NIDAQmx:
         """Doc."""
 
         task = ni.Task(new_task_name=name)
-        for chan_spec in chan_specs:
-            task.ai_channels.add_ai_voltage_chan(**chan_spec)
-        if samp_clk_cnfg:
-            task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
-        for key, val in timing_params.items():
-            setattr(task.timing, key, val)
+        try:
+            for chan_spec in chan_specs:
+                task.ai_channels.add_ai_voltage_chan(**chan_spec)
+            if samp_clk_cnfg:
+                task.timing.cfg_samp_clk_timing(**samp_clk_cnfg)
+            for key, val in timing_params.items():
+                setattr(task.timing, key, val)
 
-        self.tasks.ai.append(task)
+        except ni.errors.DaqError:
+            task.close()
+            raise IOError(
+                f"NI device address ({self.ai_x_addr}) is wrong, or Data acquisition board is unplugged"
+            )
+
+        else:
+            self.tasks.ai.append(task)
 
     def create_ao_task(
         self,
@@ -309,9 +315,12 @@ class PyVISA:
                 open_timeout=50,  # ms
             )
         except AttributeError:
+            # failed to auto-find address for depletion laser
             raise IOError(
                 f"{self.log_ref} couldn't be opened - it is either turned off, unplugged or the address is used by another process"
             )
+        except ValueError:
+            raise IOError(f"{self.log_ref} is unplugged or the address ({self.address}) is wrong.")
 
     def close_inst(self) -> None:
         """Doc."""
