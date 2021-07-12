@@ -62,6 +62,7 @@ def translate_dict_keys(original_dict: dict, trans_dict: dict) -> dict:
     Updates keys of dict according to another dict:
     trans_dct.keys() are the keys to update,
     and trans_dct.values() are the new keys.
+    Key, value pairs that do not appear in trans_dict will remain unchanged.
     """
 
     new_dict = {}
@@ -72,6 +73,8 @@ def translate_dict_keys(original_dict: dict, trans_dict: dict) -> dict:
                 new_dict[new_key] = translate_dict_keys(org_val, sub_trans_dict)
             else:
                 new_dict[trans_dict[org_key]] = org_val
+        else:
+            new_dict[org_key] = org_val
     return new_dict
 
 
