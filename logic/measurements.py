@@ -42,12 +42,10 @@ class Measurement:
         self.pxl_clk_dvc = app.devices.pixel_clock
         self.scanners_dvc = app.devices.scanners
         self.scan_params = scan_params
-        self.um_v_ratio = tuple(
-            getattr(self.scanners_dvc, f"{ax.lower()}_um2V_const") for ax in "XYZ"
-        )
-        self.sys_info = dict(
-            setup="STED with galvos",
-            after_pulse_param=[
+        self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2V_const") for ax in "xyz")
+        self.sys_info = {
+            "setup": "STED with galvos",
+            "after_pulse_param": [
                 -0.004057535648770,
                 -0.107704707102406,
                 -1.069455813887638,
@@ -55,9 +53,9 @@ class Measurement:
                 -10.762333427569356,
                 -7.426041455313178,
             ],
-            ai_scaling_xyz=[1.243, 1.239, 1],  # TODO: what's that?
-            xyz_um_to_v=self.um_v_ratio,
-        )
+            "ai_scaling_xyz": [1.243, 1.239, 1],  # TODO: check if matches today's ratio
+            "xyz_um_to_v": self.um_v_ratio,
+        }
 
         self.laser_dvcs = SimpleNamespace(
             exc=app.devices.exc_laser,
