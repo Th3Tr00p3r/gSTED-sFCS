@@ -19,8 +19,8 @@ from utilities.dialog import Error
 def build_error_dict(exc: Exception) -> str:
     """Doc."""
 
-    exc_type, _, tb = sys.exc_info()
-    exc_type = exc_type.__name__
+    _, _, tb = sys.exc_info()
+    exc_type = exc.__class__.__name__
     frmtd_tb = "\n".join(traceback.format_tb(tb))
     # show the first 'n' existing levels of traceback for module and line number
     exc_loc = []

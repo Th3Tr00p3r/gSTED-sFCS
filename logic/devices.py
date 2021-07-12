@@ -213,7 +213,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             )
             self.init_ai_buffer(self.AI_BUFFER_SIZE)
             self.start_tasks("ai")
-        except DaqError as exc:
+        except IOError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
@@ -413,10 +413,6 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             # TODO: remove "co" - creates an error since task_types is expected to be an iterable - geeralize that if easy.
             task_types=("ci", "co"),
         )
-        self.cont_read_buffer = np.zeros(shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32)
-
-        self.last_avg_time = time.perf_counter()
-        self.num_reads_since_avg = 0
 
         try:
             cont_ai_task = [task for task in scanners_ai_tasks if (task.name == "Continuous AI")][0]
@@ -427,16 +423,18 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 f"{self.log_ref} can't be synced because scanners failed to Initialize"
             )
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
-
-        self.ci_chan_specs = {
-            "name_to_assign_to_channel": "photon counter",
-            "counter": self.address,
-            "edge": ni_consts.Edge.RISING,
-            "initial_count": 0,
-            "count_direction": ni_consts.CountDirection.COUNT_UP,
-        }
-
-        self.toggle(True)
+        else:
+            self.cont_read_buffer = np.zeros(shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32)
+            self.last_avg_time = time.perf_counter()
+            self.num_reads_since_avg = 0
+            self.ci_chan_specs = {
+                "name_to_assign_to_channel": "photon counter",
+                "counter": self.address,
+                "edge": ni_consts.Edge.RISING,
+                "initial_count": 0,
+                "count_direction": ni_consts.CountDirection.COUNT_UP,
+            }
+            self.toggle(True)
 
     def _toggle(self, is_being_switched_on):
         """Doc."""
@@ -584,7 +582,13 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def _toggle(self, is_being_switched_on):
         """Doc."""
 
-        self.digital_write(is_being_switched_on)
+        try:
+            self.digital_write(is_being_switched_on)
+        except DaqError:
+            exc = IOError(
+                f"NI device address ({self.address}) is wrong, or Data acquisition board is unplugged"
+            )
+            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
 
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
