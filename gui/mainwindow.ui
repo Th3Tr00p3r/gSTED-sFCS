@@ -4815,27 +4815,60 @@ Pattern:</string>
                     </layout>
                    </widget>
                    <widget class="QWidget" name="solution">
-                    <layout class="QHBoxLayout" name="horizontalLayout_27">
-                     <item>
-                      <widget class="QPushButton" name="importSolData">
-                       <property name="minimumSize">
-                        <size>
-                         <width>83</width>
-                         <height>34</height>
-                        </size>
+                    <layout class="QGridLayout" name="gridLayout_31">
+                     <item row="0" column="0">
+                      <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="100,1,1,100">
+                       <property name="spacing">
+                        <number>0</number>
                        </property>
-                       <property name="text">
-                        <string>Import Solution
+                       <item>
+                        <spacer name="horizontalSpacer_13">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="importSolData">
+                         <property name="minimumSize">
+                          <size>
+                           <width>83</width>
+                           <height>34</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Import Solution
 Measurement</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QCheckBox" name="isDataCalibration">
-                       <property name="text">
-                        <string>Calibration</string>
-                       </property>
-                      </widget>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="isDataCalibration">
+                         <property name="text">
+                          <string>As Calib.</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_16">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
                      </item>
                     </layout>
                    </widget>
@@ -4901,14 +4934,14 @@ Measurement</string>
                   <number>0</number>
                  </property>
                  <item>
-                  <widget class="QPushButton" name="pushButton_6">
+                  <widget class="QPushButton" name="loadAnalysis">
                    <property name="text">
                     <string>Load</string>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="pushButton_7">
+                  <widget class="QPushButton" name="saveAnalysis">
                    <property name="text">
                     <string>Save</string>
                    </property>
@@ -5018,7 +5051,7 @@ Measurement</string>
                                   </widget>
                                  </item>
                                  <item>
-                                  <widget class="QSpinBox" name="spinBox_4">
+                                  <widget class="QSpinBox" name="scanImgFileNum">
                                    <property name="readOnly">
                                     <bool>false</bool>
                                    </property>
@@ -5030,7 +5063,7 @@ Measurement</string>
                                 </layout>
                                </item>
                                <item>
-                                <widget class="QCheckBox" name="checkBox_2">
+                                <widget class="QCheckBox" name="scanImgMask">
                                  <property name="text">
                                   <string>Mask</string>
                                  </property>
@@ -5108,7 +5141,7 @@ Measurement</string>
                               </spacer>
                              </item>
                              <item>
-                              <widget class="QCheckBox" name="checkBox_3">
+                              <widget class="QCheckBox" name="showRowAcfs">
                                <property name="text">
                                 <string>Show row ACFs</string>
                                </property>
@@ -5327,7 +5360,7 @@ Mean ACF</string>
                                 </widget>
                                </item>
                                <item>
-                                <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_2">
+                                <widget class="QDoubleSpinBox" name="solAnalysisDur">
                                  <property name="frame">
                                   <bool>true</bool>
                                  </property>
@@ -5366,7 +5399,7 @@ Mean ACF</string>
                                 </widget>
                                </item>
                                <item>
-                                <widget class="QSpinBox" name="spinBox">
+                                <widget class="QSpinBox" name="solAnalysisNumFiles">
                                  <property name="readOnly">
                                   <bool>true</bool>
                                  </property>
@@ -5929,7 +5962,7 @@ Gating &gt; (ns)</string>
              <string/>
             </property>
             <property name="readOnly">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
             <property name="placeholderText">
              <string>Watch for device errors</string>

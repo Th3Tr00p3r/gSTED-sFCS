@@ -1,9 +1,5 @@
-#!/usr/bin/env python3
-"""
-Created on Mon Dec 21 22:54:26 2020
+"""Raw data handling."""
 
-@author: oleg
-"""
 import logging
 
 import numpy as np
@@ -20,7 +16,7 @@ class PhotonData:
             maxval = 256 ** 3
         self.version = version
 
-        section_edges = list()
+        section_edges = []
         edge_start, edge_stop, data_end = find_section_edge(fpga_data, 0, group_len)
         section_edges.append(np.array([edge_start, edge_stop]))
 
@@ -75,9 +71,6 @@ class PhotonData:
         self.section_edges = section_edges
         self.all_section_edges = np.array([])
         self.counter_ends = np.array([counter[0], counter[-1]])
-
-
-# P.NoOfInversionProblems = NoOfInversionProblems;
 
 
 def find_section_edge(data, section_start, group_len):

@@ -1,4 +1,4 @@
-""" GUI Module. """
+""" GUI - signals and slots"""
 
 from typing import Tuple
 
@@ -479,6 +479,7 @@ class ImageDisplay:
     def mouseClicked(self, evt):
         """Doc."""
         # TODO: selected position is not accurate for some reason.
+        # TODO: also note the location and the value at that point on the GUI (check out pyqtgraph examples)
 
         try:
             pos = evt.pos()
