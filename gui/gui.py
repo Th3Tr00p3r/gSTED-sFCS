@@ -1,5 +1,6 @@
 """ GUI - signals and slots"""
 
+import logging
 from typing import Tuple
 
 import numpy as np
@@ -12,7 +13,12 @@ from PyQt5.QtWidgets import QButtonGroup, QDialog, QMainWindow, QStatusBar, QWid
 
 import gui.icons  # for initial icons loadout # NOQA
 import logic.windows as wins_imp
-from gui.icons import icons_rc  # for initial icons loadout # NOQA
+
+try:
+    from gui.icons import icons_rc  # for initial icons loadout # NOQA
+except ImportError:
+    # TODO: get this file already and leave it there!
+    logging.warning("icons_rc.py was not found - Icons will not initialize.")
 
 MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
 SETTINGSWINDOW_UI_PATH = "./gui/settingswindow.ui"
