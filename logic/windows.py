@@ -770,7 +770,9 @@ class MainWin:
         current_template = re.sub(" \\(\\.mat\\)", "_*.mat", current_template)
 
         s = CorrFuncTDC()
-        s.read_fpga_data(os.path.join(self._app.analysis_dir_path, current_template))
+        s.read_fpga_data(
+            os.path.join(self._app.analysis_dir_path, current_template), fix_shift=True
+        )
 
         print("HEY")  # TESTESTEST
         print("HO")  # TESTESTEST
