@@ -75,8 +75,6 @@ class MainWin(QMainWindow):
         self.analysisDataTypeGroup.addButton(self.imageDataImport)
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.imp.populate_all_data_dates)
-        #        self.imageDataImport.released.connect(lambda: self.imp.populate_all_data_dates("image"))
-        #        self.solDataImport.released.connect(lambda: self.imp.populate_all_data_dates("solution"))
 
         # Device LEDs
         self.ledExc.clicked.connect(self.leds_clicked)

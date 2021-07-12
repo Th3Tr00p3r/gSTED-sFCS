@@ -706,12 +706,12 @@ class MainWin:
             """Doc."""
 
             pkl_template_set = {
-                re.sub("_+[0-9]+.pkl", " (.pkl)", item)
+                re.sub("[0-9]+.pkl", "*.pkl", item)
                 for item in os.listdir(dir_path)
                 if item.endswith(".pkl")
             }
             mat_template_set = {
-                re.sub("_+[0-9]+.mat", " (.mat)", item)
+                re.sub("[0-9]+.mat", "*.mat", item)
                 for item in os.listdir(dir_path)
                 if item.endswith(".mat")
             }
@@ -764,10 +764,6 @@ class MainWin:
         data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
         current_template = data_import_wdgts.data_templates.get()
         #        is_calibration = data_import_wdgts.is_calibration.get()
-
-        # convert formats e.g: 'sol_static_exc (.pkl)' ---> 'sol_static_exc_*.pkl'.
-        current_template = re.sub(" \\(\\.pkl\\)", "_*.pkl", current_template)
-        current_template = re.sub(" \\(\\.mat\\)", "_*.mat", current_template)
 
         s = CorrFuncTDC()
         s.read_fpga_data(

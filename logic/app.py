@@ -75,10 +75,16 @@ class App:
             for axis, org_vltg in zip("xyz", self.devices.scanners.ORIGIN)
         ]
 
-        # FINALLY
+        # init scan patterns
         self.gui.main.imp.disp_scn_pttrn("image")
         sol_pattern = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self).scan_type
         self.gui.main.imp.disp_scn_pttrn(sol_pattern)
+
+        # init existing data folders (solution by default)
+        self.gui.main.solDataImport.setChecked(True)
+        self.gui.main.imp.populate_all_data_dates()
+
+        # show the GUI
         self.gui.main.show()
 
         # set up main timeout event
