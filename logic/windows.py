@@ -765,10 +765,19 @@ class MainWin:
         current_template = data_import_wdgts.data_templates.get()
         #        is_calibration = data_import_wdgts.is_calibration.get()
 
+        # TODO: pause-resume tasks as context manager?
+        logging.info("Importing Data. Pausing 'ai' and 'ci' tasks")
+        self._app.devices.scanners.pause_tasks("ai")
+        self._app.devices.photon_detector.pause_tasks("ci")
+
         s = CorrFuncTDC()
         s.read_fpga_data(
             os.path.join(self._app.analysis_dir_path, current_template), fix_shift=True
         )
+
+        logging.info("Data import finished. Resuming 'ai' and 'ci' tasks")
+        self._app.devices.scanners.start_tasks("ai")
+        self._app.devices.photon_detector.start_tasks("ci")
 
         print("HEY")  # TESTESTEST
         print("HO")  # TESTESTEST

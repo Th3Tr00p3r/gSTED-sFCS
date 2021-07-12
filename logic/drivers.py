@@ -88,7 +88,7 @@ class NIDAQmx:
         self.task_types = task_types
         [setattr(self.tasks, type, []) for type in self.task_types]
 
-    def start_tasks(self, task_type: str):
+    def start_tasks(self, task_type: str) -> None:
         """Doc."""
 
         task_list = getattr(self.tasks, task_type)
@@ -101,7 +101,13 @@ class NIDAQmx:
         task_status = [task.is_task_done() for task in task_list]
         return task_status.count(1) == len(task_status)
 
-    def close_tasks(self, task_type: str):
+    def pause_tasks(self, task_type: str) -> None:
+        """Doc."""
+
+        task_list = getattr(self.tasks, task_type)
+        [task.stop() for task in task_list]
+
+    def close_tasks(self, task_type: str) -> None:
         """Doc."""
 
         task_list = getattr(self.tasks, task_type)
