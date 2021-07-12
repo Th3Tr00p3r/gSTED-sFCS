@@ -181,6 +181,20 @@ class CorrFuncData:
 class CorrFuncTDC(CorrFuncData):
     """Doc."""
 
+    default_sys_info = {
+        "setup": "STED with galvos",
+        "after_pulse_param": [
+            -0.004057535648770,
+            -0.107704707102406,
+            -1.069455813887638,
+            -4.827204349438697,
+            -10.762333427569356,
+            -7.426041455313178,
+        ],
+        "ai_scaling_xyz": [1.243, 1.239, 1],
+        "xyz_um_to_v": (70.81, 82.74, 10.0),
+    }
+
     def __init__(self):
         self.data = {
             "version": 2,
@@ -240,7 +254,7 @@ class CorrFuncTDC(CorrFuncData):
         # Nfile = np.array(Nfile)
         # J = np.argsort(Nfile)
         # fpathes = fpathes[J]
-        fpathes.sort(key=lambda fpath: re.split(f"_(\\d+){file_extension}", fpath)[1])
+        fpathes.sort(key=lambda fpath: re.split(f"(\\d+){file_extension}", fpath)[1])
         #        fpathes.sort(key=lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1])
 
         for fpath in fpathes:
@@ -256,12 +270,18 @@ class CorrFuncTDC(CorrFuncData):
                     filedict = pickle.load(f)
             elif file_extension == ".mat":
                 filedict = loadmat(fpath)
-                # back-compatibility with old-style naming
+            # back-compatibility with old-style naming
             filedict = translate_dict_keys(filedict, legacy_matlab_naming_trans_dict)
 
             print("Done.")
 
-            system_info = filedict["system_info"]
+            try:
+                system_info = filedict["system_info"]
+            except KeyError:
+                # add default system settings if missing
+                print("No 'system_info', patching with defaults...")
+                system_info = self.default_sys_info
+
             if "after_pulse_param" in system_info.keys():
                 self.after_pulse_param = system_info["after_pulse_param"]
 
@@ -357,15 +377,9 @@ class CorrFuncTDC(CorrFuncData):
 
                 if roi_selection == "auto":
                     classes = 4
-                    import time  # TESTING
-
-                    tic = time.perf_counter()  # TESTING
                     thresh = skifilt.threshold_multiotsu(
                         skifilt.median(cnt), classes
                     )  # minor filtering of outliers
-                    print(
-                        f"threshold_multiotsu timing: {(time.perf_counter() - tic)*1e3:0.4f} ms"
-                    )  # TESTING
                     cnt_dig = np.digitize(cnt, bins=thresh)
                     plateau_lvl = np.median(cnt[cnt_dig == (classes - 1)])
                     std_plateau = stats.median_absolute_deviation(cnt[cnt_dig == (classes - 1)])
