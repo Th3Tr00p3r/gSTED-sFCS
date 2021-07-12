@@ -1,4 +1,4 @@
-"""Measurements Module."""
+"""Measurements."""
 
 import asyncio
 import datetime
@@ -297,10 +297,8 @@ class SFCSImageMeasurement(Measurement):
         self.scanning = True
 
     def build_filename(self) -> str:
-        datetime_str = datetime.datetime.now().strftime("%d%m%H%M%S")
-        return (
-            f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{datetime_str}"
-        )
+        time_str = datetime.datetime.now().strftime("%H%M%S")
+        return f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{time_str}"
 
     def setup_scan(self):
         """Doc."""

@@ -1,16 +1,10 @@
-#!/usr/bin/env python3
-"""
-Created on Fri Apr 23 12:11:40 2021
-
-@author: oleg
-"""
+"""Data organization and manipulation."""
 
 import glob
 import logging
 import os
 import pickle
 import re
-import sys
 
 import matplotlib.pyplot as plt
 import numba as nb
@@ -21,20 +15,12 @@ from skimage import morphology
 
 from data_analysis.fit_tools import curve_fit_lims
 from data_analysis.matlab_utilities import (
-    loadmat,  # loads matfiles with structures (scipy.io does not do structures)
-)
-from data_analysis.matlab_utilities import (
     legacy_matlab_naming_trans_dict,
+    loadmat,
     translate_dict_keys,
 )
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-
-data_analysis_parent_folder, temp = os.path.split(os.path.dirname(__file__))
-sys.path.append(data_analysis_parent_folder)
-
-sys.path.append(os.path.dirname(__file__))
-# sys.path.append('//Users/oleg/Documents/Python programming/FCS Python/')
 
 
 class CorrFuncData:
@@ -131,11 +117,6 @@ class CorrFuncData:
         y_scale="linear",
     ):
 
-        # [DynRange, IsDynRangeInput] = ParseInputs('Dynamic Range', [], varargin); % variable fit_range: give either a scalar or a vector of two
-        # DynRangeBetaParam = ParseInputs('Dynamic Range parameter', 2, varargin); %the parameter in beta on which to do dynamic range
-        # MaxIter = 3;
-        # lsqcurvefit_param = ParseInputs('lsqcurvefit_param', {}, varargin);
-
         if not fit_param_estimate:
             fit_param_estimate = [self.g0, 0.035, 30]
 
@@ -158,18 +139,6 @@ class CorrFuncData:
             x_scale=x_scale,
             y_scale=y_scale,
         )
-
-        # if ~isempty(DynRange), % do dynamic range iterations
-        #     for iter = 1:MaxIter;
-        #         fit_range(1) = FP.beta(DynRangeBetaParam)/DynRange(1);
-        #         fit_range(2) = FP.beta(DynRangeBetaParam)*DynRange(end);
-        #         J = find((X>fit_range(1)) & (X < fit_range(2)));
-        #         FP = nlinfitWeight2(X(J), Y(J), fit_func, FP.beta, errorY(J), param, lsqcurvefit_param{:});
-        #     end
-        # end
-
-        # FP.fit_range = fit_range;
-        # FP.constParam = param;
 
         # self.plot_correlation_function()
         if not hasattr(self, "fit_param"):
@@ -199,7 +168,7 @@ class CorrFuncTDC(CorrFuncData):
         self.data = {
             "version": 2,
             "line_end_adder": 1000,
-            "data": list(),
+            "data": [],
         }  # dictionary to hold the data
 
         self.tdc_calib = dict()  # dictionary for TDC calibration
@@ -230,39 +199,24 @@ class CorrFuncTDC(CorrFuncData):
         fix_shift=False,
         line_end_adder=1000,
         roi_selection="auto",
+        plot=True,
     ):
         """Doc."""
 
         print("Loading FPGA data:")
-        # fpathtmpl : template of complete path to data
 
         if not (fpathes := glob.glob(fpathtmpl)):
             logging.warning("No files found! Check file template!")
 
         # order filenames -
         # splits in folderpath and filename template
-        folderpath, fnametmpl = os.path.split(fpathtmpl)
+        _, fnametmpl = os.path.split(fpathtmpl)
         # splits filename template into the name template proper and its extension
-        fnametmpl, file_extension = os.path.splitext(fnametmpl)
-
-        # Nfile = list()
-        # for fpath in fpathes:
-        #     folderpath_fname = os.path.split(fpath) #splits in folderpath and filename
-        #     fname, file_extension = os.path.splitext(folderpath_fname[1]) # splits filename into the name proper and its extension
-        #     temp = re.split(fnametmpl, fname)
-        #     Nfile.append(int(temp[1])) #file number
-        # Nfile = np.array(Nfile)
-        # J = np.argsort(Nfile)
-        # fpathes = fpathes[J]
+        _, file_extension = os.path.splitext(fnametmpl)
         fpathes.sort(key=lambda fpath: re.split(f"(\\d+){file_extension}", fpath)[1])
-        #        fpathes.sort(key=lambda fpath: re.split(fpathtmpl[:-4], os.path.splitext(fpath)[0])[1])
 
         for fpath in fpathes:
             print(f"Loading '{fpath}'...", end=" ")
-            # splits in folderpath and filename
-            folderpath_fname = os.path.split(fpath)
-            # splits filename into the name proper and its extension
-            fname, file_extension = os.path.splitext(folderpath_fname[1])
 
             # test type of file and open accordingly
             if file_extension == ".pkl":
@@ -277,12 +231,11 @@ class CorrFuncTDC(CorrFuncData):
 
             try:
                 system_info = filedict["system_info"]
+                self.after_pulse_param = system_info["after_pulse_param"]
             except KeyError:
-                # add default system settings if missing
+                # use default system settings if missing either it or after_pulse_param
                 print("No 'system_info', patching with defaults...")
                 system_info = self.default_sys_info
-
-            if "after_pulse_param" in system_info.keys():
                 self.after_pulse_param = system_info["after_pulse_param"]
 
             # patching for new parameters
@@ -331,20 +284,9 @@ class CorrFuncTDC(CorrFuncData):
                     runtime, angular_scan_settings
                 )
 
-                # n_pix_tot = np.floor(runtime*angular_scan_settings['sample_freq']/self.laser_freq)
-                # n_pix = mod(n_pix_tot, angular_scan_settings['points_per_line_total']) #to which pixel photon belongs
-                # line_num_tot = np.floor(n_pix_tot/angular_scan_settings['points_per_line_total'])
-                # line_num = np.mod(line_num_tot, angular_scan_settings['n_lines']+1) # one more line is for return to starting positon
-                # cnt = np.empty((angular_scan_settings['n_lines']+1, angular_scan_settings['points_per_line_total']), dtype = 'int')
-                # for j in range(angular_scan_settings['n_lines']+1):
-                #     belong_to_line = (line_num.astype('int') == j)
-                #     cnt_line, bins = np.histogram(n_pix[belong_to_line].astype('int'),
-                #                         bins = np.arange(-0.5, angular_scan_settings['points_per_line_total']))
-                #     cnt[j, :] = cnt_line
-
                 if fix_shift:
-                    score = list()
-                    pix_shifts = list()
+                    score = []
+                    pix_shifts = []
                     min_pix_shift = -np.round(cnt.shape[1] / 2)
                     max_pix_shift = min_pix_shift + cnt.shape[1] + 1
                     for pix_shift in np.arange(min_pix_shift, max_pix_shift).astype(int):
@@ -388,22 +330,10 @@ class CorrFuncTDC(CorrFuncData):
                     bw = ndimage.binary_fill_holes(bw)
                     disk_open = morphology.selem.disk(radius=3)
                     bw = morphology.opening(bw, selem=disk_open)
+                else:
+                    raise RuntimeError(f"roi_selection={roi_selection} is not implemented")
 
                 print("Done.")
-
-                # elif  roi_selection == 'manual'):
-                #      subplot(1, 1, 1)
-                #     imagesc(cnt)
-                #     title('Use polygon tool to make selection', 'FontSize', 20)
-                #     figure(gcf)
-
-                #     if exist('roi'),
-                #         hPoly = impoly(gca, roi);
-                #     else
-                #         hPoly = impoly;
-                #     end;
-                #     bw = hPoly.createMask;
-                #     roi = hPoly.getPosition;
 
                 bw[1::2, :] = np.flip(bw[1::2, :], 1)
                 # cut edges
@@ -456,6 +386,8 @@ class CorrFuncTDC(CorrFuncData):
                 # repeat first point to close the polygon
                 roi["row"].append(roi["row"][0])
                 roi["col"].append(roi["col"][0])
+                # convert lists to numpy arrays
+                roi = {key: np.array(val) for key, val in roi.items()}
 
                 line_start_lables = np.array(line_start_lables)
                 line_stop_labels = np.array(line_stop_labels)
@@ -504,31 +436,29 @@ class CorrFuncTDC(CorrFuncData):
                 )
                 p.fine = fine[j_sort]
                 p.runtime = runtime
+                # TODO: add line starts/stops to photon runtimes (Oleg)
 
-                # add line starts/stops to photon runtimes
+                if plot:
+                    # plotting of scan image and ROI
+                    plt.subplot(1, 1, 1)
+                    plt.imshow(cnt)
+                    p.image = cnt
+                    _, fname = os.path.split(fpath)
+                    plt.title(fname)
+                    # plot the ROI
+                    plt.plot(roi["col"], roi["row"], color="white")
+                    plt.show()
+                    plt.figure()
 
-                self.angular_scan_settings = angular_scan_settings
-                plt.subplot(1, 1, 1)
-                plt.imshow(cnt)
-                p.image = cnt
-                folderpath_fname = os.path.split(fpath)  # splits in folderpath and filename
-                plt.title(folderpath_fname[1])
-                # temporarily reverse rows again
+                # reverse rows again
                 bw[1::2, :] = np.flip(bw[1::2, :], 1)
                 p.bw_mask = bw
-                # roi1 = segmentation.find_boundaries(bw)
-                roi1 = {"row": np.array(roi["row"]), "col": np.array(roi["col"])}
-                plt.plot(roi1["col"], roi1["row"], color="white")
-                # now back
-                bw[1::2, :] = np.flip(bw[1::2, :], 1)
-                roi2 = {"row": np.array(roi["row"]), "col": np.array(roi["col"])}
-                plt.plot(roi2["col"], roi2["row"], color="white")
 
                 # get image line correlation to subtract trends
                 img = p.image * p.bw_mask
                 # lineNos = find(sum(p.bw_mask, 2));
-                p.image_line_corr = list()
-                for j in range(roi1["row"].min(), roi1["row"].max() + 1):
+                p.image_line_corr = []
+                for j in range(roi["row"].min(), roi["row"].max() + 1):
                     prof = img[j]
                     prof = prof[p.bw_mask[j] > 0]
                     c, lags = do_x_corr(prof, prof)
@@ -541,14 +471,6 @@ class CorrFuncTDC(CorrFuncData):
                         }
                     )  # c/mean(prof).^2-1;
 
-                plt.show()
-                plt.figure()
-
-            # for key in self.data:
-            #     if not hasattr(p, key):
-            #         setattr(p, key, self.data[key])
-
-            #                p = orderfields(p, obj.data);
             p.fname = fname
             p.fpath = fpath
             self.data["data"].append(p)
@@ -595,12 +517,6 @@ class CorrFuncTDC(CorrFuncData):
     ):
         """Correlates Data for static (regular) FCS"""
 
-        # if self.is_data_on_disk:
-        #     self.DoLoadDataFromDisk
-        #     DumpDataToDiskAfter = True
-        # else:
-        #     DumpDataToDiskAfter = False
-
         cf = SoftwareCorrelator()
 
         if run_duration < 0:  # auto determination of run duration
@@ -620,9 +536,9 @@ class CorrFuncTDC(CorrFuncData):
         self.min_duration_frac = min_time_frac
         self.duration = np.array([])
         self.lag = np.array([])
-        self.corrfunc = list()
-        self.weights = list()
-        self.cf_cr = list()
+        self.corrfunc = []
+        self.weights = []
+        self.cf_cr = []
         self.countrate = np.array([])
 
         self.total_duration_skipped = 0
@@ -704,14 +620,6 @@ class CorrFuncTDC(CorrFuncData):
         self.total_duration = self.duration.sum()
         if verbose:
             print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
-
-        # if ~isempty(obj.v_um_ms)
-        #     obj.DoSetVelocity(obj.v_um_ms);
-        # end
-
-        # if DumpDataToDiskAfter
-        #     obj.DoDumpDataToDisk,
-        # end
 
 
 def do_x_corr(a, b):

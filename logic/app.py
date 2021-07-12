@@ -50,7 +50,9 @@ class App:
         print("Initializing GUI...", end=" ")
         self.gui = SimpleNamespace()
         self.gui.main = gui.gui.MainWin(self)
-        self.gui.main.imp.load(DEFAULT_LOADOUT_FILE_PATH)
+        self.gui.main.imp.load(
+            DEFAULT_LOADOUT_FILE_PATH
+        )  # self.gui.main.isDataCalibration.isChecked() TESTESTEST
         self.gui.settings = gui.gui.SettWin(self)
         self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button

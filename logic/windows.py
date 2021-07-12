@@ -702,16 +702,16 @@ class MainWin:
     def populate_data_templates_from_day(self, day: str) -> None:
         """Doc."""
 
-        def pkl_and_mat_templates(dir_path: str) -> Iterable:
+        def pkl_and_mat_templates(dir_path: str, is_solution_type: bool) -> Iterable:
             """Doc."""
 
             pkl_template_set = {
-                re.sub("[0-9]+.pkl", "*.pkl", item)
+                (re.sub("[0-9]+.pkl", "*.pkl", item) if is_solution_type else item)
                 for item in os.listdir(dir_path)
                 if item.endswith(".pkl")
             }
             mat_template_set = {
-                re.sub("[0-9]+.mat", "*.mat", item)
+                (re.sub("[0-9]+.mat", "*.mat", item) if is_solution_type else item)
                 for item in os.listdir(dir_path)
                 if item.endswith(".mat")
             }
@@ -741,7 +741,7 @@ class MainWin:
             self._app.analysis_dir_path = os.path.join(
                 save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}"
             )
-            templates = pkl_and_mat_templates(self._app.analysis_dir_path)
+            templates = pkl_and_mat_templates(self._app.analysis_dir_path, is_solution_type)
             templates_combobox.addItems(templates)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
@@ -765,7 +765,6 @@ class MainWin:
         current_template = data_import_wdgts.data_templates.get()
         #        is_calibration = data_import_wdgts.is_calibration.get()
 
-        # TODO: pause-resume tasks as context manager?
         logging.info("Importing Data. Pausing 'ai' and 'ci' tasks")
         self._app.devices.scanners.pause_tasks("ai")
         self._app.devices.photon_detector.pause_tasks("ci")

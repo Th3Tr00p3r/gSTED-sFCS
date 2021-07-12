@@ -25,7 +25,7 @@ def build_error_dict(exc: Exception) -> str:
     # show the first 'n' existing levels of traceback for module and line number
     exc_loc = []
     while tb is not None:
-        filename = os.path.split(tb.tb_frame.f_code.co_filename)[1]
+        _, filename = os.path.split(tb.tb_frame.f_code.co_filename)
         lineno = tb.tb_lineno
         exc_loc.append((filename, lineno))
         tb = tb.tb_next
