@@ -45,14 +45,19 @@ class Measurement:
         self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2V_const") for ax in "xyz")
         self.sys_info = {
             "setup": "STED with galvos",
-            "after_pulse_param": [
-                -0.004057535648770,
-                -0.107704707102406,
-                -1.069455813887638,
-                -4.827204349438697,
-                -10.762333427569356,
-                -7.426041455313178,
-            ],
+            "after_pulse_param": (
+                "multi_exponent_fit",
+                np.array(
+                    [
+                        -0.004057535648770,
+                        -0.107704707102406,
+                        -1.069455813887638,
+                        -4.827204349438697,
+                        -10.762333427569356,
+                        -7.426041455313178,
+                    ]
+                ),
+            ),
             "ai_scaling_xyz": [1.243, 1.239, 1],  # TODO: check if matches today's ratio
             "xyz_um_to_v": self.um_v_ratio,
         }

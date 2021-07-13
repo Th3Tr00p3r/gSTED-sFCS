@@ -4817,7 +4817,7 @@ Pattern:</string>
                    <widget class="QWidget" name="solution">
                     <layout class="QGridLayout" name="gridLayout_31">
                      <item row="0" column="0">
-                      <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="100,1,1,100">
+                      <layout class="QHBoxLayout" name="horizontalLayout_15">
                        <property name="spacing">
                         <number>0</number>
                        </property>
@@ -4835,25 +4835,29 @@ Pattern:</string>
                         </spacer>
                        </item>
                        <item>
-                        <widget class="QPushButton" name="importSolData">
-                         <property name="minimumSize">
-                          <size>
-                           <width>83</width>
-                           <height>34</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>Import Solution
+                        <layout class="QVBoxLayout" name="verticalLayout_51">
+                         <item>
+                          <widget class="QPushButton" name="importSolData">
+                           <property name="minimumSize">
+                            <size>
+                             <width>100</width>
+                             <height>50</height>
+                            </size>
+                           </property>
+                           <property name="text">
+                            <string>Import Solution
 Measurement</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QCheckBox" name="isDataCalibration">
-                         <property name="text">
-                          <string>As Calib.</string>
-                         </property>
-                        </widget>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QCheckBox" name="isDataCalibration">
+                           <property name="text">
+                            <string>As Calibration</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
                        <item>
                         <spacer name="horizontalSpacer_16">
