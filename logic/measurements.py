@@ -47,14 +47,17 @@ class Measurement:
             "setup": "STED with galvos",
             "after_pulse_param": (
                 "multi_exponent_fit",
-                np.array(
+                1e5
+                * np.array(
                     [
-                        -0.004057535648770,
-                        -0.107704707102406,
-                        -1.069455813887638,
-                        -4.827204349438697,
-                        -10.762333427569356,
-                        -7.426041455313178,
+                        0.183161051158731,
+                        0.021980256326163,
+                        6.882763042785681,
+                        0.154790280034295,
+                        0.026417532300439,
+                        0.004282749744374,
+                        0.001418363840077,
+                        0.000221275818533,
                     ]
                 ),
             ),
@@ -145,11 +148,11 @@ class Measurement:
         """
         # TODO: does not handle overnight measurements during which the date changes (who cares)
 
-        today_date_path = datetime.datetime.now().strftime("%d_%m_%y/")
-        today_dir = self.save_path + today_date_path
+        today_date_path = datetime.datetime.now().strftime("%d_%m_%Y")
+        today_dir = os.path.join(self.save_path, today_date_path)
         os.makedirs(today_dir, exist_ok=True)
 
-        file_path = today_dir + file_name
+        file_path = os.path.join(today_dir, file_name)
 
         if self.save_frmt == "MATLAB":
             # .mat
@@ -811,9 +814,7 @@ class SFCSSolutionMeasurement(Measurement):
             }
             if self.scan_params.pattern == "circle":
                 full_data["circle_speed_um_sec"] = self.scan_params.speed_um_s
-                full_data["angular_scan_settings"] = []
             else:
-                full_data["circle_speed_um_sec"] = 0
                 full_data["angular_scan_settings"] = prep_ang_scan_sett_dict()
 
             return {"full_data": full_data, "system_info": self.sys_info}
@@ -863,10 +864,6 @@ class SFCSSolutionMeasurement(Measurement):
             self.scanners_dvc.init_ai_buffer()
             self.counter_dvc.init_ci_buffer()
 
-            if self.scanning:
-                self.init_scan_tasks("CONTINUOUS")
-                self.scanners_dvc.start_tasks("ao")
-
             # collect initial ai/CI to avoid possible overflow
             self.counter_dvc.fill_ci_buffer()
             self.scanners_dvc.fill_ai_buffer()
@@ -885,6 +882,11 @@ class SFCSSolutionMeasurement(Measurement):
             for file_num in range(1, num_files + 1):
 
                 if self.is_running:
+
+                    if self.scanning:
+                        # re-start scan for each file
+                        self.init_scan_tasks("CONTINUOUS")
+                        self.scanners_dvc.start_tasks("ao")
 
                     self.file_num_wdgt.set(file_num)
 
