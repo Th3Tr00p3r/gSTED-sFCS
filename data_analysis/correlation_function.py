@@ -153,14 +153,22 @@ class CorrFuncTDC(CorrFuncData):
 
     default_sys_info = {
         "setup": "STED with galvos",
-        "after_pulse_param": [
-            -0.004057535648770,
-            -0.107704707102406,
-            -1.069455813887638,
-            -4.827204349438697,
-            -10.762333427569356,
-            -7.426041455313178,
-        ],
+        "after_pulse_param": (
+            "multi_exponent_fit",
+            1e5
+            * np.array(
+                [
+                    0.183161051158731,
+                    0.021980256326163,
+                    6.882763042785681,
+                    0.154790280034295,
+                    0.026417532300439,
+                    0.004282749744374,
+                    0.001418363840077,
+                    0.000221275818533,
+                ]
+            ),
+        ),
         "ai_scaling_xyz": [1.243, 1.239, 1],
         "xyz_um_to_v": (70.81, 82.74, 10.0),
     }
@@ -177,6 +185,22 @@ class CorrFuncTDC(CorrFuncData):
         self.is_data_on_disk = False  # saving data on disk to free RAM
         self.data_filename_on_disk = ""
         self.data_name_on_disk = ""
+        self.after_pulse_param = (
+            "multi_exponent_fit",
+            1e5
+            * np.array(
+                [
+                    0.183161051158731,
+                    0.021980256326163,
+                    6.882763042785681,
+                    0.154790280034295,
+                    0.026417532300439,
+                    0.004282749744374,
+                    0.001418363840077,
+                    0.000221275818533,
+                ]
+            ),
+        )
 
     def read_fpga_data(
         self,
@@ -257,22 +281,31 @@ class CorrFuncTDC(CorrFuncData):
             self.laser_freq = full_data["laser_freq"] * 1e6
             self.fpga_freq = full_data["fpga_freq"] * 1e6
 
-            if "circle_speed_um_sec" in full_data.keys():
+            if full_data.get("circle_speed_um_sec"):
+                # circular scan
                 self.v_um_ms = full_data["circle_speed_um_sec"] / 1000  # to um/ms
 
-            if "angular_scan_settings" in full_data.keys():  # angular scan
+                logging.warning("Circular scan analysis not yet implemented...")
+                return
+
+            elif full_data.get("angular_scan_settings"):
+                # angular scan
                 angular_scan_settings = full_data["angular_scan_settings"]
                 angular_scan_settings["linear_part"] = np.array(
                     angular_scan_settings["linear_part"]
                 )
                 p.line_end_adder = line_end_adder
                 self.v_um_ms = angular_scan_settings["actual_speed"] / 1000  # to um/ms
+
+                print("Converting angular scan to image...", end=" ")
+
                 runtime = p.runtime
                 cnt, n_pix_tot, n_pix, line_num = self.convert_angular_scan_to_image(
                     runtime, angular_scan_settings
                 )
 
                 if fix_shift:
+                    print("Fixing line shift...", end=" ")
                     score = []
                     pix_shifts = []
                     min_pix_shift = -np.round(cnt.shape[1] / 2)
@@ -285,6 +318,8 @@ class CorrFuncTDC(CorrFuncData):
                     score = np.array(score)
                     pix_shifts = np.array(pix_shifts)
                     pix_shift = pix_shifts[score.argmin()]
+
+                    print(f"pix_shift: {pix_shift}")  # TESTESTEST
 
                     runtime = (
                         p.runtime
@@ -301,7 +336,11 @@ class CorrFuncTDC(CorrFuncData):
                     pix_shift = 0
 
                 # invert every second line
-                cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
+                cnt[1::2, :] = np.flip(
+                    cnt[1::2, :], 1
+                )  # TODO: is this needed for new measurements? leave option for old?...
+
+                print("Done.")
 
                 print("ROI selection...", end=" ")
 
@@ -453,6 +492,10 @@ class CorrFuncTDC(CorrFuncData):
                     img, p.bw_mask, roi, angular_scan_settings["sample_freq"]
                 )
 
+            else:
+                logging.warning("No scan settings detected...")
+                return
+
             p.fname = fname
             p.fpath = fpath
             self.data["data"].append(p)
@@ -530,7 +573,7 @@ class CorrFuncTDC(CorrFuncData):
             if verbose:
                 print(f"Correlating {p.fname}...")
             # find additional outliers
-            time_stamps = np.diff(p.runtime)
+            time_stamps = np.diff(p.runtime).astype(np.int32)
             # for exponential distribution MEDIAN and MAD are the same, but for
             # biexponential MAD seems more sensitive
             mu = np.maximum(
