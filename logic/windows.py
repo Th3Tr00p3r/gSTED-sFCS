@@ -715,7 +715,7 @@ class MainWin:
                 for item in os.listdir(dir_path)
                 if item.endswith(".mat")
             }
-            return pkl_template_set.union(mat_template_set)
+            return sorted(pkl_template_set.union(mat_template_set))
 
         if not day:
             # ignore if combobox was just cleared

@@ -61,7 +61,7 @@ class PhotonData:
             self.coarse = self.coarse - twobit1 * 64
             self.coarse2 = self.coarse - np.mod(self.coarse, 4) + twobit1
 
-        self.runtime = counter.astype(int)
+        self.runtime = counter.astype(np.uint64)
         #       self.time_stamps = time_stamps
         self.fname = ""
         self.fine = fine

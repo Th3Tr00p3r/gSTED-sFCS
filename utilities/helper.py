@@ -52,6 +52,16 @@ def timer(func) -> Callable:
 # print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
 
 
+def force_aspect(ax, aspect=1) -> None:
+    """
+    See accepted answer here:
+    https://stackoverflow.com/questions/7965743/how-can-i-set-the-aspect-ratio-in-matplotlib
+    """
+    im = ax.get_images()
+    extent = im[0].get_extent()
+    ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
+
+
 def paths_to_icons(paths_dict) -> dict:
     """Doc."""
 
