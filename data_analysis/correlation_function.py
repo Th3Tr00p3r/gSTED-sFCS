@@ -21,6 +21,7 @@ from data_analysis.matlab_utilities import (
 )
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
+from utilities.helper import force_aspect
 
 
 class CorrFuncData:
@@ -176,22 +177,6 @@ class CorrFuncTDC(CorrFuncData):
         self.is_data_on_disk = False  # saving data on disk to free RAM
         self.data_filename_on_disk = ""
         self.data_name_on_disk = ""
-        self.after_pulse_param = (
-            "multi_exponent_fit",
-            1e5
-            * np.array(
-                [
-                    0.183161051158731,
-                    0.021980256326163,
-                    6.882763042785681,
-                    0.154790280034295,
-                    0.026417532300439,
-                    0.004282749744374,
-                    0.001418363840077,
-                    0.000221275818533,
-                ]
-            ),
-        )
 
     def read_fpga_data(
         self,
@@ -213,10 +198,13 @@ class CorrFuncTDC(CorrFuncData):
         _, fnametmpl = os.path.split(fpathtmpl)
         # splits filename template into the name template proper and its extension
         _, file_extension = os.path.splitext(fnametmpl)
-        fpathes.sort(key=lambda fpath: re.split(f"(\\d+){file_extension}", fpath)[1])
+        fpathes.sort(key=lambda fpath: int(re.split(f"(\\d+){file_extension}", fpath)[1]))
 
         for fpath in fpathes:
             print(f"Loading '{fpath}'...", end=" ")
+
+            # get filename (for later)
+            _, fname = os.path.split(fpath)
 
             # test type of file and open accordingly
             if file_extension == ".pkl":
@@ -338,7 +326,7 @@ class CorrFuncTDC(CorrFuncData):
                 bw[1::2, :] = np.flip(bw[1::2, :], 1)
                 # cut edges
                 bw_temp = np.zeros(bw.shape)
-                bw[:, angular_scan_settings["linear_part"].astype("int")] = bw[
+                bw_temp[:, angular_scan_settings["linear_part"].astype("int")] = bw[
                     :, angular_scan_settings["linear_part"].astype("int")
                 ]
                 bw = bw_temp
@@ -439,17 +427,19 @@ class CorrFuncTDC(CorrFuncData):
                 p.runtime = runtime
                 # TODO: add line starts/stops to photon runtimes (Oleg)
 
+                p.image = cnt
+
+                # plotting of scan image and ROI
                 if plot:
-                    # plotting of scan image and ROI
-                    plt.subplot(1, 1, 1)
-                    plt.imshow(cnt)
-                    p.image = cnt
-                    _, fname = os.path.split(fpath)
-                    plt.title(fname)
-                    # plot the ROI
-                    plt.plot(roi["col"], roi["row"], color="white")
-                    plt.show()
-                    plt.figure()
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111)
+                    ax.set_title(fname)
+                    ax.set_xlabel("Point Number")
+                    ax.set_ylabel("Line Number")
+                    ax.imshow(cnt)
+                    ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
+                    force_aspect(ax, aspect=1)
+                    fig.show()
 
                 # reverse rows again
                 bw[1::2, :] = np.flip(bw[1::2, :], 1)
@@ -458,19 +448,10 @@ class CorrFuncTDC(CorrFuncData):
                 # get image line correlation to subtract trends
                 img = p.image * p.bw_mask
                 # lineNos = find(sum(p.bw_mask, 2));
-                p.image_line_corr = []
-                for j in range(roi["row"].min(), roi["row"].max() + 1):
-                    prof = img[j]
-                    prof = prof[p.bw_mask[j] > 0]
-                    c, lags = do_x_corr(prof, prof)
-                    c = c / prof.mean() ** 2 - 1
-                    c[0] = c[0] - 1 / prof.mean()  # subtracting shot noise, small stuff really
-                    p.image_line_corr.append(
-                        {
-                            "lag": lags * 1000 / angular_scan_settings["sample_freq"],  # in ms
-                            "corrfunc": c,
-                        }
-                    )  # c/mean(prof).^2-1;
+
+                p.image_line_corr = line_correlations(
+                    img, p.bw_mask, roi, angular_scan_settings["sample_freq"]
+                )
 
             p.fname = fname
             p.fpath = fpath
@@ -623,7 +604,29 @@ class CorrFuncTDC(CorrFuncData):
             print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
 
 
-def do_x_corr(a, b):
+def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
+    """Returns a list line auto-correlations of the lines of an image"""
+
+    image_line_corr = []
+    for j in range(roi["row"].min(), roi["row"].max() + 1):
+        prof = image[j]
+        prof = prof[bw_mask[j] > 0]
+        try:
+            c, lags = x_corr(prof, prof)
+        except ValueError:
+            logging.warning(f"Auto correlation of line #{j} has failed. Skipping.")
+        else:
+            c = c / prof.mean() ** 2 - 1
+            c[0] = c[0] - 1 / prof.mean()  # subtracting shot noise, small stuff really
+            image_line_corr.append(
+                {
+                    "lag": lags * 1000 / sampling_freq,  # in ms
+                    "corrfunc": c,
+                }
+            )  # c/mean(prof).^2-1;
+
+
+def x_corr(a, b):
     """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
     if a.size != b.size:
