@@ -1,7 +1,12 @@
-solScanFileTemplate,
 imgScanFileTemplate,imgScan
+solScanFileTemplate,
 spinBox_5,0
 scanImgFileNum,0
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -12,22 +17,17 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 depPow,130
 depCurr,1500
 stageSteps,250
 doubleSpinBox,0.0
-solScanMaxFileSize,20.0
-solLinFrac,0.9
-solScanTotalDur,20.0
 imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
+solScanMaxFileSize,20.0
+solLinFrac,0.9
+solScanDur,10.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -38,18 +38,18 @@ dataYear,2021
 dataTemplate,sol_angular_exc_*.pkl
 importedDataTemplates,
 solAnalysis,Lifetime
-solMeasPreset,Standard Alignment
-solScanType,static
-solScanDurUnits,seconds
 imgScanType,YZ
 imgScanPreset,Locate Plane - YZ Coarse
 imgShowMethod,Forward scan - actual counts per pixel
+solMeasPreset,Standard Angular
+solScanType,angular
+solScanDurUnits,minutes
 avgInterval,200
 isDataCalibration,0
 showRowAcfs,1
 scanImgMask,1
-repeatSolMeas,1
 autoCrosshair,1
+repeatSolMeas,0
 imageDataImport,0
 solDataImport,1
 radioButton_3,0

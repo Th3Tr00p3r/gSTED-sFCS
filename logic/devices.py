@@ -514,8 +514,12 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     self.ci_buffer[-1] - self.ci_buffer[-(self.num_reads_in_interval + 1)]
                 ) / interval
             except RuntimeWarning:  # TESTESTEST
-                print("CIRCULAR BUFFER ISSUE!")  # TESTESTEST
-            avg_cnt_rate = avg_cnt_rate / 1000  # Hz -> KHz
+                print(
+                    f"self.ci_buffer[-1]: {self.ci_buffer[-1]}, self.ci_buffer[-({self.num_reads_in_interval} + 1)]: {self.ci_buffer[-(self.num_reads_in_interval + 1)]}"
+                )  # TESTESTEST
+                pass
+            else:  # TESTESTEST
+                avg_cnt_rate = avg_cnt_rate / 1000  # Hz -> KHz
         else:
             avg_cnt_rate = 0
 
