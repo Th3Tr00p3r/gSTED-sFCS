@@ -21,8 +21,7 @@ depPow,130
 depCurr,1500
 stageSteps,250
 doubleSpinBox,0.0
-solScanMaxFileSize,15.0
-solScanCalDur,3.0
+solScanMaxFileSize,20.0
 solLinFrac,0.9
 solScanTotalDur,20.0
 imgScanDim1,15.0
@@ -33,10 +32,10 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,0.0
-dataDay,7
+dataDay,14
 dataMonth,7
 dataYear,2021
-dataTemplate,sol_static_dep_*.pkl
+dataTemplate,sol_angular_exc_*.pkl
 importedDataTemplates,
 solAnalysis,Lifetime
 solMeasPreset,Standard Alignment

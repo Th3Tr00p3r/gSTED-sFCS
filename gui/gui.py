@@ -223,7 +223,7 @@ class MainWin(QMainWindow):
         self.imp.plane_choice_changed(val)
 
     @pyqtSlot(float)
-    def on_solScanTotalDur_valueChanged(self, float) -> None:
+    def on_solScanDur_valueChanged(self, float) -> None:
         """Doc."""
 
         self.imp.change_meas_duration(float)

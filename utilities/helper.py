@@ -265,7 +265,7 @@ def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
         ]
 
     # return unique date parts, sorted in descending order
-    return sorted(set(date_item_list), reverse=True)
+    return sorted(set(date_item_list), key=lambda item: int(item), reverse=True)
 
 
 class QtWidgetAccess:

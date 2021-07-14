@@ -77,8 +77,8 @@ class Ftd2xx:
 class NIDAQmx:
     """Doc."""
 
-    MIN_OUTPUT_RATE_Hz = 1000
-    CONT_READ_BFFR_SZ = 10000
+    MIN_OUTPUT_RATE_Hz = int(1e3)
+    CONT_READ_BFFR_SZ = int(1e5)
     AO_TIMEOUT = 0.1
 
     def __init__(self, param_dict, task_types, **kwargs):
