@@ -806,6 +806,8 @@ class SFCSSolutionMeasurement(Measurement):
                 self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
                 # make the circular ai buffer clip as long as the ao buffer
                 self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
+            else:
+                self.scanners_dvc.init_ai_buffer()
 
             self.counter_dvc.init_ci_buffer()
             self.data_dvc.init_data()
@@ -826,10 +828,14 @@ class SFCSSolutionMeasurement(Measurement):
         try:  # TESTESTEST`
             while self.is_running and self.time_passed_s < self.duration_s:
 
+                self.counter_dvc.init_ci_buffer()
                 if self.scanning:
                     # re-start scan for each file
+                    self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
                     self.init_scan_tasks("CONTINUOUS")
                     self.scanners_dvc.start_tasks("ao")
+                else:
+                    self.scanners_dvc.init_ai_buffer()
 
                 self.file_num_wdgt.set(file_num)
 
