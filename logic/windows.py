@@ -286,8 +286,6 @@ class MainWin:
                             "prog_bar_wdgt",
                             "start_time_wdgt",
                             "end_time_wdgt",
-                            "calibrated_save_intrvl_mins_wdgt",
-                            "total_files_wdgt",
                             "file_num_wdgt",
                             "g0_wdgt",
                             "tau_wdgt",
@@ -304,8 +302,7 @@ class MainWin:
                 helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")("Stop \nScan")
 
                 self._gui.solScanMaxFileSize.setEnabled(False)
-                self._gui.solScanCalDur.setEnabled(False)
-                self._gui.solScanTotalDur.setEnabled(self._gui.repeatSolMeas.isChecked())
+                self._gui.solScanDur.setEnabled(self._gui.repeatSolMeas.isChecked())
                 self._gui.solScanDurUnits.setEnabled(False)
                 self._gui.solScanFileTemplate.setEnabled(False)
 
@@ -353,8 +350,7 @@ class MainWin:
                 self._gui.imp.go_to_origin("XY")
                 # TODO: add all of the following to a QButtonsGroup and en/disable them together (see gui.py)
                 self._gui.solScanMaxFileSize.setEnabled(True)
-                self._gui.solScanCalDur.setEnabled(True)
-                self._gui.solScanTotalDur.setEnabled(True)
+                self._gui.solScanDur.setEnabled(True)
                 self._gui.solScanDurUnits.setEnabled(True)
                 self._gui.solScanFileTemplate.setEnabled(True)
 
@@ -581,8 +577,7 @@ class MainWin:
         """Allow duration change during run only for alignment measurements"""
 
         if self._app.meas.type == "SFCSSolution" and self._app.meas.repeat is True:
-            self._app.meas.total_duration = new_dur
-            self._app.meas.duration = new_dur
+            self._app.meas.duration_s = new_dur * self._app.meas.duration_multiplier
 
     def fill_sol_meas_preset_gui(self, curr_text: str) -> None:
         """Doc."""
@@ -775,7 +770,9 @@ class MainWin:
         )
 
         logging.info("Data import finished. Resuming 'ai' and 'ci' tasks")
+        self._app.devices.scanners.init_ai_buffer()
         self._app.devices.scanners.start_tasks("ai")
+        self._app.devices.photon_detector.init_ci_buffer()
         self._app.devices.photon_detector.start_tasks("ci")
 
         print("HEY")  # TESTESTEST

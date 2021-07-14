@@ -319,8 +319,6 @@ class CorrFuncTDC(CorrFuncData):
                     pix_shifts = np.array(pix_shifts)
                     pix_shift = pix_shifts[score.argmin()]
 
-                    print(f"pix_shift: {pix_shift}")  # TESTESTEST
-
                     runtime = (
                         p.runtime
                         + pix_shift * self.laser_freq / angular_scan_settings["sample_freq"]
@@ -332,13 +330,14 @@ class CorrFuncTDC(CorrFuncData):
                         line_num,
                     ) = self.convert_angular_scan_to_image(runtime, angular_scan_settings)
 
+                    print(f"Shifted counts by {pix_shift} pixels. Done.")
+
                 else:
                     pix_shift = 0
 
+                # TODO: is this needed for new measurements? leave option for old?...
                 # invert every second line
-                cnt[1::2, :] = np.flip(
-                    cnt[1::2, :], 1
-                )  # TODO: is this needed for new measurements? leave option for old?...
+                cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
 
                 print("Done.")
 

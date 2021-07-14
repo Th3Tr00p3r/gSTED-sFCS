@@ -49,14 +49,16 @@ class Timeout:
     async def timeout(self) -> None:
         """awaits all individual async loops, each with its own repeat time."""
 
-        await asyncio.gather(
-            self._updt_CI_and_AI(),
-            self._update_dep(),
-            self._updt_application_log(),
-            self._update_gui(),
-            # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
-        )
-
+        try:
+            await asyncio.gather(
+                self._updt_CI_and_AI(),
+                self._update_dep(),
+                self._updt_application_log(),
+                self._update_gui(),
+                # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
+            )
+        except Exception as exc:
+            err_hndlr(exc, locals(), sys._getframe())
         logging.debug("timeout function exited")
 
     async def _updt_application_log(self) -> None:
@@ -205,20 +207,18 @@ class Timeout:
 
             try:
                 if meas.type == "SFCSSolution":
-                    if not self._app.meas.cal:
-                        progress = (
-                            (meas.total_time_passed_s + meas.time_passed_s)
-                            / (meas.total_duration * meas.duration_multiplier)
-                            * meas.prog_bar_wdgt.obj.maximum()
-                        )
-                    else:
-                        progress = 0
+                    progress = (
+                        meas.time_passed_s / meas.duration_s * meas.prog_bar_wdgt.obj.maximum()
+                    )
                 elif meas.type == "SFCSImage":
                     progress = (
                         meas.time_passed_s
                         / meas.est_total_duration_s
                         * meas.prog_bar_wdgt.obj.maximum()
                     )
+                else:
+                    progress = 0
+                    print("THIS SHOULD NOT BE REACHED")
                 meas.prog_bar_wdgt.set(progress)
 
             except AttributeError:

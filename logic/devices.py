@@ -211,7 +211,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 },
             )
-            self.init_ai_buffer(self.AI_BUFFER_SIZE)
+            self.init_ai_buffer()
             self.start_tasks("ai")
         except IOError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
@@ -337,7 +337,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         except Exception as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 
-    def init_ai_buffer(self, size: int = None) -> None:
+    def init_ai_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
 
         try:
@@ -345,11 +345,15 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         except (AttributeError, IndexError):
             # case ai_buffer not created yet, or just created and not populated yet
             pass
-        finally:
-            if size is not None:
-                self.ai_buffer = deque([], maxlen=size)
-            else:
-                self.ai_buffer = []
+
+        if type == "circular":
+            if size is None:
+                size = self.AI_BUFFER_SIZE
+            self.ai_buffer = deque([], maxlen=size)
+        elif type == "inf":
+            self.ai_buffer = []
+        else:
+            raise ValueError("type parameter must be either 'standard' or 'inf'.")
 
     def fill_ai_buffer(
         self, task_name: str = "Continuous AI", n_samples=ni_consts.READ_ALL_AVAILABLE
@@ -460,7 +464,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     "samps_per_chan": self.CONT_READ_BFFR_SZ,
                 },
             )
-            self.init_ci_buffer(self.CI_BUFFER_SIZE)
+            self.init_ci_buffer()
             self.start_tasks("ci")
         except DaqError as exc:
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
@@ -505,22 +509,29 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         start_idx = len(self.ci_buffer) - self.num_reads_in_interval
 
         if start_idx > 0:
-            avg_cnt_rate = (
-                self.ci_buffer[-1] - self.ci_buffer[-(self.num_reads_in_interval + 1)]
-            ) / interval
+            try:  # TESTESTEST
+                avg_cnt_rate = (
+                    self.ci_buffer[-1] - self.ci_buffer[-(self.num_reads_in_interval + 1)]
+                ) / interval
+            except RuntimeWarning:  # TESTESTEST
+                print("CIRCULAR BUFFER ISSUE!")  # TESTESTEST
             avg_cnt_rate = avg_cnt_rate / 1000  # Hz -> KHz
         else:
             avg_cnt_rate = 0
 
         self.avg_cnt_rate = avg_cnt_rate
 
-    def init_ci_buffer(self, size: int = None) -> None:
+    def init_ci_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
 
-        if size is not None:
+        if type == "circular":
+            if size is None:
+                size = self.CI_BUFFER_SIZE
             self.ci_buffer = deque([], maxlen=size)
-        else:
+        elif type == "inf":
             self.ci_buffer = []
+        else:
+            raise ValueError("type parameter must be either 'standard' or 'inf'.")
 
 
 class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
