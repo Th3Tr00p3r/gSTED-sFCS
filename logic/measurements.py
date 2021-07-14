@@ -95,32 +95,28 @@ class Measurement:
         self.is_running = False
         await self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
         self.prog_bar_wdgt.set(0)
+        self._app.gui.main.imp.populate_all_data_dates()  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
         self._app.meas.type = None
 
-    async def record_data(self, timed: bool) -> None:
+    async def record_data(self, timed: bool = False, size_limited: bool = False) -> float:
         """
         Turn ON the TDC (FPGA), read while conditions are met,
-        turn OFF TDC and read leftover data.
+        turn OFF TDC and read leftover data,
+        return the time it took (seconds).
         """
-
-        async def read_and_track_time():
-            """Doc."""
-
-            try:
-                await self.data_dvc.read_TDC()
-            # TODO: limit exception handling
-            except Exception:
-                raise MeasurementError
-            else:
-                self.time_passed_s = time.perf_counter() - self.start_time
 
         self._app.gui.main.imp.dvc_toggle("TDC", leave_on=True)
 
         if timed:
             # Solution
-            while self.time_passed_s < self.duration and self.is_running:
-                await read_and_track_time()
+            while self.is_running:
+                await self.data_dvc.read_TDC()
+                self.time_passed_s = time.perf_counter() - self.start_time
+                if self.time_passed_s >= self.duration_s:
+                    break
+                if size_limited and ((self.data_dvc.tot_bytes_read / 1e6) >= self.max_file_size_mb):
+                    break
 
         else:
             # Image
@@ -129,14 +125,15 @@ class Measurement:
                 and not self.scanners_dvc.are_tasks_done("ao")
                 and not (overdue := self.time_passed_s > (self.est_plane_duration * 1.1))
             ):
-                await read_and_track_time()
+                await self.data_dvc.read_TDC()
+                self.time_passed_s = time.perf_counter() - self.start_time
             if overdue:
                 raise MeasurementError(
                     "Tasks are overdue. Check that all relevant devices are turned ON"
                 )
 
         self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
-        await read_and_track_time()
+        await self.data_dvc.read_TDC()  # read leftovers
 
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
@@ -349,9 +346,7 @@ class SFCSImageMeasurement(Measurement):
         ) = ScanPatternAO("image", self.scan_params, self.um_v_ratio).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-        self.ai_conv_rate = (
-            len(self.scanners_dvc.ai_buffer[0]) * 2 * (1 / (self.scan_params.dt - 1.5e-7))
-        )
+        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
         self.est_plane_duration = self.n_ao_samps * self.scan_params.dt
         self.est_total_duration_s = self.est_plane_duration * len(self.scan_params.set_pnts_planes)
         self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
@@ -543,8 +538,8 @@ class SFCSImageMeasurement(Measurement):
             self.data_dvc.init_data()
             self.data_dvc.purge_buffers()
             self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
-            self.scanners_dvc.init_ai_buffer()
-            self.counter_dvc.init_ci_buffer()
+            self.scanners_dvc.init_ai_buffer(type="inf")
+            self.counter_dvc.init_ci_buffer(type="inf")
 
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
@@ -633,21 +628,20 @@ class SFCSSolutionMeasurement(Measurement):
         super().__init__(app=app, type="SFCSSolution", scan_params=scan_params, **kwargs)
         self.scan_params.scan_plane = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
+        self.duration_s = self.duration * self.duration_multiplier
         self.scanning = not (self.scan_params.pattern == "static")
-        self.cal = False
         self._app.gui.main.imp.go_to_origin("XY")
 
     def build_filename(self, file_no: int) -> str:
         """Doc."""
 
-        datetime_str = datetime.datetime.now().strftime("%d%m%H%M%S")
         if not self.file_template:
             self.file_template = "sol"
 
         if self.repeat is True:
             file_no = 0
 
-        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{file_no}_{datetime_str}"
+        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{self.start_time_str}_{file_no}"
 
     def set_current_and_end_times(self) -> None:
         """
@@ -655,48 +649,11 @@ class SFCSSolutionMeasurement(Measurement):
         in datetime.time format, where end_time is current_time + duration_in_seconds.
         """
 
-        duration_in_seconds = int(self.total_duration * self.duration_multiplier)
         curr_datetime = datetime.datetime.now()
-        start_time = datetime.datetime.now().time()
-        end_time = (curr_datetime + datetime.timedelta(seconds=duration_in_seconds)).time()
-        self.start_time_wdgt.set(start_time)
-        self.end_time_wdgt.set(end_time)
-
-    async def calibrate_num_files(self):
-        """Doc."""
-
-        original_duration_multiplier = self.duration_multiplier
-        self.duration = self.cal_duration
-        self.duration_multiplier = 1  # seconds
-        self.start_time = time.perf_counter()
-        self.time_passed_s = 0
-        self.cal = True
-        logging.info(f"Calibrating file intervals for {self.type} measurement")
-
-        await self.record_data(timed=True)  # reading
-
-        self.duration_multiplier = original_duration_multiplier
-
-        self.cal = False
-        bytes_per_second = self.data_dvc.tot_bytes_read / self.time_passed_s
-        try:
-            save_intrvl_s = self.max_file_size_mb * 1e6 / bytes_per_second
-        except ZeroDivisionError as exc:
-            err_hndlr(exc, locals(), sys._getframe())
-            return
-
-        total_duration_s = self.total_duration * self.duration_multiplier
-
-        if save_intrvl_s > total_duration_s:
-            save_intrvl_s = total_duration_s
-
-        self.calibrated_save_intrvl_mins_wdgt.set(save_intrvl_s / 60)
-        self.duration = save_intrvl_s
-
-        # determining number of files
-        num_files = int(math.ceil(total_duration_s / save_intrvl_s))
-        self.total_files_wdgt.set(num_files)
-        return num_files
+        self.start_time_str = datetime.datetime.now().strftime("%H%M%S")
+        end_datetime = curr_datetime + datetime.timedelta(seconds=int(self.duration_s))
+        self.start_time_wdgt.set(curr_datetime.time())
+        self.end_time_wdgt.set(end_datetime.time())
 
     def setup_scan(self):
         """Doc."""
@@ -716,9 +673,7 @@ class SFCSSolutionMeasurement(Measurement):
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-        self.ai_conv_rate = (
-            len(self.scanners_dvc.ai_buffer[0]) * 2 * (1 / (self.scan_params.dt - 1.5e-7))
-        )
+        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
 
     def disp_ACF(self):
         """Doc."""
@@ -845,28 +800,16 @@ class SFCSSolutionMeasurement(Measurement):
             err_hndlr(exc, locals(), sys._getframe())
             return
 
-        # calibrating save-intervals/num_files
-        # TODO: test if non-scanning calibration gives good enough approximation for file size, if not, consider scanning inside cal function
-        if not self.repeat:
-            num_files = await self.calibrate_num_files()
-        else:
-            # if alignment measurement
-            num_files = 9999
-            self.duration = self.total_duration * self.duration_multiplier
-
         try:
             if self.scanning:
                 self.setup_scan()
                 self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
+                # make the circular ai buffer clip as long as the ao buffer
+                self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
 
+            self.counter_dvc.init_ci_buffer()
             self.data_dvc.init_data()
             self.data_dvc.purge_buffers()
-            self.scanners_dvc.init_ai_buffer()
-            self.counter_dvc.init_ci_buffer()
-
-            # collect initial ai/CI to avoid possible overflow
-            self.counter_dvc.fill_ci_buffer()
-            self.scanners_dvc.fill_ai_buffer()
 
         except DeviceError as exc:
             await self.stop()
@@ -875,58 +818,53 @@ class SFCSSolutionMeasurement(Measurement):
 
         else:
             self.is_running = True
-            self.total_time_passed_s = 0
+            self.start_time = time.perf_counter()
+            self.time_passed_s = 0
+            file_num = 1
             logging.info(f"Running {self.type} measurement")
 
         try:  # TESTESTEST`
-            for file_num in range(1, num_files + 1):
+            while self.is_running and self.time_passed_s < self.duration_s:
 
-                if self.is_running:
+                if self.scanning:
+                    # re-start scan for each file
+                    self.init_scan_tasks("CONTINUOUS")
+                    self.scanners_dvc.start_tasks("ao")
 
-                    if self.scanning:
-                        # re-start scan for each file
-                        self.init_scan_tasks("CONTINUOUS")
-                        self.scanners_dvc.start_tasks("ao")
+                self.file_num_wdgt.set(file_num)
 
-                    self.file_num_wdgt.set(file_num)
+                # reading
+                if self.repeat:
+                    await self.record_data(timed=True)
+                else:
+                    await self.record_data(timed=True, size_limited=True)
 
+                # collect final ai/CI
+                self.counter_dvc.fill_ci_buffer()
+                self.scanners_dvc.fill_ai_buffer()
+
+                # case aligning and not manually stopped
+                if self.repeat and self.is_running:
+                    self.disp_ACF()
+                    self.save_data(self.prep_data_dict(), self.build_filename(0))
+                    # reset measurement
+                    self.set_current_and_end_times()
                     self.start_time = time.perf_counter()
                     self.time_passed_s = 0
 
-                    # reading
-                    await self.record_data(timed=True)
-
-                    self.total_time_passed_s += self.time_passed_s
-
-                    # collect final ai/CI
-                    self.counter_dvc.fill_ci_buffer()
-                    self.scanners_dvc.fill_ai_buffer()
-
+                # case measuring and finished file or measurement
+                elif not self.repeat:
+                    self.save_data(self.prep_data_dict(), self.build_filename(file_num))
                     if self.scanning:
-                        # save just one full pattern of ai
-                        self.scanners_dvc.ai_buffer = self.scanners_dvc.ai_buffer[
-                            :, : self.ao_buffer.shape[1]
-                        ]
+                        self.scanners_dvc.init_ai_buffer(
+                            type="circular", size=self.ao_buffer.shape[1]
+                        )
 
-                    # reset timers for alignment measurements
-                    if self.repeat:
-                        self.total_time_passed_s = 0
-                        self.set_current_and_end_times()
+                # initialize data buffers for next file
+                self.data_dvc.init_data()
+                self.data_dvc.purge_buffers()
 
-                    # save and display data
-                    if self.is_running or not self.repeat:
-                        # if not manually stopped while aligning
-                        self.save_data(self.prep_data_dict(), self.build_filename(file_num))
-                        self.disp_ACF()
-
-                    # initialize data buffers for next file
-                    self.data_dvc.init_data()
-                    self.data_dvc.purge_buffers()
-                    self.scanners_dvc.init_ai_buffer()
-                #                    self.counter_dvc.init_ci_buffer()
-
-                else:
-                    break
+                file_num += 1
 
         except Exception as exc:  # TESTESTEST
             err_hndlr(exc, locals(), sys._getframe())
