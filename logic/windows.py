@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import sys
 import webbrowser
 from collections.abc import Iterable
 from types import SimpleNamespace
@@ -13,12 +14,12 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 import logic.devices as dvcs
 import logic.measurements as meas
-import utilities.errors as errors
 import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
 from data_analysis.correlation_function import CorrFuncTDC
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
+from utilities.errors import DeviceError, err_hndlr
 
 SETTINGS_DIR_PATH = "./settings/"
 LOADOUT_DIR_PATH = "./settings/loadouts/"
@@ -87,7 +88,10 @@ class MainWin:
         """Returns False in case operation fails"""
 
         dvc = getattr(self._app.devices, nick)
-        is_dvc_on = getattr(dvc, state_attr)
+        try:
+            is_dvc_on = getattr(dvc, state_attr)
+        except AttributeError:
+            raise DeviceError(f"{dvc.log_ref} was not properly initialized. Cannot Toggle.")
 
         if (leave_on and is_dvc_on) or (leave_off and not is_dvc_on):
             return True
@@ -96,7 +100,7 @@ class MainWin:
             # switch ON
             try:
                 getattr(dvc, toggle_mthd)(True)
-            except errors.DeviceError:
+            except DeviceError:
                 return False
 
             if (is_dvc_on := getattr(dvc, state_attr)) :
@@ -110,7 +114,7 @@ class MainWin:
             # switch OFF
             try:
                 getattr(dvc, toggle_mthd)(False)
-            except errors.DeviceError:
+            except DeviceError:
                 return False
 
             if not (is_dvc_on := getattr(dvc, state_attr)):
@@ -158,7 +162,7 @@ class MainWin:
             else:  # power mode
                 val = self._gui.depPow.value()
                 self._app.devices.dep_laser.set_power(val)
-        except errors.DeviceError:
+        except DeviceError:
             pass
 
     # TODO: only turn on LED while actually moving (also during scan)
@@ -178,8 +182,11 @@ class MainWin:
                 data.append([vltg_V])
                 type_str += ax
 
-        scanners_dvc.start_write_task(data, type_str)
-        scanners_dvc.toggle(True)  # restart cont. reading
+        try:
+            scanners_dvc.start_write_task(data, type_str)
+            scanners_dvc.toggle(True)  # restart cont. reading
+        except DeviceError as exc:
+            err_hndlr(exc, locals(), sys._getframe())
 
         logging.debug(
             f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} were moved to {str(destination)} V"
@@ -884,25 +891,29 @@ class CamWin:
     def toggle_video(self):
         """Doc."""
 
-        if self._cam.vid_state is False:  # turn On
-            self._gui.videoButton.setStyleSheet(
-                "background-color: " "rgb(225, 245, 225); " "color: black;"
-            )
-            self._gui.videoButton.setText("Video ON")
+        try:
+            if self._cam.vid_state is False:  # turn On
+                self._gui.videoButton.setStyleSheet(
+                    "background-color: " "rgb(225, 245, 225); " "color: black;"
+                )
+                self._gui.videoButton.setText("Video ON")
 
-            self._cam.toggle_video(True)
+                self._cam.toggle_video(True)
 
-            logging.debug("Camera video mode ON")
+                logging.debug("Camera video mode ON")
 
-        elif self._cam is not None:  # turn Off
-            self._gui.videoButton.setStyleSheet(
-                "background-color: " "rgb(225, 225, 225); " "color: black;"
-            )
-            self._gui.videoButton.setText("Start Video")
+            elif self._cam is not None:  # turn Off
+                self._gui.videoButton.setStyleSheet(
+                    "background-color: " "rgb(225, 225, 225); " "color: black;"
+                )
+                self._gui.videoButton.setText("Start Video")
 
-            self._cam.toggle_video(False)
+                self._cam.toggle_video(False)
 
-            logging.debug("Camera video mode OFF")
+                logging.debug("Camera video mode OFF")
+
+        except DeviceError as exc:
+            err_hndlr(exc, locals(), sys._getframe())
 
     def shoot(self):
         """Doc."""
