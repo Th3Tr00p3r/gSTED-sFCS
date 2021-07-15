@@ -27,7 +27,7 @@ imgScanDim3,10.0
 imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solLinFrac,0.9
-solScanDur,10.0
+solScanDur,20.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -41,15 +41,15 @@ solAnalysis,Lifetime
 imgScanType,YZ
 imgScanPreset,Locate Plane - YZ Coarse
 imgShowMethod,Forward scan - actual counts per pixel
-solMeasPreset,Standard Angular
-solScanType,angular
-solScanDurUnits,minutes
+solMeasPreset,Standard Alignment
+solScanType,static
+solScanDurUnits,seconds
 avgInterval,200
 isDataCalibration,0
 showRowAcfs,1
 scanImgMask,1
 autoCrosshair,1
-repeatSolMeas,0
+repeatSolMeas,1
 imageDataImport,0
 solDataImport,1
 radioButton_3,0
