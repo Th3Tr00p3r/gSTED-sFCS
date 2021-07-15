@@ -179,7 +179,7 @@ class Timeout:
         def update_avg_counts(meas) -> None:
             """Doc."""
 
-            if not self.cntr_dvc.error_dict["type"] == "DeviceError":
+            if not self.cntr_dvc.error_dict:
                 if meas.is_running and meas.scanning:
                     if meas.type == "SFCSSolution":
                         self.cntr_dvc.average_counts(
