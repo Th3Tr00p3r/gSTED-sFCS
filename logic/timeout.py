@@ -6,7 +6,7 @@ import os
 import sys
 from collections import deque
 
-from utilities.errors import DeviceError, err_hndlr
+from utilities.errors import err_hndlr
 
 # import time
 # import numpy as np
@@ -38,6 +38,7 @@ class Timeout:
         self.um232_buff_sz = self._app.devices.UM232H.tx_size
 
         self.cntr_dvc = self._app.devices.photon_detector
+        self.scan_dvc = self._app.devices.scanners
         self.dep_dvc = self._app.devices.dep_laser
 
         # start
@@ -119,12 +120,12 @@ class Timeout:
             #            toc_idx += 1 # TESTING
 
             # CI (Photon Detector)
-            if not self._app.devices.photon_detector.error_dict:
-                self._app.devices.photon_detector.fill_ci_buffer()
+            if not self.cntr_dvc.error_dict:
+                self.cntr_dvc.fill_ci_buffer()
 
             # AI (Scanners)
-            if not self._app.devices.scanners.error_dict:
-                self._app.devices.scanners.fill_ai_buffer()
+            if not self.scan_dvc.error_dict:
+                self.scan_dvc.fill_ai_buffer()
 
             #            tic = time.perf_counter() # TESTING
 
@@ -148,8 +149,9 @@ class Timeout:
                     z_ao_int,
                 ) = app.devices.scanners.ai_buffer[-1]
 
-            except IndexError:
-                # AI buffer has just been initialized
+            except (IndexError, AttributeError):
+                # IndexError - AI buffer has just been initialized
+                # AttributeError - Scanners failed to initialize
                 pass
 
             else:
@@ -174,12 +176,10 @@ class Timeout:
                 app.gui.main.yAOum.setValue(y_um)
                 app.gui.main.zAOum.setValue(z_um)
 
-        def update_avg_counts() -> None:
+        def update_avg_counts(meas) -> None:
             """Doc."""
 
-            meas = self._app.meas
-
-            try:
+            if not self.cntr_dvc.error_dict["type"] == "DeviceError":
                 if meas.is_running and meas.scanning:
                     if meas.type == "SFCSSolution":
                         self.cntr_dvc.average_counts(
@@ -195,15 +195,10 @@ class Timeout:
                 else:
                     self.cntr_dvc.average_counts(interval=self.updt_intrvl["cntr_avg"])
 
-            except DeviceError:
-                pass
-            else:
                 self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate)
 
-        def updt_meas_progbar() -> None:
+        def updt_meas_progbar(meas) -> None:
             """Doc."""
-
-            meas = self._app.meas
 
             try:
                 if meas.type == "SFCSSolution":
@@ -217,67 +212,65 @@ class Timeout:
                         * meas.prog_bar_wdgt.obj.maximum()
                     )
                 else:
-                    progress = 0
-                    print("THIS SHOULD NOT BE REACHED")
+                    raise ValueError("Invalid measurement type.")
                 meas.prog_bar_wdgt.set(progress)
 
             except AttributeError:
                 # happens when depletion is turned on before beginning measurement (5 s wait)
                 pass
 
-            except Exception as exc:
+            except ValueError as exc:
                 err_hndlr(exc, locals(), sys._getframe())
 
         while self.not_finished:
 
             # scanners
-            updt_scn_pos()
+            if not self.scan_dvc.error_dict:
+                updt_scn_pos()
+
+            meas = self._app.meas
 
             # photon_detector count rate
-            update_avg_counts()
+            if not self.cntr_dvc.error_dict:
+                update_avg_counts(meas)
 
             # Measurement progress bar
             if self._app.meas.is_running:
-                updt_meas_progbar()
+                updt_meas_progbar(meas)
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
-    async def _updt_um232h_status(self):
-        """Doc."""
-
-        while self.not_finished:
-
-            try:
-                rx_bytes = self._app.devices.UM232H.get_status()
-
-            except DeviceError:
-                pass
-
-            else:
-                fill_perc = rx_bytes / self.um232_buff_sz * 100
-                if fill_perc > 90:
-                    logging.warning("UM232H buffer might be overfilling")
-
-            finally:
-                await asyncio.sleep(self.updt_intrvl["gui"])
+    #    async def _updt_um232h_status(self):
+    #        """Doc."""
+    #
+    #        while self.not_finished:
+    #
+    #            try:
+    #                rx_bytes = self._app.devices.UM232H.get_status()
+    #
+    #            except DeviceError:
+    #                pass
+    #
+    #            else:
+    #                fill_perc = rx_bytes / self.um232_buff_sz * 100
+    #                if fill_perc > 90:
+    #                    logging.warning("UM232H buffer might be overfilling")
+    #
+    #            finally:
+    #                await asyncio.sleep(self.updt_intrvl["gui"])
 
     async def _update_dep(self) -> None:
         """Update depletion laser GUI"""
 
         while self.not_finished:
 
-            try:
+            if not self.dep_dvc.error_dict:
                 temp, pow, curr = (
                     self.dep_dvc.get_prop("temp"),
                     self.dep_dvc.get_prop("pow"),
                     self.dep_dvc.get_prop("curr"),
                 )
 
-            except DeviceError:
-                # do nothing if error in depletion laser
-                pass
-
-            else:
                 self.main_gui.depTemp.setValue(temp)
                 self.main_gui.depActualPow.setValue(pow)
                 self.main_gui.depActualCurr.setValue(curr)
@@ -287,5 +280,4 @@ class Timeout:
                 else:
                     self.main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
-            finally:
-                await asyncio.sleep(self.updt_intrvl["dep"])
+            await asyncio.sleep(self.updt_intrvl["dep"])

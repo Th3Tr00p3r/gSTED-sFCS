@@ -77,20 +77,19 @@ class Measurement:
 
         try:
             await self.toggle_lasers(finish=True)
+            self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
+
+            if self.scanning:
+                self.return_to_regular_tasks()
+                self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_off=True)
+
+                if self.type == "SFCSSolution":
+                    self._app.gui.main.imp.go_to_origin("XY")
+                elif self.type == "SFCSImage":
+                    self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
+
         except DeviceError:
             pass
-
-        self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
-
-        if self.scanning:
-            self.return_to_regular_tasks()
-            self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_off=True)
-
-            if self.type == "SFCSSolution":
-                self._app.gui.main.imp.go_to_origin("XY")
-
-            elif self.type == "SFCSImage":
-                self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
 
         self.is_running = False
         await self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
