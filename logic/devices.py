@@ -14,7 +14,7 @@ from nidaqmx.errors import DaqError
 import gui.gui
 import utilities.dialog as dialog
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
-from utilities.errors import DeviceCheckerMetaClass, IOError, err_hndlr
+from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.helper import (
     QtWidgetCollection,
     div_ceil,
@@ -423,7 +423,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.ai_cont_rate = cont_ai_task.timing.samp_clk_rate
             self.ai_cont_src = cont_ai_task.timing.samp_clk_term
         except IndexError:
-            exc = RuntimeError(
+            exc = DeviceError(
                 f"{self.log_ref} can't be synced because scanners failed to Initialize"
             )
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
