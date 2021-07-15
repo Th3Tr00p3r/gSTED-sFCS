@@ -505,21 +505,12 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         if rate is None:
             rate = self.tasks.ci[-1].timing.samp_clk_rate
 
-        self.num_reads_in_interval = div_ceil(interval, (1 / rate))
-        start_idx = len(self.ci_buffer) - self.num_reads_in_interval
+        self.n_reads = div_ceil(interval, (1 / rate))
+        start_idx = len(self.ci_buffer) - self.n_reads
 
         if start_idx > 0:
-            try:  # TESTESTEST
-                avg_cnt_rate = (
-                    self.ci_buffer[-1] - self.ci_buffer[-(self.num_reads_in_interval + 1)]
-                ) / interval
-            except RuntimeWarning:  # TESTESTEST
-                print(
-                    f"self.ci_buffer[-1]: {self.ci_buffer[-1]}, self.ci_buffer[-({self.num_reads_in_interval} + 1)]: {self.ci_buffer[-(self.num_reads_in_interval + 1)]}"
-                )  # TESTESTEST
-                pass
-            else:  # TESTESTEST
-                avg_cnt_rate = avg_cnt_rate / 1000  # Hz -> KHz
+            avg_cnt_rate = (self.ci_buffer[-1] - self.ci_buffer[-(self.n_reads + 1)]) / interval
+            avg_cnt_rate = avg_cnt_rate / 1000  # Hz -> KHz
         else:
             avg_cnt_rate = 0
 

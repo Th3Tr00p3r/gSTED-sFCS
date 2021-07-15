@@ -57,6 +57,7 @@ def force_aspect(ax, aspect=1) -> None:
     See accepted answer here:
     https://stackoverflow.com/questions/7965743/how-can-i-set-the-aspect-ratio-in-matplotlib
     """
+
     im = ax.get_images()
     extent = im[0].get_extent()
     ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
@@ -74,8 +75,9 @@ async def sync_to_thread(func) -> None:
     asyncio.to_thread() must be awaited, but toggle_video needs to be
     a regular function to keep the rest of the code as it is. by creating this
     async helper function I can make it work. A lambda would be better here
-    but there's no async lambda yet.
+    but there's no async lambda (yet?).
     """
+
     await asyncio.to_thread(func)
 
 
@@ -286,6 +288,8 @@ class QtWidgetAccess:
 
         if self.getter == "isChecked":
             return "setChecked"
+        elif self.getter == "toPlainText":
+            return "setPlainText"
         else:
             first_getter_letter, *rest_getter_str = self.getter
             return "set" + first_getter_letter.upper() + "".join(rest_getter_str)

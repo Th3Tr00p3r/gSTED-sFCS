@@ -139,6 +139,12 @@ class MainWin(QMainWindow):
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
     @pyqtSlot()
+    def on_dataDirLogUpdate_released(self) -> None:
+        """Doc."""
+
+        self.imp.update_dir_log_file()
+
+    @pyqtSlot()
     def on_importSolData_released(self) -> None:
         """Doc."""
 
@@ -167,6 +173,12 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.populate_data_templates_from_day(day)
+
+    @pyqtSlot(str)
+    def on_dataTemplate_currentTextChanged(self, template: str) -> None:
+        """Doc."""
+
+        self.imp.update_dir_log_wdgt(template)
 
     def closeEvent(self, event: QEvent) -> None:
         """Doc."""
