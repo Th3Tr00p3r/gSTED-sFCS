@@ -634,13 +634,13 @@ class SFCSSolutionMeasurement(Measurement):
     def build_filename(self, file_no: int) -> str:
         """Doc."""
 
-        if not self.file_template:
-            self.file_template = "sol"
-
         if self.repeat is True:
-            file_no = 0
+            return f"alignment_{self.scan_type}_{self.laser_mode}_0"
 
-        return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{self.start_time_str}_{file_no}"
+        else:
+            if not self.file_template:
+                self.file_template = "sol"
+            return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{self.start_time_str}_{file_no}"
 
     def set_current_and_end_times(self) -> None:
         """

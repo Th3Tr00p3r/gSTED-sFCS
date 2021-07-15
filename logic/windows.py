@@ -1,5 +1,6 @@
 """ GUI windows implementations module. """
 
+import csv
 import logging
 import os
 import re
@@ -759,6 +760,72 @@ class MainWin:
             pass
         else:
             webbrowser.open(dir_path)
+
+    def update_dir_log_file(self) -> None:
+        """Doc."""
+
+        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        text_rows = data_import_wdgts.log_text.get().split("\n")
+        curr_template = data_import_wdgts.data_templates.get()
+        log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
+        file_path = os.path.join(self._app.analysis_dir_path, log_filename)
+
+        with open(file_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            for row in text_rows:
+                writer.writerow([row])
+
+        self.update_dir_log_wdgt(curr_template)
+
+    def update_dir_log_wdgt(self, template: str) -> None:
+        """Doc."""
+
+        def initialize_dir_log_file(file_path) -> None:
+            """Doc."""
+
+            basic_header = []
+            basic_header.append(["-" * 54])
+            basic_header.append(["Measurement Log File"])
+            basic_header.append(["-" * 54])
+            basic_header.append(["Excitation Power: "])
+            basic_header.append(["Depletion Power: "])
+            basic_header.append(["Free Atto FCS @ 12 uW: _G0_/ _tau_ ms"])
+            basic_header.append(["-" * 54])
+            basic_header.append(["EDIT_HERE"])
+
+            with open(file_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(basic_header)
+
+        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        try:
+            if data_import_wdgts.is_solution_type.get():
+                log_filename = re.sub("_\\*\\.\\w{3}", ".log", template)
+            elif data_import_wdgts.is_image_type.get():
+                log_filename = re.sub("\\.\\w{3}", ".log", template)
+            file_path = os.path.join(self._app.analysis_dir_path, log_filename)
+        except TypeError:
+            # 'self._app.analysis_dir_path' is 'None'
+            return
+        else:
+            if not os.path.isfile(file_path):
+                try:
+                    initialize_dir_log_file(file_path)
+                except OSError:
+                    # missing file/folder (deleted during operation)
+                    data_import_wdgts.log_text.set("")
+                    return
+
+        try:
+            text_rows = []
+            with open(file_path, "r", newline="") as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    text_rows.append(row[0])
+        except FileNotFoundError:
+            pass
+        else:
+            data_import_wdgts.log_text.set("\n".join(text_rows))
 
     def import_sol_data(self) -> None:
         """Doc."""

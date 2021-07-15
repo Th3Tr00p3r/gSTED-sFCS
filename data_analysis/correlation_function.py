@@ -335,7 +335,6 @@ class CorrFuncTDC(CorrFuncData):
                 else:
                     pix_shift = 0
 
-                # TODO: is this needed for new measurements? leave option for old?...
                 # invert every second line
                 cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
 
@@ -491,8 +490,8 @@ class CorrFuncTDC(CorrFuncData):
                     img, p.bw_mask, roi, angular_scan_settings["sample_freq"]
                 )
 
-            else:
-                logging.warning("No scan settings detected...")
+            else:  # static FCS
+                logging.warning("No scan settings detected... Static FCS analysis not implemented")
                 return
 
             p.fname = fname

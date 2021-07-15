@@ -44,6 +44,7 @@ data_import_wdgts = QtWidgetCollection(
     data_templates=("dataTemplate", "currentText", "main"),
     import_stacked=("importStacked", "currentIndex", "main"),
     is_calibration=("isDataCalibration", "isChecked", "main"),
+    log_text=("dataDirLog", "toPlainText", "main"),
 )
 
 # ----------------------------------------------

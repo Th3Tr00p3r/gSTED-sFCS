@@ -32,8 +32,7 @@ class Timeout:
             "cntr_avg": self._app.devices.photon_detector.UPDATE_TIME,
         }
 
-        maxlen = self._app.gui.main.logNumLinesSlider.value()
-        self.log_buffer_deque = deque([""], maxlen=maxlen)
+        self.log_buffer_deque = deque([""], maxlen=50)
 
         self.um232_buff_sz = self._app.devices.UM232H.tx_size
 
@@ -58,7 +57,7 @@ class Timeout:
                 self._update_gui(),
                 # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
             )
-        except Exception as exc:
+        except RuntimeError as exc:
             err_hndlr(exc, locals(), sys._getframe())
         logging.debug("timeout function exited")
 
@@ -83,10 +82,6 @@ class Timeout:
                 return last_line
 
         while self.not_finished:
-
-            new_maxlen = self._app.gui.main.logNumLinesSlider.value()
-            if self.log_buffer_deque.maxlen != new_maxlen:
-                self.log_buffer_deque = deque(self.log_buffer_deque, maxlen=new_maxlen)
 
             last_line = get_last_line(LOG_PATH)
 
