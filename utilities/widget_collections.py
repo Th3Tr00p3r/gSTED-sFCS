@@ -48,7 +48,10 @@ data_import_wdgts = QtWidgetCollection(
 )
 
 sol_data_analysis_wdgts = QtWidgetCollection(
+    fix_shift=("solDataFixShift", "isChecked", "main", True),
     scan_image_disp=("solScanImgDisp", None, "main", True),
+    imported_templates=("importedSolDataTemplates", "currentText", "main", True),
+    scan_img_file_num=("scanImgFileNum", "value", "main", True),
 )
 # ----------------------------------------------
 # Measurement Widget Collections

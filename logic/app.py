@@ -43,6 +43,9 @@ class App:
 
         self.meas = SimpleNamespace(type=None, is_running=False)
 
+        self.analysis = SimpleNamespace()
+        self.analysis.loaded_data = dict(CAL_EXC=None, CAL_STED=None, SAMP_EXC=None, SAMP_STED=None)
+
         # get icons
         self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)
 

@@ -185,22 +185,7 @@ class CorrFuncTDC(CorrFuncData):
         self.is_data_on_disk = False  # saving data on disk to free RAM
         self.data_filename_on_disk = ""
         self.data_name_on_disk = ""
-        self.after_pulse_param = (
-            "multi_exponent_fit",
-            1e5
-            * np.array(
-                [
-                    0.183161051158731,
-                    0.021980256326163,
-                    6.882763042785681,
-                    0.154790280034295,
-                    0.026417532300439,
-                    0.004282749744374,
-                    0.001418363840077,
-                    0.000221275818533,
-                ]
-            ),
-        )
+        self.after_pulse_param = self.default_sys_info["after_pulse_param"]
 
     def read_fpga_data(
         self,
@@ -248,7 +233,6 @@ class CorrFuncTDC(CorrFuncData):
                 # use default system settings if missing either it or after_pulse_param
                 print("No 'system_info', patching with defaults...")
                 system_info = self.default_sys_info
-                self.after_pulse_param = system_info["after_pulse_param"]
 
             full_data = filedict["full_data"]
 
@@ -438,6 +422,7 @@ class CorrFuncTDC(CorrFuncData):
                 # TODO: add line starts/stops to photon runtimes (Oleg)
 
                 p.image = cnt
+                p.roi = roi
 
                 # plotting of scan image and ROI
                 if plot:
