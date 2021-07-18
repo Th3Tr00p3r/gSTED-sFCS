@@ -205,10 +205,10 @@ def translate_dict_values(original_dict: dict, trans_dict: dict) -> dict:
     }
 
 
-def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
+def dir_date_parts(data_path: str, sub_dir: str = "", month: int = None, year: int = None) -> list:
     """
     Inputs:
-        main_data_path - string containing the path to the main data folder.
+        data_path - string containing the path to the main data folder.
         month - integer month to search for. if None, will return months matching the year.
         year - integer year to search for. If None, will return years of all subfolders.
 
@@ -230,8 +230,8 @@ def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
     dir_name_list = [
         item
         for item in os.listdir(data_path)
-        if os.path.isdir(os.path.join(data_path, item))
-        and os.listdir(os.path.join(data_path, item))
+        if os.path.isdir(os.path.join(data_path, item, sub_dir))
+        and os.listdir(os.path.join(data_path, item, sub_dir))
     ]
 
     dir_date_dict_list = [
@@ -273,7 +273,12 @@ def dir_date_parts(data_path, month: int = None, year: int = None) -> list:
 class QtWidgetAccess:
     """Doc."""
 
-    def __init__(self, obj_name: str, getter: str, gui_parent_name: str = "settings"):
+    getter_setter_dict = {
+        "isChecked": "setChecked",
+        "toPlainText": "setPlainText",
+    }
+
+    def __init__(self, obj_name: str, getter: str, gui_parent_name: str, does_hold_obj: bool):
         self.obj_name = obj_name
         if getter is not None:
             self.getter = getter
@@ -282,14 +287,13 @@ class QtWidgetAccess:
             self.getter = None
             self.setter = None
         self.gui_parent_name = gui_parent_name
+        self.does_hold_obj = does_hold_obj
 
     def _get_setter(self) -> str:
         """Doc."""
 
-        if self.getter == "isChecked":
-            return "setChecked"
-        elif self.getter == "toPlainText":
-            return "setPlainText"
+        if self.getter_setter_dict.get(self.getter) is not None:
+            return self.getter_setter_dict[self.getter]
         else:
             first_getter_letter, *rest_getter_str = self.getter
             return "set" + first_getter_letter.upper() + "".join(rest_getter_str)
@@ -297,7 +301,8 @@ class QtWidgetAccess:
     def hold_obj(self, parent_gui) -> QtWidgetAccess:
         """Save the actual widget object as an attribute"""
 
-        self.obj = getattr(parent_gui, self.obj_name)
+        if self.does_hold_obj:
+            self.obj = getattr(parent_gui, self.obj_name)
         return self
 
     def get(self, parent_gui=None) -> Union[int, float, str]:
@@ -323,26 +328,12 @@ class QtWidgetCollection:
         for key, val in kwargs.items():
             setattr(self, key, QtWidgetAccess(*val))
 
-    def hold_objects(
-        self, app: logic.app.App, wdgt_name_list: List[str] = None, hold_all=False
-    ) -> QtWidgetCollection:
-        """Stores the actual GUI object in the listed (or all) widgets."""
+    def hold_objects(self, app: logic.app.App) -> QtWidgetCollection:
+        """Stores the actual GUI object in all widgets (for which does_hold_obj is True)."""
 
-        if wdgt_name_list is not None:
-            for wdgt_name in wdgt_name_list:
-                try:
-                    wdgt = getattr(self, wdgt_name)
-                except AttributeError:
-                    # collection has no widget 'wdgt_name'
-                    pass
-                else:
-                    parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                    wdgt.hold_obj(parent_gui)
-
-        elif hold_all:
-            for wdgt in vars(self).values():
-                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                wdgt.hold_obj(parent_gui)
+        for wdgt in vars(self).values():
+            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+            wdgt.hold_obj(parent_gui)
 
         return self
 

@@ -190,7 +190,7 @@ class Timeout:
                 else:
                     self.cntr_dvc.average_counts(interval=self.updt_intrvl["cntr_avg"])
 
-                self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate)
+                self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate_khz)
 
         def updt_meas_progbar(meas) -> None:
             """Doc."""

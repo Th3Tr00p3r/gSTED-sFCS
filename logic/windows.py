@@ -101,7 +101,8 @@ class MainWin:
             # switch ON
             try:
                 getattr(dvc, toggle_mthd)(True)
-            except DeviceError:
+            except DeviceError as exc:
+                err_hndlr(exc, locals(), sys._getframe(), lvl="warning")
                 return False
 
             if (is_dvc_on := getattr(dvc, state_attr)) :
@@ -288,19 +289,7 @@ class MainWin:
                     app=self._app,
                     scan_params=scan_params,
                     laser_mode=laser_mode.lower(),
-                    **wdgt_colls.sol_meas_wdgts.hold_objects(
-                        self._app,
-                        [
-                            "prog_bar_wdgt",
-                            "start_time_wdgt",
-                            "end_time_wdgt",
-                            "file_num_wdgt",
-                            "g0_wdgt",
-                            "tau_wdgt",
-                            "plot_wdgt",
-                            "fit_led",
-                        ],
-                    ).read_dict_from_gui(self._app),
+                    **wdgt_colls.sol_meas_wdgts.read_dict_from_gui(self._app),
                 )
 
                 self._gui.startSolScanExc.setEnabled(False)
@@ -325,17 +314,7 @@ class MainWin:
                     scan_params=wdgt_colls.img_scan_wdgts.read_namespace_from_gui(self._app),
                     laser_mode=laser_mode.lower(),
                     initial_pos=initial_pos,
-                    **wdgt_colls.img_meas_wdgts.hold_objects(
-                        self._app,
-                        [
-                            "prog_bar_wdgt",
-                            "curr_plane_wdgt",
-                            "plane_shown",
-                            "plane_choice",
-                            "image_wdgt",
-                            "pattern_wdgt",
-                        ],
-                    ).read_dict_from_gui(self._app),
+                    **wdgt_colls.img_meas_wdgts.read_dict_from_gui(self._app),
                 )
 
                 self._gui.startImgScanExc.setEnabled(False)
@@ -549,7 +528,7 @@ class MainWin:
             pass
         else:
             image = build_image(image_data, disp_mthd)
-            self._gui.imgScanPlot.add_image(image)
+            self._gui.imgScanPlot.replace_image(image)
             if auto_cross:
                 self._gui.imgScanPlot.move_crosshair(auto_crosshair_position(image))
 
@@ -616,7 +595,7 @@ class MainWin:
         """Doc."""
 
         # define widgets
-        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        data_import_wdgts = wdgt_colls.data_import_wdgts
         is_image_type = data_import_wdgts.is_image_type.get()
         is_solution_type = data_import_wdgts.is_solution_type.get()
         years_combobox = data_import_wdgts.data_years.obj
@@ -627,9 +606,11 @@ class MainWin:
         if is_image_type:
             save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
             data_import_wdgts.import_stacked.set(0)
+            sub_dir = "image"
         elif is_solution_type:
             save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
             data_import_wdgts.import_stacked.set(1)
+            sub_dir = "solution"
 
         years_combobox.clear()
         months_combobox.clear()
@@ -637,12 +618,8 @@ class MainWin:
         templates_combobox.clear()
 
         try:
-            dir_years = helper.dir_date_parts(save_path)
+            dir_years = helper.dir_date_parts(save_path, sub_dir)
             years_combobox.addItems(dir_years)
-        #            dir_months = helper.dir_date_parts(save_path, year=dir_years[0])
-        #            months_combobox.addItems(dir_months)
-        #            dir_days = helper.dir_date_parts(save_path, year=dir_years[0], month=dir_months[0])
-        #            days_combobox.addItems(dir_days)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
             pass
@@ -655,20 +632,22 @@ class MainWin:
             return
 
         # define widgets
-        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, ["data_months"])
+        data_import_wdgts = wdgt_colls.data_import_wdgts
         is_image_type = data_import_wdgts.is_image_type.get()
         is_solution_type = data_import_wdgts.is_solution_type.get()
         months_combobox = data_import_wdgts.data_months.obj
 
         if is_image_type:
-            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            meas_sett = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app)
         elif is_solution_type:
-            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            meas_sett = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app)
+        save_path = meas_sett.save_path
+        sub_dir = meas_sett.sub_dir_name
 
         months_combobox.clear()
 
         try:
-            dir_months = helper.dir_date_parts(save_path, year=year)
+            dir_months = helper.dir_date_parts(save_path, sub_dir, year=year)
             months_combobox.addItems(dir_months)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
@@ -682,21 +661,23 @@ class MainWin:
             return
 
         # define widgets
-        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, ["data_days"])
+        data_import_wdgts = wdgt_colls.data_import_wdgts
         is_image_type = data_import_wdgts.is_image_type.get()
         is_solution_type = data_import_wdgts.is_solution_type.get()
         year = data_import_wdgts.data_years.get()
         days_combobox = data_import_wdgts.data_days.obj
 
         if is_image_type:
-            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            meas_sett = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app)
         elif is_solution_type:
-            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            meas_sett = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app)
+        save_path = meas_sett.save_path
+        sub_dir = meas_sett.sub_dir_name
 
         days_combobox.clear()
 
         try:
-            dir_days = helper.dir_date_parts(save_path, year=year, month=month)
+            dir_days = helper.dir_date_parts(save_path, sub_dir, year=year, month=month)
             days_combobox.addItems(dir_days)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
@@ -726,7 +707,7 @@ class MainWin:
             return
 
         # define widgets
-        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, ["data_templates"])
+        data_import_wdgts = wdgt_colls.data_import_wdgts
         is_image_type = data_import_wdgts.is_image_type.get()
         is_solution_type = data_import_wdgts.is_solution_type.get()
         year = data_import_wdgts.data_years.get()
@@ -734,15 +715,17 @@ class MainWin:
         templates_combobox = data_import_wdgts.data_templates.obj
 
         if is_image_type:
-            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            meas_sett = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app)
         elif is_solution_type:
-            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            meas_sett = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app)
+        save_path = meas_sett.save_path
+        sub_dir = meas_sett.sub_dir_name
 
         templates_combobox.clear()
 
         try:
             self._app.analysis_dir_path = os.path.join(
-                save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}"
+                save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir
             )
             templates = pkl_and_mat_templates(self._app.analysis_dir_path, is_solution_type)
             templates_combobox.addItems(templates)
@@ -764,7 +747,7 @@ class MainWin:
     def update_dir_log_file(self) -> None:
         """Doc."""
 
-        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        data_import_wdgts = wdgt_colls.data_import_wdgts
         text_rows = data_import_wdgts.log_text.get().split("\n")
         curr_template = data_import_wdgts.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
@@ -797,7 +780,7 @@ class MainWin:
                 writer = csv.writer(f)
                 writer.writerows(basic_header)
 
-        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        data_import_wdgts = wdgt_colls.data_import_wdgts
         try:
             if data_import_wdgts.is_solution_type.get():
                 log_filename = re.sub("_\\*\\.\\w{3}", ".log", template)
@@ -830,7 +813,7 @@ class MainWin:
     def import_sol_data(self) -> None:
         """Doc."""
 
-        data_import_wdgts = wdgt_colls.data_import_wdgts.hold_objects(self._app, hold_all=True)
+        data_import_wdgts = wdgt_colls.data_import_wdgts
         current_template = data_import_wdgts.data_templates.get()
         #        is_calibration = data_import_wdgts.is_calibration.get()
 
@@ -840,7 +823,8 @@ class MainWin:
 
         s = CorrFuncTDC()
         s.read_fpga_data(
-            os.path.join(self._app.analysis_dir_path, current_template), fix_shift=True
+            os.path.join(self._app.analysis_dir_path, current_template),
+            fix_shift=False,  # TESTESTEST fix_shift was True!
         )
 
         logging.info("Data import finished. Resuming 'ai' and 'ci' tasks")
@@ -849,8 +833,9 @@ class MainWin:
         self._app.devices.photon_detector.init_ci_buffer()
         self._app.devices.photon_detector.start_tasks("ci")
 
-        print("HEY")  # TESTESTEST
-        print("HO")  # TESTESTEST
+
+#        # plotting the first scan image
+#        sol_data_analysis_wdgts
 
 
 class SettWin:
