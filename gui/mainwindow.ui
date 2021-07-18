@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1231</width>
-    <height>936</height>
+    <width>1236</width>
+    <height>948</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4898,7 +4898,7 @@ Measurement</string>
                           <bool>true</bool>
                          </property>
                          <property name="currentIndex">
-                          <number>0</number>
+                          <number>1</number>
                          </property>
                          <widget class="QWidget" name="tab_4">
                           <attribute name="title">
@@ -4906,31 +4906,21 @@ Measurement</string>
                           </attribute>
                           <layout class="QGridLayout" name="gridLayout_39">
                            <item row="0" column="0">
-                            <layout class="QVBoxLayout" name="verticalLayout_80" stretch="100,1">
+                            <layout class="QHBoxLayout" name="horizontalLayout_27" stretch="1,100">
                              <property name="spacing">
                               <number>0</number>
                              </property>
                              <item>
-                              <layout class="QGridLayout" name="solAnalysisScanImageLayout" rowstretch="0" columnstretch="0">
-                               <property name="spacing">
-                                <number>0</number>
-                               </property>
-                              </layout>
-                             </item>
-                             <item>
-                              <layout class="QHBoxLayout" name="horizontalLayout_57" stretch="100,1,1,100">
-                               <property name="spacing">
-                                <number>0</number>
-                               </property>
+                              <layout class="QVBoxLayout" name="verticalLayout_62">
                                <item>
-                                <spacer name="horizontalSpacer_2">
+                                <spacer name="verticalSpacer_3">
                                  <property name="orientation">
-                                  <enum>Qt::Horizontal</enum>
+                                  <enum>Qt::Vertical</enum>
                                  </property>
                                  <property name="sizeHint" stdset="0">
                                   <size>
-                                   <width>40</width>
-                                   <height>20</height>
+                                   <width>20</width>
+                                   <height>40</height>
                                   </size>
                                  </property>
                                 </spacer>
@@ -4989,36 +4979,25 @@ Measurement</string>
                                 </layout>
                                </item>
                                <item>
-                                <layout class="QVBoxLayout" name="verticalLayout_88">
-                                 <item>
-                                  <widget class="QPushButton" name="scanImgIgnoreFile">
-                                   <property name="text">
-                                    <string>Ignore File</string>
-                                   </property>
-                                  </widget>
-                                 </item>
-                                 <item>
-                                  <widget class="QPushButton" name="scanImgResetFiles">
-                                   <property name="text">
-                                    <string>Reset</string>
-                                   </property>
-                                  </widget>
-                                 </item>
-                                </layout>
-                               </item>
-                               <item>
-                                <spacer name="horizontalSpacer_22">
+                                <spacer name="verticalSpacer_5">
                                  <property name="orientation">
-                                  <enum>Qt::Horizontal</enum>
+                                  <enum>Qt::Vertical</enum>
                                  </property>
                                  <property name="sizeHint" stdset="0">
                                   <size>
-                                   <width>40</width>
-                                   <height>20</height>
+                                   <width>20</width>
+                                   <height>40</height>
                                   </size>
                                  </property>
                                 </spacer>
                                </item>
+                              </layout>
+                             </item>
+                             <item>
+                              <layout class="QGridLayout" name="solAnalysisScanImageLayout" rowstretch="0" columnstretch="0">
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
                               </layout>
                              </item>
                             </layout>
@@ -5031,15 +5010,161 @@ Measurement</string>
                           </attribute>
                           <layout class="QGridLayout" name="gridLayout_40">
                            <item row="0" column="0">
-                            <layout class="QVBoxLayout" name="verticalLayout_89" stretch="100,1,1">
+                            <layout class="QVBoxLayout" name="verticalLayout_89" stretch="100,1">
                              <property name="spacing">
                               <number>0</number>
                              </property>
                              <item>
-                              <layout class="QGridLayout" name="solAnalysisAveragingLayout_2" rowstretch="0" columnstretch="0">
+                              <layout class="QHBoxLayout" name="horizontalLayout_30" stretch="1,100">
                                <property name="spacing">
                                 <number>0</number>
                                </property>
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_22">
+                                 <property name="title">
+                                  <string>Row Discrimination</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_11">
+                                  <item row="0" column="0">
+                                   <layout class="QVBoxLayout" name="verticalLayout_65">
+                                    <item>
+                                     <layout class="QVBoxLayout" name="verticalLayout_95">
+                                      <property name="spacing">
+                                       <number>0</number>
+                                      </property>
+                                      <item>
+                                       <widget class="QRadioButton" name="solAnalysisUseRows">
+                                        <property name="text">
+                                         <string>Use all rows</string>
+                                        </property>
+                                       </widget>
+                                      </item>
+                                      <item>
+                                       <layout class="QHBoxLayout" name="horizontalLayout_71" stretch="1,1,100">
+                                        <item>
+                                         <widget class="QRadioButton" name="solAnalysisRemoveOver">
+                                          <property name="text">
+                                           <string>Remove
+scores
+over:</string>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item>
+                                         <widget class="QDoubleSpinBox" name="doubleSpinBox">
+                                          <property name="sizePolicy">
+                                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                            <horstretch>0</horstretch>
+                                            <verstretch>0</verstretch>
+                                           </sizepolicy>
+                                          </property>
+                                          <property name="minimumSize">
+                                           <size>
+                                            <width>50</width>
+                                            <height>0</height>
+                                           </size>
+                                          </property>
+                                          <property name="maximumSize">
+                                           <size>
+                                            <width>50</width>
+                                            <height>16777215</height>
+                                           </size>
+                                          </property>
+                                          <property name="decimals">
+                                           <number>1</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item>
+                                         <spacer name="horizontalSpacer_31">
+                                          <property name="orientation">
+                                           <enum>Qt::Horizontal</enum>
+                                          </property>
+                                          <property name="sizeHint" stdset="0">
+                                           <size>
+                                            <width>40</width>
+                                            <height>20</height>
+                                           </size>
+                                          </property>
+                                         </spacer>
+                                        </item>
+                                       </layout>
+                                      </item>
+                                      <item>
+                                       <layout class="QHBoxLayout" name="horizontalLayout_72" stretch="1,1,100">
+                                        <item>
+                                         <widget class="QRadioButton" name="solAnalysisRemoveWorst">
+                                          <property name="minimumSize">
+                                           <size>
+                                            <width>0</width>
+                                            <height>0</height>
+                                           </size>
+                                          </property>
+                                          <property name="maximumSize">
+                                           <size>
+                                            <width>999</width>
+                                            <height>16777215</height>
+                                           </size>
+                                          </property>
+                                          <property name="text">
+                                           <string>Remove
+Worst</string>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item>
+                                         <widget class="QSpinBox" name="spinBox_7">
+                                          <property name="sizePolicy">
+                                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                            <horstretch>0</horstretch>
+                                            <verstretch>0</verstretch>
+                                           </sizepolicy>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item>
+                                         <spacer name="horizontalSpacer_32">
+                                          <property name="orientation">
+                                           <enum>Qt::Horizontal</enum>
+                                          </property>
+                                          <property name="sizeHint" stdset="0">
+                                           <size>
+                                            <width>40</width>
+                                            <height>20</height>
+                                           </size>
+                                          </property>
+                                         </spacer>
+                                        </item>
+                                       </layout>
+                                      </item>
+                                     </layout>
+                                    </item>
+                                    <item>
+                                     <widget class="QPushButton" name="solAnalysisRecalMeanAcf">
+                                      <property name="sizePolicy">
+                                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                       </sizepolicy>
+                                      </property>
+                                      <property name="text">
+                                       <string>Re-Calculate
+Mean ACF</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                   </layout>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
+                               <item>
+                                <layout class="QGridLayout" name="solAnalysisAveragingLayout" rowstretch="0" columnstretch="0">
+                                 <property name="spacing">
+                                  <number>0</number>
+                                 </property>
+                                </layout>
+                               </item>
                               </layout>
                              </item>
                              <item>
@@ -5058,7 +5183,7 @@ Measurement</string>
                                 </spacer>
                                </item>
                                <item>
-                                <widget class="QCheckBox" name="showRowAcfs_2">
+                                <widget class="QCheckBox" name="showRowAcfs">
                                  <property name="text">
                                   <string>Show row ACFs</string>
                                  </property>
@@ -5081,148 +5206,6 @@ Measurement</string>
                                 </spacer>
                                </item>
                               </layout>
-                             </item>
-                             <item>
-                              <widget class="QGroupBox" name="groupBox_22">
-                               <property name="title">
-                                <string>Row Discrimination</string>
-                               </property>
-                               <layout class="QHBoxLayout" name="horizontalLayout_59">
-                                <property name="spacing">
-                                 <number>0</number>
-                                </property>
-                                <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_90">
-                                  <property name="spacing">
-                                   <number>0</number>
-                                  </property>
-                                  <item>
-                                   <widget class="QRadioButton" name="radioButton_6">
-                                    <property name="text">
-                                     <string>Use all rows</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item>
-                                   <layout class="QHBoxLayout" name="horizontalLayout_60" stretch="1,1,100">
-                                    <item>
-                                     <widget class="QRadioButton" name="radioButton_7">
-                                      <property name="text">
-                                       <string>Remove rows
-with score over:</string>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
-                                      <property name="minimumSize">
-                                       <size>
-                                        <width>50</width>
-                                        <height>0</height>
-                                       </size>
-                                      </property>
-                                      <property name="maximumSize">
-                                       <size>
-                                        <width>50</width>
-                                        <height>16777215</height>
-                                       </size>
-                                      </property>
-                                      <property name="decimals">
-                                       <number>1</number>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <spacer name="horizontalSpacer_29">
-                                      <property name="orientation">
-                                       <enum>Qt::Horizontal</enum>
-                                      </property>
-                                      <property name="sizeHint" stdset="0">
-                                       <size>
-                                        <width>40</width>
-                                        <height>20</height>
-                                       </size>
-                                      </property>
-                                     </spacer>
-                                    </item>
-                                   </layout>
-                                  </item>
-                                  <item>
-                                   <layout class="QHBoxLayout" name="horizontalLayout_61" stretch="1,1,1,100">
-                                    <item>
-                                     <widget class="QRadioButton" name="radioButton_8">
-                                      <property name="minimumSize">
-                                       <size>
-                                        <width>60</width>
-                                        <height>0</height>
-                                       </size>
-                                      </property>
-                                      <property name="maximumSize">
-                                       <size>
-                                        <width>60</width>
-                                        <height>16777215</height>
-                                       </size>
-                                      </property>
-                                      <property name="text">
-                                       <string>Remove</string>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <widget class="QSpinBox" name="spinBox_6"/>
-                                    </item>
-                                    <item>
-                                     <widget class="QLabel" name="label_12">
-                                      <property name="minimumSize">
-                                       <size>
-                                        <width>55</width>
-                                        <height>0</height>
-                                       </size>
-                                      </property>
-                                      <property name="maximumSize">
-                                       <size>
-                                        <width>55</width>
-                                        <height>16777215</height>
-                                       </size>
-                                      </property>
-                                      <property name="text">
-                                       <string>worst rows</string>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <spacer name="horizontalSpacer_30">
-                                      <property name="orientation">
-                                       <enum>Qt::Horizontal</enum>
-                                      </property>
-                                      <property name="sizeHint" stdset="0">
-                                       <size>
-                                        <width>40</width>
-                                        <height>20</height>
-                                       </size>
-                                      </property>
-                                     </spacer>
-                                    </item>
-                                   </layout>
-                                  </item>
-                                 </layout>
-                                </item>
-                                <item>
-                                 <widget class="QPushButton" name="pushButton_13">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="text">
-                                   <string>Re-Calculate
-Mean ACF</string>
-                                  </property>
-                                 </widget>
-                                </item>
-                               </layout>
-                              </widget>
                              </item>
                             </layout>
                            </item>
