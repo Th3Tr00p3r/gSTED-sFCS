@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QButtonGroup, QDialog, QMainWindow, QStatusBar, QWid
 
 import gui.icons  # for initial icons loadout # NOQA
 import logic.windows as wins_imp
+from utilities.helper import force_aspect
 
 try:
     from gui.icons import icons_rc  # for initial icons loadout # NOQA
@@ -141,6 +142,12 @@ class MainWin(QMainWindow):
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
     @pyqtSlot()
+    def on_removeImportedSolData_released(self) -> None:
+        """Doc."""
+
+        self.imp.remove_imported_template()
+
+    @pyqtSlot()
     def on_dataDirLogUpdate_released(self) -> None:
         """Doc."""
 
@@ -181,6 +188,12 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.update_dir_log_wdgt(template)
+
+    @pyqtSlot(str)
+    def on_importedSolDataTemplates_currentTextChanged(self, template: str) -> None:
+        """Doc."""
+
+        self.imp.populate_image_scans(template)
 
     def closeEvent(self, event: QEvent) -> None:
         """Doc."""
@@ -453,12 +466,22 @@ class MatplotlibImageDisplay:
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
 
-    def replace_image(self, image):
+    def entitle_and_and_label(self, title: str = "", x_label: str = "", y_label: str = ""):
+        """Doc"""
+
+        self.ax.set_title(title)
+        self.ax.set_xlabel(x_label)
+        self.ax.set_ylabel(y_label)
+        self.canvas.draw()
+
+    def plot_scan_image_and_roi(self, image: np.ndarray, roi: dict):
         """Doc."""
 
         self.figure.clear()
-        ax = self.figure.add_subplot(111)
-        ax.imshow(image)
+        self.ax = self.figure.add_subplot(111)
+        self.ax.imshow(image)
+        self.ax.plot(roi["col"], roi["row"], color="white")
+        force_aspect(self.ax, aspect=1)
         self.canvas.draw()
 
 

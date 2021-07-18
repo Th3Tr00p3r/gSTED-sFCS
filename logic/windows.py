@@ -703,7 +703,7 @@ class MainWin:
 
         if not day:
             # ignore if combobox was just cleared
-            self._app.analysis_dir_path = None
+            self._app.analysis.dir_path = None
             return
 
         # define widgets
@@ -724,10 +724,10 @@ class MainWin:
         templates_combobox.clear()
 
         try:
-            self._app.analysis_dir_path = os.path.join(
+            self._app.analysis.dir_path = os.path.join(
                 save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir
             )
-            templates = pkl_and_mat_templates(self._app.analysis_dir_path, is_solution_type)
+            templates = pkl_and_mat_templates(self._app.analysis.dir_path, is_solution_type)
             templates_combobox.addItems(templates)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
@@ -737,9 +737,9 @@ class MainWin:
         """Doc."""
 
         try:
-            dir_path = os.path.realpath(self._app.analysis_dir_path)
+            dir_path = os.path.realpath(self._app.analysis.dir_path)
         except (AttributeError, TypeError):
-            # self._app.analysis_dir_path does not yet exist or is None (no date dir found)
+            # self._app.analysis.dir_path does not yet exist or is None (no date dir found)
             pass
         else:
             webbrowser.open(dir_path)
@@ -751,7 +751,7 @@ class MainWin:
         text_rows = data_import_wdgts.log_text.get().split("\n")
         curr_template = data_import_wdgts.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
-        file_path = os.path.join(self._app.analysis_dir_path, log_filename)
+        file_path = os.path.join(self._app.analysis.dir_path, log_filename)
 
         with open(file_path, "w", newline="") as f:
             writer = csv.writer(f)
@@ -786,9 +786,9 @@ class MainWin:
                 log_filename = re.sub("_\\*\\.\\w{3}", ".log", template)
             elif data_import_wdgts.is_image_type.get():
                 log_filename = re.sub("\\.\\w{3}", ".log", template)
-            file_path = os.path.join(self._app.analysis_dir_path, log_filename)
+            file_path = os.path.join(self._app.analysis.dir_path, log_filename)
         except TypeError:
-            # 'self._app.analysis_dir_path' is 'None'
+            # 'self._app.analysis.dir_path' is 'None'
             return
         else:
             if not os.path.isfile(file_path):
@@ -815,16 +815,18 @@ class MainWin:
 
         data_import_wdgts = wdgt_colls.data_import_wdgts
         current_template = data_import_wdgts.data_templates.get()
-        #        is_calibration = data_import_wdgts.is_calibration.get()
+        is_calibration = data_import_wdgts.is_calibration.get()
 
         logging.info("Importing Data. Pausing 'ai' and 'ci' tasks")
         self._app.devices.scanners.pause_tasks("ai")
         self._app.devices.photon_detector.pause_tasks("ci")
 
         s = CorrFuncTDC()
+        fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
         s.read_fpga_data(
-            os.path.join(self._app.analysis_dir_path, current_template),
-            fix_shift=False,  # TESTESTEST fix_shift was True!
+            os.path.join(self._app.analysis.dir_path, current_template),
+            fix_shift=fix_shift,
+            plot=False,
         )
 
         logging.info("Data import finished. Resuming 'ai' and 'ci' tasks")
@@ -833,9 +835,67 @@ class MainWin:
         self._app.devices.photon_detector.init_ci_buffer()
         self._app.devices.photon_detector.start_tasks("ci")
 
+        # save data and populate combobox
+        imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates.obj
+        if is_calibration:
+            if "_exc_" in current_template:
+                item = "CAL_EXC - " + current_template
+                self._app.analysis.loaded_data["CAL_EXC"] = s.data["data"]
+            elif "_sted_" in current_template:
+                item = "CAL_STED - " + current_template
+                self._app.analysis.loaded_data["CAL_STED"] = s.data["data"]
+        else:
+            if "_exc_" in current_template:
+                item = "SAMP_EXC - " + current_template
+                self._app.analysis.loaded_data["SAMP_EXC"] = s.data["data"]
+            elif "_sted_" in current_template:
+                item = "SAMP_STED - " + current_template
+                self._app.analysis.loaded_data["SAMP_STED"] = s.data["data"]
+        imported_combobox.addItem(item)
 
-#        # plotting the first scan image
-#        sol_data_analysis_wdgts
+        # plotting the first scan image
+
+    def populate_image_scans(self, template):
+        """Doc."""
+
+        # get current loaded data from imported_templates combobox
+        imported_template = wdgt_colls.sol_data_analysis_wdgts.imported_templates.get()
+        self._app.analysis.curr_data_type, *_ = re.split(" -", imported_template)
+
+        # get number of files and populate the spinbox
+        num_files = len(self._app.analysis.loaded_data[self._app.analysis.curr_data_type])
+        wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.obj.setMaximum(num_files)
+        wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.set(1)
+
+        # plot the scan image
+        self.display_scan_image()
+
+    def display_scan_image(self):
+        """Doc."""
+
+        file_num = wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.get()
+        img = self._app.analysis.loaded_data[self._app.analysis.curr_data_type][file_num - 1].image
+        roi = self._app.analysis.loaded_data[self._app.analysis.curr_data_type][file_num - 1].roi
+
+        scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
+        scan_image_disp.plot_scan_image_and_roi(img, roi)
+        scan_image_disp.entitle_and_and_label("", "Point Number", "Line Number")
+
+    def remove_imported_template(self):
+        """Doc."""
+
+        imported_templates = wdgt_colls.sol_data_analysis_wdgts.imported_templates
+
+        if "Excitation (Cal)" in imported_templates.get():
+            self._app.analysis.cal["exc"] = None
+        elif "STED (Cal)" in imported_templates.get():
+            self._app.analysis.cal["sted"] = None
+        elif "Excitation" in imported_templates.get():
+            self._app.analysis.samp["exc"] = None
+        elif "STED" in imported_templates.get():
+            self._app.analysis.samp["sted"] = None
+
+        imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
 
 
 class SettWin:
