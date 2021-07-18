@@ -142,11 +142,11 @@ class MainWin(QMainWindow):
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
-    @pyqtSlot()
-    def on_scanImgFileNum_released(self) -> None:
+    @pyqtSlot(int)
+    def on_scanImgFileNum_valueChanged(self, val: int) -> None:
         """Doc."""
 
-        self.imp.display_scan_images()
+        self.imp.display_scan_image(val)
 
     @pyqtSlot()
     def on_removeImportedSolData_released(self) -> None:
@@ -472,6 +472,12 @@ class MatplotlibImageDisplay:
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
+
+    def clear(self):
+        """Doc."""
+
+        self.figure.clear()
+        self.canvas.draw()
 
     def entitle_and_label(self, title: str = "", x_label: str = "", y_label: str = ""):
         """Doc"""
