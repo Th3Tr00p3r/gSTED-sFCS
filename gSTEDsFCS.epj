@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-07-12, 16:51:28"
+    "saved": "2021-07-18, 21:03:41"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -144,7 +144,6 @@
     "RESOURCES": [],
     "SOURCES": [
       "gui/gui.py",
-      "logic/__init__.py",
       "logic/app.py",
       "logic/devices.py",
       "logic/drivers.py",
