@@ -250,31 +250,12 @@ class CorrFuncTDC(CorrFuncData):
                 system_info = self.default_sys_info
                 self.after_pulse_param = system_info["after_pulse_param"]
 
-            # patching for new parameters
-            if isinstance(self.after_pulse_param, np.ndarray):
-                self.after_pulse_param = (
-                    "multi_exponent_fit",
-                    np.array(
-                        1e5
-                        * [
-                            0.183161051158731,
-                            0.021980256326163,
-                            6.882763042785681,
-                            0.154790280034295,
-                            0.026417532300439,
-                            0.004282749744374,
-                            0.001418363840077,
-                            0.000221275818533,
-                        ]
-                    ),
-                )
-
             full_data = filedict["full_data"]
 
             print("Converting raw data to photons...", end=" ")
             p = PhotonData()
             p.convert_fpga_data_to_photons(
-                np.array(full_data["data"]).astype("B"), version=full_data["version"]
+                np.array(full_data["data"]).astype("B"), version=full_data["version"], verbose=True
             )
             print("Done.")
 
@@ -336,27 +317,16 @@ class CorrFuncTDC(CorrFuncData):
                     pix_shift = 0
 
                 # invert every second line
-                cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
+                #                cnt[1::2, :] = np.flip(cnt[1::2, :], 1) # TESTESTEST
 
                 print("Done.")
 
                 print("ROI selection...", end=" ")
 
                 if roi_selection == "auto":
-                    classes = 4
-                    thresh = skifilt.threshold_multiotsu(
-                        skifilt.median(cnt), classes
-                    )  # minor filtering of outliers
-                    cnt_dig = np.digitize(cnt, bins=thresh)
-                    plateau_lvl = np.median(cnt[cnt_dig == (classes - 1)])
-                    std_plateau = stats.median_absolute_deviation(cnt[cnt_dig == (classes - 1)])
-                    dev_cnt = cnt - plateau_lvl
-                    bw = dev_cnt > -std_plateau
-                    bw = ndimage.binary_fill_holes(bw)
-                    disk_open = morphology.selem.disk(radius=3)
-                    bw = morphology.opening(bw, selem=disk_open)
+                    bw = auto_roi_selection(cnt)
                 else:
-                    raise RuntimeError(f"roi_selection={roi_selection} is not implemented")
+                    raise RuntimeError(f"roi_selection={roi_selection} is not implemented.")
 
                 print("Done.")
 
@@ -408,10 +378,13 @@ class CorrFuncTDC(CorrFuncData):
                         line_starts = np.append(line_starts, line_starts_new)
                         line_stops = np.append(line_stops, line_stops_new)
 
-                # TODO: find out what causes the ROI to be empty (bw is emoty), and raise a descent exception or handle the IndexError
-                # repeat first point to close the polygon
-                roi["row"].append(roi["row"][0])
-                roi["col"].append(roi["col"][0])
+                try:
+                    # repeat first point to close the polygon
+                    roi["row"].append(roi["row"][0])
+                    roi["col"].append(roi["col"][0])
+                except IndexError:
+                    logging.warning("ROI is empty (need to figure out the cause).")
+                    return
                 # convert lists to numpy arrays
                 roi = {key: np.array(val) for key, val in roi.items()}
 
@@ -643,6 +616,24 @@ class CorrFuncTDC(CorrFuncData):
         self.total_duration = self.duration.sum()
         if verbose:
             print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
+
+
+def auto_roi_selection(img) -> np.ndarray:
+    """Doc."""
+
+    classes = 4
+    thresh = skifilt.threshold_multiotsu(
+        skifilt.median(img), classes
+    )  # minor filtering of outliers
+    cnt_dig = np.digitize(img, bins=thresh)
+    plateau_lvl = np.median(img[cnt_dig == (classes - 1)])
+    std_plateau = stats.median_absolute_deviation(img[cnt_dig == (classes - 1)])
+    dev_cnt = img - plateau_lvl
+    bw = dev_cnt > -std_plateau
+    bw = ndimage.binary_fill_holes(bw)
+    disk_open = morphology.selem.disk(radius=3)
+    bw = morphology.opening(bw, selem=disk_open)
+    return bw
 
 
 def line_correlations(image, bw_mask, roi, sampling_freq) -> list:

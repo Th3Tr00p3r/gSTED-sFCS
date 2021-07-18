@@ -42,7 +42,7 @@ class MainWin(QMainWindow):
         self._loop = app.loop
 
         # graphics
-        self.imgScanPlot = ImageDisplay(layout=self.imageLayout)
+        self.imgScanPlot = PyqtgraphImageDisplay(layout=self.imageLayout)
 
         # TODO: refactoring - it's stupid to connect signals to dummy functions in this module
         # (which simply call other functions in the implementation module) change the connections to lead
@@ -81,6 +81,8 @@ class MainWin(QMainWindow):
         self.analysisDataTypeGroup.addButton(self.imageDataImport)
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.imp.populate_all_data_dates)
+
+        self.solScanImgDisp = MatplotlibImageDisplay(self.solAnalysisScanImageLayout)
 
         # Device LEDs
         self.ledExc.clicked.connect(self.leds_clicked)
@@ -420,7 +422,7 @@ class CamWin(QWidget):
         self.imp = wins_imp.CamWin(self, app)
 
         # add matplotlib-ready widget (canvas) for showing camera output
-        # TODO: replace this with ImageDisplay
+        # TODO: replace this with PyqtgraphImageDisplay?
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         self.gridLayout.addWidget(self.canvas, 0, 1)
@@ -443,7 +445,24 @@ class CamWin(QWidget):
         self.imp.toggle_video()
 
 
-class ImageDisplay:
+class MatplotlibImageDisplay:
+    """Doc."""
+
+    def __init__(self, layout):
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)
+        layout.addWidget(self.canvas)
+
+    def replace_image(self, image):
+        """Doc."""
+
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        ax.imshow(image)
+        self.canvas.draw()
+
+
+class PyqtgraphImageDisplay:
     """Doc."""
 
     def __init__(self, layout):
@@ -453,7 +472,7 @@ class ImageDisplay:
         glw.addItem(self.hist)
         layout.addWidget(glw)
 
-    def add_image(self, image: np.ndarray, limit_zoomout=True, crosshair=True):
+    def replace_image(self, image: np.ndarray, limit_zoomout=True, crosshair=True):
         """Doc."""
 
         self.vb.clear()

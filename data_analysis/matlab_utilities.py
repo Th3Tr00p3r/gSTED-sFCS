@@ -36,7 +36,7 @@ legacy_matlab_naming_full_data_trans_dict = {
     "Version": "version",
     "AI": "ai",
     "AO": "ao",
-    "AvgCnt": "avg_cnt_rate",
+    "AvgCnt": "avg_cnt_rate_khz",
     "CircleSpeed_um_sec": "circle_speed_um_sec",
     "AnglularScanSettings": (
         "angular_scan_settings",
