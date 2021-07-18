@@ -787,7 +787,7 @@ class MainWin:
         data_import_wdgts = wdgt_colls.data_import_wdgts
         try:
             if data_import_wdgts.is_solution_type.get():
-                log_filename = re.sub("_\\*\\.\\w{3}", ".log", template)
+                log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
             elif data_import_wdgts.is_image_type.get():
                 log_filename = re.sub("\\.\\w{3}", ".log", template)
             file_path = os.path.join(self._app.analysis.dir_path, log_filename)
@@ -841,7 +841,7 @@ class MainWin:
 
         else:
             # save data and populate combobox
-            imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates.obj
+            imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates
             if is_calibration:
                 if "_exc_" in current_template:
                     item = "CAL_EXC - " + current_template
@@ -849,6 +849,9 @@ class MainWin:
                 elif "_sted_" in current_template:
                     item = "CAL_STED - " + current_template
                     self._app.analysis.loaded_data["CAL_STED"] = s.data["data"]
+                else:
+                    item = "CAL_UNKNOWN - " + current_template
+                    self._app.analysis.loaded_data["CAL_UNKNOWN"] = s.data["data"]
             else:
                 if "_exc_" in current_template:
                     item = "SAMP_EXC - " + current_template
@@ -856,7 +859,11 @@ class MainWin:
                 elif "_sted_" in current_template:
                     item = "SAMP_STED - " + current_template
                     self._app.analysis.loaded_data["SAMP_STED"] = s.data["data"]
-            imported_combobox.addItem(item)
+                else:
+                    item = "SAMP_UNKNOWN - " + current_template
+                    self._app.analysis.loaded_data["SAMP_UNKNOWN"] = s.data["data"]
+            imported_combobox.obj.addItem(item)
+            imported_combobox.set(item)
 
         logging.info("Data import finished. Resuming 'ai' and 'ci' tasks")
         self._app.devices.scanners.init_ai_buffer()
@@ -867,19 +874,23 @@ class MainWin:
     def populate_image_scans(self, template):
         """Doc."""
 
-        # get current loaded data from imported_templates combobox
-        imported_template = wdgt_colls.sol_data_analysis_wdgts.imported_templates.get()
-        self._app.analysis.curr_data_type, *_ = re.split(" -", imported_template)
+        # extract imported data type from template
+        self._app.analysis.curr_data_type, *_ = re.split(" -", template)
 
         # get number of files and populate the spinbox
-        num_files = len(self._app.analysis.loaded_data[self._app.analysis.curr_data_type])
-        wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.obj.setMaximum(num_files)
-        wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.set(1)
+        try:
+            num_files = len(self._app.analysis.loaded_data[self._app.analysis.curr_data_type])
+        except KeyError:
+            # no imported templates (deleted)
+            wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj.clear()
+        else:
+            wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.obj.setMaximum(num_files)
+            wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.set(1)
 
-        # plot the scan image
-        self.display_scan_image()
+            # plot the scan image
+            self.display_scan_image(1)
 
-    def display_scan_image(self):
+    def display_scan_image(self, file_num):
         """Doc."""
 
         file_num = wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.get()
@@ -894,16 +905,9 @@ class MainWin:
         """Doc."""
 
         imported_templates = wdgt_colls.sol_data_analysis_wdgts.imported_templates
-
-        if "Excitation (Cal)" in imported_templates.get():
-            self._app.analysis.cal["exc"] = None
-        elif "STED (Cal)" in imported_templates.get():
-            self._app.analysis.cal["sted"] = None
-        elif "Excitation" in imported_templates.get():
-            self._app.analysis.samp["exc"] = None
-        elif "STED" in imported_templates.get():
-            self._app.analysis.samp["sted"] = None
-
+        template = imported_templates.get()
+        data_type, *_ = re.split(" -", template)
+        self._app.analysis.loaded_data[data_type] = None
         imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
 
 

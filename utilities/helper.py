@@ -91,7 +91,8 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
     l5 = parent_wdgt.findChildren(QtWidgets.QCheckBox)
     l6 = parent_wdgt.findChildren(QtWidgets.QRadioButton)
     l7 = parent_wdgt.findChildren(QtWidgets.QSlider)
-    children_list = l1 + l2 + l3 + l4 + l5 + l6 + l7
+    l8 = parent_wdgt.findChildren(QtWidgets.QTabWidget)
+    children_list = l1 + l2 + l3 + l4 + l5 + l6 + l7 + l8
 
     rows = []
     for child in children_list:
@@ -100,6 +101,8 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
 
         if child_class == "QComboBox":
             val = child.currentText()
+        elif child_class == "QTabWidget":
+            val = int(child.currentIndex())
         elif child_class in {"QCheckBox", "QRadioButton"}:
             val = int(child.isChecked())
         elif child_class == "QSlider":
@@ -159,6 +162,8 @@ def csv_to_gui(file_path, gui_parent):
             child.setText(val)
         elif child_class == "QComboBox":
             child.setCurrentText(val)
+        elif child_class == "QTabWidget":
+            child.setCurrentIndex(int(val))
         elif child_class in {"QCheckBox", "QRadioButton"}:
             child.setChecked(int(val))
 
