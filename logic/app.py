@@ -57,6 +57,13 @@ class App:
         self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
+        # populate all widget collections in 'utilities.widget_collections' with objects
+        [
+            val.hold_objects(app=self)
+            for val in wdgt_colls.__dict__.values()
+            if isinstance(val, helper.QtWidgetCollection)
+        ]
+
         # create neccessary data folders based on settings paths
         self.create_data_folders()
 
@@ -107,7 +114,7 @@ class App:
     def create_data_folders(self):
         """Doc."""
 
-        for gui_object_name in {"solDataPath", "imgDataPath", "camDataPath"}:
+        for gui_object_name in {"dataPath", "camDataPath"}:
             rel_path = getattr(self.gui.settings, gui_object_name).text()
             os.makedirs(rel_path, exist_ok=True)
 
@@ -121,14 +128,12 @@ class App:
         for nick in DVC_NICKS:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
-            param_dict = dvc_attrs.param_widgets.hold_objects(
-                self, ["led_widget", "switch_widget"]
-            ).read_dict_from_gui(self)
+            param_dict = dvc_attrs.param_widgets.hold_objects(app=self).read_dict_from_gui(self)
             param_dict["nick"] = nick
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
             param_dict["error_display"] = helper.QtWidgetAccess(
-                "deviceErrorDisplay", "text", "main"
+                "deviceErrorDisplay", "text", "main", True
             ).hold_obj(self.gui.main)
 
             if dvc_attrs.cls_xtra_args:

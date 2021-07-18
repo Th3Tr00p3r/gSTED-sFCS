@@ -26,7 +26,7 @@ class PhotonData:
 
         SectionLength = np.array([np.diff(SE)[0] for SE in section_edges])
         if verbose:
-            print(f"Found {len(section_edges)} sections of lengths:\n{SectionLength}")
+            print(f"Found {len(section_edges)} sections of length/s: {SectionLength}.", end=" ")
 
         # patching: look at the largest section only
         SecInd = np.argmax(SectionLength)

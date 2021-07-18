@@ -9,6 +9,7 @@ import pickle
 import sys
 import time
 from dataclasses import dataclass
+from datetime import datetime as dt
 from types import SimpleNamespace
 
 import nidaqmx.constants as ni_consts
@@ -142,13 +143,18 @@ class Measurement:
         current MATLAB-based analysis (or later in Python using sio.loadmat()).
         Note: saving as .mat takes longer
         """
-        # TODO: does not handle overnight measurements during which the date changes (who cares)
+        # NOTE: does not handle overnight measurements during which the date changes (who cares)
 
-        today_date_path = datetime.datetime.now().strftime("%d_%m_%Y")
-        today_dir = os.path.join(self.save_path, today_date_path)
-        os.makedirs(today_dir, exist_ok=True)
+        today_dir = os.path.join(self.save_path, dt.now().strftime("%d_%m_%Y"))
 
-        file_path = os.path.join(today_dir, file_name)
+        if self.type == "SFCSSolution":
+            save_path = os.path.join(today_dir, "solution")
+        elif self.type == "SFCSImage":
+            save_path = os.path.join(today_dir, "image")
+
+        os.makedirs(save_path, exist_ok=True)
+
+        file_path = os.path.join(save_path, file_name)
 
         if self.save_frmt == "MATLAB":
             # .mat
@@ -301,8 +307,7 @@ class SFCSImageMeasurement(Measurement):
         self.scanning = True
 
     def build_filename(self) -> str:
-        time_str = datetime.datetime.now().strftime("%H%M%S")
-        return f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{time_str}"
+        return f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{dt.now().strftime('%H%M%S')}"
 
     def setup_scan(self):
         """Doc."""
@@ -648,8 +653,8 @@ class SFCSSolutionMeasurement(Measurement):
         in datetime.time format, where end_time is current_time + duration_in_seconds.
         """
 
-        curr_datetime = datetime.datetime.now()
-        self.start_time_str = datetime.datetime.now().strftime("%H%M%S")
+        curr_datetime = dt.now()
+        self.start_time_str = curr_datetime.strftime("%H%M%S")
         end_datetime = curr_datetime + datetime.timedelta(seconds=int(self.duration_s))
         self.start_time_wdgt.set(curr_datetime.time())
         self.end_time_wdgt.set(end_datetime.time())
@@ -764,7 +769,7 @@ class SFCSSolutionMeasurement(Measurement):
                 "version": self.tdc_dvc.tdc_vrsn,
                 "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
                 "ao": self.ao_buffer,
-                "avg_cnt_rate": self.counter_dvc.avg_cnt_rate,
+                "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
             }
             if self.scan_params.pattern == "circle":
                 full_data["circle_speed_um_sec"] = self.scan_params.speed_um_s
@@ -780,7 +785,7 @@ class SFCSSolutionMeasurement(Measurement):
                 "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
                 "laser_freq": self.tdc_dvc.laser_freq_MHz,
                 "version": self.tdc_dvc.tdc_vrsn,
-                "avg_cnt_rate": self.counter_dvc.avg_cnt_rate,
+                "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
             }
 
             return {"full_data": full_data, "system_info": self.sys_info}
@@ -790,6 +795,12 @@ class SFCSSolutionMeasurement(Measurement):
 
         # initialize gui start/end times
         self.set_current_and_end_times()
+
+        # estimate time per file
+        apprx_byte_rate_hz = self.counter_dvc.avg_cnt_rate_khz * 1e3 * 7
+        bytes_per_file = self.max_file_size_mb * 1e6
+        apprx_file_time_min = bytes_per_file / apprx_byte_rate_hz / 60
+        self._app.gui.main.solScanFileTime.setValue(apprx_file_time_min)
 
         # turn on lasers
         try:
@@ -808,7 +819,10 @@ class SFCSSolutionMeasurement(Measurement):
             else:
                 self.scanners_dvc.init_ai_buffer()
 
-            self.counter_dvc.init_ci_buffer()
+            if not self.repeat:
+                # during alignment we don't change the counter_dvc tasks, do no need to initialize
+                self.counter_dvc.init_ci_buffer()
+
             self.data_dvc.init_data()
             self.data_dvc.purge_buffers()
 
@@ -827,7 +841,9 @@ class SFCSSolutionMeasurement(Measurement):
         try:  # TESTESTEST`
             while self.is_running and self.time_passed_s < self.duration_s:
 
-                self.counter_dvc.init_ci_buffer()
+                if not self.repeat:
+                    # during alignment we don't change the counter_dvc tasks, do no need to initialize
+                    self.counter_dvc.init_ci_buffer()
                 if self.scanning:
                     # re-start scan for each file
                     self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])

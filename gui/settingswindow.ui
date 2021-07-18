@@ -88,7 +88,7 @@
      <number>3</number>
     </property>
     <item row="2" column="0">
-     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,4">
+     <layout class="QVBoxLayout" name="verticalLayout_3" stretch="100,1">
       <property name="spacing">
        <number>0</number>
       </property>
@@ -106,7 +106,7 @@
          </font>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="data">
          <attribute name="title">
@@ -139,12 +139,12 @@
                 </property>
                 <item>
                  <property name="text">
-                  <string>Python</string>
+                  <string>Python (.pkl)</string>
                  </property>
                 </item>
                 <item>
                  <property name="text">
-                  <string>MATLAB</string>
+                  <string>MATLAB (.mat)</string>
                  </property>
                 </item>
                </widget>
@@ -158,18 +158,44 @@
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_5">
                <item>
-                <layout class="QVBoxLayout" name="verticalLayout_9">
+                <layout class="QVBoxLayout" name="verticalLayout_15">
                  <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_15">
+                  <widget class="QLabel" name="label_13">
+                   <property name="text">
+                    <string>Measurement Data Path</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="dataPath">
+                   <property name="enabled">
+                    <bool>true</bool>
+                   </property>
+                   <property name="font">
+                    <font>
+                     <pointsize>8</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>./data/</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_15">
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout_23">
                    <item>
-                    <widget class="QLabel" name="label_13">
+                    <widget class="QLabel" name="label_19">
                      <property name="text">
-                      <string>FCS Measurement Data</string>
+                      <string>Solution Sub-Directory name</string>
                      </property>
                     </widget>
                    </item>
                    <item>
-                    <widget class="QLineEdit" name="fcsDataPath">
+                    <widget class="QLineEdit" name="solSubdirName">
                      <property name="enabled">
                       <bool>true</bool>
                      </property>
@@ -179,59 +205,37 @@
                       </font>
                      </property>
                      <property name="text">
-                      <string>./data/</string>
+                      <string>solution</string>
                      </property>
                     </widget>
                    </item>
                   </layout>
                  </item>
                  <item>
-                  <widget class="QLabel" name="label_8">
-                   <property name="text">
-                    <string>Solution Measurement Data</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="solDataPath">
-                   <property name="enabled">
-                    <bool>true</bool>
-                   </property>
-                   <property name="font">
-                    <font>
-                     <pointsize>8</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>./data/solution measurements/</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <layout class="QVBoxLayout" name="verticalLayout">
-                 <item>
-                  <widget class="QLabel" name="label_9">
-                   <property name="text">
-                    <string>Image Measurement Data</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="imgDataPath">
-                   <property name="enabled">
-                    <bool>true</bool>
-                   </property>
-                   <property name="font">
-                    <font>
-                     <pointsize>8</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>./data/image measurements/</string>
-                   </property>
-                  </widget>
+                  <layout class="QVBoxLayout" name="verticalLayout_24">
+                   <item>
+                    <widget class="QLabel" name="label_20">
+                     <property name="text">
+                      <string>Image Sub-Directory name</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="imgSubdirName">
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>8</pointsize>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>image</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </item>
                 </layout>
                </item>
@@ -2495,7 +2499,7 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1,0,20,0">
         <property name="spacing">
-         <number>3</number>
+         <number>0</number>
         </property>
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_2">
