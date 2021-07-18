@@ -84,6 +84,7 @@ class MainWin(QMainWindow):
         self.analysisDataTypeGroup.buttonReleased.connect(self.imp.populate_all_data_dates)
 
         self.solScanImgDisp = MatplotlibImageDisplay(self.solAnalysisScanImageLayout)
+        self.solScanAcfDisp = MatplotlibImageDisplay(self.solAnalysisAveragingLayout)
 
         # Device LEDs
         self.ledExc.clicked.connect(self.leds_clicked)
@@ -140,6 +141,12 @@ class MainWin(QMainWindow):
         self.stageButtonsGroup.setEnabled(False)
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
+
+    @pyqtSlot()
+    def on_scanImgFileNum_released(self) -> None:
+        """Doc."""
+
+        self.imp.display_scan_images()
 
     @pyqtSlot()
     def on_removeImportedSolData_released(self) -> None:
@@ -466,7 +473,7 @@ class MatplotlibImageDisplay:
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
 
-    def entitle_and_and_label(self, title: str = "", x_label: str = "", y_label: str = ""):
+    def entitle_and_label(self, title: str = "", x_label: str = "", y_label: str = ""):
         """Doc"""
 
         self.ax.set_title(title)
@@ -482,6 +489,13 @@ class MatplotlibImageDisplay:
         self.ax.imshow(image)
         self.ax.plot(roi["col"], roi["row"], color="white")
         force_aspect(self.ax, aspect=1)
+        self.canvas.draw()
+
+    def plot_acfs(self, acf_array: np.ndarray):
+        """Doc."""
+
+        self.figure.clear()
+        self.ax.plot(acf_array)
         self.canvas.draw()
 
 
