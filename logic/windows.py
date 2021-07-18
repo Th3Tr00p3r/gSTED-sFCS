@@ -751,14 +751,18 @@ class MainWin:
         text_rows = data_import_wdgts.log_text.get().split("\n")
         curr_template = data_import_wdgts.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
-        file_path = os.path.join(self._app.analysis.dir_path, log_filename)
+        try:
+            file_path = os.path.join(self._app.analysis.dir_path, log_filename)
+        except AttributeError:
+            # no directories found
+            pass
+        else:
+            with open(file_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                for row in text_rows:
+                    writer.writerow([row])
 
-        with open(file_path, "w", newline="") as f:
-            writer = csv.writer(f)
-            for row in text_rows:
-                writer.writerow([row])
-
-        self.update_dir_log_wdgt(curr_template)
+            self.update_dir_log_wdgt(curr_template)
 
     def update_dir_log_wdgt(self, template: str) -> None:
         """Doc."""
@@ -823,37 +827,42 @@ class MainWin:
 
         s = CorrFuncTDC()
         fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
-        s.read_fpga_data(
-            os.path.join(self._app.analysis.dir_path, current_template),
-            fix_shift=fix_shift,
-            plot=False,
-        )
+
+        try:
+            s.read_fpga_data(
+                os.path.join(self._app.analysis.dir_path, current_template),
+                fix_shift=fix_shift,
+                plot=False,
+            )
+
+        except AttributeError:
+            # No directories found
+            pass
+
+        else:
+            # save data and populate combobox
+            imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates.obj
+            if is_calibration:
+                if "_exc_" in current_template:
+                    item = "CAL_EXC - " + current_template
+                    self._app.analysis.loaded_data["CAL_EXC"] = s.data["data"]
+                elif "_sted_" in current_template:
+                    item = "CAL_STED - " + current_template
+                    self._app.analysis.loaded_data["CAL_STED"] = s.data["data"]
+            else:
+                if "_exc_" in current_template:
+                    item = "SAMP_EXC - " + current_template
+                    self._app.analysis.loaded_data["SAMP_EXC"] = s.data["data"]
+                elif "_sted_" in current_template:
+                    item = "SAMP_STED - " + current_template
+                    self._app.analysis.loaded_data["SAMP_STED"] = s.data["data"]
+            imported_combobox.addItem(item)
 
         logging.info("Data import finished. Resuming 'ai' and 'ci' tasks")
         self._app.devices.scanners.init_ai_buffer()
         self._app.devices.scanners.start_tasks("ai")
         self._app.devices.photon_detector.init_ci_buffer()
         self._app.devices.photon_detector.start_tasks("ci")
-
-        # save data and populate combobox
-        imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates.obj
-        if is_calibration:
-            if "_exc_" in current_template:
-                item = "CAL_EXC - " + current_template
-                self._app.analysis.loaded_data["CAL_EXC"] = s.data["data"]
-            elif "_sted_" in current_template:
-                item = "CAL_STED - " + current_template
-                self._app.analysis.loaded_data["CAL_STED"] = s.data["data"]
-        else:
-            if "_exc_" in current_template:
-                item = "SAMP_EXC - " + current_template
-                self._app.analysis.loaded_data["SAMP_EXC"] = s.data["data"]
-            elif "_sted_" in current_template:
-                item = "SAMP_STED - " + current_template
-                self._app.analysis.loaded_data["SAMP_STED"] = s.data["data"]
-        imported_combobox.addItem(item)
-
-        # plotting the first scan image
 
     def populate_image_scans(self, template):
         """Doc."""
@@ -879,7 +888,7 @@ class MainWin:
 
         scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
         scan_image_disp.plot_scan_image_and_roi(img, roi)
-        scan_image_disp.entitle_and_and_label("", "Point Number", "Line Number")
+        scan_image_disp.entitle_and_label("", "Point Number", "Line Number")
 
     def remove_imported_template(self):
         """Doc."""
