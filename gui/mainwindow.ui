@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -4898,7 +4898,7 @@ Measurement</string>
                           <bool>true</bool>
                          </property>
                          <property name="currentIndex">
-                          <number>1</number>
+                          <number>0</number>
                          </property>
                          <widget class="QWidget" name="tab_4">
                           <attribute name="title">
@@ -5037,6 +5037,9 @@ Measurement</string>
                                         <property name="text">
                                          <string>Use all rows</string>
                                         </property>
+                                        <property name="checked">
+                                         <bool>false</bool>
+                                        </property>
                                        </widget>
                                       </item>
                                       <item>
@@ -5047,6 +5050,9 @@ Measurement</string>
                                            <string>Remove
 scores
 over:</string>
+                                          </property>
+                                          <property name="checked">
+                                           <bool>true</bool>
                                           </property>
                                          </widget>
                                         </item>
@@ -5072,6 +5078,15 @@ over:</string>
                                           </property>
                                           <property name="decimals">
                                            <number>1</number>
+                                          </property>
+                                          <property name="maximum">
+                                           <double>10.000000000000000</double>
+                                          </property>
+                                          <property name="singleStep">
+                                           <double>0.100000000000000</double>
+                                          </property>
+                                          <property name="value">
+                                           <double>2.000000000000000</double>
                                           </property>
                                          </widget>
                                         </item>
@@ -5119,6 +5134,12 @@ Worst</string>
                                             <horstretch>0</horstretch>
                                             <verstretch>0</verstretch>
                                            </sizepolicy>
+                                          </property>
+                                          <property name="maximum">
+                                           <number>999</number>
+                                          </property>
+                                          <property name="value">
+                                           <number>4</number>
                                           </property>
                                          </widget>
                                         </item>

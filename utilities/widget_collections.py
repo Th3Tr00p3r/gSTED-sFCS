@@ -52,6 +52,7 @@ sol_data_analysis_wdgts = QtWidgetCollection(
     scan_image_disp=("solScanImgDisp", None, "main", True),
     imported_templates=("importedSolDataTemplates", "currentText", "main", True),
     scan_img_file_num=("scanImgFileNum", "value", "main", True),
+    scan_settings=("solAnalysisScanSettings", "toPlainText", "main", True),
 )
 # ----------------------------------------------
 # Measurement Widget Collections
