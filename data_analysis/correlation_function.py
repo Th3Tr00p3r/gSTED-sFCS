@@ -15,7 +15,7 @@ from skimage import morphology
 
 from data_analysis.fit_tools import curve_fit_lims
 from data_analysis.matlab_utilities import (
-    legacy_matlab_naming_trans_dict,
+    legacy_keys_trans_dict,
     loadmat,
     translate_dict_keys,
 )
@@ -151,7 +151,9 @@ class CorrFuncData:
 class CorrFuncTDC(CorrFuncData):
     """Doc."""
 
-    default_sys_info = {
+    # Default System Info
+    system_info = {
+        "is_default": True,
         "setup": "STED with galvos",
         "after_pulse_param": (
             "multi_exponent_fit",
@@ -185,7 +187,7 @@ class CorrFuncTDC(CorrFuncData):
         self.is_data_on_disk = False  # saving data on disk to free RAM
         self.data_filename_on_disk = ""
         self.data_name_on_disk = ""
-        self.after_pulse_param = self.default_sys_info["after_pulse_param"]
+        self.after_pulse_param = self.system_info["after_pulse_param"]
 
     def read_fpga_data(
         self,
@@ -200,7 +202,7 @@ class CorrFuncTDC(CorrFuncData):
         print("Loading FPGA data:")
 
         if not (fpathes := glob.glob(fpathtmpl)):
-            logging.warning("No files found! Check file template!")
+            raise FileNotFoundError("No files found! Check file template!")
 
         # order filenames -
         # splits in folderpath and filename template
@@ -209,7 +211,7 @@ class CorrFuncTDC(CorrFuncData):
         _, file_extension = os.path.splitext(fnametmpl)
         fpathes.sort(key=lambda fpath: int(re.split(f"(\\d+){file_extension}", fpath)[1]))
 
-        for fpath in fpathes:
+        for idx, fpath in enumerate(fpathes):
             print(f"Loading '{fpath}'...", end=" ")
 
             # get filename (for later)
@@ -221,18 +223,20 @@ class CorrFuncTDC(CorrFuncData):
                     filedict = pickle.load(f)
             elif file_extension == ".mat":
                 filedict = loadmat(fpath)
-            # back-compatibility with old-style naming
-            filedict = translate_dict_keys(filedict, legacy_matlab_naming_trans_dict)
+            # backward compatibility with old-style naming
+            filedict = translate_dict_keys(filedict, legacy_keys_trans_dict)
 
             print("Done.")
 
-            try:
-                system_info = filedict["system_info"]
-                self.after_pulse_param = system_info["after_pulse_param"]
-            except KeyError:
+            if self.system_info["is_default"] and filedict.get("system_info"):
+                self.system_info = filedict["system_info"]
+                self.system_info["is_default"] = False
+                self.after_pulse_param = filedict["system_info"]["after_pulse_param"]
+            elif idx == 0:  # check only on first file
                 # use default system settings if missing either it or after_pulse_param
                 print("No 'system_info', patching with defaults...")
-                system_info = self.default_sys_info
+                system_info = self.system_info
+                self.after_pulse_param = system_info["after_pulse_param"]
 
             full_data = filedict["full_data"]
 
@@ -243,24 +247,24 @@ class CorrFuncTDC(CorrFuncData):
             )
             print("Done.")
 
-            self.laser_freq = full_data["laser_freq"] * 1e6
-            self.fpga_freq = full_data["fpga_freq"] * 1e6
+            self.laser_freq_hz = full_data["laser_freq_mhz"] * 1e6
+            self.fpga_freq_hz = full_data["fpga_freq_mhz"] * 1e6
 
-            if full_data.get("circle_speed_um_sec"):
+            if full_data.get("circle_speed_um_s"):
                 # circular scan
-                self.v_um_ms = full_data["circle_speed_um_sec"] / 1000  # to um/ms
-
-                logging.warning("Circular scan analysis not yet implemented...")
-                return
+                self.v_um_ms = full_data["circle_speed_um_s"] / 1000  # to um/ms
+                raise NotImplementedError("Circular scan analysis not yet implemented...")
 
             elif full_data.get("angular_scan_settings"):
                 # angular scan
-                angular_scan_settings = full_data["angular_scan_settings"]
-                angular_scan_settings["linear_part"] = np.array(
-                    angular_scan_settings["linear_part"]
-                )
-                p.line_end_adder = line_end_adder
-                self.v_um_ms = angular_scan_settings["actual_speed"] / 1000  # to um/ms
+                if idx == 0:
+                    # not assigned yet - this way assignment happens once
+                    angular_scan_settings = full_data["angular_scan_settings"]
+                    angular_scan_settings["linear_part"] = np.array(
+                        angular_scan_settings["linear_part"]
+                    )
+                    self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000  # to um/ms
+                    self.angular_scan_settings = angular_scan_settings
 
                 print("Converting angular scan to image...", end=" ")
 
@@ -271,22 +275,11 @@ class CorrFuncTDC(CorrFuncData):
 
                 if fix_shift:
                     print("Fixing line shift...", end=" ")
-                    score = []
-                    pix_shifts = []
-                    min_pix_shift = -np.round(cnt.shape[1] / 2)
-                    max_pix_shift = min_pix_shift + cnt.shape[1] + 1
-                    for pix_shift in np.arange(min_pix_shift, max_pix_shift).astype(int):
-                        cnt2 = np.roll(cnt, pix_shift)
-                        diff_cnt2 = (cnt2[:-1:2, :] - np.flip(cnt2[1::2, :], 1)) ** 2
-                        score.append(diff_cnt2.sum())
-                        pix_shifts.append(pix_shift)
-                    score = np.array(score)
-                    pix_shifts = np.array(pix_shifts)
-                    pix_shift = pix_shifts[score.argmin()]
-
+                    pix_shift = fix_data_shift(cnt)
+                    print(f"Shifted counts by {pix_shift} pixels. Done.")
                     runtime = (
                         p.runtime
-                        + pix_shift * self.laser_freq / angular_scan_settings["sample_freq"]
+                        + pix_shift * self.laser_freq_hz / angular_scan_settings["sample_freq_hz"]
                     )
                     (
                         cnt,
@@ -294,16 +287,11 @@ class CorrFuncTDC(CorrFuncData):
                         n_pix,
                         line_num,
                     ) = self.convert_angular_scan_to_image(runtime, angular_scan_settings)
-
-                    print(f"Shifted counts by {pix_shift} pixels. Done.")
-
                 else:
-                    pix_shift = 0
+                    print("Done.")
 
                 # invert every second line
                 #                cnt[1::2, :] = np.flip(cnt[1::2, :], 1) # TESTESTEST
-
-                print("Done.")
 
                 print("ROI selection...", end=" ")
 
@@ -330,7 +318,7 @@ class CorrFuncTDC(CorrFuncData):
                 line_stop_labels = np.array([], dtype="int")
 
                 if not (line_end_adder > bw.shape[0]):
-                    logging.warning(
+                    raise ValueError(
                         "Number of lines larger than line_end_adder! Increase line_end_adder."
                     )
 
@@ -367,8 +355,8 @@ class CorrFuncTDC(CorrFuncData):
                     roi["row"].append(roi["row"][0])
                     roi["col"].append(roi["col"][0])
                 except IndexError:
-                    logging.warning("ROI is empty (need to figure out the cause).")
-                    return
+                    raise RuntimeError("ROI is empty (need to figure out the cause).")
+
                 # convert lists to numpy arrays
                 roi = {key: np.array(val) for key, val in roi.items()}
 
@@ -377,10 +365,10 @@ class CorrFuncTDC(CorrFuncData):
                 line_starts = np.array(line_starts)
                 line_stops = np.array(line_stops)
                 runtime_line_starts = np.round(
-                    line_starts * self.laser_freq / angular_scan_settings["sample_freq"]
+                    line_starts * self.laser_freq_hz / angular_scan_settings["sample_freq_hz"]
                 )
                 runtime_line_stops = np.round(
-                    line_stops * self.laser_freq / angular_scan_settings["sample_freq"]
+                    line_stops * self.laser_freq_hz / angular_scan_settings["sample_freq_hz"]
                 )
 
                 runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
@@ -445,22 +433,25 @@ class CorrFuncTDC(CorrFuncData):
                 # lineNos = find(sum(p.bw_mask, 2));
 
                 p.image_line_corr = line_correlations(
-                    img, p.bw_mask, roi, angular_scan_settings["sample_freq"]
+                    img, p.bw_mask, roi, angular_scan_settings["sample_freq_hz"]
                 )
 
             else:  # static FCS
-                logging.warning("No scan settings detected... Static FCS analysis not implemented")
-                return
+                raise NotImplementedError(
+                    "No scan settings detected... Static FCS analysis not implemented."
+                )
 
             p.fname = fname
             p.fpath = fpath
             self.data["data"].append(p)
 
+        self.line_end_adder = line_end_adder
+
     def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
         """utility function for opening Angular Scans"""
 
         n_pix_tot = np.floor(
-            runtime * angular_scan_settings["sample_freq"] / self.laser_freq
+            runtime * angular_scan_settings["sample_freq_hz"] / self.laser_freq_hz
         ).astype("int")
         n_pix = np.mod(n_pix_tot, angular_scan_settings["points_per_line_total"]).astype(
             "int"
@@ -506,7 +497,7 @@ class CorrFuncTDC(CorrFuncData):
                 time_stamps = np.diff(p.runtime)
                 mu = np.median(time_stamps) / np.log(2)
                 total_duration_estimate = (
-                    total_duration_estimate + mu * len(p.runtime) / self.laser_freq
+                    total_duration_estimate + mu * len(p.runtime) / self.laser_freq_hz
                 )
 
             run_duration = total_duration_estimate / n_runs_requested
@@ -548,7 +539,7 @@ class CorrFuncTDC(CorrFuncData):
             for j, se in enumerate(p.all_section_edges):
 
                 # split into segments of approx time of run_duration
-                segment_time = (p.runtime[se[1]] - p.runtime[se[0]]) / self.laser_freq
+                segment_time = (p.runtime[se[1]] - p.runtime[se[0]]) / self.laser_freq_hz
                 if segment_time < min_time_frac * run_duration:
                     if verbose:
                         print(
@@ -564,11 +555,11 @@ class CorrFuncTDC(CorrFuncData):
                 for k in range(n_splits):
 
                     ts_split = ts[splits[k] : splits[k + 1]]
-                    self.duration = np.append(self.duration, ts_split.sum() / self.laser_freq)
+                    self.duration = np.append(self.duration, ts_split.sum() / self.laser_freq_hz)
                     cf.do_soft_cross_correlator(
                         ts_split,
                         CorrelatorType.PH_DELAY_CORRELATOR,
-                        timebase_ms=1000 / self.laser_freq,
+                        timebase_ms=1000 / self.laser_freq_hz,
                     )  # time base of 20MHz to ms
                     if len(self.lag) < len(cf.lag):
                         self.lag = cf.lag
@@ -601,6 +592,23 @@ class CorrFuncTDC(CorrFuncData):
         self.total_duration = self.duration.sum()
         if verbose:
             print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
+
+
+def fix_data_shift(cnt) -> int:
+    """Doc."""
+
+    score = []
+    pix_shifts = []
+    min_pix_shift = -np.round(cnt.shape[1] / 2)
+    max_pix_shift = min_pix_shift + cnt.shape[1] + 1
+    for pix_shift in np.arange(min_pix_shift, max_pix_shift).astype(int):
+        cnt2 = np.roll(cnt, pix_shift)
+        diff_cnt2 = (cnt2[:-1:2, :] - np.flip(cnt2[1::2, :], 1)) ** 2
+        score.append(diff_cnt2.sum())
+        pix_shifts.append(pix_shift)
+    score = np.array(score)
+    pix_shifts = np.array(pix_shifts)
+    return pix_shifts[score.argmin()]
 
 
 def auto_roi_selection(img) -> np.ndarray:

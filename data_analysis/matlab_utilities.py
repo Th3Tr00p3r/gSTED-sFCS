@@ -7,53 +7,52 @@ Created on Tue Mar 23 19:16:16 2021
 import numpy as np
 import scipy.io as spio
 
-legacy_matlab_naming_angular_scan_settings_trans_dict = {
+legacy_keys_trans_dict = {
+    # legacy MATLAB naming
+    "Setup": "setup",
+    "AfterPulseParam": "after_pulse_param",
+    "AI_ScalingXYZ": "ai_scaling_xyz",
+    "XYZ_um_to_V": "xyz_um_to_v",
+    "SystemInfo": "system_info",
+    "FullData": "full_data",
     "X": "x",
     "Y": "y",
-    "ActualSpeed": "actual_speed",
-    "ScanFreq": "scan_freq",
-    "SampleFreq": "sample_freq",
+    "ActualSpeed": "actual_speed_um_s",
+    "ScanFreq": "scan_freq_hz",
+    "SampleFreq": "sample_freq_hz",
     "PointsPerLineTotal": "points_per_line_total",
     "PointsPerLine": "points_per_line",
     "NofLines": "n_lines",
     "LineLength": "line_length",
     "LengthTot": "total_length",
-    "LineLengthMax": "max_line_length",
-    "LineShift": "line_shift",
+    "LineLengthMax": "max_line_length_um",
+    "LineShift": "line_shift_um",
     "AngleDegrees": "angle_degrees",
     "LinFrac": "linear_frac",
     "LinearPart": "linear_part",
     "Xlim": "x_lim",
     "Ylim": "y_lim",
-}
-
-legacy_matlab_naming_full_data_trans_dict = {
     "Data": "data",
     "DataVersion": "data_version",
-    "FpgaFreq": "fpga_freq",
-    "PixelFreq": "pix_clk_freq",
-    "LaserFreq": "laser_freq",
+    "FpgaFreq": "fpga_freq_mhz",
+    "PixelFreq": "pix_clk_freq_mhz",
+    "LaserFreq": "laser_freq_mhz",
     "Version": "version",
     "AI": "ai",
     "AO": "ao",
     "AvgCnt": "avg_cnt_rate_khz",
-    "CircleSpeed_um_sec": "circle_speed_um_sec",
-    "AnglularScanSettings": (
-        "angular_scan_settings",
-        legacy_matlab_naming_angular_scan_settings_trans_dict,
-    ),
-}
-
-legacy_matlab_naming_system_info_trans_dict = {
-    "Setup": "setup",
-    "AfterPulseParam": "after_pulse_param",
-    "AI_ScalingXYZ": "ai_scaling_xyz",
-    "XYZ_um_to_V": "xyz_um_to_v",
-}
-
-legacy_matlab_naming_trans_dict = {
-    "SystemInfo": ("system_info", legacy_matlab_naming_system_info_trans_dict),
-    "FullData": ("full_data", legacy_matlab_naming_full_data_trans_dict),
+    "CircleSpeed_um_sec": "circle_speed_um_s",
+    "AnglularScanSettings": "angular_scan_settings",
+    # legacy Python naming
+    "fpga_freq": "fpga_freq_mhz",
+    "pix_clk_freq": "pix_clk_freq_mhz",
+    "laser_freq": "laser_freq_mhz",
+    "circle_speed_um_sec": "circle_speed_um_s",
+    "actual_speed": "actual_speed_um_s",
+    "scan_freq": "scan_freq_hz",
+    "sample_freq": "sample_freq_hz",
+    "max_line_length": "max_line_length_um",
+    "line_shift": "line_shift_um",
 }
 
 
@@ -66,16 +65,33 @@ def translate_dict_keys(original_dict: dict, trans_dict: dict) -> dict:
     """
 
     new_dict = {}
+    # iterate over key, val pairs of original dict
     for org_key, org_val in original_dict.items():
-        if org_key in trans_dict.keys():
-            if isinstance(org_val, dict):
-                new_key, sub_trans_dict = trans_dict[org_key]
-                new_dict[new_key] = translate_dict_keys(org_val, sub_trans_dict)
+        # if the original val is a dict,
+        if isinstance(org_val, dict):
+            if org_key in trans_dict.keys():
+                new_dict[trans_dict[org_key]] = translate_dict_keys(org_val, trans_dict)
             else:
-                new_dict[trans_dict[org_key]] = org_val
+                new_dict[org_key] = translate_dict_keys(org_val, trans_dict)
         else:
-            new_dict[org_key] = org_val
+            if org_key in trans_dict.keys():
+                new_dict[trans_dict[org_key]] = org_val
+            else:
+                new_dict[org_key] = org_val
     return new_dict
+
+
+#    new_dict = {}
+#    for org_key, org_val in original_dict.items():
+#        if org_key in trans_dict.keys():
+#            if isinstance(org_val, dict):
+#                new_key, sub_trans_dict = trans_dict[org_key]
+#                new_dict[new_key] = translate_dict_keys(org_val, sub_trans_dict)
+#            else:
+#                new_dict[trans_dict[org_key]] = org_val
+#        else:
+#            new_dict[org_key] = org_val
+#    return new_dict
 
 
 def loadmat(filename):
