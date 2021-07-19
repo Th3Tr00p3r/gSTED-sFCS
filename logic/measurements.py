@@ -510,9 +510,9 @@ class SFCSImageMeasurement(Measurement):
             return {
                 "plane": np.array([data for data in self.plane_data], dtype=np.object),
                 "data_version": self.tdc_dvc.data_vrsn,
-                "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
-                "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,
-                "laser_freq": self.tdc_dvc.laser_freq_MHz,
+                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
+                "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
+                "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
                 "version": self.tdc_dvc.tdc_vrsn,
             }
 
@@ -688,7 +688,7 @@ class SFCSSolutionMeasurement(Measurement):
             p = PhotonData()
             p.convert_fpga_data_to_photons(np.array(data, dtype=np.uint8))
             s = CorrFuncTDC()
-            s.laser_freq = self.tdc_dvc.laser_freq_MHz * 1e6
+            s.laser_freq_mhz = self.tdc_dvc.laser_freq_MHz * 1e6
             s.data["data"].append(p)
             s.correlate_regular_data()
             s.average_correlation(no_plot=True, use_numba=True)
@@ -742,16 +742,16 @@ class SFCSSolutionMeasurement(Measurement):
             return {
                 "x": self.ao_buffer[0, :],
                 "y": self.ao_buffer[1, :],
-                "actual_speed": self.scan_params.eff_speed_um_s,
-                "scan_freq": self.scan_params.scan_freq_Hz,
-                "sample_freq": self.scan_params.ao_samp_freq_Hz,
+                "actual_speed_um_s": self.scan_params.eff_speed_um_s,
+                "scan_freq_hz": self.scan_params.scan_freq_Hz,
+                "sample_freq_hz": self.scan_params.ao_samp_freq_Hz,
                 "points_per_line_total": self.scan_params.tot_ppl,
                 "points_per_line": self.scan_params.ppl,
                 "n_lines": self.scan_params.n_lines,
                 "line_length": self.scan_params.lin_len,
                 "total_length": self.scan_params.tot_len,
-                "max_line_length": self.scan_params.max_line_len_um,
-                "line_shift": self.scan_params.line_shift_um,
+                "max_line_length_um": self.scan_params.max_line_len_um,
+                "line_shift_um": self.scan_params.line_shift_um,
                 "angle_degrees": self.scan_params.angle_deg,
                 "linear_frac": self.scan_params.lin_frac,
                 "linear_part": self.scan_params.lin_part,
@@ -763,16 +763,16 @@ class SFCSSolutionMeasurement(Measurement):
             full_data = {
                 "data": np.array(self.data_dvc.data, dtype=np.uint8),
                 "data_version": self.tdc_dvc.data_vrsn,
-                "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
-                "pix_clk_freq": self.pxl_clk_dvc.freq_MHz,
-                "laser_freq": self.tdc_dvc.laser_freq_MHz,
+                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
+                "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
+                "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
                 "version": self.tdc_dvc.tdc_vrsn,
                 "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
                 "ao": self.ao_buffer,
                 "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
             }
             if self.scan_params.pattern == "circle":
-                full_data["circle_speed_um_sec"] = self.scan_params.speed_um_s
+                full_data["circle_speed_um_s"] = self.scan_params.speed_um_s
             else:
                 full_data["angular_scan_settings"] = prep_ang_scan_sett_dict()
 
@@ -782,8 +782,8 @@ class SFCSSolutionMeasurement(Measurement):
             full_data = {
                 "data": np.array(self.data_dvc.data, dtype=np.uint8),
                 "data_version": self.tdc_dvc.data_vrsn,
-                "fpga_freq": self.tdc_dvc.fpga_freq_MHz,
-                "laser_freq": self.tdc_dvc.laser_freq_MHz,
+                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
+                "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
                 "version": self.tdc_dvc.tdc_vrsn,
                 "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
             }

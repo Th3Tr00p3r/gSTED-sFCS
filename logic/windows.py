@@ -753,7 +753,7 @@ class MainWin:
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
         try:
             file_path = os.path.join(self._app.analysis.dir_path, log_filename)
-        except AttributeError:
+        except (AttributeError, TypeError):
             # no directories found
             pass
         else:
@@ -793,6 +793,7 @@ class MainWin:
             file_path = os.path.join(self._app.analysis.dir_path, log_filename)
         except TypeError:
             # 'self._app.analysis.dir_path' is 'None'
+            data_import_wdgts.log_text.set("")
             return
         else:
             if not os.path.isfile(file_path):
@@ -838,6 +839,8 @@ class MainWin:
         except AttributeError:
             # No directories found
             pass
+        except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
+            err_hndlr(exc, locals(), sys._getframe())
 
         else:
             # save data and populate combobox
@@ -845,23 +848,23 @@ class MainWin:
             if is_calibration:
                 if "_exc_" in current_template:
                     item = "CAL_EXC - " + current_template
-                    self._app.analysis.loaded_data["CAL_EXC"] = s.data["data"]
+                    self._app.analysis.loaded_data["CAL_EXC"] = s
                 elif "_sted_" in current_template:
                     item = "CAL_STED - " + current_template
-                    self._app.analysis.loaded_data["CAL_STED"] = s.data["data"]
+                    self._app.analysis.loaded_data["CAL_STED"] = s
                 else:
                     item = "CAL_UNKNOWN - " + current_template
-                    self._app.analysis.loaded_data["CAL_UNKNOWN"] = s.data["data"]
+                    self._app.analysis.loaded_data["CAL_UNKNOWN"] = s
             else:
                 if "_exc_" in current_template:
                     item = "SAMP_EXC - " + current_template
-                    self._app.analysis.loaded_data["SAMP_EXC"] = s.data["data"]
+                    self._app.analysis.loaded_data["SAMP_EXC"] = s
                 elif "_sted_" in current_template:
                     item = "SAMP_STED - " + current_template
-                    self._app.analysis.loaded_data["SAMP_STED"] = s.data["data"]
+                    self._app.analysis.loaded_data["SAMP_STED"] = s
                 else:
                     item = "SAMP_UNKNOWN - " + current_template
-                    self._app.analysis.loaded_data["SAMP_UNKNOWN"] = s.data["data"]
+                    self._app.analysis.loaded_data["SAMP_UNKNOWN"] = s
             imported_combobox.obj.addItem(item)
             imported_combobox.set(item)
 
@@ -879,27 +882,48 @@ class MainWin:
 
         # get number of files and populate the spinbox
         try:
-            num_files = len(self._app.analysis.loaded_data[self._app.analysis.curr_data_type])
+            num_files = len(
+                self._app.analysis.loaded_data[self._app.analysis.curr_data_type].data["data"]
+            )
         except KeyError:
             # no imported templates (deleted)
             wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj.clear()
         else:
-            wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.obj.setMaximum(num_files)
+            wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
             wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.set(1)
 
             # plot the scan image
             self.display_scan_image(1)
 
+    def populate_sol_scan_parameters(self):
+        """Doc."""
+
+        try:
+            scan_settings_dict = self._app.analysis.loaded_data[
+                self._app.analysis.curr_data_type
+            ].angular_scan_settings
+        except (KeyError, AttributeError):
+            # data deleted or not properly loaded
+            pass
+        else:
+            text = "\n\n".join([f"{key}: {val}" for key, val in scan_settings_dict.items()])
+            wdgt_colls.sol_data_analysis_wdgts.scan_settings.set(text)
+
     def display_scan_image(self, file_num):
         """Doc."""
 
         file_num = wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.get()
-        img = self._app.analysis.loaded_data[self._app.analysis.curr_data_type][file_num - 1].image
-        roi = self._app.analysis.loaded_data[self._app.analysis.curr_data_type][file_num - 1].roi
-
-        scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
-        scan_image_disp.plot_scan_image_and_roi(img, roi)
-        scan_image_disp.entitle_and_label("", "Point Number", "Line Number")
+        loaded_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
+        try:
+            img = loaded_data.data["data"][file_num - 1].image
+            roi = loaded_data.data["data"][file_num - 1].roi
+        except IndexError:
+            # data import failed
+            pass
+        else:
+            scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
+            scan_image_disp.plot_scan_image_and_roi(img, roi)
+            scan_image_disp.entitle_and_label("", "Point Number", "Line Number")
 
     def remove_imported_template(self):
         """Doc."""
