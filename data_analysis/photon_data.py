@@ -11,6 +11,8 @@ class PhotonData:
     def convert_fpga_data_to_photons(self, fpga_data, version=3, verbose=False):
         """Doc."""
 
+        type_ = np.int64
+
         if version >= 2:
             group_len = 7
             maxval = 256 ** 3
@@ -31,8 +33,10 @@ class PhotonData:
         # patching: look at the largest section only
         SecInd = np.argmax(SectionLength)
         Ind = np.arange(section_edges[SecInd][0], section_edges[SecInd][1], group_len)
-        counter = fpga_data[Ind + 1] * 256 ** 2 + fpga_data[Ind + 2] * 256 + fpga_data[Ind + 3]
-        time_stamps = np.diff(counter.astype(int))
+        counter = (
+            fpga_data[Ind + 1] * 256 ** 2 + fpga_data[Ind + 2] * 256 + fpga_data[Ind + 3]
+        ).astype(type_)
+        time_stamps = np.diff(counter.astype(type_))
 
         # find simple "inversions": the data with a missing byte
         # decrease in counter on data j+1, yet the next counter data (j+2) is
@@ -44,8 +48,8 @@ class PhotonData:
             if verbose:
                 print(f"Found {J.size} of missing bit data: ad hoc fixing...")
             temp = (time_stamps[J] + time_stamps[J + 1]) / 2
-            time_stamps[J] = np.floor(temp).astype(int)
-            time_stamps[J + 1] = np.ceil(temp).astype(int)
+            time_stamps[J] = np.floor(temp).astype(type_)
+            time_stamps[J + 1] = np.ceil(temp).astype(type_)
             counter[J + 1] = counter[J + 2] - time_stamps[J + 1]
 
         J = np.where(time_stamps < 0)[0]
@@ -53,20 +57,18 @@ class PhotonData:
         for i in J + 1:
             counter[i:] = counter[i:] + maxval
 
-        coarse = fpga_data[Ind + 4].astype(int)
-        fine = fpga_data[Ind + 5].astype(int)
+        coarse = fpga_data[Ind + 4].astype(type_)
+        fine = fpga_data[Ind + 5].astype(type_)
         self.coarse = coarse
         if self.version >= 3:
-            twobit1 = np.floor(coarse / 64).astype(int)
+            twobit1 = np.floor(coarse / 64).astype(type_)
             self.coarse = self.coarse - twobit1 * 64
             self.coarse2 = self.coarse - np.mod(self.coarse, 4) + twobit1
 
-        self.runtime = counter.astype(np.uint64)
+        self.runtime = counter.astype(type_)
         #       self.time_stamps = time_stamps
         self.fname = ""
         self.fine = fine
-        #       if self.runtime(end) > flintmax:
-        #           error('Runtime overrun intmax!')
 
         self.section_edges = section_edges
         self.all_section_edges = np.array([])

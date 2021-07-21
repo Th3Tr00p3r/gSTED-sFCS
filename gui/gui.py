@@ -201,7 +201,7 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.populate_image_scans(template)
-        self.imp.populate_sol_scan_parameters()
+        self.imp.populate_sol_meas_properties()
 
     def closeEvent(self, event: QEvent) -> None:
         """Doc."""
