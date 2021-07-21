@@ -97,7 +97,6 @@ class Measurement:
         self.prog_bar_wdgt.set(0)
         self._app.gui.main.imp.populate_all_data_dates()  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
-        self._app.meas.type = None
 
     async def record_data(self, timed: bool = False, size_limited: bool = False) -> float:
         """
@@ -274,7 +273,7 @@ class Measurement:
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
+                "samp_quant_samp_per_chan": int(self.n_ao_samps),  # TESTESTEST  * 1.2
                 "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
                 "ai_conv_rate": self.ai_conv_rate,
@@ -285,7 +284,7 @@ class Measurement:
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.2),
+                "samp_quant_samp_per_chan": int(self.n_ao_samps),  # TESTESTEST  * 1.2
                 "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
             },
@@ -688,7 +687,7 @@ class SFCSSolutionMeasurement(Measurement):
             p = PhotonData()
             p.convert_fpga_data_to_photons(np.array(data, dtype=np.uint8))
             s = CorrFuncTDC()
-            s.laser_freq_mhz = self.tdc_dvc.laser_freq_MHz * 1e6
+            s.laser_freq_hz = self.tdc_dvc.laser_freq_MHz * 1e6
             s.data["data"].append(p)
             s.correlate_regular_data()
             s.average_correlation(no_plot=True, use_numba=True)
@@ -738,57 +737,45 @@ class SFCSSolutionMeasurement(Measurement):
         matches current MATLAB analysis
         """
 
-        def prep_ang_scan_sett_dict():
-            return {
-                "x": self.ao_buffer[0, :],
-                "y": self.ao_buffer[1, :],
-                "actual_speed_um_s": self.scan_params.eff_speed_um_s,
-                "scan_freq_hz": self.scan_params.scan_freq_Hz,
-                "sample_freq_hz": self.scan_params.ao_samp_freq_Hz,
-                "points_per_line_total": self.scan_params.tot_ppl,
-                "points_per_line": self.scan_params.ppl,
-                "n_lines": self.scan_params.n_lines,
-                "line_length": self.scan_params.lin_len,
-                "total_length": self.scan_params.tot_len,
-                "max_line_length_um": self.scan_params.max_line_len_um,
-                "line_shift_um": self.scan_params.line_shift_um,
-                "angle_degrees": self.scan_params.angle_deg,
-                "linear_frac": self.scan_params.lin_frac,
-                "linear_part": self.scan_params.lin_part,
-                "x_lim": self.scan_params.x_lim,
-                "y_lim": self.scan_params.y_lim,
-            }
+        full_data = {
+            "duration_s": self.duration_s,
+            "data": np.array(self.data_dvc.data, dtype=np.uint8),
+            "version": self.tdc_dvc.tdc_vrsn,
+            "data_version": self.tdc_dvc.data_vrsn,
+            "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
+            "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
+            "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
+        }
 
         if self.scanning:
-            full_data = {
-                "data": np.array(self.data_dvc.data, dtype=np.uint8),
-                "data_version": self.tdc_dvc.data_vrsn,
-                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
-                "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
-                "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
-                "version": self.tdc_dvc.tdc_vrsn,
-                "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
-                "ao": self.ao_buffer,
-                "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
-            }
+            full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
+            full_data["ai"] = np.array(self.scanners_dvc.ai_buffer, dtype=np.float)
+            full_data["ao"] = self.ao_buffer
+
             if self.scan_params.pattern == "circle":
                 full_data["circle_speed_um_s"] = self.scan_params.speed_um_s
-            else:
-                full_data["angular_scan_settings"] = prep_ang_scan_sett_dict()
+            elif self.scan_params.pattern == "angular":
+                full_data["angular_scan_settings"] = {
+                    "x": self.ao_buffer[0, :],
+                    "y": self.ao_buffer[1, :],
+                    "actual_speed_um_s": self.scan_params.eff_speed_um_s,
+                    "scan_freq_hz": self.scan_params.scan_freq_Hz,
+                    "sample_freq_hz": self.scan_params.ao_samp_freq_Hz,
+                    "points_per_line_total": self.scan_params.tot_ppl,
+                    "points_per_line": self.scan_params.ppl,
+                    "n_lines": self.scan_params.n_lines,
+                    "line_length": self.scan_params.lin_len,
+                    "total_length": self.scan_params.tot_len,
+                    "max_line_length_um": self.scan_params.max_line_len_um,
+                    "line_shift_um": self.scan_params.line_shift_um,
+                    "angle_degrees": self.scan_params.angle_deg,
+                    "linear_frac": self.scan_params.lin_frac,
+                    "linear_part": self.scan_params.lin_part,
+                    "x_lim": self.scan_params.x_lim,
+                    "y_lim": self.scan_params.y_lim,
+                }
 
-            return {"full_data": full_data, "system_info": self.sys_info}
-
-        else:
-            full_data = {
-                "data": np.array(self.data_dvc.data, dtype=np.uint8),
-                "data_version": self.tdc_dvc.data_vrsn,
-                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
-                "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
-                "version": self.tdc_dvc.tdc_vrsn,
-                "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
-            }
-
-            return {"full_data": full_data, "system_info": self.sys_info}
+        return {"full_data": full_data, "system_info": self.sys_info}
 
     async def run(self):
         """Doc."""
@@ -823,9 +810,6 @@ class SFCSSolutionMeasurement(Measurement):
                 # during alignment we don't change the counter_dvc tasks, do no need to initialize
                 self.counter_dvc.init_ci_buffer()
 
-            self.data_dvc.init_data()
-            self.data_dvc.purge_buffers()
-
         except DeviceError as exc:
             await self.stop()
             err_hndlr(exc, locals(), sys._getframe())
@@ -841,6 +825,9 @@ class SFCSSolutionMeasurement(Measurement):
         try:  # TESTESTEST`
             while self.is_running and self.time_passed_s < self.duration_s:
 
+                # initialize data buffer
+                self.data_dvc.init_data()
+
                 if not self.repeat:
                     # during alignment we don't change the counter_dvc tasks, do no need to initialize
                     self.counter_dvc.init_ci_buffer()
@@ -852,7 +839,12 @@ class SFCSSolutionMeasurement(Measurement):
                 else:
                     self.scanners_dvc.init_ai_buffer()
 
+                self.data_dvc.purge_buffers()
+
                 self.file_num_wdgt.set(file_num)
+
+                #                print("waiting 3 seconds to allow tasks to propely start?") # TESTESTEST
+                #                await asyncio.sleep(3) # TESTESTEST
 
                 # reading
                 if self.repeat:
@@ -867,6 +859,7 @@ class SFCSSolutionMeasurement(Measurement):
                 # case aligning and not manually stopped
                 if self.repeat and self.is_running:
                     self.disp_ACF()
+                    # TODO: save alignments in separate folder, perhaps overwrite each time. save G0 and tau in date folder in text file.
                     self.save_data(self.prep_data_dict(), self.build_filename(0))
                     # reset measurement
                     self.set_current_and_end_times()
@@ -881,10 +874,6 @@ class SFCSSolutionMeasurement(Measurement):
                             type="circular", size=self.ao_buffer.shape[1]
                         )
 
-                # initialize data buffers for next file
-                self.data_dvc.init_data()
-                self.data_dvc.purge_buffers()
-
                 file_num += 1
 
         except Exception as exc:  # TESTESTEST
@@ -892,6 +881,8 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.is_running:  # if not manually stopped
             await self.stop()
+
+        self.type = None
 
 
 class MeasurementError(Exception):

@@ -44,7 +44,7 @@ class App:
         self.meas = SimpleNamespace(type=None, is_running=False)
 
         self.analysis = SimpleNamespace()
-        self.analysis.loaded_data = dict(CAL_EXC=None, CAL_STED=None, SAMP_EXC=None, SAMP_STED=None)
+        self.analysis.loaded_data = dict()
 
         # get icons
         self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)
@@ -88,9 +88,13 @@ class App:
         ]
 
         # init scan patterns
+        print(
+            "Displaying patterns for first time - Numba first compilation might be slow...", end=" "
+        )
         self.gui.main.imp.disp_scn_pttrn("image")
         sol_pattern = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self).scan_type
         self.gui.main.imp.disp_scn_pttrn(sol_pattern)
+        print("Done.")
 
         # init existing data folders (solution by default)
         self.gui.main.solDataImport.setChecked(True)
