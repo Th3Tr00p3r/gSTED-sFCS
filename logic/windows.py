@@ -776,7 +776,7 @@ class MainWin:
             basic_header.append(["-" * 54])
             basic_header.append(["Excitation Power: "])
             basic_header.append(["Depletion Power: "])
-            basic_header.append(["Free Atto FCS @ 12 uW: _G0_/ _tau_ ms"])
+            basic_header.append(["Free Atto FCS @ 12 uW: G0 = _G0_ k/ tau = _tau_ ms"])
             basic_header.append(["-" * 54])
             basic_header.append(["EDIT_HERE"])
 
@@ -822,7 +822,7 @@ class MainWin:
         current_template = data_import_wdgts.data_templates.get()
         is_calibration = data_import_wdgts.is_calibration.get()
 
-        logging.info("Importing Data. Pausing 'ai' and 'ci' tasks")
+        logging.debug("Importing Data. Pausing 'ai' and 'ci' tasks")
         self._app.devices.scanners.pause_tasks("ai")
         self._app.devices.photon_detector.pause_tasks("ci")
 
@@ -868,7 +868,7 @@ class MainWin:
             imported_combobox.obj.addItem(item)
             imported_combobox.set(item)
 
-        logging.info("Data import finished. Resuming 'ai' and 'ci' tasks")
+        logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
         self._app.devices.scanners.init_ai_buffer()
         self._app.devices.scanners.start_tasks("ai")
         self._app.devices.photon_detector.init_ci_buffer()
@@ -885,8 +885,9 @@ class MainWin:
             num_files = len(
                 self._app.analysis.loaded_data[self._app.analysis.curr_data_type].data["data"]
             )
-        except KeyError:
-            # no imported templates (deleted)
+        except (KeyError, AttributeError):
+            # KeyError - no imported templates (deleted)
+            # AttributeError - # TODO: figure this one out
             wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj.clear()
         else:
             wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
@@ -895,30 +896,39 @@ class MainWin:
             # plot the scan image
             self.display_scan_image(1)
 
-    def populate_sol_scan_parameters(self):
+    def populate_sol_meas_properties(self):
         """Doc."""
 
+        wdgts = wdgt_colls.sol_data_analysis_wdgts
+
         try:
-            scan_settings_dict = self._app.analysis.loaded_data[
-                self._app.analysis.curr_data_type
-            ].angular_scan_settings
+            current_loaded_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
+            wdgts.n_files.set(len(current_loaded_data.data["data"]))
+            wdgts.scan_duration_min.set(current_loaded_data.duration_min)
+            scan_settings_dict = current_loaded_data.angular_scan_settings
         except (KeyError, AttributeError):
             # data deleted or not properly loaded
             pass
         else:
-            text = "\n\n".join([f"{key}: {val}" for key, val in scan_settings_dict.items()])
-            wdgt_colls.sol_data_analysis_wdgts.scan_settings.set(text)
+            text = "\n\n".join(
+                [
+                    f"{key}: {(val[:10] if isinstance(val, Iterable) else val)}"
+                    for key, val in scan_settings_dict.items()
+                ]
+            )
+            wdgts.scan_settings.set(text)
 
     def display_scan_image(self, file_num):
         """Doc."""
 
         file_num = wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.get()
-        loaded_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
         try:
+            loaded_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
             img = loaded_data.data["data"][file_num - 1].image
             roi = loaded_data.data["data"][file_num - 1].roi
-        except IndexError:
-            # data import failed
+        except (IndexError, KeyError):
+            # IndexError - data import failed
+            # KeyError - data deleted
             pass
         else:
             scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
@@ -954,6 +964,7 @@ class SettWin:
             current_state = helper.wdgt_children_as_row_list(self._gui)
             last_loaded_state = helper.csv_rows_as_list(curr_file_path)
 
+            # TODO: check why this doesn't work anymore (always asks)
             if set(current_state) != set(last_loaded_state):
                 pressed = Question(
                     "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"

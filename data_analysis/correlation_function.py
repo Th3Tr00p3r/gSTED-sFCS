@@ -189,7 +189,7 @@ class CorrFuncTDC(CorrFuncData):
         self.data_name_on_disk = ""
         self.after_pulse_param = self.system_info["after_pulse_param"]
 
-    def read_fpga_data(
+    def read_fpga_data(  # noqa C901
         self,
         fpathtmpl,
         fix_shift=False,
@@ -199,7 +199,7 @@ class CorrFuncTDC(CorrFuncData):
     ):
         """Doc."""
 
-        print("Loading FPGA data:")
+        print("\nLoading FPGA data:")
 
         if not (fpathes := glob.glob(fpathtmpl)):
             raise FileNotFoundError("No files found! Check file template!")
@@ -212,7 +212,7 @@ class CorrFuncTDC(CorrFuncData):
         fpathes.sort(key=lambda fpath: int(re.split(f"(\\d+){file_extension}", fpath)[1]))
 
         for idx, fpath in enumerate(fpathes):
-            print(f"Loading '{fpath}'...", end=" ")
+            print(f"Loading file #{idx+1}: '{fpath}'...", end=" ")
 
             # get filename (for later)
             _, fname = os.path.split(fpath)
@@ -269,14 +269,13 @@ class CorrFuncTDC(CorrFuncData):
                 print("Converting angular scan to image...", end=" ")
 
                 runtime = p.runtime
+                #                runtime = runtime[int(len(runtime) * 0.8) : int(len(runtime) * 1)]  # TESTESTEST
                 cnt, n_pix_tot, n_pix, line_num = self.convert_angular_scan_to_image(
                     runtime, angular_scan_settings
                 )
 
                 if fix_shift:
-                    print("Fixing line shift...", end=" ")
                     pix_shift = fix_data_shift(cnt)
-                    print(f"Shifted counts by {pix_shift} pixels. Done.")
                     runtime = (
                         p.runtime
                         + pix_shift * self.laser_freq_hz / angular_scan_settings["sample_freq_hz"]
@@ -287,22 +286,27 @@ class CorrFuncTDC(CorrFuncData):
                         n_pix,
                         line_num,
                     ) = self.convert_angular_scan_to_image(runtime, angular_scan_settings)
+                    print(f"Fixed line shift: {pix_shift} pixels. Done.")
                 else:
                     print("Done.")
 
                 # invert every second line
-                #                cnt[1::2, :] = np.flip(cnt[1::2, :], 1) # TESTESTEST
+                cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
 
-                print("ROI selection...", end=" ")
+                print("ROI selection: ", end=" ")
 
                 if roi_selection == "auto":
-                    bw = auto_roi_selection(cnt)
+                    print("automatic.", end=" ")
+                    print("Thresholding and smoothing...", end=" ")
+                    try:
+                        bw = threshold_and_smooth(cnt)
+                    except ValueError:
+                        logging.warning("Thresholding failed, skipping file.")
+                        continue
                 else:
                     raise RuntimeError(f"roi_selection={roi_selection} is not implemented.")
 
-                print("Done.")
-
-                bw[1::2, :] = np.flip(bw[1::2, :], 1)
+                #                bw[1::2, :] = np.flip(bw[1::2, :], 1) # TESTESTEST
                 # cut edges
                 bw_temp = np.zeros(bw.shape)
                 bw_temp[:, angular_scan_settings["linear_part"].astype("int")] = bw[
@@ -321,6 +325,8 @@ class CorrFuncTDC(CorrFuncData):
                     raise ValueError(
                         "Number of lines larger than line_end_adder! Increase line_end_adder."
                     )
+
+                print("Building ROI...", end=" ")
 
                 roi = {"row": [], "col": []}
                 for j in range(bw.shape[0]):
@@ -355,10 +361,13 @@ class CorrFuncTDC(CorrFuncData):
                     roi["row"].append(roi["row"][0])
                     roi["col"].append(roi["col"][0])
                 except IndexError:
-                    raise RuntimeError("ROI is empty (need to figure out the cause).")
+                    print("ROI is empty (need to figure out the cause). Skipping file.")
+                    continue
 
                 # convert lists to numpy arrays
                 roi = {key: np.array(val) for key, val in roi.items()}
+
+                print("Done.")
 
                 line_start_lables = np.array(line_start_lables)
                 line_stop_labels = np.array(line_stop_labels)
@@ -445,7 +454,22 @@ class CorrFuncTDC(CorrFuncData):
             p.fpath = fpath
             self.data["data"].append(p)
 
+            print(f"Finished processing file #{idx+1}\n")
+
         self.line_end_adder = line_end_adder
+
+        if full_data.get("duration_s") is not None:
+            self.duration_min = full_data["duration_s"] / 60
+        else:
+            # calculate duration if not supplied
+            self.duration_min = (
+                np.mean([np.diff(p.runtime).sum() for p in self.data["data"]])
+                / self.laser_freq_hz
+                / 60
+            )
+            print(f"Calculating duration (not supplied): {self.duration_min:.2f} min")
+
+        print(f"\nFinished loading FPGA data ({len(self.data['data'])}/{idx+1} files used).")
 
     def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
         """utility function for opening Angular Scans"""
@@ -502,7 +526,7 @@ class CorrFuncTDC(CorrFuncData):
 
             run_duration = total_duration_estimate / n_runs_requested
             if verbose:
-                print(f"Auto determination of run duration: {run_duration} s")
+                print(f"Auto determination of run duration: {run_duration} s.")
 
         self.requested_duration = run_duration
         self.min_duration_frac = min_time_frac
@@ -543,7 +567,7 @@ class CorrFuncTDC(CorrFuncData):
                 if segment_time < min_time_frac * run_duration:
                     if verbose:
                         print(
-                            f"Duration of segment No. {j} of file {p.fname} is {segment_time}s: too short. Skipping..."
+                            f"Duration of segment No. {j} of file {p.fname} is {segment_time}s: too short. Skipping segment..."
                         )
                     self.total_duration_skipped = self.total_duration_skipped + segment_time
                     continue
@@ -597,30 +621,45 @@ class CorrFuncTDC(CorrFuncData):
 def fix_data_shift(cnt) -> int:
     """Doc."""
 
+    _, width = cnt.shape
+
     score = []
     pix_shifts = []
-    min_pix_shift = -np.round(cnt.shape[1] / 2)
-    max_pix_shift = min_pix_shift + cnt.shape[1] + 1
-    for pix_shift in np.arange(min_pix_shift, max_pix_shift).astype(int):
-        cnt2 = np.roll(cnt, pix_shift)
+    min_pix_shift = -round(width / 2)
+    max_pix_shift = min_pix_shift + width + 1
+    for pix_shift in range(min_pix_shift, max_pix_shift):
+        cnt2 = np.roll(cnt, pix_shift).astype(np.double)
         diff_cnt2 = (cnt2[:-1:2, :] - np.flip(cnt2[1::2, :], 1)) ** 2
         score.append(diff_cnt2.sum())
         pix_shifts.append(pix_shift)
-    score = np.array(score)
-    pix_shifts = np.array(pix_shifts)
-    return pix_shifts[score.argmin()]
+
+    # verify not using local minimum by checking if there's a shift
+    # yielding a significantly brightest image center
+    arg_sorted_score = np.argsort(score)
+    center_sum = 0
+    for arg in arg_sorted_score[:10]:
+        new_pix_shift = pix_shifts[arg]
+        rolled_cnt = np.roll(cnt, new_pix_shift)
+        new_center_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
+        if new_center_sum > center_sum * 1.5:
+            center_sum = new_center_sum
+            pix_shift = pix_shifts[arg]
+
+    return pix_shift
 
 
-def auto_roi_selection(img) -> np.ndarray:
+#    return pix_shifts[np.argmin(score)]
+
+
+def threshold_and_smooth(img, otsu_classes=4) -> np.ndarray:
     """Doc."""
 
-    classes = 4
     thresh = skifilt.threshold_multiotsu(
-        skifilt.median(img), classes
+        skifilt.median(img).astype(np.float), otsu_classes, nbins=256
     )  # minor filtering of outliers
     cnt_dig = np.digitize(img, bins=thresh)
-    plateau_lvl = np.median(img[cnt_dig == (classes - 1)])
-    std_plateau = stats.median_absolute_deviation(img[cnt_dig == (classes - 1)])
+    plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
+    std_plateau = stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
     dev_cnt = img - plateau_lvl
     bw = dev_cnt > -std_plateau
     bw = ndimage.binary_fill_holes(bw)

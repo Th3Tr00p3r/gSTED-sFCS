@@ -261,10 +261,6 @@ class PyVISA:
         self.write_termination = write_termination
         self._rm = visa.ResourceManager()
 
-        # auto-find serial connection for depletion laser
-        if hasattr(self, "model_query"):
-            self.autofind_address()
-
     def autofind_address(self) -> None:
         """Doc."""
 
@@ -294,19 +290,31 @@ class PyVISA:
         for idx, inst in enumerate(inst_list):
             try:
                 self.model = inst.query(self.model_query)
-            except visa.errors.VisaIOError:
-                pass
+            except visa.errors.VisaIOError as exc:
+                if exc.abbreviation == "VI_ERROR_RSRC_BUSY":
+                    raise IOError(f"{self.log_ref} couldn't be opened - a restart might help!")
+                else:
+                    pass
             else:
                 self.address = resource_address_tuple[idx]
                 break
 
         # close all saved resources
-        [inst.close() for inst in inst_list]
+        try:
+            [inst.close() for inst in inst_list]
+        except visa.errors.VisaIOError:
+            # this happens if device was disconnected during the autofind process...
+            pass
 
     def open_inst(self) -> None:
         """Doc."""
 
+        # auto-find serial connection for depletion laser
+        if hasattr(self, "model_query"):
+            self.autofind_address()
+
         try:
+            # open
             self._rsrc = self._rm.open_resource(
                 self.address,
                 read_termination=self.read_termination,

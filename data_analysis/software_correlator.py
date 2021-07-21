@@ -119,7 +119,6 @@ class SoftwareCorrelator:
         else:
             raise ValueError("Invalid correlator type!")
 
-        # TODO: soft_corr needs int32, currently supplying uint64...
         self.soft_corr(CType.value, n_entries, ph_hist, n_corr_channels, self.corr_py)
         if n_corr_channels[0] != self.tot_corr_chan_len:
             raise ValueError("Number of correlator channels inconsistent!")
