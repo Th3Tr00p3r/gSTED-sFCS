@@ -1,7 +1,5 @@
 """Raw data handling."""
 
-import logging
-
 import numpy as np
 
 
@@ -19,165 +17,176 @@ class PhotonData:
         self.version = version
 
         section_edges = []
-        edge_start, edge_stop, data_end = find_section_edge(fpga_data, 0, group_len)
-        section_edges.append(np.array([edge_start, edge_stop]))
+        edge_start, edge_stop, data_end = find_section_edge(fpga_data, group_len, verbose)
+        section_edges.append((edge_start, edge_stop))
 
         while not data_end:
-            edge_start, edge_stop, data_end = find_section_edge(fpga_data, edge_stop + 1, group_len)
-            section_edges.append(np.array([edge_start, edge_stop]))
+            remaining_data = fpga_data[edge_stop + 1 :]
+            edge_start, edge_stop, data_end = find_section_edge(remaining_data, group_len, verbose)
+            section_edges.append((edge_start, edge_stop))
 
-        SectionLength = np.array([np.diff(SE)[0] for SE in section_edges])
+        section_lengths = np.array(
+            [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
+        )
         if verbose:
-            print(f"Found {len(section_edges)} sections of length/s: {SectionLength}.", end=" ")
+            if (n_sec_edges := len(section_edges)) > 1:
+                print(
+                    f"Found {n_sec_edges} sections of lengths: {', '.join(map(str, section_lengths))}. Using largest.",
+                    end=" ",
+                )
+            else:
+                print(f"Found a single section of length: {section_lengths[0]}.", end=" ")
 
-        # patching: look at the largest section only
-        SecInd = np.argmax(SectionLength)
-        Ind = np.arange(section_edges[SecInd][0], section_edges[SecInd][1], group_len)
+        # using the largest section only
+        largest_sec_start_idx, largest_sec_end_idx = section_edges[np.argmax(section_lengths)]
+        idxs = np.arange(largest_sec_start_idx, largest_sec_end_idx, group_len)
         counter = (
-            fpga_data[Ind + 1] * 256 ** 2 + fpga_data[Ind + 2] * 256 + fpga_data[Ind + 3]
+            fpga_data[idxs + 1] * 256 ** 2 + fpga_data[idxs + 2] * 256 + fpga_data[idxs + 3]
         ).astype(type_)
-        time_stamps = np.diff(counter.astype(type_))
+        time_stamps = np.diff(counter)
 
         # find simple "inversions": the data with a missing byte
         # decrease in counter on data j+1, yet the next counter data (j+2) is
         # higher than j.
-        J = np.where(
+        inv_idxs = np.where(
             np.logical_and((time_stamps[:-1] < 0), (time_stamps[:-1] + time_stamps[1:] > 0))
         )[0]
-        if J.size != 0:
+        if (n_invs := inv_idxs.size) != 0:
             if verbose:
-                print(f"Found {J.size} of missing bit data: ad hoc fixing...")
-            temp = (time_stamps[J] + time_stamps[J + 1]) / 2
-            time_stamps[J] = np.floor(temp).astype(type_)
-            time_stamps[J + 1] = np.ceil(temp).astype(type_)
-            counter[J + 1] = counter[J + 2] - time_stamps[J + 1]
+                print(f"Found {n_invs} of missing bit data: ad hoc fixing...")
+            temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
+            time_stamps[inv_idxs] = np.floor(temp).astype(type_)
+            time_stamps[inv_idxs + 1] = np.ceil(temp).astype(type_)
+            counter[inv_idxs + 1] = counter[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
-        J = np.where(time_stamps < 0)[0]
-        time_stamps[J] = time_stamps[J] + maxval
-        for i in J + 1:
+        # repairing drops in counter (idomic note)
+        neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
+        time_stamps[neg_time_stamp_idxs] = time_stamps[neg_time_stamp_idxs] + maxval
+        for i in neg_time_stamp_idxs + 1:
             counter[i:] = counter[i:] + maxval
 
-        coarse = fpga_data[Ind + 4].astype(type_)
-        fine = fpga_data[Ind + 5].astype(type_)
-        self.coarse = coarse
+        # saving coarse and fine times
+        self.coarse = fpga_data[idxs + 4].astype(type_)
+        self.fine = fpga_data[idxs + 5].astype(type_)
+        # TODO: ask Oleg what's going on here
         if self.version >= 3:
-            twobit1 = np.floor(coarse / 64).astype(type_)
+            twobit1 = np.floor(self.coarse / 64).astype(type_)
             self.coarse = self.coarse - twobit1 * 64
             self.coarse2 = self.coarse - np.mod(self.coarse, 4) + twobit1
 
-        self.runtime = counter.astype(type_)
-        #       self.time_stamps = time_stamps
-        self.fname = ""
-        self.fine = fine
-
-        self.section_edges = section_edges
-        self.all_section_edges = np.array([])
-        self.counter_ends = np.array([counter[0], counter[-1]])
+        self.runtime = counter
 
 
-def find_section_edge(data, section_start, group_len):
+def find_section_edge(data, group_len, verbose=False):  # noqa c901
+    """
+    group_len: bytes per photon
+    """
+
     data_end = False
-    # find brackets
-    i_248 = np.where(data[section_start:] == 248)[0]
-    i_254 = np.where(data[section_start:] == 254)[0]
-    ii = np.intersect1d(i_248, i_254 - group_len + 1, assume_unique=True)  # find those in registry
-    if not ii.size:
+    # find brackets (photon starts and ends)
+    idx_248 = np.where(data == 248)[0]
+    idx_254 = np.where(data == 254)[0]
+
+    try:
+        # find index of first complete photon (where 248 and 254 bytes are spaced exatly (group_len -1) bytes apart)
+        photon_start_idxs = np.intersect1d(idx_248, idx_254 - (group_len - 1), assume_unique=True)
+        edge_start = photon_start_idxs[0]
+    except IndexError:
         raise RuntimeError("No data found! Check detector and FPGA.")
-    edge_start = section_start + ii[0]
-    p248 = data[edge_start::group_len]
-    p254 = data[(edge_start + group_len - 1) :: group_len]
-    kk248 = np.where(p248 != 248)[0]
-    kk254 = np.where(p254 != 254)[0]
 
-    for ii, kk in enumerate(kk248):
-        # check that this is not a case of a singular mistake in 248
-        # byte: happens very rarely but does happen
-        if len(kk254) < ii + 1:
-            if kk == len(p248) - 1:  # problem in the last photon in the file
-                edge_stop = edge_start + kk * group_len
-                logging.warning("if (len(kk254) < ii+1):")
+    # slice data where assumed to be 248 and 254 (photon brackets)
+    data_presumed_248 = data[edge_start::group_len]
+    data_presumed_254 = data[(edge_start + group_len - 1) :: group_len]
+
+    # find indices where this assumption breaks
+    missed_248_idxs = np.where(data_presumed_248 != 248)[0]
+    tot_missed_248s = len(missed_248_idxs)
+    missed_254_idxs = np.where(data_presumed_254 != 254)[0]
+    tot_missed_254s = len(missed_254_idxs)
+
+    for count, missed_248_idx in enumerate(missed_248_idxs):
+
+        # hold data idx of current missing photon starting bracket
+        data_idx_of_missed_248 = edge_start + missed_248_idx * group_len
+
+        single_error_msg = f"Found single photon error (data[{data_idx_of_missed_248}]), ignoring and continuing..."
+
+        # condition for ignoring single photon error (just test the most significant bytes of the runtime are close)
+        ignore_single_error_cond = (
+            abs(data[data_idx_of_missed_248 + 1] - data[data_idx_of_missed_248 - (group_len - 1)])
+            < 3
+        )
+
+        # check that this is not a case of a singular mistake in 248 byte: happens very rarely but does happen
+        if tot_missed_254s < count + 1:
+            # no missing ending brackets, at least one missing starting bracket
+            if missed_248_idx == (len(data_presumed_248) - 1):
+                # problem in the last photon in the file
+                if verbose:
+                    print(
+                        "Found single error in last photon of file, ignoring and finishing...",
+                        end=" ",
+                    )
+                edge_stop = data_idx_of_missed_248
                 break
-            elif len(kk248) == ii + 1:  # likely a singular problem
-                # just test the most significant bytes of the runtime are
-                # close
-                if (
-                    abs(np.diff(data(edge_start + kk * group_len + np.array([-group_len + 1, 1]))))
-                    < 3
-                ):
-                    # single error: move on
-                    logging.warning("(len(kk248) == ii+1):")
-                    continue
-                else:
-                    logging.warning("Check data for strange section edges!")
 
-            elif (
-                np.diff(kk248[ii : (ii + 2)]) > 1
-            ):  # likely a singular problem since further data are in registry
-                # just test the most significant bytes of the runtime are
-                # close
-                if (
-                    abs(np.diff(data(edge_start + kk * group_len + np.array([-group_len + 1, 1]))))
-                    < 3
-                ):
-                    # single error: move on
-                    logging.warning("elif np.diff(kk248[ii:(ii+2)]) > 1: ")
+            elif (tot_missed_248s == count + 1) or (
+                np.diff(missed_248_idxs[count : (count + 2)]) > 1
+            ):
+                if ignore_single_error_cond:
+                    if verbose:
+                        print(single_error_msg, end=" ")
                     continue
                 else:
-                    logging.warning("Check data for strange section edges!")
+                    raise RuntimeError("Check data for strange section edges!")
 
             else:
-                logging.warning(
+                raise RuntimeError(
                     "Bizarre problem in data: 248 byte out of registry while 254 is in registry!"
                 )
 
-        else:  # (length(kk254) >= ii + 1)
-            # if (kk248(ii) == kk254(ii)), # likely a real section
-            if np.isin(kk, kk254):
-                edge_stop = edge_start + kk * group_len
+        else:  # (tot_missed_254s >= count + 1)
+            # if (missed_248_idxs[count] == missed_254_idxs[count]), # likely a real section
+            if np.isin(missed_248_idx, missed_254_idxs):
+                if verbose:
+                    print("Found a section, continuing...", end=" ")
+                edge_stop = data_idx_of_missed_248
                 if data[edge_stop - 1] != 254:
                     edge_stop = edge_stop - group_len
-                logging.warning("if np.isin(kk, kk254):")
                 break
-            elif kk248[ii] == (
-                kk254[ii] + 1
-            ):  # np.isin(kk, (kk254[ii]+1)): # likely a real section ? why np.isin?
-                edge_stop = edge_start + kk * group_len
+
+            elif missed_248_idxs[count] == (
+                missed_254_idxs[count] + 1
+            ):  # np.isin(missed_248_idx, (missed_254_idxs[count]+1)): # likely a real section ? why np.isin?
+                if verbose:
+                    print("Found a section, continuing...", end=" ")
+                edge_stop = data_idx_of_missed_248
                 if data[edge_stop - 1] != 254:
                     edge_stop = edge_stop - group_len
-                logging.warning("elif  np.isin(kk, (kk254[ii]+1)):")
                 break
-            elif kk < kk254[ii]:  # likely a singular error on 248 byte
-                # just test the most significant bytes of the runtime are
-                # close
-                if (
-                    abs(np.diff(data[edge_start + kk * group_len + np.array([-group_len + 1, 1])]))
-                    < 3
-                ):
-                    # single error: move on
-                    logging.warning("elif (kk < kk254[ii]):")
+
+            elif missed_248_idx < missed_254_idxs[count]:  # likely a singular error on 248 byte
+                if ignore_single_error_cond:
+                    if verbose:
+                        print(single_error_msg, end=" ")
                     continue
                 else:
-                    logging.warning("Check data for strange section edges!")
+                    raise RuntimeError("Check data for strange section edges!")
 
             else:  # likely a signular mistake on 254 byte
-                # just test the most significant bytes of the runtime are
-                # close
-                if (
-                    abs(np.diff(data[edge_start + kk * group_len + np.array([-group_len + 1, 1])]))
-                    < 3
-                ):
-                    # single error: move on
-                    logging.warning("else :")
+                if ignore_single_error_cond:
+                    if verbose:
+                        print(single_error_msg, end=" ")
                     continue
                 else:
-                    logging.warning("Check data for strange section edges!")
+                    raise RuntimeError("Check data for strange section edges!")
 
-    if len(kk248) > 0:
-        if ii == kk248.size - 1:  # reached the end of the loop without breaking
-            edge_stop = edge_start + (p254.size - 1) * group_len
+    if tot_missed_248s > 0:
+        if count == missed_248_idxs.size - 1:  # reached the end of the loop without breaking
+            edge_stop = edge_start + (data_presumed_254.size - 1) * group_len
             data_end = True
     else:
-        edge_stop = edge_start + (p254.size - 1) * group_len
+        edge_stop = edge_start + (data_presumed_254.size - 1) * group_len
         data_end = True
 
     return edge_start, edge_stop, data_end
