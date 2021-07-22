@@ -71,7 +71,7 @@ class CorrFuncData:
             self.j_bad = delete_list
             self.j_good = np.array(
                 [i for i in range(self.cf_cr.shape[0]) if i not in delete_list]
-            ).astype("int")
+            ).astype(np.int32)
 
         if use_numba:
             func = nb.njit(calc_weighted_avg, cache=True)
@@ -266,6 +266,7 @@ class CorrFuncTDC(CorrFuncData):
                     )
                     self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000  # to um/ms
                     self.angular_scan_settings = angular_scan_settings
+                    sample_freq_hz = angular_scan_settings["sample_freq_hz"]
 
                 print("Converting angular scan to image...", end=" ")
 
@@ -277,10 +278,7 @@ class CorrFuncTDC(CorrFuncData):
 
                 if fix_shift:
                     pix_shift = fix_data_shift(cnt)
-                    runtime = (
-                        p.runtime
-                        + pix_shift * self.laser_freq_hz / angular_scan_settings["sample_freq_hz"]
-                    )
+                    runtime = p.runtime + pix_shift * self.laser_freq_hz / sample_freq_hz
                     (
                         cnt,
                         n_pix_tot,
@@ -374,12 +372,8 @@ class CorrFuncTDC(CorrFuncData):
 
                 print("Done.")
 
-                runtime_line_starts = np.round(
-                    line_starts * self.laser_freq_hz / angular_scan_settings["sample_freq_hz"]
-                )
-                runtime_line_stops = np.round(
-                    line_stops * self.laser_freq_hz / angular_scan_settings["sample_freq_hz"]
-                )
+                runtime_line_starts = np.round(line_starts * self.laser_freq_hz / sample_freq_hz)
+                runtime_line_stops = np.round(line_stops * self.laser_freq_hz / sample_freq_hz)
 
                 runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
                 j_sort = np.argsort(runtime)
@@ -442,9 +436,7 @@ class CorrFuncTDC(CorrFuncData):
                 img = p.image * p.bw_mask
                 # lineNos = find(sum(p.bw_mask, 2));
 
-                p.image_line_corr = line_correlations(
-                    img, p.bw_mask, roi, angular_scan_settings["sample_freq_hz"]
-                )
+                p.image_line_corr = line_correlations(img, p.bw_mask, roi, sample_freq_hz)
 
             else:  # static FCS
                 raise NotImplementedError(
@@ -475,31 +467,28 @@ class CorrFuncTDC(CorrFuncData):
     def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
         """utility function for opening Angular Scans"""
 
-        n_pix_tot = np.floor(
-            runtime * angular_scan_settings["sample_freq_hz"] / self.laser_freq_hz
-        ).astype("int")
-        n_pix = np.mod(n_pix_tot, angular_scan_settings["points_per_line_total"]).astype(
-            "int"
-        )  # to which pixel photon belongs
-        line_num_tot = np.floor(n_pix_tot / angular_scan_settings["points_per_line_total"]).astype(
-            "int"
-        )
-        line_num = np.mod(line_num_tot, angular_scan_settings["n_lines"] + 1).astype(
-            "int"
-        )  # one more line is for return to starting positon
+        sample_freq_hz = angular_scan_settings["sample_freq_hz"]
+        points_per_line_total = angular_scan_settings["points_per_line_total"]
+        n_lines = angular_scan_settings["n_lines"]
+
+        n_pix_tot = np.floor(runtime * sample_freq_hz / self.laser_freq_hz).astype(np.int32)
+        # to which pixel photon belongs
+        n_pix = np.mod(n_pix_tot, points_per_line_total)
+        line_num_tot = np.floor(n_pix_tot / points_per_line_total).astype(np.int32)
+        # one more line is for return to starting positon
+        line_num = np.mod(line_num_tot, n_lines + 1)
         cnt = np.empty(
             (
-                angular_scan_settings["n_lines"] + 1,
-                angular_scan_settings["points_per_line_total"],
+                n_lines + 1,
+                points_per_line_total,
             ),
-            dtype="int",
+            dtype=np.int32,
         )
-        for j in range(angular_scan_settings["n_lines"] + 1):
-            belong_to_line = line_num.astype("int") == j
-            cnt_line, bins = np.histogram(
-                n_pix[belong_to_line].astype("int"),
-                bins=np.arange(-0.5, angular_scan_settings["points_per_line_total"]),
-            )
+
+        bins = np.arange(-0.5, points_per_line_total)
+        for j in range(n_lines + 1):
+            belong_to_line = line_num == j
+            cnt_line, _ = np.histogram(n_pix[belong_to_line], bins=bins)
             cnt[j, :] = cnt_line
 
         return cnt, n_pix_tot, n_pix, line_num
@@ -573,8 +562,10 @@ class CorrFuncTDC(CorrFuncData):
                     self.total_duration_skipped = self.total_duration_skipped + segment_time
                     continue
 
-                n_splits = np.ceil(segment_time / run_duration).astype("int")
-                splits = np.linspace(0, np.diff(se)[0].astype("int"), n_splits + 1, dtype="int")
+                n_splits = np.ceil(segment_time / run_duration).astype(np.int32)
+                splits = np.linspace(
+                    0, np.diff(se)[0].astype(np.int32), n_splits + 1, dtype=np.int32
+                )
                 ts = time_stamps[se[0] : se[1]]
 
                 for k in range(n_splits):
@@ -697,7 +688,7 @@ def x_corr(a, b):
     if a.size != b.size:
         logging.warning("For unequal lengths of a, b the meaning of lags is not clear!")
     c = np.correlate(a, b, mode="full")
-    c = c[np.floor(c.size / 2).astype("int") :]
+    c = c[np.floor(c.size / 2).astype(np.int32) :]
     lags = np.arange(c.size)
 
     return c, lags
