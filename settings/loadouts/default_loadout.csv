@@ -10,24 +10,24 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
+spinBox_7,0
+scanImgFileNum,1
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
-spinBox_7,0
-scanImgFileNum,1
 depPow,130
 depCurr,1500
 stageSteps,250
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solScanDur,20.0
+doubleSpinBox,2.0
 imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
-doubleSpinBox,2.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -35,21 +35,21 @@ axisMoveUm,0.0
 solMeasPreset,Standard Alignment
 solScanType,static
 solScanDurUnits,seconds
+dataDay,21
+dataMonth,7
+dataYear,2021
+dataTemplate,DELETE_ME_angular_exc_154957_*.pkl
+importedSolDataTemplates,
+solAnalysisLifetime,Lifetime
 imgScanType,YZ
 imgScanPreset,Locate Plane - YZ Coarse
 imgShowMethod,Forward scan - actual counts per pixel
-dataDay,20
-dataMonth,7
-dataYear,2021
-dataTemplate,test3_angular_exc_194505_*.pkl
-importedSolDataTemplates,SAMP_EXC - test3_angular_exc_194505_*.pkl
-solAnalysisLifetime,Lifetime
 avgInterval,200
 repeatSolMeas,1
-autoCrosshair,1
 isDataCalibration,0
 solDataFixShift,1
 showRowAcfs,1
+autoCrosshair,1
 imageDataImport,0
 solDataImport,1
 solAnalysisUseRows,0
@@ -61,5 +61,5 @@ posAxisZ,0
 posAxisY,0
 posAxisX,1
 numPlaneShownChoice,0
-tabWidget,2
+tabWidget,0
 tabWidget_2,0
