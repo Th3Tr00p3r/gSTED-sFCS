@@ -66,7 +66,7 @@ class Timeout:
 
         def get_last_line(file_path) -> str:
             """
-            Return the last line of a text file.
+            Return the last line of a text file, quickly (seeks from end)
             (https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python)
             """
 

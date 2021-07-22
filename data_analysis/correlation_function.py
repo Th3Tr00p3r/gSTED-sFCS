@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import re
+from collections import deque
 
 import matplotlib.pyplot as plt
 import numba as nb
@@ -307,19 +308,16 @@ class CorrFuncTDC(CorrFuncData):
                     raise RuntimeError(f"roi_selection={roi_selection} is not implemented.")
 
                 #                bw[1::2, :] = np.flip(bw[1::2, :], 1) # TESTESTEST
+
                 # cut edges
                 bw_temp = np.zeros(bw.shape)
-                bw_temp[:, angular_scan_settings["linear_part"].astype("int")] = bw[
-                    :, angular_scan_settings["linear_part"].astype("int")
-                ]
+                linear_part = angular_scan_settings["linear_part"].astype(np.int32)
+                bw_temp[:, linear_part] = bw[:, linear_part]
                 bw = bw_temp
+
                 # discard short and fill long rows
                 m2 = np.sum(bw, axis=1)
                 bw[m2 < 0.5 * m2.max(), :] = False
-                line_starts = np.array([], dtype="int")
-                line_stops = np.array([], dtype="int")
-                line_start_lables = np.array([], dtype="int")
-                line_stop_labels = np.array([], dtype="int")
 
                 if not (line_end_adder > bw.shape[0]):
                     raise ValueError(
@@ -328,33 +326,40 @@ class CorrFuncTDC(CorrFuncData):
 
                 print("Building ROI...", end=" ")
 
-                roi = {"row": [], "col": []}
-                for j in range(bw.shape[0]):
-                    k = bw[j, :].nonzero()
-                    if k[0].size > 0:  # k is a tuple
-                        bw[j, k[0][0] : k[0][-1]] = True
-                        roi["row"].insert(0, j)
-                        roi["col"].insert(0, k[0][0])
-                        roi["row"].append(j)
-                        roi["col"].append(k[0][-1])
+                line_starts = []
+                line_stops = []
+                line_start_lables = []
+                line_stop_labels = []
+                roi = {"row": deque([]), "col": deque([])}
+
+                n_rows, n_cols = bw.shape
+                for row_idx in range(n_rows):
+                    nonzero_row_idxs = bw[row_idx, :].nonzero()[0]
+                    if nonzero_row_idxs.size != 0:  # if bw row has nonzero elements
+                        # set mask to True between non-zero edges of row
+                        left_edge, right_edge = nonzero_row_idxs[0], nonzero_row_idxs[-1]
+                        bw[row_idx, left_edge:right_edge] = True
+                        # add row to ROI
+                        roi["row"].appendleft(row_idx)
+                        roi["col"].appendleft(left_edge)
+                        roi["row"].append(row_idx)
+                        roi["col"].append(right_edge)
 
                         line_starts_new_index = np.ravel_multi_index(
-                            (j, k[0][0]), bw.shape, mode="raise", order="C"
+                            (row_idx, left_edge), (n_rows, n_cols), mode="raise", order="C"
                         )
                         line_starts_new = np.arange(line_starts_new_index, n_pix_tot[-1], bw.size)
                         line_stops_new_index = np.ravel_multi_index(
-                            (j, k[0][-1]), bw.shape, mode="raise", order="C"
+                            (row_idx, right_edge), (n_rows, n_cols), mode="raise", order="C"
                         )
                         line_stops_new = np.arange(line_stops_new_index, n_pix_tot[-1], bw.size)
-                        line_start_lables = np.append(
-                            line_start_lables, (-j * np.ones(line_starts_new.shape))
+
+                        line_start_lables.append((-row_idx * np.ones(line_starts_new.shape)))
+                        line_stop_labels.append(
+                            ((-row_idx - line_end_adder) * np.ones(line_stops_new.shape))
                         )
-                        line_stop_labels = np.append(
-                            line_stop_labels,
-                            ((-j - line_end_adder) * np.ones(line_stops_new.shape)),
-                        )
-                        line_starts = np.append(line_starts, line_starts_new)
-                        line_stops = np.append(line_stops, line_stops_new)
+                        line_starts.append(line_starts_new)
+                        line_stops.append(line_stops_new)
 
                 try:
                     # repeat first point to close the polygon
@@ -364,15 +369,15 @@ class CorrFuncTDC(CorrFuncData):
                     print("ROI is empty (need to figure out the cause). Skipping file.")
                     continue
 
-                # convert lists to numpy arrays
+                # convert lists/deques to numpy arrays
                 roi = {key: np.array(val) for key, val in roi.items()}
-
-                print("Done.")
-
                 line_start_lables = np.array(line_start_lables)
                 line_stop_labels = np.array(line_stop_labels)
                 line_starts = np.array(line_starts)
                 line_stops = np.array(line_stops)
+
+                print("Done.")
+
                 runtime_line_starts = np.round(
                     line_starts * self.laser_freq_hz / angular_scan_settings["sample_freq_hz"]
                 )
