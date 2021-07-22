@@ -332,8 +332,8 @@ class CorrFuncTDC(CorrFuncData):
                 line_stop_labels = []
                 roi = {"row": deque([]), "col": deque([])}
 
-                n_rows, n_cols = bw.shape
-                for row_idx in range(n_rows):
+                bw_rows, _ = bw.shape
+                for row_idx in range(bw_rows):
                     nonzero_row_idxs = bw[row_idx, :].nonzero()[0]
                     if nonzero_row_idxs.size != 0:  # if bw row has nonzero elements
                         # set mask to True between non-zero edges of row
@@ -345,21 +345,17 @@ class CorrFuncTDC(CorrFuncData):
                         roi["row"].append(row_idx)
                         roi["col"].append(right_edge)
 
-                        line_starts_new_index = np.ravel_multi_index(
-                            (row_idx, left_edge), (n_rows, n_cols), mode="raise", order="C"
-                        )
-                        line_starts_new = np.arange(line_starts_new_index, n_pix_tot[-1], bw.size)
-                        line_stops_new_index = np.ravel_multi_index(
-                            (row_idx, right_edge), (n_rows, n_cols), mode="raise", order="C"
-                        )
-                        line_stops_new = np.arange(line_stops_new_index, n_pix_tot[-1], bw.size)
+                        line_starts_new_idx = np.ravel_multi_index((row_idx, left_edge), bw.shape)
+                        line_starts_new = list(range(line_starts_new_idx, n_pix_tot[-1], bw.size))
+                        line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw.shape)
+                        line_stops_new = list(range(line_stops_new_idx, n_pix_tot[-1], bw.size))
 
-                        line_start_lables.append((-row_idx * np.ones(line_starts_new.shape)))
-                        line_stop_labels.append(
-                            ((-row_idx - line_end_adder) * np.ones(line_stops_new.shape))
+                        line_start_lables.extend([-row_idx for elem in range(len(line_starts_new))])
+                        line_stop_labels.extend(
+                            [(-row_idx - line_end_adder) for elem in range(len(line_stops_new))]
                         )
-                        line_starts.append(line_starts_new)
-                        line_stops.append(line_stops_new)
+                        line_starts.extend(line_starts_new)
+                        line_stops.extend(line_stops_new)
 
                 try:
                     # repeat first point to close the polygon
@@ -472,7 +468,7 @@ class CorrFuncTDC(CorrFuncData):
                 / self.laser_freq_hz
                 / 60
             )
-            print(f"Calculating duration (not supplied): {self.duration_min:.2f} min")
+            print(f"Calculating duration (not supplied): {self.duration_min:.1f} min")
 
         print(f"\nFinished loading FPGA data ({len(self.data['data'])}/{idx+1} files used).")
 
