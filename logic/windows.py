@@ -92,7 +92,12 @@ class MainWin:
         try:
             is_dvc_on = getattr(dvc, state_attr)
         except AttributeError:
-            raise DeviceError(f"{dvc.log_ref} was not properly initialized. Cannot Toggle.")
+            exc = DeviceError(f"{dvc.log_ref} was not properly initialized. Cannot Toggle.")
+            if nick == "stage":
+                err_hndlr(exc, locals(), sys._getframe(), lvl="warning")
+                return False
+            else:
+                raise exc
 
         if (leave_on and is_dvc_on) or (leave_off and not is_dvc_on):
             return True
@@ -868,11 +873,16 @@ class MainWin:
             imported_combobox.obj.addItem(item)
             imported_combobox.set(item)
 
-        logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
-        self._app.devices.scanners.init_ai_buffer()
-        self._app.devices.scanners.start_tasks("ai")
-        self._app.devices.photon_detector.init_ci_buffer()
-        self._app.devices.photon_detector.start_tasks("ci")
+        try:
+            self._app.devices.scanners.init_ai_buffer()
+            self._app.devices.scanners.start_tasks("ai")
+            self._app.devices.photon_detector.init_ci_buffer()
+            self._app.devices.photon_detector.start_tasks("ci")
+        except DeviceError:
+            # devices not initialized
+            pass
+        else:
+            logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
 
     def populate_image_scans(self, template):
         """Doc."""
