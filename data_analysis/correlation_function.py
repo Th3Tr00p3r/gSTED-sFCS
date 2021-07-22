@@ -213,7 +213,7 @@ class CorrFuncTDC(CorrFuncData):
         fpathes.sort(key=lambda fpath: int(re.split(f"(\\d+){file_extension}", fpath)[1]))
 
         for idx, fpath in enumerate(fpathes):
-            print(f"Loading file #{idx+1}: '{fpath}'...", end=" ")
+            print(f"Loading file No. {idx+1}: '{fpath}'...", end=" ")
 
             # get filename (for later)
             _, fname = os.path.split(fpath)
@@ -261,17 +261,14 @@ class CorrFuncTDC(CorrFuncData):
                 if idx == 0:
                     # not assigned yet - this way assignment happens once
                     angular_scan_settings = full_data["angular_scan_settings"]
-                    angular_scan_settings["linear_part"] = np.array(
-                        angular_scan_settings["linear_part"]
-                    )
-                    self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000  # to um/ms
-                    self.angular_scan_settings = angular_scan_settings
+                    linear_part = np.array(angular_scan_settings["linear_part"], dtype=np.int32)
+                    self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
                     sample_freq_hz = angular_scan_settings["sample_freq_hz"]
+                    self.angular_scan_settings = angular_scan_settings
 
                 print("Converting angular scan to image...", end=" ")
 
                 runtime = p.runtime
-                #                runtime = runtime[int(len(runtime) * 0.8) : int(len(runtime) * 1)]  # TESTESTEST
                 cnt, n_pix_tot, n_pix, line_num = self.convert_angular_scan_to_image(
                     runtime, angular_scan_settings
                 )
@@ -279,12 +276,9 @@ class CorrFuncTDC(CorrFuncData):
                 if fix_shift:
                     pix_shift = fix_data_shift(cnt)
                     runtime = p.runtime + pix_shift * self.laser_freq_hz / sample_freq_hz
-                    (
-                        cnt,
-                        n_pix_tot,
-                        n_pix,
-                        line_num,
-                    ) = self.convert_angular_scan_to_image(runtime, angular_scan_settings)
+                    cnt, n_pix_tot, n_pix, line_num = self.convert_angular_scan_to_image(
+                        runtime, angular_scan_settings
+                    )
                     print(f"Fixed line shift: {pix_shift} pixels. Done.")
                 else:
                     print("Done.")
@@ -309,7 +303,6 @@ class CorrFuncTDC(CorrFuncData):
 
                 # cut edges
                 bw_temp = np.zeros(bw.shape)
-                linear_part = angular_scan_settings["linear_part"].astype(np.int32)
                 bw_temp[:, linear_part] = bw[:, linear_part]
                 bw = bw_temp
 
@@ -477,13 +470,7 @@ class CorrFuncTDC(CorrFuncData):
         line_num_tot = np.floor(n_pix_tot / points_per_line_total).astype(np.int32)
         # one more line is for return to starting positon
         line_num = np.mod(line_num_tot, n_lines + 1)
-        cnt = np.empty(
-            (
-                n_lines + 1,
-                points_per_line_total,
-            ),
-            dtype=np.int32,
-        )
+        cnt = np.empty((n_lines + 1, points_per_line_total), dtype=np.int32)
 
         bins = np.arange(-0.5, points_per_line_total)
         for j in range(n_lines + 1):
