@@ -147,9 +147,14 @@ class Measurement:
         today_dir = os.path.join(self.save_path, dt.now().strftime("%d_%m_%Y"))
 
         if self.type == "SFCSSolution":
-            save_path = os.path.join(today_dir, "solution")
+            if self.repeat:
+                save_path = today_dir
+            else:
+                save_path = os.path.join(today_dir, "solution")
         elif self.type == "SFCSImage":
             save_path = os.path.join(today_dir, "image")
+        else:
+            raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
         os.makedirs(save_path, exist_ok=True)
 

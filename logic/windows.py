@@ -838,7 +838,7 @@ class MainWin:
             s.read_fpga_data(
                 os.path.join(self._app.analysis.dir_path, current_template),
                 fix_shift=fix_shift,
-                plot=False,
+                no_plot=True,
             )
 
         except AttributeError:
