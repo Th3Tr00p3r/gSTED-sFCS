@@ -840,7 +840,7 @@ class MainWin:
                 fix_shift=fix_shift,
                 no_plot=True,
             )
-
+            s.correlate_angular_scan_data()  # TESTESTEST
         except AttributeError:
             # No directories found
             pass
