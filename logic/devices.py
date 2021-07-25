@@ -592,7 +592,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.digital_write(is_being_switched_on)
         except DaqError:
             exc = IOError(
-                f"NI device address ({self.address}) is wrong, or Data acquisition board is unplugged"
+                f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
             )
             err_hndlr(exc, locals(), sys._getframe(), dvc=self)
 

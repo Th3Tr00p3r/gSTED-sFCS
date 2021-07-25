@@ -147,7 +147,7 @@ class NIDAQmx:
         except ni.errors.DaqError:
             task.close()
             raise IOError(
-                f"NI device address ({self.ai_x_addr}) is wrong, or Data acquisition board is unplugged"
+                f"NI device address ({self.ai_x_addr}) is wrong, or data acquisition board is unplugged"
             )
 
         else:
