@@ -226,6 +226,8 @@ class CorrFuncTDC(CorrFuncData):
                     filedict = pickle.load(f)
             elif file_extension == ".mat":
                 filedict = loadmat(fpath)
+            else:
+                raise NotImplementedError(f"Unknown file extension: '{file_extension}'.")
             # backward compatibility with old-style naming
             filedict = translate_dict_keys(filedict, legacy_keys_trans_dict)
 
@@ -434,7 +436,7 @@ class CorrFuncTDC(CorrFuncData):
             p.fpath = fpath
             self.data["data"].append(p)
 
-            print(f"Finished processing file #{idx+1}\n")
+            print(f"Finished processing file No. {idx+1}\n")
 
         self.line_end_adder = line_end_adder
 
@@ -621,9 +623,6 @@ def fix_data_shift(cnt) -> int:
     return pix_shift
 
 
-#    return pix_shifts[np.argmin(score)]
-
-
 def threshold_and_smooth(img, otsu_classes=4) -> np.ndarray:
     """Doc."""
 
@@ -642,7 +641,7 @@ def threshold_and_smooth(img, otsu_classes=4) -> np.ndarray:
 
 
 def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
-    """Returns a list line auto-correlations of the lines of an image"""
+    """Returns a list of auto-correlations of the lines of an image"""
 
     image_line_corr = []
     for j in range(roi["row"].min(), roi["row"].max() + 1):
