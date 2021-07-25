@@ -32,6 +32,7 @@ legacy_keys_trans_dict = {
     "DataVersion": "data_version",
     "FpgaFreq": "fpga_freq_mhz",
     "PixelFreq": "pix_clk_freq_mhz",
+    "PixClockFreq": "pix_clk_freq_mhz",
     "LaserFreq": "laser_freq_mhz",
     "Version": "version",
     "AI": "ai",

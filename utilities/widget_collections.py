@@ -2,11 +2,6 @@
 
 from utilities.helper import QtWidgetCollection
 
-# TODO: something to think about - all of the following collection objects are instantiated here.
-# When I call, e.g., utilities.helper.led_wdgts from some other module, I'm actually using the existing object,
-# and not a newly instantiated one. This may be good since this way I'm reusing stuff which does not change throughout
-# the lifetime of the application - pehaps I should just hold_all objects by default and behind the scenes, to make the use of this class clearer
-
 # ------------------------------
 # Devices
 # ------------------------------

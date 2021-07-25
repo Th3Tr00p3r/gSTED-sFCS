@@ -197,7 +197,7 @@ class CorrFuncTDC(CorrFuncData):
         fix_shift=False,
         line_end_adder=1000,
         roi_selection="auto",
-        plot=True,
+        no_plot=False,
     ):
         """Doc."""
 
@@ -409,7 +409,7 @@ class CorrFuncTDC(CorrFuncData):
                 p.roi = roi
 
                 # plotting of scan image and ROI
-                if plot:
+                if no_plot:
                     fig = plt.figure()
                     ax = fig.add_subplot(111)
                     ax.set_title(fname)
@@ -452,10 +452,10 @@ class CorrFuncTDC(CorrFuncData):
                 / self.laser_freq_hz
                 / 60
             )
-            print(f"Calculating duration (not supplied): {self.duration_min:.1f} min")
+            print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
         print(
-            f"\nFinished loading FPGA data ({len(self.data['data'])}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} seconds"
+            f"Finished loading FPGA data ({len(self.data['data'])}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} seconds"
         )
 
     def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
