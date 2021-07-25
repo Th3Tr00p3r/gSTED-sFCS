@@ -282,7 +282,7 @@ class CorrFuncTDC(CorrFuncData):
 
                 if fix_shift:
                     pix_shift = fix_data_shift(cnt)
-                    runtime = p.runtime + pix_shift * self.laser_freq_hz / sample_freq_hz
+                    runtime = p.runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
                     cnt, n_pix_tot, n_pix, line_num = self.convert_angular_scan_to_image(
                         runtime, angular_scan_settings
                     )
@@ -307,7 +307,7 @@ class CorrFuncTDC(CorrFuncData):
                     raise RuntimeError(f"roi_selection={roi_selection} is not implemented.")
 
                 # cut edges
-                bw_temp = np.zeros(bw.shape)
+                bw_temp = np.full(bw.shape, False, dtype=bool)
                 bw_temp[:, linear_part] = bw[:, linear_part]
                 bw = bw_temp
 
@@ -370,8 +370,8 @@ class CorrFuncTDC(CorrFuncData):
 
                 print("Done.")
 
-                runtime_line_starts = np.round(line_starts * self.laser_freq_hz / sample_freq_hz)
-                runtime_line_stops = np.round(line_stops * self.laser_freq_hz / sample_freq_hz)
+                runtime_line_starts = line_starts * round(self.laser_freq_hz / sample_freq_hz)
+                runtime_line_stops = line_stops * round(self.laser_freq_hz / sample_freq_hz)
 
                 runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
                 sorted_idxs = np.argsort(runtime)
@@ -409,7 +409,7 @@ class CorrFuncTDC(CorrFuncData):
                 p.roi = roi
 
                 # plotting of scan image and ROI
-                if no_plot:
+                if not no_plot:
                     fig = plt.figure()
                     ax = fig.add_subplot(111)
                     ax.set_title(fname)
@@ -465,12 +465,12 @@ class CorrFuncTDC(CorrFuncData):
         points_per_line_total = angular_scan_settings["points_per_line_total"]
         n_lines = angular_scan_settings["n_lines"]
 
-        n_pix_tot = np.floor(runtime * sample_freq_hz / self.laser_freq_hz).astype(np.int32)
+        n_pix_tot = np.floor(runtime * sample_freq_hz / self.laser_freq_hz).astype(np.int64)
         # to which pixel photon belongs
         n_pix = np.mod(n_pix_tot, points_per_line_total)
-        line_num_tot = np.floor(n_pix_tot / points_per_line_total).astype(np.int32)
+        line_num_tot = np.floor(n_pix_tot / points_per_line_total)
         # one more line is for return to starting positon
-        line_num = np.mod(line_num_tot, n_lines + 1)
+        line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int32)
         cnt = np.empty((n_lines + 1, points_per_line_total), dtype=np.int32)
 
         bins = np.arange(-0.5, points_per_line_total)
@@ -503,8 +503,6 @@ class CorrFuncTDC(CorrFuncData):
                 )
 
             run_duration = total_duration_estimate / n_runs_requested
-            if verbose:
-                print(f"Auto determination of run duration: {run_duration} s.")
 
         self.requested_duration = run_duration
         self.min_duration_frac = min_time_frac
@@ -560,7 +558,7 @@ class CorrFuncTDC(CorrFuncData):
 
                     ts_split = ts[splits[k] : splits[k + 1]]
                     self.duration = np.append(self.duration, ts_split.sum() / self.laser_freq_hz)
-                    cf.do_soft_cross_correlator(
+                    cf.soft_cross_correlate(
                         ts_split,
                         CorrelatorType.PH_DELAY_CORRELATOR,
                         timebase_ms=1000 / self.laser_freq_hz,
@@ -583,16 +581,118 @@ class CorrFuncTDC(CorrFuncData):
                     )
 
         # zero pad
-        for ind in range(len(self.corrfunc)):
-            pad_len = len(self.lag) - len(self.corrfunc[ind])
-            self.corrfunc[ind] = np.pad(self.corrfunc[ind], (0, pad_len), "constant")
-            self.weights[ind] = np.pad(self.weights[ind], (0, pad_len), "constant")
-            self.cf_cr[ind] = np.pad(self.cf_cr[ind], (0, pad_len), "constant")
+        for idx in range(len(self.corrfunc)):
+            pad_len = len(self.lag) - len(self.corrfunc[idx])
+            self.corrfunc[idx] = np.pad(self.corrfunc[idx], (0, pad_len), "constant")
+            self.weights[idx] = np.pad(self.weights[idx], (0, pad_len), "constant")
+            self.cf_cr[idx] = np.pad(self.cf_cr[idx], (0, pad_len), "constant")
 
         self.corrfunc = np.array(self.corrfunc)
         self.weights = np.array(self.weights)
         self.cf_cr = np.array(self.cf_cr)
 
+        self.total_duration = self.duration.sum()
+        if verbose:
+            print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
+
+    def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True, verbose=False):
+        """Doc."""
+
+        cf = SoftwareCorrelator()
+
+        self.min_time_frac = min_time_frac
+        self.duration = np.array([])
+        self.lag = np.array([])
+        self.corr_func = []
+        self.weights = []
+        self.cf_cr = []
+        self.count_rate = np.array([])
+        self.total_duration_skipped = 0
+
+        for p in self.data["data"]:
+            if verbose:
+                print(f"Correlating {p.fname}...")
+            time_stamps = np.diff(p.runtime)
+            line_num = p.line_num
+            min_line, max_line = line_num[line_num > 0].min(), line_num.max()
+            for line_idx, j in enumerate(range(min_line, max_line + 1)):
+                valid = (line_num == j).astype(np.int32)
+                valid[line_num == -j] = -1
+                valid[line_num == -j - self.line_end_adder] = -2
+                # both photons separated by time-stamp should belong to the line
+                valid = valid[1:]
+
+                # remove photons from wrong lines
+                timest = time_stamps[valid != 0]
+                valid = valid[valid != 0]
+                # check that we start with the line beginning and not its end
+                if valid[0] != -1:
+                    # remove photons till the first found beginning
+                    Jstrt = np.where(valid == -1)[0][0]
+                    # timest(1:(Jstrt -1)) = [];
+                    timest = timest[Jstrt:]
+                    # valid(1:(Jstrt -1)) = [];
+                    valid = valid[Jstrt:]
+
+                    # check that we stop with the line ending and not its beginning
+                if valid[-1] != -2:
+                    # remove photons till the last found ending
+                    # Jend = find((valid == -2), 1, 'last');
+                    Jend = np.where(valid == -2)[0][-1]
+                    # timest((Jend + 1):end) = [];
+                    # valid((Jend + 1):end) = [];
+                    timest = timest[:Jend]
+                    valid = valid[:Jend]
+
+                # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
+                dur = timest[np.logical_or((valid == 1), (valid == -2))].sum() / self.laser_freq_hz
+                self.duration = np.append(self.duration, dur)
+                ts_split = np.vstack((timest, valid)).astype(np.int32)
+
+                cf.soft_cross_correlate(
+                    ts_split,
+                    CorrelatorType.PH_DELAY_CORRELATOR_LINES,
+                    # time base of 20MHz to ms
+                    timebase_ms=1000 / self.laser_freq_hz,
+                )
+
+                if subtract_bg_corr:
+                    bg_corr = np.interp(
+                        cf.lag,
+                        p.image_line_corr[line_idx]["lag"],
+                        p.image_line_corr[line_idx]["corrfunc"],
+                        right=0,
+                    )
+                else:
+                    bg_corr = 0
+
+                cf.corrfunc = cf.corrfunc - bg_corr
+
+                if len(self.lag) < len(cf.lag):
+                    self.lag = cf.lag
+                    if self.after_pulse_param[0] == "MultiExponentFit":
+                        # work with any number of exponents
+                        # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
+                        beta = self.after_pulse_param[1]
+                        self.after_pulse = np.dot(
+                            beta[::2], np.exp(-np.outer(beta[1::2], self.lag))
+                        )
+
+                self.corrfunc.append(cf.corrfunc)
+                self.weights.append(cf.weights)
+                self.countrate = np.append(self.countrate, cf.countrate)
+                self.cf_cr.append(cf.countrate * cf.corrfunc - self.after_pulse[: cf.corrfunc.size])
+
+        for idx in range(len(self.corrfunc)):  # zero pad
+            pad_len = len(self.lag) - len(self.corrfunc[idx])
+            self.corrfunc[idx] = np.pad(self.corrfunc[idx], (0, pad_len), "constant")
+            self.weights[idx] = np.pad(self.weights[idx], (0, pad_len), "constant")
+            self.cf_cr[idx] = np.pad(self.cf_cr[idx], (0, pad_len), "constant")
+
+        self.corrfunc = np.array(self.corrfunc)
+        self.weights = np.array(self.weights)
+        self.cf_cr = np.array(self.cf_cr)
+        self.vt_um = self.V_um_ms * self.lag
         self.total_duration = self.duration.sum()
         if verbose:
             print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
