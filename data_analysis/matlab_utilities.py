@@ -1,9 +1,5 @@
-#!/usr/bin/env python3
-"""
-Created on Tue Mar 23 19:16:16 2021
+"""Data-File Loading Utilities"""
 
-@author: copied from: https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
-"""
 import numpy as np
 import scipy.io as spio
 
@@ -56,42 +52,34 @@ legacy_keys_trans_dict = {
 }
 
 
-def translate_dict_keys(original_dict: dict, trans_dict: dict) -> dict:
+def translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
     """
     Updates keys of dict according to another dict:
     trans_dct.keys() are the keys to update,
     and trans_dct.values() are the new keys.
-    Key, value pairs that do not appear in trans_dict will remain unchanged.
+    Key, value pairs that do not appear in translation_dict will remain unchanged.
     """
 
-    new_dict = {}
+    translated_dict = {}
     # iterate over key, val pairs of original dict
     for org_key, org_val in original_dict.items():
-        # if the original val is a dict,
         if isinstance(org_val, dict):
-            if org_key in trans_dict.keys():
-                new_dict[trans_dict[org_key]] = translate_dict_keys(org_val, trans_dict)
+            # if the original val is a dict
+            if org_key in translation_dict.keys():
+                # if the dict name needs translation, translate it and then translate the sub_dict
+                translated_dict[translation_dict[org_key]] = translate_dict_keys(
+                    org_val, translation_dict
+                )
             else:
-                new_dict[org_key] = translate_dict_keys(org_val, trans_dict)
+                # translate the sub_dict
+                translated_dict[org_key] = translate_dict_keys(org_val, translation_dict)
         else:
-            if org_key in trans_dict.keys():
-                new_dict[trans_dict[org_key]] = org_val
+            # translate the key if needed
+            if org_key in translation_dict.keys():
+                translated_dict[translation_dict[org_key]] = org_val
             else:
-                new_dict[org_key] = org_val
-    return new_dict
-
-
-#    new_dict = {}
-#    for org_key, org_val in original_dict.items():
-#        if org_key in trans_dict.keys():
-#            if isinstance(org_val, dict):
-#                new_key, sub_trans_dict = trans_dict[org_key]
-#                new_dict[new_key] = translate_dict_keys(org_val, sub_trans_dict)
-#            else:
-#                new_dict[trans_dict[org_key]] = org_val
-#        else:
-#            new_dict[org_key] = org_val
-#    return new_dict
+                translated_dict[org_key] = org_val
+    return translated_dict
 
 
 def loadmat(filename):
@@ -100,6 +88,8 @@ def loadmat(filename):
     as it cures the problem of not properly recovering python dictionaries
     from mat files. It calls the function check keys to cure all entries
     which are still mat-objects
+
+    adapted from: https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
     """
 
     def _check_keys(d):
@@ -121,7 +111,7 @@ def loadmat(filename):
             elem = matobj.__dict__[strg]
             if isinstance(elem, spio.matlab.mio5_params.mat_struct):
                 d[strg] = _todict(elem)
-            elif isinstance(elem, np.ndarray):
+            elif isinstance(elem, np.ndarray) and strg not in {"Data", "data"}:
                 d[strg] = _tolist(elem)
             else:
                 d[strg] = elem

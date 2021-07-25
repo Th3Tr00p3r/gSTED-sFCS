@@ -88,13 +88,9 @@ class App:
         ]
 
         # init scan patterns
-        print(
-            "Displaying patterns for first time (Numba first compilation might be slow).", end=" "
-        )
         self.gui.main.imp.disp_scn_pttrn("image")
         sol_pattern = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self).scan_type
         self.gui.main.imp.disp_scn_pttrn(sol_pattern)
-        print("Done.")
 
         # init existing data folders (solution by default)
         self.gui.main.solDataImport.setChecked(True)

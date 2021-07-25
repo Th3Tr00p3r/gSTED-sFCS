@@ -212,8 +212,10 @@ class CorrFuncTDC(CorrFuncData):
         _, file_extension = os.path.splitext(fnametmpl)
         fpathes.sort(key=lambda fpath: int(re.split(f"(\\d+){file_extension}", fpath)[1]))
 
+        n_files = len(fpathes)
+
         for idx, fpath in enumerate(fpathes):
-            print(f"Loading file No. {idx+1}: '{fpath}'...", end=" ")
+            print(f"Loading file No. {idx+1}/{n_files}: '{fpath}'...", end=" ")
 
             # get filename (for later)
             _, fname = os.path.split(fpath)
@@ -299,8 +301,6 @@ class CorrFuncTDC(CorrFuncData):
                 else:
                     raise RuntimeError(f"roi_selection={roi_selection} is not implemented.")
 
-                #                bw[1::2, :] = np.flip(bw[1::2, :], 1) # TESTESTEST
-
                 # cut edges
                 bw_temp = np.zeros(bw.shape)
                 bw_temp[:, linear_part] = bw[:, linear_part]
@@ -369,42 +369,36 @@ class CorrFuncTDC(CorrFuncData):
                 runtime_line_stops = np.round(line_stops * self.laser_freq_hz / sample_freq_hz)
 
                 runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
-                j_sort = np.argsort(runtime)
-                runtime = runtime[j_sort]
-                line_num = np.hstack(
+                sorted_idxs = np.argsort(runtime)
+                p.runtime = runtime[sorted_idxs]
+                p.line_num = np.hstack(
                     (
                         line_start_lables,
                         line_stop_labels,
                         line_num * bw[line_num, n_pix].flatten(),
                     )
-                )
-                p.line_num = line_num[j_sort]
-                coarse = np.hstack(
+                )[sorted_idxs]
+                p.coarse = np.hstack(
                     (
                         np.full(runtime_line_starts.shape, np.nan),
                         np.full(runtime_line_stops.shape, np.nan),
                         p.coarse,
                     )
-                )
-                p.coarse = coarse[j_sort]
-                coarse = np.hstack(
+                )[sorted_idxs]
+                p.coarse2 = np.hstack(
                     (
                         np.full(runtime_line_starts.shape, np.nan),
                         np.full(runtime_line_stops.shape, np.nan),
                         p.coarse2,
                     )
-                )
-                p.coarse2 = coarse[j_sort]
-                fine = np.hstack(
+                )[sorted_idxs]
+                p.fine = np.hstack(
                     (
                         np.full(runtime_line_starts.shape, np.nan),
                         np.full(runtime_line_stops.shape, np.nan),
                         p.fine,
                     )
-                )
-                p.fine = fine[j_sort]
-                p.runtime = runtime
-                # TODO: add line starts/stops to photon runtimes (Oleg)
+                )[sorted_idxs]
 
                 p.image = cnt
                 p.roi = roi
@@ -455,7 +449,7 @@ class CorrFuncTDC(CorrFuncData):
             )
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min")
 
-        print(f"\nFinished loading FPGA data ({len(self.data['data'])}/{idx+1} files used).")
+        print(f"\nFinished loading FPGA data ({len(self.data['data'])}/{n_files} files used).")
 
     def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
         """utility function for opening Angular Scans"""
@@ -642,7 +636,7 @@ def threshold_and_smooth(img, otsu_classes=4) -> np.ndarray:
     dev_cnt = img - plateau_lvl
     bw = dev_cnt > -std_plateau
     bw = ndimage.binary_fill_holes(bw)
-    disk_open = morphology.selem.disk(radius=3)
+    disk_open = morphology.selem.disk(radius=2)  # NOTE: was 3
     bw = morphology.opening(bw, selem=disk_open)
     return bw
 
