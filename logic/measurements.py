@@ -273,7 +273,7 @@ class Measurement:
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samp_quant_samp_per_chan": int(self.n_ao_samps),  # TESTESTEST  * 1.2
+                "samp_quant_samp_per_chan": int(self.n_ao_samps),
                 "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
                 "ai_conv_rate": self.ai_conv_rate,
@@ -284,7 +284,7 @@ class Measurement:
             samp_clk_cnfg={},
             timing_params={
                 "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samp_quant_samp_per_chan": int(self.n_ao_samps),  # TESTESTEST  * 1.2
+                "samp_quant_samp_per_chan": int(self.n_ao_samps),
                 "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                 "samp_clk_src": ao_clk_src,
             },
@@ -483,9 +483,27 @@ class SFCSImageMeasurement(Measurement):
         matches current MATLAB analysis
         """
 
-        def prep_scan_params() -> dict:
-
-            return {
+        return {
+            "version": self.tdc_dvc.tdc_vrsn,
+            "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
+            "cnt": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
+            "pid": [],  # check
+            "ao": self.ao_buffer,
+            "sp": [],  # check
+            "log": [],  # info in mat filename
+            "lines_odd": self.scan_params.set_pnts_lines_odd,
+            "is_fast_scan": True,
+            "system_info": self.sys_info,
+            "xyz_um_to_v": self.um_v_ratio,
+            "tdc_scan_data": {
+                "plane": np.array([data for data in self.plane_data], dtype=np.object),
+                "data_version": self.tdc_dvc.data_vrsn,  # already in 'version'
+                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
+                "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
+                "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
+                "version": self.tdc_dvc.tdc_vrsn,
+            },
+            "scan_param": {
                 "dim1_lines_um": self.scan_params.dim1_um,
                 "dim2_col_um": self.scan_params.dim2_um,
                 "dim3_um": self.scan_params.dim3_um,
@@ -502,33 +520,7 @@ class SFCSImageMeasurement(Measurement):
                 "offset_aiz": self.scan_params.curr_ao_z,  # check
                 "what_stage": "Galvanometers",
                 "linear_frac": self.scan_params.lin_frac,
-            }
-
-        def prep_tdc_scan_data() -> dict:
-
-            return {
-                "plane": np.array([data for data in self.plane_data], dtype=np.object),
-                "data_version": self.tdc_dvc.data_vrsn,
-                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
-                "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
-                "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
-                "version": self.tdc_dvc.tdc_vrsn,
-            }
-
-        return {
-            "tdc_scan_data": prep_tdc_scan_data(),
-            "version": self.tdc_dvc.tdc_vrsn,
-            "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
-            "cnt": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
-            "scan_param": prep_scan_params(),
-            "pid": [],  # check
-            "ao": self.ao_buffer,
-            "sp": [],  # check
-            "log": [],  # info in mat filename
-            "lines_odd": self.scan_params.set_pnts_lines_odd,
-            "is_fast_scan": True,
-            "system_info": self.sys_info,
-            "xyz_um_to_v": self.um_v_ratio,
+            },
         }
 
     async def run(self):
@@ -608,7 +600,7 @@ class SFCSImageMeasurement(Measurement):
             self.keep_last_meas()
 
             # show middle plane
-            mid_plane = int(len(self.scan_params.set_pnts_planes) // 2)
+            mid_plane = len(self.scan_params.set_pnts_planes) // 2
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
             should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "exc")
@@ -616,6 +608,8 @@ class SFCSImageMeasurement(Measurement):
 
         if self.is_running:  # if not manually before completion
             await self.stop()
+
+        self.type = None
 
 
 class SFCSSolutionMeasurement(Measurement):
@@ -827,6 +821,7 @@ class SFCSSolutionMeasurement(Measurement):
 
                 # initialize data buffer
                 self.data_dvc.init_data()
+                self.data_dvc.purge_buffers()
 
                 if not self.repeat:
                     # during alignment we don't change the counter_dvc tasks, do no need to initialize
@@ -839,12 +834,7 @@ class SFCSSolutionMeasurement(Measurement):
                 else:
                     self.scanners_dvc.init_ai_buffer()
 
-                self.data_dvc.purge_buffers()
-
                 self.file_num_wdgt.set(file_num)
-
-                #                print("waiting 3 seconds to allow tasks to propely start?") # TESTESTEST
-                #                await asyncio.sleep(3) # TESTESTEST
 
                 # reading
                 if self.repeat:

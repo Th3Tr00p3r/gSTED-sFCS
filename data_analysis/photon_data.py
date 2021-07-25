@@ -53,7 +53,7 @@ class PhotonData:
         )[0]
         if (n_invs := inv_idxs.size) != 0:
             if verbose:
-                print(f"Found {n_invs} of missing bit data: ad hoc fixing...")
+                print(f"Found {n_invs} of missing bit data, ad hoc fixing...", end=" ")
             temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
             time_stamps[inv_idxs] = np.floor(temp).astype(type_)
             time_stamps[inv_idxs + 1] = np.ceil(temp).astype(type_)
@@ -61,14 +61,15 @@ class PhotonData:
 
         # repairing drops in counter (idomic note)
         neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
-        time_stamps[neg_time_stamp_idxs] = time_stamps[neg_time_stamp_idxs] + maxval
+        time_stamps[neg_time_stamp_idxs] += maxval
         for i in neg_time_stamp_idxs + 1:
-            counter[i:] = counter[i:] + maxval
+            counter[i:] += maxval
 
         # saving coarse and fine times
         self.coarse = fpga_data[idxs + 4].astype(type_)
         self.fine = fpga_data[idxs + 5].astype(type_)
-        # TODO: ask Oleg what's going on here
+
+        # TODO: ask Oleg what's going on here (some fix due to an issue in FPGA)
         if self.version >= 3:
             twobit1 = np.floor(self.coarse / 64).astype(type_)
             self.coarse = self.coarse - twobit1 * 64
