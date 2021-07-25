@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import re
+import time
 from collections import deque
 
 import matplotlib.pyplot as plt
@@ -199,6 +200,8 @@ class CorrFuncTDC(CorrFuncData):
         plot=True,
     ):
         """Doc."""
+
+        tic = time.perf_counter()
 
         print("\nLoading FPGA data:")
 
@@ -451,7 +454,9 @@ class CorrFuncTDC(CorrFuncData):
             )
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min")
 
-        print(f"\nFinished loading FPGA data ({len(self.data['data'])}/{n_files} files used).")
+        print(
+            f"\nFinished loading FPGA data ({len(self.data['data'])}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} seconds"
+        )
 
     def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
         """utility function for opening Angular Scans"""
