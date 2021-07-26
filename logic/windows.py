@@ -845,7 +845,7 @@ class MainWin:
                 no_plot=True,
             )
             try:  # TESTESTEST
-                s.correlate_angular_scan_data(verbose=True)  # TESTESTEST
+                s.correlate_angular_scan_data()  # TESTESTEST
             except ValueError as exc:  # TESTESTEST
                 err_hndlr(exc, locals(), sys._getframe())  # TESTESTEST
 
