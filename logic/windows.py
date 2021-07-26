@@ -747,7 +747,11 @@ class MainWin:
             # self._app.analysis.dir_path does not yet exist or is None (no date dir found)
             pass
         else:
-            webbrowser.open(dir_path)
+            if os.path.isdir(dir_path):
+                webbrowser.open(dir_path)
+            else:
+                # dir was deleted, refresh all dates
+                self.populate_all_data_dates()
 
     def update_dir_log_file(self) -> None:
         """Doc."""
@@ -841,7 +845,7 @@ class MainWin:
                 no_plot=True,
             )
             try:  # TESTESTEST
-                s.correlate_angular_scan_data()  # TESTESTEST
+                s.correlate_angular_scan_data(verbose=True)  # TESTESTEST
             except ValueError as exc:  # TESTESTEST
                 err_hndlr(exc, locals(), sys._getframe())  # TESTESTEST
 
