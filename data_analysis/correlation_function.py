@@ -712,10 +712,10 @@ def fix_data_shift(cnt) -> int:
         pix_shifts.append(pix_shift)
 
     # verify not using local minimum by checking if there's a shift
-    # yielding a significantly brighter image center for the 10 highest scoring shifts
+    # yielding a significantly brighter image center for the 5 highest scoring shifts
     arg_sorted_score = np.argsort(score)
     center_sum = 0
-    for arg in arg_sorted_score[:10]:
+    for arg in arg_sorted_score[:5]:
         new_pix_shift = pix_shifts[arg]
         rolled_cnt = np.roll(cnt, new_pix_shift)
         new_center_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()

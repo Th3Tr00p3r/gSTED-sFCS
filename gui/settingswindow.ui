@@ -114,60 +114,50 @@
          </attribute>
          <layout class="QGridLayout" name="gridLayout_2">
           <item row="0" column="0">
-           <layout class="QVBoxLayout" name="verticalLayout_16">
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_101">
-              <item>
-               <widget class="QLabel" name="label_44">
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>20</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Save Format</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="saveFormat">
-                <property name="font">
-                 <font>
-                  <pointsize>8</pointsize>
-                 </font>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>Python (.pkl)</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>MATLAB (.mat)</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <widget class="QGroupBox" name="groupBox_4">
-              <property name="title">
-               <string>Paths</string>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_5">
+           <widget class="QGroupBox" name="groupBox_4">
+            <property name="title">
+             <string>Paths</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout">
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_15">
                <item>
-                <layout class="QVBoxLayout" name="verticalLayout_15">
+                <widget class="QLabel" name="label_13">
+                 <property name="text">
+                  <string>Measurement Data Path</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="dataPath">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <pointsize>8</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>./data/</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_15">
+               <item>
+                <layout class="QVBoxLayout" name="verticalLayout_23">
                  <item>
-                  <widget class="QLabel" name="label_13">
+                  <widget class="QLabel" name="label_19">
                    <property name="text">
-                    <string>Measurement Data Path</string>
+                    <string>Solution Sub-Directory name</string>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLineEdit" name="dataPath">
+                  <widget class="QLineEdit" name="solSubdirName">
                    <property name="enabled">
                     <bool>true</bool>
                    </property>
@@ -177,79 +167,23 @@
                     </font>
                    </property>
                    <property name="text">
-                    <string>./data/</string>
+                    <string>solution</string>
                    </property>
                   </widget>
                  </item>
                 </layout>
                </item>
                <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_15">
+                <layout class="QVBoxLayout" name="verticalLayout_24">
                  <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_23">
-                   <item>
-                    <widget class="QLabel" name="label_19">
-                     <property name="text">
-                      <string>Solution Sub-Directory name</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="solSubdirName">
-                     <property name="enabled">
-                      <bool>true</bool>
-                     </property>
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>solution</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_24">
-                   <item>
-                    <widget class="QLabel" name="label_20">
-                     <property name="text">
-                      <string>Image Sub-Directory name</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="imgSubdirName">
-                     <property name="enabled">
-                      <bool>true</bool>
-                     </property>
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>image</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <layout class="QVBoxLayout" name="verticalLayout_13">
-                 <item>
-                  <widget class="QLabel" name="label_11">
+                  <widget class="QLabel" name="label_20">
                    <property name="text">
-                    <string>Camera Photos Data</string>
+                    <string>Image Sub-Directory name</string>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLineEdit" name="camDataPath">
+                  <widget class="QLineEdit" name="imgSubdirName">
                    <property name="enabled">
                     <bool>true</bool>
                    </property>
@@ -259,42 +193,68 @@
                     </font>
                    </property>
                    <property name="text">
-                    <string>./data/camera photos/</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <layout class="QVBoxLayout" name="verticalLayout_14">
-                 <item>
-                  <widget class="QLabel" name="label_12">
-                   <property name="text">
-                    <string>Log Files</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="logDataPath">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="font">
-                    <font>
-                     <pointsize>8</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>./log/</string>
+                    <string>image</string>
                    </property>
                   </widget>
                  </item>
                 </layout>
                </item>
               </layout>
-             </widget>
-            </item>
-           </layout>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_13">
+               <item>
+                <widget class="QLabel" name="label_11">
+                 <property name="text">
+                  <string>Camera Photos Data</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="camDataPath">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <pointsize>8</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>./data/camera photos/</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_14">
+               <item>
+                <widget class="QLabel" name="label_12">
+                 <property name="text">
+                  <string>Log Files</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="logDataPath">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <pointsize>8</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>./log/</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
           </item>
           <item row="0" column="1">
            <spacer name="horizontalSpacer_5">
