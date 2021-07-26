@@ -453,7 +453,7 @@ class CorrFuncTDC(CorrFuncData):
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
         print(
-            f"Finished loading FPGA data ({len(self.data['data'])}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} seconds"
+            f"Finished loading FPGA data ({len(self.data['data'])}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} s\n"
         )
 
     def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
@@ -594,7 +594,7 @@ class CorrFuncTDC(CorrFuncData):
         if verbose:
             print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
 
-    def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True, verbose=False):
+    def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True):
         """Doc."""
 
         cf = SoftwareCorrelator()
@@ -602,15 +602,18 @@ class CorrFuncTDC(CorrFuncData):
         self.min_time_frac = min_time_frac
         duration = []
         self.lag = []
-        self.corr_func = []
+        self.corrfunc = []
         self.weights = []
         self.cf_cr = []
         self.countrate = []
         self.total_duration_skipped = 0
 
+        tic = time.perf_counter()
+        print("Correlating angular scan data:")
+
         for p in self.data["data"]:
-            if verbose:
-                print(f"Correlating {p.fname}...")
+            print(f"Correlating {p.fname}...", end=" ")
+
             time_stamps = np.diff(p.runtime)
             line_num = p.line_num
             min_line, max_line = line_num[line_num > 0].min(), line_num.max()
@@ -668,7 +671,7 @@ class CorrFuncTDC(CorrFuncData):
 
                 if len(self.lag) < len(cf.lag):
                     self.lag = cf.lag
-                    if self.after_pulse_param[0] == "MultiExponentFit":
+                    if self.after_pulse_param[0] == "multi_exponent_fit":
                         # work with any number of exponents
                         # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
                         beta = self.after_pulse_param[1]
@@ -681,8 +684,9 @@ class CorrFuncTDC(CorrFuncData):
                 self.countrate.append(cf.countrate)
                 self.cf_cr.append(cf.countrate * cf.corrfunc - self.after_pulse[: cf.corrfunc.size])
 
+        len_lag = len(self.lag)
         for idx in range(len(self.corrfunc)):  # zero pad
-            pad_len = len(self.lag) - len(self.corrfunc[idx])
+            pad_len = len_lag - len(self.corrfunc[idx])
             self.corrfunc[idx] = np.pad(self.corrfunc[idx], (0, pad_len), "constant")
             self.weights[idx] = np.pad(self.weights[idx], (0, pad_len), "constant")
             self.cf_cr[idx] = np.pad(self.cf_cr[idx], (0, pad_len), "constant")
@@ -690,10 +694,19 @@ class CorrFuncTDC(CorrFuncData):
         self.corrfunc = np.array(self.corrfunc)
         self.weights = np.array(self.weights)
         self.cf_cr = np.array(self.cf_cr)
-        self.vt_um = self.V_um_ms * self.lag
+        self.vt_um = self.v_um_ms * self.lag
         self.total_duration = sum(duration)
-        if verbose:
-            print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
+
+        if self.total_duration_skipped:
+            print(
+                f"{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
+            )
+        else:
+            print("Done.")
+
+        print(
+            f"Finished correlating angular scan data. Process took {time.perf_counter() - tic:.2f} s\n"
+        )
 
 
 def fix_data_shift(cnt) -> int:
@@ -764,6 +777,7 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
                     "corrfunc": c,
                 }
             )  # c/mean(prof).^2-1;
+    return image_line_corr
 
 
 def x_corr(a, b):
