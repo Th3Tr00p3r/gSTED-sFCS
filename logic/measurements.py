@@ -503,9 +503,9 @@ class SFCSImageMeasurement(Measurement):
             "tdc_scan_data": {
                 "plane": np.array([data for data in self.plane_data], dtype=np.object),
                 "data_version": self.tdc_dvc.data_vrsn,  # already in 'version'
-                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
+                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
                 "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
-                "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
+                "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
                 "version": self.tdc_dvc.tdc_vrsn,
             },
             "scan_param": {
@@ -686,7 +686,7 @@ class SFCSSolutionMeasurement(Measurement):
             p = PhotonData()
             p.convert_fpga_data_to_photons(np.array(data, dtype=np.uint8))
             s = CorrFuncTDC()
-            s.laser_freq_hz = self.tdc_dvc.laser_freq_MHz * 1e6
+            s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
             s.data["data"].append(p)
             s.correlate_regular_data()
             s.average_correlation(no_plot=True, use_numba=True)
@@ -741,8 +741,8 @@ class SFCSSolutionMeasurement(Measurement):
             "data": np.array(self.data_dvc.data, dtype=np.uint8),
             "version": self.tdc_dvc.tdc_vrsn,
             "data_version": self.tdc_dvc.data_vrsn,
-            "fpga_freq_mhz": self.tdc_dvc.fpga_freq_MHz,
-            "laser_freq_mhz": self.tdc_dvc.laser_freq_MHz,
+            "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
+            "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
             "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
         }
 
