@@ -377,7 +377,7 @@ class SFCSImageMeasurement(Measurement):
             row_ticks_V: np.ndarray
 
         @nb.njit(cache=True)
-        def calc_pic(K, counts, x, x_min, n_lines, pxls_pl, pxl_sz_V, Ic):
+        def calc_pic(K, counts, x, x_min, n_lines, pxls_pl, pxl_sz_v, Ic):
             """Doc."""
 
             pic = np.zeros((n_lines, pxls_pl))
@@ -386,10 +386,10 @@ class SFCSImageMeasurement(Measurement):
                 temp_counts = np.zeros(pxls_pl)
                 temp_num = np.zeros(pxls_pl)
                 for i in range(Ic):
-                    idx = int((x[i, j] - x_min) / pxl_sz_V) + 1
+                    idx = int((x[i, j] - x_min) / pxl_sz_v) + 1
                     if 0 <= idx < pxls_pl:
-                        temp_counts[idx] = temp_counts[idx] + counts[i, j]
-                        temp_num[idx] = temp_num[idx] + 1
+                        temp_counts[idx] += counts[i, j]
+                        temp_num[idx] += 1
                 pic[K[j], :] = temp_counts
                 norm[K[j], :] = temp_num
 
@@ -410,8 +410,8 @@ class SFCSImageMeasurement(Measurement):
             xc = self.scan_params.curr_ao_y
             um_per_V = self.um_v_ratio[1]
 
-        pxl_sz_V = pxl_sz / um_per_V
-        line_len_V = (self.scan_params.dim1_um) / um_per_V
+        pxl_sz_v = pxl_sz / um_per_V
+        line_len_v = (self.scan_params.dim1_um) / um_per_V
 
         ppp = n_lines * ppl
         j0 = plane_idx * ppp
@@ -429,14 +429,14 @@ class SFCSImageMeasurement(Measurement):
         x = np.tile(ao[:].T, (1, n_lines))
         x = x.reshape(ppl, n_lines, order="F")
 
-        Ic = int(ppl / 2)
+        Ic = ppl // 2
         x1 = x[:Ic, :]
         x2 = x[-1 : Ic - 1 : -1, :]
         counts1 = counts[:Ic, :]
         counts2 = counts[-1 : Ic - 1 : -1, :]
 
-        x_min = xc - line_len_V / 2
-        pxls_pl = int(line_len_V / pxl_sz_V) + 1
+        x_min = xc - line_len_v / 2
+        pxls_pl = div_ceil(line_len_v, pxl_sz_v)
 
         # even and odd planes are scanned in the opposite directions
         if plane_idx % 2:
@@ -449,16 +449,16 @@ class SFCSImageMeasurement(Measurement):
         # TODO: test if this fixes flipped photos on GB
         #        K = np.arange(n_lines) # TESTESTEST
 
-        pic1, norm1 = calc_pic(K, counts1, x1, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
-        pic2, norm2 = calc_pic(K, counts2, x2, x_min, n_lines, pxls_pl, pxl_sz_V, Ic)
+        pic1, norm1 = calc_pic(K, counts1, x1, x_min, n_lines, pxls_pl, pxl_sz_v, Ic)
+        pic2, norm2 = calc_pic(K, counts2, x2, x_min, n_lines, pxls_pl, pxl_sz_v, Ic)
 
         if pic1.shape[0] != pic1.shape[1]:
             logging.warning(f"image shape is not square ({pic1.shape}), figure this out.")
 
-        line_scale_V = x_min + np.arange(pxls_pl) * pxl_sz_V
-        row_scale_V = self.scan_params.set_pnts_lines_odd
+        line_scale_v = x_min + np.arange(pxls_pl) * pxl_sz_v
+        row_scale_v = self.scan_params.set_pnts_lines_odd
 
-        return ImageData(pic1, norm1, pic2, norm2, line_scale_V, row_scale_V)
+        return ImageData(pic1, norm1, pic2, norm2, line_scale_v, row_scale_v)
 
     def keep_last_meas(self):
         """Doc."""
