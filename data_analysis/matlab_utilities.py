@@ -105,7 +105,7 @@ def loadmat(filename):
 
     def _todict(matobj):
         """
-        A recursive function which constructs from matobjects nested dictionaries
+        A recursive function which constructs nested dictionaries from matobjects
         """
         d = {}
         for strg in matobj._fieldnames:

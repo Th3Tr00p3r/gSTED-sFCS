@@ -168,9 +168,9 @@ def csv_to_gui(file_path, gui_parent):
             child.setChecked(int(val))
 
 
-def deep_getattr(object, deep_attr_name: str, recursion=False):
+def deep_getattr(obj, deep_attr_name: str, recursion=False):
     """
-    Get deep attribute of object. Useful for dynamically-set deep attributes.
+    Get deep attribute of obj. Useful for dynamically-set deep attributes.
     Example usage: a = deep_getattr(obj, "sobj.ssobj.a")
     """
 
@@ -179,16 +179,16 @@ def deep_getattr(object, deep_attr_name: str, recursion=False):
             next_attr_name, deep_attr_name = deep_attr_name.split(".", maxsplit=1)
         except ValueError:
             # end condition - only one level of attributes left
-            return getattr(object, deep_attr_name)
+            return getattr(obj, deep_attr_name)
         else:
             # recursion
-            return deep_getattr(getattr(object, next_attr_name), deep_attr_name)
+            return deep_getattr(getattr(obj, next_attr_name), deep_attr_name)
 
     else:
         # loop version, faster
         for attr_name in deep_attr_name.split("."):
-            object = getattr(object, attr_name)
-        return object
+            obj = getattr(obj, attr_name)
+        return obj
 
 
 def div_ceil(x: int, y: int) -> int:
