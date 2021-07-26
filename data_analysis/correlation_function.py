@@ -272,6 +272,7 @@ class CorrFuncTDC(CorrFuncData):
                     self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
                     sample_freq_hz = angular_scan_settings["sample_freq_hz"]
                     self.angular_scan_settings = angular_scan_settings
+                    self.line_end_adder = line_end_adder
 
                 print("Converting angular scan to image...", end=" ")
 
@@ -430,18 +431,15 @@ class CorrFuncTDC(CorrFuncData):
 
                 p.image_line_corr = line_correlations(img, p.bw_mask, roi, sample_freq_hz)
 
-            else:  # static FCS
-                raise NotImplementedError(
-                    "No scan settings detected... Static FCS analysis not implemented."
-                )
+            else:
+                # static FCS - nothing else needs to be done
+                pass
 
             p.fname = fname
             p.fpath = fpath
             self.data["data"].append(p)
 
             print(f"Finished processing file No. {idx+1}\n")
-
-        self.line_end_adder = line_end_adder
 
         if full_data.get("duration_s") is not None:
             self.duration_min = full_data["duration_s"] / 60
@@ -506,12 +504,12 @@ class CorrFuncTDC(CorrFuncData):
 
         self.requested_duration = run_duration
         self.min_duration_frac = min_time_frac
-        self.duration = np.array([])
-        self.lag = np.array([])
+        duration = []
+        self.lag = []
         self.corrfunc = []
         self.weights = []
         self.cf_cr = []
-        self.countrate = np.array([])
+        self.countrate = []
 
         self.total_duration_skipped = 0
 
@@ -520,7 +518,7 @@ class CorrFuncTDC(CorrFuncData):
             if verbose:
                 print(f"Correlating {p.fname}...")
             # find additional outliers
-            time_stamps = np.diff(p.runtime).astype(np.int32)
+            time_stamps = np.diff(p.runtime)
             # for exponential distribution MEDIAN and MAD are the same, but for
             # biexponential MAD seems more sensitive
             mu = np.maximum(
@@ -536,16 +534,18 @@ class CorrFuncTDC(CorrFuncData):
             sec_edges = np.append(np.insert(sec_edges, 0, 0), len(time_stamps))
             p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
 
-            for j, se in enumerate(p.all_section_edges):
+            for se_idx, se in enumerate(
+                p.all_section_edges
+            ):  # TODO: try to split to se_start, se_end??
 
                 # split into segments of approx time of run_duration
                 segment_time = (p.runtime[se[1]] - p.runtime[se[0]]) / self.laser_freq_hz
                 if segment_time < min_time_frac * run_duration:
                     if verbose:
                         print(
-                            f"Duration of segment No. {j} of file {p.fname} is {segment_time}s: too short. Skipping segment..."
+                            f"Duration of segment No. {se_idx} of file {p.fname} is {segment_time}s: too short. Skipping segment..."
                         )
-                    self.total_duration_skipped = self.total_duration_skipped + segment_time
+                    self.total_duration_skipped += segment_time
                     continue
 
                 n_splits = np.ceil(segment_time / run_duration).astype(np.int32)
@@ -557,7 +557,7 @@ class CorrFuncTDC(CorrFuncData):
                 for k in range(n_splits):
 
                     ts_split = ts[splits[k] : splits[k + 1]]
-                    self.duration = np.append(self.duration, ts_split.sum() / self.laser_freq_hz)
+                    duration.append(ts_split.sum() / self.laser_freq_hz)
                     cf.soft_cross_correlate(
                         ts_split,
                         CorrelatorType.PH_DELAY_CORRELATOR,
@@ -575,7 +575,7 @@ class CorrFuncTDC(CorrFuncData):
 
                     self.corrfunc.append(cf.corrfunc)
                     self.weights.append(cf.weights)
-                    self.countrate = np.append(self.countrate, cf.countrate)
+                    self.countrate(cf.countrate)
                     self.cf_cr.append(
                         cf.countrate * cf.corrfunc - self.after_pulse[: cf.corrfunc.size]
                     )
@@ -591,7 +591,7 @@ class CorrFuncTDC(CorrFuncData):
         self.weights = np.array(self.weights)
         self.cf_cr = np.array(self.cf_cr)
 
-        self.total_duration = self.duration.sum()
+        self.total_duration = sum(duration)
         if verbose:
             print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
 
