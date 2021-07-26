@@ -6,6 +6,7 @@ import logging
 import math
 import os
 import pickle
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -15,7 +16,6 @@ from types import SimpleNamespace
 import nidaqmx.constants as ni_consts
 import numba as nb
 import numpy as np
-import scipy.io as sio
 
 import gui.gui
 import logic.devices as dvcs
@@ -137,10 +137,7 @@ class Measurement:
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
         Create a directory of today's date, and there
-        save measurement data as a .mat file or a
-        .pkl file. .mat files can be analyzed in MATLAB using our
-        current MATLAB-based analysis (or later in Python using sio.loadmat()).
-        Note: saving as .mat takes longer
+        save measurement data as a .pkl file.
         """
         # NOTE: does not handle overnight measurements during which the date changes (who cares)
 
@@ -158,16 +155,10 @@ class Measurement:
 
         os.makedirs(save_path, exist_ok=True)
 
-        file_path = os.path.join(save_path, file_name)
+        file_path = os.path.join(save_path, re.sub("\\s", "_", file_name))
 
-        if self.save_frmt == "MATLAB":
-            # .mat
-            sio.savemat(file_path + ".mat", data_dict)
-
-        else:
-            # .pkl
-            with open(file_path + ".pkl", "wb") as f:
-                pickle.dump(data_dict, f)
+        with open(file_path + ".pkl", "wb") as f:
+            pickle.dump(data_dict, f)
 
     async def toggle_lasers(self, finish=False) -> None:
         """Doc."""
@@ -483,10 +474,7 @@ class SFCSImageMeasurement(Measurement):
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:
-        """
-        Prepare the full measurement data, in a way that
-        matches current MATLAB analysis
-        """
+        """Doc."""
 
         return {
             "version": self.tdc_dvc.tdc_vrsn,
@@ -731,10 +719,7 @@ class SFCSSolutionMeasurement(Measurement):
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:
-        """
-        Prepare the full measurement data, in a way that
-        matches current MATLAB analysis
-        """
+        """Doc."""
 
         full_data = {
             "duration_s": self.duration_s,
