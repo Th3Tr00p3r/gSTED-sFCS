@@ -87,6 +87,7 @@ extern "C" void softwareCorrelator(
             CorrelatorArray.ProcessEntry(*phHist++);
     
         CorrelatorArray.GetAccumulators(corr);
+        *NoCorrChannels = CorrelatorArray.TotalLength;
 
     }
     
@@ -104,6 +105,7 @@ extern "C" void softwareCorrelator(
             CorrelatorArray.ProcessEntry(*phHist++, (bool)*belongToAch++, (bool)*belongToBch++);
         
         CorrelatorArray.GetAccumulators(corr);
+        *NoCorrChannels = CorrelatorArray.TotalLength;
         
     }
     
@@ -120,6 +122,7 @@ extern "C" void softwareCorrelator(
             CorrelatorArray.ProcessEntry(*phHist++, (long)*valid++);
         
         CorrelatorArray.GetAccumulators(corr);
+        *NoCorrChannels = CorrelatorArray.TotalLength;
         
     }
     
@@ -137,6 +140,7 @@ extern "C" void softwareCorrelator(
             CorrelatorArray.ProcessEntry(*phHist++, (bool)*belongToAch++, (bool)*belongToBch++, (long)*valid++);
         
         CorrelatorArray.GetAccumulators(corr);
+        *NoCorrChannels = CorrelatorArray.TotalLength;
         
     }
     
