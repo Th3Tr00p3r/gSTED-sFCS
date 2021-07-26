@@ -23,7 +23,7 @@ from data_analysis.matlab_utilities import (
 )
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities.helper import force_aspect
+from utilities.helper import div_ceil, force_aspect
 
 
 class CorrFuncData:
@@ -525,7 +525,7 @@ class CorrFuncTDC(CorrFuncData):
                 np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()
             ) / np.log(2)
             max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
-            sec_edges = np.asarray(time_stamps > max_time_stamp).nonzero()[0]
+            sec_edges = (time_stamps > max_time_stamp).nonzero()[0]
             no_outliers = len(sec_edges)
             if no_outliers > 0:
                 if verbose:
@@ -534,12 +534,12 @@ class CorrFuncTDC(CorrFuncData):
             sec_edges = np.append(np.insert(sec_edges, 0, 0), len(time_stamps))
             p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
 
-            for se_idx, se in enumerate(
+            for se_idx, (se_start, se_end) in enumerate(
                 p.all_section_edges
             ):  # TODO: try to split to se_start, se_end??
 
                 # split into segments of approx time of run_duration
-                segment_time = (p.runtime[se[1]] - p.runtime[se[0]]) / self.laser_freq_hz
+                segment_time = (p.runtime[se_end] - p.runtime[se_start]) / self.laser_freq_hz
                 if segment_time < min_time_frac * run_duration:
                     if verbose:
                         print(
@@ -548,15 +548,13 @@ class CorrFuncTDC(CorrFuncData):
                     self.total_duration_skipped += segment_time
                     continue
 
-                n_splits = np.ceil(segment_time / run_duration).astype(np.int32)
-                splits = np.linspace(
-                    0, np.diff(se)[0].astype(np.int32), n_splits + 1, dtype=np.int32
-                )
-                ts = time_stamps[se[0] : se[1]]
+                n_splits = div_ceil(segment_time, run_duration)
+                splits = np.linspace(0, (se_end - se_start), n_splits + 1, dtype=np.int32)
+                ts = time_stamps[se_start:se_end]
 
                 for k in range(n_splits):
 
-                    ts_split = ts[splits[k] : splits[k + 1]]
+                    ts_split = ts[splits[k] : splits[k + 1]].astype(np.int32)
                     duration.append(ts_split.sum() / self.laser_freq_hz)
                     cf.soft_cross_correlate(
                         ts_split,
@@ -575,14 +573,15 @@ class CorrFuncTDC(CorrFuncData):
 
                     self.corrfunc.append(cf.corrfunc)
                     self.weights.append(cf.weights)
-                    self.countrate(cf.countrate)
+                    self.countrate.append(cf.countrate)
                     self.cf_cr.append(
                         cf.countrate * cf.corrfunc - self.after_pulse[: cf.corrfunc.size]
                     )
 
         # zero pad
-        for idx in range(len(self.corrfunc)):
-            pad_len = len(self.lag) - len(self.corrfunc[idx])
+        lag_len = len(self.lag)
+        for idx in range(n_splits):
+            pad_len = lag_len - len(self.corrfunc[idx])
             self.corrfunc[idx] = np.pad(self.corrfunc[idx], (0, pad_len), "constant")
             self.weights[idx] = np.pad(self.weights[idx], (0, pad_len), "constant")
             self.cf_cr[idx] = np.pad(self.cf_cr[idx], (0, pad_len), "constant")
@@ -601,12 +600,12 @@ class CorrFuncTDC(CorrFuncData):
         cf = SoftwareCorrelator()
 
         self.min_time_frac = min_time_frac
-        self.duration = np.array([])
-        self.lag = np.array([])
+        duration = []
+        self.lag = []
         self.corr_func = []
         self.weights = []
         self.cf_cr = []
-        self.count_rate = np.array([])
+        self.countrate = []
         self.total_duration_skipped = 0
 
         for p in self.data["data"]:
@@ -623,7 +622,7 @@ class CorrFuncTDC(CorrFuncData):
                 valid = valid[1:]
 
                 # remove photons from wrong lines
-                timest = time_stamps[valid != 0]
+                timest = time_stamps[valid != 0].astype(np.int32)
                 valid = valid[valid != 0]
                 # check that we start with the line beginning and not its end
                 if valid[0] != -1:
@@ -646,9 +645,8 @@ class CorrFuncTDC(CorrFuncData):
 
                 # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
                 dur = timest[np.logical_or((valid == 1), (valid == -2))].sum() / self.laser_freq_hz
-                self.duration = np.append(self.duration, dur)
-                ts_split = np.vstack((timest, valid)).astype(np.int32)
-
+                duration.append(dur)
+                ts_split = np.vstack((timest, valid))
                 cf.soft_cross_correlate(
                     ts_split,
                     CorrelatorType.PH_DELAY_CORRELATOR_LINES,
@@ -680,7 +678,7 @@ class CorrFuncTDC(CorrFuncData):
 
                 self.corrfunc.append(cf.corrfunc)
                 self.weights.append(cf.weights)
-                self.countrate = np.append(self.countrate, cf.countrate)
+                self.countrate.append(cf.countrate)
                 self.cf_cr.append(cf.countrate * cf.corrfunc - self.after_pulse[: cf.corrfunc.size])
 
         for idx in range(len(self.corrfunc)):  # zero pad
@@ -693,7 +691,7 @@ class CorrFuncTDC(CorrFuncData):
         self.weights = np.array(self.weights)
         self.cf_cr = np.array(self.cf_cr)
         self.vt_um = self.V_um_ms * self.lag
-        self.total_duration = self.duration.sum()
+        self.total_duration = sum(duration)
         if verbose:
             print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
 
@@ -714,7 +712,7 @@ def fix_data_shift(cnt) -> int:
         pix_shifts.append(pix_shift)
 
     # verify not using local minimum by checking if there's a shift
-    # yielding a significantly brightest image center
+    # yielding a significantly brighter image center for the 10 highest scoring shifts
     arg_sorted_score = np.argsort(score)
     center_sum = 0
     for arg in arg_sorted_score[:10]:
@@ -728,11 +726,12 @@ def fix_data_shift(cnt) -> int:
     return pix_shift
 
 
-def threshold_and_smooth(img, otsu_classes=4) -> np.ndarray:
+# NOTE: 'disk_radius' was 3
+def threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
     """Doc."""
 
     thresh = skifilt.threshold_multiotsu(
-        skifilt.median(img).astype(np.float), otsu_classes, nbins=256
+        skifilt.median(img).astype(np.float), otsu_classes, nbins=n_bins
     )  # minor filtering of outliers
     cnt_dig = np.digitize(img, bins=thresh)
     plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
@@ -740,7 +739,7 @@ def threshold_and_smooth(img, otsu_classes=4) -> np.ndarray:
     dev_cnt = img - plateau_lvl
     bw = dev_cnt > -std_plateau
     bw = ndimage.binary_fill_holes(bw)
-    disk_open = morphology.selem.disk(radius=2)  # NOTE: was 3
+    disk_open = morphology.selem.disk(radius=disk_radius)
     bw = morphology.opening(bw, selem=disk_open)
     return bw
 
@@ -773,7 +772,7 @@ def x_corr(a, b):
     if a.size != b.size:
         logging.warning("For unequal lengths of a, b the meaning of lags is not clear!")
     c = np.correlate(a, b, mode="full")
-    c = c[np.floor(c.size / 2).astype(np.int32) :]
+    c = c[c.size // 2 :]
     lags = np.arange(c.size)
 
     return c, lags
