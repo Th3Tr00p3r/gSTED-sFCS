@@ -1,5 +1,5 @@
 solScanFileTemplate,
-imgScanFileTemplate,imgScan
+imgScanFileTemplate,img
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -18,31 +18,31 @@ imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
 depPow,130
-depCurr,1500
+depCurr,1900
 stageSteps,250
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solScanDur,20.0
 doubleSpinBox,2.0
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,10.0
+imgScanDim1,1.0
+imgScanDim2,1.0
+imgScanDim3,0.0
 imgScanLinFrac,0.9
-xAOV,0.0
-yAOV,0.0
-zAOV,5.0
+xAOV,0.01846
+yAOV,0.03628
+zAOV,4.63882
 axisMoveUm,0.0
 solMeasPreset,Standard Alignment
 solScanType,static
 solScanDurUnits,seconds
-dataDay,21
+dataDay,26
 dataMonth,7
 dataYear,2021
-dataTemplate,DELETE_ME_angular_exc_154957_*.pkl
+dataTemplate,sol_angular_exc_132011_*.pkl
 importedSolDataTemplates,
 solAnalysisLifetime,Lifetime
-imgScanType,YZ
-imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,XY
+imgScanPreset,GB - XY single bead
 imgShowMethod,Forward scan - actual counts per pixel
 avgInterval,200
 repeatSolMeas,1
