@@ -7,6 +7,7 @@ import numpy as np
 import pyqtgraph as pg
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QButtonGroup, QDialog, QMainWindow, QStatusBar, QWidget
@@ -43,7 +44,7 @@ class MainWin(QMainWindow):
         self._loop = app.loop
 
         # graphics
-        self.imgScanPlot = PyqtgraphImageDisplay(layout=self.imageLayout)
+        self.imgScanPlot = ImageScanDisplay(layout=self.imageLayout)
 
         # TODO: refactoring - it's stupid to connect signals to dummy functions in this module
         # (which simply call other functions in the implementation module) change the connections to lead
@@ -83,8 +84,8 @@ class MainWin(QMainWindow):
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.imp.populate_all_data_dates)
 
-        self.solScanImgDisp = MatplotlibImageDisplay(self.solAnalysisScanImageLayout)
-        self.solScanAcfDisp = MatplotlibImageDisplay(self.solAnalysisAveragingLayout)
+        self.solScanImgDisp = AnalysisDisplay(self.solAnalysisScanImageLayout, self)
+        self.solScanAcfDisp = AnalysisDisplay(self.solAnalysisAveragingLayout, self)
 
         # Device LEDs
         self.ledExc.clicked.connect(self.leds_clicked)
@@ -200,8 +201,7 @@ class MainWin(QMainWindow):
     def on_importedSolDataTemplates_currentTextChanged(self, template: str) -> None:
         """Doc."""
 
-        self.imp.populate_image_scans(template)
-        self.imp.populate_sol_meas_properties()
+        self.imp.populate_sol_meas_analysis(template)
 
     def closeEvent(self, event: QEvent) -> None:
         """Doc."""
@@ -443,7 +443,7 @@ class CamWin(QWidget):
         self.imp = wins_imp.CamWin(self, app)
 
         # add matplotlib-ready widget (canvas) for showing camera output
-        # TODO: replace this with PyqtgraphImageDisplay?
+        # TODO: replace this with ImageScanDisplay?
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         self.gridLayout.addWidget(self.canvas, 0, 1)
@@ -466,12 +466,14 @@ class CamWin(QWidget):
         self.imp.toggle_video()
 
 
-class MatplotlibImageDisplay:
+class AnalysisDisplay:
     """Doc."""
 
-    def __init__(self, layout):
-        self.figure = plt.figure()
+    def __init__(self, layout, parent):
+        self.figure = plt.figure(tight_layout=True)
         self.canvas = FigureCanvas(self.figure)
+        self.toolbar = NavigationToolbar(self.canvas, parent)
+        layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
 
     def clear(self):
@@ -480,10 +482,11 @@ class MatplotlibImageDisplay:
         self.figure.clear()
         self.canvas.draw()
 
-    def entitle_and_label(self, title: str = "", x_label: str = "", y_label: str = ""):
+    def entitle_and_label(self, x_label: str = "", y_label: str = "", title: str = ""):
         """Doc"""
 
-        self.ax.set_title(title)
+        if title:
+            self.ax.set_title(title)
         self.ax.set_xlabel(x_label)
         self.ax.set_ylabel(y_label)
         self.canvas.draw()
@@ -498,15 +501,21 @@ class MatplotlibImageDisplay:
         force_aspect(self.ax, aspect=1)
         self.canvas.draw()
 
-    def plot_acfs(self, acf_array: np.ndarray):
+    def plot_acfs(self, lag: np.ndarray, cf_cr: np.ndarray, g0: float):
         """Doc."""
 
         self.figure.clear()
-        self.ax.plot(acf_array)
+        self.ax = self.figure.add_subplot(111)
+        self.ax.set_xscale("log")
+        self.ax.set_xlim(1e-5, 1e1)
+        self.ax.set_ylim(-700.0, g0 * 2)
+        self.ax.invert_yaxis()
+        for row_acf in cf_cr:
+            self.ax.plot(lag, row_acf)
         self.canvas.draw()
 
 
-class PyqtgraphImageDisplay:
+class ImageScanDisplay:
     """Doc."""
 
     def __init__(self, layout):

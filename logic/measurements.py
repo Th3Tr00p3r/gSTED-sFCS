@@ -677,7 +677,7 @@ class SFCSSolutionMeasurement(Measurement):
             s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
             s.data.append(p)
             s.correlate_regular_data()
-            s.average_correlation(no_plot=True, use_numba=True)
+            s.average_correlation()
             return s
 
         if self.repeat is True:
