@@ -900,9 +900,7 @@ class MainWin:
 
         # get number of files and populate the spinbox
         try:
-            num_files = len(
-                self._app.analysis.loaded_data[self._app.analysis.curr_data_type].data["data"]
-            )
+            num_files = len(self._app.analysis.loaded_data[self._app.analysis.curr_data_type].data)
         except (KeyError, AttributeError):
             # KeyError - no imported templates (deleted)
             # AttributeError - # TODO: figure this one out
@@ -921,7 +919,7 @@ class MainWin:
 
         try:
             current_loaded_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
-            wdgts.n_files.set(len(current_loaded_data.data["data"]))
+            wdgts.n_files.set(len(current_loaded_data.data))
             wdgts.scan_duration_min.set(current_loaded_data.duration_min)
             scan_settings_dict = current_loaded_data.angular_scan_settings
         except (KeyError, AttributeError):
@@ -942,8 +940,8 @@ class MainWin:
         file_num = wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.get()
         try:
             loaded_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
-            img = loaded_data.data["data"][file_num - 1].image
-            roi = loaded_data.data["data"][file_num - 1].roi
+            img = loaded_data.data[file_num - 1].image
+            roi = loaded_data.data[file_num - 1].roi
         except (IndexError, KeyError):
             # IndexError - data import failed
             # KeyError - data deleted

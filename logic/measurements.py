@@ -675,7 +675,7 @@ class SFCSSolutionMeasurement(Measurement):
             p.convert_fpga_data_to_photons(np.array(data, dtype=np.uint8))
             s = CorrFuncTDC()
             s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
-            s.data["data"].append(p)
+            s.data.append(p)
             s.correlate_regular_data()
             s.average_correlation(no_plot=True, use_numba=True)
             return s
