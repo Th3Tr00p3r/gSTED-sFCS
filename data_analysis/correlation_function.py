@@ -150,7 +150,6 @@ class CorrFuncTDC(CorrFuncData):
 
     # Default System Info
     system_info = {
-        "is_default": True,
         "setup": "STED with galvos",
         "after_pulse_param": (
             "multi_exponent_fit",
@@ -231,15 +230,17 @@ class CorrFuncTDC(CorrFuncData):
 
             print("Done.")
 
-            if self.system_info["is_default"] and filedict.get("system_info"):
-                self.system_info = filedict["system_info"]
-                self.system_info["is_default"] = False
-                self.after_pulse_param = filedict["system_info"]["after_pulse_param"]
-            elif idx == 0:  # check only on first file
-                # use default system settings if missing either it or after_pulse_param
-                print("No 'system_info', patching with defaults...")
-                system_info = self.system_info
-                self.after_pulse_param = system_info["after_pulse_param"]
+            if idx == 0:
+                if filedict.get("system_info"):
+                    self.system_info = filedict["system_info"]
+                    if isinstance(filedict["system_info"]["after_pulse_param"], tuple):
+                        self.after_pulse_param = filedict["system_info"]["after_pulse_param"]
+                    else:  # legacy files where "after_pulse_param" is not a tuple
+                        print(
+                            "filedict['system_info']['after_pulse_param'] is outdated, using defaults..."
+                        )
+                else:
+                    print("filedict['system_info'] is missing, using defaults...")
 
             full_data = filedict["full_data"]
 
@@ -587,7 +588,9 @@ class CorrFuncTDC(CorrFuncData):
 
         self.total_duration = sum(duration)
         if verbose:
-            print(f"{self.total_duration_skipped}s skipped out of {self.total_duration}s.")
+            print(
+                f"{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
+            )
 
     def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True):
         """Doc."""
@@ -679,6 +682,8 @@ class CorrFuncTDC(CorrFuncData):
                 self.countrate.append(cf.countrate)
                 self.cf_cr.append(cf.countrate * cf.corrfunc - self.after_pulse[: cf.corrfunc.size])
 
+            print("Done.")
+
         len_lag = len(self.lag)
         for idx in range(len(self.corrfunc)):  # zero pad
             pad_len = len_lag - len(self.corrfunc[idx])
@@ -696,8 +701,6 @@ class CorrFuncTDC(CorrFuncData):
             print(
                 f"{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
             )
-        else:
-            print("Done.")
 
         print(
             f"Finished correlating angular scan data. Process took {time.perf_counter() - tic:.2f} s\n"
