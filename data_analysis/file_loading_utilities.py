@@ -1,5 +1,7 @@
 """Data-File Loading Utilities"""
 
+import pickle
+
 import numpy as np
 import scipy.io as spio
 
@@ -52,6 +54,56 @@ legacy_keys_trans_dict = {
     "line_shift": "line_shift_um",
 }
 
+default_system_info = {
+    "setup": "STED with galvos",
+    "after_pulse_param": (
+        "multi_exponent_fit",
+        1e5
+        * np.array(
+            [
+                0.183161051158731,
+                0.021980256326163,
+                6.882763042785681,
+                0.154790280034295,
+                0.026417532300439,
+                0.004282749744374,
+                0.001418363840077,
+                0.000221275818533,
+            ]
+        ),
+    ),
+    "ai_scaling_xyz": [1.243, 1.239, 1],
+    "xyz_um_to_v": (70.81, 82.74, 10.0),
+}
+
+
+def load_file_dict(file_path: str, file_extension: str):
+    """
+    Load files according to extension,
+    Allow backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files),
+    use defaults for legacy files where 'system_info' or 'after_pulse_param' is not a tuple.
+    """
+
+    if file_extension == ".pkl":
+        with open(file_path, "rb") as f:
+            file_dict = pickle.load(f)
+    elif file_extension == ".mat":
+        file_dict = load_mat(file_path)
+    else:
+        raise NotImplementedError(f"Unknown file extension: '{file_extension}'.")
+
+    file_dict = translate_dict_keys(file_dict)
+
+    if not file_dict.get("system_info"):
+        print("'system_info' is missing, using defaults...", end=" ")
+        file_dict["system_info"] = default_system_info
+    else:
+        if not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
+            file_dict["system_info"]["after_pulse_param"] = default_system_info["after_pulse_param"]
+            print("'after_pulse_param' is outdated, using defaults...", end=" ")
+
+    return file_dict
+
 
 def translate_dict_keys(
     original_dict: dict, translation_dict: dict = legacy_keys_trans_dict
@@ -85,7 +137,7 @@ def translate_dict_keys(
     return translated_dict
 
 
-def loadmat(filename):
+def load_mat(filename):
     """
     this function should be called instead of direct spio.loadmat
     as it cures the problem of not properly recovering python dictionaries

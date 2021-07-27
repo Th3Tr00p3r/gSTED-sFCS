@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-07-18, 21:03:41"
+    "saved": "2021-07-27, 10:41:27"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -160,9 +160,10 @@
       "data_analysis/matlab_utilities.py",
       "data_analysis/photon_data.py",
       "data_analysis/software_correlator.py",
-      "data_analysis/__init__.py",
       "gui/icons/__init__.py",
-      "utilities/widget_collections.py"
+      "utilities/widget_collections.py",
+      "data_analysis/legacy_file_utilities.py",
+      "data_analysis/file_loading_utilities.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",

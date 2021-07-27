@@ -3,7 +3,6 @@
 import glob
 import logging
 import os
-import pickle
 import re
 import time
 from collections import deque
@@ -15,7 +14,8 @@ from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
-from data_analysis import fit_tools, matlab_utilities
+from data_analysis import fit_tools
+from data_analysis.file_loading_utilities import load_file_dict
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities.helper import div_ceil, force_aspect
@@ -148,44 +148,14 @@ class CorrFuncData:
 class CorrFuncTDC(CorrFuncData):
     """Doc."""
 
-    # Default System Info
-    system_info = {
-        "setup": "STED with galvos",
-        "after_pulse_param": (
-            "multi_exponent_fit",
-            1e5
-            * np.array(
-                [
-                    0.183161051158731,
-                    0.021980256326163,
-                    6.882763042785681,
-                    0.154790280034295,
-                    0.026417532300439,
-                    0.004282749744374,
-                    0.001418363840077,
-                    0.000221275818533,
-                ]
-            ),
-        ),
-        "ai_scaling_xyz": [1.243, 1.239, 1],
-        "xyz_um_to_v": (70.81, 82.74, 10.0),
-    }
-
     def __init__(self):
-        self.data = {
-            "version": 2,
-            "line_end_adder": 1000,
-            "data": [],
-        }  # dictionary to hold the data
+        # list to hold the data of each file
+        self.data = []
 
-        self.tdc_calib = dict()  # dictionary for TDC calibration
+        # dictionary for TDC calibration
+        self.tdc_calib = dict()
 
-        self.is_data_on_disk = False  # saving data on disk to free RAM
-        self.data_filename_on_disk = ""
-        self.data_name_on_disk = ""
-        self.after_pulse_param = self.system_info["after_pulse_param"]
-
-    def read_fpga_data(  # noqa C901
+    def read_fpga_data(
         self,
         fpathtmpl,
         fix_shift=False,
@@ -207,42 +177,25 @@ class CorrFuncTDC(CorrFuncData):
         _, fnametmpl = os.path.split(fpathtmpl)
         # splits filename template into the name template proper and its extension
         _, file_extension = os.path.splitext(fnametmpl)
-        fpathes.sort(key=lambda fpath: int(re.split(f"(\\d+){file_extension}", fpath)[1]))
+        fpathes.sort(key=lambda file_path: int(re.split(f"(\\d+){file_extension}", file_path)[1]))
 
         n_files = len(fpathes)
 
-        for idx, fpath in enumerate(fpathes):
-            print(f"Loading file No. {idx+1}/{n_files}: '{fpath}'...", end=" ")
+        for idx, file_path in enumerate(fpathes):
+            print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
 
             # get filename (for later)
-            _, fname = os.path.split(fpath)
+            _, fname = os.path.split(file_path)
 
-            # test type of file and open accordingly
-            if file_extension == ".pkl":
-                with open(fpath, "rb") as f:
-                    filedict = pickle.load(f)
-            elif file_extension == ".mat":
-                filedict = matlab_utilities.loadmat(fpath)
-            else:
-                raise NotImplementedError(f"Unknown file extension: '{file_extension}'.")
-            # backward compatibility with old-style naming
-            filedict = matlab_utilities.translate_dict_keys(filedict)
+            # load file
+            file_dict = load_file_dict(file_path, file_extension)
 
             print("Done.")
 
             if idx == 0:
-                if filedict.get("system_info"):
-                    self.system_info = filedict["system_info"]
-                    if isinstance(filedict["system_info"]["after_pulse_param"], tuple):
-                        self.after_pulse_param = filedict["system_info"]["after_pulse_param"]
-                    else:  # legacy files where "after_pulse_param" is not a tuple
-                        print(
-                            "filedict['system_info']['after_pulse_param'] is outdated, using defaults..."
-                        )
-                else:
-                    print("filedict['system_info'] is missing, using defaults...")
+                self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
 
-            full_data = filedict["full_data"]
+            full_data = file_dict["full_data"]
 
             print("Converting raw data to photons...", end=" ")
             p = PhotonData()
@@ -293,15 +246,14 @@ class CorrFuncTDC(CorrFuncData):
                 print("ROI selection: ", end=" ")
 
                 if roi_selection == "auto":
-                    print("automatic.", end=" ")
-                    print("Thresholding and smoothing...", end=" ")
+                    print("automatic. Thresholding and smoothing...", end=" ")
                     try:
                         bw = threshold_and_smooth(cnt)
                     except ValueError:
                         logging.warning("Thresholding failed, skipping file.")
                         continue
                 else:
-                    raise RuntimeError(f"roi_selection={roi_selection} is not implemented.")
+                    raise NotImplementedError(f"roi_selection={roi_selection} is not implemented.")
 
                 # cut edges
                 bw_temp = np.full(bw.shape, False, dtype=bool)
@@ -312,10 +264,8 @@ class CorrFuncTDC(CorrFuncData):
                 m2 = np.sum(bw, axis=1)
                 bw[m2 < 0.5 * m2.max(), :] = False
 
-                if not (line_end_adder > bw.shape[0]):
-                    raise ValueError(
-                        "Number of lines larger than line_end_adder! Increase line_end_adder."
-                    )
+                while line_end_adder < bw.shape[0]:
+                    self.line_end_adder *= 10
 
                 print("Building ROI...", end=" ")
 
@@ -432,8 +382,8 @@ class CorrFuncTDC(CorrFuncData):
                 pass
 
             p.fname = fname
-            p.fpath = fpath
-            self.data["data"].append(p)
+            p.file_path = file_path
+            self.data.append(p)
 
             print(f"Finished processing file No. {idx+1}\n")
 
@@ -442,14 +392,12 @@ class CorrFuncTDC(CorrFuncData):
         else:
             # calculate duration if not supplied
             self.duration_min = (
-                np.mean([np.diff(p.runtime).sum() for p in self.data["data"]])
-                / self.laser_freq_hz
-                / 60
+                np.mean([np.diff(p.runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
             )
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
         print(
-            f"Finished loading FPGA data ({len(self.data['data'])}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} s\n"
+            f"Finished loading FPGA data ({len(self.data)}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} s\n"
         )
 
     def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
@@ -489,7 +437,7 @@ class CorrFuncTDC(CorrFuncData):
 
         if run_duration < 0:  # auto determination of run duration
             total_duration_estimate = 0
-            for p in self.data["data"]:
+            for p in self.data:
                 time_stamps = np.diff(p.runtime)
                 mu = np.median(time_stamps) / np.log(2)
                 total_duration_estimate = (
@@ -509,7 +457,7 @@ class CorrFuncTDC(CorrFuncData):
 
         self.total_duration_skipped = 0
 
-        for p in self.data["data"]:
+        for p in self.data:
 
             if verbose:
                 print(f"Correlating {p.fname}...")
@@ -609,7 +557,7 @@ class CorrFuncTDC(CorrFuncData):
         tic = time.perf_counter()
         print("Correlating angular scan data:")
 
-        for p in self.data["data"]:
+        for p in self.data:
             print(f"Correlating {p.fname}...", end=" ")
 
             time_stamps = np.diff(p.runtime)
@@ -723,10 +671,10 @@ def fix_data_shift(cnt) -> int:
         pix_shifts.append(pix_shift)
 
     # verify not using local minimum by checking if there's a shift
-    # yielding a significantly brighter image center for the 5 highest scoring shifts
+    # yielding a significantly brighter image center for the 10 highest scoring shifts
     arg_sorted_score = np.argsort(score)
     center_sum = 0
-    for arg in arg_sorted_score[:5]:
+    for arg in arg_sorted_score[:10]:
         new_pix_shift = pix_shifts[arg]
         rolled_cnt = np.roll(cnt, new_pix_shift)
         new_center_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
