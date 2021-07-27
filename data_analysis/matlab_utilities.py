@@ -53,7 +53,9 @@ legacy_keys_trans_dict = {
 }
 
 
-def translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
+def translate_dict_keys(
+    original_dict: dict, translation_dict: dict = legacy_keys_trans_dict
+) -> dict:
     """
     Updates keys of dict according to another dict:
     trans_dct.keys() are the keys to update,
