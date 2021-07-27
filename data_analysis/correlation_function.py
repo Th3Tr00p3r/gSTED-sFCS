@@ -29,8 +29,8 @@ class CorrFuncData:
         rejection=2,
         norm_range=np.array([1e-3, 2e-3]),
         delete_list=[],
-        no_plot=False,
-        use_numba=False,
+        no_plot=True,
+        use_numba=True,
     ):
         """Doc."""
 

@@ -844,10 +844,8 @@ class MainWin:
                 fix_shift=fix_shift,
                 no_plot=True,
             )
-            try:  # TESTESTEST
-                s.correlate_angular_scan_data()  # TESTESTEST
-            except ValueError as exc:  # TESTESTEST
-                err_hndlr(exc, locals(), sys._getframe())  # TESTESTEST
+            s.correlate_angular_scan_data()
+            s.average_correlation()
 
         except AttributeError:
             # No directories found
@@ -892,56 +890,53 @@ class MainWin:
         else:
             logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
 
-    def populate_image_scans(self, template):
-        """Doc."""
-
-        # extract imported data type from template
-        self._app.analysis.curr_data_type, *_ = re.split(" -", template)
-
-        # get number of files and populate the spinbox
-        try:
-            num_files = len(self._app.analysis.loaded_data[self._app.analysis.curr_data_type].data)
-        except (KeyError, AttributeError):
-            # KeyError - no imported templates (deleted)
-            # AttributeError - # TODO: figure this one out
-            wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj.clear()
-        else:
-            wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
-            wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.set(1)
-
-            # plot the scan image
-            self.display_scan_image(1)
-
-    def populate_sol_meas_properties(self):
+    def populate_sol_meas_analysis(self, template):
         """Doc."""
 
         wdgts = wdgt_colls.sol_data_analysis_wdgts
 
+        # extract imported data type from template
+        self._app.analysis.curr_data_type, *_ = re.split(" -", template)
         try:
-            current_loaded_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
-            wdgts.n_files.set(len(current_loaded_data.data))
-            wdgts.scan_duration_min.set(current_loaded_data.duration_min)
-            scan_settings_dict = current_loaded_data.angular_scan_settings
-        except (KeyError, AttributeError):
-            # data deleted or not properly loaded
-            pass
+            full_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
+        except KeyError:
+            # no imported templates (deleted)
+            wdgts.scan_image_disp.obj.clear()
+            wdgts.row_acf_disp.obj.clear()
+        except AttributeError:
+            # TODO: figure this one out
+            wdgts.scan_image_disp.obj.clear()
+            wdgts.row_acf_disp.obj.clear()
+            print("TODO: figure this one out")
         else:
+            # populate measurement properties
+            num_files = len(full_data.data)
+            wdgts.n_files.set(num_files)
+            wdgts.scan_duration_min.set(full_data.duration_min)
             text = "\n\n".join(
                 [
-                    f"{key}: {(val[:10] if isinstance(val, Iterable) else val)}"
-                    for key, val in scan_settings_dict.items()
+                    f"{key}: {(val[:5] if isinstance(val, Iterable) else val)}"
+                    for key, val in full_data.angular_scan_settings.items()
                 ]
             )
             wdgts.scan_settings.set(text)
 
+            # populate scan images tab
+            wdgts.scan_img_file_num.obj.setRange(1, num_files)
+            wdgts.scan_img_file_num.set(1)
+            self.display_scan_image(file_num=1)
+
+            # populate row averaging tab
+            wdgts.row_acf_disp.obj.plot_acfs(full_data.lag, full_data.cf_cr, full_data.g0)
+            wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
+
     def display_scan_image(self, file_num):
         """Doc."""
 
-        file_num = wdgt_colls.sol_data_analysis_wdgts.scan_img_file_num.get()
         try:
-            loaded_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
-            img = loaded_data.data[file_num - 1].image
-            roi = loaded_data.data[file_num - 1].roi
+            full_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
+            img = full_data.data[file_num - 1].image
+            roi = full_data.data[file_num - 1].roi
         except (IndexError, KeyError):
             # IndexError - data import failed
             # KeyError - data deleted
@@ -949,7 +944,7 @@ class MainWin:
         else:
             scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
             scan_image_disp.plot_scan_image_and_roi(img, roi)
-            scan_image_disp.entitle_and_label("", "Point Number", "Line Number")
+            scan_image_disp.entitle_and_label("Point Number", "Line Number")
 
     def remove_imported_template(self):
         """Doc."""
