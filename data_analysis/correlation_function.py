@@ -15,12 +15,7 @@ from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
-from data_analysis.fit_tools import curve_fit_lims
-from data_analysis.matlab_utilities import (
-    legacy_keys_trans_dict,
-    loadmat,
-    translate_dict_keys,
-)
+from data_analysis import fit_tools, matlab_utilities
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities.helper import div_ceil, force_aspect
@@ -131,7 +126,7 @@ class CorrFuncData:
             y = y[1:]
             errorY = errorY[1:]
 
-        FP = curve_fit_lims(
+        FP = fit_tools.curve_fit_lims(
             fit_func,
             fit_param_estimate,
             x,
@@ -228,11 +223,11 @@ class CorrFuncTDC(CorrFuncData):
                 with open(fpath, "rb") as f:
                     filedict = pickle.load(f)
             elif file_extension == ".mat":
-                filedict = loadmat(fpath)
+                filedict = matlab_utilities.loadmat(fpath)
             else:
                 raise NotImplementedError(f"Unknown file extension: '{file_extension}'.")
             # backward compatibility with old-style naming
-            filedict = translate_dict_keys(filedict, legacy_keys_trans_dict)
+            filedict = matlab_utilities.translate_dict_keys(filedict)
 
             print("Done.")
 
