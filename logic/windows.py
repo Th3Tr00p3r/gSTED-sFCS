@@ -853,8 +853,12 @@ class MainWin:
                 fix_shift=fix_shift,
                 no_plot=True,
             )
-            s.correlate_angular_scan_data()
+            if s.type == "angular_scan":
+                s.correlate_angular_scan_data()
+            elif s.type == "static":
+                s.correlate_regular_data()
             s.average_correlation()
+            print("G0: ", s.g0)  # TESTESTEST
 
         except AttributeError:
             # No directories found
@@ -888,6 +892,8 @@ class MainWin:
             imported_combobox.obj.addItem(item)
             imported_combobox.set(item)
 
+            logging.info(f"Data loaded for analysis: {item}")
+
         try:
             self._app.devices.scanners.init_ai_buffer()
             self._app.devices.scanners.start_tasks("ai")
@@ -898,8 +904,6 @@ class MainWin:
             pass
         else:
             logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
-
-        logging.info(f"Data loaded for analysis: {item}")
 
     def populate_sol_meas_analysis(self, template):
         """Doc."""
@@ -916,7 +920,8 @@ class MainWin:
             wdgts.scan_image_disp.obj.clear()
             wdgts.row_acf_disp.obj.clear()
         except AttributeError:
-            # TODO: figure this one out
+            # TODO: figure this one out -
+            # seems to be related to the possibility of importing 2 template of the same kind (e.g. SAMP_EXC)
             wdgts.scan_image_disp.obj.clear()
             wdgts.row_acf_disp.obj.clear()
             print("TODO: figure this one out")
@@ -926,22 +931,26 @@ class MainWin:
             # populate measurement properties
             wdgts.n_files.set(num_files)
             wdgts.scan_duration_min.set(full_data.duration_min)
-            text = "\n\n".join(
-                [
-                    f"{key}: {(val[:5] if isinstance(val, Iterable) else val)}"
-                    for key, val in full_data.angular_scan_settings.items()
-                ]
-            )
+            if full_data.type == "angular_scan":
+                text = "\n\n".join(
+                    [
+                        f"{key}: {(val[:5] if isinstance(val, Iterable) else val)}"
+                        for key, val in full_data.angular_scan_settings.items()
+                    ]
+                )
+            elif full_data.type == "static":
+                text = "no scan."
             wdgts.scan_settings.set(text)
 
-            # populate scan images tab
-            wdgts.scan_img_file_num.obj.setRange(1, num_files)
-            wdgts.scan_img_file_num.set(1)
-            self.display_scan_image(file_num=1)
+            if full_data.type == "angular_scan":
+                # populate scan images tab
+                wdgts.scan_img_file_num.obj.setRange(1, num_files)
+                wdgts.scan_img_file_num.set(1)
+                self.display_scan_image(file_num=1)
 
-            # populate row averaging tab
-            wdgts.row_acf_disp.obj.plot_acfs(full_data.lag, full_data.cf_cr, full_data.g0)
-            wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
+                # populate row averaging tab
+                wdgts.row_acf_disp.obj.plot_acfs(full_data.lag, full_data.cf_cr, full_data.g0)
+                wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
 
             print("Done.")
 

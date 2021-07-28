@@ -208,11 +208,13 @@ class CorrFuncTDC(CorrFuncData):
 
             if full_data.get("circle_speed_um_s"):
                 # circular scan
+                self.type = "circular_scan"
                 self.v_um_ms = full_data["circle_speed_um_s"] / 1000  # to um/ms
                 raise NotImplementedError("Circular scan analysis not yet implemented...")
 
             elif full_data.get("angular_scan_settings"):
                 # angular scan
+                self.type = "angular_scan"
                 if idx == 0:
                     # not assigned yet - this way assignment happens once
                     angular_scan_settings = full_data["angular_scan_settings"]
@@ -380,6 +382,7 @@ class CorrFuncTDC(CorrFuncData):
 
             else:
                 # static FCS - nothing else needs to be done
+                self.type = "static"
                 pass
 
             p.fname = fname
@@ -586,6 +589,14 @@ class CorrFuncTDC(CorrFuncData):
                 else:
                     bg_corr = 0
 
+                #                # TESTESTEST
+                #                fig = plt.figure()
+                #                ax = fig.add_subplot(111)
+                #                ax.set_xscale("log")
+                #                ax.plot(cf.lag[1:], cf.corrfunc[1:])
+                #                fig.show()
+                #                # TESTESTEST
+
                 cf.corrfunc = cf.corrfunc - bg_corr
 
                 if len(self.lag) < len(cf.lag):
@@ -723,9 +734,10 @@ def x_corr(a, b):
     """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
     if a.size != b.size:
-        logging.warning("For unequal lengths of a, b the meaning of lags is not clear!")
+        raise ValueError("For unequal lengths of a, b the meaning of lags is not clear!")
     c = np.correlate(a, b, mode="full")
     c = c[c.size // 2 :]
+    c = c / np.arange(c.size, 0, -1)
     lags = np.arange(c.size)
 
     return c, lags
