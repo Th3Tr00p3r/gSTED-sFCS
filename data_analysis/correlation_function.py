@@ -219,21 +219,23 @@ class CorrFuncTDC(CorrFuncData):
                     linear_part = np.array(angular_scan_settings["linear_part"], dtype=np.int32)
                     self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
                     sample_freq_hz = angular_scan_settings["sample_freq_hz"]
+                    ppl_tot = angular_scan_settings["points_per_line_total"]
+                    n_lines = angular_scan_settings["n_lines"]
                     self.angular_scan_settings = angular_scan_settings
                     self.line_end_adder = line_end_adder
 
                 print("Converting angular scan to image...", end=" ")
 
                 runtime = p.runtime
-                cnt, n_pix_tot, n_pix, line_num = self.convert_angular_scan_to_image(
-                    runtime, angular_scan_settings
+                cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
+                    runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
                 )
 
                 if fix_shift:
                     pix_shift = fix_data_shift(cnt)
                     runtime = p.runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
-                    cnt, n_pix_tot, n_pix, line_num = self.convert_angular_scan_to_image(
-                        runtime, angular_scan_settings
+                    cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
+                        runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
                     )
                     print(f"Fixed line shift: {pix_shift} pixels. Done.")
                 else:
@@ -398,29 +400,6 @@ class CorrFuncTDC(CorrFuncData):
         print(
             f"Finished loading FPGA data ({len(self.data)}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} s\n"
         )
-
-    def convert_angular_scan_to_image(self, runtime, angular_scan_settings):
-        """utility function for opening Angular Scans"""
-
-        sample_freq_hz = angular_scan_settings["sample_freq_hz"]
-        points_per_line_total = angular_scan_settings["points_per_line_total"]
-        n_lines = angular_scan_settings["n_lines"]
-
-        n_pix_tot = np.floor(runtime * sample_freq_hz / self.laser_freq_hz).astype(np.int64)
-        # to which pixel photon belongs
-        n_pix = np.mod(n_pix_tot, points_per_line_total)
-        line_num_tot = np.floor(n_pix_tot / points_per_line_total)
-        # one more line is for return to starting positon
-        line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int32)
-        cnt = np.empty((n_lines + 1, points_per_line_total), dtype=np.int32)
-
-        bins = np.arange(-0.5, points_per_line_total)
-        for j in range(n_lines + 1):
-            belong_to_line = line_num == j
-            cnt_line, _ = np.histogram(n_pix[belong_to_line], bins=bins)
-            cnt[j, :] = cnt_line
-
-        return cnt, n_pix_tot, n_pix, line_num
 
     def correlate_regular_data(
         self,
@@ -654,6 +633,27 @@ class CorrFuncTDC(CorrFuncData):
         )
 
 
+@nb.njit(cache=True)
+def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
+    """utility function for opening Angular Scans"""
+
+    n_pix_tot = np.floor(runtime * sample_freq_hz / laser_freq_hz).astype(np.int64)
+    # to which pixel photon belongs
+    n_pix = np.mod(n_pix_tot, ppl_tot)
+    line_num_tot = np.floor(n_pix_tot / ppl_tot)
+    # one more line is for return to starting positon
+    line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int32)
+    cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.int32)
+
+    bins = np.arange(-0.5, ppl_tot)
+    for j in range(n_lines + 1):
+        belong_to_line = line_num == j
+        cnt_line, _ = np.histogram(n_pix[belong_to_line], bins=bins)
+        cnt[j, :] = cnt_line
+
+    return cnt, n_pix_tot, n_pix, line_num
+
+
 def fix_data_shift(cnt) -> int:
     """Doc."""
 
@@ -671,15 +671,14 @@ def fix_data_shift(cnt) -> int:
 
     # verify not using local minimum by checking if there's a shift
     # yielding a significantly brighter image center for the 10 highest scoring shifts
-    arg_sorted_score = np.argsort(score)
     center_sum = 0
-    for arg in arg_sorted_score[:10]:
-        new_pix_shift = pix_shifts[arg]
+    for idx in np.argsort(score)[:10]:
+        new_pix_shift = pix_shifts[idx]
         rolled_cnt = np.roll(cnt, new_pix_shift)
         new_center_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
         if new_center_sum > center_sum * 1.5:
             center_sum = new_center_sum
-            pix_shift = pix_shifts[arg]
+            pix_shift = pix_shifts[idx]
 
     return pix_shift
 

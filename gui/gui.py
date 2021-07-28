@@ -52,31 +52,31 @@ class MainWin(QMainWindow):
 
         # scan patterns
         # image
-        self.imgScanDim1.valueChanged.connect(lambda: self.display_scan_pattern("image"))
-        self.imgScanDim2.valueChanged.connect(lambda: self.display_scan_pattern("image"))
-        self.imgScanNumLines.valueChanged.connect(lambda: self.display_scan_pattern("image"))
-        self.imgScanPPL.valueChanged.connect(lambda: self.display_scan_pattern("image"))
-        self.imgScanLinFrac.valueChanged.connect(lambda: self.display_scan_pattern("image"))
-        self.imgScanType.currentTextChanged.connect(lambda: self.display_scan_pattern("image"))
+        self.imgScanDim1.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("image"))
+        self.imgScanDim2.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("image"))
+        self.imgScanNumLines.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("image"))
+        self.imgScanPPL.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("image"))
+        self.imgScanLinFrac.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("image"))
+        self.imgScanType.currentTextChanged.connect(lambda: self.imp.disp_scn_pttrn("image"))
         # solution (angular)
-        self.maxLineLen.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
-        self.angle.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
-        self.solLinFrac.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
-        self.lineShift.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
-        self.minNumLines.valueChanged.connect(lambda: self.display_scan_pattern("angular"))
+        self.maxLineLen.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("angular"))
+        self.angle.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("angular"))
+        self.solLinFrac.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("angular"))
+        self.lineShift.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("angular"))
+        self.minNumLines.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("angular"))
         # solution (circle)
-        self.circDiameter.valueChanged.connect(lambda: self.display_scan_pattern("circle"))
+        self.circDiameter.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("circle"))
 
         # Positioning/Scanners
         self.axesGroup = QButtonGroup()
         self.axesGroup.addButton(self.posAxisX)
         self.axesGroup.addButton(self.posAxisY)
         self.axesGroup.addButton(self.posAxisZ)
-        self.axisMoveUp.released.connect(lambda: self.axisMoveUm_released(1))
-        self.axisMoveDown.released.connect(lambda: self.axisMoveUm_released(-1))
-        self.goToOrg.released.connect(lambda: self.origin_released("XYZ"))
-        self.goToOrgXY.released.connect(lambda: self.origin_released("XY"))
-        self.goToOrgZ.released.connect(lambda: self.origin_released("Z"))
+        self.axisMoveUp.released.connect(lambda: self.imp.displace_scanner_axis(1))
+        self.axisMoveDown.released.connect(lambda: self.imp.displace_scanner_axis(-1))
+        self.goToOrg.released.connect(lambda: self.imp.go_to_origin("XYZ"))
+        self.goToOrgXY.released.connect(lambda: self.imp.go_to_origin("XY"))
+        self.goToOrgZ.released.connect(lambda: self.imp.go_to_origin("Z"))
 
         # Analysis GUI
         self.analysisDataTypeGroup = QButtonGroup()
@@ -88,49 +88,60 @@ class MainWin(QMainWindow):
         self.solScanAcfDisp = AnalysisDisplay(self.solAnalysisAveragingLayout, self)
 
         # Device LEDs
-        self.ledExc.clicked.connect(self.leds_clicked)
-        self.ledDep.clicked.connect(self.leds_clicked)
-        self.ledShutter.clicked.connect(self.leds_clicked)
-        self.ledStage.clicked.connect(self.leds_clicked)
-        self.ledCounter.clicked.connect(self.leds_clicked)
-        self.ledUm232h.clicked.connect(self.leds_clicked)
-        self.ledTdc.clicked.connect(self.leds_clicked)
-        self.ledCam.clicked.connect(self.leds_clicked)
-        self.ledScn.clicked.connect(self.leds_clicked)
+        def led_clicked(wdgt):
+            self.imp.led_clicked(str(wdgt.sender().objectName()))
+
+        self.ledExc.clicked.connect(lambda: led_clicked(self))
+        self.ledDep.clicked.connect(lambda: led_clicked(self))
+        self.ledShutter.clicked.connect(lambda: led_clicked(self))
+        self.ledStage.clicked.connect(lambda: led_clicked(self))
+        self.ledCounter.clicked.connect(lambda: led_clicked(self))
+        self.ledUm232h.clicked.connect(lambda: led_clicked(self))
+        self.ledTdc.clicked.connect(lambda: led_clicked(self))
+        self.ledCam.clicked.connect(lambda: led_clicked(self))
+        self.ledScn.clicked.connect(lambda: led_clicked(self))
 
         # Stage
-        self.stageUp.released.connect(lambda: self.stageMove_released("UP"))
-        self.stageDown.released.connect(lambda: self.stageMove_released("DOWN"))
-        self.stageLeft.released.connect(lambda: self.stageMove_released("LEFT"))
-        self.stageRight.released.connect(lambda: self.stageMove_released("RIGHT"))
+        self.stageUp.released.connect(
+            lambda: self.imp.move_stage(dir="UP", steps=self.stageSteps.value())
+        )
+        self.stageDown.released.connect(
+            lambda: self.imp.move_stage(dir="DOWN", steps=self.stageSteps.value())
+        )
+        self.stageLeft.released.connect(
+            lambda: self.imp.move_stage(dir="LEFT", steps=self.stageSteps.value())
+        )
+        self.stageRight.released.connect(
+            lambda: self.imp.move_stage(dir="RIGHT", steps=self.stageSteps.value())
+        )
 
         # Device Toggling
-        self.excOnButton.released.connect(lambda: self.device_toggle_button_released("exc_laser"))
+        self.excOnButton.released.connect(lambda: self.imp.dvc_toggle("exc_laser"))
         self.depEmissionOn.released.connect(
-            lambda: self.device_toggle_button_released(
-                "dep_laser", "laser_toggle", "emission_state"
-            )
+            lambda: self.imp.dvc_toggle("dep_laser", "laser_toggle", "emission_state")
         )
-        self.depShutterOn.released.connect(
-            lambda: self.device_toggle_button_released("dep_shutter")
-        )
+        self.depShutterOn.released.connect(lambda: self.imp.dvc_toggle("dep_shutter"))
 
         # Image Scan
-        self.startImgScanExc.released.connect(lambda: self.scan_button_released("SFCSImage", "Exc"))
-        self.startImgScanDep.released.connect(lambda: self.scan_button_released("SFCSImage", "Dep"))
+        self.startImgScanExc.released.connect(
+            lambda: self._loop.create_task(self.imp.toggle_meas("SFCSImage", "Exc"))
+        )
+        self.startImgScanDep.released.connect(
+            lambda: self._loop.create_task(self.imp.toggle_meas("SFCSImage", "Dep"))
+        )
         self.startImgScanSted.released.connect(
-            lambda: self.scan_button_released("SFCSImage", "Sted")
+            lambda: self._loop.create_task(self.imp.toggle_meas("SFCSImage", "Sted"))
         )
 
         # Solution Scan
         self.startSolScanExc.released.connect(
-            lambda: self.scan_button_released("SFCSSolution", "Exc")
+            lambda: self._loop.create_task(self.imp.toggle_meas("SFCSSolution", "Exc"))
         )
         self.startSolScanDep.released.connect(
-            lambda: self.scan_button_released("SFCSSolution", "Dep")
+            lambda: self._loop.create_task(self.imp.toggle_meas("SFCSSolution", "Dep"))
         )
         self.startSolScanSted.released.connect(
-            lambda: self.scan_button_released("SFCSSolution", "Sted")
+            lambda: self._loop.create_task(self.imp.toggle_meas("SFCSSolution", "Sted"))
         )
 
         # status bar
@@ -233,11 +244,6 @@ class MainWin(QMainWindow):
         if val % 2:
             self.minNumLines.setValue(val - 1)
 
-    def display_scan_pattern(self, pattern: str) -> None:
-        """Doc."""
-
-        self.imp.disp_scn_pttrn(pattern)
-
     @pyqtSlot()
     def on_roiImgScn_released(self) -> None:
         """Doc."""
@@ -262,18 +268,6 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.change_meas_duration(float)
-
-    def scan_button_released(self, meas_type: str, laser_mode: str) -> None:
-        """Begin/end SFCS measurement"""
-
-        self._loop.create_task(self.imp.toggle_meas(meas_type, laser_mode))
-
-    def device_toggle_button_released(
-        self, dvc_nick: str, toggle_mthd: str = "toggle", state_attr="state"
-    ) -> None:
-        """Turn devices On/Off."""
-
-        self.imp.dvc_toggle(dvc_nick, toggle_mthd, state_attr)
 
     @pyqtSlot()
     def on_powMode_released(self) -> None:
@@ -351,33 +345,14 @@ class MainWin(QMainWindow):
         self.imp.counts_avg_interval_changed(int(val))
 
     # -----------------------------------------------------------------------
-    # LEDS
-    # -----------------------------------------------------------------------
-
-    def leds_clicked(self) -> None:
-        """Doc."""
-
-        self.imp.led_clicked(str(self.sender().objectName()))
-
-    # -----------------------------------------------------------------------
     # Position Control
     # -----------------------------------------------------------------------
-
-    def origin_released(self, axes: str) -> None:
-        """Doc."""
-
-        self.imp.go_to_origin(axes)
 
     @pyqtSlot()
     def on_goTo_released(self) -> None:
         """Doc."""
 
         self.imp.move_scanners()
-
-    def axisMoveUm_released(self, sign: int) -> None:
-        """Doc."""
-
-        self.imp.displace_scanner_axis(sign)
 
     # -----------------------------------------------------------------------
     # Stepper Stage Dock
@@ -388,11 +363,6 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.dvc_toggle("stage")
-
-    def stageMove_released(self, dir: str) -> None:
-        """Doc."""
-
-        self.imp.move_stage(dir=dir, steps=self.stageSteps.value())
 
 
 class SettWin(QDialog):
