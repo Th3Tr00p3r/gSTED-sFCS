@@ -315,8 +315,8 @@ class CorrFuncTDC(CorrFuncData):
                 roi = {key: np.array(val) for key, val in roi.items()}
                 line_start_lables = np.array(line_start_lables)
                 line_stop_labels = np.array(line_stop_labels)
-                line_starts = np.array(line_starts)
-                line_stops = np.array(line_stops)
+                line_starts = np.array(line_starts).astype(np.int64)
+                line_stops = np.array(line_stops).astype(np.int64)
 
                 print("Done.")
 
