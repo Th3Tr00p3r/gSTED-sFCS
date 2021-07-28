@@ -674,6 +674,7 @@ class SFCSSolutionMeasurement(Measurement):
             p = PhotonData()
             p.convert_fpga_data_to_photons(np.array(data, dtype=np.uint8))
             s = CorrFuncTDC()
+            s.after_pulse_param = self.sys_info["after_pulse_param"]
             s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
             s.data.append(p)
             s.correlate_regular_data()
@@ -766,12 +767,6 @@ class SFCSSolutionMeasurement(Measurement):
 
         # initialize gui start/end times
         self.set_current_and_end_times()
-
-        # estimate time per file
-        apprx_byte_rate_hz = self.counter_dvc.avg_cnt_rate_khz * 1e3 * 7
-        bytes_per_file = self.max_file_size_mb * 1e6
-        apprx_file_time_min = bytes_per_file / apprx_byte_rate_hz / 60
-        self._app.gui.main.solScanFileTime.setValue(apprx_file_time_min)
 
         # turn on lasers
         try:
