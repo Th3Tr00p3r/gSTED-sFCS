@@ -555,18 +555,13 @@ class CorrFuncTDC(CorrFuncData):
                 if valid[0] != -1:
                     # remove photons till the first found beginning
                     Jstrt = np.where(valid == -1)[0][0]
-                    # timest(1:(Jstrt -1)) = [];
                     timest = timest[Jstrt:]
-                    # valid(1:(Jstrt -1)) = [];
                     valid = valid[Jstrt:]
 
                     # check that we stop with the line ending and not its beginning
                 if valid[-1] != -2:
                     # remove photons till the last found ending
-                    # Jend = find((valid == -2), 1, 'last');
                     Jend = np.where(valid == -2)[0][-1]
-                    # timest((Jend + 1):end) = [];
-                    # valid((Jend + 1):end) = [];
                     timest = timest[:Jend]
                     valid = valid[:Jend]
 
