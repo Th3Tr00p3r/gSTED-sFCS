@@ -69,7 +69,7 @@ class PhotonData:
         self.coarse = fpga_data[idxs + 4].astype(type_)
         self.fine = fpga_data[idxs + 5].astype(type_)
 
-        # TODO: ask Oleg what's going on here (some fix due to an issue in FPGA)
+        # some fix due to an issue in FPGA
         if self.version >= 3:
             twobit1 = np.floor(self.coarse / 64).astype(type_)
             self.coarse = self.coarse - twobit1 * 64

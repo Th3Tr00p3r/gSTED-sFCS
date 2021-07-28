@@ -89,7 +89,7 @@ class Measurement:
                 elif self.type == "SFCSImage":
                     self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
 
-        except DeviceError:
+        except (DeviceError, MeasurementError):
             pass
 
         self.is_running = False
@@ -531,6 +531,7 @@ class SFCSImageMeasurement(Measurement):
 
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
+            self.type = None
             err_hndlr(exc, locals(), sys._getframe())
             return
 
@@ -773,6 +774,7 @@ class SFCSSolutionMeasurement(Measurement):
             await self.toggle_lasers()
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
+            self.type = None
             err_hndlr(exc, locals(), sys._getframe())
             return
 

@@ -188,6 +188,7 @@ class Timeout:
                             rate=meas.scan_params.line_freq_Hz * meas.scan_params.ppl,
                         )
                 else:
+                    # no scanning measurement running
                     self.cntr_dvc.average_counts(interval=self.updt_intrvl["cntr_avg"])
 
                 self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate_khz)

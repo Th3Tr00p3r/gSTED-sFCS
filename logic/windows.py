@@ -277,60 +277,75 @@ class MainWin:
     async def toggle_meas(self, meas_type, laser_mode):
         """Doc."""
 
-        if not (current_type := self._app.meas.type):
-            # no meas running
-            if meas_type == "SFCSSolution":
-                pattern = self._gui.solScanType.currentText()
-                if pattern == "angular":
-                    scan_params = wdgt_colls.sol_ang_scan_wdgts.read_namespace_from_gui(self._app)
-                elif pattern == "circle":
-                    scan_params = wdgt_colls.sol_circ_scan_wdgts.read_namespace_from_gui(self._app)
-                elif pattern == "static":
-                    scan_params = SimpleNamespace()
+        if meas_type != (current_type := self._app.meas.type):
 
-                scan_params.pattern = pattern
+            if not self._app.meas.is_running:
+                # no meas running
+                if meas_type == "SFCSSolution":
+                    pattern = self._gui.solScanType.currentText()
+                    if pattern == "angular":
+                        scan_params = wdgt_colls.sol_ang_scan_wdgts.read_namespace_from_gui(
+                            self._app
+                        )
+                    elif pattern == "circle":
+                        scan_params = wdgt_colls.sol_circ_scan_wdgts.read_namespace_from_gui(
+                            self._app
+                        )
+                    elif pattern == "static":
+                        scan_params = SimpleNamespace()
 
-                self._app.meas = meas.SFCSSolutionMeasurement(
-                    app=self._app,
-                    scan_params=scan_params,
-                    laser_mode=laser_mode.lower(),
-                    **wdgt_colls.sol_meas_wdgts.read_dict_from_gui(self._app),
+                    scan_params.pattern = pattern
+
+                    self._app.meas = meas.SFCSSolutionMeasurement(
+                        app=self._app,
+                        scan_params=scan_params,
+                        laser_mode=laser_mode.lower(),
+                        **wdgt_colls.sol_meas_wdgts.read_dict_from_gui(self._app),
+                    )
+
+                    self._gui.startSolScanExc.setEnabled(False)
+                    self._gui.startSolScanDep.setEnabled(False)
+                    self._gui.startSolScanSted.setEnabled(False)
+                    helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setEnabled")(True)
+                    helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")(
+                        "Stop \nScan"
+                    )
+
+                    self._gui.solScanMaxFileSize.setEnabled(False)
+                    self._gui.solScanDur.setEnabled(self._gui.repeatSolMeas.isChecked())
+                    self._gui.solScanDurUnits.setEnabled(False)
+                    self._gui.solScanFileTemplate.setEnabled(False)
+
+                elif meas_type == "SFCSImage":
+                    initial_pos = tuple(getattr(self._gui, f"{ax}AOVint").value() for ax in "xyz")
+                    [
+                        getattr(self._gui, f"{ax}AOVint").setValue(vltg)
+                        for ax, vltg in zip("xyz", initial_pos)
+                    ]
+                    self._app.meas = meas.SFCSImageMeasurement(
+                        app=self._app,
+                        scan_params=wdgt_colls.img_scan_wdgts.read_namespace_from_gui(self._app),
+                        laser_mode=laser_mode.lower(),
+                        initial_pos=initial_pos,
+                        **wdgt_colls.img_meas_wdgts.read_dict_from_gui(self._app),
+                    )
+
+                    self._gui.startImgScanExc.setEnabled(False)
+                    self._gui.startImgScanDep.setEnabled(False)
+                    self._gui.startImgScanSted.setEnabled(False)
+                    helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setEnabled")(True)
+                    helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")(
+                        "Stop \nScan"
+                    )
+
+                self._app.loop.create_task(self._app.meas.run())
+            else:
+                # other meas running
+                logging.warning(
+                    f"Another type of measurement " f"({current_type}) is currently running."
                 )
 
-                self._gui.startSolScanExc.setEnabled(False)
-                self._gui.startSolScanDep.setEnabled(False)
-                self._gui.startSolScanSted.setEnabled(False)
-                helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setEnabled")(True)
-                helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")("Stop \nScan")
-
-                self._gui.solScanMaxFileSize.setEnabled(False)
-                self._gui.solScanDur.setEnabled(self._gui.repeatSolMeas.isChecked())
-                self._gui.solScanDurUnits.setEnabled(False)
-                self._gui.solScanFileTemplate.setEnabled(False)
-
-            elif meas_type == "SFCSImage":
-                initial_pos = tuple(getattr(self._gui, f"{ax}AOVint").value() for ax in "xyz")
-                [
-                    getattr(self._gui, f"{ax}AOVint").setValue(vltg)
-                    for ax, vltg in zip("xyz", initial_pos)
-                ]
-                self._app.meas = meas.SFCSImageMeasurement(
-                    app=self._app,
-                    scan_params=wdgt_colls.img_scan_wdgts.read_namespace_from_gui(self._app),
-                    laser_mode=laser_mode.lower(),
-                    initial_pos=initial_pos,
-                    **wdgt_colls.img_meas_wdgts.read_dict_from_gui(self._app),
-                )
-
-                self._gui.startImgScanExc.setEnabled(False)
-                self._gui.startImgScanDep.setEnabled(False)
-                self._gui.startImgScanSted.setEnabled(False)
-                helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setEnabled")(True)
-                helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")("Stop \nScan")
-
-            self._app.loop.create_task(self._app.meas.run())
-
-        elif current_type == meas_type:
+        else:  # current_type == meas_type
             # manual shutdown
             if meas_type == "SFCSSolution":
                 self._gui.startSolScanExc.setEnabled(True)
@@ -357,12 +372,6 @@ class MainWin:
             if self._app.meas.is_running:
                 # manual stop
                 await self._app.meas.stop()
-
-        else:
-            # other meas running
-            logging.warning(
-                f"Another type of measurement " f"({current_type}) is currently running."
-            )
 
     def disp_scn_pttrn(self, pattern: str):
         """Doc."""
@@ -972,11 +981,16 @@ class SettWin:
         if self.check_on_close is True:
             curr_file_path = self._gui.settingsFileName.text()
 
-            current_state = helper.wdgt_children_as_row_list(self._gui)
-            last_loaded_state = helper.csv_rows_as_list(curr_file_path)
+            current_state = set(helper.wdgt_children_as_row_list(self._gui))
+            last_loaded_state = set(helper.csv_rows_as_list(curr_file_path))
 
-            # TODO: check why this doesn't work anymore (always asks)
-            if set(current_state) != set(last_loaded_state):
+            if not len(current_state) == len(last_loaded_state):
+                logging.warning(
+                    "Something was changed in the GUI. "
+                    "This probably means that the default settings need to be overwritten"
+                )
+
+            if current_state != last_loaded_state:
                 pressed = Question(
                     "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
                 ).display()

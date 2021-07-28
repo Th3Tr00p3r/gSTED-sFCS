@@ -1,30 +1,9 @@
-arduinoAddr,COM3
-um232FlowControl,RTS-CTS
-um232BitMode,Single Channel Synchronous 245 FIFO
-counterPixelClockAddress,Dev1/Ctr0
-pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
-counterTriggerAddress,Dev3/port1/line0
-counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
-counterAddress,Dev3/ctr1
-counterCIcountEdgesTerm,/Dev3/PFI8
-TDCaddress,Dev3/port0/line12
-TDCdataVersion,7bytes noreset
-pixelClockCounterAddress,Dev3/ctr0
-pixelClockSrcOfTicks,/Dev3/PFI3
-pixelClockOutput,/Dev3/PFI12
-pixelClockOutputExt,/Dev1/PFI5
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
 excAddr,Dev1/port0/line6
-depMod,MPB
-depAddr,COM6
 depShutterAddr,Dev3/port0/line11
-fcsDataPath,./data/
-solDataPath,./data/solution measurements/
-imgDataPath,./data/image measurements/
-camDataPath,./data/camera photos/
-logDataPath,./log/
+depModelQuery,getmodel
 AOXaddr,"Dev3/ao2, Dev3/ao3"
 AOYaddr,"Dev3/ao0, Dev3/ao1"
 AOZaddr,Dev1/ao1
@@ -37,24 +16,44 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-um232LatencyTimerVal,2
-um232Timeout,2
-um232NumBytes,256000
-um232TxSize,256000
+counterPixelClockAddress,Dev1/Ctr0
+pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
+counterTriggerAddress,Dev3/port1/line0
+counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
+counterAddress,Dev3/ctr1
+counterCIcountEdgesTerm,/Dev3/PFI8
+TDCaddress,Dev3/port0/line12
+TDCdataVersion,7bytes noreset
+pixelClockCounterAddress,Dev3/ctr0
+pixelClockSrcOfTicks,/Dev3/PFI3
+pixelClockOutput,/Dev3/PFI12
+pixelClockOutputExt,/Dev1/PFI5
+um232FlowControl,RTS-CTS
+um232BitMode,Single Channel Synchronous 245 FIFO
+arduinoAddr,COM3
+dataPath,./data/
+solSubdirName,solution
+imgSubdirName,image
+camDataPath,./data/camera photos/
+logDataPath,./log/
+AIclkDiv,100
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCversion,3
 pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
-AIclkDiv,100
-uc480PlaceHolder,0.0
+um232LatencyTimerVal,2
+um232Timeout,2
+um232NumBytes,256000
+um232TxSize,256000
 xConv,70.81
 yConv,82.74
 zConv,10.0
-counterTriggerEdge,0
-excTriggerSrc,0
-saveFormat,0
-AOtriggerEdge,0
-AOwfType,0
+uc480PlaceHolder,0.0
+excTriggerSrc,External (TDC)
+AOtriggerEdge,Rising
+AOwfType,Sine
+counterTriggerEdge,Rising
 counterCIdupCountPrevention,1
+tabWidget,0
