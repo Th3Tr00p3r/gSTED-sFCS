@@ -899,6 +899,8 @@ class MainWin:
         else:
             logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
 
+        logging.info(f"Data loaded for analysis: {item}")
+
     def populate_sol_meas_analysis(self, template):
         """Doc."""
 
@@ -908,6 +910,7 @@ class MainWin:
         self._app.analysis.curr_data_type, *_ = re.split(" -", template)
         try:
             full_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
+            num_files = len(full_data.data)
         except KeyError:
             # no imported templates (deleted)
             wdgts.scan_image_disp.obj.clear()
@@ -918,8 +921,9 @@ class MainWin:
             wdgts.row_acf_disp.obj.clear()
             print("TODO: figure this one out")
         else:
+            print("Populating analysis GUI...", end=" ")
+
             # populate measurement properties
-            num_files = len(full_data.data)
             wdgts.n_files.set(num_files)
             wdgts.scan_duration_min.set(full_data.duration_min)
             text = "\n\n".join(
@@ -938,6 +942,8 @@ class MainWin:
             # populate row averaging tab
             wdgts.row_acf_disp.obj.plot_acfs(full_data.lag, full_data.cf_cr, full_data.g0)
             wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
+
+            print("Done.")
 
     def display_scan_image(self, file_num):
         """Doc."""
