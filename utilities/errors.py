@@ -128,6 +128,11 @@ def device_error_checker(func) -> Callable:
 
 
 class DeviceCheckerMetaClass(type):
+    """
+    meta-class which silently wraps every method
+    with 'device_error_checker()'
+    """
+
     def __new__(meta, classname, bases, classDict):
         newClassDict = {}
         for attributeName, attribute in classDict.items():
@@ -139,8 +144,12 @@ class DeviceCheckerMetaClass(type):
 
 
 class DeviceError(Exception):
+    """Represents any error in the device"""
+
     pass
 
 
 class IOError(Exception):
+    """Represents an error in communication with the device"""
+
     pass
