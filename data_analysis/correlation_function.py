@@ -151,7 +151,6 @@ class CorrFuncTDC(CorrFuncData):
     def __init__(self):
         # list to hold the data of each file
         self.data = []
-
         # dictionary for TDC calibration
         self.tdc_calib = dict()
 

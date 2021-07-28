@@ -505,16 +505,22 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         if rate is None:
             rate = self.tasks.ci[-1].timing.samp_clk_rate
 
-        self.n_reads = div_ceil(interval, (1 / rate))
-        start_idx = len(self.ci_buffer) - self.n_reads
+        n_reads = div_ceil(interval, (1 / rate))
 
-        if start_idx > 0:
-            avg_cnt_rate_khz = (self.ci_buffer[-1] - self.ci_buffer[-(self.n_reads + 1)]) / interval
-            avg_cnt_rate_khz = avg_cnt_rate_khz / 1000  # Hz -> KHz
+        if len(self.ci_buffer) > n_reads:
+            self.avg_cnt_rate_khz = (
+                (self.ci_buffer[-1] - self.ci_buffer[-(n_reads + 1)]) / interval / 1000
+            )  # Hz -> KHz
         else:
-            avg_cnt_rate_khz = 0
-
-        self.avg_cnt_rate_khz = avg_cnt_rate_khz
+            # if buffer is too short for the requested interval, average over whole buffer
+            interval = len(self.ci_buffer) * (1 / rate)
+            try:
+                self.avg_cnt_rate_khz = (
+                    (self.ci_buffer[-1] - self.ci_buffer[0]) / interval / 1000
+                )  # Hz -> KHz
+            except IndexError:
+                # buffer just initialized and is empty, keep last value
+                pass
 
     def init_ci_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
