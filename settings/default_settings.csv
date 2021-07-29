@@ -1,21 +1,6 @@
-excMod,PicoQuant
-excTriggerExtAddr,Dev1/port0/line6
-excTriggerIntAddr,Dev3/port0/
-excAddr,Dev1/port0/line6
-depShutterAddr,Dev3/port0/line11
-depModelQuery,getmodel
-AOXaddr,"Dev3/ao2, Dev3/ao3"
-AOYaddr,"Dev3/ao0, Dev3/ao1"
-AOZaddr,Dev1/ao1
-AOXintAddr,"Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd"
-AOYintAddr,"Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd"
-AOZintAddr,Dev3/ai0
-AOdigTrigSrc,/Dev3/PFI0
-AItrigSrc,/Dev3/PFI0
-AIXaddr,Dev3/ai23
-AIYaddr,Dev3/ai7
-AIZaddr,Dev3/ai9
-AIlaserMonAddr,Dev3/ai3
+arduinoAddr,COM3
+um232FlowControl,RTS-CTS
+um232BitMode,Single Channel Synchronous 245 FIFO
 counterPixelClockAddress,Dev1/Ctr0
 pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
 counterTriggerAddress,Dev3/port1/line0
@@ -28,32 +13,49 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
-um232FlowControl,RTS-CTS
-um232BitMode,Single Channel Synchronous 245 FIFO
-arduinoAddr,COM3
+AOXaddr,"Dev3/ao2, Dev3/ao3"
+AOYaddr,"Dev3/ao0, Dev3/ao1"
+AOZaddr,Dev1/ao1
+AOXintAddr,"Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd"
+AOYintAddr,"Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd"
+AOZintAddr,Dev3/ai0
+AOdigTrigSrc,/Dev3/PFI0
+AItrigSrc,/Dev3/PFI0
+AIXaddr,Dev3/ai23
+AIYaddr,Dev3/ai7
+AIZaddr,Dev3/ai9
+AIlaserMonAddr,Dev3/ai3
+excMod,PicoQuant
+excTriggerExtAddr,Dev1/port0/line6
+excTriggerIntAddr,Dev3/port0/
+excAddr,Dev1/port0/line6
+depShutterAddr,Dev3/port0/line11
+depModelQuery,getmodel
 dataPath,./data/
 solSubdirName,solution
 imgSubdirName,image
 camDataPath,./data/camera photos/
 logDataPath,./log/
-AIclkDiv,100
+um232LatencyTimerVal,2
+um232Timeout,2
+um232NumBytes,256000
+um232TxSize,256000
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCversion,3
 pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
-um232LatencyTimerVal,2
-um232Timeout,2
-um232NumBytes,256000
-um232TxSize,256000
+AIclkDiv,100
+uc480PlaceHolder,0.0
 xConv,70.81
 yConv,82.74
 zConv,10.0
-uc480PlaceHolder,0.0
-excTriggerSrc,External (TDC)
+counterTriggerEdge,Rising
 AOtriggerEdge,Rising
 AOwfType,Sine
-counterTriggerEdge,Rising
-counterCIdupCountPrevention,1
+excTriggerSrc,External (TDC)
+qt_tabwidget_stackedwidget,0
+stackedWidget,1
 tabWidget,0
+counterCIdupCountPrevention,True

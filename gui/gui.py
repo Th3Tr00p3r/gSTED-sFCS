@@ -84,6 +84,11 @@ class MainWin(QMainWindow):
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.imp.populate_all_data_dates)
 
+        self.rowDiscriminationGroup = QButtonGroup()
+        self.rowDiscriminationGroup.addButton(self.solAnalysisUseAllRows)
+        self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
+        self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveWorst)
+
         self.solScanImgDisp = AnalysisDisplay(self.solAnalysisScanImageLayout, self)
         self.solScanAcfDisp = AnalysisDisplay(self.solAnalysisAveragingLayout, self)
 

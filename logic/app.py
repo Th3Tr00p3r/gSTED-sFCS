@@ -136,7 +136,7 @@ class App:
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
             param_dict["error_display"] = helper.QtWidgetAccess(
-                "deviceErrorDisplay", "text", "main", True
+                "deviceErrorDisplay", "QLineEdit", "main", True
             ).hold_obj(self.gui.main)
 
             if dvc_attrs.cls_xtra_args:
