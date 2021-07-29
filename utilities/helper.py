@@ -152,10 +152,10 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
         if (
             (hasattr(child, "isReadOnly") and not child.isReadOnly())
             or not hasattr(child, "isReadOnly")
-        ) and child_name != "qt_spinbox_lineedit":
+        ) and child_name not in {"qt_spinbox_lineedit", "qt_tabwidget_stackedwidget"}:
             val = getattr(child, getter)()
         else:
-            # ignore read-only and issue with "qt_spinbox_lineedit" widgets
+            # ignore read-only and weird auto-widgets
             continue
 
         rows.append((child_name, str(val)))
@@ -197,7 +197,12 @@ def csv_to_gui(file_path, gui_parent):
         if type_func is not None:
             val = type_func(val)
 
-        getattr(child, setter)(val)
+        try:
+            getattr(child, setter)(val)
+        except TypeError:
+            raise RuntimeError(
+                f"Child widget '{wdgt_name}' was not found in parent widget '{gui_parent.objectName()}' - probably removed from GUI. Overwrite the defaults to stop seeing this warning."
+            )
 
 
 def deep_getattr(obj, deep_attr_name: str, recursion=False):

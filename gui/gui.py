@@ -483,7 +483,10 @@ class AnalysisDisplay:
         self.ax = self.figure.add_subplot(111)
         self.ax.set_xscale("log")
         self.ax.set_xlim(1e-4, 1e1)
-        self.ax.set_ylim(-700.0, g0 * 2)
+        if g0 < 1000:
+            self.ax.set_ylim(-10000, 10000)
+        else:
+            self.ax.set_ylim(-g0 / 2, g0 * 2)
         for row_acf in cf_cr:
             self.ax.plot(lag, row_acf)
         self.canvas.draw()

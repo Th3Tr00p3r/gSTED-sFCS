@@ -1,7 +1,5 @@
 solScanFileTemplate,
 imgScanFileTemplate,img
-spinBox_7,0
-scanImgFileNum,1
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -12,6 +10,8 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
+scanImgFileNum,1
+spinBox_7,0
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
@@ -20,10 +20,10 @@ currPlane,0
 depPow,130
 depCurr,1900
 stageSteps,250
-doubleSpinBox,2.0
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solScanDur,20.0
+doubleSpinBox,2.0
 imgScanDim1,1.0
 imgScanDim2,1.0
 imgScanDim3,0.0
@@ -32,25 +32,23 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,0.0
-dataDay,20
-dataMonth,7
-dataYear,2021
-dataTemplate,test3_angular_exc_194505_*.pkl
-importedSolDataTemplates,
-solAnalysisLifetime,Lifetime
 solMeasPreset,Standard Alignment
 solScanType,static
 solScanDurUnits,seconds
+dataDay,26
+dataMonth,7
+dataYear,2021
+dataTemplate,alignment_static_exc_*.pkl
+importedSolDataTemplates,
+solAnalysisLifetime,Lifetime
 imgScanType,XY
 imgScanPreset,GB - XY single bead
 imgShowMethod,Forward scan - actual counts per pixel
 avgInterval,200
-qt_tabwidget_stackedwidget,0
+solScanParamsStacked,2
 importStacked,1
 selectionStacked_2,1
 analysisStacked_2,1
-qt_tabwidget_stackedwidget,0
-solScanParamsStacked,2
 depModeStacked,0
 imageDataImport,False
 solDataImport,True
@@ -64,9 +62,9 @@ posAxisY,False
 posAxisX,True
 numPlaneShownChoice,0
 tabWidget,0
-tabWidget_2,0
+tabWidget_2,1
+repeatSolMeas,True
 isDataCalibration,False
 solDataFixShift,True
-showRowAcfs,True
-repeatSolMeas,True
+showOnlyMeanAcf,False
 autoCrosshair,True
