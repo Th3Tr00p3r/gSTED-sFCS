@@ -80,8 +80,12 @@ class MainWin:
                 "CSV Files(*.csv *.txt)",
             )
         if file_path != "":
-            helper.csv_to_gui(file_path, self._gui)
-            logging.debug(f"Loadout loaded: '{file_path}'")
+            try:
+                helper.csv_to_gui(file_path, self._gui)
+            except RuntimeError as exc:
+                err_hndlr(exc, locals(), sys._getframe(), lvl="warning")
+            else:
+                logging.debug(f"Loadout loaded: '{file_path}'")
 
     def dvc_toggle(
         self, nick, toggle_mthd="toggle", state_attr="state", leave_on=False, leave_off=False
@@ -1049,8 +1053,12 @@ class SettWin:
             )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
-            helper.csv_to_gui(file_path, self._gui.frame)
-            logging.debug(f"Settings file loaded: '{file_path}'")
+            try:
+                helper.csv_to_gui(file_path, self._gui.frame)
+            except RuntimeError as exc:
+                err_hndlr(exc, locals(), sys._getframe(), lvl="warning")
+            else:
+                logging.debug(f"Settings file loaded: '{file_path}'")
 
     def confirm(self):
         """Doc."""

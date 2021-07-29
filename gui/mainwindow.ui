@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1236</width>
-    <height>948</height>
+    <width>1231</width>
+    <height>936</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4529,21 +4529,37 @@ Pattern:</string>
                    <item>
                     <layout class="QVBoxLayout" name="verticalLayout_24">
                      <item>
-                      <widget class="QLabel" name="label_10">
-                       <property name="text">
-                        <string>File Template</string>
+                      <layout class="QGridLayout" name="gridLayout_10" columnstretch="100,1">
+                       <property name="spacing">
+                        <number>0</number>
                        </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="dataTemplate">
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </widget>
+                       <item row="0" column="0">
+                        <widget class="QLabel" name="label_10">
+                         <property name="text">
+                          <string>File Template</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QComboBox" name="dataTemplate">
+                         <property name="minimumSize">
+                          <size>
+                           <width>0</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QComboBox" name="solFilesToUse">
+                         <item>
+                          <property name="text">
+                           <string>All Files</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                      </layout>
                      </item>
                      <item>
                       <layout class="QVBoxLayout" name="verticalLayout_25">
@@ -5104,9 +5120,9 @@ Mean ACF</string>
                                    </layout>
                                   </item>
                                   <item row="1" column="0">
-                                   <widget class="QCheckBox" name="showRowAcfs">
+                                   <widget class="QCheckBox" name="showOnlyMeanAcf">
                                     <property name="text">
-                                     <string>Show row ACFs</string>
+                                     <string>Show only mean ACF</string>
                                     </property>
                                     <property name="checked">
                                      <bool>true</bool>

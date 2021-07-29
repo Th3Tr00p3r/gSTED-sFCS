@@ -27,6 +27,7 @@ class CorrFuncData:
     def average_correlation(
         self,
         rejection=2,
+        reject_n_worst=None,
         norm_range=np.array([1e-3, 2e-3]),
         delete_list=[],
         no_plot=True,
@@ -59,15 +60,17 @@ class CorrFuncData:
             (1 / np.var(self.cf_cr[:, JJ], 0))
             * (self.cf_cr[:, JJ] - self.median_all_cf_cr[JJ]) ** 2
             / len(JJ)
-        )
-        if len(delete_list) == 0:
-            self.j_good = np.where(self.score < self.rejection)[0]
-            self.j_bad = np.where(self.score >= self.rejection)[0]
+        ).sum(axis=1)
+        if not delete_list:
+            if reject_n_worst is not None:
+                # TODO: sort the rows by score and drop the 'reject_n_worst' last rows
+                pass
+            else:
+                self.j_good = np.where(self.score < self.rejection)[0]
+                self.j_bad = np.where(self.score >= self.rejection)[0]
         else:
             self.j_bad = delete_list
-            self.j_good = np.array(
-                [i for i in range(self.cf_cr.shape[0]) if i not in delete_list]
-            ).astype(np.int32)
+            self.j_good = [row for row in range(self.cf_cr.shape[0]) if row not in delete_list]
 
         if use_numba:
             func = nb.njit(calc_weighted_avg, cache=True)
@@ -588,14 +591,6 @@ class CorrFuncTDC(CorrFuncData):
                     )
                 else:
                     bg_corr = 0
-
-                #                # TESTESTEST
-                #                fig = plt.figure()
-                #                ax = fig.add_subplot(111)
-                #                ax.set_xscale("log")
-                #                ax.plot(cf.lag[1:], cf.corrfunc[1:])
-                #                fig.show()
-                #                # TESTESTEST
 
                 cf.corrfunc = cf.corrfunc - bg_corr
 

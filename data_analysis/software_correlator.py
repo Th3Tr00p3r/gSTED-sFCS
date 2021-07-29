@@ -109,17 +109,6 @@ class SoftwareCorrelator:
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
             self.countrate = np.sum(photon_array[1, :] == 1) / duration_s
 
-            # TESTESTEST
-            pa = photon_array[0, valid]
-            similar_value = pa.max()
-            n_similars = pa[pa == similar_value].size
-            tempArg = np.argsort(pa)
-            temp_arg_sorted = np.sort(tempArg[-(n_similars - 1) :])
-            print(
-                f"similar_value: {similar_value}\namount of similars: {n_similars}\nfirst 10 indices: {temp_arg_sorted[:10]} last 10 indices: {temp_arg_sorted[-10:]}"
-            )
-            # TESTESTEST
-
         elif c_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 4):
                 raise RuntimeError(
@@ -137,7 +126,6 @@ class SoftwareCorrelator:
             raise ValueError("Number of correlator channels inconsistent!")
 
         self.lag = self.corr_py[1, :] * timebase_ms
-        # corr.lag(corr.lag < 0) = 0; % fix zero channel time
         self.corrfunc = self.corr_py[0, :]
         self.weights = self.corr_py[2, :]
         valid_corr = self.weights > 0
