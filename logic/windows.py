@@ -1000,7 +1000,7 @@ class SettWin:
             last_loaded_state = set(helper.csv_rows_as_list(curr_file_path))
 
             if not len(current_state) == len(last_loaded_state):
-                logging.warning(
+                raise RuntimeError(
                     "Something was changed in the GUI. "
                     "This probably means that the default settings need to be overwritten"
                 )
