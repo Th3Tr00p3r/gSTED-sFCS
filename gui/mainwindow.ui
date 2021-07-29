@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1231</width>
-    <height>936</height>
+    <width>1236</width>
+    <height>948</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4960,7 +4960,7 @@ Measurement</string>
                                        <number>0</number>
                                       </property>
                                       <item>
-                                       <widget class="QRadioButton" name="solAnalysisUseRows">
+                                       <widget class="QRadioButton" name="solAnalysisUseAllRows">
                                         <property name="text">
                                          <string>Use all rows</string>
                                         </property>

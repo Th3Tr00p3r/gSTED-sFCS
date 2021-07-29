@@ -81,44 +81,84 @@ async def sync_to_thread(func) -> None:
     await asyncio.to_thread(func)
 
 
+def bool_str(str_: str):
+    """A strict bool() for strings"""
+    if str_ == "True":
+        return True
+    elif str_ == "False":
+        return False
+    else:
+        raise ValueError(f"'{str_}' is neither 'True' or 'False'.")
+
+
+getter_setter_type_dict = {
+    "QComboBox": ("currentText", "setCurrentText", None),
+    "QTabWidget": ("currentIndex", "setCurrentIndex", int),
+    "QCheckBox": ("isChecked", "setChecked", bool_str),
+    "QRadioButton": ("isChecked", "setChecked", bool_str),
+    "QSlider": ("value", "setValue", int),
+    "QSpinBox": ("value", "setValue", int),
+    "QDoubleSpinBox": ("value", "setValue", float),
+    "QLineEdit": ("text", "setText", None),
+    "QPlainTextEdit": ("toPlainText", "setPlainText", None),
+    "QButtonGroup": ("checkedButton", None, None),
+    "QTimeEdit": ("time", "setTime", None),
+    "QIcon": ("icon", "setIcon", None),
+    "QStackedWidget": ("currentIndex", "setCurrentIndex", int),
+}
+
+
+def widget_getter_setter_type(widget_class: str) -> (str, str):
+    """
+    Returns a tuple of strings, where the first element
+    is the name of the getter method of the widget and
+    the second is the setter method.
+    """
+
+    getter_setter_type_tuple = getter_setter_type_dict.get(widget_class)
+
+    if getter_setter_type_tuple is not None:
+        return getter_setter_type_tuple
+    else:
+        # f"Widget of class '{widget_class}' is missing from dictionary."
+        return (None,) * 3
+
+
 def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
     """Doc."""
 
-    l1 = parent_wdgt.findChildren(QtWidgets.QLineEdit)
-    l2 = parent_wdgt.findChildren(QtWidgets.QSpinBox)
-    l3 = parent_wdgt.findChildren(QtWidgets.QDoubleSpinBox)
-    l4 = parent_wdgt.findChildren(QtWidgets.QComboBox)
-    l5 = parent_wdgt.findChildren(QtWidgets.QCheckBox)
-    l6 = parent_wdgt.findChildren(QtWidgets.QRadioButton)
-    l7 = parent_wdgt.findChildren(QtWidgets.QSlider)
-    l8 = parent_wdgt.findChildren(QtWidgets.QTabWidget)
-    children_list = l1 + l2 + l3 + l4 + l5 + l6 + l7 + l8
+    wdgt_types = [
+        "QLineEdit",
+        "QSpinBox",
+        "QDoubleSpinBox",
+        "QComboBox",
+        "QStackedWidget",
+        "QRadioButton",
+        "QSlider",
+        "QTabWidget",
+        "QCheckBox",
+    ]
+    children_class_lists = [
+        parent_wdgt.findChildren(getattr(QtWidgets, wdgt_type)) for wdgt_type in wdgt_types
+    ]
+    children_list = [child for child_list in children_class_lists for child in child_list]
 
     rows = []
     for child in children_list:
-
         child_class = child.__class__.__name__
+        child_name = child.objectName()
+        getter, _, _ = widget_getter_setter_type(child_class)
 
-        if child_class == "QComboBox":
-            val = child.currentText()
-        elif child_class == "QTabWidget":
-            val = int(child.currentIndex())
-        elif child_class in {"QCheckBox", "QRadioButton"}:
-            val = int(child.isChecked())
-        elif child_class == "QSlider":
-            val = child.value()
-        elif child_class in {"QSpinBox", "QDoubleSpinBox"} and not child.isReadOnly():
-            val = child.value()
-        elif (
-            child_class == "QLineEdit"
-            and not child.isReadOnly()
-            and child.objectName() != "qt_spinbox_lineedit"
-        ):
-            val = child.text()
+        if (
+            (hasattr(child, "isReadOnly") and not child.isReadOnly())
+            or not hasattr(child, "isReadOnly")
+        ) and child_name != "qt_spinbox_lineedit":
+            val = getattr(child, getter)()
         else:
+            # ignore read-only and issue with "qt_spinbox_lineedit" widgets
             continue
 
-        rows.append((child.objectName(), str(val)))
+        rows.append((child_name, str(val)))
 
     return rows
 
@@ -152,20 +192,12 @@ def csv_to_gui(file_path, gui_parent):
     for row in rows:
         wdgt_name, val = row
         child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
-        child_class = child.__class__.__name__
+        _, setter, type_func = widget_getter_setter_type(child.__class__.__name__)
 
-        if child_class == "QSlider":
-            child.setValue(int(val))
-        elif child_class in {"QSpinBox", "QDoubleSpinBox"}:
-            child.setValue(float(val))
-        elif child_class == "QLineEdit":
-            child.setText(val)
-        elif child_class == "QComboBox":
-            child.setCurrentText(val)
-        elif child_class == "QTabWidget":
-            child.setCurrentIndex(int(val))
-        elif child_class in {"QCheckBox", "QRadioButton"}:
-            child.setChecked(int(val))
+        if type_func is not None:
+            val = type_func(val)
+
+        getattr(child, setter)(val)
 
 
 def deep_getattr(obj, deep_attr_name: str, recursion=False):
@@ -278,30 +310,11 @@ def dir_date_parts(data_path: str, sub_dir: str = "", month: int = None, year: i
 class QtWidgetAccess:
     """Doc."""
 
-    getter_setter_dict = {
-        "isChecked": "setChecked",
-        "toPlainText": "setPlainText",
-    }
-
-    def __init__(self, obj_name: str, getter: str, gui_parent_name: str, does_hold_obj: bool):
+    def __init__(self, obj_name: str, widget_class: str, gui_parent_name: str, does_hold_obj: bool):
         self.obj_name = obj_name
-        if getter is not None:
-            self.getter = getter
-            self.setter = self._get_setter()
-        else:
-            self.getter = None
-            self.setter = None
+        self.getter, self.setter, _ = widget_getter_setter_type(widget_class)
         self.gui_parent_name = gui_parent_name
         self.does_hold_obj = does_hold_obj
-
-    def _get_setter(self) -> str:
-        """Doc."""
-
-        if self.getter_setter_dict.get(self.getter) is not None:
-            return self.getter_setter_dict[self.getter]
-        else:
-            first_getter_letter, *rest_getter_str = self.getter
-            return "set" + first_getter_letter.upper() + "".join(rest_getter_str)
 
     def hold_obj(self, parent_gui) -> QtWidgetAccess:
         """Save the actual widget object as an attribute"""
