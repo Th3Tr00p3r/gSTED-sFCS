@@ -67,7 +67,7 @@ class CorrFuncData:
         elif rejection is not None:
             delete_list = np.where(self.score >= self.rejection)[0]
 
-        # if 'reject_n_worst' and 'rejection' are both none, use supplied delete list
+        # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list.
         # if no delete list is supplied, use all rows.
         self.j_bad = delete_list
         self.j_good = [row for row in range(self.cf_cr.shape[0]) if row not in delete_list]
