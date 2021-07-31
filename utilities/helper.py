@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import functools
+import logging
 import os
 import time
 from types import SimpleNamespace
@@ -200,7 +201,7 @@ def csv_to_gui(file_path, gui_parent):
         try:
             getattr(child, setter)(val)
         except TypeError:
-            raise RuntimeError(
+            logging.warning(
                 f"Child widget '{wdgt_name}' was not found in parent widget '{gui_parent.objectName()}' - probably removed from GUI. Overwrite the defaults to stop seeing this warning."
             )
 

@@ -159,6 +159,12 @@ class MainWin(QMainWindow):
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
+    @pyqtSlot()
+    def on_solAnalysisRecalMeanAcf_released(self) -> None:
+        """Doc"""
+
+        self.imp.calculate_and_show_mean_acf()
+
     @pyqtSlot(int)
     def on_scanImgFileNum_valueChanged(self, val: int) -> None:
         """Doc."""
@@ -476,7 +482,7 @@ class AnalysisDisplay:
         force_aspect(self.ax, aspect=1)
         self.canvas.draw()
 
-    def plot_acfs(self, lag: np.ndarray, cf_cr: np.ndarray, g0: float):
+    def plot_acfs(self, lag: np.ndarray, cf_cr: np.ndarray, average_cf_cr: np.ndarray, g0: float):
         """Doc."""
 
         default_ylim = (-1e4, 1e4)
@@ -495,6 +501,7 @@ class AnalysisDisplay:
                 self.ax.set_ylim(*default_ylim)
         for row_acf in cf_cr:
             self.ax.plot(lag, row_acf)
+        self.ax.plot(lag, average_cf_cr, "black")
         self.canvas.draw()
 
 

@@ -80,12 +80,8 @@ class MainWin:
                 "CSV Files(*.csv *.txt)",
             )
         if file_path != "":
-            try:
-                helper.csv_to_gui(file_path, self._gui)
-            except RuntimeError as exc:
-                err_hndlr(exc, locals(), sys._getframe(), lvl="warning")
-            else:
-                logging.debug(f"Loadout loaded: '{file_path}'")
+            helper.csv_to_gui(file_path, self._gui)
+            logging.debug(f"Loadout loaded: '{file_path}'")
 
     def dvc_toggle(
         self, nick, toggle_mthd="toggle", state_attr="state", leave_on=False, leave_off=False
@@ -907,15 +903,20 @@ class MainWin:
         else:
             logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
 
+    def get_current_full_data(self) -> None:
+        """Doc."""
+
+        imported_template = wdgt_colls.sol_data_analysis_wdgts.imported_templates.get()
+        curr_data_type, *_ = re.split(" -", imported_template)
+        return self._app.analysis.loaded_data[curr_data_type]
+
     def populate_sol_meas_analysis(self, template):
         """Doc."""
 
         wdgts = wdgt_colls.sol_data_analysis_wdgts
 
-        # extract imported data type from template
-        self._app.analysis.curr_data_type, *_ = re.split(" -", template)
         try:
-            full_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
+            full_data = self.get_current_full_data()
             num_files = len(full_data.data)
         except KeyError:
             # no imported templates (deleted)
@@ -956,9 +957,16 @@ class MainWin:
                     avg_corr_args = dict(rejection=wdgts.remove_over.get())
                 elif row_disc_method == "solAnalysisRemoveWorst":
                     avg_corr_args = dict(rejection=None, reject_n_worst=wdgts.remove_worst.get())
+                else:  # use all rows
+                    avg_corr_args = dict(rejection=None)
                 full_data.average_correlation(**avg_corr_args)
                 print("G0: ", full_data.g0)  # TESTESTEST
-                wdgts.row_acf_disp.obj.plot_acfs(full_data.lag, full_data.cf_cr, full_data.g0)
+                wdgts.row_acf_disp.obj.plot_acfs(
+                    full_data.lag,
+                    full_data.cf_cr[full_data.j_good, :],
+                    full_data.average_cf_cr,
+                    full_data.g0,
+                )
                 wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
 
             print("Done.")
@@ -967,7 +975,7 @@ class MainWin:
         """Doc."""
 
         try:
-            full_data = self._app.analysis.loaded_data[self._app.analysis.curr_data_type]
+            full_data = self.get_current_full_data()
             img = full_data.data[file_num - 1].image
             roi = full_data.data[file_num - 1].roi
         except (IndexError, KeyError):
@@ -978,6 +986,29 @@ class MainWin:
             scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
             scan_image_disp.plot_scan_image_and_roi(img, roi)
             scan_image_disp.entitle_and_label("Point Number", "Line Number")
+
+    def calculate_and_show_mean_acf(self) -> None:
+        """Doc."""
+
+        wdgts = wdgt_colls.sol_data_analysis_wdgts
+        full_data = self.get_current_full_data()
+
+        row_disc_method = wdgts.row_dicrimination.get().objectName()
+        if row_disc_method == "solAnalysisRemoveOver":
+            avg_corr_args = dict(rejection=wdgts.remove_over.get())
+        elif row_disc_method == "solAnalysisRemoveWorst":
+            avg_corr_args = dict(rejection=None, reject_n_worst=wdgts.remove_worst.get())
+        else:  # use all rows
+            avg_corr_args = dict(rejection=None)
+        full_data.average_correlation(**avg_corr_args)
+        print("G0: ", full_data.g0)  # TESTESTEST
+        wdgts.row_acf_disp.obj.plot_acfs(
+            full_data.lag,
+            full_data.cf_cr[full_data.j_good, :],
+            full_data.average_cf_cr,
+            full_data.g0,
+        )
+        wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
 
     def remove_imported_template(self):
         """Doc."""
@@ -1058,12 +1089,8 @@ class SettWin:
             )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
-            try:
-                helper.csv_to_gui(file_path, self._gui.frame)
-            except RuntimeError as exc:
-                err_hndlr(exc, locals(), sys._getframe(), lvl="warning")
-            else:
-                logging.debug(f"Settings file loaded: '{file_path}'")
+            helper.csv_to_gui(file_path, self._gui.frame)
+            logging.debug(f"Settings file loaded: '{file_path}'")
 
     def confirm(self):
         """Doc."""
