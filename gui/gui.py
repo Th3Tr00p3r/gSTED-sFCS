@@ -479,14 +479,20 @@ class AnalysisDisplay:
     def plot_acfs(self, lag: np.ndarray, cf_cr: np.ndarray, g0: float):
         """Doc."""
 
+        default_ylim = (-1e4, 1e4)
+
         self.figure.clear()
         self.ax = self.figure.add_subplot(111)
         self.ax.set_xscale("log")
         self.ax.set_xlim(1e-4, 1e1)
         if g0 < 1000:
-            self.ax.set_ylim(-10000, 10000)
+            self.ax.set_ylim(*default_ylim)
         else:
-            self.ax.set_ylim(-g0 / 2, g0 * 2)
+            try:
+                self.ax.set_ylim(-g0 / 2, g0 * 2)
+            except ValueError:
+                # g0 is not a finite number
+                self.ax.set_ylim(*default_ylim)
         for row_acf in cf_cr:
             self.ax.plot(lag, row_acf)
         self.canvas.draw()
