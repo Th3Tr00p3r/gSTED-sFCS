@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1231</width>
-    <height>936</height>
+    <width>1236</width>
+    <height>948</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -5000,7 +5000,7 @@ over:</string>
                                          </widget>
                                         </item>
                                         <item>
-                                         <widget class="QDoubleSpinBox" name="doubleSpinBox">
+                                         <widget class="QDoubleSpinBox" name="solAnalysisRemoveOverSpinner">
                                           <property name="sizePolicy">
                                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
                                             <horstretch>0</horstretch>
@@ -5071,7 +5071,7 @@ Worst</string>
                                          </widget>
                                         </item>
                                         <item>
-                                         <widget class="QSpinBox" name="spinBox_7">
+                                         <widget class="QSpinBox" name="solAnalysisRemoveWorstSpinner">
                                           <property name="sizePolicy">
                                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
                                             <horstretch>0</horstretch>

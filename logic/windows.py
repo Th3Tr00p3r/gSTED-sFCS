@@ -861,8 +861,6 @@ class MainWin:
                 s.correlate_angular_scan_data()
             elif s.type == "static":
                 s.correlate_regular_data()
-            s.average_correlation()
-            print("G0: ", s.g0)  # TESTESTEST
 
         except AttributeError:
             # No directories found
@@ -953,6 +951,13 @@ class MainWin:
                 self.display_scan_image(file_num=1)
 
                 # populate row averaging tab
+                row_disc_method = wdgts.row_dicrimination.get().objectName()
+                if row_disc_method == "solAnalysisRemoveOver":
+                    avg_corr_args = dict(rejection=wdgts.remove_over.get())
+                elif row_disc_method == "solAnalysisRemoveWorst":
+                    avg_corr_args = dict(rejection=None, reject_n_worst=wdgts.remove_worst.get())
+                full_data.average_correlation(**avg_corr_args)
+                print("G0: ", full_data.g0)  # TESTESTEST
                 wdgts.row_acf_disp.obj.plot_acfs(full_data.lag, full_data.cf_cr, full_data.g0)
                 wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
 
