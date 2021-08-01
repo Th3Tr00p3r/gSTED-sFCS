@@ -789,13 +789,13 @@ class MainWin:
             """Doc."""
 
             basic_header = []
-            basic_header.append(["-" * 54])
+            basic_header.append(["-" * 40])
             basic_header.append(["Measurement Log File"])
-            basic_header.append(["-" * 54])
+            basic_header.append(["-" * 40])
             basic_header.append(["Excitation Power: "])
             basic_header.append(["Depletion Power: "])
             basic_header.append(["Free Atto FCS @ 12 uW: G0 = _G0_ k/ tau = _tau_ ms"])
-            basic_header.append(["-" * 54])
+            basic_header.append(["-" * 40])
             basic_header.append(["EDIT_HERE"])
 
             with open(file_path, "w", newline="") as f:
@@ -840,6 +840,7 @@ class MainWin:
         current_template = data_import_wdgts.data_templates.get()
         is_calibration = data_import_wdgts.is_calibration.get()
 
+        # TODO: create a context manager for pausing/resuming AI/CI tasks
         logging.debug("Importing Data. Pausing 'ai' and 'ci' tasks")
         self._app.devices.scanners.pause_tasks("ai")
         self._app.devices.photon_detector.pause_tasks("ci")
@@ -903,7 +904,7 @@ class MainWin:
         else:
             logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
 
-    def get_current_full_data(self) -> None:
+    def get_current_full_data(self) -> CorrFuncTDC:
         """Doc."""
 
         imported_template = wdgt_colls.sol_data_analysis_wdgts.imported_templates.get()
@@ -967,7 +968,7 @@ class MainWin:
                     full_data.average_cf_cr,
                     full_data.g0,
                 )
-                wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
+                wdgts.row_acf_disp.obj.entitle_and_label("lag (ms)", "?")
 
             print("Done.")
 
@@ -1001,14 +1002,16 @@ class MainWin:
         else:  # use all rows
             avg_corr_args = dict(rejection=None)
         full_data.average_correlation(**avg_corr_args)
-        print("G0: ", full_data.g0)  # TESTESTEST
+        print(
+            "G0: ", full_data.g0
+        )  # TODO: write this to GUI (or fit? maybe its the same for long measurement)
         wdgts.row_acf_disp.obj.plot_acfs(
             full_data.lag,
             full_data.cf_cr[full_data.j_good, :],
             full_data.average_cf_cr,
             full_data.g0,
         )
-        wdgts.row_acf_disp.obj.entitle_and_label("lag (units?)", "G0? (units?)")
+        wdgts.row_acf_disp.obj.entitle_and_label("lag (ms)", "?")
 
     def remove_imported_template(self):
         """Doc."""
