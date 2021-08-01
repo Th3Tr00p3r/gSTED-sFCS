@@ -58,7 +58,7 @@ class BaseDevice:
         try:
             self._toggle(is_being_switched_on)
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             if not self.error_dict:
                 self.state = is_being_switched_on
@@ -98,7 +98,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.data.extend(byte_array)
             self.tot_bytes_read += len(byte_array)
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def init_data(self):
         """Doc."""
@@ -111,7 +111,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         try:
             self.purge()
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def get_status(self):
         """Doc."""
@@ -119,7 +119,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         try:
             return self.get_queue_status()
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
 
 class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
@@ -214,7 +214,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.init_ai_buffer()
             self.start_tasks("ai")
         except IOError as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
@@ -229,7 +229,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             )
             self.start_tasks("ai")
         except DaqError as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def start_write_task(
         self,
@@ -280,7 +280,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     self.wait_for_task("ao", task_name)
                     self.close_tasks("ao")
                 except Exception as exc:
-                    err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+                    err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
         axes_to_use = self.AXES_TO_BOOL_TUPLE_DICT[type]
 
@@ -335,7 +335,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 self.start_tasks("ao")
 
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def init_ai_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
@@ -363,7 +363,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         try:
             read_samples = self.analog_read(task_name, n_samples)
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             read_samples = self._diff_to_rse(read_samples.T.tolist())
             self.ai_buffer.extend(read_samples)
@@ -426,7 +426,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             exc = DeviceError(
                 f"{self.log_ref} can't be synced because scanners failed to Initialize"
             )
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.cont_read_buffer = np.zeros(shape=(self.CONT_READ_BFFR_SZ,), dtype=np.uint32)
             self.last_avg_time = time.perf_counter()
@@ -467,7 +467,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.init_ci_buffer()
             self.start_tasks("ci")
         except DaqError as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
@@ -486,7 +486,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             )
             self.start_tasks("ci")
         except DaqError as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def fill_ci_buffer(self, n_samples=ni_consts.READ_ALL_AVAILABLE):
         """Doc."""
@@ -494,7 +494,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         try:
             num_samps_read = self.counter_stream_read()
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
             self.num_reads_since_avg += num_samps_read
@@ -578,7 +578,7 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             )
             self.start_tasks("co")
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
 
 class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
@@ -600,7 +600,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             exc = IOError(
                 f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
             )
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
 
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
@@ -644,7 +644,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         try:
             self.write(cmnd)
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.emission_state = is_being_switched_on
             self.change_icons("on" if is_being_switched_on else "off")
@@ -663,7 +663,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             self.flush()  # get fresh response
             response = self.query(cmnd)
         except IOError as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             return response
 
@@ -680,7 +680,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                 cmnd = f"setpower 0 {value_mW}"
                 self.write(cmnd)
             except Exception as exc:
-                err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             dialog.Error(
                 custom_txt=f"Power out of range [{self.power_limits_mW['low']}, {self.power_limits_mW['high']}]"
@@ -699,7 +699,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                 cmnd = f"setLDcur 1 {value_mA}"
                 self.write(cmnd)
             except Exception as exc:
-                err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             dialog.Error(
                 custom_txt=f"Current out of range [{self.current_limits_mA['low']}, {self.current_limits_mA['high']}]"
@@ -737,7 +737,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             await asyncio.sleep(500 * 1e-3)
             self.write("ryx ")  # release
         except Exception as exc:
-            err_hndlr(exc, locals(), sys._getframe(), dvc=self)
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
 
 class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):

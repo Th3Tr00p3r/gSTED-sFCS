@@ -58,7 +58,7 @@ class Timeout:
                 # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
             )
         except RuntimeError as exc:
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
         logging.debug("timeout function exited")
 
     async def _updt_application_log(self) -> None:
@@ -216,7 +216,7 @@ class Timeout:
                 pass
 
             except ValueError as exc:
-                err_hndlr(exc, locals(), sys._getframe())
+                err_hndlr(exc, sys._getframe(), locals())
 
         while self.not_finished:
 

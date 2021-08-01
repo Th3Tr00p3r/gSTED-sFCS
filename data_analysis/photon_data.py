@@ -48,9 +48,7 @@ class PhotonData:
         # find simple "inversions": the data with a missing byte
         # decrease in counter on data j+1, yet the next counter data (j+2) is
         # higher than j.
-        inv_idxs = np.where(
-            np.logical_and((time_stamps[:-1] < 0), (time_stamps[:-1] + time_stamps[1:] > 0))
-        )[0]
+        inv_idxs = np.where((time_stamps[:-1] < 0) & ((time_stamps[:-1] + time_stamps[1:]) > 0))[0]
         if (n_invs := inv_idxs.size) != 0:
             if verbose:
                 print(f"Found {n_invs} of missing bit data, ad hoc fixing...", end=" ")

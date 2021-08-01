@@ -1,7 +1,7 @@
 solScanFileTemplate,
 imgScanFileTemplate,img
 scanImgFileNum,1
-solAnalysisRemoveWorstSpinner,4
+solAnalysisRemoveWorstSpinner,0
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -53,9 +53,8 @@ solScanParamsStacked,2
 depModeStacked,0
 imageDataImport,False
 solDataImport,True
-solAnalysisUseAllRows,False
-solAnalysisRemoveOver,True
-solAnalysisRemoveWorst,False
+solAnalysisRemoveOver,False
+solAnalysisRemoveWorst,True
 currMode,True
 powMode,False
 posAxisZ,False

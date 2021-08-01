@@ -55,6 +55,10 @@ sol_data_analysis_wdgts = QtWidgetCollection(
     scan_settings=("solAnalysisScanSettings", "QPlainTextEdit", "main", True),
     scan_duration_min=("solAnalysisDur", "QDoubleSpinBox", "main", True),
     n_files=("solAnalysisNumFiles", "QSpinBox", "main", True),
+    mean_g0=("solAnalysisMeanG0", "QDoubleSpinBox", "main", True),
+    mean_tau=("solAnalysisMeanTau", "QDoubleSpinBox", "main", True),
+    n_good_rows=("solAnalysisGoodRows", "QSpinBox", "main", True),
+    n_bad_rows=("solAnalysisBadRows", "QSpinBox", "main", True),
 )
 # ----------------------------------------------
 # Measurement Widget Collections
