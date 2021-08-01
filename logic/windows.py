@@ -972,7 +972,7 @@ class MainWin:
         else:
             scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
             scan_image_disp.plot_scan_image_and_roi(img, roi)
-            scan_image_disp.entitle_and_label("Point Number", "Line Number")
+            scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
 
     def calculate_and_show_sol_mean_acf(self) -> None:
         """Doc."""
