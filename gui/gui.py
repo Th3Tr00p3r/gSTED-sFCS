@@ -13,7 +13,7 @@ from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QButtonGroup, QDialog, QMainWindow, QStatusBar, QWidget
 
 import gui.icons  # for initial icons loadout # NOQA
-import logic.windows as wins_imp
+import logic.windows
 from utilities.helper import force_aspect
 
 try:
@@ -40,7 +40,7 @@ class MainWin(QMainWindow):
         super(MainWin, self).__init__(parent)
         uic.loadUi(MAINWINDOW_UI_PATH, self)
         self.move(600, 30)
-        self.imp = wins_imp.MainWin(self, app)
+        self.imp = logic.windows.MainWin(self, app)
         self._loop = app.loop
 
         # graphics
@@ -384,7 +384,7 @@ class SettWin(QDialog):
 
         super(SettWin, self).__init__(parent)
         uic.loadUi(SETTINGSWINDOW_UI_PATH, self)
-        self.imp = wins_imp.SettWin(self, app)
+        self.imp = logic.windows.SettWin(self, app)
 
     def closeEvent(self, event: QEvent) -> None:
         """Doc."""
@@ -421,7 +421,7 @@ class CamWin(QWidget):
         super(CamWin, self).__init__(parent, Qt.WindowStaysOnTopHint)
         uic.loadUi(CAMERAWINDOW_UI_PATH, self)
         self.move(30, 180)
-        self.imp = wins_imp.CamWin(self, app)
+        self.imp = logic.windows.CamWin(self, app)
 
         # add matplotlib-ready widget (canvas) for showing camera output
         # TODO: replace this with ImageScanDisplay?
