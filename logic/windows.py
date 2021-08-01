@@ -699,27 +699,27 @@ class MainWin:
             # no directories found... (dir_years is None or [])
             pass
 
+    def pkl_and_mat_templates(self, dir_path: str, is_solution_type: bool) -> Iterable:
+        """Doc."""
+
+        pkl_template_set = {
+            (re.sub("[0-9]+.pkl", "*.pkl", item) if is_solution_type else item)
+            for item in os.listdir(dir_path)
+            if item.endswith(".pkl")
+        }
+        mat_template_set = {
+            (re.sub("[0-9]+.mat", "*.mat", item) if is_solution_type else item)
+            for item in os.listdir(dir_path)
+            if item.endswith(".mat")
+        }
+        return sorted(pkl_template_set.union(mat_template_set))
+
     def populate_data_templates_from_day(self, day: str) -> None:
         """Doc."""
 
-        def pkl_and_mat_templates(dir_path: str, is_solution_type: bool) -> Iterable:
-            """Doc."""
-
-            pkl_template_set = {
-                (re.sub("[0-9]+.pkl", "*.pkl", item) if is_solution_type else item)
-                for item in os.listdir(dir_path)
-                if item.endswith(".pkl")
-            }
-            mat_template_set = {
-                (re.sub("[0-9]+.mat", "*.mat", item) if is_solution_type else item)
-                for item in os.listdir(dir_path)
-                if item.endswith(".mat")
-            }
-            return sorted(pkl_template_set.union(mat_template_set))
-
         if not day:
             # ignore if combobox was just cleared
-            self._app.analysis.dir_path = None
+            self._app.analysis.curr_dir_path = None
             return
 
         # define widgets
@@ -740,10 +740,12 @@ class MainWin:
         templates_combobox.clear()
 
         try:
-            self._app.analysis.dir_path = os.path.join(
+            self._app.analysis.curr_dir_path = os.path.join(
                 save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir
             )
-            templates = pkl_and_mat_templates(self._app.analysis.dir_path, is_solution_type)
+            templates = self.pkl_and_mat_templates(
+                self._app.analysis.curr_dir_path, is_solution_type
+            )
             templates_combobox.addItems(templates)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
@@ -753,9 +755,9 @@ class MainWin:
         """Doc."""
 
         try:
-            dir_path = os.path.realpath(self._app.analysis.dir_path)
+            dir_path = os.path.realpath(self._app.analysis.curr_dir_path)
         except (AttributeError, TypeError):
-            # self._app.analysis.dir_path does not yet exist or is None (no date dir found)
+            # self._app.analysis.curr_dir_path does not yet exist or is None (no date dir found)
             pass
         else:
             if os.path.isdir(dir_path):
@@ -772,7 +774,7 @@ class MainWin:
         curr_template = data_import_wdgts.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
         try:
-            file_path = os.path.join(self._app.analysis.dir_path, log_filename)
+            file_path = os.path.join(self._app.analysis.curr_dir_path, log_filename)
         except (AttributeError, TypeError):
             # no directories found
             pass
@@ -784,10 +786,37 @@ class MainWin:
 
             self.update_dir_log_wdgt(curr_template)
 
+    def get_daily_alignment(self):
+        """Doc."""
+
+        template = self.pkl_and_mat_templates(self._app.analysis.curr_dir_path, True)
+        # TODO: loading properly (err hndling) should be a seperate function
+        full_data = CorrFuncTDC()
+        try:
+            full_data.read_fpga_data(
+                os.path.join(self._app.analysis.curr_dir_path, template),
+                no_plot=True,
+            )
+            full_data.correlate_regular_data()
+
+        except AttributeError:
+            # No directories found
+            pass
+
+        except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
+            err_hndlr(exc, sys._getframe(), locals())
+
+        full_data.average_correlation()
+        full_data.fit_correlation_function()
+        fit_params = full_data.fit_param["diffusion_3d_fit"]
+        g0, tau, _ = fit_params["beta"]
+
+        return g0, tau
+
     def update_dir_log_wdgt(self, template: str) -> None:
         """Doc."""
 
-        def initialize_dir_log_file(file_path) -> None:
+        def initialize_dir_log_file(file_path, g0=None, tau=None) -> None:
             """Doc."""
 
             basic_header = []
@@ -796,7 +825,9 @@ class MainWin:
             basic_header.append(["-" * 40])
             basic_header.append(["Excitation Power: "])
             basic_header.append(["Depletion Power: "])
-            basic_header.append(["Free Atto FCS @ 12 uW: G0 = _G0_ k/ tau = _tau_ ms"])
+            basic_header.append(
+                [f"Free Atto FCS @ 12 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"]
+            )
             basic_header.append(["-" * 40])
             basic_header.append(["EDIT_HERE"])
 
@@ -810,14 +841,15 @@ class MainWin:
                 log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
             elif data_import_wdgts.is_image_type.get():
                 log_filename = re.sub("\\.\\w{3}", ".log", template)
-            file_path = os.path.join(self._app.analysis.dir_path, log_filename)
+            file_path = os.path.join(self._app.analysis.curr_dir_path, log_filename)
         except TypeError:
-            # 'self._app.analysis.dir_path' is 'None'
+            # 'self._app.analysis.curr_dir_path' is 'None'
             data_import_wdgts.log_text.set("")
             return
         else:
             if not os.path.isfile(file_path):
                 try:
+                    g0, tau = self.get_daily_alignment()
                     initialize_dir_log_file(file_path)
                 except OSError:
                     # missing file/folder (deleted during operation)
@@ -852,7 +884,7 @@ class MainWin:
 
         try:
             s.read_fpga_data(
-                os.path.join(self._app.analysis.dir_path, current_template),
+                os.path.join(self._app.analysis.curr_dir_path, current_template),
                 fix_shift=fix_shift,
                 no_plot=True,
             )
@@ -940,6 +972,8 @@ class MainWin:
                 self.display_scan_image(file_num=1)
 
                 # calculate average and display
+                # TODO: perhaps should average by default, before displaying
+                # that way I can put it all in one function?
                 print("Averaging and plotting...", end=" ")
                 self.calculate_and_show_sol_mean_acf()
 
