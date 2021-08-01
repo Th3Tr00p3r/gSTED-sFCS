@@ -17,6 +17,7 @@ from utilities.dialog import Question
 
 DEFAULT_LOADOUT_FILE_PATH = "./settings/loadouts/default_loadout.csv"
 DEFAULT_SETTINGS_FILE_PATH = "./settings/default_settings.csv"
+DEFAULT_LOG_PATH = "./log/"
 DVC_NICKS = (
     "exc_laser",
     "dep_shutter",
@@ -106,7 +107,16 @@ class App:
         logging.info("Application Started")
 
     def config_logging(self):
-        """Configure the logging package for the whole application."""
+        """
+        Configure the logging package for the whole application,
+        and ensure folder and initial files exist.
+        """
+
+        os.makedirs(DEFAULT_LOG_PATH, exist_ok=True)
+        init_log_file_list = ["debug", "log"]
+        for init_log_file in init_log_file_list:
+            file_path = os.path.join(DEFAULT_LOG_PATH, init_log_file)
+            open(file_path, "a").close()
 
         with open("logging_config.yaml", "r") as f:
             config = yaml.safe_load(f.read())
@@ -141,20 +151,9 @@ class App:
                 x_args = [
                     helper.deep_getattr(self, deep_attr) for deep_attr in dvc_attrs.cls_xtra_args
                 ]
-                setattr(
-                    self.devices,
-                    nick,
-                    dvc_class(
-                        param_dict,
-                        *x_args,
-                    ),
-                )
+                setattr(self.devices, nick, dvc_class(param_dict, *x_args))
             else:
-                setattr(
-                    self.devices,
-                    nick,
-                    dvc_class(param_dict),
-                )
+                setattr(self.devices, nick, dvc_class(param_dict))
 
     async def clean_up_app(self, restart=False):
         """Doc."""
