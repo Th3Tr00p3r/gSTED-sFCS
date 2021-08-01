@@ -67,13 +67,13 @@ class ScanPatternAO:
         J = t <= t0
         s[J] = a * np.power(t[J], 2)
 
-        J = np.logical_and((t > t0), (t <= (T / 2 - t0)))
+        J = (t > t0) & (t <= (T / 2 - t0))
         s[J] = v * t[J] - a * t0 ** 2 / 2
 
-        J = np.logical_and((t > (T / 2 - t0)), (t <= (T / 2 + t0)))
+        J = (t > (T / 2 - t0)) & (t <= (T / 2 + t0))
         s[J] = A - a * np.power((t[J] - T / 2), 2) / 2
 
-        J = np.logical_and((t > (T / 2 + t0)), (t <= (T - t0)))
+        J = (t > (T / 2 + t0)) & (t <= (T - t0))
         s[J] = A + a * t0 ** 2 / 2 - v * (t[J] - T / 2)
 
         J = t > (T - t0)

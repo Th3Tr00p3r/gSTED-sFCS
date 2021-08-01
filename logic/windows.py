@@ -17,6 +17,7 @@ import logic.devices as dvcs
 import logic.measurements as meas
 import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
+from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
@@ -94,7 +95,7 @@ class MainWin:
         except AttributeError:
             exc = DeviceError(f"{dvc.log_ref} was not properly initialized. Cannot Toggle.")
             if nick == "stage":
-                err_hndlr(exc, locals(), sys._getframe(), lvl="warning")
+                err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
                 return False
             else:
                 raise exc
@@ -107,7 +108,7 @@ class MainWin:
             try:
                 getattr(dvc, toggle_mthd)(True)
             except DeviceError as exc:
-                err_hndlr(exc, locals(), sys._getframe(), lvl="warning")
+                err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
                 return False
 
             if (is_dvc_on := getattr(dvc, state_attr)) :
@@ -193,7 +194,7 @@ class MainWin:
             scanners_dvc.start_write_task(data, type_str)
             scanners_dvc.toggle(True)  # restart cont. reading
         except DeviceError as exc:
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
 
         logging.debug(
             f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} were moved to {str(destination)} V"
@@ -863,7 +864,7 @@ class MainWin:
             # No directories found
             pass
         except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
 
         else:
             # save data and populate combobox
@@ -909,7 +910,7 @@ class MainWin:
 
         imported_template = wdgt_colls.sol_data_analysis_wdgts.imported_templates.get()
         curr_data_type, *_ = re.split(" -", imported_template)
-        return self._app.analysis.loaded_data[curr_data_type]
+        return self._app.analysis.loaded_data.get(curr_data_type)
 
     def populate_sol_meas_analysis(self, template):
         """Doc."""
@@ -919,56 +920,40 @@ class MainWin:
         try:
             full_data = self.get_current_full_data()
             num_files = len(full_data.data)
-        except KeyError:
+        except AttributeError:
             # no imported templates (deleted)
             wdgts.scan_image_disp.obj.clear()
             wdgts.row_acf_disp.obj.clear()
-        except AttributeError:
-            # TODO: figure this one out -
-            # seems to be related to the possibility of importing 2 template of the same kind (e.g. SAMP_EXC)
-            wdgts.scan_image_disp.obj.clear()
-            wdgts.row_acf_disp.obj.clear()
-            print("TODO: figure this one out")
         else:
             print("Populating analysis GUI...", end=" ")
 
-            # populate measurement properties
+            # populate general measurement properties
             wdgts.n_files.set(num_files)
             wdgts.scan_duration_min.set(full_data.duration_min)
+
             if full_data.type == "angular_scan":
-                text = "\n\n".join(
+                # populate scan images tab
+                print("Displaying scan images...", end=" ")
+                wdgts.scan_img_file_num.obj.setRange(1, num_files)
+                wdgts.scan_img_file_num.set(1)
+                self.display_scan_image(file_num=1)
+
+                # calculate average and display
+                print("Averaging and plotting...", end=" ")
+                self.calculate_and_show_sol_mean_acf()
+
+                scan_settings_text = "\n\n".join(
                     [
                         f"{key}: {(val[:5] if isinstance(val, Iterable) else val)}"
                         for key, val in full_data.angular_scan_settings.items()
                     ]
                 )
+
             elif full_data.type == "static":
-                text = "no scan."
-            wdgts.scan_settings.set(text)
-
-            if full_data.type == "angular_scan":
-                # populate scan images tab
-                wdgts.scan_img_file_num.obj.setRange(1, num_files)
-                wdgts.scan_img_file_num.set(1)
-                self.display_scan_image(file_num=1)
-
-                # populate row averaging tab
-                row_disc_method = wdgts.row_dicrimination.get().objectName()
-                if row_disc_method == "solAnalysisRemoveOver":
-                    avg_corr_args = dict(rejection=wdgts.remove_over.get())
-                elif row_disc_method == "solAnalysisRemoveWorst":
-                    avg_corr_args = dict(rejection=None, reject_n_worst=wdgts.remove_worst.get())
-                else:  # use all rows
-                    avg_corr_args = dict(rejection=None)
-                full_data.average_correlation(**avg_corr_args)
-                print("G0: ", full_data.g0)  # TESTESTEST
-                wdgts.row_acf_disp.obj.plot_acfs(
-                    full_data.lag,
-                    full_data.cf_cr[full_data.j_good, :],
-                    full_data.average_cf_cr,
-                    full_data.g0,
-                )
-                wdgts.row_acf_disp.obj.entitle_and_label("lag (ms)", "?")
+                print("Averaging, plotting and fitting...", end=" ")
+                self.calculate_and_show_sol_mean_acf()
+                scan_settings_text = "no scan."
+            wdgts.scan_settings.set(scan_settings_text)
 
             print("Done.")
 
@@ -988,30 +973,69 @@ class MainWin:
             scan_image_disp.plot_scan_image_and_roi(img, roi)
             scan_image_disp.entitle_and_label("Point Number", "Line Number")
 
-    def calculate_and_show_mean_acf(self) -> None:
+    def calculate_and_show_sol_mean_acf(self) -> None:
         """Doc."""
 
         wdgts = wdgt_colls.sol_data_analysis_wdgts
         full_data = self.get_current_full_data()
 
-        row_disc_method = wdgts.row_dicrimination.get().objectName()
-        if row_disc_method == "solAnalysisRemoveOver":
-            avg_corr_args = dict(rejection=wdgts.remove_over.get())
-        elif row_disc_method == "solAnalysisRemoveWorst":
-            avg_corr_args = dict(rejection=None, reject_n_worst=wdgts.remove_worst.get())
-        else:  # use all rows
-            avg_corr_args = dict(rejection=None)
-        full_data.average_correlation(**avg_corr_args)
-        print(
-            "G0: ", full_data.g0
-        )  # TODO: write this to GUI (or fit? maybe its the same for long measurement)
-        wdgts.row_acf_disp.obj.plot_acfs(
-            full_data.lag,
-            full_data.cf_cr[full_data.j_good, :],
-            full_data.average_cf_cr,
-            full_data.g0,
-        )
-        wdgts.row_acf_disp.obj.entitle_and_label("lag (ms)", "?")
+        if full_data.type == "angular_scan":
+            row_disc_method = wdgts.row_dicrimination.get().objectName()
+            if row_disc_method == "solAnalysisRemoveOver":
+                avg_corr_args = dict(rejection=wdgts.remove_over.get())
+            elif row_disc_method == "solAnalysisRemoveWorst":
+                avg_corr_args = dict(rejection=None, reject_n_worst=wdgts.remove_worst.get())
+            else:  # use all rows
+                avg_corr_args = dict(rejection=None)
+
+            try:
+                full_data.average_correlation(**avg_corr_args)
+            except AttributeError:
+                # no data loaded
+                pass
+            except RuntimeWarning as exc:
+                # some zero division issue, happens when too few rows are used (less than two?)
+                err_hndlr(exc, sys._getframe(), locals())
+                pass
+            else:
+                wdgts.row_acf_disp.obj.plot_acfs(
+                    full_data.lag,
+                    full_data.average_cf_cr,
+                    full_data.g0,
+                    full_data.cf_cr[full_data.j_good, :],
+                )
+                wdgts.row_acf_disp.obj.entitle_and_label("lag (ms)", "?")
+
+                wdgts.mean_g0.set(full_data.g0 / 1e3)  # shown in thousands
+                wdgts.mean_tau.set(0)
+
+                wdgts.n_good_rows.set(n_good := len(full_data.j_good))
+                wdgts.n_bad_rows.set(n_bad := len(full_data.j_bad))
+                wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
+
+        if full_data.type == "static":
+            full_data.average_correlation()
+            try:
+                full_data.fit_correlation_function()
+            except fit_tools.FitError as exc:
+                # fit failed, use g0 calculated in 'average_correlation()'
+                err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
+                wdgts.mean_g0.set(full_data.g0 / 1e3)  # shown in thousands
+                wdgts.mean_tau.set(0)
+            else:  # fit succeeded
+                fit_params = full_data.fit_param["diffusion_3d_fit"]
+                g0, tau, _ = fit_params["beta"]
+                fit_func = getattr(fit_tools, fit_params["fit_func"])
+                wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
+                wdgts.mean_tau.set(tau * 1e3)
+                y_fit = fit_func(fit_params["x"], *fit_params["beta"])
+                wdgts.row_acf_disp.obj.clear()
+                wdgts.row_acf_disp.obj.plot_acfs(
+                    full_data.lag,
+                    full_data.average_cf_cr,
+                    full_data.g0,
+                )
+                wdgts.row_acf_disp.obj.plot(fit_params["x"], y_fit, color="red")
 
     def remove_imported_template(self):
         """Doc."""
@@ -1156,7 +1180,7 @@ class CamWin:
                 logging.debug("Camera video mode OFF")
 
         except DeviceError as exc:
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
 
     def shoot(self):
         """Doc."""

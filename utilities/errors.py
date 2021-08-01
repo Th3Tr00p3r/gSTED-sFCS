@@ -32,22 +32,26 @@ def build_error_dict(exc: Exception) -> str:
     return dict(type=exc_type, loc=exc_loc, msg=str(exc), tb=frmtd_tb)
 
 
-def err_hndlr(exc, func_locals, func_frame, lvl="error", dvc=None, disp=False) -> str:
-    """Doc."""
+def get_frame_details(frame, locals):
+    """
+    Create a set of all argument names except 'self', and use them to filter the 'locals()' dictionary,
+    leaving only external arguments and their values in the final string. Also get the function name.
+    """
 
-    def get_frame_details(frame, locals):
-        """
-        Create a set of all argument names except 'self', and use them to filter the 'locals()' dictionary,
-        leaving only external arguments and their values in the final string. Also get the function name.
-        """
-
-        frame_code = frame.f_code
-        func_name = frame_code.co_name
-        func_arg_names = set(frame_code.co_varnames[: frame_code.co_argcount]) - {"self"}
+    frame_code = frame.f_code
+    func_name = frame_code.co_name
+    func_arg_names = set(frame_code.co_varnames[: frame_code.co_argcount]) - {"self"}
+    if locals is not None:
         arg_string = ", ".join(
             [f"{key}={str(val)}" for key, val in locals.items() if key in func_arg_names]
         )
         return f"{func_name}({arg_string})"
+    else:
+        return f"{func_name}()"
+
+
+def err_hndlr(exc, func_frame, func_locals, dvc=None, lvl="error", disp=False) -> str:
+    """Doc."""
 
     error_dict = build_error_dict(exc)
     func_string = get_frame_details(func_frame, func_locals)

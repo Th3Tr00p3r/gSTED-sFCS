@@ -532,7 +532,7 @@ class SFCSImageMeasurement(Measurement):
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
             self.type = None
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
             return
 
         else:
@@ -575,11 +575,11 @@ class SFCSImageMeasurement(Measurement):
 
         except MeasurementError as exc:
             await self.stop()
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
             return
 
         except Exception as exc:  # TESTESTEST
-            err_hndlr(exc, locals(), sys._getframe())  # TESTESTEST
+            err_hndlr(exc, sys._getframe(), locals())  # TESTESTEST
 
         # finished measurement
         if self.is_running:
@@ -687,13 +687,13 @@ class SFCSSolutionMeasurement(Measurement):
             try:
                 s = compute_acf(self.data_dvc.data)
             except Exception as exc:
-                err_hndlr(exc, locals(), sys._getframe())
+                err_hndlr(exc, sys._getframe(), locals())
             else:
                 try:
-                    s.fit_correlation_function(no_plot=True)
+                    s.fit_correlation_function()
                 except fit_tools.FitError as exc:
                     # fit failed
-                    err_hndlr(exc, locals(), sys._getframe(), lvl="debug")
+                    err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
                     self.fit_led.set(self.icon_dict["led_red"])
                     g0, tau = s.g0, 0.1
                     self.g0_wdgt.set(s.g0)
@@ -775,7 +775,7 @@ class SFCSSolutionMeasurement(Measurement):
         except (MeasurementError, DeviceError) as exc:
             await self.stop()
             self.type = None
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
             return
 
         try:
@@ -793,7 +793,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         except DeviceError as exc:
             await self.stop()
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
             return
 
         else:
@@ -854,7 +854,7 @@ class SFCSSolutionMeasurement(Measurement):
                 file_num += 1
 
         except Exception as exc:  # TESTESTEST
-            err_hndlr(exc, locals(), sys._getframe())
+            err_hndlr(exc, sys._getframe(), locals())
 
         if self.is_running:  # if not manually stopped
             await self.stop()
