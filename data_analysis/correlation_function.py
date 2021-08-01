@@ -53,16 +53,16 @@ class CorrFuncData:
         self.delete_list = delete_list
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, 0)
-        JJ = np.logical_and(
-            (self.lag > norm_range[1]), (self.lag < 100)
-        )  # work in the relevant part
+        JJ = (self.lag > norm_range[1]) & (self.lag < 100)  # work in the relevant part
         self.score = (
             (1 / np.var(self.cf_cr[:, JJ], 0))
             * (self.cf_cr[:, JJ] - self.median_all_cf_cr[JJ]) ** 2
             / len(JJ)
         ).sum(axis=1)
 
-        if reject_n_worst is not None:
+        total_n_rows, _ = self.cf_cr.shape
+
+        if reject_n_worst not in {None, 0}:
             delete_list = np.argsort(self.score)[-reject_n_worst:]
         elif rejection is not None:
             delete_list = np.where(self.score >= self.rejection)[0]
@@ -70,7 +70,7 @@ class CorrFuncData:
         # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list.
         # if no delete list is supplied, use all rows.
         self.j_bad = delete_list
-        self.j_good = [row for row in range(self.cf_cr.shape[0]) if row not in delete_list]
+        self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
         if use_numba:
             func = nb.njit(calc_weighted_avg, cache=True)
@@ -80,7 +80,7 @@ class CorrFuncData:
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
-        Jt = np.logical_and((self.lag > self.norm_range[0]), (self.lag < self.norm_range[1]))
+        Jt = (self.lag > self.norm_range[0]) & (self.lag < self.norm_range[1])
         self.g0 = (self.average_cf_cr[Jt] / self.error_cf_cr[Jt] ** 2).sum() / (
             1 / self.error_cf_cr[Jt] ** 2
         ).sum()
@@ -110,32 +110,31 @@ class CorrFuncData:
         y_field="average_cf_cr",
         y_error_field="error_cf_cr",
         fit_func="diffusion_3d_fit",
-        constant_param={},
         fit_param_estimate=None,
-        fit_range=[1e-3, 100],
-        no_plot=False,
+        fit_range=(1e-3, 100),
+        no_plot=True,
         x_scale="log",
         y_scale="linear",
     ):
 
         if not fit_param_estimate:
-            fit_param_estimate = [self.g0, 0.035, 30]
+            fit_param_estimate = (self.g0, 0.035, 30.0)
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
-        errorY = getattr(self, y_error_field)
+        error_y = getattr(self, y_error_field)
         if x_scale == "log":
             x = x[1:]  # remove zero point data
             y = y[1:]
-            errorY = errorY[1:]
+            error_y = error_y[1:]
 
         FP = fit_tools.curve_fit_lims(
             fit_func,
             fit_param_estimate,
             x,
             y,
-            errorY,
-            x_lim=fit_range,
+            error_y,
+            x_limits=fit_range,
             no_plot=no_plot,
             x_scale=x_scale,
             y_scale=y_scale,
@@ -572,7 +571,7 @@ class CorrFuncTDC(CorrFuncData):
                     valid = valid[:Jend]
 
                 # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
-                dur = timest[np.logical_or((valid == 1), (valid == -2))].sum() / self.laser_freq_hz
+                dur = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
                 duration.append(dur)
                 ts_split = np.vstack((timest, valid))
                 cf.soft_cross_correlate(

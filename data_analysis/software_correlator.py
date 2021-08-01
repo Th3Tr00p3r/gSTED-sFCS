@@ -105,7 +105,7 @@ class SoftwareCorrelator:
                 raise RuntimeError(
                     "Photon Array should have 2 rows for this correlator option! 0th row with photon delay times, 1st row is 1 for valid lines"
                 )
-            valid = np.logical_or((photon_array[1, :] == 1), (photon_array[1, :] == -2))
+            valid = (photon_array[1, :] == 1) | (photon_array[1, :] == -2)
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
             self.countrate = np.sum(photon_array[1, :] == 1) / duration_s
 
@@ -114,7 +114,7 @@ class SoftwareCorrelator:
                 raise RuntimeError(
                     "Photon Array should have 3 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 3rd column is 1s for valid lines"
                 )
-            valid = np.logical_or((photon_array[3, :] == 1), (photon_array[3, :] == -2))
+            valid = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
             self.countrate_a = np.sum(photon_array[1, :] == 1) / duration_s
             self.countrate_b = np.sum(photon_array[2, :] == 1) / duration_s

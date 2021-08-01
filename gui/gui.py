@@ -85,7 +85,6 @@ class MainWin(QMainWindow):
         self.analysisDataTypeGroup.buttonReleased.connect(self.imp.populate_all_data_dates)
 
         self.rowDiscriminationGroup = QButtonGroup()
-        self.rowDiscriminationGroup.addButton(self.solAnalysisUseAllRows)
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveWorst)
 
@@ -163,7 +162,7 @@ class MainWin(QMainWindow):
     def on_solAnalysisRecalMeanAcf_released(self) -> None:
         """Doc"""
 
-        self.imp.calculate_and_show_mean_acf()
+        self.imp.calculate_and_show_sol_mean_acf()
 
     @pyqtSlot(int)
     def on_scanImgFileNum_valueChanged(self, val: int) -> None:
@@ -472,6 +471,17 @@ class AnalysisDisplay:
         self.ax.set_ylabel(y_label)
         self.canvas.draw()
 
+    def plot(self, x, y, **kwargs):
+        """Wrapper for matplotlib.pyplot.plot."""
+
+        try:
+            self.ax.plot(x, y, **kwargs)
+        except AttributeError:
+            self.ax = self.figure.add_subplot(111)
+            self.ax.plot(x, y, **kwargs)
+        finally:
+            self.canvas.draw()
+
     def plot_scan_image_and_roi(self, image: np.ndarray, roi: dict):
         """Doc."""
 
@@ -482,7 +492,9 @@ class AnalysisDisplay:
         force_aspect(self.ax, aspect=1)
         self.canvas.draw()
 
-    def plot_acfs(self, lag: np.ndarray, cf_cr: np.ndarray, average_cf_cr: np.ndarray, g0: float):
+    def plot_acfs(
+        self, lag: np.ndarray, average_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
+    ):
         """Doc."""
 
         default_ylim = (-1e4, 1e4)
@@ -499,8 +511,10 @@ class AnalysisDisplay:
             except ValueError:
                 # g0 is not a finite number
                 self.ax.set_ylim(*default_ylim)
-        for row_acf in cf_cr:
-            self.ax.plot(lag, row_acf)
+
+        if cf_cr is not None:
+            for row_acf in cf_cr:
+                self.ax.plot(lag, row_acf)
         self.ax.plot(lag, average_cf_cr, "black")
         self.canvas.draw()
 

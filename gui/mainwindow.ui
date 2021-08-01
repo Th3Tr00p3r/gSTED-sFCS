@@ -4976,16 +4976,6 @@ Measurement</string>
                                        <number>0</number>
                                       </property>
                                       <item>
-                                       <widget class="QRadioButton" name="solAnalysisUseAllRows">
-                                        <property name="text">
-                                         <string>Use all rows</string>
-                                        </property>
-                                        <property name="checked">
-                                         <bool>false</bool>
-                                        </property>
-                                       </widget>
-                                      </item>
-                                      <item>
                                        <layout class="QHBoxLayout" name="horizontalLayout_71" stretch="1,1,100">
                                         <item>
                                          <widget class="QRadioButton" name="solAnalysisRemoveOver">
@@ -5295,7 +5285,7 @@ Mean ACF</string>
                                   </widget>
                                  </item>
                                  <item>
-                                  <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf">
+                                  <widget class="QDoubleSpinBox" name="solAnalysisMeanG0">
                                    <property name="frame">
                                     <bool>true</bool>
                                    </property>
@@ -5305,8 +5295,17 @@ Mean ACF</string>
                                    <property name="buttonSymbols">
                                     <enum>QAbstractSpinBox::NoButtons</enum>
                                    </property>
+                                   <property name="suffix">
+                                    <string> k</string>
+                                   </property>
                                    <property name="decimals">
                                     <number>1</number>
+                                   </property>
+                                   <property name="minimum">
+                                    <double>-999.000000000000000</double>
+                                   </property>
+                                   <property name="maximum">
+                                    <double>999.000000000000000</double>
                                    </property>
                                   </widget>
                                  </item>
@@ -5329,7 +5328,7 @@ Time (us)</string>
                                   </widget>
                                  </item>
                                  <item>
-                                  <widget class="QDoubleSpinBox" name="solAnalysisMeanDecay">
+                                  <widget class="QDoubleSpinBox" name="solAnalysisMeanTau">
                                    <property name="frame">
                                     <bool>true</bool>
                                    </property>
@@ -5341,6 +5340,15 @@ Time (us)</string>
                                    </property>
                                    <property name="decimals">
                                     <number>1</number>
+                                   </property>
+                                   <property name="minimum">
+                                    <double>-9999.000000000000000</double>
+                                   </property>
+                                   <property name="maximum">
+                                    <double>9999.000000000000000</double>
+                                   </property>
+                                   <property name="value">
+                                    <double>0.000000000000000</double>
                                    </property>
                                   </widget>
                                  </item>
@@ -5369,6 +5377,9 @@ Time (us)</string>
                                    <property name="buttonSymbols">
                                     <enum>QAbstractSpinBox::NoButtons</enum>
                                    </property>
+                                   <property name="maximum">
+                                    <number>9999</number>
+                                   </property>
                                   </widget>
                                  </item>
                                 </layout>
@@ -5395,6 +5406,9 @@ Time (us)</string>
                                    </property>
                                    <property name="buttonSymbols">
                                     <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="maximum">
+                                    <number>9999</number>
                                    </property>
                                   </widget>
                                  </item>
