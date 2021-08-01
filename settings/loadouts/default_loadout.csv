@@ -1,7 +1,7 @@
 solScanFileTemplate,
 imgScanFileTemplate,img
-scanImgFileNum,1
 solAnalysisRemoveWorstSpinner,0
+scanImgFileNum,1
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -32,10 +32,10 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,0.0
-dataDay,26
+dataDay,19
 dataMonth,7
 dataYear,2021
-dataTemplate,alignment_static_exc_*.pkl
+dataTemplate,
 solFilesToUse,All Files
 importedSolDataTemplates,
 solAnalysisLifetime,Lifetime
@@ -53,8 +53,8 @@ solScanParamsStacked,2
 depModeStacked,0
 imageDataImport,False
 solDataImport,True
-solAnalysisRemoveOver,False
-solAnalysisRemoveWorst,True
+solAnalysisRemoveOver,True
+solAnalysisRemoveWorst,False
 currMode,True
 powMode,False
 posAxisZ,False
@@ -62,7 +62,7 @@ posAxisY,False
 posAxisX,True
 numPlaneShownChoice,0
 tabWidget,0
-tabWidget_2,1
+tabWidget_2,0
 isDataCalibration,False
 solDataFixShift,True
 showOnlyMeanAcf,False

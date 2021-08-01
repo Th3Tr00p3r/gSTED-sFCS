@@ -635,8 +635,9 @@ class MainWin:
         try:
             dir_years = helper.dir_date_parts(save_path, sub_dir)
             years_combobox.addItems(dir_years)
-        except (TypeError, IndexError):
+        except (TypeError, IndexError, FileNotFoundError):
             # no directories found... (dir_years is None or [])
+            # FileNotFoundError - data directory deleted while app running!
             pass
 
     def populate_data_dates_from_year(self, year: str) -> None:
