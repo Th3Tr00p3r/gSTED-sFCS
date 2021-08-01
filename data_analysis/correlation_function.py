@@ -4,7 +4,6 @@ import glob
 import logging
 import os
 import re
-import time
 from collections import deque
 
 import matplotlib.pyplot as plt
@@ -166,8 +165,6 @@ class CorrFuncTDC(CorrFuncData):
     ):
         """Doc."""
 
-        tic = time.perf_counter()
-
         print("\nLoading FPGA data:")
 
         if not (fpathes := glob.glob(fpathtmpl)):
@@ -175,18 +172,15 @@ class CorrFuncTDC(CorrFuncData):
 
         # order filenames -
         # splits in folderpath and filename template
-        _, fnametmpl = os.path.split(fpathtmpl)
+        _, self.template = os.path.split(fpathtmpl)
         # splits filename template into the name template proper and its extension
-        _, file_extension = os.path.splitext(fnametmpl)
+        _, file_extension = os.path.splitext(self.template)
         fpathes.sort(key=lambda file_path: int(re.split(f"(\\d+){file_extension}", file_path)[1]))
 
         n_files = len(fpathes)
 
         for idx, file_path in enumerate(fpathes):
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
-
-            # get filename (for later)
-            _, fname = os.path.split(file_path)
 
             # load file
             file_dict = load_file_dict(file_path, file_extension)
@@ -204,6 +198,8 @@ class CorrFuncTDC(CorrFuncData):
                 np.array(full_data["data"]).astype("B"), version=full_data["version"], verbose=True
             )
             print("Done.")
+
+            p.file_num = idx + 1
 
             self.laser_freq_hz = full_data["laser_freq_mhz"] * 1e6
             self.fpga_freq_hz = full_data["fpga_freq_mhz"] * 1e6
@@ -364,8 +360,8 @@ class CorrFuncTDC(CorrFuncData):
                 if not no_plot:
                     fig = plt.figure()
                     ax = fig.add_subplot(111)
-                    ax.set_title(fname)
-                    ax.set_xlabel("Point Number")
+                    ax.set_title(f"file No. {p.file_num} of {self.template}")
+                    ax.set_xlabel("Pixel Number")
                     ax.set_ylabel("Line Number")
                     ax.imshow(cnt)
                     ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
@@ -387,7 +383,6 @@ class CorrFuncTDC(CorrFuncData):
                 self.type = "static"
                 pass
 
-            p.fname = fname
             p.file_path = file_path
             self.data.append(p)
 
@@ -402,9 +397,7 @@ class CorrFuncTDC(CorrFuncData):
             )
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
-        print(
-            f"Finished loading FPGA data ({len(self.data)}/{n_files} files used). Process took {time.perf_counter() - tic:.2f} s\n"
-        )
+        print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
 
     def correlate_regular_data(
         self,
@@ -440,10 +433,13 @@ class CorrFuncTDC(CorrFuncData):
 
         self.total_duration_skipped = 0
 
+        if verbose:
+            print(f"Correlating {self.template}:", end=" ")
+
         for p in self.data:
 
             if verbose:
-                print(f"Correlating {p.fname}...")
+                print(f"({p.file_num})", end=" ")
             # find additional outliers
             time_stamps = np.diff(p.runtime)
             # for exponential distribution MEDIAN and MAD are the same, but for
@@ -518,9 +514,9 @@ class CorrFuncTDC(CorrFuncData):
         self.cf_cr = np.array(self.cf_cr)
 
         self.total_duration = sum(duration)
-        if verbose:
+        if verbose and self.total_duration_skipped:
             print(
-                f"{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
+                f"Done.\n{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
             )
 
     def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True):
@@ -537,11 +533,10 @@ class CorrFuncTDC(CorrFuncData):
         self.countrate = []
         self.total_duration_skipped = 0
 
-        tic = time.perf_counter()
-        print("Correlating angular scan data:")
+        print(f"Correlating angular scan data ({self.template}):", end=" ")
 
         for p in self.data:
-            print(f"Correlating {p.fname}...", end=" ")
+            print(f"({p.file_num})", end=" ")
 
             time_stamps = np.diff(p.runtime)
             line_num = p.line_num
@@ -608,7 +603,7 @@ class CorrFuncTDC(CorrFuncData):
                 self.countrate.append(cf.countrate)
                 self.cf_cr.append(cf.countrate * cf.corrfunc - self.after_pulse[: cf.corrfunc.size])
 
-            print("Done.")
+        print("- Done.")
 
         len_lag = len(self.lag)
         for idx in range(len(self.corrfunc)):  # zero pad
@@ -627,10 +622,6 @@ class CorrFuncTDC(CorrFuncData):
             print(
                 f"{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
             )
-
-        print(
-            f"Finished correlating angular scan data. Process took {time.perf_counter() - tic:.2f} s\n"
-        )
 
 
 @nb.njit(cache=True)
