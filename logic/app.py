@@ -31,6 +31,10 @@ DVC_NICKS = (
     "pixel_clock",
 )
 
+# TODO - add check to see which PC/laptop is running app,
+# and if found property is in a ready-made dictionary, load relevant settings
+# otherwise only one default can be selected
+
 
 class App:
     """Doc."""
