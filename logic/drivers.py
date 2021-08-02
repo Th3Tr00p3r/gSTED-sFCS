@@ -1,6 +1,7 @@
 """Drivers Module."""
 
 import re
+from contextlib import suppress
 from types import SimpleNamespace
 from typing import List
 
@@ -270,7 +271,8 @@ class PyVISA:
         # open and save the opened ones in a list
         inst_list = []
         for resource_name in resource_address_tuple:
-            try:
+            with suppress(visa.errors.VisaIOError):
+                # VisaIOError - failed to open instrument, skip
                 # try to open instrument
                 inst = self._rm.open_resource(
                     resource_name,
@@ -279,10 +281,6 @@ class PyVISA:
                     timeout=50,  # ms
                     open_timeout=50,  # ms
                 )
-            except visa.errors.VisaIOError:
-                # failed to open instrument, skip
-                pass
-            else:
                 # managed to open instrument, add to list.
                 inst_list.append(inst)
 
@@ -300,11 +298,9 @@ class PyVISA:
                 break
 
         # close all saved resources
-        try:
+        with suppress(visa.errors.VisaIOError):
+            # VisaIOError - this happens if device was disconnected during the autofind process...
             [inst.close() for inst in inst_list]
-        except visa.errors.VisaIOError:
-            # this happens if device was disconnected during the autofind process...
-            pass
 
     def open_inst(self) -> None:
         """Doc."""

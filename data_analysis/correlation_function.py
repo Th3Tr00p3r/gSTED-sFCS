@@ -27,7 +27,7 @@ class CorrFuncData:
         self,
         rejection=2,
         reject_n_worst=None,
-        norm_range=np.array([1e-3, 2e-3]),
+        norm_range=(1e-3, 2e-3),
         delete_list=[],
         no_plot=True,
         use_numba=True,
@@ -709,7 +709,7 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
             logging.warning(f"Auto correlation of line #{j} has failed. Skipping.")
         else:
             c = c / prof.mean() ** 2 - 1
-            c[0] = c[0] - 1 / prof.mean()  # subtracting shot noise, small stuff really
+            c[0] -= 1 / prof.mean()  # subtracting shot noise, small stuff really
             image_line_corr.append(
                 {
                     "lag": lags * 1000 / sampling_freq,  # in ms

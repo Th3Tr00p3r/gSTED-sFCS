@@ -4,6 +4,7 @@ import asyncio
 import sys
 import time
 from collections import deque
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import List
 
@@ -288,8 +289,8 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         z_chan_spcs = []
         ao_data_xy = np.empty(shape=(0,))
         ao_data_row_idx = 0
-        for ax, use_ax, ax_chn_spcs in zip("XYZ", axes_to_use, self.ao_chan_specs):
-            if use_ax is True:
+        for ax, is_ax_used, ax_chn_spcs in zip("XYZ", axes_to_use, self.ao_chan_specs):
+            if is_ax_used:
                 if ax in "XY":
                     xy_chan_spcs.append(ax_chn_spcs)
                     if ao_data_xy.size == 0:
@@ -335,16 +336,15 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 self.start_tasks("ao")
 
         except Exception as exc:
+            # TODO: make this exception more specific (DaqError?)
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def init_ai_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
 
-        try:
-            self.last_int_ao = self.ai_buffer[-1][3:]
-        except (AttributeError, IndexError):
+        with suppress(AttributeError, IndexError):
             # case ai_buffer not created yet, or just created and not populated yet
-            pass
+            self.last_int_ao = self.ai_buffer[-1][3:]
 
         if type == "circular":
             if size is None:
@@ -514,13 +514,11 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         else:
             # if buffer is too short for the requested interval, average over whole buffer
             interval = len(self.ci_buffer) * (1 / rate)
-            try:
+            with suppress(IndexError):
+                # IndexError - buffer just initialized and is empty, keep last value
                 self.avg_cnt_rate_khz = (
                     (self.ci_buffer[-1] - self.ci_buffer[0]) / interval / 1000
                 )  # Hz -> KHz
-            except IndexError:
-                # buffer just initialized and is empty, keep last value
-                pass
 
     def init_ci_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
