@@ -1,6 +1,7 @@
 """ GUI - signals and slots"""
 
 import logging
+from contextlib import suppress
 from typing import Tuple
 
 import numpy as np
@@ -553,12 +554,8 @@ class ImageScanDisplay:
             self.hLine = pg.InfiniteLine(angle=0, movable=True)
             self.vb.addItem(self.vLine)
             self.vb.addItem(self.hLine)
-            try:
-                # keep crosshair at last position
-                self.move_crosshair(self.last_roi)
-            except AttributeError:
-                # case first image since application loaded (no last_roi)
-                pass
+            with suppress(AttributeError):  # AttributeError -  first image since init
+                self.move_crosshair(self.last_roi)  # keep crosshair at last position
             self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
 
         self.vb.autoRange()
@@ -575,12 +572,7 @@ class ImageScanDisplay:
         # TODO: selected position is not accurate for some reason.
         # TODO: also note the location and the value at that point on the GUI (check out pyqtgraph examples)
 
-        try:
+        with suppress(AttributeError):  # AttributeError - outside image
             pos = evt.pos()
-        except AttributeError:
-            # outside image
-            pass
-        else:
-            #            if self.vb.sceneBoundingRect().contains(pos):
             mousePoint = self.vb.mapSceneToView(pos)
             self.move_crosshair(loc=(mousePoint.x(), mousePoint.y()))

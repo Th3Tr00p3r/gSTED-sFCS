@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 from collections import deque
+from contextlib import suppress
 
 from utilities.errors import err_hndlr
 
@@ -55,7 +56,6 @@ class Timeout:
                 self._update_dep(),
                 self._updt_application_log(),
                 self._update_gui(),
-                # self._updt_um232h_status(), # TODO: this seems to cause an issue during measurements (noticed in solution scan) - try to see if it does and catch the error
             )
         except RuntimeError as exc:
             err_hndlr(exc, sys._getframe(), locals())
@@ -134,7 +134,9 @@ class Timeout:
 
             app = self._app
 
-            try:
+            with suppress(IndexError, AttributeError):
+                # IndexError - AI buffer has just been initialized
+                # AttributeError - Scanners failed to initialize
                 (
                     x_ai,
                     y_ai,
@@ -144,12 +146,6 @@ class Timeout:
                     z_ao_int,
                 ) = app.devices.scanners.ai_buffer[-1]
 
-            except (IndexError, AttributeError):
-                # IndexError - AI buffer has just been initialized
-                # AttributeError - Scanners failed to initialize
-                pass
-
-            else:
                 (x_um, y_um, z_um) = tuple(
                     (axis_vltg - axis_org) * axis_ratio
                     for axis_vltg, axis_ratio, axis_org in zip(
@@ -196,27 +192,20 @@ class Timeout:
         def updt_meas_progbar(meas) -> None:
             """Doc."""
 
-            try:
+            with suppress(AttributeError):
+                # AttributeError - depletion  turned on before beginning measurement (5 s wait)
                 if meas.type == "SFCSSolution":
                     progress = (
                         meas.time_passed_s / meas.duration_s * meas.prog_bar_wdgt.obj.maximum()
                     )
+                    raise ValueError("TESTESTEST")  # TESTESTEST
                 elif meas.type == "SFCSImage":
                     progress = (
                         meas.time_passed_s
                         / meas.est_total_duration_s
                         * meas.prog_bar_wdgt.obj.maximum()
                     )
-                else:
-                    raise ValueError("Invalid measurement type.")
                 meas.prog_bar_wdgt.set(progress)
-
-            except AttributeError:
-                # happens when depletion is turned on before beginning measurement (5 s wait)
-                pass
-
-            except ValueError as exc:
-                err_hndlr(exc, sys._getframe(), locals())
 
         while self.not_finished:
 
@@ -235,25 +224,6 @@ class Timeout:
                 updt_meas_progbar(meas)
 
             await asyncio.sleep(self.updt_intrvl["gui"])
-
-    #    async def _updt_um232h_status(self):
-    #        """Doc."""
-    #
-    #        while self.not_finished:
-    #
-    #            try:
-    #                rx_bytes = self._app.devices.UM232H.get_status()
-    #
-    #            except DeviceError:
-    #                pass
-    #
-    #            else:
-    #                fill_perc = rx_bytes / self.um232_buff_sz * 100
-    #                if fill_perc > 90:
-    #                    logging.warning("UM232H buffer might be overfilling")
-    #
-    #            finally:
-    #                await asyncio.sleep(self.updt_intrvl["gui"])
 
     async def _update_dep(self) -> None:
         """Update depletion laser GUI"""
