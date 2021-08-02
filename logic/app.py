@@ -138,10 +138,10 @@ class App:
                 return os.path.join(self.SETTINGS_DIR_PATH, f.readline())
         except FileNotFoundError:
             print(
-                "Warning - default settings choice file not found! using 'default_settings'.",
+                "Warning - default settings choice file not found! using 'default_settings_lab'.",
                 end=" ",
             )
-            return os.path.join(self.SETTINGS_DIR_PATH, "default_settings")
+            return os.path.join(self.SETTINGS_DIR_PATH, "default_settings_lab")
 
     def init_devices(self):
         """
