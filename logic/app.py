@@ -15,25 +15,27 @@ import utilities.widget_collections as wdgt_colls
 from logic.timeout import Timeout
 from utilities.dialog import Question
 
-DEFAULT_LOADOUT_FILE_PATH = "./settings/loadouts/default_loadout.csv"
-DEFAULT_SETTINGS_FILE_PATH = "./settings/default_settings.csv"
-DEFAULT_LOG_PATH = "./log/"
-DVC_NICKS = (
-    "exc_laser",
-    "dep_shutter",
-    "TDC",
-    "dep_laser",
-    "stage",
-    "UM232H",
-    "camera",
-    "scanners",
-    "photon_detector",
-    "pixel_clock",
-)
-
 
 class App:
     """Doc."""
+
+    SETTINGS_DIR_PATH = "./settings/"
+    LOADOUT_DIR_PATH = os.path.join(SETTINGS_DIR_PATH, "loadouts/")
+    DEFAULT_LOADOUT_FILE_PATH = os.path.join(LOADOUT_DIR_PATH, "default_loadout")
+    DEFAULT_SETTINGS_FILE_PATH = os.path.join(SETTINGS_DIR_PATH, "default_settings")
+    DEFAULT_LOG_PATH = "./log/"
+    DVC_NICKS = (
+        "exc_laser",
+        "dep_shutter",
+        "TDC",
+        "dep_laser",
+        "stage",
+        "UM232H",
+        "camera",
+        "scanners",
+        "photon_detector",
+        "pixel_clock",
+    )
 
     def __init__(self, loop):
         """Doc."""
@@ -54,9 +56,9 @@ class App:
         print("Initializing GUI...", end=" ")
         self.gui = SimpleNamespace()
         self.gui.main = gui.gui.MainWin(self)
-        self.gui.main.imp.load(DEFAULT_LOADOUT_FILE_PATH)
+        self.gui.main.imp.load(self.DEFAULT_LOADOUT_FILE_PATH)
         self.gui.settings = gui.gui.SettWin(self)
-        self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
+        self.gui.settings.imp.load(self.default_settings_path())
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
         # populate all widget collections in 'utilities.widget_collections' with objects
@@ -112,10 +114,10 @@ class App:
         and ensure folder and initial files exist.
         """
 
-        os.makedirs(DEFAULT_LOG_PATH, exist_ok=True)
+        os.makedirs(self.DEFAULT_LOG_PATH, exist_ok=True)
         init_log_file_list = ["debug", "log"]
         for init_log_file in init_log_file_list:
-            file_path = os.path.join(DEFAULT_LOG_PATH, init_log_file)
+            file_path = os.path.join(self.DEFAULT_LOG_PATH, init_log_file)
             open(file_path, "a").close()
 
         with open("logging_config.yaml", "r") as f:
@@ -129,6 +131,18 @@ class App:
             rel_path = getattr(self.gui.settings, gui_object_name).text()
             os.makedirs(rel_path, exist_ok=True)
 
+    def default_settings_path(self) -> str:
+        """Doc."""
+        try:
+            with open(os.path.join(self.SETTINGS_DIR_PATH, "default_settings_choice"), "r") as f:
+                return os.path.join(self.SETTINGS_DIR_PATH, f.readline())
+        except FileNotFoundError:
+            print(
+                "Warning - default settings choice file not found! using 'default_settings'.",
+                end=" ",
+            )
+            return os.path.join(self.SETTINGS_DIR_PATH, "default_settings")
+
     def init_devices(self):
         """
         Goes through a list of device nicknames,
@@ -136,7 +150,7 @@ class App:
         """
 
         self.devices = SimpleNamespace()
-        for nick in DVC_NICKS:
+        for nick in self.DVC_NICKS:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
             param_dict = dvc_attrs.param_widgets.hold_objects(app=self).read_dict_from_gui(self)
@@ -161,7 +175,7 @@ class App:
         def close_all_dvcs(app):
             """Doc."""
 
-            for nick in DVC_NICKS:
+            for nick in self.DVC_NICKS:
                 dvc = getattr(app.devices, nick)
                 dvc.toggle(False)
 
@@ -205,7 +219,7 @@ class App:
             lights_out(self.gui.main)
             self.gui.main.depActualCurr.setValue(0)
             self.gui.main.depActualPow.setValue(0)
-            self.gui.main.imp.load(DEFAULT_LOADOUT_FILE_PATH)
+            self.gui.main.imp.load(self.DEFAULT_LOADOUT_FILE_PATH)
             #            self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
 
             self.init_devices()

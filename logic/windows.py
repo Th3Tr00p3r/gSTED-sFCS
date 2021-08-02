@@ -23,9 +23,6 @@ from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import DeviceError, err_hndlr
 
-SETTINGS_DIR_PATH = "./settings/"
-LOADOUT_DIR_PATH = "./settings/loadouts/"
-
 
 # TODO: refactoring - this is getting too big, I need to think on how to break it down.
 # Perhaps I can divide MainWin into seperate classes for each tab (image, solution, analysis).
@@ -63,11 +60,10 @@ class MainWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Loadout",
-            LOADOUT_DIR_PATH,
-            "CSV Files(*.csv *.txt)",
+            self._app.LOADOUT_DIR_PATH,
         )
         if file_path != "":
-            helper.gui_to_csv(self._gui, file_path)
+            helper.write_gui_to_file(self._gui, file_path)
             logging.debug(f"Loadout saved as: '{file_path}'")
 
     def load(self, file_path="") -> None:
@@ -77,11 +73,10 @@ class MainWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Loadout",
-                LOADOUT_DIR_PATH,
-                "CSV Files(*.csv *.txt)",
+                self._app.LOADOUT_DIR_PATH,
             )
         if file_path != "":
-            helper.csv_to_gui(file_path, self._gui)
+            helper.read_file_to_gui(file_path, self._gui)
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     def dvc_toggle(
@@ -699,27 +694,27 @@ class MainWin:
             # no directories found... (dir_years is None or [])
             pass
 
+    def pkl_and_mat_templates(self, dir_path: str, is_solution_type: bool) -> Iterable:
+        """Doc."""
+
+        pkl_template_set = {
+            (re.sub("[0-9]+.pkl", "*.pkl", item) if is_solution_type else item)
+            for item in os.listdir(dir_path)
+            if item.endswith(".pkl")
+        }
+        mat_template_set = {
+            (re.sub("[0-9]+.mat", "*.mat", item) if is_solution_type else item)
+            for item in os.listdir(dir_path)
+            if item.endswith(".mat")
+        }
+        return sorted(pkl_template_set.union(mat_template_set))
+
     def populate_data_templates_from_day(self, day: str) -> None:
         """Doc."""
 
-        def pkl_and_mat_templates(dir_path: str, is_solution_type: bool) -> Iterable:
-            """Doc."""
-
-            pkl_template_set = {
-                (re.sub("[0-9]+.pkl", "*.pkl", item) if is_solution_type else item)
-                for item in os.listdir(dir_path)
-                if item.endswith(".pkl")
-            }
-            mat_template_set = {
-                (re.sub("[0-9]+.mat", "*.mat", item) if is_solution_type else item)
-                for item in os.listdir(dir_path)
-                if item.endswith(".mat")
-            }
-            return sorted(pkl_template_set.union(mat_template_set))
-
         if not day:
             # ignore if combobox was just cleared
-            self._app.analysis.dir_path = None
+            self._app.analysis.curr_dir_path = None
             return
 
         # define widgets
@@ -740,10 +735,12 @@ class MainWin:
         templates_combobox.clear()
 
         try:
-            self._app.analysis.dir_path = os.path.join(
+            self._app.analysis.curr_dir_path = os.path.join(
                 save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir
             )
-            templates = pkl_and_mat_templates(self._app.analysis.dir_path, is_solution_type)
+            templates = self.pkl_and_mat_templates(
+                self._app.analysis.curr_dir_path, is_solution_type
+            )
             templates_combobox.addItems(templates)
         except (TypeError, IndexError):
             # no directories found... (dir_years is None or [])
@@ -753,9 +750,9 @@ class MainWin:
         """Doc."""
 
         try:
-            dir_path = os.path.realpath(self._app.analysis.dir_path)
+            dir_path = os.path.realpath(self._app.analysis.curr_dir_path)
         except (AttributeError, TypeError):
-            # self._app.analysis.dir_path does not yet exist or is None (no date dir found)
+            # self._app.analysis.curr_dir_path does not yet exist or is None (no date dir found)
             pass
         else:
             if os.path.isdir(dir_path):
@@ -772,7 +769,7 @@ class MainWin:
         curr_template = data_import_wdgts.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
         try:
-            file_path = os.path.join(self._app.analysis.dir_path, log_filename)
+            file_path = os.path.join(self._app.analysis.curr_dir_path, log_filename)
         except (AttributeError, TypeError):
             # no directories found
             pass
@@ -784,10 +781,37 @@ class MainWin:
 
             self.update_dir_log_wdgt(curr_template)
 
+    def get_daily_alignment(self):
+        """Doc."""
+
+        template = self.pkl_and_mat_templates(self._app.analysis.curr_dir_path, True)[0]
+        # TODO: loading properly (err hndling) should be a seperate function
+        full_data = CorrFuncTDC()
+        try:
+            full_data.read_fpga_data(
+                os.path.join(self._app.analysis.curr_dir_path, template),
+                no_plot=True,
+            )
+            full_data.correlate_regular_data()
+
+        except AttributeError:
+            # No directories found
+            pass
+
+        except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
+            err_hndlr(exc, sys._getframe(), locals())
+
+        full_data.average_correlation()
+        full_data.fit_correlation_function()
+        fit_params = full_data.fit_param["diffusion_3d_fit"]
+        g0, tau, _ = fit_params["beta"]
+
+        return g0, tau
+
     def update_dir_log_wdgt(self, template: str) -> None:
         """Doc."""
 
-        def initialize_dir_log_file(file_path) -> None:
+        def initialize_dir_log_file(file_path, g0=None, tau=None) -> None:
             """Doc."""
 
             basic_header = []
@@ -796,7 +820,9 @@ class MainWin:
             basic_header.append(["-" * 40])
             basic_header.append(["Excitation Power: "])
             basic_header.append(["Depletion Power: "])
-            basic_header.append(["Free Atto FCS @ 12 uW: G0 = _G0_ k/ tau = _tau_ ms"])
+            basic_header.append(
+                [f"Free Atto FCS @ 12 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"]
+            )
             basic_header.append(["-" * 40])
             basic_header.append(["EDIT_HERE"])
 
@@ -810,14 +836,15 @@ class MainWin:
                 log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
             elif data_import_wdgts.is_image_type.get():
                 log_filename = re.sub("\\.\\w{3}", ".log", template)
-            file_path = os.path.join(self._app.analysis.dir_path, log_filename)
+            file_path = os.path.join(self._app.analysis.curr_dir_path, log_filename)
         except TypeError:
-            # 'self._app.analysis.dir_path' is 'None'
+            # 'self._app.analysis.curr_dir_path' is 'None'
             data_import_wdgts.log_text.set("")
             return
         else:
             if not os.path.isfile(file_path):
                 try:
+                    g0, tau = self.get_daily_alignment()
                     initialize_dir_log_file(file_path)
                 except OSError:
                     # missing file/folder (deleted during operation)
@@ -852,7 +879,7 @@ class MainWin:
 
         try:
             s.read_fpga_data(
-                os.path.join(self._app.analysis.dir_path, current_template),
+                os.path.join(self._app.analysis.curr_dir_path, current_template),
                 fix_shift=fix_shift,
                 no_plot=True,
             )
@@ -940,6 +967,8 @@ class MainWin:
                 self.display_scan_image(file_num=1)
 
                 # calculate average and display
+                # TODO: perhaps should average by default, before displaying
+                # that way I can put it all in one function?
                 print("Averaging and plotting...", end=" ")
                 self.calculate_and_show_sol_mean_acf()
 
@@ -1064,13 +1093,16 @@ class SettWin:
         if self.check_on_close is True:
             curr_file_path = self._gui.settingsFileName.text()
 
-            current_state = set(helper.wdgt_children_as_row_list(self._gui))
-            last_loaded_state = set(helper.csv_rows_as_list(curr_file_path))
+            current_state = set(helper.wdgt_items_to_text_lines(self._gui))
+            last_loaded_state = set(helper.read_file_to_list(curr_file_path))
 
             if not len(current_state) == len(last_loaded_state):
-                raise RuntimeError(
-                    "Something was changed in the GUI. "
-                    "This probably means that the default settings need to be overwritten"
+                err_hndlr(
+                    RuntimeError(
+                        "Something was changed in the GUI. This probably means that the default settings need to be overwritten"
+                    ),
+                    sys._getframe(),
+                    locals(),
                 )
 
             if current_state != last_loaded_state:
@@ -1093,31 +1125,29 @@ class SettWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
-            SETTINGS_DIR_PATH,
-            "CSV Files(*.csv *.txt)",
+            self._app.SETTINGS_DIR_PATH,
         )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
-            helper.gui_to_csv(self._gui.frame, file_path)
+            helper.write_gui_to_file(self._gui.frame, file_path)
             logging.debug(f"Settings file saved as: '{file_path}'")
 
     def load(self, file_path=""):
         """
-        Read 'file_path' (csv) and write to matching QLineEdit,
-        QspinBox and QdoubleSpinBox of settings window.
+        Read 'file_path' (csv) and write to matching widgets of settings window.
         Show 'file_path' in 'settingsFileName' QLineEdit.
+        Default settings is chosen according to './settings/default_settings_choice'.
         """
 
         if not file_path:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
-                SETTINGS_DIR_PATH,
-                "CSV Files(*.csv *.txt)",
+                self._app.SETTINGS_DIR_PATH,
             )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
-            helper.csv_to_gui(file_path, self._gui.frame)
+            helper.read_file_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
 
     def confirm(self):

@@ -393,13 +393,13 @@ class SettWin(QDialog):
 
     @pyqtSlot()
     def on_saveButton_released(self) -> None:
-        """Save settings as .csv"""
+        """Save settings."""
 
         self.imp.save()
 
     @pyqtSlot()
     def on_loadButton_released(self) -> None:
-        """load settings .csv file"""
+        """load settings."""
 
         self.imp.load()
 
