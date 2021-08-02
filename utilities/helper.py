@@ -169,7 +169,7 @@ def write_gui_to_file(parent_wdgt, file_path):
 
     lines = "\n".join(wdgt_items_to_text_lines(parent_wdgt))
     with open(file_path, "w") as f:
-        f.writeline(lines)
+        f.write(lines)
 
 
 def read_file_to_list(file_path) -> List[str]:
