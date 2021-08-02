@@ -31,10 +31,10 @@ excTriggerIntAddr,Dev3/port0/
 excAddr,Dev1/port0/line6
 depShutterAddr,Dev3/port0/line11
 depModelQuery,getmodel
-dataPath,D:/OneDrive - post.bgu.ac.il/gSTED_sFCS_Data/
+dataPath,./data/
 solSubdirName,solution
 imgSubdirName,image
-camDataPath,D:/OneDrive - post.bgu.ac.il/gSTED_sFCS_Data/camera photos/
+camDataPath,./data/camera photos/
 logDataPath,./log/
 um232LatencyTimerVal,2
 um232Timeout,2
@@ -55,6 +55,7 @@ counterTriggerEdge,Rising
 AOtriggerEdge,Rising
 AOwfType,Sine
 excTriggerSrc,External (TDC)
+qt_tabwidget_stackedwidget,0
 stackedWidget,1
 tabWidget,0
 counterCIdupCountPrevention,True
