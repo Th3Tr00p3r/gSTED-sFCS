@@ -844,8 +844,8 @@ class MainWin:
         else:
             if not os.path.isfile(file_path):
                 try:
-                    g0, tau = self.get_daily_alignment()
-                    initialize_dir_log_file(file_path)
+                    g0, tau = 0, 0  # TESTESTEST self.get_daily_alignment()
+                    initialize_dir_log_file(file_path, g0, tau)
                 except OSError:
                     # missing file/folder (deleted during operation)
                     data_import_wdgts.log_text.set("")
