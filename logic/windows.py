@@ -671,12 +671,10 @@ class MainWin:
 
         days_combobox.clear()
 
-        try:
+        with suppress(TypeError, IndexError):
+            # no directories found... (dir_years is None or [])
             dir_days = helper.dir_date_parts(save_path, sub_dir, year=year, month=month)
             days_combobox.addItems(dir_days)
-        except (TypeError, IndexError):
-            # no directories found... (dir_years is None or [])
-            pass
 
     def pkl_and_mat_templates(self, dir_path: str, is_solution_type: bool) -> Iterable:
         """Doc."""
@@ -718,7 +716,8 @@ class MainWin:
 
         templates_combobox.clear()
 
-        try:
+        with suppress(TypeError, IndexError):
+            # no directories found... (dir_years is None or [])
             self._app.analysis.curr_dir_path = os.path.join(
                 save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir
             )
@@ -726,19 +725,13 @@ class MainWin:
                 self._app.analysis.curr_dir_path, is_solution_type
             )
             templates_combobox.addItems(templates)
-        except (TypeError, IndexError):
-            # no directories found... (dir_years is None or [])
-            pass
 
     def open_data_dir(self) -> None:
         """Doc."""
 
-        try:
-            dir_path = os.path.realpath(self._app.analysis.curr_dir_path)
-        except (AttributeError, TypeError):
+        with suppress(AttributeError, TypeError):
             # self._app.analysis.curr_dir_path does not yet exist or is None (no date dir found)
-            pass
-        else:
+            dir_path = os.path.realpath(self._app.analysis.curr_dir_path)
             if os.path.isdir(dir_path):
                 webbrowser.open(dir_path)
             else:
@@ -752,12 +745,9 @@ class MainWin:
         text_rows = data_import_wdgts.log_text.get().split("\n")
         curr_template = data_import_wdgts.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
-        try:
-            file_path = os.path.join(self._app.analysis.curr_dir_path, log_filename)
-        except (AttributeError, TypeError):
+        with suppress(AttributeError, TypeError):
             # no directories found
-            pass
-        else:
+            file_path = os.path.join(self._app.analysis.curr_dir_path, log_filename)
             with open(file_path, "w", newline="") as f:
                 writer = csv.writer(f)
                 for row in text_rows:
@@ -851,15 +841,13 @@ class MainWin:
                     data_import_wdgts.log_text.set("")
                     return
 
-        try:
+        with suppress(FileNotFoundError):
             text_rows = []
             with open(file_path, "r", newline="") as f:
                 reader = csv.reader(f)
                 for row in reader:
                     text_rows.append(row[0])
-        except FileNotFoundError:
-            pass
-        else:
+
             data_import_wdgts.log_text.set("\n".join(text_rows))
 
     def import_sol_data(self) -> None:
@@ -878,19 +866,18 @@ class MainWin:
         fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
 
         try:
-            s.read_fpga_data(
-                os.path.join(self._app.analysis.curr_dir_path, current_template),
-                fix_shift=fix_shift,
-                no_plot=True,
-            )
-            if s.type == "angular_scan":
-                s.correlate_angular_scan_data()
-            elif s.type == "static":
-                s.correlate_regular_data()
+            with suppress(AttributeError):
+                # No directories found
+                s.read_fpga_data(
+                    os.path.join(self._app.analysis.curr_dir_path, current_template),
+                    fix_shift=fix_shift,
+                    no_plot=True,
+                )
+                if s.type == "angular_scan":
+                    s.correlate_angular_scan_data()
+                elif s.type == "static":
+                    s.correlate_regular_data()
 
-        except AttributeError:
-            # No directories found
-            pass
         except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
             err_hndlr(exc, sys._getframe(), locals())
 
@@ -922,15 +909,12 @@ class MainWin:
 
             logging.info(f"Data loaded for analysis: {item}")
 
-        try:
+        with suppress(DeviceError):
+            # devices not initialized
             self._app.devices.scanners.init_ai_buffer()
             self._app.devices.scanners.start_tasks("ai")
             self._app.devices.photon_detector.init_ci_buffer()
             self._app.devices.photon_detector.start_tasks("ci")
-        except DeviceError:
-            # devices not initialized
-            pass
-        else:
             logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
 
     def get_current_full_data(self) -> CorrFuncTDC:
@@ -990,15 +974,13 @@ class MainWin:
     def display_scan_image(self, file_num):
         """Doc."""
 
-        try:
+        with suppress(IndexError, KeyError):
+            # IndexError - data import failed
+            # KeyError - data deleted
             full_data = self.get_current_full_data()
             img = full_data.data[file_num - 1].image
             roi = full_data.data[file_num - 1].roi
-        except (IndexError, KeyError):
-            # IndexError - data import failed
-            # KeyError - data deleted
-            pass
-        else:
+
             scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
             scan_image_disp.plot_scan_image_and_roi(img, roi)
             scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
@@ -1018,16 +1000,10 @@ class MainWin:
             else:  # use all rows
                 avg_corr_args = dict(rejection=None)
 
-            try:
-                full_data.average_correlation(**avg_corr_args)
-            except AttributeError:
+            with suppress(AttributeError):
                 # no data loaded
-                pass
-            except RuntimeWarning as exc:
-                # some zero division issue, happens when too few rows are used (less than two?)
-                err_hndlr(exc, sys._getframe(), locals())
-                pass
-            else:
+                full_data.average_correlation(**avg_corr_args)
+
                 wdgts.row_acf_disp.obj.plot_acfs(
                     full_data.lag,
                     full_data.average_cf_cr,
