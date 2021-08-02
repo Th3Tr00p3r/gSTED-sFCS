@@ -157,29 +157,30 @@ class CorrFuncTDC(CorrFuncData):
 
     def read_fpga_data(
         self,
-        fpathtmpl,
+        file_template_path,
         fix_shift=False,
-        line_end_adder=1000,
         roi_selection="auto",
         no_plot=False,
     ):
         """Doc."""
 
-        print("\nLoading FPGA data:")
+        print("\nLoading FPGA data from hard drive:")
 
-        if not (fpathes := glob.glob(fpathtmpl)):
+        if not (file_paths := glob.glob(file_template_path)):
             raise FileNotFoundError("No files found! Check file template!")
 
         # order filenames -
         # splits in folderpath and filename template
-        _, self.template = os.path.split(fpathtmpl)
+        _, self.template = os.path.split(file_template_path)
         # splits filename template into the name template proper and its extension
         _, file_extension = os.path.splitext(self.template)
-        fpathes.sort(key=lambda file_path: int(re.split(f"(\\d+){file_extension}", file_path)[1]))
+        file_paths.sort(
+            key=lambda file_path: int(re.split(f"(\\d+){file_extension}", file_path)[1])
+        )
 
-        n_files = len(fpathes)
+        n_files = len(file_paths)
 
-        for idx, file_path in enumerate(fpathes):
+        for idx, file_path in enumerate(file_paths):
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
 
             # load file
@@ -222,7 +223,7 @@ class CorrFuncTDC(CorrFuncData):
                     ppl_tot = angular_scan_settings["points_per_line_total"]
                     n_lines = angular_scan_settings["n_lines"]
                     self.angular_scan_settings = angular_scan_settings
-                    self.line_end_adder = line_end_adder
+                    self.line_end_adder = 1000
 
                 print("Converting angular scan to image...", end=" ")
 
@@ -265,7 +266,7 @@ class CorrFuncTDC(CorrFuncData):
                 m2 = np.sum(bw, axis=1)
                 bw[m2 < 0.5 * m2.max(), :] = False
 
-                while line_end_adder < bw.shape[0]:
+                while self.line_end_adder < bw.shape[0]:
                     self.line_end_adder *= 10
 
                 print("Building ROI...", end=" ")
@@ -296,7 +297,10 @@ class CorrFuncTDC(CorrFuncData):
 
                         line_start_lables.extend([-row_idx for elem in range(len(line_starts_new))])
                         line_stop_labels.extend(
-                            [(-row_idx - line_end_adder) for elem in range(len(line_stops_new))]
+                            [
+                                (-row_idx - self.line_end_adder)
+                                for elem in range(len(line_stops_new))
+                            ]
                         )
                         line_starts.extend(line_starts_new)
                         line_stops.extend(line_stops_new)
