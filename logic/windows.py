@@ -23,9 +23,6 @@ from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import DeviceError, err_hndlr
 
-SETTINGS_DIR_PATH = "./settings/"
-LOADOUT_DIR_PATH = "./settings/loadouts/"
-
 
 # TODO: refactoring - this is getting too big, I need to think on how to break it down.
 # Perhaps I can divide MainWin into seperate classes for each tab (image, solution, analysis).
@@ -63,11 +60,10 @@ class MainWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Loadout",
-            LOADOUT_DIR_PATH,
-            "CSV Files(*.csv *.txt)",
+            self._app.LOADOUT_DIR_PATH,
         )
         if file_path != "":
-            helper.gui_to_csv(self._gui, file_path)
+            helper.write_gui_to_file(self._gui, file_path)
             logging.debug(f"Loadout saved as: '{file_path}'")
 
     def load(self, file_path="") -> None:
@@ -77,11 +73,10 @@ class MainWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Loadout",
-                LOADOUT_DIR_PATH,
-                "CSV Files(*.csv *.txt)",
+                self._app.LOADOUT_DIR_PATH,
             )
         if file_path != "":
-            helper.csv_to_gui(file_path, self._gui)
+            helper.read_file_to_gui(file_path, self._gui)
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     def dvc_toggle(
@@ -789,7 +784,7 @@ class MainWin:
     def get_daily_alignment(self):
         """Doc."""
 
-        template = self.pkl_and_mat_templates(self._app.analysis.curr_dir_path, True)
+        template = self.pkl_and_mat_templates(self._app.analysis.curr_dir_path, True)[0]
         # TODO: loading properly (err hndling) should be a seperate function
         full_data = CorrFuncTDC()
         try:
@@ -1098,13 +1093,16 @@ class SettWin:
         if self.check_on_close is True:
             curr_file_path = self._gui.settingsFileName.text()
 
-            current_state = set(helper.wdgt_children_as_row_list(self._gui))
-            last_loaded_state = set(helper.csv_rows_as_list(curr_file_path))
+            current_state = set(helper.wdgt_items_to_text_lines(self._gui))
+            last_loaded_state = set(helper.read_file_to_list(curr_file_path))
 
             if not len(current_state) == len(last_loaded_state):
-                raise RuntimeError(
-                    "Something was changed in the GUI. "
-                    "This probably means that the default settings need to be overwritten"
+                err_hndlr(
+                    RuntimeError(
+                        "Something was changed in the GUI. This probably means that the default settings need to be overwritten"
+                    ),
+                    sys._getframe(),
+                    locals(),
                 )
 
             if current_state != last_loaded_state:
@@ -1127,31 +1125,29 @@ class SettWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
-            SETTINGS_DIR_PATH,
-            "CSV Files(*.csv *.txt)",
+            self._app.SETTINGS_DIR_PATH,
         )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
-            helper.gui_to_csv(self._gui.frame, file_path)
+            helper.write_gui_to_file(self._gui.frame, file_path)
             logging.debug(f"Settings file saved as: '{file_path}'")
 
     def load(self, file_path=""):
         """
-        Read 'file_path' (csv) and write to matching QLineEdit,
-        QspinBox and QdoubleSpinBox of settings window.
+        Read 'file_path' (csv) and write to matching widgets of settings window.
         Show 'file_path' in 'settingsFileName' QLineEdit.
+        Default settings is chosen according to './settings/default_settings_choice'.
         """
 
         if not file_path:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
-                SETTINGS_DIR_PATH,
-                "CSV Files(*.csv *.txt)",
+                self._app.SETTINGS_DIR_PATH,
             )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
-            helper.csv_to_gui(file_path, self._gui.frame)
+            helper.read_file_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
 
     def confirm(self):

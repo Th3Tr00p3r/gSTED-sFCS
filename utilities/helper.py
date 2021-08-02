@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import csv
 import functools
 import logging
 import os
+import re
 import time
 from types import SimpleNamespace
 from typing import Callable, List, Union
@@ -125,7 +125,7 @@ def widget_getter_setter_type(widget_class: str) -> (str, str):
         return (None,) * 3
 
 
-def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
+def wdgt_items_to_text_lines(parent_wdgt) -> List[str]:
     """Doc."""
 
     wdgt_types = [
@@ -144,7 +144,7 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
     ]
     children_list = [child for child_list in children_class_lists for child in child_list]
 
-    rows = []
+    lines = []
     for child in children_list:
         child_class = child.__class__.__name__
         child_name = child.objectName()
@@ -159,39 +159,33 @@ def wdgt_children_as_row_list(parent_wdgt) -> List[List[str, str]]:
             # ignore read-only and weird auto-widgets
             continue
 
-        rows.append((child_name, str(val)))
+        lines.append(f"{child_name},{val}")
 
-    return rows
+    return lines
 
 
-def gui_to_csv(parent_wdgt, file_path):
+def write_gui_to_file(parent_wdgt, file_path):
     """Doc."""
 
-    rows = wdgt_children_as_row_list(parent_wdgt)
-
+    lines = wdgt_items_to_text_lines(parent_wdgt)
     with open(file_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(rows)
+        f.writelines(lines)
 
 
-def csv_rows_as_list(file_path) -> List[tuple]:
+def read_file_to_list(file_path) -> List[str]:
     """Doc."""
 
-    rows = []
-    with open(file_path, "r", newline="") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            rows.append(tuple(row))
-    return rows
+    with open(file_path, "r") as f:
+        return f.read().splitlines()
 
 
-def csv_to_gui(file_path, gui_parent):
+def read_file_to_gui(file_path, gui_parent):
     """Doc."""
 
-    rows = csv_rows_as_list(file_path)
+    lines = read_file_to_list(file_path)
 
-    for row in rows:
-        wdgt_name, val = row
+    for line in lines:
+        wdgt_name, val = re.split(",", line, maxsplit=1)
         child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
         _, setter, type_func = widget_getter_setter_type(child.__class__.__name__)
 
