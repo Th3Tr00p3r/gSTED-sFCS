@@ -784,34 +784,46 @@ class MainWin:
     def get_daily_alignment(self):
         """Doc."""
 
-        template = self.pkl_and_mat_templates(self._app.analysis.curr_dir_path, True)[0]
-        # TODO: loading properly (err hndling) should be a seperate function
-        full_data = CorrFuncTDC()
+        date_dir_path = re.sub("solution", "", self._app.analysis.curr_dir_path)
+
         try:
-            full_data.read_fpga_data(
-                os.path.join(self._app.analysis.curr_dir_path, template),
-                no_plot=True,
-            )
-            full_data.correlate_regular_data()
+            template = self.pkl_and_mat_templates(date_dir_path, True)[0]
+        except IndexError:
+            # no alignment file found
+            g0, tau = (None, None)
+        else:
+            # TODO: loading properly (err hndling) should be a seperate function
+            full_data = CorrFuncTDC()
+            try:
+                full_data.read_fpga_data(
+                    os.path.join(date_dir_path, template),
+                    no_plot=True,
+                )
+                full_data.correlate_regular_data()
 
-        except AttributeError:
-            # No directories found
-            pass
+            except AttributeError:
+                # No directories found
+                g0, tau = (None, None)
 
-        except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
-            err_hndlr(exc, sys._getframe(), locals())
+            except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
+                err_hndlr(exc, sys._getframe(), locals())
 
-        full_data.average_correlation()
-        full_data.fit_correlation_function()
-        fit_params = full_data.fit_param["diffusion_3d_fit"]
-        g0, tau, _ = fit_params["beta"]
+            full_data.average_correlation()
+            try:
+                full_data.fit_correlation_function()
+            except fit_tools.FitError:
+                # fit failed (should only save 'fit-succeeded' data as alignment reference...)
+                g0, tau = (None, None)
+            else:
+                fit_params = full_data.fit_param["diffusion_3d_fit"]
+                g0, tau, _ = fit_params["beta"]
 
         return g0, tau
 
     def update_dir_log_wdgt(self, template: str) -> None:
         """Doc."""
 
-        def initialize_dir_log_file(file_path, g0=None, tau=None) -> None:
+        def initialize_dir_log_file(file_path, g0, tau) -> None:
             """Doc."""
 
             basic_header = []
@@ -820,9 +832,12 @@ class MainWin:
             basic_header.append(["-" * 40])
             basic_header.append(["Excitation Power: "])
             basic_header.append(["Depletion Power: "])
-            basic_header.append(
-                [f"Free Atto FCS @ 12 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"]
-            )
+            if g0 is not None:
+                basic_header.append(
+                    [f"Free Atto FCS @ 12 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"]
+                )
+            else:
+                basic_header.append(["Free Atto FCS @ 12 uW: Not Available"])
             basic_header.append(["-" * 40])
             basic_header.append(["EDIT_HERE"])
 
@@ -844,10 +859,11 @@ class MainWin:
         else:
             if not os.path.isfile(file_path):
                 try:
-                    g0, tau = 0, 0  # TESTESTEST self.get_daily_alignment()
+                    g0, tau = self.get_daily_alignment()
                     initialize_dir_log_file(file_path, g0, tau)
-                except OSError:
-                    # missing file/folder (deleted during operation)
+                except (OSError, IndexError):
+                    # OSError - missing file/folder (deleted during operation)
+                    # IndexError - alignment file does not exist
                     data_import_wdgts.log_text.set("")
                     return
 
