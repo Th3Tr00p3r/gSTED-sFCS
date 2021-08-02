@@ -167,9 +167,9 @@ def wdgt_items_to_text_lines(parent_wdgt) -> List[str]:
 def write_gui_to_file(parent_wdgt, file_path):
     """Doc."""
 
-    lines = wdgt_items_to_text_lines(parent_wdgt)
-    with open(file_path, "w", newline="") as f:
-        f.writelines(lines)
+    lines = "\n".join(wdgt_items_to_text_lines(parent_wdgt))
+    with open(file_path, "w") as f:
+        f.writeline(lines)
 
 
 def read_file_to_list(file_path) -> List[str]:
