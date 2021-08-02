@@ -9,6 +9,7 @@ import pickle
 import re
 import sys
 import time
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime as dt
 from types import SimpleNamespace
@@ -76,7 +77,7 @@ class Measurement:
     async def stop(self):
         """Doc."""
 
-        try:
+        with suppress(DeviceError, MeasurementError):
             await self.toggle_lasers(finish=True)
             self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
 
@@ -88,9 +89,6 @@ class Measurement:
                     self._app.gui.main.imp.go_to_origin("XY")
                 elif self.type == "SFCSImage":
                     self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
-
-        except (DeviceError, MeasurementError):
-            pass
 
         self.is_running = False
         await self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
@@ -138,8 +136,9 @@ class Measurement:
         """
         Create a directory of today's date, and there
         save measurement data as a .pkl file.
+
+        Note: does not handle overnight measurements during which the date changes
         """
-        # NOTE: does not handle overnight measurements during which the date changes (who cares)
 
         today_dir = os.path.join(self.save_path, dt.now().strftime("%d_%m_%Y"))
 

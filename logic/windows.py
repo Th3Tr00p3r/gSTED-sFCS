@@ -7,6 +7,7 @@ import re
 import sys
 import webbrowser
 from collections.abc import Iterable
+from contextlib import suppress
 from types import SimpleNamespace
 from typing import Tuple
 
@@ -158,15 +159,13 @@ class MainWin:
     def dep_sett_apply(self):
         """Doc."""
 
-        try:
+        with suppress(DeviceError):
             if self._gui.currMode.isChecked():  # current mode
                 val = self._gui.depCurr.value()
                 self._app.devices.dep_laser.set_current(val)
             else:  # power mode
                 val = self._gui.depPow.value()
                 self._app.devices.dep_laser.set_power(val)
-        except DeviceError:
-            pass
 
     # TODO: only turn on LED while actually moving (also during scan)
     def move_scanners(self, axes_used: str = "XYZ", destination=None) -> None:
@@ -388,16 +387,13 @@ class MainWin:
         if scan_params_coll:
             scan_params = scan_params_coll.read_namespace_from_gui(self._app)
 
-            try:
+            with suppress(AttributeError, ZeroDivisionError):
+                # AttributeError - devices not yet initialized
+                # ZeroDivisionError - loadout has bad values
                 um_v_ratio = self._app.devices.scanners.um_v_ratio
                 ao, *_ = ScanPatternAO(pattern, scan_params, um_v_ratio).calculate_pattern()
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.plot(x_data, y_data, clear=True)
-
-            except (AttributeError, ZeroDivisionError):
-                # AttributeError - devices not yet initialized
-                # ZeroDivisionError - loadout has bad values
-                pass
 
         else:
             # no scan
@@ -431,7 +427,7 @@ class MainWin:
         """Doc"""
 
         plane_idx = self._gui.numPlaneShown.value()
-        try:
+        with suppress(AttributeError):
             line_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].line_ticks_V
             row_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].row_ticks_V
             plane_ticks = self._app.last_img_scn.set_pnts_planes
@@ -462,9 +458,6 @@ class MainWin:
             self.move_scanners(plane_type)
 
             logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} moved to ROI ({vltgs})")
-
-        except AttributeError:
-            pass
 
     def disp_plane_img(self, plane_idx, auto_cross=False):
         """Doc."""
@@ -531,12 +524,9 @@ class MainWin:
             return (x, y)
 
         disp_mthd = self._gui.imgShowMethod.currentText()
-        try:
-            image_data = self._app.last_img_scn.plane_images_data[plane_idx]
-        except AttributeError:
+        with suppress(AttributeError):
             # No last_img_scn yet
-            pass
-        else:
+            image_data = self._app.last_img_scn.plane_images_data[plane_idx]
             image = build_image(image_data, disp_mthd)
             self._gui.imgScanPlot.replace_image(image)
             if auto_cross:
@@ -545,12 +535,10 @@ class MainWin:
     def plane_choice_changed(self, plane_idx):
         """Doc."""
 
-        try:
+        with suppress(AttributeError):
+            # no scan performed since app init
             self._app.meas.plane_shown.set(plane_idx)
             self.disp_plane_img(plane_idx)
-        except AttributeError:
-            # no scan performed since app init
-            pass
 
     def fill_img_scan_preset_gui(self, curr_text: str) -> None:
         """Doc."""
@@ -627,13 +615,11 @@ class MainWin:
         days_combobox.clear()
         templates_combobox.clear()
 
-        try:
-            dir_years = helper.dir_date_parts(save_path, sub_dir)
-            years_combobox.addItems(dir_years)
-        except (TypeError, IndexError, FileNotFoundError):
+        with suppress(TypeError, IndexError, FileNotFoundError):
             # no directories found... (dir_years is None or [])
             # FileNotFoundError - data directory deleted while app running!
-            pass
+            dir_years = helper.dir_date_parts(save_path, sub_dir)
+            years_combobox.addItems(dir_years)
 
     def populate_data_dates_from_year(self, year: str) -> None:
         """Doc."""
@@ -657,12 +643,10 @@ class MainWin:
 
         months_combobox.clear()
 
-        try:
+        with suppress(TypeError, IndexError):
+            # no directories found... (dir_years is None or [])
             dir_months = helper.dir_date_parts(save_path, sub_dir, year=year)
             months_combobox.addItems(dir_months)
-        except (TypeError, IndexError):
-            # no directories found... (dir_years is None or [])
-            pass
 
     def populate_data_dates_from_month(self, month: str) -> None:
         """Doc."""
@@ -784,7 +768,7 @@ class MainWin:
     def get_daily_alignment(self):
         """Doc."""
 
-        date_dir_path = re.sub("solution", "", self._app.analysis.curr_dir_path)
+        date_dir_path = re.sub("(solution|image)", "", self._app.analysis.curr_dir_path)
 
         try:
             template = self.pkl_and_mat_templates(date_dir_path, True)[0]
