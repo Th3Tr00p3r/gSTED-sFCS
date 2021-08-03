@@ -198,7 +198,6 @@ class Timeout:
                     progress = (
                         meas.time_passed_s / meas.duration_s * meas.prog_bar_wdgt.obj.maximum()
                     )
-                    raise ValueError("TESTESTEST")  # TESTESTEST
                 elif meas.type == "SFCSImage":
                     progress = (
                         meas.time_passed_s
