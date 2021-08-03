@@ -4726,29 +4726,22 @@ Measurement</string>
                </widget>
               </item>
               <item>
-               <widget class="QGroupBox" name="groupBox_9">
-                <property name="title">
-                 <string>Import/Export Analyzed Data</string>
+               <widget class="QPushButton" name="convertToMatlab">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
+                 </size>
                 </property>
-                <layout class="QHBoxLayout" name="horizontalLayout_32">
-                 <property name="spacing">
-                  <number>0</number>
-                 </property>
-                 <item>
-                  <widget class="QPushButton" name="loadAnalysis">
-                   <property name="text">
-                    <string>Load</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="saveAnalysis">
-                   <property name="text">
-                    <string>Save</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
+                <property name="maximumSize">
+                 <size>
+                  <width>99999</width>
+                  <height>99999</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Convert to .mat</string>
+                </property>
                </widget>
               </item>
               <item>
