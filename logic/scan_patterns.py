@@ -211,7 +211,7 @@ class ScanPatternAO:
         tot_ppl = round((samp_freq_Hz / scan_freq_Hz) / 2)
         scan_freq_Hz = samp_freq_Hz / tot_ppl / 2
 
-        # TODO: ask Oleg about this (max y freq?)
+        # NOTE: ask Oleg about this (max y freq?)
         if scan_freq_Hz > max_scan_freq_Hz:
             logging.warning(f"scan frequency is over {max_scan_freq_Hz}. ({scan_freq_Hz} Hz)")
 

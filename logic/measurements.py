@@ -344,7 +344,7 @@ class SFCSImageMeasurement(Measurement):
             self.scan_params.set_pnts_planes,
         ) = ScanPatternAO("image", self.scan_params, self.um_v_ratio).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
-        # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
+        # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
         self.est_plane_duration = self.n_ao_samps * self.scan_params.dt
         self.est_total_duration_s = self.est_plane_duration * len(self.scan_params.set_pnts_planes)
@@ -663,7 +663,7 @@ class SFCSSolutionMeasurement(Measurement):
             self.scan_params.pattern, self.scan_params, self.um_v_ratio
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
-        # TODO: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
+        # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
 
     def disp_ACF(self):
@@ -836,7 +836,6 @@ class SFCSSolutionMeasurement(Measurement):
                 # case aligning and not manually stopped
                 if self.repeat and self.is_running:
                     self.disp_ACF()
-                    # TODO: save alignments in separate folder, perhaps overwrite each time. save G0 and tau in date folder in text file.
                     self.save_data(self.prep_data_dict(), self.build_filename(0))
                     # reset measurement
                     self.set_current_and_end_times()
