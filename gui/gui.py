@@ -159,6 +159,12 @@ class MainWin(QMainWindow):
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
     @pyqtSlot()
+    def on_convertToMatlab_released(self) -> None:
+        """Doc."""
+
+        self.imp.convert_files_to_matlab_format()
+
+    @pyqtSlot()
     def on_solAnalysisRecalMeanAcf_released(self) -> None:
         """Doc"""
 

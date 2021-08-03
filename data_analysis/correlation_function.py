@@ -3,7 +3,6 @@
 import glob
 import logging
 import os
-import re
 from collections import deque
 
 import matplotlib.pyplot as plt
@@ -17,7 +16,7 @@ from data_analysis import fit_tools
 from data_analysis.file_loading_utilities import load_file_dict
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities.helper import div_ceil, force_aspect
+from utilities.helper import div_ceil, force_aspect, sort_file_paths_by_file_number
 
 
 class CorrFuncData:
@@ -166,17 +165,9 @@ class CorrFuncTDC(CorrFuncData):
 
         print("\nLoading FPGA data from hard drive:")
 
-        if not (file_paths := glob.glob(file_template_path)):
-            raise FileNotFoundError("No files found! Check file template!")
-
-        # order filenames -
-        # splits in folderpath and filename template
+        # TODO: test what happens if 'file_template_path' is wrong or None
+        file_paths = sort_file_paths_by_file_number(glob.glob(file_template_path))
         _, self.template = os.path.split(file_template_path)
-        # splits filename template into the name template proper and its extension
-        _, file_extension = os.path.splitext(self.template)
-        file_paths.sort(
-            key=lambda file_path: int(re.split(f"(\\d+){file_extension}", file_path)[1])
-        )
 
         n_files = len(file_paths)
 
@@ -184,7 +175,7 @@ class CorrFuncTDC(CorrFuncData):
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
 
             # load file
-            file_dict = load_file_dict(file_path, file_extension)
+            file_dict = load_file_dict(file_path)
 
             print("Done.")
 

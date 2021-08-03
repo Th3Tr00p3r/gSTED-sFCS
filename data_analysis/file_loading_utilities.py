@@ -1,12 +1,14 @@
 """Data-File Loading Utilities"""
 
 import pickle
+from collections.abc import Iterable
 
 import numpy as np
 import scipy.io as spio
 
-legacy_keys_trans_dict = {
-    # legacy MATLAB naming
+from utilities.helper import file_extension, reverse_dict
+
+legacy_matlab_trans_dict = {
     "Setup": "setup",
     "AfterPulseParam": "after_pulse_param",
     "AI_ScalingXYZ": "ai_scaling_xyz",
@@ -42,6 +44,9 @@ legacy_keys_trans_dict = {
     "AvgCnt": "avg_cnt_rate_khz",
     "CircleSpeed_um_sec": "circle_speed_um_s",
     "AnglularScanSettings": "angular_scan_settings",
+}
+
+legacy_python_trans_dict = {
     # legacy Python naming
     "fpga_freq": "fpga_freq_mhz",
     "pix_clk_freq": "pix_clk_freq_mhz",
@@ -77,37 +82,33 @@ default_system_info = {
 }
 
 
-def load_file_dict(file_path: str, file_extension: str):
+def load_file_dict(file_path: str):
     """
     Load files according to extension,
     Allow backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files),
-    use defaults for legacy files where 'system_info' or 'after_pulse_param' is not a tuple.
+    use defaults for legacy files where 'system_info' or 'after_pulse_param' is not iterable (therefore old).
     """
 
-    if file_extension == ".pkl":
-        with open(file_path, "rb") as f:
-            file_dict = pickle.load(f)
-    elif file_extension == ".mat":
-        file_dict = load_mat(file_path)
+    ext = file_extension(file_path)
+    if ext == ".pkl":
+        file_dict = translate_dict_keys(load_pkl(file_path), legacy_python_trans_dict)
+    elif ext == ".mat":
+        file_dict = translate_dict_keys(load_mat(file_path), legacy_matlab_trans_dict)
     else:
-        raise NotImplementedError(f"Unknown file extension: '{file_extension}'.")
-
-    file_dict = translate_dict_keys(file_dict)
+        raise NotImplementedError(f"Unknown file extension: '{ext}'.")
 
     if not file_dict.get("system_info"):
         print("'system_info' is missing, using defaults...", end=" ")
         file_dict["system_info"] = default_system_info
     else:
-        if not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
+        if not isinstance(file_dict["system_info"]["after_pulse_param"], Iterable):
             file_dict["system_info"]["after_pulse_param"] = default_system_info["after_pulse_param"]
             print("'after_pulse_param' is outdated, using defaults...", end=" ")
 
     return file_dict
 
 
-def translate_dict_keys(
-    original_dict: dict, translation_dict: dict = legacy_keys_trans_dict
-) -> dict:
+def translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
     """
     Updates keys of dict according to another dict:
     trans_dct.keys() are the keys to update,
@@ -135,6 +136,41 @@ def translate_dict_keys(
             else:
                 translated_dict[org_key] = org_val
     return translated_dict
+
+
+def dict_lists_to_ndarrays(persumed_dict, key_name=None):
+    """
+    Recursively converts any lists or tuple in dictionary and any sub-dictionaries to Numpy ndarrays.
+    """
+    #    print(f"current key '{key_name}'", end=" ") # TESTESTEST
+
+    # stop condition
+    if not isinstance(persumed_dict, dict):
+        # persumed_dict is not a dictionary!
+        if isinstance(persumed_dict, (list, tuple)):
+            #            print("is of type 'list' - replacing with ndarray.") # TESTESTEST
+            return np.array(persumed_dict)
+        else:
+            #            print(f"is of type '{type(persumed_dict).__name__}' - left as is.") # TESTESTEST
+            return persumed_dict
+
+    # recursion
+    #    print("is of type 'dict' - recursing...") # TESTESTEST
+    return {
+        key: dict_lists_to_ndarrays(val, key_name=str(key)) for key, val in persumed_dict.items()
+    }
+
+
+def save_mat(file_dict: dict, file_path: str) -> None:
+    """
+    Saves 'file_dict' as 'file_path', after converting all keys to legacy naming,
+    takes care of converting 'AfterPulseParam' to old style (array only, no type),
+    and all lists to Numpy arrays."""
+
+    file_dict = translate_dict_keys(file_dict, reverse_dict(legacy_matlab_trans_dict))
+    file_dict["SystemInfo"]["AfterPulseParam"] = file_dict["SystemInfo"]["AfterPulseParam"][1]
+    file_dict = dict_lists_to_ndarrays(file_dict)
+    spio.savemat(file_path, file_dict)
 
 
 def load_mat(filename):
@@ -190,3 +226,10 @@ def load_mat(filename):
 
     data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True)
     return _check_keys(data)
+
+
+def load_pkl(file_path: str) -> dict:
+    """Short cut for opening .pkl files"""
+
+    with open(file_path, "rb") as f:
+        return pickle.load(f)
