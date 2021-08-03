@@ -246,7 +246,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             axis: str, ao_chan_specs: dict, final_pos: float, step_sz: float = 0.25
         ) -> None:
             """Doc."""
-            # TODO: Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)
+            # NOTE: Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)
 
             try:
                 init_pos = self.ai_buffer[-1][3:][self.AXIS_INDEX[axis]]

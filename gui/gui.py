@@ -19,7 +19,6 @@ from utilities.helper import force_aspect
 try:
     from gui.icons import icons_rc  # for initial icons loadout # NOQA
 except ImportError:
-    # TODO: get this file already and leave it there!
     print("icons_rc.py was not found - icons will not initialize.", end=" ")
 
 MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
@@ -45,10 +44,6 @@ class MainWin(QMainWindow):
 
         # graphics
         self.imgScanPlot = ImageScanDisplay(layout=self.imageLayout)
-
-        # TODO: refactoring - it's stupid to connect signals to dummy functions in this module
-        # (which simply call other functions in the implementation module) change the connections to lead
-        # straight to the implementation fucntions.
 
         # scan patterns
         # image
@@ -429,7 +424,7 @@ class CamWin(QWidget):
         self.imp = logic.windows.CamWin(self, app)
 
         # add matplotlib-ready widget (canvas) for showing camera output
-        # TODO: replace this with ImageScanDisplay?
+        # TODO: replace this with AnalysisDisplay?
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         self.gridLayout.addWidget(self.canvas, 0, 1)
