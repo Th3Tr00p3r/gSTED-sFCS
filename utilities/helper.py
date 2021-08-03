@@ -14,8 +14,6 @@ from typing import Callable, List, Union
 import PyQt5.QtWidgets as QtWidgets
 from PyQt5.QtGui import QIcon
 
-import logic.app
-
 
 def timer(func) -> Callable:
     """
@@ -167,9 +165,14 @@ def wdgt_items_to_text_lines(parent_wdgt) -> List[str]:
 def write_gui_to_file(parent_wdgt, file_path):
     """Doc."""
 
-    lines = "\n".join(wdgt_items_to_text_lines(parent_wdgt))
+    write_list_to_file(file_path, wdgt_items_to_text_lines(parent_wdgt))
+
+
+def write_list_to_file(file_path, lines: List[str]) -> None:
+    """Accepts a list of strings 'lines' and writes them to 'file_path'."""
+
     with open(file_path, "w") as f:
-        f.write(lines)
+        f.write("\n".join(lines))
 
 
 def read_file_to_list(file_path) -> List[str]:
@@ -346,7 +349,7 @@ class QtWidgetCollection:
         for key, val in kwargs.items():
             setattr(self, key, QtWidgetAccess(*val))
 
-    def hold_objects(self, app: logic.app.App) -> QtWidgetCollection:
+    def hold_objects(self, app) -> QtWidgetCollection:
         """Stores the actual GUI object in all widgets (for which does_hold_obj is True)."""
 
         for wdgt in vars(self).values():
@@ -355,7 +358,7 @@ class QtWidgetCollection:
 
         return self
 
-    def write_to_gui(self, app: logic.app.App, new_vals) -> None:
+    def write_to_gui(self, app, new_vals) -> None:
         """
         Fill widget collection with values from dict/list, or a single value for all.
         if new_vals is a list, the values will be inserted in the order of vars(self).keys().
@@ -374,7 +377,7 @@ class QtWidgetCollection:
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(new_vals, parent_gui)
 
-    def read_dict_from_gui(self, app: logic.app.App) -> dict:
+    def read_dict_from_gui(self, app) -> dict:
         """
         Read values from QtWidgetAccess objects, which are the attributes of self and return a dict.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
@@ -390,7 +393,7 @@ class QtWidgetCollection:
                 wdgt_val_dict[attr_name] = wdgt.get(parent_gui)
         return wdgt_val_dict
 
-    def read_namespace_from_gui(self, app: logic.app.App) -> SimpleNamespace:
+    def read_namespace_from_gui(self, app) -> SimpleNamespace:
         """
         Same as 'read_dict_from_gui' but returns an object
         instead of a dictionary.
