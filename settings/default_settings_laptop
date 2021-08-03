@@ -11,17 +11,6 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
-excMod,PicoQuant
-excTriggerExtAddr,Dev1/port0/line6
-excTriggerIntAddr,Dev3/port0/
-excAddr,Dev1/port0/line6
-depShutterAddr,Dev3/port0/line11
-depModelQuery,getmodel
-dataPath,./data/
-solSubdirName,solution
-imgSubdirName,image
-camDataPath,./data/camera photos/
-logDataPath,./log/
 AOXaddr,Dev3/ao2, Dev3/ao3
 AOYaddr,Dev3/ao0, Dev3/ao1
 AOZaddr,Dev1/ao1
@@ -34,6 +23,17 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
+excMod,PicoQuant
+excTriggerExtAddr,Dev1/port0/line6
+excTriggerIntAddr,Dev3/port0/
+excAddr,Dev1/port0/line6
+depShutterAddr,Dev3/port0/line11
+depModelQuery,getmodel
+dataPath,./data/
+solSubdirName,solution
+imgSubdirName,image
+camDataPath,./data/camera photos/
+logDataPath,./log/
 um232FlowControl,RTS-CTS
 um232BitMode,Single Channel Synchronous 245 FIFO
 TDClaserFreq,10
@@ -52,9 +52,9 @@ xConv,70.81
 yConv,82.74
 zConv,10.0
 counterTriggerEdge,Rising
-excTriggerSrc,External (TDC)
 AOtriggerEdge,Rising
 AOwfType,Sine
+excTriggerSrc,External (TDC)
 stackedWidget,1
 tabWidget,4
 counterCIdupCountPrevention,True

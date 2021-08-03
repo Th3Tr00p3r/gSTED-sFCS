@@ -1,6 +1,5 @@
 """ GUI windows implementations module. """
 
-import csv
 import logging
 import os
 import re
@@ -676,8 +675,10 @@ class MainWin:
             dir_days = helper.dir_date_parts(save_path, sub_dir, year=year, month=month)
             days_combobox.addItems(dir_days)
 
-    def pkl_and_mat_templates(self, dir_path: str, is_solution_type: bool) -> Iterable:
+    def pkl_and_mat_templates(self, dir_path: str) -> Iterable:
         """Doc."""
+
+        is_solution_type = "solution" in dir_path
 
         pkl_template_set = {
             (re.sub("[0-9]+.pkl", "*.pkl", item) if is_solution_type else item)
@@ -696,72 +697,68 @@ class MainWin:
 
         if not day:
             # ignore if combobox was just cleared
-            self._app.analysis.curr_dir_path = None
             return
 
         # define widgets
         data_import_wdgts = wdgt_colls.data_import_wdgts
-        is_image_type = data_import_wdgts.is_image_type.get()
-        is_solution_type = data_import_wdgts.is_solution_type.get()
-        year = data_import_wdgts.data_years.get()
-        month = data_import_wdgts.data_months.get()
         templates_combobox = data_import_wdgts.data_templates.obj
-
-        if is_image_type:
-            meas_sett = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app)
-        elif is_solution_type:
-            meas_sett = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app)
-        save_path = meas_sett.save_path
-        sub_dir = meas_sett.sub_dir_name
 
         templates_combobox.clear()
 
         with suppress(TypeError, IndexError):
             # no directories found... (dir_years is None or [])
-            self._app.analysis.curr_dir_path = os.path.join(
-                save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir
-            )
-            templates = self.pkl_and_mat_templates(
-                self._app.analysis.curr_dir_path, is_solution_type
-            )
+            templates = self.pkl_and_mat_templates(self.current_date_type_dir_path())
             templates_combobox.addItems(templates)
+
+    def current_date_type_dir_path(self) -> str:
+        """Returns path to directory of currently selected date and measurement type"""
+
+        import_wdgts = wdgt_colls.data_import_wdgts
+
+        is_image_type = import_wdgts.is_image_type.get()
+        is_solution_type = import_wdgts.is_solution_type.get()
+        day = import_wdgts.data_days.get()
+        year = import_wdgts.data_years.get()
+        month = import_wdgts.data_months.get()
+
+        if is_image_type:
+            meas_settings = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app)
+        elif is_solution_type:
+            meas_settings = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app)
+        save_path = meas_settings.save_path
+        sub_dir = meas_settings.sub_dir_name
+        return os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir)
 
     def open_data_dir(self) -> None:
         """Doc."""
 
-        with suppress(AttributeError, TypeError):
-            # self._app.analysis.curr_dir_path does not yet exist or is None (no date dir found)
-            dir_path = os.path.realpath(self._app.analysis.curr_dir_path)
-            if os.path.isdir(dir_path):
-                webbrowser.open(dir_path)
-            else:
-                # dir was deleted, refresh all dates
-                self.populate_all_data_dates()
+        if os.path.isdir(dir_path := self.current_date_type_dir_path()):
+            webbrowser.open(dir_path)
+        else:
+            # dir was deleted, refresh all dates
+            self.populate_all_data_dates()
 
     def update_dir_log_file(self) -> None:
         """Doc."""
 
         data_import_wdgts = wdgt_colls.data_import_wdgts
-        text_rows = data_import_wdgts.log_text.get().split("\n")
+        text_lines = data_import_wdgts.log_text.get().split("\n")
         curr_template = data_import_wdgts.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
         with suppress(AttributeError, TypeError):
             # no directories found
-            file_path = os.path.join(self._app.analysis.curr_dir_path, log_filename)
-            with open(file_path, "w", newline="") as f:
-                writer = csv.writer(f)
-                for row in text_rows:
-                    writer.writerow([row])
-
+            file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
+            helper.write_list_to_file(file_path, text_lines)
             self.update_dir_log_wdgt(curr_template)
 
     def get_daily_alignment(self):
         """Doc."""
 
-        date_dir_path = re.sub("(solution|image)", "", self._app.analysis.curr_dir_path)
+        date_dir_path = re.sub("(solution|image)", "", self.current_date_type_dir_path())
 
         try:
-            template = self.pkl_and_mat_templates(date_dir_path, True)[0]
+            # TODO: make this work for multiple templates (exc and sted), add both to log file and also the ratios
+            template = self.pkl_and_mat_templates(date_dir_path)[0]
         except IndexError:
             # no alignment file found
             g0, tau = (None, None)
@@ -785,8 +782,8 @@ class MainWin:
             full_data.average_correlation()
             try:
                 full_data.fit_correlation_function()
-            except fit_tools.FitError:
-                # fit failed (should only save 'fit-succeeded' data as alignment reference...)
+            except fit_tools.FitError as exc:
+                err_hndlr(exc, sys._getframe(), locals())
                 g0, tau = (None, None)
             else:
                 fit_params = full_data.fit_param["diffusion_3d_fit"]
@@ -801,54 +798,45 @@ class MainWin:
             """Doc."""
 
             basic_header = []
-            basic_header.append(["-" * 40])
-            basic_header.append(["Measurement Log File"])
-            basic_header.append(["-" * 40])
-            basic_header.append(["Excitation Power: "])
-            basic_header.append(["Depletion Power: "])
+            basic_header.append("-" * 40)
+            basic_header.append("Measurement Log File")
+            basic_header.append("-" * 40)
+            basic_header.append("Excitation Power: ")
+            basic_header.append("Depletion Power: ")
             if g0 is not None:
                 basic_header.append(
-                    [f"Free Atto FCS @ 12 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"]
+                    f"Free Atto FCS @ 12 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"
                 )
             else:
-                basic_header.append(["Free Atto FCS @ 12 uW: Not Available"])
-            basic_header.append(["-" * 40])
-            basic_header.append(["EDIT_HERE"])
+                basic_header.append("Free Atto FCS @ 12 uW: Not Available")
+            basic_header.append("-" * 40)
+            basic_header.append("EDIT_HERE")
 
-            with open(file_path, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerows(basic_header)
+            helper.write_list_to_file(file_path, basic_header)
+
+        if not template:
+            return
 
         data_import_wdgts = wdgt_colls.data_import_wdgts
-        try:
-            if data_import_wdgts.is_solution_type.get():
-                log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
-            elif data_import_wdgts.is_image_type.get():
-                log_filename = re.sub("\\.\\w{3}", ".log", template)
-            file_path = os.path.join(self._app.analysis.curr_dir_path, log_filename)
-        except TypeError:
-            # 'self._app.analysis.curr_dir_path' is 'None'
-            data_import_wdgts.log_text.set("")
-            return
-        else:
-            if not os.path.isfile(file_path):
-                try:
-                    g0, tau = self.get_daily_alignment()
-                    initialize_dir_log_file(file_path, g0, tau)
-                except (OSError, IndexError):
-                    # OSError - missing file/folder (deleted during operation)
-                    # IndexError - alignment file does not exist
-                    data_import_wdgts.log_text.set("")
-                    return
+        data_import_wdgts.log_text.set("")  # clear first
 
-        with suppress(FileNotFoundError):
-            text_rows = []
-            with open(file_path, "r", newline="") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    text_rows.append(row[0])
+        # get the log file path
+        if data_import_wdgts.is_solution_type.get():
+            log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
+        elif data_import_wdgts.is_image_type.get():
+            log_filename = re.sub("\\.\\w{3}", ".log", template)
+        file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
 
-            data_import_wdgts.log_text.set("\n".join(text_rows))
+        try:  # load the log file in path
+            text_lines = helper.read_file_to_list(file_path)
+        except FileNotFoundError:  # initialize a new log file if no existing file
+            with suppress(OSError, IndexError):
+                # OSError - missing file/folder (deleted during operation)
+                # IndexError - alignment file does not exist
+                initialize_dir_log_file(file_path, *self.get_daily_alignment())
+                text_lines = helper.read_file_to_list(file_path)
+        finally:  # write file to widget
+            data_import_wdgts.log_text.set("\n".join(text_lines))
 
     def import_sol_data(self) -> None:
         """Doc."""
@@ -862,21 +850,21 @@ class MainWin:
         self._app.devices.scanners.pause_tasks("ai")
         self._app.devices.photon_detector.pause_tasks("ci")
 
-        s = CorrFuncTDC()
+        full_data = CorrFuncTDC()
         fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
 
         try:
             with suppress(AttributeError):
                 # No directories found
-                s.read_fpga_data(
-                    os.path.join(self._app.analysis.curr_dir_path, current_template),
+                full_data.read_fpga_data(
+                    os.path.join(self.current_date_type_dir_path(), current_template),
                     fix_shift=fix_shift,
                     no_plot=True,
                 )
-                if s.type == "angular_scan":
-                    s.correlate_angular_scan_data()
-                elif s.type == "static":
-                    s.correlate_regular_data()
+                if full_data.type == "angular_scan":
+                    full_data.correlate_angular_scan_data()
+                elif full_data.type == "static":
+                    full_data.correlate_regular_data()
 
         except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
             err_hndlr(exc, sys._getframe(), locals())
@@ -887,23 +875,23 @@ class MainWin:
             if is_calibration:
                 if "_exc_" in current_template:
                     item = "CAL_EXC - " + current_template
-                    self._app.analysis.loaded_data["CAL_EXC"] = s
+                    self._app.analysis.loaded_data["CAL_EXC"] = full_data
                 elif "_sted_" in current_template:
                     item = "CAL_STED - " + current_template
-                    self._app.analysis.loaded_data["CAL_STED"] = s
+                    self._app.analysis.loaded_data["CAL_STED"] = full_data
                 else:
                     item = "CAL_UNKNOWN - " + current_template
-                    self._app.analysis.loaded_data["CAL_UNKNOWN"] = s
+                    self._app.analysis.loaded_data["CAL_UNKNOWN"] = full_data
             else:
                 if "_exc_" in current_template:
                     item = "SAMP_EXC - " + current_template
-                    self._app.analysis.loaded_data["SAMP_EXC"] = s
+                    self._app.analysis.loaded_data["SAMP_EXC"] = full_data
                 elif "_sted_" in current_template:
                     item = "SAMP_STED - " + current_template
-                    self._app.analysis.loaded_data["SAMP_STED"] = s
+                    self._app.analysis.loaded_data["SAMP_STED"] = full_data
                 else:
                     item = "SAMP_UNKNOWN - " + current_template
-                    self._app.analysis.loaded_data["SAMP_UNKNOWN"] = s
+                    self._app.analysis.loaded_data["SAMP_UNKNOWN"] = full_data
             imported_combobox.obj.addItem(item)
             imported_combobox.set(item)
 
@@ -967,6 +955,7 @@ class MainWin:
                 print("Averaging, plotting and fitting...", end=" ")
                 self.calculate_and_show_sol_mean_acf()
                 scan_settings_text = "no scan."
+
             wdgts.scan_settings.set(scan_settings_text)
 
             print("Done.")
@@ -1094,7 +1083,7 @@ class SettWin:
     def save(self):
         """
         Write all QLineEdit, QspinBox and QdoubleSpinBox
-        of settings window to 'file_path' (csv).
+        of settings window to 'file_path'.
         Show 'file_path' in 'settingsFileName' QLineEdit.
         """
 
@@ -1110,7 +1099,7 @@ class SettWin:
 
     def load(self, file_path=""):
         """
-        Read 'file_path' (csv) and write to matching widgets of settings window.
+        Read 'file_path' and write to matching widgets of settings window.
         Show 'file_path' in 'settingsFileName' QLineEdit.
         Default settings is chosen according to './settings/default_settings_choice'.
         """
