@@ -1,5 +1,6 @@
 """ GUI windows implementations module. """
 
+import glob
 import logging
 import os
 import re
@@ -17,7 +18,7 @@ import logic.devices as dvcs
 import logic.measurements as meas
 import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
-from data_analysis import fit_tools
+from data_analysis import file_loading_utilities, fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
@@ -1042,6 +1043,34 @@ class MainWin:
         data_type, *_ = re.split(" -", template)
         self._app.analysis.loaded_data[data_type] = None
         imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
+
+    def convert_files_to_matlab_format(self) -> None:
+        """
+        Convert files of current template to '.mat',
+        after translating their dictionaries to the legacy matlab format.
+        """
+
+        print("Converting files to '.mat' in legacy MATLAB format...", end=" ")
+
+        data_import_wdgts = wdgt_colls.data_import_wdgts
+        current_template = data_import_wdgts.data_templates.get()
+        current_dir_path = self.current_date_type_dir_path()
+
+        file_template_path = os.path.join(current_dir_path, current_template)
+        file_paths = helper.sort_file_paths_by_file_number(glob.glob(file_template_path))
+
+        for idx, file_path in enumerate(file_paths):
+            file_dict = file_loading_utilities.load_file_dict(file_path)
+            mat_file_path = re.sub(".pkl", ".mat", file_path)
+            if "solution" in mat_file_path:
+                mat_file_path = re.sub("solution", r"solution\\matlab", mat_file_path)
+            if "image" in mat_file_path:
+                mat_file_path = re.sub("image", r"image\\matlab", mat_file_path)
+            os.makedirs(os.path.join(current_dir_path, "matlab"), exist_ok=True)
+            file_loading_utilities.save_mat(file_dict, mat_file_path)
+            print(f"({idx+1})", end=" ")
+
+        logging.info(f"{current_template} converted to MATLAB format")
 
 
 class SettWin:
