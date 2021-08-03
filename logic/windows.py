@@ -924,6 +924,8 @@ class MainWin:
             # no imported templates (deleted)
             wdgts.scan_image_disp.obj.clear()
             wdgts.row_acf_disp.obj.clear()
+            wdgts.scan_img_file_num.obj.setRange(1, 1)
+            wdgts.scan_img_file_num.set(1)
         else:
             print("Populating analysis GUI...", end=" ")
 
@@ -963,9 +965,9 @@ class MainWin:
     def display_scan_image(self, file_num):
         """Doc."""
 
-        with suppress(IndexError, KeyError):
+        with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
-            # KeyError - data deleted
+            # KeyError, AttributeError - data deleted
             full_data = self.get_current_full_data()
             img = full_data.data[file_num - 1].image
             roi = full_data.data[file_num - 1].roi

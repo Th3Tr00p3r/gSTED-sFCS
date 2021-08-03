@@ -77,6 +77,7 @@ class Measurement:
     async def stop(self):
         """Doc."""
 
+        # turn off devices and return to starting position if scanning
         with suppress(DeviceError, MeasurementError):
             await self.toggle_lasers(finish=True)
             self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)

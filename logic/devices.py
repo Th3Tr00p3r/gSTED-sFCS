@@ -515,7 +515,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             # if buffer is too short for the requested interval, average over whole buffer
             interval = len(self.ci_buffer) * (1 / rate)
             with suppress(IndexError):
-                # IndexError - buffer just initialized and is empty, keep last value
+                # IndexError - buffer is empty, keep last value
                 self.avg_cnt_rate_khz = (
                     (self.ci_buffer[-1] - self.ci_buffer[0]) / interval / 1000
                 )  # Hz -> KHz
