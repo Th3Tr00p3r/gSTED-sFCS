@@ -165,8 +165,9 @@ class CorrFuncTDC(CorrFuncData):
 
         print("\nLoading FPGA data from hard drive:")
 
-        # TODO: test what happens if 'file_template_path' is wrong or None
         file_paths = sort_file_paths_by_file_number(glob.glob(file_template_path))
+        if not file_paths:
+            raise FileNotFoundError(f"File template path ('{file_template_path}') does not exist!")
         _, self.template = os.path.split(file_template_path)
 
         n_files = len(file_paths)
@@ -452,10 +453,7 @@ class CorrFuncTDC(CorrFuncData):
             sec_edges = np.append(np.insert(sec_edges, 0, 0), len(time_stamps))
             p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
 
-            for se_idx, (se_start, se_end) in enumerate(
-                p.all_section_edges
-            ):  # TODO: try to split to se_start, se_end??
-
+            for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
                 # split into segments of approx time of run_duration
                 segment_time = (p.runtime[se_end] - p.runtime[se_start]) / self.laser_freq_hz
                 if segment_time < min_time_frac * run_duration:
