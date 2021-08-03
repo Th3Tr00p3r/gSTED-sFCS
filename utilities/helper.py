@@ -90,16 +90,17 @@ def bool_str(str_: str):
         raise ValueError(f"'{str_}' is neither 'True' or 'False'.")
 
 
+# What to do with each widget class
 getter_setter_type_dict = {
-    "QComboBox": ("currentText", "setCurrentText", None),
+    "QComboBox": ("currentText", "setCurrentText", str),
     "QTabWidget": ("currentIndex", "setCurrentIndex", int),
     "QCheckBox": ("isChecked", "setChecked", bool_str),
     "QRadioButton": ("isChecked", "setChecked", bool_str),
     "QSlider": ("value", "setValue", int),
     "QSpinBox": ("value", "setValue", int),
     "QDoubleSpinBox": ("value", "setValue", float),
-    "QLineEdit": ("text", "setText", None),
-    "QPlainTextEdit": ("toPlainText", "setPlainText", None),
+    "QLineEdit": ("text", "setText", str),
+    "QPlainTextEdit": ("toPlainText", "setPlainText", str),
     "QButtonGroup": ("checkedButton", None, None),
     "QTimeEdit": ("time", "setTime", None),
     "QIcon": ("icon", "setIcon", None),
@@ -107,19 +108,16 @@ getter_setter_type_dict = {
 }
 
 
-def widget_getter_setter_type(widget_class: str) -> (str, str):
+def widget_getter_setter_type(widget_class: str) -> tuple:
     """
     Returns a tuple of strings, where the first element
-    is the name of the getter method of the widget and
-    the second is the setter method.
+    is the name of the getter method of the widget,
+    the second is the setter method and third is the type
     """
 
-    getter_setter_type_tuple = getter_setter_type_dict.get(widget_class)
-
-    if getter_setter_type_tuple is not None:
-        return getter_setter_type_tuple
-    else:
-        # f"Widget of class '{widget_class}' is missing from dictionary."
+    try:
+        return getter_setter_type_dict[widget_class]
+    except KeyError:
         return (None,) * 3
 
 
@@ -192,7 +190,7 @@ def read_file_to_gui(file_path, gui_parent):
         child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
         _, setter, type_func = widget_getter_setter_type(child.__class__.__name__)
 
-        if type_func is not None:
+        if type_func not in {None, str}:
             val = type_func(val)
 
         try:
