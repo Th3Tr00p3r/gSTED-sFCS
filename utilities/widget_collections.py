@@ -40,6 +40,7 @@ data_import_wdgts = QtWidgetCollection(
     import_stacked=("importStacked", "QStackedWidget", "main", True),
     is_calibration=("isDataCalibration", "QCheckBox", "main", True),
     log_text=("dataDirLog", "QPlainTextEdit", "main", True),
+    img_preview_disp=("imgScanPreviewDisp", None, "main", True),
 )
 
 sol_data_analysis_wdgts = QtWidgetCollection(

@@ -4448,37 +4448,6 @@ Pattern:</string>
                      <property name="spacing">
                       <number>0</number>
                      </property>
-                     <item row="0" column="0">
-                      <widget class="QLabel" name="label">
-                       <property name="text">
-                        <string>Day</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="1">
-                      <widget class="QLabel" name="label_2">
-                       <property name="text">
-                        <string>Month</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="2">
-                      <widget class="QLabel" name="label_3">
-                       <property name="text">
-                        <string>Year</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QComboBox" name="dataDay">
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </widget>
-                     </item>
                      <item row="1" column="1">
                       <widget class="QComboBox" name="dataMonth">
                        <property name="minimumSize">
@@ -4491,6 +4460,30 @@ Pattern:</string>
                      </item>
                      <item row="1" column="2">
                       <widget class="QComboBox" name="dataYear">
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="2">
+                      <widget class="QLabel" name="label_3">
+                       <property name="text">
+                        <string>Year</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label">
+                       <property name="text">
+                        <string>Day</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QComboBox" name="dataDay">
                        <property name="minimumSize">
                         <size>
                          <width>0</width>
@@ -4524,33 +4517,31 @@ Pattern:</string>
                        </property>
                       </widget>
                      </item>
+                     <item row="0" column="1">
+                      <widget class="QLabel" name="label_2">
+                       <property name="text">
+                        <string>Month</string>
+                       </property>
+                      </widget>
+                     </item>
                     </layout>
                    </item>
                    <item>
                     <layout class="QVBoxLayout" name="verticalLayout_24">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
                      <item>
-                      <layout class="QGridLayout" name="gridLayout_10" columnstretch="100,0">
-                       <property name="spacing">
-                        <number>0</number>
-                       </property>
-                       <item row="0" column="0">
-                        <widget class="QLabel" name="label_10">
+                      <layout class="QVBoxLayout" name="verticalLayout_68">
+                       <item>
+                        <widget class="QLabel" name="label_14">
                          <property name="text">
                           <string>File Template</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1">
-                        <widget class="QComboBox" name="solFilesToUse">
-                         <item>
-                          <property name="text">
-                           <string>All Files</string>
-                          </property>
-                         </item>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <layout class="QHBoxLayout" name="horizontalLayout_32" stretch="1,100,1">
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_40" stretch="1,100,1">
                          <property name="spacing">
                           <number>0</number>
                          </property>
@@ -4772,19 +4763,6 @@ Measurement</string>
                         <number>0</number>
                        </property>
                        <item>
-                        <spacer name="horizontalSpacer_13">
-                         <property name="orientation">
-                          <enum>Qt::Horizontal</enum>
-                         </property>
-                         <property name="sizeHint" stdset="0">
-                          <size>
-                           <width>40</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </spacer>
-                       </item>
-                       <item>
                         <layout class="QVBoxLayout" name="verticalLayout_51" stretch="100,1">
                          <item>
                           <widget class="QPushButton" name="importSolData">
@@ -4822,27 +4800,36 @@ Measurement</string>
                          </property>
                          <layout class="QVBoxLayout" name="verticalLayout_56">
                           <item>
+                           <widget class="QComboBox" name="solFilesToUse">
+                            <item>
+                             <property name="text">
+                              <string>All Files</string>
+                             </property>
+                            </item>
+                           </widget>
+                          </item>
+                          <item>
                            <widget class="QCheckBox" name="solDataFixShift">
                             <property name="text">
                              <string>Fix Shift</string>
                             </property>
                            </widget>
                           </item>
+                          <item>
+                           <spacer name="verticalSpacer_6">
+                            <property name="orientation">
+                             <enum>Qt::Vertical</enum>
+                            </property>
+                            <property name="sizeHint" stdset="0">
+                             <size>
+                              <width>20</width>
+                              <height>40</height>
+                             </size>
+                            </property>
+                           </spacer>
+                          </item>
                          </layout>
                         </widget>
-                       </item>
-                       <item>
-                        <spacer name="horizontalSpacer_16">
-                         <property name="orientation">
-                          <enum>Qt::Horizontal</enum>
-                         </property>
-                         <property name="sizeHint" stdset="0">
-                          <size>
-                           <width>40</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </spacer>
                        </item>
                       </layout>
                      </item>

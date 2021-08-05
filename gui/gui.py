@@ -86,6 +86,11 @@ class MainWin(QMainWindow):
         self.solScanImgDisp = AnalysisDisplay(self.solAnalysisScanImageLayout, self)
         self.solScanAcfDisp = AnalysisDisplay(self.solAnalysisAveragingLayout, self)
 
+        self.imgScanPreviewDisp = AnalysisDisplay(self.importImgPreviewLayout)
+
+        self.nextTemplate.released.connect(lambda: self.imp.cycle_through_data_templates("next"))
+        self.prevTemplate.released.connect(lambda: self.imp.cycle_through_data_templates("prev"))
+
         # Device LEDs
         def led_clicked(wdgt):
             self.imp.led_clicked(str(wdgt.sender().objectName()))
@@ -153,19 +158,6 @@ class MainWin(QMainWindow):
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
-    # TODO: move the below two methods to a 'connect'
-    @pyqtSlot()
-    def on_nextTemplate_released(self) -> None:
-        """Doc."""
-
-        self.imp.cycle_through_data_templates("next")
-
-    @pyqtSlot()
-    def on_prevTemplate_released(self) -> None:
-        """Doc."""
-
-        self.imp.cycle_through_data_templates("prev")
-
     @pyqtSlot()
     def on_convertToMatlab_released(self) -> None:
         """Doc."""
@@ -232,6 +224,7 @@ class MainWin(QMainWindow):
         """Doc."""
 
         self.imp.update_dir_log_wdgt(template)
+        self.imp.preview_img_scan(template)
 
     @pyqtSlot(str)
     def on_importedSolDataTemplates_currentTextChanged(self, template: str) -> None:
@@ -464,11 +457,12 @@ class CamWin(QWidget):
 class AnalysisDisplay:
     """Doc."""
 
-    def __init__(self, layout, parent):
+    def __init__(self, layout, parent=None):
         self.figure = plt.figure(tight_layout=True)
         self.canvas = FigureCanvas(self.figure)
-        self.toolbar = NavigationToolbar(self.canvas, parent)
-        layout.addWidget(self.toolbar)
+        if parent:
+            self.toolbar = NavigationToolbar(self.canvas, parent)
+            layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
 
     def clear(self):
@@ -497,13 +491,12 @@ class AnalysisDisplay:
         finally:
             self.canvas.draw()
 
-    def plot_scan_image_and_roi(self, image: np.ndarray, roi: dict):
+    def display_image(self, image: np.ndarray):
         """Doc."""
 
         self.figure.clear()
         self.ax = self.figure.add_subplot(111)
         self.ax.imshow(image)
-        self.ax.plot(roi["col"], roi["row"], color="white")
         force_aspect(self.ax, aspect=1)
         self.canvas.draw()
 
