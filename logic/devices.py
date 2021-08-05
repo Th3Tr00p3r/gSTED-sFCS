@@ -90,7 +90,6 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         else:
             self.close()
 
-    # TODO: only turn on LED while actually reading
     async def read_TDC(self):
         """Doc."""
 
@@ -414,8 +413,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def __init__(self, param_dict, scanners_ai_tasks):
         super().__init__(
             param_dict,
-            # TODO: remove "co" - creates an error since task_types is expected to be an iterable - geeralize that if easy.
-            task_types=("ci", "co"),
+            task_types=("ci",),
         )
 
         try:
@@ -543,7 +541,7 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def __init__(self, param_dict):
         super().__init__(
             param_dict,
-            task_types=("ci", "co"),
+            task_types=("co",),
         )
 
         self.toggle(False)
@@ -585,7 +583,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def __init__(self, param_dict):
         super().__init__(
             param_dict,
-            task_types=("do"),
+            task_types=("do",),
         )
         self.toggle(False)
 

@@ -9,6 +9,7 @@ import scipy.io as spio
 from utilities.helper import file_extension, reverse_dict
 
 legacy_matlab_trans_dict = {
+    # Solution Scan
     "Setup": "setup",
     "AfterPulseParam": "after_pulse_param",
     "AI_ScalingXYZ": "ai_scaling_xyz",
@@ -33,17 +34,43 @@ legacy_matlab_trans_dict = {
     "Xlim": "x_lim",
     "Ylim": "y_lim",
     "Data": "data",
-    "DataVersion": "data_version",
-    "FpgaFreq": "fpga_freq_mhz",
-    "PixelFreq": "pix_clk_freq_mhz",
-    "PixClockFreq": "pix_clk_freq_mhz",
-    "LaserFreq": "laser_freq_mhz",
-    "Version": "version",
-    "AI": "ai",
-    "AO": "ao",
     "AvgCnt": "avg_cnt_rate_khz",
     "CircleSpeed_um_sec": "circle_speed_um_s",
     "AnglularScanSettings": "angular_scan_settings",
+    # Image Scan
+    "Cnt": "cnt",
+    "PID": "pid",
+    "SP": "sp",
+    "LinesOdd": "lines_odd",
+    "FastScan": "is_fast_scan",
+    "TdcScanData": "tdc_scan_data",
+    "Plane": "plane",
+    "ScanParam": "scan_param",
+    "Dimension1_lines_um": "dim1_lines_um",
+    "Dimension2_col_um": "dim2_col_um",
+    "Dimension3_um": "dim3_um",
+    "Line": "lines",
+    "Planes": "planes",
+    "Line_freq_Hz": "line_freq_hz",
+    "Points_per_Line": "points_per_line",
+    "ScanType": "scan_type",
+    "Offset_AOX": "offset_aox",
+    "Offset_AOY": "offset_aoy",
+    "Offset_AOZ": "offset_aoz",
+    "Offset_AIX": "offset_aix",
+    "Offset_AIY": "offset_aiy",
+    "Offset_AIZ": "offset_aiz",
+    "whatStage": "what_stage",
+    "LinFrac": "linear_frac",
+    # General
+    "Version": "version",
+    "AI": "ai",
+    "AO": "ao",
+    "FpgaFreq": "fpga_freq_mhz",
+    "DataVersion": "data_version",
+    "PixelFreq": "pix_clk_freq_mhz",
+    "PixClockFreq": "pix_clk_freq_mhz",
+    "LaserFreq": "laser_freq_mhz",
 }
 
 legacy_python_trans_dict = {
@@ -77,7 +104,7 @@ default_system_info = {
             ]
         ),
     ),
-    "ai_scaling_xyz": [1.243, 1.239, 1],
+    "ai_scaling_xyz": (1.243, 1.239, 1),
     "xyz_um_to_v": (70.81, 82.74, 10.0),
 }
 
@@ -138,27 +165,23 @@ def translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
     return translated_dict
 
 
-def dict_lists_to_ndarrays(persumed_dict, key_name=None):
+def convert_types_to_matlab_format(obj, key_name=None):
     """
-    Recursively converts any lists or tuple in dictionary and any sub-dictionaries to Numpy ndarrays.
+    Recursively converts any list/tuple in dictionary and any sub-dictionaries to Numpy ndarrays.
+    Converts integers to floats.
     """
-    #    print(f"current key '{key_name}'", end=" ") # TESTESTEST
 
     # stop condition
-    if not isinstance(persumed_dict, dict):
-        # persumed_dict is not a dictionary!
-        if isinstance(persumed_dict, (list, tuple)):
-            #            print("is of type 'list' - replacing with ndarray.") # TESTESTEST
-            return np.array(persumed_dict)
+    if not isinstance(obj, dict):
+        if isinstance(obj, (list, tuple)):
+            return np.array(obj, dtype=np.double)
+        elif isinstance(obj, int):
+            return float(obj)
         else:
-            #            print(f"is of type '{type(persumed_dict).__name__}' - left as is.") # TESTESTEST
-            return persumed_dict
+            return obj
 
     # recursion
-    #    print("is of type 'dict' - recursing...") # TESTESTEST
-    return {
-        key: dict_lists_to_ndarrays(val, key_name=str(key)) for key, val in persumed_dict.items()
-    }
+    return {key: convert_types_to_matlab_format(val, key_name=str(key)) for key, val in obj.items()}
 
 
 def save_mat(file_dict: dict, file_path: str) -> None:
@@ -169,7 +192,7 @@ def save_mat(file_dict: dict, file_path: str) -> None:
 
     file_dict = translate_dict_keys(file_dict, reverse_dict(legacy_matlab_trans_dict))
     file_dict["SystemInfo"]["AfterPulseParam"] = file_dict["SystemInfo"]["AfterPulseParam"][1]
-    file_dict = dict_lists_to_ndarrays(file_dict)
+    file_dict = convert_types_to_matlab_format(file_dict)
     spio.savemat(file_path, file_dict)
 
 
@@ -198,14 +221,14 @@ def load_mat(filename):
         A recursive function which constructs nested dictionaries from matobjects
         """
         d = {}
-        for strg in matobj._fieldnames:
-            elem = matobj.__dict__[strg]
+        for name in matobj._fieldnames:
+            elem = matobj.__dict__[name]
             if isinstance(elem, spio.matlab.mio5_params.mat_struct):
-                d[strg] = _todict(elem)
-            elif isinstance(elem, np.ndarray) and strg not in {"Data", "data"}:
-                d[strg] = _tolist(elem)
+                d[name] = _todict(elem)
+            elif isinstance(elem, np.ndarray) and name not in {"Data", "data"}:
+                d[name] = _tolist(elem)
             else:
-                d[strg] = elem
+                d[name] = elem
         return d
 
     def _tolist(ndarray):

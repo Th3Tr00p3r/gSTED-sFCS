@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1236</width>
-    <height>948</height>
+    <width>1231</width>
+    <height>936</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4529,7 +4529,7 @@ Pattern:</string>
                    <item>
                     <layout class="QVBoxLayout" name="verticalLayout_24">
                      <item>
-                      <layout class="QGridLayout" name="gridLayout_10" columnstretch="100,1">
+                      <layout class="QGridLayout" name="gridLayout_10" columnstretch="100,0">
                        <property name="spacing">
                         <number>0</number>
                        </property>
@@ -4537,16 +4537,6 @@ Pattern:</string>
                         <widget class="QLabel" name="label_10">
                          <property name="text">
                           <string>File Template</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QComboBox" name="dataTemplate">
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>20</height>
-                          </size>
                          </property>
                         </widget>
                        </item>
@@ -4558,6 +4548,103 @@ Pattern:</string>
                           </property>
                          </item>
                         </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <layout class="QHBoxLayout" name="horizontalLayout_32" stretch="1,100,1">
+                         <property name="spacing">
+                          <number>0</number>
+                         </property>
+                         <item>
+                          <widget class="QToolButton" name="prevTemplate">
+                           <property name="enabled">
+                            <bool>true</bool>
+                           </property>
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="minimumSize">
+                            <size>
+                             <width>0</width>
+                             <height>0</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>9999</width>
+                             <height>9999</height>
+                            </size>
+                           </property>
+                           <property name="text">
+                            <string>...</string>
+                           </property>
+                           <property name="shortcut">
+                            <string/>
+                           </property>
+                           <property name="popupMode">
+                            <enum>QToolButton::DelayedPopup</enum>
+                           </property>
+                           <property name="autoRaise">
+                            <bool>false</bool>
+                           </property>
+                           <property name="arrowType">
+                            <enum>Qt::LeftArrow</enum>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QComboBox" name="dataTemplate">
+                           <property name="minimumSize">
+                            <size>
+                             <width>0</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QToolButton" name="nextTemplate">
+                           <property name="enabled">
+                            <bool>true</bool>
+                           </property>
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="minimumSize">
+                            <size>
+                             <width>0</width>
+                             <height>0</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>9999</width>
+                             <height>9999</height>
+                            </size>
+                           </property>
+                           <property name="text">
+                            <string>...</string>
+                           </property>
+                           <property name="shortcut">
+                            <string>Shift+Right</string>
+                           </property>
+                           <property name="popupMode">
+                            <enum>QToolButton::DelayedPopup</enum>
+                           </property>
+                           <property name="autoRaise">
+                            <bool>false</bool>
+                           </property>
+                           <property name="arrowType">
+                            <enum>Qt::RightArrow</enum>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
                       </layout>
                      </item>
@@ -4629,14 +4716,49 @@ Pattern:</string>
                     <enum>QFrame::Raised</enum>
                    </property>
                    <property name="currentIndex">
-                    <number>1</number>
+                    <number>0</number>
                    </property>
                    <widget class="QWidget" name="image">
                     <layout class="QGridLayout" name="gridLayout_8">
                      <item row="0" column="0">
-                      <widget class="QPushButton" name="pushButton_4">
+                      <widget class="QGroupBox" name="groupBox_8">
+                       <property name="minimumSize">
+                        <size>
+                         <width>150</width>
+                         <height>150</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>150</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="title">
+                        <string>Preview (middle plane)</string>
+                       </property>
+                       <layout class="QGridLayout" name="gridLayout_16">
+                        <item row="0" column="0">
+                         <layout class="QGridLayout" name="importImgPreviewLayout" rowstretch="0" columnstretch="0">
+                          <property name="leftMargin">
+                           <number>0</number>
+                          </property>
+                          <property name="bottomMargin">
+                           <number>0</number>
+                          </property>
+                          <property name="spacing">
+                           <number>0</number>
+                          </property>
+                         </layout>
+                        </item>
+                       </layout>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QPushButton" name="importImgData">
                        <property name="text">
-                        <string>Load Image Data</string>
+                        <string>Import Image
+Measurement</string>
                        </property>
                       </widget>
                      </item>
@@ -4663,9 +4785,15 @@ Pattern:</string>
                         </spacer>
                        </item>
                        <item>
-                        <layout class="QVBoxLayout" name="verticalLayout_51">
+                        <layout class="QVBoxLayout" name="verticalLayout_51" stretch="100,1">
                          <item>
                           <widget class="QPushButton" name="importSolData">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
                            <property name="minimumSize">
                             <size>
                              <width>100</width>
@@ -4726,22 +4854,31 @@ Measurement</string>
                </widget>
               </item>
               <item>
-               <widget class="QPushButton" name="convertToMatlab">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>0</height>
-                 </size>
+               <widget class="QGroupBox" name="groupBox_7">
+                <property name="title">
+                 <string>Legacy MATLAB Analysis</string>
                 </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>99999</width>
-                  <height>99999</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Convert to .mat</string>
-                </property>
+                <layout class="QGridLayout" name="gridLayout_13">
+                 <item row="0" column="0">
+                  <widget class="QPushButton" name="convertToMatlab">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>99999</width>
+                     <height>99999</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>Save Template As .mat</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
                </widget>
               </item>
               <item>
@@ -4773,46 +4910,26 @@ Measurement</string>
                  <property name="spacing">
                   <number>0</number>
                  </property>
-                 <item row="0" column="0">
-                  <widget class="QStackedWidget" name="selectionStacked_2">
-                   <property name="frameShape">
-                    <enum>QFrame::NoFrame</enum>
+                 <item row="1" column="0">
+                  <layout class="QHBoxLayout" name="horizontalLayout_56" stretch="100,1">
+                   <property name="spacing">
+                    <number>0</number>
                    </property>
-                   <property name="frameShadow">
-                    <enum>QFrame::Plain</enum>
-                   </property>
-                   <property name="currentIndex">
-                    <number>1</number>
-                   </property>
-                   <widget class="QWidget" name="image_4">
-                    <layout class="QGridLayout" name="gridLayout_35"/>
-                   </widget>
-                   <widget class="QWidget" name="solution_4">
-                    <layout class="QGridLayout" name="gridLayout_36">
-                     <item row="0" column="1">
-                      <layout class="QHBoxLayout" name="horizontalLayout_56" stretch="100,1">
-                       <property name="spacing">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <widget class="QComboBox" name="importedSolDataTemplates">
-                         <property name="enabled">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="removeImportedSolData">
-                         <property name="text">
-                          <string>Remove</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </widget>
-                  </widget>
+                   <item>
+                    <widget class="QComboBox" name="importedSolDataTemplates">
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="removeImportedSolData">
+                     <property name="text">
+                      <string>Remove</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </item>
                 </layout>
                </widget>

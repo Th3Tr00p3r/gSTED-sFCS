@@ -153,6 +153,19 @@ class MainWin(QMainWindow):
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
+    # TODO: move the below two methods to a 'connect'
+    @pyqtSlot()
+    def on_nextTemplate_released(self) -> None:
+        """Doc."""
+
+        self.imp.cycle_through_data_templates("next")
+
+    @pyqtSlot()
+    def on_prevTemplate_released(self) -> None:
+        """Doc."""
+
+        self.imp.cycle_through_data_templates("prev")
+
     @pyqtSlot()
     def on_convertToMatlab_released(self) -> None:
         """Doc."""
@@ -213,6 +226,7 @@ class MainWin(QMainWindow):
 
         self.imp.populate_data_templates_from_day(day)
 
+    # Use 'connect' instead to have the preview showing function for images also triggered by changing the template
     @pyqtSlot(str)
     def on_dataTemplate_currentTextChanged(self, template: str) -> None:
         """Doc."""

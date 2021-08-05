@@ -1,7 +1,6 @@
 """Data organization and manipulation."""
 
 import glob
-import logging
 import os
 from collections import deque
 
@@ -154,7 +153,7 @@ class CorrFuncTDC(CorrFuncData):
         # dictionary for TDC calibration
         self.tdc_calib = dict()
 
-    def read_fpga_data(
+    def read_fpga_data(  # noqa C901
         self,
         file_template_path,
         fix_shift=False,
@@ -244,7 +243,7 @@ class CorrFuncTDC(CorrFuncData):
                     try:
                         bw = threshold_and_smooth(cnt)
                     except ValueError:
-                        logging.warning("Thresholding failed, skipping file.")
+                        print("Thresholding failed, skipping file.")
                         continue
                 else:
                     raise NotImplementedError(f"roi_selection={roi_selection} is not implemented.")
@@ -302,7 +301,7 @@ class CorrFuncTDC(CorrFuncData):
                     roi["row"].append(roi["row"][0])
                     roi["col"].append(roi["col"][0])
                 except IndexError:
-                    print("ROI is empty (need to figure out the cause). Skipping file.")
+                    print("ROI is empty (need to figure out the cause). Skipping file.", end=" ")
                     continue
 
                 # convert lists/deques to numpy arrays
@@ -392,6 +391,11 @@ class CorrFuncTDC(CorrFuncData):
                 np.mean([np.diff(p.runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
             )
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
+
+        if not len(self.data):
+            raise RuntimeError(
+                f"Loading FPGA data catastrophically failed (all {n_files}/{n_files} files skipped)."
+            )
 
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
 
@@ -695,7 +699,7 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
         try:
             c, lags = x_corr(prof, prof)
         except ValueError:
-            logging.warning(f"Auto correlation of line #{j} has failed. Skipping.")
+            print(f"Auto correlation of line #{j} has failed. Skipping.", end=" ")
         else:
             c = c / prof.mean() ** 2 - 1
             c[0] -= 1 / prof.mean()  # subtracting shot noise, small stuff really

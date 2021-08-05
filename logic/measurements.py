@@ -63,7 +63,7 @@ class Measurement:
                     ]
                 ),
             ),
-            "ai_scaling_xyz": [1.243, 1.239, 1],  # TODO: check if matches today's ratio
+            "ai_scaling_xyz": (1.243, 1.239, 1),  # TODO: check if matches today's ratio
             "xyz_um_to_v": self.um_v_ratio,
         }
 
@@ -130,8 +130,9 @@ class Measurement:
                     "Tasks are overdue. Check that all relevant devices are turned ON"
                 )
 
-        self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
+        # TODO: test if  this out helps with fix_shift and/or changes anything (moved to before turning off TDC (from after it))
         await self.data_dvc.read_TDC()  # read leftovers
+        self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
 
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
@@ -482,7 +483,7 @@ class SFCSImageMeasurement(Measurement):
             "cnt": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
             "pid": [],  # check
             "ao": self.ao_buffer,
-            "sp": [],  # check
+            "sp": [],  # TODO: ask Oleg about this
             "log": [],  # info in mat filename
             "lines_odd": self.scan_params.set_pnts_lines_odd,
             "is_fast_scan": True,
