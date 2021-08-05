@@ -167,7 +167,6 @@ class MainWin:
                 val = self._gui.depPow.value()
                 self._app.devices.dep_laser.set_power(val)
 
-    # TODO: only turn on LED while actually moving (also during scan)
     def move_scanners(self, axes_used: str = "XYZ", destination=None) -> None:
         """Doc."""
 
@@ -246,7 +245,6 @@ class MainWin:
                 f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref}({axis}) was displaced {str(um_disp)} um"
             )
 
-    # TODO: only turn on LED while actually moving
     def move_stage(self, dir: str, steps: int):
         """Doc."""
 
@@ -711,6 +709,27 @@ class MainWin:
             templates = self.pkl_and_mat_templates(self.current_date_type_dir_path())
             templates_combobox.addItems(templates)
 
+    def cycle_through_data_templates(self, dir: str) -> None:
+        """Cycle through the daily data templates in order (next or previous)"""
+
+        data_templates_combobox = wdgt_colls.data_import_wdgts.data_templates.obj
+        curr_idx = data_templates_combobox.currentIndex()
+        n_items = data_templates_combobox.count()
+        print(f"{n_items} items in combobox")
+
+        if dir == "next":
+            if curr_idx + 1 < n_items:
+                data_templates_combobox.setCurrentIndex(curr_idx + 1)
+            else:  # cycle to beginning
+                data_templates_combobox.setCurrentIndex(0)
+            print("next index was ", data_templates_combobox.currentIndex())  # TESTESTEST
+        elif dir == "prev":
+            if curr_idx - 1 >= 0:
+                data_templates_combobox.setCurrentIndex(curr_idx - 1)
+            else:  # cycle to end
+                data_templates_combobox.setCurrentIndex(n_items - 1)
+            print("prev index was ", data_templates_combobox.currentIndex())  # TESTESTEST
+
     def current_date_type_dir_path(self) -> str:
         """Returns path to directory of currently selected date and measurement type"""
 
@@ -942,8 +961,7 @@ class MainWin:
                 self.display_scan_image(file_num=1)
 
                 # calculate average and display
-                # TODO: perhaps should average by default, before displaying
-                # that way I can put it all in one function?
+                # TODO: perhaps should average by default, before displaying that way I can put it all in one function?
                 print("Averaging and plotting...", end=" ")
                 self.calculate_and_show_sol_mean_acf()
 
@@ -1050,14 +1068,14 @@ class MainWin:
         after translating their dictionaries to the legacy matlab format.
         """
 
-        print("Converting files to '.mat' in legacy MATLAB format...", end=" ")
-
         data_import_wdgts = wdgt_colls.data_import_wdgts
         current_template = data_import_wdgts.data_templates.get()
         current_dir_path = self.current_date_type_dir_path()
 
         file_template_path = os.path.join(current_dir_path, current_template)
         file_paths = helper.sort_file_paths_by_file_number(glob.glob(file_template_path))
+
+        print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
 
         for idx, file_path in enumerate(file_paths):
             file_dict = file_loading_utilities.load_file_dict(file_path)
@@ -1070,6 +1088,7 @@ class MainWin:
             file_loading_utilities.save_mat(file_dict, mat_file_path)
             print(f"({idx+1})", end=" ")
 
+        print("Done.")
         logging.info(f"{current_template} converted to MATLAB format")
 
 
