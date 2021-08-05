@@ -715,20 +715,17 @@ class MainWin:
         data_templates_combobox = wdgt_colls.data_import_wdgts.data_templates.obj
         curr_idx = data_templates_combobox.currentIndex()
         n_items = data_templates_combobox.count()
-        print(f"{n_items} items in combobox")
 
         if dir == "next":
             if curr_idx + 1 < n_items:
                 data_templates_combobox.setCurrentIndex(curr_idx + 1)
             else:  # cycle to beginning
                 data_templates_combobox.setCurrentIndex(0)
-            print("next index was ", data_templates_combobox.currentIndex())  # TESTESTEST
         elif dir == "prev":
             if curr_idx - 1 >= 0:
                 data_templates_combobox.setCurrentIndex(curr_idx - 1)
             else:  # cycle to end
                 data_templates_combobox.setCurrentIndex(n_items - 1)
-            print("prev index was ", data_templates_combobox.currentIndex())  # TESTESTEST
 
     def current_date_type_dir_path(self) -> str:
         """Returns path to directory of currently selected date and measurement type"""
@@ -858,6 +855,20 @@ class MainWin:
         finally:  # write file to widget
             data_import_wdgts.log_text.set("\n".join(text_lines))
 
+    def preview_img_scan(self, template: str) -> None:
+        """Doc."""
+
+        wdgts = wdgt_colls.data_import_wdgts
+
+        if wdgts.is_image_type.get():
+            # import the data
+            #            file_path = os.path.join(self.current_date_type_dir_path(), template)
+            # get the center plane image
+            # plot it (below)
+            wdgts.img_preview_disp.obj.display_image(np.array([[1, 0, 1], [0, 1, 0], [1, 1, 1]]))
+
+        pass
+
     def import_sol_data(self) -> None:
         """Doc."""
 
@@ -872,6 +883,7 @@ class MainWin:
 
         full_data = CorrFuncTDC()
         fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
+        # TODO: add support for choosing a single file (already in GUI)
 
         try:
             with suppress(AttributeError):
@@ -992,7 +1004,8 @@ class MainWin:
             roi = full_data.data[file_num - 1].roi
 
             scan_image_disp = wdgt_colls.sol_data_analysis_wdgts.scan_image_disp.obj
-            scan_image_disp.plot_scan_image_and_roi(img, roi)
+            scan_image_disp.display_image(img)
+            scan_image_disp.plot(roi["col"], roi["row"], color="white")
             scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
 
     def calculate_and_show_sol_mean_acf(self) -> None:
