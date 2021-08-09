@@ -230,6 +230,12 @@ def div_ceil(x: int, y: int) -> int:
     return int(x // y + (x % y > 0))
 
 
+def namespace_to_dict(ns) -> dict:
+    """Doc."""
+
+    return vars(ns).copy()
+
+
 def translate_dict_values(original_dict: dict, trans_dict: dict) -> dict:
     """
     Updates values of dict according to another dict:

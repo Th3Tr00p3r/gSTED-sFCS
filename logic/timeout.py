@@ -52,7 +52,7 @@ class Timeout:
 
         try:
             await asyncio.gather(
-                self._updt_CI_and_AI(),
+                self._read_ci_and_ai(),
                 self._update_dep(),
                 self._updt_application_log(),
                 self._update_gui(),
@@ -98,22 +98,10 @@ class Timeout:
 
             await asyncio.sleep(0.3)
 
-    async def _updt_CI_and_AI(self) -> None:
+    async def _read_ci_and_ai(self) -> None:
         """Doc."""
 
-        #        N_TOC = 10 # TESTING
-        #        tocs = np.zeros(shape=(N_TOC,)) # TESTING
-        #        toc_idx = 0 # TESTING
-        #        tic = time.perf_counter() # TESTING
-
         while self.not_finished:
-
-            #            if toc_idx == N_TOC: # TESTING
-            #                print(f"average timeout elapsed: {tocs.mean()*1e3:.2f} ms. Should be: {TIMEOUT*1e3:.2f} ms") # TESTING
-            #                toc_idx = 0 # TESTING
-            #            tocs[toc_idx] = time.perf_counter() - tic # TESTING
-            #            toc_idx += 1 # TESTING
-
             # CI (Photon Detector)
             if not self.cntr_dvc.error_dict:
                 self.cntr_dvc.fill_ci_buffer()
@@ -121,8 +109,6 @@ class Timeout:
             # AI (Scanners)
             if not self.scan_dvc.error_dict:
                 self.scan_dvc.fill_ai_buffer()
-
-            #            tic = time.perf_counter() # TESTING
 
             await asyncio.sleep(TIMEOUT)
 
