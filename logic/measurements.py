@@ -10,22 +10,20 @@ import re
 import sys
 import time
 from contextlib import suppress
-from dataclasses import dataclass
 from datetime import datetime as dt
 from types import SimpleNamespace
 
 import nidaqmx.constants as ni_consts
-import numba as nb
 import numpy as np
 
 import gui.gui
 import logic.devices as dvcs
+import utilities.helper as helper
 from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
 from utilities.errors import DeviceError, err_hndlr
-from utilities.helper import div_ceil, paths_to_icons
 
 
 class Measurement:
@@ -37,10 +35,9 @@ class Measurement:
         self.type = type
         self.tdc_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
-        self.icon_dict = paths_to_icons(gui.icons.icon_paths_dict)  # get icons
+        self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
-
         self.pxl_clk_dvc = app.devices.pixel_clock
         self.scanners_dvc = app.devices.scanners
         self.scan_params = scan_params
@@ -89,7 +86,7 @@ class Measurement:
                 if self.type == "SFCSSolution":
                     self._app.gui.main.imp.go_to_origin("XY")
                 elif self.type == "SFCSImage":
-                    self._app.gui.main.imp.move_scanners(destination=self.initial_pos)
+                    self._app.gui.main.imp.move_scanners(destination=self.scan_params.initial_ao)
 
         self.is_running = False
         await self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
@@ -121,14 +118,14 @@ class Measurement:
             while (
                 self.is_running
                 and not self.scanners_dvc.are_tasks_done("ao")
-                and not (overdue := self.time_passed_s > (self.est_plane_duration * 1.1))
+                #                and not (overdue := self.time_passed_s > (self.est_plane_duration * (self.curr_plane + 1) * 2))
             ):
                 await self.data_dvc.read_TDC()
                 self.time_passed_s = time.perf_counter() - self.start_time
-            if overdue:
-                raise MeasurementError(
-                    "Tasks are overdue. Check that all relevant devices are turned ON"
-                )
+        #            if overdue:
+        #                raise MeasurementError(
+        #                    "Tasks are overdue. Check that all relevant devices are turned ON"
+        #                )
 
         # TODO: test if  this out helps with fix_shift and/or changes anything (moved to before turning off TDC (from after it))
         await self.data_dvc.read_TDC()  # read leftovers
@@ -301,6 +298,7 @@ class SFCSImageMeasurement(Measurement):
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
         self.scanning = True
+        self.scan_params.initial_ao = tuple(getattr(scan_params, f"curr_ao_{ax}") for ax in "xyz")
 
     def build_filename(self) -> str:
         return f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{dt.now().strftime('%H%M%S')}"
@@ -321,9 +319,9 @@ class SFCSImageMeasurement(Measurement):
 
             ratio = round(min_freq / line_freq)
             if ratio > ppl:
-                return div_ceil(ratio, 2) * 2
+                return helper.div_ceil(ratio, 2) * 2
             else:
-                return div_ceil(ppl, 2) * 2
+                return helper.div_ceil(ppl, 2) * 2
 
         # fix line freq, pxl clk low ticks, and ppl
         self.scan_params.line_freq_Hz, clk_div = sync_line_freq(
@@ -364,103 +362,6 @@ class SFCSImageMeasurement(Measurement):
             type=plane_axis,
         )
 
-    def prepare_image_data(self, plane_idx):
-        """Doc."""
-
-        @dataclass
-        class ImageData:
-
-            pic1: np.ndarray
-            norm1: np.ndarray
-            pic2: np.ndarray
-            norm2: np.ndarray
-            line_ticks_V: np.ndarray
-            row_ticks_V: np.ndarray
-
-        @nb.njit(cache=True)
-        def calc_pic(K, counts, x, x_min, n_lines, pxls_pl, pxl_sz_v, Ic):
-            """Doc."""
-
-            pic = np.zeros((n_lines, pxls_pl))
-            norm = np.zeros((n_lines, pxls_pl))
-            for j in K:
-                temp_counts = np.zeros(pxls_pl)
-                temp_num = np.zeros(pxls_pl)
-                for i in range(Ic):
-                    idx = int((x[i, j] - x_min) / pxl_sz_v) + 1
-                    if 0 <= idx < pxls_pl:
-                        temp_counts[idx] += counts[i, j]
-                        temp_num[idx] += 1
-                pic[K[j], :] = temp_counts
-                norm[K[j], :] = temp_num
-
-            return pic.T, norm.T
-
-        n_lines = self.scan_params.n_lines
-        pxl_sz = self.scan_params.dim2_um / (n_lines - 1)
-        scan_plane = self.scan_params.scan_plane
-        ppl = self.scan_params.ppl
-        ao = self.ao_buffer[0, :ppl]
-        counts = np.array(self.counter_dvc.ci_buffer)
-
-        if scan_plane in {"XY", "XZ"}:
-            xc = self.scan_params.curr_ao_x
-            um_per_V = self.um_v_ratio[0]
-
-        elif scan_plane == "YZ":
-            xc = self.scan_params.curr_ao_y
-            um_per_V = self.um_v_ratio[1]
-
-        pxl_sz_v = pxl_sz / um_per_V
-        line_len_v = (self.scan_params.dim1_um) / um_per_V
-
-        ppp = n_lines * ppl
-        j0 = plane_idx * ppp
-        J = np.arange(ppp) + j0
-
-        if plane_idx == 0:  # if first plane
-            counts = np.concatenate([[0], counts[J]])
-            counts = np.diff(counts)
-        else:
-            counts = np.concatenate([[j0], counts[J]])
-            counts = np.diff(counts)
-
-        counts = counts.reshape(ppl, n_lines, order="F")
-
-        x = np.tile(ao[:].T, (1, n_lines))
-        x = x.reshape(ppl, n_lines, order="F")
-
-        Ic = ppl // 2
-        x1 = x[:Ic, :]
-        x2 = x[-1 : Ic - 1 : -1, :]
-        counts1 = counts[:Ic, :]
-        counts2 = counts[-1 : Ic - 1 : -1, :]
-
-        x_min = xc - line_len_v / 2
-        pxls_pl = div_ceil(line_len_v, pxl_sz_v)
-
-        # even and odd planes are scanned in the opposite directions
-        if plane_idx % 2:
-            # odd (backwards)
-            K = np.arange(n_lines - 1, -1, -1)
-        else:
-            # even (forwards)
-            K = np.arange(n_lines)
-
-        # TODO: test if this fixes flipped photos on GB
-        #        K = np.arange(n_lines) # TESTESTEST
-
-        pic1, norm1 = calc_pic(K, counts1, x1, x_min, n_lines, pxls_pl, pxl_sz_v, Ic)
-        pic2, norm2 = calc_pic(K, counts2, x2, x_min, n_lines, pxls_pl, pxl_sz_v, Ic)
-
-        if pic1.shape[0] != pic1.shape[1]:
-            logging.warning(f"image shape is not square ({pic1.shape}), figure this out.")
-
-        line_scale_v = x_min + np.arange(pxls_pl) * pxl_sz_v
-        row_scale_v = self.scan_params.set_pnts_lines_odd
-
-        return ImageData(pic1, norm1, pic2, norm2, line_scale_v, row_scale_v)
-
     def keep_last_meas(self):
         """Doc."""
 
@@ -480,17 +381,17 @@ class SFCSImageMeasurement(Measurement):
         return {
             "version": self.tdc_dvc.tdc_vrsn,
             "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
-            "cnt": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
+            "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
             "pid": [],  # check
             "ao": self.ao_buffer,
             "sp": [],  # TODO: ask Oleg about this
             "log": [],  # info in mat filename
-            "lines_odd": self.scan_params.set_pnts_lines_odd,
             "is_fast_scan": True,
             "system_info": self.sys_info,
             "xyz_um_to_v": self.um_v_ratio,
             "tdc_scan_data": {
-                "plane": np.array([data for data in self.plane_data], dtype=np.object),
+                # TODO: prepare the data for saving - cut in up into planes as done with images
+                "data": np.array(self.data_dvc.data, dtype=np.uint8),
                 "data_version": self.tdc_dvc.data_vrsn,  # already in 'version'
                 "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
                 "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
@@ -498,20 +399,16 @@ class SFCSImageMeasurement(Measurement):
                 "version": self.tdc_dvc.tdc_vrsn,
             },
             "scan_param": {
-                "dim1_lines_um": self.scan_params.dim1_um,
-                "dim2_col_um": self.scan_params.dim2_um,
+                "set_pnts_lines_odd": self.scan_params.set_pnts_lines_odd,
+                "dim1_lines_um": self.scan_params.dim1_lines_um,
+                "dim2_col_um": self.scan_params.dim2_col_um,
                 "dim3_um": self.scan_params.dim3_um,
-                "lines": self.scan_params.n_lines,
-                "planes": self.scan_params.n_planes,
+                "n_lines": self.scan_params.n_lines,
+                "n_planes": self.scan_params.n_planes,
                 "line_freq_hz": self.scan_params.line_freq_Hz,
-                "points_per_line": self.scan_params.ppl,
-                "scan_type": self.scan_params.scan_plane + "scan",
-                "offset_aox": self.scan_params.curr_ao_x,
-                "offset_aoy": self.scan_params.curr_ao_y,
-                "offset_aoz": self.scan_params.curr_ao_z,
-                "offset_aix": self.scan_params.curr_ao_x,  # check
-                "offset_aiy": self.scan_params.curr_ao_y,  # check
-                "offset_aiz": self.scan_params.curr_ao_z,  # check
+                "ppl": self.scan_params.ppl,
+                "scan_plane": self.scan_params.scan_plane,
+                "initial_ao": self.scan_params.initial_ao,
                 "what_stage": "Galvanometers",
                 "linear_frac": self.scan_params.lin_frac,
             },
@@ -551,15 +448,10 @@ class SFCSImageMeasurement(Measurement):
 
                     self.change_plane(plane_idx)
                     self.curr_plane_wdgt.set(plane_idx)
+                    self.curr_plane = plane_idx
 
                     self.init_scan_tasks("FINITE")
                     self.scanners_dvc.start_tasks("ao")
-
-                    # collect initial ai/CI to avoid possible overflow
-                    self.counter_dvc.fill_ci_buffer()
-                    self.scanners_dvc.fill_ai_buffer()
-
-                    self.data_dvc.purge_buffers()
 
                     # recording
                     await self.record_data(timed=False)
@@ -567,9 +459,6 @@ class SFCSImageMeasurement(Measurement):
                     # collect final ai/CI
                     self.counter_dvc.fill_ci_buffer()
                     self.scanners_dvc.fill_ai_buffer()
-
-                    self.plane_data.append(self.data_dvc.data)
-                    self.data_dvc.init_data()
 
                 else:
                     break
@@ -586,9 +475,12 @@ class SFCSImageMeasurement(Measurement):
         if self.is_running:
             # if not manually stopped
             # prepare data
-            self.plane_images_data = [
-                self.prepare_image_data(plane_idx) for plane_idx in range(self.scan_params.n_planes)
-            ]
+            counts = np.array(self.counter_dvc.ci_buffer, dtype=np.int)
+            p = PhotonData()
+            p.convert_counts_to_images(
+                counts, self.ao_buffer, helper.namespace_to_dict(self.scan_params), self.um_v_ratio
+            )
+            self.plane_images_data = p.image_data
 
             # save data
             self.save_data(self.prep_data_dict(), self.build_filename())
@@ -749,7 +641,7 @@ class SFCSSolutionMeasurement(Measurement):
                     "scan_freq_hz": self.scan_params.scan_freq_Hz,
                     "sample_freq_hz": self.scan_params.ao_samp_freq_Hz,
                     "points_per_line_total": self.scan_params.tot_ppl,
-                    "points_per_line": self.scan_params.ppl,
+                    "ppl": self.scan_params.ppl,
                     "n_lines": self.scan_params.n_lines,
                     "line_length": self.scan_params.lin_len,
                     "total_length": self.scan_params.tot_len,

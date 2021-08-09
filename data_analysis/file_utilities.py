@@ -52,7 +52,7 @@ legacy_matlab_trans_dict = {
     "Line": "lines",
     "Planes": "planes",
     "Line_freq_Hz": "line_freq_hz",
-    "Points_per_Line": "points_per_line",
+    "Points_per_Line": "ppl",
     "ScanType": "scan_type",
     "Offset_AOX": "offset_aox",
     "Offset_AOY": "offset_aoy",
@@ -74,7 +74,7 @@ legacy_matlab_trans_dict = {
 }
 
 legacy_python_trans_dict = {
-    # legacy Python naming
+    # Solution
     "fpga_freq": "fpga_freq_mhz",
     "pix_clk_freq": "pix_clk_freq_mhz",
     "laser_freq": "laser_freq_mhz",
@@ -84,6 +84,14 @@ legacy_python_trans_dict = {
     "sample_freq": "sample_freq_hz",
     "max_line_length": "max_line_length_um",
     "line_shift": "line_shift_um",
+    # Image
+    "cnt": "ci",
+    "lines": "n_lines",
+    "planes": "n_planes",
+    "points_per_line": "ppl",
+    "scan_type": "scan_plane",
+    "lines_odd": "set_pnts_lines_odd",  # moved to scan_param
+    # General
 }
 
 default_system_info = {

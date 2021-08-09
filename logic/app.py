@@ -78,6 +78,7 @@ class App:
 
         print("Done.")
 
+        # TODO: add text for each device (or at least depletion, which is sometimes slow)
         print("Initializing Devices...", end=" ")
         self.init_devices()
         print("Done.")

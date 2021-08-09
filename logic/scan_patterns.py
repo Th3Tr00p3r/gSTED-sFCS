@@ -46,13 +46,13 @@ class ScanPatternAO:
         # order according to relevant plane dimensions
         if params.scan_plane == "XY":
             dim_conv = tuple(self.um_v_ratio[i] for i in (0, 1, 2))
-            curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "XYZ")
+            curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "xyz")
         if params.scan_plane == "YZ":
             dim_conv = tuple(self.um_v_ratio[i] for i in (1, 2, 0))
-            curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "YZX")
+            curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "yzx")
         if params.scan_plane == "XZ":
             dim_conv = tuple(self.um_v_ratio[i] for i in (0, 2, 1))
-            curr_ao = tuple(getattr(params, f"curr_ao_{ax.lower()}") for ax in "XZY")
+            curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "xzy")
 
         T = params.ppl
         f = params.lin_frac
@@ -81,10 +81,10 @@ class ScanPatternAO:
 
         s = s - 1 / (2 * f)
 
-        ampl = params.dim1_um / dim_conv[0]
+        ampl = params.dim1_lines_um / dim_conv[0]
         single_line_ao = curr_ao[0] + ampl * s
 
-        ampl = params.dim2_um / dim_conv[1]
+        ampl = params.dim2_col_um / dim_conv[1]
         if params.n_lines > 1:
             vect = np.array([(val / (params.n_lines - 1)) - 0.5 for val in range(params.n_lines)])
         else:

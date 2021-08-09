@@ -12,7 +12,7 @@ from skimage import filters as skifilt
 from skimage import morphology
 
 from data_analysis import fit_tools
-from data_analysis.file_loading_utilities import load_file_dict
+from data_analysis.file_utilities import load_file_dict
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities.helper import div_ceil, force_aspect, sort_file_paths_by_file_number

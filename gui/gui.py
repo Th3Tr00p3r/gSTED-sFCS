@@ -218,7 +218,6 @@ class MainWin(QMainWindow):
 
         self.imp.populate_data_templates_from_day(day)
 
-    # Use 'connect' instead to have the preview showing function for images also triggered by changing the template
     @pyqtSlot(str)
     def on_dataTemplate_currentTextChanged(self, template: str) -> None:
         """Doc."""
@@ -491,12 +490,13 @@ class AnalysisDisplay:
         finally:
             self.canvas.draw()
 
-    def display_image(self, image: np.ndarray):
+    def display_image(self, image: np.ndarray, axes="on"):
         """Doc."""
 
         self.figure.clear()
         self.ax = self.figure.add_subplot(111)
         self.ax.imshow(image)
+        self.ax.axis(axes)
         force_aspect(self.ax, aspect=1)
         self.canvas.draw()
 

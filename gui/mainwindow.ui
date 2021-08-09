@@ -380,6 +380,9 @@
                              <height>0</height>
                             </size>
                            </property>
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
                            <property name="maximum">
                             <number>999999</number>
                            </property>
@@ -4444,7 +4447,7 @@ Pattern:</string>
                     </widget>
                    </item>
                    <item>
-                    <layout class="QGridLayout" name="gridLayout_6">
+                    <layout class="QGridLayout" name="gridLayout_6" columnstretch="10,10,10,1">
                      <property name="spacing">
                       <number>0</number>
                      </property>
@@ -4722,7 +4725,7 @@ Pattern:</string>
                        <property name="maximumSize">
                         <size>
                          <width>150</width>
-                         <height>16777215</height>
+                         <height>150</height>
                         </size>
                        </property>
                        <property name="title">
