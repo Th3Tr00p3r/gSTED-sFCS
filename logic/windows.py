@@ -18,8 +18,9 @@ import logic.devices as dvcs
 import logic.measurements as meas
 import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
-from data_analysis import file_loading_utilities, fit_tools
+from data_analysis import file_utilities, fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
+from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import DeviceError, err_hndlr
@@ -310,16 +311,10 @@ class MainWin:
                     self._gui.solScanFileTemplate.setEnabled(False)
 
                 elif meas_type == "SFCSImage":
-                    initial_pos = tuple(getattr(self._gui, f"{ax}AOVint").value() for ax in "xyz")
-                    [
-                        getattr(self._gui, f"{ax}AOVint").setValue(vltg)
-                        for ax, vltg in zip("xyz", initial_pos)
-                    ]
                     self._app.meas = meas.SFCSImageMeasurement(
                         app=self._app,
                         scan_params=wdgt_colls.img_scan_wdgts.read_namespace_from_gui(self._app),
                         laser_mode=laser_mode.lower(),
-                        initial_pos=initial_pos,
                         **wdgt_colls.img_meas_wdgts.read_dict_from_gui(self._app),
                     )
 
@@ -426,8 +421,8 @@ class MainWin:
 
         plane_idx = self._gui.numPlaneShown.value()
         with suppress(AttributeError):
-            line_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].line_ticks_V
-            row_ticks_V = self._app.last_img_scn.plane_images_data[plane_idx].row_ticks_V
+            line_ticks_v = self._app.last_img_scn.plane_images_data[plane_idx].line_ticks_v
+            row_ticks_v = self._app.last_img_scn.plane_images_data[plane_idx].row_ticks_v
             plane_ticks = self._app.last_img_scn.set_pnts_planes
 
             coord_1, coord_2 = (
@@ -435,8 +430,8 @@ class MainWin:
                 round(self._gui.imgScanPlot.hLine.value()) - 1,
             )
 
-            dim1_vltg = line_ticks_V[coord_1]
-            dim2_vltg = row_ticks_V[coord_2]
+            dim1_vltg = line_ticks_v[coord_1]
+            dim2_vltg = row_ticks_v[coord_2]
             dim3_vltg = plane_ticks[plane_idx]
 
             plane_type = self._app.last_img_scn.plane_type
@@ -457,48 +452,58 @@ class MainWin:
 
             logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} moved to ROI ({vltgs})")
 
+    def build_image(self, img_data, method, plane_idx):
+        """Doc."""
+
+        if method == "Forward scan - actual counts per pixel":
+            return img_data.image_forward[:, :, plane_idx]
+
+        elif method == "Forward scan - points per pixel":
+            return img_data.norm_forward[:, :, plane_idx]
+
+        elif method == "Forward scan - normalized":
+            return img_data.image_forward[:, :, plane_idx] / img_data.norm_forward[:, :, plane_idx]
+
+        elif method == "Backwards scan - actual counts per pixel":
+            return img_data.image_backward[:, :, plane_idx]
+
+        elif method == "Backwards scan - points per pixel":
+            return img_data.norm_backward[:, :, plane_idx]
+
+        elif method == "Backwards scan - normalized":
+            return (
+                img_data.image_backward[:, :, plane_idx] / img_data.norm_backward[:, :, plane_idx]
+            )
+
+        elif method == "Both scans - interlaced":
+            p1_norm = (
+                img_data.image_forward[:, :, plane_idx] / img_data.norm_forward[:, :, plane_idx]
+            )
+            p2_norm = (
+                img_data.image_backward[:, :, plane_idx] / img_data.norm_backward[:, :, plane_idx]
+            )
+            n_lines = p1_norm.shape[0] + p2_norm.shape[0]
+            p = np.zeros(p1_norm.shape)
+            p[:n_lines:2, :] = p1_norm[:n_lines:2, :]
+            p[1:n_lines:2, :] = p2_norm[1:n_lines:2, :]
+            return p
+
+        elif method == "Both scans - averaged":
+            p1 = img_data.image_forward[:, :, plane_idx]
+            p2 = img_data.image_backward[:, :, plane_idx]
+            norm1 = img_data.norm_forward[:, :, plane_idx]
+            norm2 = img_data.norm_backward[:, :, plane_idx]
+            return (p1 + p2) / (norm1 + norm2)
+
     def disp_plane_img(self, plane_idx, auto_cross=False):
         """Doc."""
 
-        def build_image(img_data, method):
-            """Doc."""
-
-            if method == "Forward scan - actual counts per pixel":
-                return img_data.pic1
-
-            elif method == "Forward scan - points per pixel":
-                return img_data.norm1
-
-            elif method == "Forward scan - normalized":
-                return img_data.pic1 / img_data.norm1
-
-            elif method == "Backwards scan - actual counts per pixel":
-                return img_data.pic2
-
-            elif method == "Backwards scan - points per pixel":
-                return img_data.norm2
-
-            elif method == "Backwards scan - normalized":
-                return img_data.pic2 / img_data.norm2
-
-            elif method == "Both scans - interlaced":
-                p1 = img_data.pic1 / img_data.norm1
-                p2 = img_data.pic2 / img_data.norm2
-                n_lines = p1.shape[0] + p2.shape[0]
-                p = np.zeros(p1.shape)
-                p[:n_lines:2, :] = p1[:n_lines:2, :]
-                p[1:n_lines:2, :] = p2[1:n_lines:2, :]
-                return p
-
-            elif method == "Both scans - averaged":
-                return (img_data.pic1 + img_data.pic2) / (img_data.norm1 + img_data.norm2)
-
+        # TODO: replace this with Gaussian fit (2D)
         def auto_crosshair_position(image: np.ndarray) -> Tuple[float, float]:
             """
             Gets the current image, calculates its weighted mean
             location and returns the position to which to move the crosshair.
             (later perhaps using gaussian fit?)
-
             """
 
             # Use some good-old heuristic thresholding
@@ -524,9 +529,9 @@ class MainWin:
         disp_mthd = self._gui.imgShowMethod.currentText()
         with suppress(AttributeError):
             # No last_img_scn yet
-            image_data = self._app.last_img_scn.plane_images_data[plane_idx]
-            image = build_image(image_data, disp_mthd)
-            self._gui.imgScanPlot.replace_image(image)
+            image_data = self._app.last_img_scn.plane_images_data
+            image = self.build_image(image_data, disp_mthd, plane_idx)
+            self._gui.imgScanPlot.replace_image(image.T)
             if auto_cross:
                 self._gui.imgScanPlot.move_crosshair(auto_crosshair_position(image))
 
@@ -858,14 +863,27 @@ class MainWin:
     def preview_img_scan(self, template: str) -> None:
         """Doc."""
 
+        if not template:
+            return
+
         wdgts = wdgt_colls.data_import_wdgts
 
         if wdgts.is_image_type.get():
             # import the data
-            #            file_path = os.path.join(self.current_date_type_dir_path(), template)
+            file_path = os.path.join(self.current_date_type_dir_path(), template)
+            file_dict = file_utilities.load_file_dict(file_path)
             # get the center plane image
+            counts = file_dict["ci"]
+            ao = file_dict["ao"]
+            scan_param = file_dict["scan_param"]
+            um_v_ratio = file_dict["xyz_um_to_v"]
+            p = PhotonData()
+            p.convert_counts_to_images(counts, ao, scan_param, um_v_ratio)
+            image = self.build_image(
+                p.image_data, "Forward scan - actual counts per pixel", scan_param["n_planes"] // 2
+            )
             # plot it (below)
-            wdgts.img_preview_disp.obj.display_image(np.array([[1, 0, 1], [0, 1, 0], [1, 1, 1]]))
+            wdgts.img_preview_disp.obj.display_image(image, axes="off")
 
         pass
 
@@ -937,20 +955,21 @@ class MainWin:
             self._app.devices.photon_detector.start_tasks("ci")
             logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
 
-    def get_current_full_data(self) -> CorrFuncTDC:
+    def get_current_full_data(self, imported_template: str = None) -> CorrFuncTDC:
         """Doc."""
 
-        imported_template = wdgt_colls.sol_data_analysis_wdgts.imported_templates.get()
+        if imported_template is None:
+            imported_template = wdgt_colls.sol_data_analysis_wdgts.imported_templates.get()
         curr_data_type, *_ = re.split(" -", imported_template)
         return self._app.analysis.loaded_data.get(curr_data_type)
 
-    def populate_sol_meas_analysis(self, template):
+    def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
 
         wdgts = wdgt_colls.sol_data_analysis_wdgts
 
         try:
-            full_data = self.get_current_full_data()
+            full_data = self.get_current_full_data(imported_template)
             num_files = len(full_data.data)
         except AttributeError:
             # no imported templates (deleted)
@@ -970,12 +989,12 @@ class MainWin:
                 print("Displaying scan images...", end=" ")
                 wdgts.scan_img_file_num.obj.setRange(1, num_files)
                 wdgts.scan_img_file_num.set(1)
-                self.display_scan_image(file_num=1)
+                self.display_scan_image(1, imported_template)
 
                 # calculate average and display
                 # TODO: perhaps should average by default, before displaying that way I can put it all in one function?
                 print("Averaging and plotting...", end=" ")
-                self.calculate_and_show_sol_mean_acf()
+                self.calculate_and_show_sol_mean_acf(imported_template)
 
                 scan_settings_text = "\n\n".join(
                     [
@@ -986,20 +1005,20 @@ class MainWin:
 
             elif full_data.type == "static":
                 print("Averaging, plotting and fitting...", end=" ")
-                self.calculate_and_show_sol_mean_acf()
+                self.calculate_and_show_sol_mean_acf(imported_template)
                 scan_settings_text = "no scan."
 
             wdgts.scan_settings.set(scan_settings_text)
 
             print("Done.")
 
-    def display_scan_image(self, file_num):
+    def display_scan_image(self, file_num, imported_template: str = None):
         """Doc."""
 
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            full_data = self.get_current_full_data()
+            full_data = self.get_current_full_data(imported_template)
             img = full_data.data[file_num - 1].image
             roi = full_data.data[file_num - 1].roi
 
@@ -1008,11 +1027,11 @@ class MainWin:
             scan_image_disp.plot(roi["col"], roi["row"], color="white")
             scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
 
-    def calculate_and_show_sol_mean_acf(self) -> None:
+    def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
 
         wdgts = wdgt_colls.sol_data_analysis_wdgts
-        full_data = self.get_current_full_data()
+        full_data = self.get_current_full_data(imported_template)
 
         if full_data.type == "angular_scan":
             row_disc_method = wdgts.row_dicrimination.get().objectName()
@@ -1091,14 +1110,14 @@ class MainWin:
         print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
 
         for idx, file_path in enumerate(file_paths):
-            file_dict = file_loading_utilities.load_file_dict(file_path)
+            file_dict = file_utilities.load_file_dict(file_path)
             mat_file_path = re.sub(".pkl", ".mat", file_path)
             if "solution" in mat_file_path:
                 mat_file_path = re.sub("solution", r"solution\\matlab", mat_file_path)
             if "image" in mat_file_path:
                 mat_file_path = re.sub("image", r"image\\matlab", mat_file_path)
             os.makedirs(os.path.join(current_dir_path, "matlab"), exist_ok=True)
-            file_loading_utilities.save_mat(file_dict, mat_file_path)
+            file_utilities.save_mat(file_dict, mat_file_path)
             print(f"({idx+1})", end=" ")
 
         print("Done.")

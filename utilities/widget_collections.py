@@ -104,8 +104,8 @@ sol_meas_wdgts = QtWidgetCollection(
 
 img_scan_wdgts = QtWidgetCollection(
     scan_plane=("imgScanType", "QComboBox", "main", False),
-    dim1_um=("imgScanDim1", "QDoubleSpinBox", "main", False),
-    dim2_um=("imgScanDim2", "QDoubleSpinBox", "main", False),
+    dim1_lines_um=("imgScanDim1", "QDoubleSpinBox", "main", False),
+    dim2_col_um=("imgScanDim2", "QDoubleSpinBox", "main", False),
     dim3_um=("imgScanDim3", "QDoubleSpinBox", "main", False),
     n_lines=("imgScanNumLines", "QSpinBox", "main", False),
     ppl=("imgScanPPL", "QSpinBox", "main", False),
