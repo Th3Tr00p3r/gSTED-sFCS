@@ -118,14 +118,17 @@ class Measurement:
             while (
                 self.is_running
                 and not self.scanners_dvc.are_tasks_done("ao")
-                #                and not (overdue := self.time_passed_s > (self.est_plane_duration * (self.curr_plane + 1) * 2))
+                and not (
+                    overdue := self.time_passed_s
+                    > (self.est_plane_duration * (self.curr_plane + 1) * 1.1)
+                )
             ):
                 await self.data_dvc.read_TDC()
                 self.time_passed_s = time.perf_counter() - self.start_time
-        #            if overdue:
-        #                raise MeasurementError(
-        #                    "Tasks are overdue. Check that all relevant devices are turned ON"
-        #                )
+            if overdue:
+                raise MeasurementError(
+                    "Tasks are overdue. Check that all relevant devices are turned ON"
+                )
 
         # TODO: test if  this out helps with fix_shift and/or changes anything (moved to before turning off TDC (from after it))
         await self.data_dvc.read_TDC()  # read leftovers
@@ -237,7 +240,7 @@ class Measurement:
             await asyncio.sleep(5)
             button.setEnabled(True)
 
-    def init_scan_tasks(self, ao_sample_mode: str) -> None:
+    def init_scan_tasks(self, ao_sample_mode: str, ao_only=False) -> None:
         """Doc."""
 
         ao_sample_mode = getattr(ni_consts.AcquisitionType, ao_sample_mode)
@@ -260,29 +263,32 @@ class Measurement:
             start=False,
         )
 
-        xy_ao_task = [task for task in self.scanners_dvc.tasks.ao if (task.name == "AO XY")][0]
-        ao_clk_src = xy_ao_task.timing.samp_clk_term
+        if not ao_only:
+            xy_ao_task = [task for task in self.scanners_dvc.tasks.ao if (task.name == "AO XY")][0]
+            ao_clk_src = xy_ao_task.timing.samp_clk_term
 
-        self.scanners_dvc.start_scan_read_task(
-            samp_clk_cnfg={},
-            timing_params={
-                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samp_quant_samp_per_chan": int(self.n_ao_samps),
-                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
-                "samp_clk_src": ao_clk_src,
-                "ai_conv_rate": self.ai_conv_rate,
-            },
-        )
+            # init continuous AI
+            self.scanners_dvc.start_scan_read_task(
+                samp_clk_cnfg={},
+                timing_params={
+                    "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                    "samp_quant_samp_per_chan": int(self.n_ao_samps),
+                    "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
+                    "samp_clk_src": ao_clk_src,
+                    "ai_conv_rate": self.ai_conv_rate,
+                },
+            )
 
-        self.counter_dvc.start_scan_read_task(
-            samp_clk_cnfg={},
-            timing_params={
-                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                "samp_quant_samp_per_chan": int(self.n_ao_samps),
-                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
-                "samp_clk_src": ao_clk_src,
-            },
-        )
+            # init continuous CI
+            self.counter_dvc.start_scan_read_task(
+                samp_clk_cnfg={},
+                timing_params={
+                    "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                    "samp_quant_samp_per_chan": int(self.n_ao_samps),
+                    "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
+                    "samp_clk_src": ao_clk_src,
+                },
+            )
 
     def return_to_regular_tasks(self):
         """Close ao tasks and resume continuous ai/CI"""
@@ -441,6 +447,10 @@ class SFCSImageMeasurement(Measurement):
             self.is_running = True
             logging.info(f"Running {self.type} measurement")
 
+        # start all tasks (AO, AI, CI)
+        self.init_scan_tasks("FINITE")
+        self.scanners_dvc.start_tasks("ao")
+
         try:  # TESTESTEST
             for plane_idx in range(n_planes):
 
@@ -450,7 +460,8 @@ class SFCSImageMeasurement(Measurement):
                     self.curr_plane_wdgt.set(plane_idx)
                     self.curr_plane = plane_idx
 
-                    self.init_scan_tasks("FINITE")
+                    # Re-start only AO
+                    self.init_scan_tasks("FINITE", ao_only=True)
                     self.scanners_dvc.start_tasks("ao")
 
                     # recording

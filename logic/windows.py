@@ -421,8 +421,8 @@ class MainWin:
 
         plane_idx = self._gui.numPlaneShown.value()
         with suppress(AttributeError):
-            line_ticks_v = self._app.last_img_scn.plane_images_data[plane_idx].line_ticks_v
-            row_ticks_v = self._app.last_img_scn.plane_images_data[plane_idx].row_ticks_v
+            line_ticks_v = self._app.last_img_scn.plane_images_data.line_ticks_v
+            row_ticks_v = self._app.last_img_scn.plane_images_data.row_ticks_v
             plane_ticks = self._app.last_img_scn.set_pnts_planes
 
             coord_1, coord_2 = (
