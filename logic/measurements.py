@@ -42,6 +42,7 @@ class Measurement:
         self.scanners_dvc = app.devices.scanners
         self.scan_params = scan_params
         self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2V_const") for ax in "xyz")
+        # TODO: check if 'ai_scaling_xyz' matches today's ratio
         self.sys_info = {
             "setup": "STED with galvos",
             "after_pulse_param": (
@@ -60,7 +61,7 @@ class Measurement:
                     ]
                 ),
             ),
-            "ai_scaling_xyz": (1.243, 1.239, 1),  # TODO: check if matches today's ratio
+            "ai_scaling_xyz": (1.243, 1.239, 1),
             "xyz_um_to_v": self.um_v_ratio,
         }
 

@@ -255,26 +255,6 @@ def reverse_dict(dict_: dict) -> dict:
     return {val: key for key, val in dict_.items()}
 
 
-def file_extension(file_path: str) -> str:
-    """Returns the file extension as a string, i.e. file_extension('Path/file.ext') -> '.ext'."""
-
-    return re.split("(\\.[a-z]{3})$", file_path, maxsplit=1)[1]
-
-
-def sort_file_paths_by_file_number(file_paths: List[str]) -> List[str]:
-    """
-    Returns a path list, sorted according to file number (ascending).
-    Works for file paths of the following format:
-    "PATH_TO_FILE_DIRECTORY/file_template_*.ext"
-    where the important part is '*.ext' (* is a any number, ext is any 3 letter file extension)
-    """
-
-    return sorted(
-        file_paths,
-        key=lambda file_path: int(re.split(f"(\\d+){file_extension(file_paths[0])}", file_path)[1]),
-    )
-
-
 def dir_date_parts(data_path: str, sub_dir: str = "", month: int = None, year: int = None) -> list:
     """
     Inputs:
