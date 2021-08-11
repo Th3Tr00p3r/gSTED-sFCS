@@ -1,12 +1,15 @@
 """Data-File Loading Utilities"""
 
+import glob
 import pickle
+import re
 from collections.abc import Iterable
+from typing import List
 
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import file_extension, reverse_dict
+from utilities.helper import reverse_dict
 
 legacy_matlab_trans_dict = {
     # Solution Scan
@@ -264,3 +267,82 @@ def load_pkl(file_path: str) -> dict:
 
     with open(file_path, "rb") as f:
         return pickle.load(f)
+
+
+def file_extension(file_path: str) -> str:
+    """Returns the file extension as a string, i.e. file_extension('Path/file.ext') -> '.ext'."""
+
+    return re.split("(\\.[a-z]{3})$", file_path, maxsplit=1)[1]
+
+
+def sort_file_paths_by_file_number(file_paths: List[str]) -> List[str]:
+    """
+    Returns a path list, sorted according to file number (ascending).
+    Works for file paths of the following format:
+    "PATH_TO_FILE_DIRECTORY/file_template_*.ext"
+    where the important part is '*.ext' (* is a any number, ext is any 3 letter file extension)
+    """
+
+    return sorted(
+        file_paths,
+        key=lambda file_path: int(re.split(f"(\\d+){file_extension(file_paths[0])}", file_path)[1]),
+    )
+
+
+def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
+    """Doc."""
+
+    def range_str_to_list(range_str: str) -> List[int]:
+        """
+        Accept a range string and returns a list of integers, lowered by 1 to match indices.
+        Examples:
+            range_string_to_list('1-3') -> [0, 1, 2]
+            range_string_to_list('2') -> [1]
+        """
+
+        try:
+            range_edges = [int(s) for s in range_str.split("-")]
+            if len(range_edges) > 2:
+                raise ValueError
+            elif len(range_edges) == 2:
+                range_start, range_end = range_edges
+                return list(range(range_start - 1, range_end))
+            else:  # len(splitted_by_hyphen) == 1
+                single_int, *_ = range_edges
+                return [single_int - 1]
+        except (ValueError, IndexError):
+            raise ValueError(f"Bad range format: '{range_str}'.")
+
+    _, choice, file_selection = re.split("(Use|Don't Use)", file_selection)
+    file_idxs = [
+        file_num
+        for range_str in file_selection.split(",")
+        for file_num in range_str_to_list(range_str)
+    ]
+
+    return file_idxs, choice
+
+
+def prepare_file_paths(file_path_template: str, file_selection: str) -> List[str]:
+    """Doc."""
+
+    file_paths = sort_file_paths_by_file_number(glob.glob(file_path_template))
+    if not file_paths:
+        raise FileNotFoundError(f"File template path ('{file_path_template}') does not exist!")
+
+    if file_selection:
+        try:
+            file_idxs, choice = file_selection_str_to_list(file_selection)
+            if choice == "Use":
+                file_paths = [file_paths[i] for i in file_idxs]
+            else:
+                file_paths = [file_paths[i] for i in range(len(file_paths)) if i not in file_idxs]
+            print(f"(files: '{file_selection}')")
+        except IndexError:
+            raise ValueError(
+                f"Bad file selection string: '{file_selection}'. One or more file numbers don't exist."
+            )
+    else:
+        print("(all files)")
+
+    return file_paths
