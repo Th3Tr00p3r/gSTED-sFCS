@@ -1,6 +1,5 @@
 """Data organization and manipulation."""
 
-import glob
 import os
 from collections import deque
 
@@ -12,10 +11,10 @@ from skimage import filters as skifilt
 from skimage import morphology
 
 from data_analysis import fit_tools
-from data_analysis.file_utilities import load_file_dict
+from data_analysis.file_utilities import load_file_dict, prepare_file_paths
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities.helper import div_ceil, force_aspect, sort_file_paths_by_file_number
+from utilities.helper import div_ceil, force_aspect
 
 
 class CorrFuncData:
@@ -155,21 +154,20 @@ class CorrFuncTDC(CorrFuncData):
 
     def read_fpga_data(  # noqa C901
         self,
-        file_template_path,
-        fix_shift=False,
-        roi_selection="auto",
-        no_plot=False,
+        file_path_template: str,
+        file_selection: str = "",
+        fix_shift: bool = False,
+        roi_selection: str = "auto",
+        no_plot: bool = False,
     ):
         """Doc."""
 
-        print("\nLoading FPGA data from hard drive:")
+        print("\nLoading FPGA data from hard drive:", end=" ")
 
-        file_paths = sort_file_paths_by_file_number(glob.glob(file_template_path))
-        if not file_paths:
-            raise FileNotFoundError(f"File template path ('{file_template_path}') does not exist!")
-        _, self.template = os.path.split(file_template_path)
+        file_paths = prepare_file_paths(file_path_template, file_selection)
 
         n_files = len(file_paths)
+        _, self.template = os.path.split(file_path_template)
 
         for idx, file_path in enumerate(file_paths):
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
@@ -210,6 +208,7 @@ class CorrFuncTDC(CorrFuncData):
                     angular_scan_settings = full_data["angular_scan_settings"]
                     linear_part = np.array(angular_scan_settings["linear_part"], dtype=np.int32)
                     self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
+                    self.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
                     sample_freq_hz = angular_scan_settings["sample_freq_hz"]
                     ppl_tot = angular_scan_settings["points_per_line_total"]
                     n_lines = angular_scan_settings["n_lines"]
@@ -530,7 +529,7 @@ class CorrFuncTDC(CorrFuncData):
         self.countrate = []
         self.total_duration_skipped = 0
 
-        print(f"Correlating angular scan data ({self.template}):", end=" ")
+        print(f"Correlating angular scan data '{self.template}':", end=" ")
 
         for p in self.data:
             print(f"({p.file_num})", end=" ")

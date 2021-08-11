@@ -892,7 +892,11 @@ class MainWin:
 
         data_import_wdgts = wdgt_colls.data_import_wdgts
         current_template = data_import_wdgts.data_templates.get()
+        file_dicrimination_checked_button = data_import_wdgts.sol_file_dicrimination.get()
+        use_or_dont = data_import_wdgts.sol_file_use_or_dont.get()
+        sol_file_selection = data_import_wdgts.sol_file_selection.get()
         is_calibration = data_import_wdgts.is_calibration.get()
+        fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
 
         # TODO: create a context manager for pausing/resuming AI/CI tasks
         logging.debug("Importing Data. Pausing 'ai' and 'ci' tasks")
@@ -900,14 +904,19 @@ class MainWin:
         self._app.devices.photon_detector.pause_tasks("ci")
 
         full_data = CorrFuncTDC()
-        fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
-        # TODO: add support for choosing a single file (already in GUI)
+
+        # file selection
+        if file_dicrimination_checked_button.objectName() == "solImportUse":
+            sol_file_selection = f"{use_or_dont} {sol_file_selection}"
+        else:
+            sol_file_selection = ""
 
         try:
             with suppress(AttributeError):
                 # No directories found
                 full_data.read_fpga_data(
                     os.path.join(self.current_date_type_dir_path(), current_template),
+                    file_selection=sol_file_selection,
                     fix_shift=fix_shift,
                     no_plot=True,
                 )
@@ -983,6 +992,7 @@ class MainWin:
             # populate general measurement properties
             wdgts.n_files.set(num_files)
             wdgts.scan_duration_min.set(full_data.duration_min)
+            wdgts.avg_cnt_rate_khz.set(full_data.avg_cnt_rate_khz)
 
             if full_data.type == "angular_scan":
                 # populate scan images tab

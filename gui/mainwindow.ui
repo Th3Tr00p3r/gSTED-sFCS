@@ -4710,7 +4710,7 @@ Pattern:</string>
                     <enum>QFrame::Raised</enum>
                    </property>
                    <property name="currentIndex">
-                    <number>0</number>
+                    <number>1</number>
                    </property>
                    <widget class="QWidget" name="image">
                     <layout class="QGridLayout" name="gridLayout_8">
@@ -4761,7 +4761,7 @@ Measurement</string>
                    <widget class="QWidget" name="solution">
                     <layout class="QGridLayout" name="gridLayout_31">
                      <item row="0" column="0">
-                      <layout class="QHBoxLayout" name="horizontalLayout_15">
+                      <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="0,0">
                        <property name="spacing">
                         <number>0</number>
                        </property>
@@ -4801,35 +4801,119 @@ Measurement</string>
                          <property name="title">
                           <string>Options</string>
                          </property>
-                         <layout class="QVBoxLayout" name="verticalLayout_56">
-                          <item>
-                           <widget class="QComboBox" name="solFilesToUse">
-                            <item>
-                             <property name="text">
-                              <string>All Files</string>
-                             </property>
-                            </item>
-                           </widget>
-                          </item>
-                          <item>
+                         <layout class="QGridLayout" name="gridLayout_10">
+                          <item row="1" column="0">
                            <widget class="QCheckBox" name="solDataFixShift">
                             <property name="text">
                              <string>Fix Shift</string>
                             </property>
+                            <property name="tristate">
+                             <bool>false</bool>
+                            </property>
                            </widget>
                           </item>
-                          <item>
-                           <spacer name="verticalSpacer_6">
-                            <property name="orientation">
-                             <enum>Qt::Vertical</enum>
+                          <item row="0" column="0">
+                           <widget class="QGroupBox" name="groupBox_9">
+                            <property name="sizePolicy">
+                             <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                              <horstretch>0</horstretch>
+                              <verstretch>0</verstretch>
+                             </sizepolicy>
                             </property>
-                            <property name="sizeHint" stdset="0">
+                            <property name="maximumSize">
                              <size>
-                              <width>20</width>
-                              <height>40</height>
+                              <width>16777215</width>
+                              <height>999999</height>
                              </size>
                             </property>
-                           </spacer>
+                            <property name="title">
+                             <string>File Selection</string>
+                            </property>
+                            <layout class="QGridLayout" name="gridLayout_20">
+                             <item row="0" column="0">
+                              <widget class="QRadioButton" name="solImportUseAll">
+                               <property name="text">
+                                <string>Use All</string>
+                               </property>
+                               <property name="checked">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="1,10">
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
+                               <item>
+                                <layout class="QHBoxLayout" name="horizontalLayout_34" stretch="1,10">
+                                 <property name="spacing">
+                                  <number>0</number>
+                                 </property>
+                                 <item>
+                                  <widget class="QRadioButton" name="solImportUse">
+                                   <property name="text">
+                                    <string/>
+                                   </property>
+                                   <property name="checked">
+                                    <bool>false</bool>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QComboBox" name="solImportUseDontUse">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="maximumSize">
+                                    <size>
+                                     <width>70</width>
+                                     <height>20</height>
+                                    </size>
+                                   </property>
+                                   <property name="currentIndex">
+                                    <number>0</number>
+                                   </property>
+                                   <item>
+                                    <property name="text">
+                                     <string>Use</string>
+                                    </property>
+                                   </item>
+                                   <item>
+                                    <property name="text">
+                                     <string>Don't Use</string>
+                                    </property>
+                                   </item>
+                                  </widget>
+                                 </item>
+                                </layout>
+                               </item>
+                               <item>
+                                <widget class="QLineEdit" name="solImportFileSelectionPattern">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="maximumSize">
+                                  <size>
+                                   <width>80</width>
+                                   <height>16777215</height>
+                                  </size>
+                                 </property>
+                                 <property name="placeholderText">
+                                  <string>e.g. 1,3-5,8</string>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                            </layout>
+                           </widget>
                           </item>
                          </layout>
                         </widget>
@@ -4952,7 +5036,7 @@ Measurement</string>
                           <bool>true</bool>
                          </property>
                          <property name="currentIndex">
-                          <number>1</number>
+                          <number>0</number>
                          </property>
                          <widget class="QWidget" name="tab_4">
                           <attribute name="title">
@@ -4960,7 +5044,7 @@ Measurement</string>
                           </attribute>
                           <layout class="QGridLayout" name="gridLayout_39">
                            <item row="0" column="0">
-                            <layout class="QHBoxLayout" name="horizontalLayout_27" stretch="1,100">
+                            <layout class="QHBoxLayout" name="horizontalLayout_27" stretch="1,1000">
                              <property name="spacing">
                               <number>0</number>
                              </property>
@@ -5328,6 +5412,46 @@ Mean ACF</string>
                                  </item>
                                  <item>
                                   <widget class="QDoubleSpinBox" name="solAnalysisDur">
+                                   <property name="frame">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="readOnly">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="decimals">
+                                    <number>1</number>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                </layout>
+                               </item>
+                               <item>
+                                <layout class="QVBoxLayout" name="verticalLayout_96">
+                                 <property name="spacing">
+                                  <number>0</number>
+                                 </property>
+                                 <property name="sizeConstraint">
+                                  <enum>QLayout::SetDefaultConstraint</enum>
+                                 </property>
+                                 <item>
+                                  <widget class="QLabel" name="label_71">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="text">
+                                    <string>Count Rate
+(kHz)</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QDoubleSpinBox" name="solAnalysisCountRate">
                                    <property name="frame">
                                     <bool>true</bool>
                                    </property>
@@ -6684,7 +6808,7 @@ Gating &gt; (ns)</string>
    <property name="minimumSize">
     <size>
      <width>300</width>
-     <height>350</height>
+     <height>316</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -7410,7 +7534,7 @@ Settings</string>
    <property name="minimumSize">
     <size>
      <width>300</width>
-     <height>308</height>
+     <height>248</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -8283,7 +8407,7 @@ Disp. (um)</string>
    <property name="minimumSize">
     <size>
      <width>300</width>
-     <height>220</height>
+     <height>209</height>
     </size>
    </property>
    <property name="maximumSize">

@@ -83,6 +83,10 @@ class MainWin(QMainWindow):
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveWorst)
 
+        self.fileSelectionGroup = QButtonGroup()
+        self.fileSelectionGroup.addButton(self.solImportUseAll)
+        self.fileSelectionGroup.addButton(self.solImportUse)
+
         self.solScanImgDisp = AnalysisDisplay(self.solAnalysisScanImageLayout, self)
         self.solScanAcfDisp = AnalysisDisplay(self.solAnalysisAveragingLayout, self)
 

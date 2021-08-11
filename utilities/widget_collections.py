@@ -41,6 +41,9 @@ data_import_wdgts = QtWidgetCollection(
     is_calibration=("isDataCalibration", "QCheckBox", "main", True),
     log_text=("dataDirLog", "QPlainTextEdit", "main", True),
     img_preview_disp=("imgScanPreviewDisp", None, "main", True),
+    sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", True),
+    sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", True),
+    sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", True),
 )
 
 sol_data_analysis_wdgts = QtWidgetCollection(
@@ -56,6 +59,7 @@ sol_data_analysis_wdgts = QtWidgetCollection(
     scan_settings=("solAnalysisScanSettings", "QPlainTextEdit", "main", True),
     scan_duration_min=("solAnalysisDur", "QDoubleSpinBox", "main", True),
     n_files=("solAnalysisNumFiles", "QSpinBox", "main", True),
+    avg_cnt_rate_khz=("solAnalysisCountRate", "QDoubleSpinBox", "main", True),
     mean_g0=("solAnalysisMeanG0", "QDoubleSpinBox", "main", True),
     mean_tau=("solAnalysisMeanTau", "QDoubleSpinBox", "main", True),
     n_good_rows=("solAnalysisGoodRows", "QSpinBox", "main", True),
