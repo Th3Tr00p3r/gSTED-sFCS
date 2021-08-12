@@ -12,8 +12,8 @@ import pyvisa as visa
 from instrumental.drivers.cameras import uc480
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
 
+import utilities.helper as helper
 from utilities.errors import IOError
-from utilities.helper import translate_dict_values
 
 
 class Ftd2xx:
@@ -25,7 +25,7 @@ class Ftd2xx:
     }
 
     def __init__(self, param_dict):
-        param_dict = translate_dict_values(param_dict, self.ftd2xx_dict)
+        param_dict = helper.translate_dict_values(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.error_dict = None
 
@@ -49,14 +49,13 @@ class Ftd2xx:
         self._inst.setFlowControl(self.flow_ctrl)
         self._inst.setUSBParameters(self.tx_size)
 
-    async def read(self) -> np.ndarray:
+    @helper.timer
+    async def read(self) -> bytes:
         """Doc."""
 
         # TODO: fix bug where something here blocks - I think it's some error in the async read function.
         # check this out: https://docs.python.org/3/library/asyncio-dev.html#detect-never-retrieved-exceptions
-        raw_bytes = await self._inst.read(self.n_bytes)
-        read_bytes = np.frombuffer(raw_bytes, dtype=np.uint8)
-        return read_bytes
+        return await self._inst.read(self.n_bytes)
 
     def purge(self) -> None:
         """Doc."""
@@ -213,7 +212,6 @@ class NIDAQmx:
         """Doc."""
 
         ai_task = [task for task in self.tasks.ai if (task.name == task_name)][0]
-        #        ai_task = getattr(self.tasks, task_type)[task_name]
         return np.array(ai_task.read(number_of_samples_per_channel=n_samples))
 
     def analog_write(self, task_name: str, data: np.ndarray, auto_start=None) -> None:

@@ -98,6 +98,7 @@ sol_meas_wdgts = QtWidgetCollection(
     prog_bar_wdgt=("solScanProgressBar", "QSlider", "main", True),
     start_time_wdgt=("solScanStartTime", "QTimeEdit", "main", True),
     end_time_wdgt=("solScanEndTime", "QTimeEdit", "main", True),
+    time_left_wdgt=("solScanTimeLeft", "QSpinBox", "main", True),
     file_num_wdgt=("solScanFileNo", "QSpinBox", "main", True),
     pattern_wdgt=("solScanPattern", None, "main", True),
     g0_wdgt=("g0", "QDoubleSpinBox", "main", True),
