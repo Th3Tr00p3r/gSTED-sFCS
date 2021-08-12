@@ -30,7 +30,8 @@ def timer(func) -> Callable:
             value = await func(*args, **kwargs)
             toc = time.perf_counter()
             elapsed_time_ms = (toc - tic) * 1e3
-            print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
+            if elapsed_time_ms > 200:  # TESTESTEST
+                print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
             return value
 
     else:

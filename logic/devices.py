@@ -14,14 +14,9 @@ from nidaqmx.errors import DaqError
 
 import gui.gui
 import utilities.dialog as dialog
+import utilities.helper as helper
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
-from utilities.helper import (
-    QtWidgetCollection,
-    div_ceil,
-    paths_to_icons,
-    sync_to_thread,
-)
 
 # TODO: refactoring - toggling should be seperate from opening/closing connection with device.
 # this would make redundent many flag arguments I have in dvc_toggle(), device_toggle_button_released(), toggle() etc.
@@ -43,7 +38,7 @@ class BaseDevice:
 
         if not hasattr(self, "icon_dict"):
             # get icons
-            self.icon_dict = paths_to_icons(gui.icons.icon_paths_dict)
+            self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)
 
         has_switch = hasattr(self, "switch_widget")
         if command == "on":
@@ -93,12 +88,9 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     async def read_TDC(self):
         """Doc."""
 
-        try:
-            byte_array = await self.read()
-            self.data.extend(byte_array)
-            self.tot_bytes_read += len(byte_array)
-        except Exception as exc:
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        byte_array = await self.read()
+        self.data.extend(byte_array)
+        self.tot_bytes_read += len(byte_array)
 
     def init_data(self):
         """Doc."""
@@ -199,11 +191,9 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         try:
-            task_name = "Continuous AI"
-
             self.close_tasks("ai")
             self.create_ai_task(
-                name=task_name,
+                name="Continuous AI",
                 chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
                 samp_clk_cnfg={
                     "rate": self.MIN_OUTPUT_RATE_Hz,
@@ -253,7 +243,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 init_pos = self.last_int_ao[self.AXIS_INDEX[axis]]
 
             total_dist = abs(final_pos - init_pos)
-            n_steps = div_ceil(total_dist, step_sz)
+            n_steps = helper.div_ceil(total_dist, step_sz)
 
             if n_steps < 2:
                 # one small step needs no smoothing
@@ -359,15 +349,11 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     ) -> None:
         """Doc."""
 
-        try:
-            read_samples = self.analog_read(task_name, n_samples)
-        except Exception as exc:
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-        else:
-            read_samples = self._diff_to_rse(read_samples.T.tolist())
-            self.ai_buffer.extend(read_samples)
+        read_samples = self.analog_read(task_name, n_samples)
+        read_samples = self._diff_to_rse(read_samples.T.tolist())
+        self.ai_buffer.extend(read_samples)
 
-    def _diff_to_rse(self, read_samples: list) -> np.ndarray:
+    def _diff_to_rse(self, read_samples: list) -> list:
         """Doc."""
 
         return [s[:3] + [(s[3] - s[4]) / 2, (s[5] - s[6]) / 2] + [s[7]] for s in read_samples]
@@ -489,13 +475,9 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def fill_ci_buffer(self, n_samples=ni_consts.READ_ALL_AVAILABLE):
         """Doc."""
 
-        try:
-            num_samps_read = self.counter_stream_read()
-        except Exception as exc:
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-        else:
-            self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
-            self.num_reads_since_avg += num_samps_read
+        num_samps_read = self.counter_stream_read()
+        self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
+        self.num_reads_since_avg += num_samps_read
 
     def average_counts(self, interval: float, rate=None) -> None:
         """Doc."""
@@ -503,7 +485,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         if rate is None:
             rate = self.tasks.ci[-1].timing.samp_clk_rate
 
-        n_reads = div_ceil(interval, (1 / rate))
+        n_reads = helper.div_ceil(interval, (1 / rate))
 
         if len(self.ci_buffer) > n_reads:
             self.avg_cnt_rate_khz = (
@@ -777,7 +759,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             self.vid_state = new_state
 
         if new_state is True:
-            self._loop.create_task(sync_to_thread(self._vidshow))
+            self._loop.create_task(helper.sync_to_thread(self._vidshow))
 
     def _vidshow(self):
         """Doc."""
@@ -801,7 +783,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 class DeviceAttrs:
     class_name: str
     log_ref: str
-    param_widgets: QtWidgetCollection
+    param_widgets: helper.QtWidgetCollection
     led_color: str = "green"
     cls_xtra_args: List[str] = None
 
@@ -811,7 +793,7 @@ DEVICE_ATTR_DICT = {
         class_name="SimpleDO",
         log_ref="Excitation Laser",
         led_color="blue",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledExc", "QIcon", "main", True),
             switch_widget=("excOnButton", "QIcon", "main", True),
             model=("excMod", "QLineEdit", "settings", False),
@@ -824,7 +806,7 @@ DEVICE_ATTR_DICT = {
     "dep_shutter": DeviceAttrs(
         class_name="SimpleDO",
         log_ref="Shutter",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledShutter", "QIcon", "main", True),
             switch_widget=("depShutterOn", "QIcon", "main", True),
             address=("depShutterAddr", "QLineEdit", "settings", False),
@@ -833,7 +815,7 @@ DEVICE_ATTR_DICT = {
     "TDC": DeviceAttrs(
         class_name="SimpleDO",
         log_ref="TDC",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledTdc", "QIcon", "main", True),
             address=("TDCaddress", "QLineEdit", "settings", False),
             data_vrsn=("TDCdataVersion", "QLineEdit", "settings", False),
@@ -846,7 +828,7 @@ DEVICE_ATTR_DICT = {
         class_name="DepletionLaser",
         log_ref="Depletion Laser",
         led_color="orange",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledDep", "QIcon", "main", True),
             switch_widget=("depEmissionOn", "QIcon", "main", True),
             model_query=("depModelQuery", "QLineEdit", "settings", False),
@@ -855,7 +837,7 @@ DEVICE_ATTR_DICT = {
     "stage": DeviceAttrs(
         class_name="StepperStage",
         log_ref="Stage",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledStage", "QIcon", "main", True),
             switch_widget=("stageOn", "QIcon", "main", True),
             address=("arduinoAddr", "QLineEdit", "settings", False),
@@ -864,7 +846,7 @@ DEVICE_ATTR_DICT = {
     "UM232H": DeviceAttrs(
         class_name="UM232H",
         log_ref="UM232H",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledUm232h", "QIcon", "main", True),
             bit_mode=("um232BitMode", "QLineEdit", "settings", False),
             timeout_ms=("um232Timeout", "QSpinBox", "settings", False),
@@ -878,7 +860,7 @@ DEVICE_ATTR_DICT = {
         class_name="Camera",
         cls_xtra_args=["loop", "gui.camera"],
         log_ref="Camera",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledCam", "QIcon", "main", True),
             model=("uc480PlaceHolder", "QSpinBox", "settings", False),
         ),
@@ -886,7 +868,7 @@ DEVICE_ATTR_DICT = {
     "scanners": DeviceAttrs(
         class_name="Scanners",
         log_ref="Scanners",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledScn", "QIcon", "main", True),
             ao_x_init_vltg=("xAOV", "QDoubleSpinBox", "main", False),
             ao_y_init_vltg=("yAOV", "QDoubleSpinBox", "main", False),
@@ -915,7 +897,7 @@ DEVICE_ATTR_DICT = {
         class_name="PhotonDetector",
         cls_xtra_args=["devices.scanners.tasks.ai"],
         log_ref="Photon Detector",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledCounter", "QIcon", "main", True),
             pxl_clk=("counterPixelClockAddress", "QLineEdit", "settings", False),
             pxl_clk_output=("pixelClockCounterIntOutputAddress", "QLineEdit", "settings", False),
@@ -935,7 +917,7 @@ DEVICE_ATTR_DICT = {
     "pixel_clock": DeviceAttrs(
         class_name="PixelClock",
         log_ref="Pixel Clock",
-        param_widgets=QtWidgetCollection(
+        param_widgets=helper.QtWidgetCollection(
             led_widget=("ledPxlClk", "QIcon", "main", True),
             low_ticks=("pixelClockLowTicks", "QSpinBox", "settings", False),
             high_ticks=("pixelClockHighTicks", "QSpinBox", "settings", False),

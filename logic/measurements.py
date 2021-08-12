@@ -277,7 +277,8 @@ class Measurement:
                 samp_clk_cnfg={},
                 timing_params={
                     "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                    "samp_quant_samp_per_chan": int(self.n_ao_samps),
+                    # the extra 50% avoids buffer overflow
+                    "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.5),
                     "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                     "samp_clk_src": ao_clk_src,
                     "ai_conv_rate": self.ai_conv_rate,
@@ -289,7 +290,8 @@ class Measurement:
                 samp_clk_cnfg={},
                 timing_params={
                     "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                    "samp_quant_samp_per_chan": int(self.n_ao_samps),
+                    # the extra 50% avoids buffer overflow
+                    "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.5),
                     "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                     "samp_clk_src": ao_clk_src,
                 },
@@ -575,6 +577,9 @@ class SFCSSolutionMeasurement(Measurement):
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
 
+    # TODO: standardize this - use the existing read_fpga_data() by adding an option to use an existing dict rather than load one
+    # OR better yet - create seperate functions for processing angular scans/circular scans (single file) and use them here (with existing dict)
+    # while refactoring read_fpga_data() to use those seperate functions too, and finally be shorter and more readable.
     def disp_ACF(self):
         """Doc."""
 
@@ -732,11 +737,15 @@ class SFCSSolutionMeasurement(Measurement):
 
                 self.file_num_wdgt.set(file_num)
 
+                print("FPGA reading starts...", end=" ")  # TESTESTEST
+
                 # reading
                 if self.repeat:
                     await self.record_data(timed=True)
                 else:
                     await self.record_data(timed=True, size_limited=True)
+
+                print("Done.")  # TESTESTEST
 
                 # collect final ai/CI
                 self.counter_dvc.fill_ci_buffer()

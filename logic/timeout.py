@@ -7,6 +7,7 @@ import sys
 from collections import deque
 from contextlib import suppress
 
+# import time # TESTING
 from utilities.errors import err_hndlr
 
 # import time
@@ -101,7 +102,10 @@ class Timeout:
     async def _read_ci_and_ai(self) -> None:
         """Doc."""
 
+        #        tic = time.perf_counter() # TESTING
+
         while self.not_finished:
+            #            print(f"time since last read ci/ai (timeout): {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
             # CI (Photon Detector)
             if not self.cntr_dvc.error_dict:
                 self.cntr_dvc.fill_ci_buffer()
@@ -110,6 +114,7 @@ class Timeout:
             if not self.scan_dvc.error_dict:
                 self.scan_dvc.fill_ai_buffer()
 
+            #            tic = time.perf_counter() # TESTING
             await asyncio.sleep(TIMEOUT)
 
     async def _update_gui(self) -> None:  # noqa: C901
@@ -175,7 +180,7 @@ class Timeout:
 
                 self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate_khz)
 
-        def updt_meas_progbar(meas) -> None:
+        def updt_meas_progress(meas) -> None:
             """Doc."""
 
             with suppress(AttributeError):
@@ -184,6 +189,7 @@ class Timeout:
                     progress = (
                         meas.time_passed_s / meas.duration_s * meas.prog_bar_wdgt.obj.maximum()
                     )
+                    meas.time_left_wdgt.set(int(meas.duration_s - meas.time_passed_s))
                 elif meas.type == "SFCSImage":
                     progress = (
                         meas.time_passed_s
@@ -204,9 +210,9 @@ class Timeout:
             if not self.cntr_dvc.error_dict:
                 update_avg_counts(meas)
 
-            # Measurement progress bar
+            # Measurement progress bar and time left
             if self._app.meas.is_running:
-                updt_meas_progbar(meas)
+                updt_meas_progress(meas)
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
