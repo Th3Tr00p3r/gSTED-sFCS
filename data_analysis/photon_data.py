@@ -190,7 +190,10 @@ def find_section_edge(data, group_len, verbose=False):  # noqa c901
 
         # condition for ignoring single photon error (just test the most significant bytes of the runtime are close)
         ignore_single_error_cond = (
-            abs(data[data_idx_of_missed_248 + 1] - data[data_idx_of_missed_248 - (group_len - 1)])
+            abs(
+                int(data[data_idx_of_missed_248 + 1])
+                - int(data[data_idx_of_missed_248 - (group_len - 1)])
+            )
             < 3
         )
 

@@ -41,7 +41,7 @@ class Measurement:
         self.pxl_clk_dvc = app.devices.pixel_clock
         self.scanners_dvc = app.devices.scanners
         self.scan_params = scan_params
-        self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2V_const") for ax in "xyz")
+        self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2v_const") for ax in "xyz")
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
         self.sys_info = {
             "setup": "STED with galvos",
@@ -159,8 +159,12 @@ class Measurement:
 
         file_path = os.path.join(save_path, re.sub("\\s", "_", file_name))
 
+        logging.debug(f"Saving measurement file: '{file_name}'...")
+
         with open(file_path + ".pkl", "wb") as f:
             pickle.dump(data_dict, f)
+
+        logging.debug("Saved Successfuly.")
 
     async def toggle_lasers(self, finish=False) -> None:
         """Doc."""

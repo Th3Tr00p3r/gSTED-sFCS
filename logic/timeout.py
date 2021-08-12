@@ -57,7 +57,7 @@ class Timeout:
                 self._updt_application_log(),
                 self._update_gui(),
             )
-        except RuntimeError as exc:
+        except Exception as exc:
             err_hndlr(exc, sys._getframe(), locals())
         logging.debug("timeout function exited")
 

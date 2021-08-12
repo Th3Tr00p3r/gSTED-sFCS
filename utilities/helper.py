@@ -19,6 +19,7 @@ def timer(func) -> Callable:
     """
     Meant to be used as a decorator (@timer)
     for quickly setting up function timing for testing.
+    Works for both regular and asynchronous functions.
     """
 
     if asyncio.iscoroutinefunction(func):
