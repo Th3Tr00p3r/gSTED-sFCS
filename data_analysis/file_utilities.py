@@ -4,7 +4,7 @@ import glob
 import pickle
 import re
 from collections.abc import Iterable
-from typing import List
+from typing import List, Set
 
 import numpy as np
 import scipy.io as spio
@@ -292,7 +292,7 @@ def sort_file_paths_by_file_number(file_paths: List[str]) -> List[str]:
 def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
     """Doc."""
 
-    def range_str_to_list(range_str: str) -> List[int]:
+    def range_str_to_list(range_str: str) -> Set[int]:
         """
         Accept a range string and returns a list of integers, lowered by 1 to match indices.
         Examples:
@@ -307,18 +307,18 @@ def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
             elif len(range_edges) == 2:
                 range_start, range_end = range_edges
                 return list(range(range_start - 1, range_end))
-            else:  # len(splitted_by_hyphen) == 1
+            else:  # len(range_edges) == 1
                 single_int, *_ = range_edges
                 return [single_int - 1]
         except (ValueError, IndexError):
             raise ValueError(f"Bad range format: '{range_str}'.")
 
     _, choice, file_selection = re.split("(Use|Don't Use)", file_selection)
-    file_idxs = [
+    file_idxs = {
         file_num
         for range_str in file_selection.split(",")
         for file_num in range_str_to_list(range_str)
-    ]
+    }
 
     return file_idxs, choice
 
@@ -337,7 +337,7 @@ def prepare_file_paths(file_path_template: str, file_selection: str) -> List[str
                 file_paths = [file_paths[i] for i in file_idxs]
             else:
                 file_paths = [file_paths[i] for i in range(len(file_paths)) if i not in file_idxs]
-            print(f"(files: '{file_selection}')")
+            print(f'(files: "{file_selection}")')
         except IndexError:
             raise ValueError(
                 f"Bad file selection string: '{file_selection}'. One or more file numbers don't exist."
