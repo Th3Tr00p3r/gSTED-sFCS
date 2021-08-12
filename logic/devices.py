@@ -183,7 +183,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
 
-        self.um_v_ratio = (self.x_um2V_const, self.y_um2V_const, self.z_um2V_const)
+        self.um_v_ratio = (self.x_um2v_const, self.y_um2v_const, self.z_um2v_const)
 
         self.toggle(True)
 
@@ -891,9 +891,9 @@ DEVICE_ATTR_DICT = {
             ao_x_init_vltg=("xAOV", "QDoubleSpinBox", "main", False),
             ao_y_init_vltg=("yAOV", "QDoubleSpinBox", "main", False),
             ao_z_init_vltg=("zAOV", "QDoubleSpinBox", "main", False),
-            x_um2V_const=("xConv", "QDoubleSpinBox", "settings", False),
-            y_um2V_const=("yConv", "QDoubleSpinBox", "settings", False),
-            z_um2V_const=("zConv", "QDoubleSpinBox", "settings", False),
+            x_um2v_const=("xConv", "QDoubleSpinBox", "settings", False),
+            y_um2v_const=("yConv", "QDoubleSpinBox", "settings", False),
+            z_um2v_const=("zConv", "QDoubleSpinBox", "settings", False),
             ai_x_addr=("AIXaddr", "QLineEdit", "settings", False),
             ai_y_addr=("AIYaddr", "QLineEdit", "settings", False),
             ai_z_addr=("AIZaddr", "QLineEdit", "settings", False),

@@ -9,7 +9,7 @@ import webbrowser
 from collections.abc import Iterable
 from contextlib import suppress
 from types import SimpleNamespace
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
@@ -679,8 +679,13 @@ class MainWin:
             dir_days = helper.dir_date_parts(save_path, sub_dir, year=year, month=month)
             days_combobox.addItems(dir_days)
 
-    def pkl_and_mat_templates(self, dir_path: str) -> Iterable:
-        """Doc."""
+    def pkl_and_mat_templates(self, dir_path: str) -> List[str]:
+        """
+        Accepts a directory path and returns a list of file templates
+        ending in the form '*.pkl' or '*.mat' where * is any number.
+        The templates are sorted by their time stamp of the form "HHMMSS".
+        In case the folder contains legacy templates, they are sorted without a key.
+        """
 
         is_solution_type = "solution" in dir_path
 
@@ -694,7 +699,19 @@ class MainWin:
             for item in os.listdir(dir_path)
             if item.endswith(".mat")
         }
-        return sorted(pkl_template_set.union(mat_template_set))
+        try:
+            sorted_templates = sorted(
+                pkl_template_set.union(mat_template_set),
+                key=lambda tmpl: int(re.split("(\\d{6})_*", tmpl)[1]),
+            )
+        except IndexError:
+            # Dealing with legacy templates which do not contain the appropriate time format
+            sorted_templates = sorted(pkl_template_set.union(mat_template_set))
+            logging.warning(
+                "Folder contains legacy file templates! Templates may not be properly sorted."
+            )
+        finally:
+            return sorted_templates
 
     def populate_data_templates_from_day(self, day: str) -> None:
         """Doc."""
