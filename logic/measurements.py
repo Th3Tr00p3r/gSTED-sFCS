@@ -95,7 +95,7 @@ class Measurement:
         self._app.gui.main.imp.populate_all_data_dates()  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
 
-    async def record_data(self, timed: bool = False, size_limited: bool = False) -> float:
+    async def record_data(self, timed: bool = False, size_limited: bool = False):
         """
         Turn ON the TDC (FPGA), read while conditions are met,
         turn OFF TDC and read leftover data,
@@ -248,6 +248,9 @@ class Measurement:
     def init_scan_tasks(self, ao_sample_mode: str, ao_only=False) -> None:
         """Doc."""
 
+        # multiplication of the internal PC buffer size by this factor avoids buffer overflow
+        buff_ovflw_const = 1.2  # could be redundant, but just to be safe...
+
         ao_sample_mode = getattr(ni_consts.AcquisitionType, ao_sample_mode)
 
         self.scanners_dvc.start_write_task(
@@ -277,8 +280,7 @@ class Measurement:
                 samp_clk_cnfg={},
                 timing_params={
                     "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                    # the extra 50% avoids buffer overflow
-                    "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.5),
+                    "samp_quant_samp_per_chan": int(self.n_ao_samps * buff_ovflw_const),
                     "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                     "samp_clk_src": ao_clk_src,
                     "ai_conv_rate": self.ai_conv_rate,
@@ -290,8 +292,7 @@ class Measurement:
                 samp_clk_cnfg={},
                 timing_params={
                     "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                    # the extra 50% avoids buffer overflow
-                    "samp_quant_samp_per_chan": int(self.n_ao_samps * 1.5),
+                    "samp_quant_samp_per_chan": int(self.n_ao_samps * buff_ovflw_const),
                     "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
                     "samp_clk_src": ao_clk_src,
                 },

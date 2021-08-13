@@ -16,6 +16,7 @@ import gui.gui
 import utilities.dialog as dialog
 import utilities.helper as helper
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
+from logic.timeout import TIMEOUT
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 
 # TODO: refactoring - toggling should be seperate from opening/closing connection with device.
@@ -85,10 +86,15 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         else:
             self.close()
 
-    async def read_TDC(self):
+    async def read_TDC(self, async_read=True):
         """Doc."""
 
-        byte_array = await self.read()
+        if async_read:
+            byte_array = await self.async_read()
+        else:
+            byte_array = self.read()
+            await asyncio.sleep(TIMEOUT)
+
         self.data.extend(byte_array)
         self.tot_bytes_read += len(byte_array)
 
@@ -350,13 +356,22 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         read_samples = self.analog_read(task_name, n_samples)
-        read_samples = self._diff_to_rse(read_samples.T.tolist())
+        read_samples = self._diff_to_rse(read_samples)
         self.ai_buffer.extend(read_samples)
 
-    def _diff_to_rse(self, read_samples: list) -> list:
+    def _diff_to_rse(self, read_samples: np.ndarray) -> list:
         """Doc."""
 
-        return [s[:3] + [(s[3] - s[4]) / 2, (s[5] - s[6]) / 2] + [s[7]] for s in read_samples]
+        n_chans, n_samps = read_samples.shape
+        conv_array = np.empty((n_chans - 2, n_samps), dtype=np.float)
+        conv_array[:3, :] = read_samples[:3, :]
+        conv_array[3, :] = (read_samples[3, :] - read_samples[4, :]) / 2
+        conv_array[4, :] = (read_samples[5, :] - read_samples[6, :]) / 2
+        conv_array[5, :] = read_samples[7, :]
+
+        return conv_array.T.tolist()
+
+    #        return [s[:3] + [(s[3] - s[4]) / 2, (s[5] - s[6]) / 2] + [s[7]] for s in read_samples]
 
     def _limit_ao_data(self, ao_task, ao_data: np.ndarray) -> np.ndarray:
         ao_min = ao_task.channels.ao_min
