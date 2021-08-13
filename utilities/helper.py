@@ -15,37 +15,43 @@ import PyQt5.QtWidgets as QtWidgets
 from PyQt5.QtGui import QIcon
 
 
-def timer(func) -> Callable:
+def timer(threshold: float = 0) -> Callable:
     """
-    Meant to be used as a decorator (@timer)
+    Meant to be used as a decorator (@helper.timer(threshold))
     for quickly setting up function timing for testing.
     Works for both regular and asynchronous functions.
     """
 
-    if asyncio.iscoroutinefunction(func):
-        # timing async funcitons
-        @functools.wraps(func)
-        async def wrapper_timer(*args, **kwargs):
-            tic = time.perf_counter()
-            value = await func(*args, **kwargs)
-            toc = time.perf_counter()
-            elapsed_time_ms = (toc - tic) * 1e3
-            if elapsed_time_ms > 200:  # TESTESTEST
-                print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
-            return value
+    def outer_wrapper(func) -> Callable:
+        """Doc."""
 
-    else:
+        if asyncio.iscoroutinefunction(func):
+            # timing async funcitons
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                tic = time.perf_counter()
+                value = await func(*args, **kwargs)
+                toc = time.perf_counter()
+                elapsed_time_ms = (toc - tic) * 1e3
+                if elapsed_time_ms > threshold:
+                    print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
+                return value
 
-        @functools.wraps(func)
-        def wrapper_timer(*args, **kwargs):
-            tic = time.perf_counter()
-            value = func(*args, **kwargs)
-            toc = time.perf_counter()
-            elapsed_time_ms = (toc - tic) * 1e3
-            print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
-            return value
+        else:
 
-    return wrapper_timer
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                tic = time.perf_counter()
+                value = func(*args, **kwargs)
+                toc = time.perf_counter()
+                elapsed_time_ms = (toc - tic) * 1e3
+                if elapsed_time_ms > threshold:
+                    print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
+                return value
+
+        return wrapper
+
+    return outer_wrapper
 
 
 # import time # TESTING
@@ -255,6 +261,25 @@ def reverse_dict(dict_: dict) -> dict:
     """Return a new dict for which keys and values are switched"""
 
     return {val: key for key, val in dict_.items()}
+
+
+def file_last_line(file_path) -> str:
+    """
+    Return the last line of a text file, quickly (seeks from end)
+    (https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python)
+    """
+
+    try:
+        with open(file_path, "rb") as f:
+            f.seek(-2, os.SEEK_END)
+            while f.read(1) != b"\n":
+                f.seek(-2, os.SEEK_CUR)
+            last_line = f.readline().decode()
+    except FileNotFoundError:
+        logging.error("Log File Not Found!!!")
+        return "Log File Not Found!!!"
+    else:
+        return last_line
 
 
 def dir_date_parts(data_path: str, sub_dir: str = "", month: int = None, year: int = None) -> list:

@@ -40,6 +40,7 @@ class Ftd2xx:
         """Doc."""
 
         try:
+            #            self._inst = ftd2xx.ftd2xx.openEx(self.serial)
             self._inst = ftd2xx.aio.openEx(self.serial)
         except AttributeError:
             raise IOError(f"{self.log_ref} is not plugged in.")
@@ -49,8 +50,12 @@ class Ftd2xx:
         self._inst.setFlowControl(self.flow_ctrl)
         self._inst.setUSBParameters(self.tx_size)
 
-    @helper.timer
-    async def read(self) -> bytes:
+    def read(self) -> bytes:
+        """Doc."""
+
+        return self._inst.read(self.n_bytes)
+
+    async def async_read(self) -> bytes:
         """Doc."""
 
         # TODO: fix bug where something here blocks - I think it's some error in the async read function.

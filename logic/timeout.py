@@ -2,19 +2,15 @@
 
 import asyncio
 import logging
-import os
 import sys
 from collections import deque
 from contextlib import suppress
 
 # import time # TESTING
+import utilities.helper as helper
 from utilities.errors import err_hndlr
 
-# import time
-# import numpy as np
-
-
-TIMEOUT = 0.010  # seconds (10 ms)
+TIMEOUT = 0.005  # seconds (5 ms)
 LOG_PATH = "./log/log"
 
 
@@ -55,57 +51,18 @@ class Timeout:
             await asyncio.gather(
                 self._read_ci_and_ai(),
                 self._update_dep(),
-                self._updt_application_log(),
                 self._update_gui(),
             )
         except Exception as exc:
             err_hndlr(exc, sys._getframe(), locals())
         logging.debug("timeout function exited")
 
-    async def _updt_application_log(self) -> None:
-        """Doc."""
-
-        def get_last_line(file_path) -> str:
-            """
-            Return the last line of a text file, quickly (seeks from end)
-            (https://stackoverflow.com/questions/46258499/read-the-last-line-of-a-file-in-python)
-            """
-
-            try:
-                with open(file_path, "rb") as f:
-                    f.seek(-2, os.SEEK_END)
-                    while f.read(1) != b"\n":
-                        f.seek(-2, os.SEEK_CUR)
-                    last_line = f.readline().decode()
-            except FileNotFoundError:
-                return "Log File Not Found!!!"
-            else:
-                return last_line
-
-        while self.not_finished:
-
-            last_line = get_last_line(LOG_PATH)
-
-            if last_line.find("INFO") != -1:
-                line_time = last_line[12:23]
-                line_text = last_line[38:]
-                last_line = line_time + line_text
-
-                if last_line != self.log_buffer_deque[0]:
-                    self.log_buffer_deque.appendleft(last_line)
-
-                    text = "".join(self.log_buffer_deque)
-                    self._app.gui.main.lastAction.setPlainText(text)
-
-            await asyncio.sleep(0.3)
-
     async def _read_ci_and_ai(self) -> None:
         """Doc."""
 
-        #        tic = time.perf_counter() # TESTING
+        def fill_buffers() -> None:
+            """Doc."""
 
-        while self.not_finished:
-            #            print(f"time since last read ci/ai (timeout): {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
             # CI (Photon Detector)
             if not self.cntr_dvc.error_dict:
                 self.cntr_dvc.fill_ci_buffer()
@@ -114,7 +71,8 @@ class Timeout:
             if not self.scan_dvc.error_dict:
                 self.scan_dvc.fill_ai_buffer()
 
-            #            tic = time.perf_counter() # TESTING
+        while self.not_finished:
+            fill_buffers()
             await asyncio.sleep(TIMEOUT)
 
     async def _update_gui(self) -> None:  # noqa: C901
@@ -198,6 +156,22 @@ class Timeout:
                     )
                 meas.prog_bar_wdgt.set(progress)
 
+        def update_log_wdgt() -> None:
+            """Doc."""
+
+            last_line = helper.file_last_line(LOG_PATH)
+
+            if last_line.find("INFO") != -1:
+                line_time = last_line[12:23]
+                line_text = last_line[38:]
+                last_line = line_time + line_text
+
+                if last_line != self.log_buffer_deque[0]:
+                    self.log_buffer_deque.appendleft(last_line)
+
+                    text = "".join(self.log_buffer_deque)
+                    self._app.gui.main.lastAction.setPlainText(text)
+
         while self.not_finished:
 
             # scanners
@@ -213,6 +187,9 @@ class Timeout:
             # Measurement progress bar and time left
             if self._app.meas.is_running:
                 updt_meas_progress(meas)
+
+            # log file widget
+            update_log_wdgt()
 
             await asyncio.sleep(self.updt_intrvl["gui"])
 
