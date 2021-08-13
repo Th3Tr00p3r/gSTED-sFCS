@@ -85,7 +85,6 @@ def device_error_checker(func) -> Callable:
     Decorator for clean handeling of GUI interactions with errorneous devices.
     Checks for errors in devices associated with 'func' and shows error box
     if exist.
-
     """
 
     if asyncio.iscoroutinefunction(func):
