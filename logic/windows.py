@@ -343,7 +343,6 @@ class MainWin:
                     f"{laser_mode} \nScan"
                 )
                 self._gui.imp.go_to_origin("XY")
-                # TODO: add all of the following to a QButtonsGroup and en/disable them together (see gui.py)
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanDur.setEnabled(True)
                 self._gui.solScanDurUnits.setEnabled(True)
@@ -1232,8 +1231,6 @@ class SettWin:
 
 class CamWin:
     """Doc."""
-
-    # TODO:  Try to have the whole camera window operate in a thread
 
     def __init__(self, gui, app):
         """Doc."""

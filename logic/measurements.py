@@ -131,7 +131,6 @@ class Measurement:
                     "Tasks are overdue. Check that all relevant devices are turned ON"
                 )
 
-        # TODO: test if  this out helps with fix_shift and/or changes anything (moved to before turning off TDC (from after it))
         await self.data_dvc.read_TDC()  # read leftovers
         self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
 
