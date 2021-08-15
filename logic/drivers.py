@@ -223,7 +223,6 @@ class NIDAQmx:
         """Doc."""
 
         ao_task = [task for task in self.tasks.ao if (task.name == task_name)][0]
-        #        ao_task = self.tasks.ao[task_name]
         if auto_start is not None:
             ao_task.write(data, auto_start=auto_start, timeout=self.AO_TIMEOUT)
         else:
