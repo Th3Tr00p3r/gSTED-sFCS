@@ -11,7 +11,7 @@ from typing import Callable
 
 from PyQt5.QtGui import QIcon
 
-import gui
+from gui.icons import icon_paths_dict
 from utilities.dialog import Error
 
 
@@ -66,7 +66,7 @@ def err_hndlr(exc, func_frame, func_locals, dvc=None, lvl="error", disp=False) -
         if lvl == "error":
             if not dvc.error_dict:  # keep only first error
                 dvc.error_dict = error_dict
-            dvc.led_widget.set(QIcon(gui.icons.icon_paths_dict["led_red"]))
+            dvc.led_widget.set(QIcon(icon_paths_dict["led_red"]))
 
     else:  # logic eror
         log_str = f"{error_dict['type']}: {error_dict['msg']} ({func_string}, {location_string})"
