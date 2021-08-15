@@ -12,7 +12,6 @@ from typing import Callable
 from PyQt5.QtGui import QIcon
 
 import gui
-import logic.devices as dvcs
 from utilities.dialog import Error
 
 
@@ -60,9 +59,8 @@ def err_hndlr(exc, func_frame, func_locals, dvc=None, lvl="error", disp=False) -
     )
 
     if dvc is not None:  # device error
-        dvc_log_ref = dvcs.DEVICE_ATTR_DICT[dvc.nick].log_ref
         log_str = (
-            f"{dvc_log_ref} didn't respond to '{func_string}' ({location_string}). "
+            f"{dvc.log_ref} didn't respond to '{func_string}' ({location_string}). "
             f"[{error_dict['type']}: {error_dict['msg']}]"
         )
         if lvl == "error":

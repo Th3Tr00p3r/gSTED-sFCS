@@ -106,8 +106,8 @@ class App:
         self.timeout_loop = Timeout(self)
         print("Done.")
 
-        print("Application Initialized.")
-        logging.info("Application Started")
+        print("Application initialized.")
+        logging.info("Application started")
 
     def config_logging(self):
         """

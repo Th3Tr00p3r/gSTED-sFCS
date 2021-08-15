@@ -275,9 +275,9 @@ def file_last_line(file_path) -> str:
             while f.read(1) != b"\n":
                 f.seek(-2, os.SEEK_CUR)
             last_line = f.readline().decode()
-    except FileNotFoundError:
-        logging.error("Log File Not Found!!!")
-        return "Log File Not Found!!!"
+    except OSError:
+        # File empty and was just created
+        return logging.info("Log file initialized.")
     else:
         return last_line
 
