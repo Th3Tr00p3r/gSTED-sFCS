@@ -161,7 +161,7 @@ class Timeout:
 
             last_line = helper.file_last_line(LOG_PATH)
 
-            if last_line.find("INFO") != -1:
+            if (last_line is not None) and (last_line.find("INFO") != -1):
                 line_time = last_line[12:23]
                 line_text = last_line[38:]
                 last_line = line_time + line_text
