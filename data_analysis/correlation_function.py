@@ -61,7 +61,7 @@ class CorrFuncData:
         if reject_n_worst not in {None, 0}:
             delete_list = np.argsort(self.score)[-reject_n_worst:]
         elif rejection is not None:
-            delete_list = np.where(self.score >= self.rejection)[0]
+            delete_list, *_ = np.where(self.score >= self.rejection)
 
         # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list.
         # if no delete list is supplied, use all rows.
@@ -191,6 +191,8 @@ class CorrFuncTDC(CorrFuncData):
 
             p.file_num = idx + 1
 
+            p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
+
             self.laser_freq_hz = full_data["laser_freq_mhz"] * 1e6
             self.fpga_freq_hz = full_data["fpga_freq_mhz"] * 1e6
 
@@ -208,7 +210,6 @@ class CorrFuncTDC(CorrFuncData):
                     angular_scan_settings = full_data["angular_scan_settings"]
                     linear_part = np.array(angular_scan_settings["linear_part"], dtype=np.int32)
                     self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
-                    self.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
                     sample_freq_hz = angular_scan_settings["sample_freq_hz"]
                     ppl_tot = angular_scan_settings["points_per_line_total"]
                     n_lines = angular_scan_settings["n_lines"]
@@ -382,6 +383,9 @@ class CorrFuncTDC(CorrFuncData):
 
             print(f"Finished processing file No. {idx+1}\n")
 
+        # calculate average count rate
+        self.avg_cnt_rate_khz = sum([p.avg_cnt_rate_khz for p in self.data]) / len(self.data)
+
         if full_data.get("duration_s") is not None:
             self.duration_min = full_data["duration_s"] / 60
         else:
@@ -550,14 +554,14 @@ class CorrFuncTDC(CorrFuncData):
                 # check that we start with the line beginning and not its end
                 if valid[0] != -1:
                     # remove photons till the first found beginning
-                    Jstrt = np.where(valid == -1)[0][0]
+                    Jstrt, *_ = np.where(valid == -1)[0]
                     timest = timest[Jstrt:]
                     valid = valid[Jstrt:]
 
                     # check that we stop with the line ending and not its beginning
                 if valid[-1] != -2:
                     # remove photons till the last found ending
-                    Jend = np.where(valid == -2)[0][-1]
+                    Jend, *_ = np.where(valid == -2)[-1]
                     timest = timest[:Jend]
                     valid = valid[:Jend]
 

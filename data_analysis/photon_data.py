@@ -52,7 +52,7 @@ class PhotonData:
         # find simple "inversions": the data with a missing byte
         # decrease in counter on data j+1, yet the next counter data (j+2) is
         # higher than j.
-        inv_idxs = np.where((time_stamps[:-1] < 0) & ((time_stamps[:-1] + time_stamps[1:]) > 0))[0]
+        inv_idxs, *_ = np.where((time_stamps[:-1] < 0) & ((time_stamps[:-1] + time_stamps[1:]) > 0))
         if (n_invs := inv_idxs.size) != 0:
             if verbose:
                 print(f"Found {n_invs} of missing bit data, ad hoc fixing...", end=" ")
@@ -62,7 +62,7 @@ class PhotonData:
             counter[inv_idxs + 1] = counter[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
         # repairing drops in counter (idomic note)
-        neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
+        neg_time_stamp_idxs, *_ = np.where(time_stamps < 0)
         time_stamps[neg_time_stamp_idxs] += maxval
         for i in neg_time_stamp_idxs + 1:
             counter[i:] += maxval
@@ -161,8 +161,8 @@ def find_section_edge(data, group_len, verbose=False):  # noqa c901
 
     data_end = False
     # find brackets (photon starts and ends)
-    idx_248 = np.where(data == 248)[0]
-    idx_254 = np.where(data == 254)[0]
+    idx_248, *_ = np.where(data == 248)
+    idx_254, *_ = np.where(data == 254)
 
     try:
         # find index of first complete photon (where 248 and 254 bytes are spaced exatly (group_len -1) bytes apart)
@@ -176,9 +176,9 @@ def find_section_edge(data, group_len, verbose=False):  # noqa c901
     data_presumed_254 = data[(edge_start + group_len - 1) :: group_len]
 
     # find indices where this assumption breaks
-    missed_248_idxs = np.where(data_presumed_248 != 248)[0]
+    missed_248_idxs, *_ = np.where(data_presumed_248 != 248)
     tot_missed_248s = len(missed_248_idxs)
-    missed_254_idxs = np.where(data_presumed_254 != 254)[0]
+    missed_254_idxs, *_ = np.where(data_presumed_254 != 254)
     tot_missed_254s = len(missed_254_idxs)
 
     for count, missed_248_idx in enumerate(missed_248_idxs):
