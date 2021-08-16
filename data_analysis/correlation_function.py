@@ -61,7 +61,7 @@ class CorrFuncData:
         if reject_n_worst not in {None, 0}:
             delete_list = np.argsort(self.score)[-reject_n_worst:]
         elif rejection is not None:
-            delete_list, *_ = np.where(self.score >= self.rejection)
+            delete_list = np.where(self.score >= self.rejection)[0]
 
         # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list.
         # if no delete list is supplied, use all rows.
@@ -554,14 +554,14 @@ class CorrFuncTDC(CorrFuncData):
                 # check that we start with the line beginning and not its end
                 if valid[0] != -1:
                     # remove photons till the first found beginning
-                    Jstrt, *_ = np.where(valid == -1)[0]
+                    Jstrt = np.where(valid == -1)[0][0]
                     timest = timest[Jstrt:]
                     valid = valid[Jstrt:]
 
                     # check that we stop with the line ending and not its beginning
                 if valid[-1] != -2:
                     # remove photons till the last found ending
-                    Jend, *_ = np.where(valid == -2)[-1]
+                    Jend = np.where(valid == -2)[0][-1]
                     timest = timest[:Jend]
                     valid = valid[:Jend]
 
