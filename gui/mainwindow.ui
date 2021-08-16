@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5499,6 +5499,9 @@ Mean ACF</string>
                                    <property name="buttonSymbols">
                                     <enum>QAbstractSpinBox::NoButtons</enum>
                                    </property>
+                                   <property name="maximum">
+                                    <number>9999</number>
+                                   </property>
                                   </widget>
                                  </item>
                                 </layout>
@@ -5539,6 +5542,9 @@ Mean ACF</string>
                                    <property name="decimals">
                                     <number>1</number>
                                    </property>
+                                   <property name="maximum">
+                                    <double>999999.000000000000000</double>
+                                   </property>
                                   </widget>
                                  </item>
                                 </layout>
@@ -5578,6 +5584,9 @@ Mean ACF</string>
                                    </property>
                                    <property name="decimals">
                                     <number>1</number>
+                                   </property>
+                                   <property name="maximum">
+                                    <double>999999999999.000000000000000</double>
                                    </property>
                                   </widget>
                                  </item>
@@ -5878,6 +5887,9 @@ Gating &gt; (ns)</string>
                                  </property>
                                  <property name="decimals">
                                   <number>1</number>
+                                 </property>
+                                 <property name="maximum">
+                                  <double>999.000000000000000</double>
                                  </property>
                                 </widget>
                                </item>

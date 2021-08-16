@@ -737,7 +737,7 @@ class SFCSSolutionMeasurement(Measurement):
 
                 self.file_num_wdgt.set(file_num)
 
-                print("FPGA reading starts...", end=" ")  # TESTESTEST
+                logging.debug("FPGA reading starts.")  # TESTESTEST
 
                 # reading
                 if self.repeat:
@@ -745,7 +745,7 @@ class SFCSSolutionMeasurement(Measurement):
                 else:
                     await self.record_data(timed=True, size_limited=True)
 
-                print("Done.")  # TESTESTEST
+                logging.debug("FPGA reading finished.")  # TESTESTEST
 
                 # collect final ai/CI
                 self.counter_dvc.fill_ci_buffer()

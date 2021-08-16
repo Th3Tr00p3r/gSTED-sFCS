@@ -1131,7 +1131,7 @@ class MainWin:
         current_dir_path = self.current_date_type_dir_path()
 
         file_template_path = os.path.join(current_dir_path, current_template)
-        file_paths = helper.sort_file_paths_by_file_number(glob.glob(file_template_path))
+        file_paths = file_utilities.sort_file_paths_by_file_number(glob.glob(file_template_path))
 
         print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
 
