@@ -136,7 +136,6 @@ class CorrFuncData:
             y_scale=y_scale,
         )
 
-        # self.plot_correlation_function()
         if not hasattr(self, "fit_param"):
             self.fit_param = dict()
 
@@ -551,6 +550,11 @@ class CorrFuncTDC(CorrFuncData):
                 # remove photons from wrong lines
                 timest = time_stamps[valid != 0].astype(np.int32)
                 valid = valid[valid != 0]
+
+                if not valid.size:
+                    print(f"No valid photons in line {j}. Skipping.")
+                    continue
+
                 # check that we start with the line beginning and not its end
                 if valid[0] != -1:
                     # remove photons till the first found beginning
@@ -634,21 +638,23 @@ def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_to
     line_num_tot = np.floor(n_pix_tot / ppl_tot)
     # one more line is for return to starting positon
     line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int32)
-    cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.int32)
 
+    cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.int32)
     bins = np.arange(-0.5, ppl_tot)
     for j in range(n_lines + 1):
-        belong_to_line = line_num == j
-        cnt_line, _ = np.histogram(n_pix[belong_to_line], bins=bins)
+        cnt_line, _ = np.histogram(n_pix[line_num == j], bins=bins)
         cnt[j, :] = cnt_line
 
     return cnt, n_pix_tot, n_pix, line_num
 
 
+# TODO: create a "roll_and_score()" function to avoid duplicate code
 def fix_data_shift(cnt) -> int:
     """Doc."""
 
-    _, width = cnt.shape
+    print("Fixing shift...", end=" ")
+
+    height, width = cnt.shape
 
     score = []
     pix_shifts = []
@@ -659,17 +665,29 @@ def fix_data_shift(cnt) -> int:
         diff_cnt2 = (cnt2[:-1:2, :] - np.flip(cnt2[1::2, :], 1)) ** 2
         score.append(diff_cnt2.sum())
         pix_shifts.append(pix_shift)
+    pix_shift = pix_shifts[np.argmin(score)]
 
-    # verify not using local minimum by checking if there's a shift
-    # yielding a significantly brighter image center for the 10 highest scoring shifts
-    center_sum = 0
-    for idx in np.argsort(score)[:10]:
-        new_pix_shift = pix_shifts[idx]
-        rolled_cnt = np.roll(cnt, new_pix_shift)
-        new_center_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
-        if new_center_sum > center_sum * 1.5:
-            center_sum = new_center_sum
-            pix_shift = pix_shifts[idx]
+    # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
+    # OR if the 'return row' (the empty one) is not at the bottom for some reason
+    # TODO: ask Oleg how the latter can happen
+    rolled_cnt = np.roll(cnt, pix_shift).astype(np.double)
+    inner_half_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
+    outer_half_sum = rolled_cnt.sum() - inner_half_sum
+    return_row_idx = rolled_cnt.sum(axis=1).argmin()
+
+    if (outer_half_sum > inner_half_sum) or return_row_idx != height - 1:
+        if return_row_idx != height - 1:
+            print("Data is heavily shifted, check it out.", end=" ")
+        score = []
+        pix_shifts = []
+        min_pix_shift = -round(cnt.size / 2)
+        max_pix_shift = min_pix_shift + cnt.size + 1
+        for pix_shift in range(min_pix_shift, max_pix_shift):
+            cnt2 = np.roll(cnt, pix_shift).astype(np.double)
+            diff_cnt2 = (cnt2[:-1:2, :] - np.flip(cnt2[1::2, :], 1)) ** 2
+            score.append(diff_cnt2.sum())
+            pix_shifts.append(pix_shift)
+        pix_shift = pix_shifts[np.argmin(score)]
 
     return pix_shift
 
