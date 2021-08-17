@@ -48,6 +48,7 @@ data_import_wdgts = QtWidgetCollection(
 
 sol_data_analysis_wdgts = QtWidgetCollection(
     fix_shift=("solDataFixShift", "QCheckBox", "main", True),
+    external_plotting=("solDataExtPlot", "QCheckBox", "main", True),
     scan_image_disp=("solScanImgDisp", None, "main", True),
     row_dicrimination=("rowDiscriminationGroup", "QButtonGroup", "main", True),
     remove_over=("solAnalysisRemoveOverSpinner", "QDoubleSpinBox", "main", True),

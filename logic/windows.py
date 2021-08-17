@@ -913,6 +913,7 @@ class MainWin:
         sol_file_selection = data_import_wdgts.sol_file_selection.get()
         is_calibration = data_import_wdgts.is_calibration.get()
         fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
+        external_plotting = wdgt_colls.sol_data_analysis_wdgts.external_plotting.get()
 
         # TODO: create a context manager for pausing/resuming AI/CI tasks
         logging.debug("Importing Data. Pausing 'ai' and 'ci' tasks")
@@ -934,7 +935,7 @@ class MainWin:
                     os.path.join(self.current_date_type_dir_path(), current_template),
                     file_selection=sol_file_selection,
                     fix_shift=fix_shift,
-                    no_plot=True,
+                    no_plot=not external_plotting,
                 )
                 if full_data.type == "angular_scan":
                     full_data.correlate_angular_scan_data()

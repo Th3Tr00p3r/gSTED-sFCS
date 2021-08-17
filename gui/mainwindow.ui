@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1231</width>
-    <height>936</height>
+    <height>942</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4493,7 +4493,7 @@ Pattern:</string>
              <number>0</number>
             </property>
             <item>
-             <layout class="QVBoxLayout" name="verticalLayout_64" stretch="0,0,1">
+             <layout class="QVBoxLayout" name="verticalLayout_64" stretch="0,0">
               <property name="spacing">
                <number>0</number>
               </property>
@@ -4651,6 +4651,9 @@ Pattern:</string>
                      </property>
                      <item>
                       <layout class="QVBoxLayout" name="verticalLayout_68">
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
                        <item>
                         <widget class="QLabel" name="label_14">
                          <property name="text">
@@ -4754,6 +4757,25 @@ Pattern:</string>
                           </widget>
                          </item>
                         </layout>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="convertToMatlab">
+                         <property name="minimumSize">
+                          <size>
+                           <width>0</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>99999</width>
+                           <height>99999</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Save Template As .mat</string>
+                         </property>
+                        </widget>
                        </item>
                       </layout>
                      </item>
@@ -4917,16 +4939,6 @@ Measurement</string>
                           <string>Options</string>
                          </property>
                          <layout class="QGridLayout" name="gridLayout_10">
-                          <item row="1" column="0">
-                           <widget class="QCheckBox" name="solDataFixShift">
-                            <property name="text">
-                             <string>Fix Shift</string>
-                            </property>
-                            <property name="tristate">
-                             <bool>false</bool>
-                            </property>
-                           </widget>
-                          </item>
                           <item row="0" column="0">
                            <widget class="QGroupBox" name="groupBox_9">
                             <property name="sizePolicy">
@@ -5030,6 +5042,37 @@ Measurement</string>
                             </layout>
                            </widget>
                           </item>
+                          <item row="1" column="0">
+                           <widget class="QGroupBox" name="groupBox_12">
+                            <property name="title">
+                             <string>Processing</string>
+                            </property>
+                            <layout class="QHBoxLayout" name="horizontalLayout_37">
+                             <item>
+                              <widget class="QCheckBox" name="solDataFixShift">
+                               <property name="text">
+                                <string>Fix
+Shift</string>
+                               </property>
+                               <property name="tristate">
+                                <bool>false</bool>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QCheckBox" name="solDataExtPlot">
+                               <property name="text">
+                                <string>Ext.
+Plotting</string>
+                               </property>
+                               <property name="tristate">
+                                <bool>false</bool>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </widget>
+                          </item>
                          </layout>
                         </widget>
                        </item>
@@ -5037,34 +5080,6 @@ Measurement</string>
                      </item>
                     </layout>
                    </widget>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="groupBox_7">
-                <property name="title">
-                 <string>Legacy MATLAB Analysis</string>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_13">
-                 <item row="0" column="0">
-                  <widget class="QPushButton" name="convertToMatlab">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>99999</width>
-                     <height>99999</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Save Template As .mat</string>
-                   </property>
                   </widget>
                  </item>
                 </layout>
@@ -7680,7 +7695,7 @@ Settings</string>
    <property name="minimumSize">
     <size>
      <width>300</width>
-     <height>248</height>
+     <height>260</height>
     </size>
    </property>
    <property name="maximumSize">
