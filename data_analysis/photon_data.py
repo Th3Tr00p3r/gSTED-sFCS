@@ -21,20 +21,19 @@ class PhotonData:
         self.version = version
 
         section_edges = []
-        edge_start, edge_stop, data_end = find_section_edges(fpga_data, group_len, verbose)
-        section_edges.append((edge_start, edge_stop))
-
+        data_end = False
+        last_edge_stop = 0
         while not data_end:
-            start_from_idx = edge_stop + 1
-            remaining_data = fpga_data[start_from_idx:]
-            edge_start, edge_stop, data_end = find_section_edges(remaining_data, group_len, verbose)
-            edge_start += start_from_idx
-            edge_stop += start_from_idx
-            section_edges.append((edge_start, edge_stop))
+            remaining_data = fpga_data[last_edge_stop:]
+            new_edge_start, new_edge_stop, data_end = find_section_edges(
+                remaining_data, group_len, verbose
+            )
+            new_edge_start += last_edge_stop
+            new_edge_stop += last_edge_stop
+            section_edges.append((new_edge_start, new_edge_stop))
+            last_edge_stop = new_edge_stop
 
-        section_lengths = np.array(
-            [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
-        )
+        section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
         if verbose:
             if len(section_edges) > 1:
                 print(
@@ -45,15 +44,19 @@ class PhotonData:
                 print(f"Found a single section of length: {section_lengths[0]}.", end=" ")
 
         # using the largest section only
-        largest_sec_start_idx, largest_sec_end_idx = section_edges[np.argmax(section_lengths)]
-        idxs = np.arange(largest_sec_start_idx, largest_sec_end_idx, group_len)
-        counter = (
+        largest_section_start_idx, largest_section_end_idx = section_edges[
+            np.argmax(section_lengths)
+        ]
+        idxs = np.arange(largest_section_start_idx, largest_section_end_idx, group_len)
+        # calculate the runtime in terms of the number of laser pulses since the beginning of the file (section?)
+        runtime = (
             fpga_data[idxs + 1] * 256 ** 2 + fpga_data[idxs + 2] * 256 + fpga_data[idxs + 3]
         ).astype(type_)
-        time_stamps = np.diff(counter)
+
+        time_stamps = np.diff(runtime)
 
         # find simple "inversions": the data with a missing byte
-        # decrease in counter on data j+1, yet the next counter data (j+2) is
+        # decrease in runtime on data j+1, yet the next runtime data (j+2) is
         # higher than j.
         inv_idxs = np.where((time_stamps[:-1] < 0) & ((time_stamps[:-1] + time_stamps[1:]) > 0))[0]
         if (inv_idxs.size) != 0:
@@ -65,17 +68,13 @@ class PhotonData:
             temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
             time_stamps[inv_idxs] = np.floor(temp).astype(type_)
             time_stamps[inv_idxs + 1] = np.ceil(temp).astype(type_)
-            counter[inv_idxs + 1] = counter[inv_idxs + 2] - time_stamps[inv_idxs + 1]
+            runtime[inv_idxs + 1] = runtime[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
-        # repairing drops in counter (idomic note)
+        # repairing drops in runtime (happens when number of laser pulses passes 'maxval')
         neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
-        if verbose and neg_time_stamp_idxs:
-            print(
-                f"Found {neg_time_stamp_idxs.size} negative time stamps, ad hoc fixing...", end=" "
-            )
         time_stamps[neg_time_stamp_idxs] += maxval
         for i in neg_time_stamp_idxs + 1:
-            counter[i:] += maxval
+            runtime[i:] += maxval
 
         # saving coarse and fine times
         self.coarse = fpga_data[idxs + 4].astype(type_)
@@ -87,7 +86,7 @@ class PhotonData:
             self.coarse = self.coarse - twobit1 * 64
             self.coarse2 = self.coarse - np.mod(self.coarse, 4) + twobit1
 
-        self.runtime = counter
+        self.runtime = runtime
 
     # TODO: move this to a more fitting module
     def convert_counts_to_images(self, counts, ao, scan_params: dict, um_v_ratio) -> None:
