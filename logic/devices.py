@@ -86,7 +86,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         else:
             self.close()
 
-    async def read_TDC(self, async_read=True):
+    async def read_TDC(self, async_read=False):
         """Doc."""
 
         if async_read:

@@ -40,8 +40,8 @@ class Ftd2xx:
         """Doc."""
 
         try:
-            #            self._inst = ftd2xx.ftd2xx.openEx(self.serial)
-            self._inst = ftd2xx.aio.openEx(self.serial)
+            self._inst = ftd2xx.ftd2xx.openEx(self.serial)
+        #            self._inst = ftd2xx.aio.openEx(self.serial)
         except AttributeError:
             raise IOError(f"{self.log_ref} is not plugged in.")
         self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
