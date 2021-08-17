@@ -383,6 +383,11 @@ class CorrFuncTDC(CorrFuncData):
 
             print(f"Finished processing file No. {idx+1}\n")
 
+        if not len(self.data):
+            raise RuntimeError(
+                f"Loading FPGA data catastrophically failed (all {n_files}/{n_files} files skipped)."
+            )
+
         # calculate average count rate
         self.avg_cnt_rate_khz = sum([p.avg_cnt_rate_khz for p in self.data]) / len(self.data)
 
@@ -394,11 +399,6 @@ class CorrFuncTDC(CorrFuncData):
                 np.mean([np.diff(p.runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
             )
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
-
-        if not len(self.data):
-            raise RuntimeError(
-                f"Loading FPGA data catastrophically failed (all {n_files}/{n_files} files skipped)."
-            )
 
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
 

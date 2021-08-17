@@ -21,21 +21,24 @@ class PhotonData:
         self.version = version
 
         section_edges = []
-        edge_start, edge_stop, data_end = find_section_edge(fpga_data, group_len, verbose)
+        edge_start, edge_stop, data_end = find_section_edges(fpga_data, group_len, verbose)
         section_edges.append((edge_start, edge_stop))
 
         while not data_end:
-            remaining_data = fpga_data[edge_stop + 1 :]
-            edge_start, edge_stop, data_end = find_section_edge(remaining_data, group_len, verbose)
+            start_from_idx = edge_stop + 1
+            remaining_data = fpga_data[start_from_idx:]
+            edge_start, edge_stop, data_end = find_section_edges(remaining_data, group_len, verbose)
+            edge_start += start_from_idx
+            edge_stop += start_from_idx
             section_edges.append((edge_start, edge_stop))
 
         section_lengths = np.array(
             [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
         )
         if verbose:
-            if (n_sec_edges := len(section_edges)) > 1:
+            if len(section_edges) > 1:
                 print(
-                    f"Found {n_sec_edges} sections of lengths: {', '.join(map(str, section_lengths))}. Using largest.",
+                    f"Found {len(section_edges)} sections of lengths: {', '.join(map(str, section_lengths))}. Using largest.",
                     end=" ",
                 )
             else:
@@ -53,9 +56,12 @@ class PhotonData:
         # decrease in counter on data j+1, yet the next counter data (j+2) is
         # higher than j.
         inv_idxs = np.where((time_stamps[:-1] < 0) & ((time_stamps[:-1] + time_stamps[1:]) > 0))[0]
-        if (n_invs := inv_idxs.size) != 0:
+        if (inv_idxs.size) != 0:
             if verbose:
-                print(f"Found {n_invs} of missing bit data, ad hoc fixing...", end=" ")
+                print(
+                    f"Found {inv_idxs.size} instances of missing byte data, ad hoc fixing...",
+                    end=" ",
+                )
             temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
             time_stamps[inv_idxs] = np.floor(temp).astype(type_)
             time_stamps[inv_idxs + 1] = np.ceil(temp).astype(type_)
@@ -63,6 +69,10 @@ class PhotonData:
 
         # repairing drops in counter (idomic note)
         neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
+        if verbose and neg_time_stamp_idxs:
+            print(
+                f"Found {neg_time_stamp_idxs.size} negative time stamps, ad hoc fixing...", end=" "
+            )
         time_stamps[neg_time_stamp_idxs] += maxval
         for i in neg_time_stamp_idxs + 1:
             counter[i:] += maxval
@@ -154,7 +164,7 @@ class PhotonData:
         )
 
 
-def find_section_edge(data, group_len, verbose=False):  # noqa c901
+def find_section_edges(data, group_len, verbose=False):  # noqa c901
     """
     group_len: bytes per photon
     """
