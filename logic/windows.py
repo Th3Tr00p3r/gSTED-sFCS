@@ -576,11 +576,11 @@ class MainWin:
             },
             "Standard Angular": {
                 "scan_type": "angular",
-                "repeat": False,
+                "regular": True,
             },
             "Standard Circular": {
                 "scan_type": "circle",
-                "repeat": False,
+                "regular": True,
             },
         }
 

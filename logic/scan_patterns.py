@@ -26,7 +26,6 @@ class ScanPatternAO:
             return self.calc_circle_pattern(self.scan_params, self.um_v_ratio)
 
     def calc_image_pattern(self, params, um_v_ratio):
-        # TODO: this function needs better documentation, starting with some comments
         """Doc."""
 
         @nb.njit(cache=True)
@@ -37,7 +36,7 @@ class ScanPatternAO:
             dim2_ao = np.empty(shape=(set_pnts_lines_odd.size * ppl,))
             for idx, odd_line_set_pnt in enumerate(set_pnts_lines_odd):
                 dim1_ao[idx * ppl : idx * ppl + ppl] = single_line_ao
-                dim2_ao[idx * ppl : idx * ppl + ppl] = [odd_line_set_pnt] * len(single_line_ao)
+                dim2_ao[idx * ppl : idx * ppl + ppl] = [odd_line_set_pnt] * single_line_ao.size
 
             return np.vstack((dim1_ao, dim2_ao))
 
