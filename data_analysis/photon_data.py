@@ -10,6 +10,7 @@ import utilities.helper as helper
 class PhotonData:
     """Doc."""
 
+    @helper.timer()
     def convert_fpga_data_to_photons(self, fpga_data, version=3, verbose=False):
         """Doc."""
 
