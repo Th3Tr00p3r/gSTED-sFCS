@@ -1,6 +1,13 @@
-solScanFileTemplate,
 imgScanFileTemplate,img
 solImportFileSelectionPattern,
+solScanFileTemplate,
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,1
+solAnalysisRemoveWorstSpinner,0
+scanImgFileNum,1
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -11,31 +18,21 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,1
-solAnalysisRemoveWorstSpinner,0
-scanImgFileNum,1
 depPow,130
 depCurr,1500
 stageSteps,250
-solScanMaxFileSize,20.0
-solLinFrac,0.9
-solScanDur,20.0
 imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
 solAnalysisRemoveOverSpinner,2.0
+solScanMaxFileSize,20.0
+solLinFrac,0.9
+solScanDur,20.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,0.0
-solMeasPreset,Standard Alignment
-solScanType,static
-solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
@@ -46,10 +43,13 @@ dataTemplate,testestest_angular_exc_174909_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates,
 solAnalysisLifetime,Lifetime
+solMeasPreset,Standard Alignment
+solScanType,static
+solScanDurUnits,seconds
 avgInterval,200
-solScanParamsStacked,2
 importStacked,1
 analysisStacked_2,1
+solScanParamsStacked,2
 depModeStacked,0
 imageDataImport,False
 solDataImport,True
@@ -57,15 +57,17 @@ solImportUseAll,True
 solImportUse,False
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
+regularSolMeas,False
+repeatSolMeas,True
+finalSolMeas,False
 currMode,True
 powMode,False
 posAxisZ,False
 posAxisY,False
 posAxisX,True
 numPlaneShownChoice,1
-tabWidget,2
+tabWidget,1
 tabWidget_2,0
-repeatSolMeas,True
 autoCrosshair,True
 isDataCalibration,False
 solDataFixShift,True

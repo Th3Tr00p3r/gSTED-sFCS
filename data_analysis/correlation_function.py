@@ -10,16 +10,17 @@ from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
+import utilities.helper as helper
 from data_analysis import fit_tools
 from data_analysis.file_utilities import load_file_dict, prepare_file_paths
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities.helper import div_ceil, force_aspect
 
 
 class CorrFuncData:
     """Doc."""
 
+    @helper.timer()
     def average_correlation(
         self,
         rejection=2,
@@ -27,12 +28,11 @@ class CorrFuncData:
         norm_range=(1e-3, 2e-3),
         delete_list=[],
         no_plot=True,
-        use_numba=True,
     ):
         """Doc."""
 
         def calc_weighted_avg(cf_cr, weights):
-            """Note: enable 'use_numba' for speed-up"""
+            """Doc."""
 
             tot_weights = weights.sum(0)
 
@@ -68,11 +68,7 @@ class CorrFuncData:
         self.j_bad = delete_list
         self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
-        if use_numba:
-            func = nb.njit(calc_weighted_avg, cache=True)
-        else:
-            func = calc_weighted_avg
-        self.average_cf_cr, self.error_cf_cr = func(
+        self.average_cf_cr, self.error_cf_cr = calc_weighted_avg(
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
@@ -100,6 +96,7 @@ class CorrFuncData:
         plt.gca().set_y_scale(y_scale)
         plt.show()
 
+    @helper.timer()
     def fit_correlation_function(
         self,
         x_field="lag",
@@ -390,7 +387,7 @@ class CorrFuncTDC(CorrFuncData):
             ax.set_ylabel("Line Number")
             ax.imshow(cnt)
             ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
-            force_aspect(ax, aspect=1)
+            helper.force_aspect(ax, aspect=1)
             fig.show()
 
         # reverse rows again
@@ -420,6 +417,7 @@ class CorrFuncTDC(CorrFuncData):
 
         return p
 
+    @helper.timer()
     def correlate_regular_data(
         self,
         run_duration=-1,
@@ -489,7 +487,7 @@ class CorrFuncTDC(CorrFuncData):
                     self.total_duration_skipped += segment_time
                     continue
 
-                n_splits = div_ceil(segment_time, run_duration)
+                n_splits = helper.div_ceil(segment_time, run_duration)
                 splits = np.linspace(0, (se_end - se_start), n_splits + 1, dtype=np.int32)
                 ts = time_stamps[se_start:se_end]
 
@@ -670,7 +668,6 @@ def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_to
 def fix_data_shift(cnt) -> int:
     """Doc."""
 
-    @nb.njit(cache=True)
     def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
         """Doc."""
 

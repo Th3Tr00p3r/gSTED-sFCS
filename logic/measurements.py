@@ -145,7 +145,7 @@ class Measurement:
         today_dir = os.path.join(self.save_path, dt.now().strftime("%d_%m_%Y"))
 
         if self.type == "SFCSSolution":
-            if self.repeat:
+            if self.final:
                 save_path = today_dir
             else:
                 save_path = os.path.join(today_dir, "solution")
@@ -535,7 +535,7 @@ class SFCSSolutionMeasurement(Measurement):
     def build_filename(self, file_no: int) -> str:
         """Doc."""
 
-        if self.repeat is True:
+        if self.final is True:
             return f"alignment_{self.scan_type}_{self.laser_mode}_0"
 
         else:
@@ -575,9 +575,11 @@ class SFCSSolutionMeasurement(Measurement):
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
 
+    #    @helper.timer()
     def disp_ACF(self):
         """Doc."""
 
+        #        @helper.timer()
         def compute_acf(data):
             """Doc."""
 
@@ -732,7 +734,7 @@ class SFCSSolutionMeasurement(Measurement):
 
                 self.file_num_wdgt.set(file_num)
 
-                logging.debug("FPGA reading starts.")  # TESTESTEST
+                logging.debug("FPGA reading starts.")
 
                 # reading
                 if self.repeat:
@@ -740,7 +742,7 @@ class SFCSSolutionMeasurement(Measurement):
                 else:
                     await self.record_data(timed=True, size_limited=True)
 
-                logging.debug("FPGA reading finished.")  # TESTESTEST
+                logging.debug("FPGA reading finished.")
 
                 # collect final ai/CI
                 self.counter_dvc.fill_ci_buffer()
@@ -749,13 +751,17 @@ class SFCSSolutionMeasurement(Measurement):
                 # case aligning and not manually stopped
                 if self.repeat and self.is_running:
                     self.disp_ACF()
-                    self.save_data(self.prep_data_dict(), self.build_filename(0))
                     # reset measurement
                     self.set_current_and_end_times()
                     self.start_time = time.perf_counter()
                     self.time_passed_s = 0
 
-                # case measuring and finished file or measurement
+                # case final alignment and not manually stopped
+                elif self.final and self.is_running:
+                    self.disp_ACF()
+                    self.save_data(self.prep_data_dict(), self.build_filename(0))
+
+                # case regular measurement and finished file or measurement
                 elif not self.repeat:
                     self.save_data(self.prep_data_dict(), self.build_filename(file_num))
                     if self.scanning:
