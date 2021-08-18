@@ -48,7 +48,8 @@ class PhotonData:
             np.argmax(section_lengths)
         ]
         idxs = np.arange(largest_section_start_idx, largest_section_end_idx, group_len)
-        # calculate the runtime in terms of the number of laser pulses since the beginning of the file (section?)
+
+        # calculate the runtime in terms of the number of laser pulses since the beginning of the file
         runtime = (
             fpga_data[idxs + 1] * 256 ** 2 + fpga_data[idxs + 2] * 256 + fpga_data[idxs + 3]
         ).astype(type_)

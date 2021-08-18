@@ -43,7 +43,7 @@ legacy_matlab_trans_dict = {
     # Image Scan
     "Cnt": "cnt",
     "PID": "pid",
-    "SP": "sp",
+    "SP": "scan_param",
     "LinesOdd": "lines_odd",
     "FastScan": "is_fast_scan",
     "TdcScanData": "tdc_scan_data",
