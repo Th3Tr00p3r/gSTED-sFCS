@@ -55,10 +55,11 @@ class Ftd2xx:
 
         return self._inst.read(self.n_bytes)
 
+    # NOT USED, CURRENTLY (using regular read())
     async def async_read(self) -> bytes:
         """Doc."""
 
-        # TODO: fix bug where something here blocks - I think it's some error in the async read function.
+        # todo: fix bug where something here blocks - I think it's some error in the async read function.
         # check this out: https://docs.python.org/3/library/asyncio-dev.html#detect-never-retrieved-exceptions
         return await self._inst.read(self.n_bytes)
 

@@ -934,7 +934,7 @@ class MainWin:
                 full_data.read_fpga_data(
                     os.path.join(self.current_date_type_dir_path(), current_template),
                     file_selection=sol_file_selection,
-                    fix_shift=fix_shift,
+                    should_fix_shift=fix_shift,
                     no_plot=not external_plotting,
                 )
                 if full_data.type == "angular_scan":

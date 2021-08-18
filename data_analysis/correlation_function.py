@@ -151,231 +151,57 @@ class CorrFuncTDC(CorrFuncData):
         # dictionary for TDC calibration
         self.tdc_calib = dict()
 
-    def read_fpga_data(  # noqa C901
+    def read_fpga_data(
         self,
         file_path_template: str,
         file_selection: str = "",
-        fix_shift: bool = False,
+        should_fix_shift: bool = False,
         roi_selection: str = "auto",
         no_plot: bool = False,
     ):
         """Doc."""
 
         print("\nLoading FPGA data from hard drive:", end=" ")
-
         file_paths = prepare_file_paths(file_path_template, file_selection)
-
         n_files = len(file_paths)
         _, self.template = os.path.split(file_path_template)
 
         for idx, file_path in enumerate(file_paths):
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
-
-            # load file
             file_dict = load_file_dict(file_path)
-
             print("Done.")
-
-            if idx == 0:
-                self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
 
             full_data = file_dict["full_data"]
 
-            print("Converting raw data to photons...", end=" ")
-            p = PhotonData()
-            p.convert_fpga_data_to_photons(
-                np.array(full_data["data"]).astype("B"), version=full_data["version"], verbose=True
-            )
-            print("Done.")
+            if idx == 0:
+                self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
+                self.laser_freq_hz = full_data["laser_freq_mhz"] * 1e6
+                self.fpga_freq_hz = full_data["fpga_freq_mhz"] * 1e6
 
-            p.file_num = idx + 1
-
-            p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
-
-            self.laser_freq_hz = full_data["laser_freq_mhz"] * 1e6
-            self.fpga_freq_hz = full_data["fpga_freq_mhz"] * 1e6
-
+            # Circular sFCS
             if full_data.get("circle_speed_um_s"):
-                # circular scan
                 self.type = "circular_scan"
                 self.v_um_ms = full_data["circle_speed_um_s"] / 1000  # to um/ms
                 raise NotImplementedError("Circular scan analysis not yet implemented...")
 
+            # Angular sFCS
             elif full_data.get("angular_scan_settings"):
-                # angular scan
-                self.type = "angular_scan"
                 if idx == 0:
-                    # not assigned yet - this way assignment happens once
-                    angular_scan_settings = full_data["angular_scan_settings"]
-                    linear_part = np.array(angular_scan_settings["linear_part"], dtype=np.int32)
-                    self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
-                    sample_freq_hz = angular_scan_settings["sample_freq_hz"]
-                    ppl_tot = angular_scan_settings["points_per_line_total"]
-                    n_lines = angular_scan_settings["n_lines"]
-                    self.angular_scan_settings = angular_scan_settings
+                    self.type = "angular_scan"
+                    self.angular_scan_settings = full_data["angular_scan_settings"]
                     self.line_end_adder = 1000
-
-                print("Converting angular scan to image...", end=" ")
-
-                runtime = p.runtime
-                cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
-                    runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
-                )
-
-                if fix_shift:
-                    pix_shift = fix_data_shift(cnt)
-                    runtime = p.runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
-                    cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
-                        runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
+                if (
+                    p := self.process_angular_scan_data(
+                        full_data, idx, should_fix_shift, roi_selection, no_plot
                     )
-                    print(f"Fixed line shift: {pix_shift} pixels. Done.")
-                else:
-                    print("Done.")
-
-                # invert every second line
-                cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
-
-                print("ROI selection: ", end=" ")
-
-                if roi_selection == "auto":
-                    print("automatic. Thresholding and smoothing...", end=" ")
-                    try:
-                        bw = threshold_and_smooth(cnt)
-                    except ValueError:
-                        print("Thresholding failed, skipping file.")
-                        continue
-                else:
-                    raise NotImplementedError(f"roi_selection={roi_selection} is not implemented.")
-
-                # cut edges
-                bw_temp = np.full(bw.shape, False, dtype=bool)
-                bw_temp[:, linear_part] = bw[:, linear_part]
-                bw = bw_temp
-
-                # discard short and fill long rows
-                m2 = np.sum(bw, axis=1)
-                bw[m2 < 0.5 * m2.max(), :] = False
-
-                while self.line_end_adder < bw.shape[0]:
-                    self.line_end_adder *= 10
-
-                print("Building ROI...", end=" ")
-
-                line_starts = []
-                line_stops = []
-                line_start_lables = []
-                line_stop_labels = []
-                roi = {"row": deque([]), "col": deque([])}
-
-                bw_rows, _ = bw.shape
-                for row_idx in range(bw_rows):
-                    nonzero_row_idxs = bw[row_idx, :].nonzero()[0]
-                    if nonzero_row_idxs.size != 0:  # if bw row has nonzero elements
-                        # set mask to True between non-zero edges of row
-                        left_edge, right_edge = nonzero_row_idxs[0], nonzero_row_idxs[-1]
-                        bw[row_idx, left_edge:right_edge] = True
-                        # add row to ROI
-                        roi["row"].appendleft(row_idx)
-                        roi["col"].appendleft(left_edge)
-                        roi["row"].append(row_idx)
-                        roi["col"].append(right_edge)
-
-                        line_starts_new_idx = np.ravel_multi_index((row_idx, left_edge), bw.shape)
-                        line_starts_new = list(range(line_starts_new_idx, n_pix_tot[-1], bw.size))
-                        line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw.shape)
-                        line_stops_new = list(range(line_stops_new_idx, n_pix_tot[-1], bw.size))
-
-                        line_start_lables.extend([-row_idx for elem in range(len(line_starts_new))])
-                        line_stop_labels.extend(
-                            [
-                                (-row_idx - self.line_end_adder)
-                                for elem in range(len(line_stops_new))
-                            ]
-                        )
-                        line_starts.extend(line_starts_new)
-                        line_stops.extend(line_stops_new)
-
-                try:
-                    # repeat first point to close the polygon
-                    roi["row"].append(roi["row"][0])
-                    roi["col"].append(roi["col"][0])
-                except IndexError:
-                    print("ROI is empty (need to figure out the cause). Skipping file.", end=" ")
+                ) is None:
                     continue
 
-                # convert lists/deques to numpy arrays
-                roi = {key: np.array(val) for key, val in roi.items()}
-                line_start_lables = np.array(line_start_lables)
-                line_stop_labels = np.array(line_stop_labels)
-                line_starts = np.array(line_starts).astype(np.int64)
-                line_stops = np.array(line_stops).astype(np.int64)
-
-                print("Done.")
-
-                runtime_line_starts = line_starts * round(self.laser_freq_hz / sample_freq_hz)
-                runtime_line_stops = line_stops * round(self.laser_freq_hz / sample_freq_hz)
-
-                runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
-                sorted_idxs = np.argsort(runtime)
-                p.runtime = runtime[sorted_idxs]
-                p.line_num = np.hstack(
-                    (
-                        line_start_lables,
-                        line_stop_labels,
-                        line_num * bw[line_num, n_pix].flatten(),
-                    )
-                )[sorted_idxs]
-                p.coarse = np.hstack(
-                    (
-                        np.full(runtime_line_starts.shape, np.nan),
-                        np.full(runtime_line_stops.shape, np.nan),
-                        p.coarse,
-                    )
-                )[sorted_idxs]
-                p.coarse2 = np.hstack(
-                    (
-                        np.full(runtime_line_starts.shape, np.nan),
-                        np.full(runtime_line_stops.shape, np.nan),
-                        p.coarse2,
-                    )
-                )[sorted_idxs]
-                p.fine = np.hstack(
-                    (
-                        np.full(runtime_line_starts.shape, np.nan),
-                        np.full(runtime_line_stops.shape, np.nan),
-                        p.fine,
-                    )
-                )[sorted_idxs]
-
-                p.image = cnt
-                p.roi = roi
-
-                # plotting of scan image and ROI
-                if not no_plot:
-                    fig = plt.figure()
-                    ax = fig.add_subplot(111)
-                    ax.set_title(f"file No. {p.file_num} of {self.template}")
-                    ax.set_xlabel("Pixel Number")
-                    ax.set_ylabel("Line Number")
-                    ax.imshow(cnt)
-                    ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
-                    force_aspect(ax, aspect=1)
-                    fig.show()
-
-                # reverse rows again
-                bw[1::2, :] = np.flip(bw[1::2, :], 1)
-                p.bw_mask = bw
-
-                # get image line correlation to subtract trends
-                img = p.image * p.bw_mask
-                # lineNos = find(sum(p.bw_mask, 2));
-
-                p.image_line_corr = line_correlations(img, p.bw_mask, roi, sample_freq_hz)
-
+            # FCS
             else:
-                # static FCS - nothing else needs to be done
                 self.type = "static"
-                pass
+                if (p := self.process_static_data(full_data, idx)) is None:
+                    continue
 
             p.file_path = file_path
             self.data.append(p)
@@ -400,6 +226,199 @@ class CorrFuncTDC(CorrFuncData):
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
+
+    def process_angular_scan_data(
+        self, full_data, idx, should_fix_shift, roi_selection, no_plot
+    ) -> PhotonData:
+        """Doc."""
+
+        print("Converting raw data to photons...", end=" ")
+        p = PhotonData()
+        p.convert_fpga_data_to_photons(
+            full_data["data"], version=full_data["version"], verbose=True
+        )
+        print("Done.")
+
+        p.file_num = idx + 1
+        p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
+
+        angular_scan_settings = full_data["angular_scan_settings"]
+        linear_part = angular_scan_settings["linear_part"].astype(np.int32, copy=False)
+        self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
+        sample_freq_hz = angular_scan_settings["sample_freq_hz"]
+        ppl_tot = angular_scan_settings["points_per_line_total"]
+        n_lines = angular_scan_settings["n_lines"]
+
+        print("Converting angular scan to image...", end=" ")
+
+        runtime = p.runtime
+        cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
+            runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
+        )
+
+        if should_fix_shift:
+            pix_shift = fix_data_shift(cnt)
+            runtime = p.runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
+            cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
+                runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
+            )
+            print(f"Shifted by {pix_shift} pixels. Done.")
+        else:
+            print("Done.")
+
+        # invert every second line
+        cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
+
+        print("ROI selection: ", end=" ")
+
+        if roi_selection == "auto":
+            print("automatic. Thresholding and smoothing...", end=" ")
+            try:
+                bw = threshold_and_smooth(cnt)
+            except ValueError:
+                print("Thresholding failed, skipping file.")
+                return None
+        else:
+            raise NotImplementedError(f"roi_selection={roi_selection} is not implemented.")
+
+        # cut edges
+        bw_temp = np.full(bw.shape, False, dtype=bool)
+        bw_temp[:, linear_part] = bw[:, linear_part]
+        bw = bw_temp
+
+        # discard short and fill long rows
+        m2 = np.sum(bw, axis=1)
+        bw[m2 < 0.5 * m2.max(), :] = False
+
+        while self.line_end_adder < bw.shape[0]:
+            self.line_end_adder *= 10
+
+        print("Building ROI...", end=" ")
+
+        line_starts = []
+        line_stops = []
+        line_start_lables = []
+        line_stop_labels = []
+        roi = {"row": deque([]), "col": deque([])}
+
+        bw_rows, _ = bw.shape
+        for row_idx in range(bw_rows):
+            nonzero_row_idxs = bw[row_idx, :].nonzero()[0]
+            if nonzero_row_idxs.size != 0:  # if bw row has nonzero elements
+                # set mask to True between non-zero edges of row
+                left_edge, right_edge = nonzero_row_idxs[0], nonzero_row_idxs[-1]
+                bw[row_idx, left_edge:right_edge] = True
+                # add row to ROI
+                roi["row"].appendleft(row_idx)
+                roi["col"].appendleft(left_edge)
+                roi["row"].append(row_idx)
+                roi["col"].append(right_edge)
+
+                line_starts_new_idx = np.ravel_multi_index((row_idx, left_edge), bw.shape)
+                line_starts_new = list(range(line_starts_new_idx, n_pix_tot[-1], bw.size))
+                line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw.shape)
+                line_stops_new = list(range(line_stops_new_idx, n_pix_tot[-1], bw.size))
+
+                line_start_lables.extend([-row_idx for elem in range(len(line_starts_new))])
+                line_stop_labels.extend(
+                    [(-row_idx - self.line_end_adder) for elem in range(len(line_stops_new))]
+                )
+                line_starts.extend(line_starts_new)
+                line_stops.extend(line_stops_new)
+
+        try:
+            # repeat first point to close the polygon
+            roi["row"].append(roi["row"][0])
+            roi["col"].append(roi["col"][0])
+        except IndexError:
+            print("ROI is empty (need to figure out the cause). Skipping file.", end=" ")
+            return None
+
+        # convert lists/deques to numpy arrays
+        roi = {key: np.array(val) for key, val in roi.items()}
+        line_start_lables = np.array(line_start_lables)
+        line_stop_labels = np.array(line_stop_labels)
+        line_starts = np.array(line_starts).astype(np.int64)
+        line_stops = np.array(line_stops).astype(np.int64)
+
+        print("Done.")
+
+        runtime_line_starts = line_starts * round(self.laser_freq_hz / sample_freq_hz)
+        runtime_line_stops = line_stops * round(self.laser_freq_hz / sample_freq_hz)
+
+        runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
+        sorted_idxs = np.argsort(runtime)
+        p.runtime = runtime[sorted_idxs]
+        p.line_num = np.hstack(
+            (
+                line_start_lables,
+                line_stop_labels,
+                line_num * bw[line_num, n_pix].flatten(),
+            )
+        )[sorted_idxs]
+        p.coarse = np.hstack(
+            (
+                np.full(runtime_line_starts.shape, np.nan),
+                np.full(runtime_line_stops.shape, np.nan),
+                p.coarse,
+            )
+        )[sorted_idxs]
+        p.coarse2 = np.hstack(
+            (
+                np.full(runtime_line_starts.shape, np.nan),
+                np.full(runtime_line_stops.shape, np.nan),
+                p.coarse2,
+            )
+        )[sorted_idxs]
+        p.fine = np.hstack(
+            (
+                np.full(runtime_line_starts.shape, np.nan),
+                np.full(runtime_line_stops.shape, np.nan),
+                p.fine,
+            )
+        )[sorted_idxs]
+
+        p.image = cnt
+        p.roi = roi
+
+        # plotting of scan image and ROI
+        if not no_plot:
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.set_title(f"file No. {p.file_num} of {self.template}")
+            ax.set_xlabel("Pixel Number")
+            ax.set_ylabel("Line Number")
+            ax.imshow(cnt)
+            ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
+            force_aspect(ax, aspect=1)
+            fig.show()
+
+        # reverse rows again
+        bw[1::2, :] = np.flip(bw[1::2, :], 1)
+        p.bw_mask = bw
+
+        # get image line correlation to subtract trends
+        img = p.image * p.bw_mask
+        # lineNos = find(sum(p.bw_mask, 2));
+
+        p.image_line_corr = line_correlations(img, p.bw_mask, roi, sample_freq_hz)
+
+        return p
+
+    def process_static_data(self, full_data, idx):
+        """Doc."""
+
+        print("Converting raw data to photons...", end=" ")
+        p = PhotonData()
+        p.convert_fpga_data_to_photons(
+            full_data["data"], version=full_data["version"], verbose=True
+        )
+        print("Done.")
+
+        p.file_num = idx + 1
+        p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
+
+        return p
 
     def correlate_regular_data(
         self,
@@ -648,24 +667,27 @@ def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_to
     return cnt, n_pix_tot, n_pix, line_num
 
 
-# TODO: create a "roll_and_score()" function to avoid duplicate code
 def fix_data_shift(cnt) -> int:
     """Doc."""
 
-    print("Fixing shift...", end=" ")
+    @nb.njit(cache=True)
+    def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
+        """Doc."""
+
+        score = np.empty(shape=(max_shift - min_shift), dtype=np.float64)
+        pix_shifts = np.arange(min_shift, max_shift)
+        for idx, pix_shift in enumerate(range(min_shift, max_shift)):
+            rolled_img = np.roll(img, pix_shift).astype(np.float64)
+            score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
+        return pix_shifts[score.argmin()]
+
+    print("Fixing line shift...", end=" ")
 
     height, width = cnt.shape
 
-    score = []
-    pix_shifts = []
     min_pix_shift = -round(width / 2)
     max_pix_shift = min_pix_shift + width + 1
-    for pix_shift in range(min_pix_shift, max_pix_shift):
-        cnt2 = np.roll(cnt, pix_shift).astype(np.double)
-        diff_cnt2 = (cnt2[:-1:2, :] - np.flip(cnt2[1::2, :], 1)) ** 2
-        score.append(diff_cnt2.sum())
-        pix_shifts.append(pix_shift)
-    pix_shift = pix_shifts[np.argmin(score)]
+    pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
     # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
     # OR if the 'return row' (the empty one) is not at the bottom for some reason
@@ -677,17 +699,10 @@ def fix_data_shift(cnt) -> int:
 
     if (outer_half_sum > inner_half_sum) or return_row_idx != height - 1:
         if return_row_idx != height - 1:
-            print("Data is heavily shifted, check it out.", end=" ")
-        score = []
-        pix_shifts = []
+            print("Data is heavily shifted, check it out!", end=" ")
         min_pix_shift = -round(cnt.size / 2)
         max_pix_shift = min_pix_shift + cnt.size + 1
-        for pix_shift in range(min_pix_shift, max_pix_shift):
-            cnt2 = np.roll(cnt, pix_shift).astype(np.double)
-            diff_cnt2 = (cnt2[:-1:2, :] - np.flip(cnt2[1::2, :], 1)) ** 2
-            score.append(diff_cnt2.sum())
-            pix_shifts.append(pix_shift)
-        pix_shift = pix_shifts[np.argmin(score)]
+        pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
     return pix_shift
 
@@ -718,7 +733,7 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
         prof = image[j]
         prof = prof[bw_mask[j] > 0]
         try:
-            c, lags = x_corr(prof, prof)
+            c, lags = auto_corr(prof)
         except ValueError:
             print(f"Auto correlation of line #{j} has failed. Skipping.", end=" ")
         else:
@@ -729,16 +744,14 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
                     "lag": lags * 1000 / sampling_freq,  # in ms
                     "corrfunc": c,
                 }
-            )  # c/mean(prof).^2-1;
+            )
     return image_line_corr
 
 
-def x_corr(a, b):
+def auto_corr(a):
     """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
-    if a.size != b.size:
-        raise ValueError("For unequal lengths of a, b the meaning of lags is not clear!")
-    c = np.correlate(a, b, mode="full")
+    c = np.correlate(a, a, mode="full")
     c = c[c.size // 2 :]
     c = c / np.arange(c.size, 0, -1)
     lags = np.arange(c.size)
