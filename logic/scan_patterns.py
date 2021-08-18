@@ -284,7 +284,7 @@ class ScanPatternAO:
         params.n_lines = n_lines
         params.lin_len = lin_len
         params.tot_len = tot_len
-        params.lin_part = np.arange(t0, (T - t0) + 1)
+        params.lin_part = np.arange(t0, (T - t0) + 1).astype(np.int32)
         params.x_lim = [np.min(x_ao), np.max(x_ao)]
         params.y_lim = [np.min(y_ao), np.max(y_ao)]
 

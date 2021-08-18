@@ -397,13 +397,11 @@ class SFCSImageMeasurement(Measurement):
             "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
             "pid": [],  # check
             "ao": self.ao_buffer,
-            "sp": [],  # TODO: ask Oleg about this
-            "log": [],  # info in mat filename
             "is_fast_scan": True,
             "system_info": self.sys_info,
             "xyz_um_to_v": self.um_v_ratio,
             "tdc_scan_data": {
-                # TODO: prepare the data for saving - cut in up into planes as done with images
+                # TODO: prepare a function to cut the data into planes, similar to how the counts are cut
                 "data": np.array(self.data_dvc.data, dtype=np.uint8),
                 "data_version": self.tdc_dvc.data_vrsn,  # already in 'version'
                 "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
@@ -577,9 +575,6 @@ class SFCSSolutionMeasurement(Measurement):
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
 
-    # TODO: standardize this - use the existing read_fpga_data() by adding an option to use an existing dict rather than load one
-    # OR better yet - create seperate functions for processing angular scans/circular scans (single file) and use them here (with existing dict)
-    # while refactoring read_fpga_data() to use those seperate functions too, and finally be shorter and more readable.
     def disp_ACF(self):
         """Doc."""
 
