@@ -18,12 +18,11 @@ import numpy as np
 
 import gui.gui
 import logic.devices as dvcs
-import utilities.helper as helper
 from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
-from utilities.errors import DeviceError, err_hndlr
+from utilities import errors, helper
 
 
 class Measurement:
@@ -76,7 +75,7 @@ class Measurement:
         """Doc."""
 
         # turn off devices and return to starting position if scanning
-        with suppress(DeviceError, MeasurementError):
+        with suppress(errors.DeviceError, MeasurementError):
             await self.toggle_lasers(finish=True)
             self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
 
@@ -438,10 +437,10 @@ class SFCSImageMeasurement(Measurement):
             self.scanners_dvc.init_ai_buffer(type="inf")
             self.counter_dvc.init_ci_buffer(type="inf")
 
-        except (MeasurementError, DeviceError) as exc:
+        except (MeasurementError, errors.DeviceError) as exc:
             await self.stop()
             self.type = None
-            err_hndlr(exc, sys._getframe(), locals())
+            errors.err_hndlr(exc, sys._getframe(), locals())
             return
 
         else:
@@ -481,11 +480,11 @@ class SFCSImageMeasurement(Measurement):
 
         except MeasurementError as exc:
             await self.stop()
-            err_hndlr(exc, sys._getframe(), locals())
+            errors.err_hndlr(exc, sys._getframe(), locals())
             return
 
         except Exception as exc:  # TESTESTEST
-            err_hndlr(exc, sys._getframe(), locals())  # TESTESTEST
+            errors.err_hndlr(exc, sys._getframe(), locals())  # TESTESTEST
 
         # finished measurement
         if self.is_running:
@@ -598,13 +597,13 @@ class SFCSSolutionMeasurement(Measurement):
             try:
                 s = compute_acf(self.data_dvc.data)
             except Exception as exc:
-                err_hndlr(exc, sys._getframe(), locals())
+                errors.err_hndlr(exc, sys._getframe(), locals())
             else:
                 try:
                     s.fit_correlation_function()
                 except fit_tools.FitError as exc:
                     # fit failed
-                    err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
+                    errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
                     self.fit_led.set(self.icon_dict["led_red"])
                     g0, tau = s.g0, 0.1
                     self.g0_wdgt.set(s.g0)
@@ -683,10 +682,10 @@ class SFCSSolutionMeasurement(Measurement):
         # turn on lasers
         try:
             await self.toggle_lasers()
-        except (MeasurementError, DeviceError) as exc:
+        except (MeasurementError, errors.DeviceError) as exc:
             await self.stop()
             self.type = None
-            err_hndlr(exc, sys._getframe(), locals())
+            errors.err_hndlr(exc, sys._getframe(), locals())
             return
 
         try:
@@ -702,9 +701,9 @@ class SFCSSolutionMeasurement(Measurement):
                 # during alignment we don't change the counter_dvc tasks, do no need to initialize
                 self.counter_dvc.init_ci_buffer()
 
-        except DeviceError as exc:
+        except errors.DeviceError as exc:
             await self.stop()
-            err_hndlr(exc, sys._getframe(), locals())
+            errors.err_hndlr(exc, sys._getframe(), locals())
             return
 
         else:
@@ -772,7 +771,7 @@ class SFCSSolutionMeasurement(Measurement):
                 file_num += 1
 
         except Exception as exc:  # TESTESTEST
-            err_hndlr(exc, sys._getframe(), locals())
+            errors.err_hndlr(exc, sys._getframe(), locals())
 
         if self.is_running:  # if not manually stopped
             await self.stop()
