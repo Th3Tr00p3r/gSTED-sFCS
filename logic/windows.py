@@ -16,12 +16,12 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 import logic.devices as dvcs
 import logic.measurements as meas
-import utilities.helper as helper
-import utilities.widget_collections as wdgt_colls
-from data_analysis import file_utilities, fit_tools
+from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
+from utilities import file_utilities, helper
+from utilities import widget_collections as wdgt_colls
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import DeviceError, err_hndlr
 
@@ -1019,7 +1019,6 @@ class MainWin:
                 self.display_scan_image(1, imported_template)
 
                 # calculate average and display
-                # TODO: perhaps should average by default, before displaying that way I can put it all in one function?
                 print("Averaging and plotting...", end=" ")
                 self.calculate_and_show_sol_mean_acf(imported_template)
 
