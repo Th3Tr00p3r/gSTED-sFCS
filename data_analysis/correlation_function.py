@@ -10,11 +10,10 @@ from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
-import utilities.helper as helper
 from data_analysis import fit_tools
-from data_analysis.file_utilities import load_file_dict, prepare_file_paths
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
+from utilities import file_utilities, helper
 
 
 class CorrFuncData:
@@ -159,13 +158,13 @@ class CorrFuncTDC(CorrFuncData):
         """Doc."""
 
         print("\nLoading FPGA data from hard drive:", end=" ")
-        file_paths = prepare_file_paths(file_path_template, file_selection)
+        file_paths = file_utilities.prepare_file_paths(file_path_template, file_selection)
         n_files = len(file_paths)
         _, self.template = os.path.split(file_path_template)
 
         for idx, file_path in enumerate(file_paths):
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
-            file_dict = load_file_dict(file_path)
+            file_dict = file_utilities.load_file_dict(file_path)
             print("Done.")
 
             full_data = file_dict["full_data"]
@@ -441,7 +440,6 @@ class CorrFuncTDC(CorrFuncData):
 
             run_duration = total_duration_estimate / n_runs_requested
 
-        self.requested_duration = run_duration
         self.min_duration_frac = min_time_frac
         duration = []
         self.lag = []
@@ -463,7 +461,7 @@ class CorrFuncTDC(CorrFuncData):
             time_stamps = np.diff(p.runtime)
             # for exponential distribution MEDIAN and MAD are the same, but for
             # biexponential MAD seems more sensitive
-            mu = np.maximum(
+            mu = max(
                 np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()
             ) / np.log(2)
             max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
@@ -489,11 +487,11 @@ class CorrFuncTDC(CorrFuncData):
 
                 n_splits = helper.div_ceil(segment_time, run_duration)
                 splits = np.linspace(0, (se_end - se_start), n_splits + 1, dtype=np.int32)
-                ts = time_stamps[se_start:se_end]
+                ts = time_stamps[se_start:se_end].astype(np.int32)
 
                 for k in range(n_splits):
 
-                    ts_split = ts[splits[k] : splits[k + 1]].astype(np.int32)
+                    ts_split = ts[splits[k] : splits[k + 1]]
                     duration.append(ts_split.sum() / self.laser_freq_hz)
                     cf.soft_cross_correlate(
                         ts_split,
@@ -554,7 +552,7 @@ class CorrFuncTDC(CorrFuncData):
         for p in self.data:
             print(f"({p.file_num})", end=" ")
 
-            time_stamps = np.diff(p.runtime)
+            time_stamps = np.diff(p.runtime).astype(np.int32)
             line_num = p.line_num
             min_line, max_line = line_num[line_num > 0].min(), line_num.max()
             for line_idx, j in enumerate(range(min_line, max_line + 1)):
@@ -565,7 +563,7 @@ class CorrFuncTDC(CorrFuncData):
                 valid = valid[1:]
 
                 # remove photons from wrong lines
-                timest = time_stamps[valid != 0].astype(np.int32)
+                timest = time_stamps[valid != 0]
                 valid = valid[valid != 0]
 
                 if not valid.size:
