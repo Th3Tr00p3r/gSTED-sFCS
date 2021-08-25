@@ -14,12 +14,18 @@ from typing import Callable, List, Union
 import PyQt5.QtWidgets as QtWidgets
 from PyQt5.QtGui import QIcon
 
+# import time # TESTING
+# tic = time.perf_counter() # TESTING
+# print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
+
 
 def timer(threshold: float = 0) -> Callable:
     """
     Meant to be used as a decorator (@helper.timer(threshold))
     for quickly setting up function timing for testing.
     Works for both regular and asynchronous functions.
+    NOTE - asynchronous function timing may include stuff that happens
+        while function 'awaits' other coroutines.
     """
 
     def outer_wrapper(func) -> Callable:
@@ -52,11 +58,6 @@ def timer(threshold: float = 0) -> Callable:
         return wrapper
 
     return outer_wrapper
-
-
-# import time # TESTING
-# tic = time.perf_counter() # TESTING
-# print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
 
 
 def force_aspect(ax, aspect=1) -> None:

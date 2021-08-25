@@ -21,18 +21,7 @@ class PhotonData:
             maxval = 256 ** 3
         self.version = version
 
-        section_edges = []
-        data_end = False
-        last_edge_stop = 0
-        while not data_end:
-            remaining_data = fpga_data[last_edge_stop:]
-            new_edge_start, new_edge_stop, data_end = find_section_edges(
-                remaining_data, group_len, verbose
-            )
-            new_edge_start += last_edge_stop
-            new_edge_stop += last_edge_stop
-            section_edges.append((new_edge_start, new_edge_stop))
-            last_edge_stop = new_edge_stop
+        section_edges, tot_single_errors = find_all_section_edges(fpga_data, group_len)
 
         section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
         if verbose:
@@ -43,6 +32,10 @@ class PhotonData:
                 )
             else:
                 print(f"Found a single section of length: {section_lengths[0]}.", end=" ")
+            if tot_single_errors > 0:
+                print(
+                    f"Encountered a total of {tot_single_errors} ignoreable single errors.", end=" "
+                )
 
         # using the largest section only
         largest_section_start_idx, largest_section_end_idx = section_edges[
@@ -79,14 +72,15 @@ class PhotonData:
             runtime[i:] += maxval
 
         # saving coarse and fine times
-        self.coarse = fpga_data[idxs + 4].astype(type_)
-        self.fine = fpga_data[idxs + 5].astype(type_)
+        coarse = fpga_data[idxs + 4]
+        self.fine = fpga_data[idxs + 5]
 
         # some fix due to an issue in FPGA
         if self.version >= 3:
-            twobit1 = np.floor(self.coarse / 64).astype(type_)
-            self.coarse = self.coarse - twobit1 * 64
-            self.coarse2 = self.coarse - np.mod(self.coarse, 4) + twobit1
+            self.coarse = np.mod(coarse, 64)
+            self.coarse2 = coarse - np.mod(coarse, 4) + (coarse // 64)
+        else:
+            self.coarse = coarse
 
         self.runtime = runtime
 
@@ -165,21 +159,22 @@ class PhotonData:
         )
 
 
-def find_section_edges(data, group_len, verbose=False):  # noqa c901
+def find_section_edges(data, group_len):  # NOQA C901
     """
     group_len: bytes per photon
     """
 
-    data_end = False
-    # find brackets (photon starts and ends)
-    idx_248 = np.where(data == 248)[0]
-    idx_254 = np.where(data == 254)[0]
+    def first_full_photon_idx(data, group_len) -> int:
+        """Doc."""
 
-    try:
-        # find index of first complete photon (where 248 and 254 bytes are spaced exatly (group_len -1) bytes apart)
-        photon_start_idxs = np.intersect1d(idx_248, idx_254 - (group_len - 1), assume_unique=True)
-        edge_start = photon_start_idxs[0]
-    except IndexError:
+        for idx in range(data.size):
+            if (data[idx] == 248) and (data[idx + (group_len - 1)] == 254):
+                return idx
+        return None
+
+    # find index of first complete photon (where 248 and 254 bytes are spaced exatly (group_len -1) bytes apart)
+    edge_start = first_full_photon_idx(data, group_len)
+    if edge_start is None:
         raise RuntimeError("No data found! Check detector and FPGA.")
 
     # slice data where assumed to be 248 and 254 (photon brackets)
@@ -192,12 +187,12 @@ def find_section_edges(data, group_len, verbose=False):  # noqa c901
     missed_254_idxs = np.where(data_presumed_254 != 254)[0]
     tot_missed_254s = len(missed_254_idxs)
 
+    data_end = False
+    n_single_errors = 0
     for count, missed_248_idx in enumerate(missed_248_idxs):
 
         # hold data idx of current missing photon starting bracket
         data_idx_of_missed_248 = edge_start + missed_248_idx * group_len
-
-        single_error_msg = f"Found single photon error (data[{data_idx_of_missed_248}]), ignoring and continuing..."
 
         # condition for ignoring single photon error (just test the most significant bytes of the runtime are close)
         ignore_single_error_cond = (
@@ -213,11 +208,7 @@ def find_section_edges(data, group_len, verbose=False):  # noqa c901
             # no missing ending brackets, at least one missing starting bracket
             if missed_248_idx == (len(data_presumed_248) - 1):
                 # problem in the last photon in the file
-                if verbose:
-                    print(
-                        "Found single error in last photon of file, ignoring and finishing...",
-                        end=" ",
-                    )
+                # Found single error in last photon of file, ignoring and finishing...
                 edge_stop = data_idx_of_missed_248
                 break
 
@@ -225,9 +216,8 @@ def find_section_edges(data, group_len, verbose=False):  # noqa c901
                 np.diff(missed_248_idxs[count : (count + 2)]) > 1
             ):
                 if ignore_single_error_cond:
-                    if verbose:
-                        print(single_error_msg, end=" ")
-                    continue
+                    # f"Found single photon error (data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                    n_single_errors += 1
                 else:
                     raise RuntimeError("Check data for strange section edges!")
 
@@ -239,8 +229,7 @@ def find_section_edges(data, group_len, verbose=False):  # noqa c901
         else:  # (tot_missed_254s >= count + 1)
             # if (missed_248_idxs[count] == missed_254_idxs[count]), # likely a real section
             if np.isin(missed_248_idx, missed_254_idxs):
-                if verbose:
-                    print("Found a section, continuing...", end=" ")
+                # Found a section, continuing...
                 edge_stop = data_idx_of_missed_248
                 if data[edge_stop - 1] != 254:
                     edge_stop = edge_stop - group_len
@@ -249,8 +238,7 @@ def find_section_edges(data, group_len, verbose=False):  # noqa c901
             elif missed_248_idxs[count] == (
                 missed_254_idxs[count] + 1
             ):  # np.isin(missed_248_idx, (missed_254_idxs[count]+1)): # likely a real section ? why np.isin?
-                if verbose:
-                    print("Found a section, continuing...", end=" ")
+                # Found a section, continuing...
                 edge_stop = data_idx_of_missed_248
                 if data[edge_stop - 1] != 254:
                     edge_stop = edge_stop - group_len
@@ -258,16 +246,16 @@ def find_section_edges(data, group_len, verbose=False):  # noqa c901
 
             elif missed_248_idx < missed_254_idxs[count]:  # likely a singular error on 248 byte
                 if ignore_single_error_cond:
-                    if verbose:
-                        print(single_error_msg, end=" ")
+                    # f"Found single photon error (data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                    n_single_errors += 1
                     continue
                 else:
                     raise RuntimeError("Check data for strange section edges!")
 
             else:  # likely a signular mistake on 254 byte
                 if ignore_single_error_cond:
-                    if verbose:
-                        print(single_error_msg, end=" ")
+                    # f"Found single photon error (data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                    n_single_errors += 1
                     continue
                 else:
                     raise RuntimeError("Check data for strange section edges!")
@@ -280,7 +268,28 @@ def find_section_edges(data, group_len, verbose=False):  # noqa c901
         edge_stop = edge_start + (data_presumed_254.size - 1) * group_len
         data_end = True
 
-    return edge_start, edge_stop, data_end
+    return edge_start, edge_stop, data_end, n_single_errors
+
+
+def find_all_section_edges(data, group_len):
+    """Doc."""
+
+    section_edges = []
+    data_end = False
+    last_edge_stop = 0
+    total_single_errors = 0
+    while not data_end:
+        remaining_data = data[last_edge_stop:]
+        new_edge_start, new_edge_stop, data_end, n_single_errors = find_section_edges(
+            remaining_data, group_len
+        )
+        new_edge_start += last_edge_stop
+        new_edge_stop += last_edge_stop
+        section_edges.append((new_edge_start, new_edge_stop))
+        last_edge_stop = new_edge_stop
+        total_single_errors += n_single_errors
+
+    return section_edges, total_single_errors
 
 
 @dataclass

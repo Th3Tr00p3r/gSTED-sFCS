@@ -95,6 +95,9 @@ class MainWin(QMainWindow):
         self.nextTemplate.released.connect(lambda: self.imp.cycle_through_data_templates("next"))
         self.prevTemplate.released.connect(lambda: self.imp.cycle_through_data_templates("prev"))
 
+        self.solAveragingPlotSpatial.released.connect(self.imp.calculate_and_show_sol_mean_acf)
+        self.solAveragingPlotTemporal.released.connect(self.imp.calculate_and_show_sol_mean_acf)
+
         # Device LEDs
         def led_clicked(wdgt):
             self.imp.led_clicked(str(wdgt.sender().objectName()))
@@ -505,29 +508,33 @@ class AnalysisDisplay:
         self.canvas.draw()
 
     def plot_acfs(
-        self, lag: np.ndarray, average_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
+        self, x: (np.ndarray, str), average_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
     ):
         """Doc."""
 
-        default_ylim = (-1e4, 1e4)
+        x, x_type = x
 
         self.figure.clear()
         self.ax = self.figure.add_subplot(111)
-        self.ax.set_xscale("log")
-        self.ax.set_xlim(1e-4, 1e1)
-        if g0 < 1000:
-            self.ax.set_ylim(*default_ylim)
-        else:
+
+        if x_type == "lag":
+            self.ax.set_xscale("log")
+            self.ax.set_xlim(1e-4, 1e1)
             try:
                 self.ax.set_ylim(-g0 / 2, g0 * 2)
             except ValueError:
                 # g0 is not a finite number
-                self.ax.set_ylim(*default_ylim)
+                self.ax.set_ylim(-1e4, 1e4)
+        if x_type == "disp":
+            self.ax.set_yscale("log")
+            x = x ** 2
+            self.ax.set_xlim(0, 0.6)
+            self.ax.set_ylim(g0 * 1.5e-3, g0 * 1.1)
 
         if cf_cr is not None:
             for row_acf in cf_cr:
-                self.ax.plot(lag, row_acf)
-        self.ax.plot(lag, average_cf_cr, "black")
+                self.ax.plot(x, row_acf)
+        self.ax.plot(x, average_cf_cr, "black")
         self.canvas.draw()
 
 

@@ -19,7 +19,6 @@ from utilities import file_utilities, helper
 class CorrFuncData:
     """Doc."""
 
-    @helper.timer()
     def average_correlation(
         self,
         rejection=2,
@@ -95,7 +94,6 @@ class CorrFuncData:
         plt.gca().set_y_scale(y_scale)
         plt.show()
 
-    @helper.timer()
     def fit_correlation_function(
         self,
         x_field="lag",
@@ -352,24 +350,25 @@ class CorrFuncTDC(CorrFuncData):
                 line_num * bw[line_num, n_pix].flatten(),
             )
         )[sorted_idxs]
+        # TODO: Ask Oleg - will nan's be needed in TDC analysis?
         p.coarse = np.hstack(
             (
-                np.full(runtime_line_starts.shape, np.nan),
-                np.full(runtime_line_stops.shape, np.nan),
+                np.full(runtime_line_starts.size, np.nan, dtype=np.float16),
+                np.full(runtime_line_stops.size, np.nan, dtype=np.float16),
                 p.coarse,
             )
         )[sorted_idxs]
         p.coarse2 = np.hstack(
             (
-                np.full(runtime_line_starts.shape, np.nan),
-                np.full(runtime_line_stops.shape, np.nan),
+                np.full(runtime_line_starts.size, np.nan, dtype=np.float16),
+                np.full(runtime_line_stops.size, np.nan, dtype=np.float16),
                 p.coarse2,
             )
         )[sorted_idxs]
         p.fine = np.hstack(
             (
-                np.full(runtime_line_starts.shape, np.nan),
-                np.full(runtime_line_stops.shape, np.nan),
+                np.full(runtime_line_starts.size, np.nan, dtype=np.float16),
+                np.full(runtime_line_stops.size, np.nan, dtype=np.float16),
                 p.fine,
             )
         )[sorted_idxs]
