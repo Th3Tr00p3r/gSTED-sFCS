@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5194,7 +5194,7 @@ Plotting</string>
                           <bool>true</bool>
                          </property>
                          <property name="currentIndex">
-                          <number>0</number>
+                          <number>1</number>
                          </property>
                          <widget class="QWidget" name="tab_4">
                           <attribute name="title">
@@ -5305,164 +5305,187 @@ Plotting</string>
                                 <number>0</number>
                                </property>
                                <item>
-                                <widget class="QGroupBox" name="groupBox_22">
-                                 <property name="title">
-                                  <string>Row Discrimination</string>
+                                <layout class="QVBoxLayout" name="verticalLayout_75" stretch="10,1">
+                                 <property name="spacing">
+                                  <number>0</number>
                                  </property>
-                                 <layout class="QGridLayout" name="gridLayout_11">
-                                  <item row="0" column="0">
-                                   <layout class="QVBoxLayout" name="verticalLayout_65">
-                                    <item>
-                                     <layout class="QVBoxLayout" name="verticalLayout_95">
-                                      <property name="spacing">
-                                       <number>0</number>
-                                      </property>
+                                 <item>
+                                  <widget class="QGroupBox" name="groupBox_30">
+                                   <property name="title">
+                                    <string>Row Discrimination</string>
+                                   </property>
+                                   <layout class="QGridLayout" name="gridLayout_21">
+                                    <item row="0" column="0">
+                                     <layout class="QVBoxLayout" name="verticalLayout_76">
                                       <item>
-                                       <layout class="QHBoxLayout" name="horizontalLayout_71" stretch="1,1,100">
+                                       <layout class="QVBoxLayout" name="verticalLayout_108">
+                                        <property name="spacing">
+                                         <number>0</number>
+                                        </property>
                                         <item>
-                                         <widget class="QRadioButton" name="solAnalysisRemoveOver">
-                                          <property name="text">
-                                           <string>Remove
+                                         <layout class="QHBoxLayout" name="horizontalLayout_75" stretch="1,1,100">
+                                          <item>
+                                           <widget class="QRadioButton" name="solAnalysisRemoveOver">
+                                            <property name="text">
+                                             <string>Remove
 scores
 over:</string>
-                                          </property>
-                                          <property name="checked">
-                                           <bool>true</bool>
-                                          </property>
-                                         </widget>
+                                            </property>
+                                            <property name="checked">
+                                             <bool>true</bool>
+                                            </property>
+                                           </widget>
+                                          </item>
+                                          <item>
+                                           <widget class="QDoubleSpinBox" name="solAnalysisRemoveOverSpinner">
+                                            <property name="sizePolicy">
+                                             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                              <horstretch>0</horstretch>
+                                              <verstretch>0</verstretch>
+                                             </sizepolicy>
+                                            </property>
+                                            <property name="minimumSize">
+                                             <size>
+                                              <width>50</width>
+                                              <height>0</height>
+                                             </size>
+                                            </property>
+                                            <property name="maximumSize">
+                                             <size>
+                                              <width>50</width>
+                                              <height>16777215</height>
+                                             </size>
+                                            </property>
+                                            <property name="decimals">
+                                             <number>1</number>
+                                            </property>
+                                            <property name="maximum">
+                                             <double>10.000000000000000</double>
+                                            </property>
+                                            <property name="singleStep">
+                                             <double>0.100000000000000</double>
+                                            </property>
+                                            <property name="value">
+                                             <double>2.000000000000000</double>
+                                            </property>
+                                           </widget>
+                                          </item>
+                                          <item>
+                                           <spacer name="horizontalSpacer_37">
+                                            <property name="orientation">
+                                             <enum>Qt::Horizontal</enum>
+                                            </property>
+                                            <property name="sizeHint" stdset="0">
+                                             <size>
+                                              <width>40</width>
+                                              <height>20</height>
+                                             </size>
+                                            </property>
+                                           </spacer>
+                                          </item>
+                                         </layout>
                                         </item>
                                         <item>
-                                         <widget class="QDoubleSpinBox" name="solAnalysisRemoveOverSpinner">
-                                          <property name="sizePolicy">
-                                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                                            <horstretch>0</horstretch>
-                                            <verstretch>0</verstretch>
-                                           </sizepolicy>
-                                          </property>
-                                          <property name="minimumSize">
-                                           <size>
-                                            <width>50</width>
-                                            <height>0</height>
-                                           </size>
-                                          </property>
-                                          <property name="maximumSize">
-                                           <size>
-                                            <width>50</width>
-                                            <height>16777215</height>
-                                           </size>
-                                          </property>
-                                          <property name="decimals">
-                                           <number>1</number>
-                                          </property>
-                                          <property name="maximum">
-                                           <double>10.000000000000000</double>
-                                          </property>
-                                          <property name="singleStep">
-                                           <double>0.100000000000000</double>
-                                          </property>
-                                          <property name="value">
-                                           <double>2.000000000000000</double>
-                                          </property>
-                                         </widget>
-                                        </item>
-                                        <item>
-                                         <spacer name="horizontalSpacer_31">
-                                          <property name="orientation">
-                                           <enum>Qt::Horizontal</enum>
-                                          </property>
-                                          <property name="sizeHint" stdset="0">
-                                           <size>
-                                            <width>40</width>
-                                            <height>20</height>
-                                           </size>
-                                          </property>
-                                         </spacer>
+                                         <layout class="QHBoxLayout" name="horizontalLayout_76" stretch="1,1,100">
+                                          <item>
+                                           <widget class="QRadioButton" name="solAnalysisRemoveWorst">
+                                            <property name="minimumSize">
+                                             <size>
+                                              <width>0</width>
+                                              <height>0</height>
+                                             </size>
+                                            </property>
+                                            <property name="maximumSize">
+                                             <size>
+                                              <width>999</width>
+                                              <height>16777215</height>
+                                             </size>
+                                            </property>
+                                            <property name="text">
+                                             <string>Remove
+Worst</string>
+                                            </property>
+                                           </widget>
+                                          </item>
+                                          <item>
+                                           <widget class="QSpinBox" name="solAnalysisRemoveWorstSpinner">
+                                            <property name="sizePolicy">
+                                             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                              <horstretch>0</horstretch>
+                                              <verstretch>0</verstretch>
+                                             </sizepolicy>
+                                            </property>
+                                            <property name="maximum">
+                                             <number>999</number>
+                                            </property>
+                                            <property name="value">
+                                             <number>4</number>
+                                            </property>
+                                           </widget>
+                                          </item>
+                                          <item>
+                                           <spacer name="horizontalSpacer_39">
+                                            <property name="orientation">
+                                             <enum>Qt::Horizontal</enum>
+                                            </property>
+                                            <property name="sizeHint" stdset="0">
+                                             <size>
+                                              <width>40</width>
+                                              <height>20</height>
+                                             </size>
+                                            </property>
+                                           </spacer>
+                                          </item>
+                                         </layout>
                                         </item>
                                        </layout>
                                       </item>
                                       <item>
-                                       <layout class="QHBoxLayout" name="horizontalLayout_72" stretch="1,1,100">
-                                        <item>
-                                         <widget class="QRadioButton" name="solAnalysisRemoveWorst">
-                                          <property name="minimumSize">
-                                           <size>
-                                            <width>0</width>
-                                            <height>0</height>
-                                           </size>
-                                          </property>
-                                          <property name="maximumSize">
-                                           <size>
-                                            <width>999</width>
-                                            <height>16777215</height>
-                                           </size>
-                                          </property>
-                                          <property name="text">
-                                           <string>Remove
-Worst</string>
-                                          </property>
-                                         </widget>
-                                        </item>
-                                        <item>
-                                         <widget class="QSpinBox" name="solAnalysisRemoveWorstSpinner">
-                                          <property name="sizePolicy">
-                                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                                            <horstretch>0</horstretch>
-                                            <verstretch>0</verstretch>
-                                           </sizepolicy>
-                                          </property>
-                                          <property name="maximum">
-                                           <number>999</number>
-                                          </property>
-                                          <property name="value">
-                                           <number>4</number>
-                                          </property>
-                                         </widget>
-                                        </item>
-                                        <item>
-                                         <spacer name="horizontalSpacer_32">
-                                          <property name="orientation">
-                                           <enum>Qt::Horizontal</enum>
-                                          </property>
-                                          <property name="sizeHint" stdset="0">
-                                           <size>
-                                            <width>40</width>
-                                            <height>20</height>
-                                           </size>
-                                          </property>
-                                         </spacer>
-                                        </item>
-                                       </layout>
+                                       <widget class="QPushButton" name="solAnalysisRecalMeanAcf">
+                                        <property name="sizePolicy">
+                                         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                          <horstretch>0</horstretch>
+                                          <verstretch>0</verstretch>
+                                         </sizepolicy>
+                                        </property>
+                                        <property name="text">
+                                         <string>Re-Calculate
+Mean ACF</string>
+                                        </property>
+                                       </widget>
                                       </item>
                                      </layout>
                                     </item>
+                                   </layout>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QGroupBox" name="groupBox_14">
+                                   <property name="title">
+                                    <string>Plot Oprions</string>
+                                   </property>
+                                   <layout class="QHBoxLayout" name="horizontalLayout_46">
                                     <item>
-                                     <widget class="QPushButton" name="solAnalysisRecalMeanAcf">
-                                      <property name="sizePolicy">
-                                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                        <horstretch>0</horstretch>
-                                        <verstretch>0</verstretch>
-                                       </sizepolicy>
-                                      </property>
+                                     <widget class="QRadioButton" name="solAveragingPlotTemporal">
                                       <property name="text">
-                                       <string>Re-Calculate
-Mean ACF</string>
+                                       <string>Temporal</string>
+                                      </property>
+                                      <property name="checked">
+                                       <bool>true</bool>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QRadioButton" name="solAveragingPlotSpatial">
+                                      <property name="text">
+                                       <string>Spatial</string>
                                       </property>
                                      </widget>
                                     </item>
                                    </layout>
-                                  </item>
-                                  <item row="1" column="0">
-                                   <widget class="QCheckBox" name="showOnlyMeanAcf">
-                                    <property name="text">
-                                     <string>Show only mean ACF</string>
-                                    </property>
-                                    <property name="checked">
-                                     <bool>true</bool>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                 </layout>
-                                </widget>
+                                  </widget>
+                                 </item>
+                                </layout>
                                </item>
                                <item>
                                 <layout class="QGridLayout" name="solAnalysisAveragingLayout" rowstretch="0" columnstretch="0">

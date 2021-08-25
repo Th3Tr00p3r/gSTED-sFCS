@@ -78,9 +78,9 @@ class App:
 
         print("Done.")
 
-        print("Initializing Devices...", end=" ")
+        print("Initializing Devices:")
         self.init_devices()
-        print("Done.")
+        print("        Done.")
 
         # init AO as origin (actual AO is measured in internal AO if last position is needed)
         [
@@ -152,6 +152,7 @@ class App:
         self.devices = SimpleNamespace()
         for nick in self.DVC_NICKS:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
+            print(f"        Initializing {dvc_attrs.log_ref}...")
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
             param_dict = dvc_attrs.param_widgets.hold_objects(app=self).read_dict_from_gui(self)
             param_dict["nick"] = nick

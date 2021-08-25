@@ -1072,13 +1072,20 @@ class MainWin:
                 # no data loaded
                 full_data.average_correlation(**avg_corr_args)
 
+                if wdgts.plot_spatial.get():
+                    x = (full_data.vt_um, "disp")
+                    x_label = r"squared displacement ($um^2$)"
+                else:
+                    x = (full_data.lag, "lag")
+                    x_label = "lag (ms)"
+
                 wdgts.row_acf_disp.obj.plot_acfs(
-                    full_data.lag,
+                    x,
                     full_data.average_cf_cr,
                     full_data.g0,
                     full_data.cf_cr[full_data.j_good, :],
                 )
-                wdgts.row_acf_disp.obj.entitle_and_label("lag (ms)", "?")
+                wdgts.row_acf_disp.obj.entitle_and_label(x_label, "G0")
 
                 wdgts.mean_g0.set(full_data.g0 / 1e3)  # shown in thousands
                 wdgts.mean_tau.set(0)
@@ -1105,7 +1112,7 @@ class MainWin:
                 y_fit = fit_func(fit_params["x"], *fit_params["beta"])
                 wdgts.row_acf_disp.obj.clear()
                 wdgts.row_acf_disp.obj.plot_acfs(
-                    full_data.lag,
+                    (full_data.lag, "lag"),
                     full_data.average_cf_cr,
                     full_data.g0,
                 )
