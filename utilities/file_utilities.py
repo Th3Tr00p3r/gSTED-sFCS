@@ -301,7 +301,7 @@ def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
         """
 
         try:
-            range_edges = [int(s) for s in range_str.split("-")]
+            range_edges = [int(s) if int(s) != 0 else 1 for s in range_str.split("-")]
             if len(range_edges) > 2:
                 raise ValueError
             elif len(range_edges) == 2:
@@ -340,7 +340,7 @@ def prepare_file_paths(file_path_template: str, file_selection: str) -> List[str
             print(f'(files: "{file_selection}")')
         except IndexError:
             raise ValueError(
-                f"Bad file selection string: '{file_selection}'. One or more file numbers don't exist."
+                f"Bad file selection string: '{file_selection}'. Try file numbers between 1 and {len(file_paths)}."
             )
     else:
         print("(all files)")

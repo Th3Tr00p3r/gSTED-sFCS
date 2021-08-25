@@ -574,11 +574,9 @@ class SFCSSolutionMeasurement(Measurement):
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
 
-    #    @helper.timer()
     def disp_ACF(self):
         """Doc."""
 
-        #        @helper.timer()
         def compute_acf(data):
             """Doc."""
 
