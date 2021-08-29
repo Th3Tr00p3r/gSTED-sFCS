@@ -29,6 +29,8 @@ switch_wdgts = QtWidgetCollection(
 # ----------------------------------------------
 # Analysis Widget Collections
 # ----------------------------------------------
+# TODO: change unneeded widgets to 'False', and implement using "read widgets" instead of manually reading each one using .get()
+# Widgets that need .obj should be 'True'
 
 data_import_wdgts = QtWidgetCollection(
     is_image_type=("imageDataImport", "QRadioButton", "main", True),
@@ -37,8 +39,9 @@ data_import_wdgts = QtWidgetCollection(
     data_months=("dataMonth", "QComboBox", "main", True),
     data_years=("dataYear", "QComboBox", "main", True),
     data_templates=("dataTemplate", "QComboBox", "main", True),
+    n_files=("dataNumFiles", "QLabel", "main", True),
+    new_template=("newTemplate", "QLineEdit", "main", True),
     import_stacked=("importStacked", "QStackedWidget", "main", True),
-    is_calibration=("isDataCalibration", "QCheckBox", "main", True),
     log_text=("dataDirLog", "QPlainTextEdit", "main", True),
     img_preview_disp=("imgScanPreviewDisp", None, "main", True),
     sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", True),

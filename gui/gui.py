@@ -89,6 +89,7 @@ class MainWin(QMainWindow):
 
         self.solScanImgDisp = AnalysisDisplay(self.solAnalysisScanImageLayout, self)
         self.solScanAcfDisp = AnalysisDisplay(self.solAnalysisAveragingLayout, self)
+        self.solScanGstedDisp = AnalysisDisplay(self.solAnalysisGSTEDLayout, self)
 
         self.imgScanPreviewDisp = AnalysisDisplay(self.importImgPreviewLayout)
 
@@ -166,6 +167,12 @@ class MainWin(QMainWindow):
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
     @pyqtSlot()
+    def on_renameTemplate_released(self) -> None:
+        """Doc."""
+
+        self.imp.rename_template()
+
+    @pyqtSlot()
     def on_convertToMatlab_released(self) -> None:
         """Doc."""
 
@@ -229,6 +236,7 @@ class MainWin(QMainWindow):
     def on_dataTemplate_currentTextChanged(self, template: str) -> None:
         """Doc."""
 
+        self.imp.show_num_files(template)
         self.imp.update_dir_log_wdgt(template)
         self.imp.preview_img_scan(template)
 
