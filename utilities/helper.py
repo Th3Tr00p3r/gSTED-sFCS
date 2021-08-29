@@ -101,6 +101,7 @@ def bool_str(str_: str):
 
 # What to do with each widget class
 getter_setter_type_dict = {
+    "QLabel": ("text", "setText", str),
     "QComboBox": ("currentText", "setCurrentText", str),
     "QTabWidget": ("currentIndex", "setCurrentIndex", int),
     "QCheckBox": ("isChecked", "setChecked", bool_str),
@@ -206,7 +207,7 @@ def read_file_to_gui(file_path, gui_parent):
             getattr(child, setter)(val)
         except TypeError:
             logging.warning(
-                f"Child widget '{wdgt_name}' was not found in parent widget '{gui_parent.objectName()}' - probably removed from GUI. Overwrite the defaults to stop seeing this warning."
+                f"read_file_to_gui(): Child widget '{wdgt_name}' was not found in parent widget '{gui_parent.objectName()}' - probably removed from GUI. Overwrite the defaults to stop seeing this warning."
             )
 
 

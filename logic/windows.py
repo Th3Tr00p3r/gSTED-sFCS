@@ -730,6 +730,14 @@ class MainWin:
             templates = self.pkl_and_mat_templates(self.current_date_type_dir_path())
             templates_combobox.addItems(templates)
 
+    def show_num_files(self, template) -> None:
+        """Doc."""
+
+        n_files_wdgt = wdgt_colls.data_import_wdgts.n_files
+        dir_path = self.current_date_type_dir_path()
+        n_files = len(glob.glob(os.path.join(dir_path, template)))
+        n_files_wdgt.set(f"({n_files} Files)")
+
     def cycle_through_data_templates(self, dir: str) -> None:
         """Cycle through the daily data templates in order (next or previous)"""
 
@@ -747,6 +755,68 @@ class MainWin:
                 data_templates_combobox.setCurrentIndex(curr_idx - 1)
             else:  # cycle to end
                 data_templates_combobox.setCurrentIndex(n_items - 1)
+
+    def rename_template(self) -> None:
+        """Doc."""
+
+        dir_path = self.current_date_type_dir_path()
+        curr_template = wdgt_colls.data_import_wdgts.data_templates.get()
+        new_template_prefix = wdgt_colls.data_import_wdgts.new_template.get()
+
+        if not new_template_prefix:
+            return
+
+        try:
+            curr_template_prefix = re.findall("(^.*)(?=_angular_|_circular_)", curr_template)[0]
+        except IndexError:
+            curr_template_prefix = re.findall("(^.*)(?=_[0-9]{6}_)", curr_template)[0]
+
+        if new_template_prefix == curr_template_prefix:
+            logging.warning(
+                f"rename_template(): Requested template and current template are identical ('{curr_template}'). Operation canceled."
+            )
+            return
+
+        new_template = re.sub(curr_template_prefix, new_template_prefix, curr_template)
+
+        # check if new template already exists (unlikely)
+        if glob.glob(os.path.join(dir_path, new_template)):
+            logging.warning(
+                f"New template '{new_template}' already exists in '{dir_path}'. Operation canceled."
+            )
+            return
+        # check if current template doesn't exists (can only happen if deleted manually between discovering the template and running this function)
+        if not (curr_filenames := glob.glob(os.path.join(dir_path, curr_template))):
+            logging.warning("Current template is missing! (Probably manually deleted)")
+            return
+
+        pressed = Question(
+            txt=f"Change current template from:\n{curr_template}\nto:\n{new_template}\n?",
+            title="Edit File Template",
+        ).display()
+        if pressed == QMessageBox.No:
+            return
+
+        # generate new filanames
+        new_filenames = [
+            re.sub(curr_template[:-5], new_template[:-5], curr_filename)
+            for curr_filename in curr_filenames
+        ]
+        # rename the files
+        [
+            os.rename(curr_filename, new_filename)
+            for curr_filename, new_filename in zip(curr_filenames, new_filenames)
+        ]
+        # rename the log file, if applicable
+        with suppress(FileNotFoundError):
+            os.rename(
+                os.path.join(dir_path, curr_template[:-6] + ".log"),
+                os.path.join(dir_path, new_template[:-6] + ".log"),
+            )
+
+        # refresh templates
+        day = wdgt_colls.data_import_wdgts.data_days.get()
+        self.populate_data_templates_from_day(day)
 
     def current_date_type_dir_path(self) -> str:
         """Returns path to directory of currently selected date and measurement type"""
@@ -911,7 +981,6 @@ class MainWin:
         file_dicrimination_checked_button = data_import_wdgts.sol_file_dicrimination.get()
         use_or_dont = data_import_wdgts.sol_file_use_or_dont.get()
         sol_file_selection = data_import_wdgts.sol_file_selection.get()
-        is_calibration = data_import_wdgts.is_calibration.get()
         fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
         external_plotting = wdgt_colls.sol_data_analysis_wdgts.external_plotting.get()
 
@@ -945,33 +1014,13 @@ class MainWin:
         except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
             err_hndlr(exc, sys._getframe(), locals())
 
-        else:
-            # save data and populate combobox
+        else:  # save data and populate combobox
             imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates
-            if is_calibration:
-                if "_exc_" in current_template:
-                    item = "CAL_EXC - " + current_template
-                    self._app.analysis.loaded_data["CAL_EXC"] = full_data
-                elif "_sted_" in current_template:
-                    item = "CAL_STED - " + current_template
-                    self._app.analysis.loaded_data["CAL_STED"] = full_data
-                else:
-                    item = "CAL_UNKNOWN - " + current_template
-                    self._app.analysis.loaded_data["CAL_UNKNOWN"] = full_data
-            else:
-                if "_exc_" in current_template:
-                    item = "SAMP_EXC - " + current_template
-                    self._app.analysis.loaded_data["SAMP_EXC"] = full_data
-                elif "_sted_" in current_template:
-                    item = "SAMP_STED - " + current_template
-                    self._app.analysis.loaded_data["SAMP_STED"] = full_data
-                else:
-                    item = "SAMP_UNKNOWN - " + current_template
-                    self._app.analysis.loaded_data["SAMP_UNKNOWN"] = full_data
-            imported_combobox.obj.addItem(item)
-            imported_combobox.set(item)
+            self._app.analysis.loaded_data[current_template] = full_data
+            imported_combobox.obj.addItem(current_template)
+            imported_combobox.set(current_template)
 
-            logging.info(f"Data loaded for analysis: {item}")
+            logging.info(f"Data loaded for analysis: {current_template}")
 
         with suppress(DeviceError):
             # devices not initialized
@@ -1059,6 +1108,9 @@ class MainWin:
         wdgts = wdgt_colls.sol_data_analysis_wdgts
         full_data = self.get_current_full_data(imported_template)
 
+        if full_data is None:
+            return
+
         if full_data.type == "angular_scan":
             row_disc_method = wdgts.row_dicrimination.get().objectName()
             if row_disc_method == "solAnalysisRemoveOver":
@@ -1136,6 +1188,13 @@ class MainWin:
         data_import_wdgts = wdgt_colls.data_import_wdgts
         current_template = data_import_wdgts.data_templates.get()
         current_dir_path = self.current_date_type_dir_path()
+
+        pressed = Question(
+            txt=f"Are you sure you wish to convert '{current_template}'?",
+            title="Conversion to .mat Format",
+        ).display()
+        if pressed == QMessageBox.No:
+            return
 
         file_template_path = os.path.join(current_dir_path, current_template)
         file_paths = file_utilities.sort_file_paths_by_file_number(glob.glob(file_template_path))
