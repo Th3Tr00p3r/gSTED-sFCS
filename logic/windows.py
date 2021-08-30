@@ -984,51 +984,40 @@ class MainWin:
         fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
         external_plotting = wdgt_colls.sol_data_analysis_wdgts.external_plotting.get()
 
-        # TODO: create a context manager for pausing/resuming AI/CI tasks
-        logging.debug("Importing Data. Pausing 'ai' and 'ci' tasks")
-        self._app.devices.scanners.pause_tasks("ai")
-        self._app.devices.photon_detector.pause_tasks("ci")
+        with self._app.pause_ai_ci():
 
-        full_data = CorrFuncTDC()
+            full_data = CorrFuncTDC()
 
-        # file selection
-        if file_dicrimination_checked_button.objectName() == "solImportUse":
-            sol_file_selection = f"{use_or_dont} {sol_file_selection}"
-        else:
-            sol_file_selection = ""
+            # file selection
+            if file_dicrimination_checked_button.objectName() == "solImportUse":
+                sol_file_selection = f"{use_or_dont} {sol_file_selection}"
+            else:
+                sol_file_selection = ""
 
-        try:
-            with suppress(AttributeError):
-                # No directories found
-                full_data.read_fpga_data(
-                    os.path.join(self.current_date_type_dir_path(), current_template),
-                    file_selection=sol_file_selection,
-                    should_fix_shift=fix_shift,
-                    no_plot=not external_plotting,
-                )
-                if full_data.type == "angular_scan":
-                    full_data.correlate_angular_scan_data()
-                elif full_data.type == "static":
-                    full_data.correlate_regular_data()
+            try:
+                with suppress(AttributeError):
+                    # No directories found
+                    full_data.read_fpga_data(
+                        os.path.join(self.current_date_type_dir_path(), current_template),
+                        file_selection=sol_file_selection,
+                        should_fix_shift=fix_shift,
+                        no_plot=not external_plotting,
+                    )
+                    if full_data.type == "angular_scan":
+                        full_data.correlate_angular_scan_data()
+                    elif full_data.type == "static":
+                        full_data.correlate_regular_data()
 
-        except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
-            err_hndlr(exc, sys._getframe(), locals())
+            except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
+                err_hndlr(exc, sys._getframe(), locals())
 
-        else:  # save data and populate combobox
-            imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates
-            self._app.analysis.loaded_data[current_template] = full_data
-            imported_combobox.obj.addItem(current_template)
-            imported_combobox.set(current_template)
+            else:  # save data and populate combobox
+                imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates
+                self._app.analysis.loaded_data[current_template] = full_data
+                imported_combobox.obj.addItem(current_template)
+                imported_combobox.set(current_template)
 
-            logging.info(f"Data loaded for analysis: {current_template}")
-
-        with suppress(DeviceError):
-            # devices not initialized
-            self._app.devices.scanners.init_ai_buffer()
-            self._app.devices.scanners.start_tasks("ai")
-            self._app.devices.photon_detector.init_ci_buffer()
-            self._app.devices.photon_detector.start_tasks("ci")
-            logging.debug("Data import finished. Resuming 'ai' and 'ci' tasks")
+                logging.info(f"Data loaded for analysis: {current_template}")
 
     def get_current_full_data(self, imported_template: str = None) -> CorrFuncTDC:
         """Doc."""

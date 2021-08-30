@@ -3,6 +3,7 @@
 import logging
 import logging.config
 import os
+from contextlib import contextmanager, suppress
 from types import SimpleNamespace
 
 import yaml
@@ -14,6 +15,7 @@ import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
 from logic.timeout import Timeout
 from utilities.dialog import Question
+from utilities.errors import DeviceError
 
 
 class App:
@@ -169,6 +171,30 @@ class App:
                 setattr(self.devices, nick, dvc_class(param_dict, *x_args))
             else:
                 setattr(self.devices, nick, dvc_class(param_dict))
+
+    @contextmanager
+    def pause_ai_ci(self):
+        """
+        Context manager for elegantly pausing the countinuous ai/ci reading
+        while executing long, blocking functions (such as during data processing
+        for on-board analysis)
+        """
+
+        logging.debug("Pausing 'ai' and 'ci' tasks")
+        with suppress(DeviceError):
+            self.devices.scanners.pause_tasks("ai")
+            self.devices.photon_detector.pause_tasks("ci")
+
+        try:
+            yield
+        finally:
+            logging.debug("Resuming 'ai' and 'ci' tasks")
+            with suppress(DeviceError):
+                # devices not initialized
+                self.devices.scanners.init_ai_buffer()
+                self.devices.scanners.start_tasks("ai")
+                self.devices.photon_detector.init_ci_buffer()
+                self.devices.photon_detector.start_tasks("ci")
 
     async def clean_up_app(self, restart=False):
         """Doc."""
