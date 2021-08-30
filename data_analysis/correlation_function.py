@@ -378,15 +378,12 @@ class CorrFuncTDC(CorrFuncData):
 
         # plotting of scan image and ROI
         if not no_plot:
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.set_title(f"file No. {p.file_num} of {self.template}")
-            ax.set_xlabel("Pixel Number")
-            ax.set_ylabel("Line Number")
-            ax.imshow(cnt)
-            ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
-            display.force_aspect(ax, aspect=1)
-            fig.show()
+            with display.ax_show(should_force_aspect=True) as ax:
+                ax.set_title(f"file No. {p.file_num} of {self.template}")
+                ax.set_xlabel("Pixel Number")
+                ax.set_ylabel("Line Number")
+                ax.imshow(cnt)
+                ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
 
         # reverse rows again
         bw[1::2, :] = np.flip(bw[1::2, :], 1)
