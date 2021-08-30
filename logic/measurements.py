@@ -16,11 +16,11 @@ from types import SimpleNamespace
 import nidaqmx.constants as ni_consts
 import numpy as np
 
-import gui.gui
 import logic.devices as dvcs
 from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
+from gui.icons import icon_paths_dict
 from logic.scan_patterns import ScanPatternAO
 from utilities import errors, helper
 
@@ -34,7 +34,7 @@ class Measurement:
         self.type = type
         self.tdc_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
-        self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)  # get icons
+        self.icon_dict = helper.paths_to_icons(icon_paths_dict)  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
         self.pxl_clk_dvc = app.devices.pixel_clock

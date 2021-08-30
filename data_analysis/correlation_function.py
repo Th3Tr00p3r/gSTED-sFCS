@@ -13,7 +13,7 @@ from skimage import morphology
 from data_analysis import fit_tools
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities import file_utilities, helper
+from utilities import display, file_utilities, helper
 
 
 class CorrFuncData:
@@ -385,7 +385,7 @@ class CorrFuncTDC(CorrFuncData):
             ax.set_ylabel("Line Number")
             ax.imshow(cnt)
             ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
-            helper.force_aspect(ax, aspect=1)
+            display.force_aspect(ax, aspect=1)
             fig.show()
 
         # reverse rows again
