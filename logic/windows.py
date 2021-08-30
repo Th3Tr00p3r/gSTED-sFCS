@@ -1,5 +1,6 @@
 """ GUI windows implementations module. """
 
+import asyncio
 import glob
 import logging
 import os
@@ -1293,54 +1294,57 @@ class CamWin:
         self._app = app
         self._gui = gui
         self._cam = None
+        self.is_video_on = False
 
     def init_cam(self):
         """Doc."""
 
         self._cam = self._app.devices.camera
         self._app.gui.main.imp.dvc_toggle("camera")
-        #        self._cam.video_timer.timeout.connect(self._video_timeout)
         logging.debug("Camera connection opened")
 
-    def clean_up(self):
+    async def clean_up(self):
         """clean up before closing window"""
 
         if self._cam is not None:
-            self.toggle_video()
+            await self.toggle_video(keep_off=True)
             self._app.gui.main.imp.dvc_toggle("camera")
             self._app.gui.main.actionCamera_Control.setEnabled(True)
             self._cam = None
             logging.debug("Camera connection closed")
 
-    def toggle_video(self):
+    async def toggle_video(self, keep_off=False):
         """Doc."""
 
         try:
-            if self._cam.vid_state is False:  # turn On
+            if not self.is_video_on and not keep_off:  # Turning video ON
+                logging.info("Camera video mode is ON")
                 self._gui.videoButton.setStyleSheet(
                     "background-color: " "rgb(225, 245, 225); " "color: black;"
                 )
                 self._gui.videoButton.setText("Video ON")
 
-                self._cam.toggle_video(True)
+                self.is_video_on = True
+                while self.is_video_on:
+                    self.shoot(verbose=False)
+                    await asyncio.sleep(0.3)
 
-                logging.debug("Camera video mode ON")
-
-            elif self._cam is not None:  # turn Off
+            else:  # Turning video Off
+                logging.debug("Camera video mode is OFF")
                 self._gui.videoButton.setStyleSheet(
                     "background-color: " "rgb(225, 225, 225); " "color: black;"
                 )
                 self._gui.videoButton.setText("Start Video")
 
-                self._cam.toggle_video(False)
+                self.is_video_on = False
 
-                logging.debug("Camera video mode OFF")
-
-        except DeviceError as exc:
+        # TODO: improve error handeling
+        except Exception as exc:
             err_hndlr(exc, sys._getframe(), locals())
 
-    def shoot(self):
+    def shoot(self, verbose=True):
         """Doc."""
 
-        self._app.loop.create_task(self._cam.shoot())
-        logging.info("Camera photo taken")
+        self._gui.ImgDisp.display_image(self._cam.grab_image())
+        if verbose:
+            logging.info("Camera photo taken")

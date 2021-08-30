@@ -1,7 +1,5 @@
 """ GUI - signals and slots"""
 
-from matplotlib import pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5 import uic
 from PyQt5.QtCore import QEvent, Qt, pyqtSlot
 from PyQt5.QtWidgets import QButtonGroup, QDialog, QMainWindow, QStatusBar, QWidget
@@ -437,17 +435,15 @@ class CamWin(QWidget):
         uic.loadUi(CAMERAWINDOW_UI_PATH, self)
         self.move(30, 180)
         self.imp = logic.windows.CamWin(self, app)
+        self._loop = app.loop
 
         # add matplotlib-ready widget (canvas) for showing camera output
-        # TODO: replace this with AnalysisDisplay?
-        self.figure = plt.figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.gridLayout.addWidget(self.canvas, 0, 1)
+        self.ImgDisp = AnalysisDisplay(self.imageDisplayLayout, self)
 
     def closeEvent(self, event: QEvent) -> None:
         """Doc."""
 
-        self.imp.clean_up()
+        self._loop.create_task(self.imp.clean_up())
 
     @pyqtSlot()
     def on_shootButton_released(self) -> None:
@@ -459,4 +455,4 @@ class CamWin(QWidget):
     def on_videoButton_released(self) -> None:
         """Doc."""
 
-        self.imp.toggle_video()
+        self._loop.create_task(self.imp.toggle_video())
