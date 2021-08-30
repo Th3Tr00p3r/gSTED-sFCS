@@ -1,6 +1,6 @@
 """Plotting and image-showing utilities"""
 
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from typing import Tuple
 
 import numpy as np
@@ -144,6 +144,23 @@ class ImageScanDisplay:
             pos = evt.pos()
             mousePoint = self.vb.mapSceneToView(pos)
             self.move_crosshair(loc=(mousePoint.x(), mousePoint.y()))
+
+
+@contextmanager
+def ax_show(should_force_aspect=False):
+    """
+    Creates a Matplotlib figure, and yields a single ax object
+    which is to be manipulated, then shows the figure.
+    """
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    try:
+        yield ax
+    finally:
+        if should_force_aspect:
+            force_aspect(ax, aspect=1)
+        fig.show()
 
 
 def force_aspect(ax, aspect=1) -> None:
