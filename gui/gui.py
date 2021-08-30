@@ -11,18 +11,16 @@ try:
 except ImportError:
     print("icons_rc.py was not found - icons will not initialize.", end=" ")
 
-MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
-SETTINGSWINDOW_UI_PATH = "./gui/settingswindow.ui"
-CAMERAWINDOW_UI_PATH = "./gui/camerawindow.ui"
-
 
 class MainWin(PyQt5.QtWidgets.QMainWindow):
     """Doc."""
 
+    UI_PATH = "./gui/mainwindow.ui"
+
     def __init__(self, app, parent: None = None) -> None:
 
         super(MainWin, self).__init__(parent)
-        PyQt5.uic.loadUi(MAINWINDOW_UI_PATH, self)
+        PyQt5.uic.loadUi(self.UI_PATH, self)
         self.move(600, 30)
         self.imp = logic.windows.MainWin(self, app)
         self._loop = app.loop
@@ -385,11 +383,13 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 class SettWin(PyQt5.QtWidgets.QDialog):
     """ Documentation."""
 
+    UI_PATH = "./gui/settingswindow.ui"
+
     def __init__(self, app, parent=None) -> None:
         """Doc."""
 
         super(SettWin, self).__init__(parent)
-        PyQt5.uic.loadUi(SETTINGSWINDOW_UI_PATH, self)
+        PyQt5.uic.loadUi(self.UI_PATH, self)
         self.imp = logic.windows.SettWin(self, app)
 
     def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
@@ -421,11 +421,13 @@ class SettWin(PyQt5.QtWidgets.QDialog):
 class CamWin(PyQt5.QtWidgets.QWidget):
     """Doc."""
 
+    UI_PATH = "./gui/camerawindow.ui"
+
     def __init__(self, app, parent=None) -> None:
         """Doc."""
 
         super(CamWin, self).__init__(parent, PyQt5.QtCore.Qt.WindowStaysOnTopHint)
-        PyQt5.uic.loadUi(CAMERAWINDOW_UI_PATH, self)
+        PyQt5.uic.loadUi(self.UI_PATH, self)
         self.move(30, 180)
         self.imp = logic.windows.CamWin(self, app)
         self._loop = app.loop
