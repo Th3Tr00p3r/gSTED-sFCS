@@ -47,14 +47,30 @@ class AnalysisDisplay:
         finally:
             self.canvas.draw()
 
-    def display_image(self, image: np.ndarray, axes="on"):
+    def display_pattern(self, x, y):
+        """Doc."""
+
+        self.figure.clear()
+        self.ax = self.figure.add_subplot(111)
+        self.ax.plot(x, y, color="black", lw=0.3)
+        self.ax.axis(False)
+        self.canvas.draw()
+
+    def display_image(self, image: np.ndarray, axis=True, cursor=False):
         """Doc."""
 
         self.figure.clear()
         self.ax = self.figure.add_subplot(111)
         self.ax.imshow(image)
-        self.ax.axis(axes)
+        self.ax.axis(axis)
         force_aspect(self.ax, aspect=1)
+        self.ax.org_edges = (
+            self.ax.get_xlim()[1] - self.ax.get_xlim()[0],
+            self.ax.get_ylim()[0] - self.ax.get_ylim()[1],
+        )
+        self.zoom_func = zoom_factory(self.ax)
+        if cursor:
+            self.cursor = cursor_factory(self.ax)
         self.canvas.draw()
 
     def plot_acfs(
@@ -144,6 +160,100 @@ class ImageScanDisplay:
             pos = evt.pos()
             mousePoint = self.vb.mapSceneToView(pos)
             self.move_crosshair(loc=(mousePoint.x(), mousePoint.y()))
+
+
+def cursor_factory(ax):
+    """Doc."""
+
+    class Cursor:
+        """
+        A cross hair cursor.
+        """
+
+        def __init__(self, ax):
+            self.ax = ax
+            self.horizontal_line = ax.axhline(color="k", lw=0.8, ls="--")
+            self.vertical_line = ax.axvline(color="k", lw=0.8, ls="--")
+            # text location in axes coordinates
+            self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes)
+
+        def set_cross_hair_visible(self, visible):
+            need_redraw = self.horizontal_line.get_visible() != visible
+            self.horizontal_line.set_visible(visible)
+            self.vertical_line.set_visible(visible)
+            self.text.set_visible(visible)
+            return need_redraw
+
+        def on_mouse_release(self, event):
+            if not event.inaxes:
+                need_redraw = self.set_cross_hair_visible(False)
+                if need_redraw:
+                    self.ax.figure.canvas.draw()
+            else:
+                self.set_cross_hair_visible(True)
+                x, y = event.xdata, event.ydata
+                # update the line positions
+                self.horizontal_line.set_ydata(y)
+                self.vertical_line.set_xdata(x)
+                #                self.text.set_text('x=%1.2f, y=%1.2f' % (x, y))
+                self.ax.figure.canvas.draw()
+
+    cursor = Cursor(ax)
+    ax.figure.canvas.mpl_connect("button_release_event", cursor.on_mouse_release)
+    return cursor
+
+
+def zoom_factory(ax, base_scale=1.5):
+    """
+    Enable zoom in/out by scrolling:
+    https://stackoverflow.com/questions/11551049/matplotlib-plot-zooming-with-scroll-wheel
+    """
+
+    def zoom_fun(event):
+        # fixes homebutton operation
+        ax.figure.canvas.toolbar.push_current()
+        # get the current x and y limits
+        cur_xlim = ax.get_xlim()
+        cur_ylim = ax.get_ylim()
+        # set the range
+        cur_xrange = (cur_xlim[1] - cur_xlim[0]) * 0.5
+        cur_yrange = (cur_ylim[1] - cur_ylim[0]) * 0.5
+        xmouse = event.xdata  # get event x location
+        ymouse = event.ydata  # get event y location
+        cur_xcentre = (cur_xlim[1] + cur_xlim[0]) * 0.5
+        cur_ycentre = (cur_ylim[1] + cur_ylim[0]) * 0.5
+        xdata = cur_xcentre + 0.25 * (xmouse - cur_xcentre)
+        ydata = cur_ycentre + 0.25 * (ymouse - cur_ycentre)
+        if event.button == "up":
+            # deal with zoom in
+            scale_factor = 1 / base_scale
+        elif event.button == "down":
+            # deal with zoom out
+            scale_factor = base_scale
+        else:
+            # deal with something that should never happen
+            scale_factor = 1
+            print(event.button)
+        # set new limits
+        #        org_lims
+        new_xlim = [xdata - cur_xrange * scale_factor, xdata + cur_xrange * scale_factor]
+        new_ylim = [ydata - cur_yrange * scale_factor, ydata + cur_yrange * scale_factor]
+        # limit zoom out
+        org_width, org_height = ax.org_edges
+        if ((new_xlim[1] - new_xlim[0]) > org_width * 1.1) or (
+            (new_ylim[0] - new_ylim[1]) > org_height * 1.1
+        ):
+            return
+        ax.set_xlim(new_xlim)
+        ax.set_ylim(new_ylim)
+        ax.figure.canvas.draw_idle()  # force re-draw the next time the GUI refreshes
+
+    fig = ax.get_figure()  # get the figure of interest
+    # attach the call back
+    fig.canvas.mpl_connect("scroll_event", zoom_fun)
+
+    # return the function
+    return zoom_fun
 
 
 @contextmanager

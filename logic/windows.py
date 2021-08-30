@@ -380,17 +380,17 @@ class MainWin:
         if scan_params_coll:
             scan_params = scan_params_coll.read_namespace_from_gui(self._app)
 
-            with suppress(AttributeError, ZeroDivisionError):
+            with suppress(AttributeError, ZeroDivisionError, ValueError):
                 # AttributeError - devices not yet initialized
                 # ZeroDivisionError - loadout has bad values
                 um_v_ratio = self._app.devices.scanners.um_v_ratio
                 ao, *_ = ScanPatternAO(pattern, scan_params, um_v_ratio).calculate_pattern()
                 x_data, y_data = ao[0, :], ao[1, :]
-                plt_wdgt.plot(x_data, y_data, clear=True)
+                plt_wdgt.display_pattern(x_data, y_data)
 
         else:
             # no scan
-            plt_wdgt.plot([], [], clear=True)
+            plt_wdgt.display_pattern([], [])
 
     def open_settwin(self):
         """Doc."""
@@ -970,7 +970,7 @@ class MainWin:
                 p.image_data, "Forward scan - actual counts per pixel", scan_param["n_planes"] // 2
             )
             # plot it (below)
-            wdgts.img_preview_disp.obj.display_image(image, axes="off")
+            wdgts.img_preview_disp.obj.display_image(image, axis=False)
 
         pass
 
