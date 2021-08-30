@@ -1,8 +1,6 @@
 """ GUI - signals and slots"""
 
-from PyQt5 import uic
-from PyQt5.QtCore import QEvent, Qt, pyqtSlot
-from PyQt5.QtWidgets import QButtonGroup, QDialog, QMainWindow, QStatusBar, QWidget
+import PyQt5
 
 import gui.icons  # for initial icons loadout # NOQA
 import logic.windows
@@ -17,19 +15,14 @@ MAINWINDOW_UI_PATH = "./gui/mainwindow.ui"
 SETTINGSWINDOW_UI_PATH = "./gui/settingswindow.ui"
 CAMERAWINDOW_UI_PATH = "./gui/camerawindow.ui"
 
-# MEAS_COMPLETE_SOUND = "./sounds/meas_complete.wav"
-#                        from PyQt5.QtMultimedia import QSound
-#                                if self.time_passed_s == self.duration_spinbox.value():
-#                                    QSound.play(MEAS_COMPLETE_SOUND);
 
-
-class MainWin(QMainWindow):
+class MainWin(PyQt5.QtWidgets.QMainWindow):
     """Doc."""
 
     def __init__(self, app, parent: None = None) -> None:
 
         super(MainWin, self).__init__(parent)
-        uic.loadUi(MAINWINDOW_UI_PATH, self)
+        PyQt5.uic.loadUi(MAINWINDOW_UI_PATH, self)
         self.move(600, 30)
         self.imp = logic.windows.MainWin(self, app)
         self._loop = app.loop
@@ -55,7 +48,7 @@ class MainWin(QMainWindow):
         self.circDiameter.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("circle"))
 
         # Positioning/Scanners
-        self.axesGroup = QButtonGroup()
+        self.axesGroup = PyQt5.QtWidgets.QButtonGroup()
         self.axesGroup.addButton(self.posAxisX)
         self.axesGroup.addButton(self.posAxisY)
         self.axesGroup.addButton(self.posAxisZ)
@@ -66,16 +59,16 @@ class MainWin(QMainWindow):
         self.goToOrgZ.released.connect(lambda: self.imp.go_to_origin("Z"))
 
         # Analysis GUI
-        self.analysisDataTypeGroup = QButtonGroup()
+        self.analysisDataTypeGroup = PyQt5.QtWidgets.QButtonGroup()
         self.analysisDataTypeGroup.addButton(self.imageDataImport)
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.imp.populate_all_data_dates)
 
-        self.rowDiscriminationGroup = QButtonGroup()
+        self.rowDiscriminationGroup = PyQt5.QtWidgets.QButtonGroup()
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveWorst)
 
-        self.fileSelectionGroup = QButtonGroup()
+        self.fileSelectionGroup = PyQt5.QtWidgets.QButtonGroup()
         self.fileSelectionGroup.addButton(self.solImportUseAll)
         self.fileSelectionGroup.addButton(self.solImportUse)
 
@@ -149,7 +142,7 @@ class MainWin(QMainWindow):
         )
 
         # status bar
-        self.setStatusBar(QStatusBar())
+        self.setStatusBar(PyQt5.QtWidgets.QStatusBar())
 
         # intialize gui
         self.actionLaser_Control.setChecked(True)
@@ -158,73 +151,73 @@ class MainWin(QMainWindow):
         self.acf.setLogMode(x=True)
         self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_renameTemplate_released(self) -> None:
         """Doc."""
 
         self.imp.rename_template()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_convertToMatlab_released(self) -> None:
         """Doc."""
 
         self.imp.convert_files_to_matlab_format()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_solAnalysisRecalMeanAcf_released(self) -> None:
         """Doc"""
 
         self.imp.calculate_and_show_sol_mean_acf()
 
-    @pyqtSlot(int)
+    @PyQt5.QtCore.pyqtSlot(int)
     def on_scanImgFileNum_valueChanged(self, val: int) -> None:
         """Doc."""
 
         self.imp.display_scan_image(val)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_removeImportedSolData_released(self) -> None:
         """Doc."""
 
         self.imp.remove_imported_template()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_dataDirLogUpdate_released(self) -> None:
         """Doc."""
 
         self.imp.update_dir_log_file()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_importSolData_released(self) -> None:
         """Doc."""
 
         self.imp.import_sol_data()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_openDir_released(self) -> None:
         """Doc."""
 
         self.imp.open_data_dir()
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_dataYear_currentTextChanged(self, year: str) -> None:
         """Doc."""
 
         self.imp.populate_data_dates_from_year(year)
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_dataMonth_currentTextChanged(self, month: str) -> None:
         """Doc."""
 
         self.imp.populate_data_dates_from_month(month)
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_dataDay_currentTextChanged(self, day: str) -> None:
         """Doc."""
 
         self.imp.populate_data_templates_from_day(day)
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_dataTemplate_currentTextChanged(self, template: str) -> None:
         """Doc."""
 
@@ -232,86 +225,86 @@ class MainWin(QMainWindow):
         self.imp.update_dir_log_wdgt(template)
         self.imp.preview_img_scan(template)
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_importedSolDataTemplates_currentTextChanged(self, template: str) -> None:
         """Doc."""
 
         self.imp.populate_sol_meas_analysis(template)
 
-    def closeEvent(self, event: QEvent) -> None:
+    def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""
 
         self.imp.close(event)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_actionRestart_triggered(self) -> None:
         """Doc."""
 
         self.imp.restart()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_actionLoadLoadout_triggered(self) -> None:
         """Doc."""
 
         self.imp.load()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_actionSaveLoadout_triggered(self) -> None:
         """Doc."""
 
         self.imp.save()
 
-    @pyqtSlot(int)
+    @PyQt5.QtCore.pyqtSlot(int)
     def on_minNumLines_valueChanged(self, val: int) -> None:
         """Allow only even values"""
 
         if val % 2:
             self.minNumLines.setValue(val - 1)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_roiImgScn_released(self) -> None:
         """Doc."""
 
         self.imp.roi_to_scan()
 
-    @pyqtSlot(int)
+    @PyQt5.QtCore.pyqtSlot(int)
     def on_imgShowMethod_currentIndexChanged(self) -> None:
         """Doc."""
 
         plane_idx = self.numPlaneShownChoice.value()
         self.imp.disp_plane_img(plane_idx)
 
-    @pyqtSlot(int)
+    @PyQt5.QtCore.pyqtSlot(int)
     def on_numPlaneShownChoice_sliderMoved(self, val: int) -> None:
         """Doc."""
 
         self.imp.plane_choice_changed(val)
 
-    @pyqtSlot(float)
+    @PyQt5.QtCore.pyqtSlot(float)
     def on_solScanDur_valueChanged(self, float) -> None:
         """Doc."""
 
         self.imp.change_meas_duration(float)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_powMode_released(self) -> None:
         """Switch between power/current depletion laser settings"""
 
         self.depModeStacked.setCurrentIndex(1)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_currMode_released(self) -> None:
         """Switch between power/current depletion laser settings"""
 
         self.depModeStacked.setCurrentIndex(0)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_depApplySettings_released(self) -> None:
         """Apply current/power mode and value"""
 
         self.imp.dep_sett_apply()
 
-    @pyqtSlot(int)
+    @PyQt5.QtCore.pyqtSlot(int)
     def on_solScanType_currentIndexChanged(self, index: int) -> None:
         """
         Change stacked widget 'solScanParamsStacked' index
@@ -320,49 +313,49 @@ class MainWin(QMainWindow):
 
         self.solScanParamsStacked.setCurrentIndex(index)
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_solScanType_currentTextChanged(self, txt: str) -> None:
         """Doc."""
 
         self.imp.disp_scn_pttrn(txt)
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_imgScanPreset_currentTextChanged(self, curr_txt: str) -> None:
         """Doc."""
 
         self.imp.fill_img_scan_preset_gui(curr_txt)
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_solMeasPreset_currentTextChanged(self, curr_txt: str) -> None:
         """Doc."""
 
         self.imp.fill_sol_meas_preset_gui(curr_txt)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_actionSettings_triggered(self) -> None:
         """Show settings window"""
 
         self.imp.open_settwin()
 
-    @pyqtSlot(bool)
+    @PyQt5.QtCore.pyqtSlot(bool)
     def on_actionLaser_Control_toggled(self, p0: bool) -> None:
         """Show/hide stepper laser control dock"""
 
         self.laserDock.setVisible(p0)
 
-    @pyqtSlot(bool)
+    @PyQt5.QtCore.pyqtSlot(bool)
     def on_actionStepper_Stage_Control_toggled(self, p0: bool) -> None:
         """Show/hide stepper stage control dock"""
 
         self.stepperDock.setVisible(p0)
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_actionCamera_Control_triggered(self) -> None:
         """Instantiate 'CameraWindow' object and show it"""
 
         self._loop.create_task(self.imp.open_camwin())
 
-    @pyqtSlot(str)
+    @PyQt5.QtCore.pyqtSlot(str)
     def on_avgInterval_currentTextChanged(self, val: str) -> None:
         """Doc."""
 
@@ -372,7 +365,7 @@ class MainWin(QMainWindow):
     # Position Control
     # -----------------------------------------------------------------------
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_goTo_released(self) -> None:
         """Doc."""
 
@@ -382,42 +375,42 @@ class MainWin(QMainWindow):
     # Stepper Stage Dock
     # -----------------------------------------------------------------------
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_stageOn_released(self) -> None:
         """Doc."""
 
         self.imp.dvc_toggle("stage")
 
 
-class SettWin(QDialog):
+class SettWin(PyQt5.QtWidgets.QDialog):
     """ Documentation."""
 
     def __init__(self, app, parent=None) -> None:
         """Doc."""
 
         super(SettWin, self).__init__(parent)
-        uic.loadUi(SETTINGSWINDOW_UI_PATH, self)
+        PyQt5.uic.loadUi(SETTINGSWINDOW_UI_PATH, self)
         self.imp = logic.windows.SettWin(self, app)
 
-    def closeEvent(self, event: QEvent) -> None:
+    def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""
 
         self.imp.clean_up()
         self.imp.check_on_close = True
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_saveButton_released(self) -> None:
         """Save settings."""
 
         self.imp.save()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_loadButton_released(self) -> None:
         """load settings."""
 
         self.imp.load()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_confirmButton_released(self) -> None:
         """Doc."""
 
@@ -425,14 +418,14 @@ class SettWin(QDialog):
         self.close()
 
 
-class CamWin(QWidget):
+class CamWin(PyQt5.QtWidgets.QWidget):
     """Doc."""
 
     def __init__(self, app, parent=None) -> None:
         """Doc."""
 
-        super(CamWin, self).__init__(parent, Qt.WindowStaysOnTopHint)
-        uic.loadUi(CAMERAWINDOW_UI_PATH, self)
+        super(CamWin, self).__init__(parent, PyQt5.QtCore.Qt.WindowStaysOnTopHint)
+        PyQt5.uic.loadUi(CAMERAWINDOW_UI_PATH, self)
         self.move(30, 180)
         self.imp = logic.windows.CamWin(self, app)
         self._loop = app.loop
@@ -440,18 +433,18 @@ class CamWin(QWidget):
         # add matplotlib-ready widget (canvas) for showing camera output
         self.ImgDisp = AnalysisDisplay(self.imageDisplayLayout, self)
 
-    def closeEvent(self, event: QEvent) -> None:
+    def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""
 
         self._loop.create_task(self.imp.clean_up())
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_shootButton_released(self) -> None:
         """Doc."""
 
         self.imp.shoot()
 
-    @pyqtSlot()
+    @PyQt5.QtCore.pyqtSlot()
     def on_videoButton_released(self) -> None:
         """Doc."""
 
