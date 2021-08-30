@@ -12,9 +12,9 @@ import nidaqmx.constants as ni_consts
 import numpy as np
 from nidaqmx.errors import DaqError
 
-import gui.gui
 import utilities.dialog as dialog
 import utilities.helper as helper
+from gui.icons import icon_paths_dict
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
@@ -39,7 +39,7 @@ class BaseDevice:
 
         if not hasattr(self, "icon_dict"):
             # get icons
-            self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)
+            self.icon_dict = helper.paths_to_icons(icon_paths_dict)
 
         has_switch = hasattr(self, "switch_widget")
         if command == "on":
@@ -330,8 +330,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             if start is True:
                 self.start_tasks("ao")
 
-        except Exception as exc:
-            # TODO: make this exception more specific (DaqError?)
+        except DaqError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def init_ai_buffer(self, type: str = "circular", size=None) -> None:
