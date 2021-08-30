@@ -741,56 +741,12 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         super().__init__(
             param_dict,
         )
-
-        self._loop = loop
-        self._gui = gui
         self.state = False
-        self.vid_state = False
 
     def _toggle(self, is_being_switched_on):
         """Doc."""
 
         self.init_cam() if is_being_switched_on else self.close_cam()
-
-    async def shoot(self):
-        """Doc."""
-
-        if self.vid_state is False:
-            img = self.grab_image()
-            self._imshow(img)
-        else:
-            self.toggle_video(False)
-            await asyncio.sleep(0.2)
-            img = self.grab_image()
-            self._imshow(img)
-            self.toggle_video(True)
-
-    def toggle_video(self, new_state):
-        """Doc."""
-
-        if self.vid_state != new_state:
-            self.toggle_vid(new_state)
-            self.vid_state = new_state
-
-        if new_state is True:
-            self._loop.create_task(helper.sync_to_thread(self._vidshow))
-
-    def _vidshow(self):
-        """Doc."""
-
-        while self.vid_state is True:
-            img = self.get_latest_frame()
-            if img is not None:
-                self._imshow(img)
-            time.sleep(self.vid_intrvl)
-
-    def _imshow(self, img):
-        """Plot image"""
-
-        self._gui.figure.clear()
-        ax = self._gui.figure.add_subplot(111)
-        ax.imshow(img)
-        self._gui.canvas.draw()
 
 
 @dataclass

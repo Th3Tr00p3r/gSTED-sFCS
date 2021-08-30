@@ -332,6 +332,13 @@ background-repeat: no-repeat;</string>
           </item>
          </layout>
         </item>
+        <item row="0" column="1">
+         <layout class="QGridLayout" name="imageDisplayLayout">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+         </layout>
+        </item>
        </layout>
       </item>
      </layout>
