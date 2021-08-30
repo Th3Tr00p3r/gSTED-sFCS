@@ -12,7 +12,7 @@ from qasync import QEventLoop
 if __name__ == "__main__":
 
     print("\nInitializing Application:")
-    print("Importing App object...", end=" ")
+    print("Importing Modules...", end=" ")
     from logic.app import App
 
     print("Done.")
