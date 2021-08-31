@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -4623,6 +4623,9 @@ Pattern:</string>
             <property name="spacing">
              <number>0</number>
             </property>
+            <property name="sizeConstraint">
+             <enum>QLayout::SetDefaultConstraint</enum>
+            </property>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_64" stretch="0,0">
               <property name="spacing">
@@ -5309,7 +5312,7 @@ Plotting</string>
                  <string>Measurement Analysis</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_37">
-                 <property name="horizontalSpacing">
+                 <property name="spacing">
                   <number>0</number>
                  </property>
                  <item row="0" column="0">
@@ -6200,6 +6203,9 @@ Gates</string>
                             <string>Individual Measurement Properties</string>
                            </property>
                            <layout class="QGridLayout" name="gridLayout_13">
+                            <property name="spacing">
+                             <number>0</number>
+                            </property>
                             <item row="0" column="0">
                              <widget class="QGroupBox" name="groupBox_24">
                               <property name="sizePolicy">
@@ -6383,6 +6389,9 @@ Gates</string>
                                <string>Mean ACF</string>
                               </property>
                               <layout class="QGridLayout" name="gridLayout_26">
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
                                <item row="0" column="0">
                                 <layout class="QVBoxLayout" name="verticalLayout_109">
                                  <item>
