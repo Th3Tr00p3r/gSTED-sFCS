@@ -28,6 +28,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         # graphics
         self.imgScanPlot = Display(layout=self.imageLayout, parent=self)
+        self.solScanAcf = Display(layout=self.solScanAcfLayout, parent=self)
         self.imgScanPattern = Display(layout=self.imgScanPatternLayout)
         self.solScanPattern = Display(layout=self.solScanPatternLayout)
 

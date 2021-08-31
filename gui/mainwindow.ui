@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1236</width>
-    <height>942</height>
+    <width>1231</width>
+    <height>936</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -22,7 +22,7 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout_7">
     <item row="0" column="0">
-     <layout class="QVBoxLayout" name="verticalLayout_72" stretch="0,0">
+     <layout class="QVBoxLayout" name="verticalLayout_72" stretch="10,1">
       <property name="spacing">
        <number>0</number>
       </property>
@@ -2511,7 +2511,7 @@ File</string>
                       </sizepolicy>
                      </property>
                      <property name="currentIndex">
-                      <number>1</number>
+                      <number>2</number>
                      </property>
                      <widget class="QWidget" name="angularParams">
                       <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -4314,7 +4314,7 @@ Pattern:</string>
                   <number>0</number>
                  </property>
                  <item row="1" column="0">
-                  <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,10">
+                  <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,100">
                    <property name="spacing">
                     <number>0</number>
                    </property>
@@ -4479,6 +4479,9 @@ Pattern:</string>
                            <property name="buttonSymbols">
                             <enum>QAbstractSpinBox::NoButtons</enum>
                            </property>
+                           <property name="decimals">
+                            <number>1</number>
+                           </property>
                            <property name="maximum">
                             <double>999999999.000000000000000</double>
                            </property>
@@ -4552,17 +4555,17 @@ Pattern:</string>
                     </layout>
                    </item>
                    <item>
-                    <widget class="PlotWidget" name="acf">
+                    <widget class="QFrame" name="frame_3">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
                      </property>
                      <property name="minimumSize">
                       <size>
-                       <width>300</width>
-                       <height>300</height>
+                       <width>0</width>
+                       <height>0</height>
                       </size>
                      </property>
                      <property name="maximumSize">
@@ -4571,12 +4574,32 @@ Pattern:</string>
                        <height>9999</height>
                       </size>
                      </property>
-                     <property name="baseSize">
-                      <size>
-                       <width>0</width>
-                       <height>0</height>
-                      </size>
+                     <property name="frameShape">
+                      <enum>QFrame::StyledPanel</enum>
                      </property>
+                     <property name="frameShadow">
+                      <enum>QFrame::Raised</enum>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_30">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="spacing">
+                       <number>0</number>
+                      </property>
+                      <item row="0" column="0">
+                       <layout class="QGridLayout" name="solScanAcfLayout"/>
+                      </item>
+                     </layout>
                     </widget>
                    </item>
                   </layout>
@@ -9968,13 +9991,6 @@ Disp. (um)</string>
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>PlotWidget</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
- </customwidgets>
  <tabstops>
   <tabstop>tabWidget</tabstop>
   <tabstop>imgScanFileTemplate</tabstop>
