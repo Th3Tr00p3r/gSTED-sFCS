@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1231</width>
-    <height>936</height>
+    <width>1236</width>
+    <height>942</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -1260,7 +1260,7 @@
                   <widget class="QLabel" name="label_76">
                    <property name="text">
                     <string>Scan 
-Pattern</string>
+Pattern:</string>
                    </property>
                   </widget>
                  </item>
@@ -1361,7 +1361,7 @@ Pattern</string>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_67" stretch="0,1">
                  <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="0,1">
+                  <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="1,10,1">
                    <property name="spacing">
                     <number>0</number>
                    </property>
@@ -1611,6 +1611,48 @@ to Scan</string>
                      </item>
                     </layout>
                    </item>
+                   <item>
+                    <layout class="QVBoxLayout" name="verticalLayout_114">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QLabel" name="label_32">
+                       <property name="text">
+                        <string>Scale Image</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item alignment="Qt::AlignHCenter">
+                      <widget class="QDial" name="scaleImgScan">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>50</width>
+                         <height>50</height>
+                        </size>
+                       </property>
+                       <property name="maximum">
+                        <number>99</number>
+                       </property>
+                       <property name="wrapping">
+                        <bool>false</bool>
+                       </property>
+                       <property name="notchTarget">
+                        <double>1.000000000000000</double>
+                       </property>
+                       <property name="notchesVisible">
+                        <bool>false</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
                   </layout>
                  </item>
                  <item>
@@ -1688,7 +1730,7 @@ to Scan</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout">
           <item row="0" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_13" stretch="0,0">
+           <layout class="QHBoxLayout" name="horizontalLayout_13" stretch="1,10">
             <property name="spacing">
              <number>2</number>
             </property>
@@ -1920,7 +1962,7 @@ to Scan</string>
               <item>
                <widget class="QGroupBox" name="solFileGroup_2">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
@@ -1938,8 +1980,17 @@ to Scan</string>
                  <property name="spacing">
                   <number>0</number>
                  </property>
+                 <property name="leftMargin">
+                  <number>2</number>
+                 </property>
                  <property name="topMargin">
-                  <number>9</number>
+                  <number>2</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>2</number>
                  </property>
                  <item>
                   <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="1,1,1,0,0">
@@ -2171,6 +2222,12 @@ File</string>
               </item>
               <item>
                <widget class="QGroupBox" name="solScanParamsGrouo">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
@@ -2454,7 +2511,7 @@ File</string>
                       </sizepolicy>
                      </property>
                      <property name="currentIndex">
-                      <number>2</number>
+                      <number>1</number>
                      </property>
                      <widget class="QWidget" name="angularParams">
                       <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -3358,16 +3415,25 @@ Pattern:</string>
              </layout>
             </item>
             <item>
-             <layout class="QVBoxLayout" name="verticalLayout_59" stretch="0,0,100">
+             <layout class="QVBoxLayout" name="verticalLayout_59" stretch="1,1,100">
               <property name="spacing">
                <number>0</number>
               </property>
               <item>
                <widget class="QGroupBox" name="groupBox">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="title">
                  <string>Duration</string>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_52">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
                  <item>
                   <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="10,1,1,10">
                    <property name="spacing">
@@ -3457,7 +3523,7 @@ Pattern:</string>
                   </layout>
                  </item>
                  <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_56" stretch="10,1">
+                  <layout class="QVBoxLayout" name="verticalLayout_56" stretch="1,1">
                    <property name="spacing">
                     <number>4</number>
                    </property>
@@ -4182,6 +4248,9 @@ Pattern:</string>
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_32">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
                 <item>
                  <widget class="QPushButton" name="startSolScanExc">
                   <property name="minimumSize">
@@ -4229,23 +4298,38 @@ Pattern:</string>
                  <string>Averaged ACF</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_24" rowstretch="0,0">
+                 <property name="leftMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
                  <item row="1" column="0">
-                  <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,4">
+                  <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,10">
                    <property name="spacing">
-                    <number>4</number>
+                    <number>0</number>
                    </property>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="1,0">
+                    <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="10,1">
                      <property name="spacing">
-                      <number>6</number>
+                      <number>0</number>
                      </property>
                      <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_21">
+                      <layout class="QVBoxLayout" name="verticalLayout_21" stretch="1,1">
                        <property name="spacing">
                         <number>0</number>
                        </property>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_24" stretch="0,0">
+                        <layout class="QHBoxLayout" name="horizontalLayout_24" stretch="1,10">
                          <property name="spacing">
                           <number>0</number>
                          </property>
@@ -4259,14 +4343,14 @@ Pattern:</string>
                            </property>
                            <property name="minimumSize">
                             <size>
-                             <width>140</width>
+                             <width>0</width>
                              <height>0</height>
                             </size>
                            </property>
                            <property name="maximumSize">
                             <size>
-                             <width>140</width>
-                             <height>30</height>
+                             <width>9999</width>
+                             <height>9999</height>
                             </size>
                            </property>
                            <property name="font">
@@ -4284,16 +4368,22 @@ Pattern:</string>
                            <property name="enabled">
                             <bool>true</bool>
                            </property>
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
                            <property name="minimumSize">
                             <size>
-                             <width>60</width>
-                             <height>30</height>
+                             <width>0</width>
+                             <height>0</height>
                             </size>
                            </property>
                            <property name="maximumSize">
                             <size>
-                             <width>200</width>
-                             <height>60</height>
+                             <width>9999</width>
+                             <height>9999</height>
                             </size>
                            </property>
                            <property name="font">
@@ -4321,7 +4411,7 @@ Pattern:</string>
                         </layout>
                        </item>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="0,0">
+                        <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="1,10">
                          <property name="spacing">
                           <number>0</number>
                          </property>
@@ -4335,14 +4425,14 @@ Pattern:</string>
                            </property>
                            <property name="minimumSize">
                             <size>
-                             <width>140</width>
+                             <width>0</width>
                              <height>0</height>
                             </size>
                            </property>
                            <property name="maximumSize">
                             <size>
-                             <width>140</width>
-                             <height>30</height>
+                             <width>9999</width>
+                             <height>9999</height>
                             </size>
                            </property>
                            <property name="font">
@@ -4360,16 +4450,22 @@ Pattern:</string>
                            <property name="enabled">
                             <bool>true</bool>
                            </property>
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
                            <property name="minimumSize">
                             <size>
-                             <width>60</width>
-                             <height>30</height>
+                             <width>0</width>
+                             <height>0</height>
                             </size>
                            </property>
                            <property name="maximumSize">
                             <size>
-                             <width>200</width>
-                             <height>60</height>
+                             <width>9999</width>
+                             <height>9999</height>
                             </size>
                            </property>
                            <property name="font">
@@ -9388,7 +9484,7 @@ Disp. (um)</string>
    <property name="minimumSize">
     <size>
      <width>300</width>
-     <height>209</height>
+     <height>220</height>
     </size>
    </property>
    <property name="maximumSize">
