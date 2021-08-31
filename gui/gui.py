@@ -1,10 +1,11 @@
 """ GUI - signals and slots"""
 
 import PyQt5
+import PyQt5.uic
 
 import gui.icons  # for initial icons loadout # NOQA
 import logic.windows
-from utilities.display import AnalysisDisplay, ImageScanDisplay
+from utilities.display import Display
 
 try:
     from gui.icons import icons_rc  # for initial icons loadout # NOQA
@@ -26,9 +27,9 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self._loop = app.loop
 
         # graphics
-        self.imgScanPlot = ImageScanDisplay(layout=self.imageLayout)
-        self.imgScanPattern = AnalysisDisplay(layout=self.imgScanPatternLayout)
-        self.solScanPattern = AnalysisDisplay(layout=self.solScanPatternLayout)
+        self.imgScanPlot = Display(layout=self.imageLayout, parent=self)
+        self.imgScanPattern = Display(layout=self.imgScanPatternLayout)
+        self.solScanPattern = Display(layout=self.solScanPatternLayout)
 
         # scan patterns
         # image
@@ -46,6 +47,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.minNumLines.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("angular"))
         # solution (circle)
         self.circDiameter.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("circle"))
+        self.circAoSampFreq.valueChanged.connect(lambda: self.imp.disp_scn_pttrn("circle"))
 
         # Positioning/Scanners
         self.axesGroup = PyQt5.QtWidgets.QButtonGroup()
@@ -72,11 +74,11 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.fileSelectionGroup.addButton(self.solImportUseAll)
         self.fileSelectionGroup.addButton(self.solImportUse)
 
-        self.solScanImgDisp = AnalysisDisplay(self.solAnalysisScanImageLayout, self)
-        self.solScanAcfDisp = AnalysisDisplay(self.solAnalysisAveragingLayout, self)
-        self.solScanGstedDisp = AnalysisDisplay(self.solAnalysisGSTEDLayout, self)
+        self.solScanImgDisp = Display(self.solAnalysisScanImageLayout, self)
+        self.solScanAcfDisp = Display(self.solAnalysisAveragingLayout, self)
+        self.solScanGstedDisp = Display(self.solAnalysisGSTEDLayout, self)
 
-        self.imgScanPreviewDisp = AnalysisDisplay(self.importImgPreviewLayout)
+        self.imgScanPreviewDisp = Display(self.importImgPreviewLayout)
 
         self.nextTemplate.released.connect(lambda: self.imp.cycle_through_data_templates("next"))
         self.prevTemplate.released.connect(lambda: self.imp.cycle_through_data_templates("prev"))
@@ -148,8 +150,6 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
         self.stageButtonsGroup.setEnabled(False)
-        self.acf.setLogMode(x=True)
-        self.acf.setLimits(xMin=-5, xMax=5, yMin=-1e7, yMax=1e7)
 
     @PyQt5.QtCore.pyqtSlot()
     def on_renameTemplate_released(self) -> None:
@@ -266,6 +266,12 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         """Doc."""
 
         self.imp.roi_to_scan()
+
+    @PyQt5.QtCore.pyqtSlot(int)
+    def on_scaleImgScan_valueChanged(self, clip_hist_percent) -> None:
+        """Doc."""
+
+        self.imp.auto_scale_image(clip_hist_percent)
 
     @PyQt5.QtCore.pyqtSlot(int)
     def on_imgShowMethod_currentIndexChanged(self) -> None:
@@ -435,7 +441,7 @@ class CamWin(PyQt5.QtWidgets.QWidget):
         self._loop = app.loop
 
         # add matplotlib-ready widget (canvas) for showing camera output
-        self.ImgDisp = AnalysisDisplay(self.imageDisplayLayout, self)
+        self.ImgDisp = Display(self.imageDisplayLayout, self)
 
     def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""

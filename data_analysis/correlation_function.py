@@ -378,7 +378,7 @@ class CorrFuncTDC(CorrFuncData):
 
         # plotting of scan image and ROI
         if not no_plot:
-            with display.ax_show(should_force_aspect=True) as ax:
+            with display.Display().show_external_ax(should_force_aspect=True) as ax:
                 ax.set_title(f"file No. {p.file_num} of {self.template}")
                 ax.set_xlabel("Pixel Number")
                 ax.set_ylabel("Line Number")
@@ -412,7 +412,6 @@ class CorrFuncTDC(CorrFuncData):
 
         return p
 
-    @helper.timer()
     def correlate_regular_data(
         self,
         run_duration=-1,

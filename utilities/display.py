@@ -1,25 +1,24 @@
 """Plotting and image-showing utilities"""
 
-from contextlib import contextmanager, suppress
-from typing import Tuple
+from contextlib import contextmanager
 
 import numpy as np
-import pyqtgraph as pg
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 
-class AnalysisDisplay:
+class Display:
     """Doc."""
 
-    def __init__(self, layout, parent=None):
-        self.figure = plt.figure(tight_layout=True)
-        self.canvas = FigureCanvas(self.figure)
-        if parent:
-            self.toolbar = NavigationToolbar(self.canvas, parent)
-            layout.addWidget(self.toolbar)
-        layout.addWidget(self.canvas)
+    def __init__(self, layout=None, parent=None):
+        if layout is not None:
+            self.figure = plt.figure(tight_layout=True)
+            self.canvas = FigureCanvas(self.figure)
+            if parent is not None:
+                self.toolbar = NavigationToolbar(self.canvas, parent)
+                layout.addWidget(self.toolbar)
+            layout.addWidget(self.canvas)
 
     def clear(self):
         """Doc."""
@@ -56,21 +55,21 @@ class AnalysisDisplay:
         self.ax.axis(False)
         self.canvas.draw()
 
-    def display_image(self, image: np.ndarray, axis=True, cursor=False):
+    def display_image(
+        self, image: np.ndarray, axis=True, cursor=False, init_cursor_pos=(0, 0), **kwargs
+    ):
         """Doc."""
 
         self.figure.clear()
         self.ax = self.figure.add_subplot(111)
-        self.ax.imshow(image)
+        self.ax.imshow(image, **kwargs)
         self.ax.axis(axis)
         force_aspect(self.ax, aspect=1)
-        self.ax.org_edges = (
-            self.ax.get_xlim()[1] - self.ax.get_xlim()[0],
-            self.ax.get_ylim()[0] - self.ax.get_ylim()[1],
-        )
+        self.ax.org_lims = (self.ax.get_xlim(), self.ax.get_ylim())
+        self.ax.org_dims = tuple(abs(lim[1] - lim[0]) for lim in self.ax.org_lims)
         self.zoom_func = zoom_factory(self.ax)
         if cursor:
-            self.cursor = cursor_factory(self.ax)
+            self.cursor = cursor_factory(self.ax, init_cursor_pos)
         self.canvas.draw()
 
     def plot_acfs(
@@ -103,77 +102,38 @@ class AnalysisDisplay:
         self.ax.plot(x, average_cf_cr, "black")
         self.canvas.draw()
 
+    @contextmanager
+    def show_external_ax(self, should_force_aspect=False):
+        """
+        Creates a Matplotlib figure, and yields a single ax object
+        which is to be manipulated, then shows the figure.
+        """
 
-class ImageScanDisplay:
-    """Doc."""
-
-    def __init__(self, layout):
-        glw = pg.GraphicsLayoutWidget()
-        self.vb = glw.addViewBox()
-        self.hist = pg.HistogramLUTItem()
-        glw.addItem(self.hist)
-        layout.addWidget(glw)
-
-    def replace_image(self, image: np.ndarray, limit_zoomout=True, crosshair=True):
-        """Doc."""
-
-        self.vb.clear()
-        image_item = pg.ImageItem(image)
-        self.vb.addItem(image_item)
-        self.hist.setImageItem(image_item)
-
-        if limit_zoomout:
-            self.vb.setLimits(
-                xMin=0,
-                xMax=image.shape[0],
-                minXRange=0,
-                maxXRange=image.shape[0],
-                yMin=0,
-                yMax=image.shape[1],
-                minYRange=0,
-                maxYRange=image.shape[1],
-            )
-        if crosshair:
-            self.vLine = pg.InfiniteLine(angle=90, movable=True)
-            self.hLine = pg.InfiniteLine(angle=0, movable=True)
-            self.vb.addItem(self.vLine)
-            self.vb.addItem(self.hLine)
-            with suppress(AttributeError):  # AttributeError -  first image since init
-                self.move_crosshair(self.last_roi)  # keep crosshair at last position
-            self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
-
-        self.vb.autoRange()
-
-    def move_crosshair(self, loc: Tuple[float, float]):
-        """Doc."""
-
-        self.vLine.setPos(loc[0])
-        self.hLine.setPos(loc[1])
-        self.last_roi = loc
-
-    def mouseClicked(self, evt):
-        """Doc."""
-        # TODO: selected position is not accurate for some reason.
-        # TODO: also note the location and the value at that point on the GUI (check out pyqtgraph examples)
-
-        with suppress(AttributeError):  # AttributeError - outside image
-            pos = evt.pos()
-            mousePoint = self.vb.mapSceneToView(pos)
-            self.move_crosshair(loc=(mousePoint.x(), mousePoint.y()))
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        try:
+            yield ax
+        finally:
+            if should_force_aspect:
+                force_aspect(ax, aspect=1)
+            fig.show()
 
 
-def cursor_factory(ax):
+def cursor_factory(ax, init_cursor_pos):
     """Doc."""
 
     class Cursor:
         """
-        A cross hair cursor.
+        A crosshair cursor, adapted from:
+        https://matplotlib.org/stable/gallery/misc/cursor_demo.html
         """
 
         def __init__(self, ax):
             self.ax = ax
-            self.horizontal_line = ax.axhline(color="k", lw=0.8, ls="--")
-            self.vertical_line = ax.axvline(color="k", lw=0.8, ls="--")
+            self.pos = init_cursor_pos
+            x, y = init_cursor_pos
+            self.horizontal_line = ax.axhline(y=y, color="y", lw=1, ls="--")
+            self.vertical_line = ax.axvline(x=x, color="y", lw=1, ls="--")
             # text location in axes coordinates
             self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes)
 
@@ -191,12 +151,18 @@ def cursor_factory(ax):
                     self.ax.figure.canvas.draw()
             else:
                 self.set_cross_hair_visible(True)
-                x, y = event.xdata, event.ydata
-                # update the line positions
-                self.horizontal_line.set_ydata(y)
-                self.vertical_line.set_xdata(x)
-                #                self.text.set_text('x=%1.2f, y=%1.2f' % (x, y))
-                self.ax.figure.canvas.draw()
+                self.move_to_pos((event.xdata, event.ydata))
+
+        def move_to_pos(self, pos):
+            """Doc."""
+
+            x, y = pos
+            # update the line positions
+            self.horizontal_line.set_ydata(y)
+            self.vertical_line.set_xdata(x)
+            #                self.text.set_text('x=%1.2f, y=%1.2f' % (x, y))
+            self.ax.figure.canvas.draw()
+            self.pos = pos
 
     cursor = Cursor(ax)
     ax.figure.canvas.mpl_connect("button_release_event", cursor.on_mouse_release)
@@ -239,11 +205,11 @@ def zoom_factory(ax, base_scale=1.5):
         new_xlim = [xdata - cur_xrange * scale_factor, xdata + cur_xrange * scale_factor]
         new_ylim = [ydata - cur_yrange * scale_factor, ydata + cur_yrange * scale_factor]
         # limit zoom out
-        org_width, org_height = ax.org_edges
+        org_width, org_height = ax.org_dims
         if ((new_xlim[1] - new_xlim[0]) > org_width * 1.1) or (
             (new_ylim[0] - new_ylim[1]) > org_height * 1.1
         ):
-            return
+            new_xlim, new_ylim = ax.org_lims
         ax.set_xlim(new_xlim)
         ax.set_ylim(new_ylim)
         ax.figure.canvas.draw_idle()  # force re-draw the next time the GUI refreshes
@@ -256,21 +222,69 @@ def zoom_factory(ax, base_scale=1.5):
     return zoom_fun
 
 
-@contextmanager
-def ax_show(should_force_aspect=False):
+def auto_brightness_and_contrast(image: np.ndarray, clip_hist_percent=0) -> np.ndarray:
     """
-    Creates a Matplotlib figure, and yields a single ax object
-    which is to be manipulated, then shows the figure.
+    See:
+    https://stackoverflow.com/questions/56905592/automatic-contrast-and-brightness-adjustment-of-a-color-photo-of-a-sheet-of-pape
     """
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    try:
-        yield ax
-    finally:
-        if should_force_aspect:
-            force_aspect(ax, aspect=1)
-        fig.show()
+    def convertScale(image: np.ndarray, alpha: float, beta: float) -> np.ndarray:
+        """Add bias and gain to an image with saturation arithmetics. Unlike
+        cv2.convertScaleAbs, it does not take an absolute value, which would lead to
+        nonsensical results (e.g., a pixel at 44 with alpha = 3 and beta = -210
+        becomes 78 with OpenCV, when in fact it should become 0).
+        """
+
+        new_img = image * alpha + beta
+        new_img[new_img < 0] = 0
+        new_img[new_img > 255] = 255
+        return new_img.astype(np.uint8)
+
+    if clip_hist_percent == 0:
+        return image
+
+    # Estimate the best number of bins to use - choose 'n_bins' such that at least half have a single count in them
+    for n_bins in reversed(range(10, 256)):
+        bin_counts, _ = np.histogram(image, bins=n_bins)
+        if (bin_counts > 0).sum() >= (bin_counts.size / 2):
+            break
+
+    #    print(f"n_bins: {n_bins}") # TESTESTEST
+
+    # Calculate histogram
+    # hist definition to match 'hist = cv2.calcHist([gray],[0],None,[256],[0,256])',
+    # derived from https://stackoverflow.com/questions/25013732/comparing-rgb-histograms-plt-hist-np-histogram-and-cv2-comparehist
+    bin_counts, _ = np.histogram(image, bins=n_bins)
+    hist = bin_counts.ravel().astype(float)
+    hist_size = len(hist)
+
+    # Calculate cumulative distribution from the histogram
+    accumulator = []
+    accumulator.append(float(hist[0]))
+    for index in range(1, hist_size):
+        accumulator.append(accumulator[index - 1] + float(hist[index]))
+
+    # Locate points to clip
+    maximum = accumulator[-1]
+    clip_hist_percent *= maximum / 100.0
+    clip_hist_percent /= 2.0
+
+    # Locate left cut
+    minimum_gray = 0
+    while accumulator[minimum_gray] < clip_hist_percent:
+        minimum_gray += 1
+
+    # Locate right cut
+    maximum_gray = hist_size - 1
+    while accumulator[maximum_gray] >= (maximum - clip_hist_percent):
+        maximum_gray -= 1
+
+    # Calculate alpha and beta values
+    alpha = 255 / (maximum_gray - minimum_gray)
+    beta = -minimum_gray * alpha
+
+    #    print(f"alpha: {alpha:.1f}\nbeta: {beta:.1f}\n") # TESTESTEST
+    return convertScale(image, alpha=alpha, beta=beta)
 
 
 def force_aspect(ax, aspect=1) -> None:
