@@ -110,7 +110,7 @@ sol_meas_wdgts = QtWidgetCollection(
     pattern_wdgt=("solScanPattern", None, "main", True),
     g0_wdgt=("g0", "QDoubleSpinBox", "main", True),
     tau_wdgt=("decayTime", "QDoubleSpinBox", "main", True),
-    plot_wdgt=("acf", None, "main", True),
+    plot_wdgt=("solScanAcf", None, "main", True),
     fit_led=("ledFit", "QIcon", "main", True),
 )
 

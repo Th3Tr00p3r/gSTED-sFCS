@@ -29,48 +29,43 @@ class Display:
     def entitle_and_label(self, x_label: str = "", y_label: str = "", title: str = ""):
         """Doc"""
 
-        if title:
-            self.ax.set_title(title)
-        self.ax.set_xlabel(x_label)
-        self.ax.set_ylabel(y_label)
-        self.canvas.draw()
+        with self._show_internal_ax() as ax:
+            if title:
+                ax.set_title(title)
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label)
 
-    def plot(self, x, y, **kwargs):
+    def plot(self, x, y, *args, **kwargs):
         """Wrapper for matplotlib.pyplot.plot."""
 
         try:
-            self.ax.plot(x, y, **kwargs)
+            self.ax.plot(x, y, *args, **kwargs)
         except AttributeError:
             self.ax = self.figure.add_subplot(111)
-            self.ax.plot(x, y, **kwargs)
+            self.ax.plot(x, y, *args, **kwargs)
         finally:
             self.canvas.draw()
 
     def display_pattern(self, x, y):
         """Doc."""
 
-        self.figure.clear()
-        self.ax = self.figure.add_subplot(111)
-        self.ax.plot(x, y, color="black", lw=0.3)
-        self.ax.axis(False)
-        self.canvas.draw()
+        with self._show_internal_ax(clear=True, show_axis=False) as ax:
+            ax.plot(x, y, "k", lw=0.3)
 
     def display_image(
-        self, image: np.ndarray, axis=True, cursor=False, init_cursor_pos=(0, 0), **kwargs
+        self, image: np.ndarray, axis=True, cursor=False, init_cursor_pos=(0, 0), *args, **kwargs
     ):
         """Doc."""
 
-        self.figure.clear()
-        self.ax = self.figure.add_subplot(111)
-        self.ax.imshow(image, **kwargs)
-        self.ax.axis(axis)
-        force_aspect(self.ax, aspect=1)
-        self.ax.org_lims = (self.ax.get_xlim(), self.ax.get_ylim())
-        self.ax.org_dims = tuple(abs(lim[1] - lim[0]) for lim in self.ax.org_lims)
-        self.zoom_func = zoom_factory(self.ax)
-        if cursor:
-            self.cursor = cursor_factory(self.ax, init_cursor_pos)
-        self.canvas.draw()
+        with self._show_internal_ax(
+            clear=True,
+            fix_aspect=True,
+            show_axis=False,
+            scroll_zoom=True,
+            cursor=cursor,
+            init_cursor_pos=init_cursor_pos,
+        ) as ax:
+            ax.imshow(image, *args, **kwargs)
 
     def plot_acfs(
         self, x: (np.ndarray, str), average_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
@@ -79,31 +74,65 @@ class Display:
 
         x, x_type = x
 
-        self.figure.clear()
-        self.ax = self.figure.add_subplot(111)
+        with self._show_internal_ax(clear=True) as ax:
+            if x_type == "lag":
+                ax.set_xscale("log")
+                ax.set_xlim(1e-4, 1e1)
+                if g0 > 0:
+                    try:
+                        ax.set_ylim(-g0 / 2, g0 * 2)
+                    except ValueError:
+                        # g0 is not a finite number
+                        ax.set_ylim(-1e4, 1e4)
+                else:
+                    ax.set_ylim(-1e4, 1e4)
+            if x_type == "disp":
+                ax.set_yscale("log")
+                x = x ** 2
+                ax.set_xlim(0, 0.6)
+                ax.set_ylim(g0 * 1.5e-3, g0 * 1.1)
 
-        if x_type == "lag":
-            self.ax.set_xscale("log")
-            self.ax.set_xlim(1e-4, 1e1)
-            try:
-                self.ax.set_ylim(-g0 / 2, g0 * 2)
-            except ValueError:
-                # g0 is not a finite number
-                self.ax.set_ylim(-1e4, 1e4)
-        if x_type == "disp":
-            self.ax.set_yscale("log")
-            x = x ** 2
-            self.ax.set_xlim(0, 0.6)
-            self.ax.set_ylim(g0 * 1.5e-3, g0 * 1.1)
-
-        if cf_cr is not None:
-            for row_acf in cf_cr:
-                self.ax.plot(x, row_acf)
-        self.ax.plot(x, average_cf_cr, "black")
-        self.canvas.draw()
+            if cf_cr is not None:
+                for row_acf in cf_cr:
+                    ax.plot(x, row_acf)
+            ax.plot(x, average_cf_cr, "k")
 
     @contextmanager
-    def show_external_ax(self, should_force_aspect=False):
+    def _show_internal_ax(
+        self,
+        clear=False,
+        fix_aspect=False,
+        show_axis=None,
+        scroll_zoom=False,
+        cursor=False,
+        init_cursor_pos=(0, 0),
+    ):
+        """Doc."""
+
+        if clear:
+            self.figure.clear()
+            ax = self.figure.add_subplot(111)
+        else:
+            ax = self.ax
+
+        try:
+            yield ax
+        finally:
+            if fix_aspect:
+                force_aspect(ax, aspect=1)
+            if scroll_zoom:
+                ax.org_lims = (ax.get_xlim(), ax.get_ylim())
+                ax.org_dims = tuple(abs(lim[1] - lim[0]) for lim in ax.org_lims)
+                ax.zoom_func = zoom_factory(ax)
+            if cursor:
+                ax.cursor = cursor_factory(ax, init_cursor_pos)
+            if show_axis is not None:
+                ax.axis(show_axis)
+            self.ax = ax
+            self.canvas.draw()
+
+    @contextmanager
+    def show_external_ax(self):
         """
         Creates a Matplotlib figure, and yields a single ax object
         which is to be manipulated, then shows the figure.
@@ -114,8 +143,7 @@ class Display:
         try:
             yield ax
         finally:
-            if should_force_aspect:
-                force_aspect(ax, aspect=1)
+            force_aspect(ax, aspect=1)
             fig.show()
 
 
@@ -229,12 +257,6 @@ def auto_brightness_and_contrast(image: np.ndarray, clip_hist_percent=0) -> np.n
     """
 
     def convertScale(image: np.ndarray, alpha: float, beta: float) -> np.ndarray:
-        """Add bias and gain to an image with saturation arithmetics. Unlike
-        cv2.convertScaleAbs, it does not take an absolute value, which would lead to
-        nonsensical results (e.g., a pixel at 44 with alpha = 3 and beta = -210
-        becomes 78 with OpenCV, when in fact it should become 0).
-        """
-
         new_img = image * alpha + beta
         new_img[new_img < 0] = 0
         new_img[new_img > 255] = 255
