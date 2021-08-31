@@ -21,7 +21,7 @@ from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
-from utilities import file_utilities, helper
+from utilities import display, file_utilities, helper
 from utilities import widget_collections as wdgt_colls
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import DeviceError, err_hndlr
@@ -399,8 +399,6 @@ class MainWin:
         self._app.gui.settings.activateWindow()
 
     async def open_camwin(self):
-        # TODO: simply making this func async doesn't help. the blocking function here is 'UC480_Camera(reopen_policy="new")'
-        # from 'drivers.py', and I can't yet see a way to make it async (since I don't want to touch the API) I should try threading for this.
         """Doc."""
 
         self._gui.actionCamera_Control.setEnabled(False)
@@ -425,10 +423,7 @@ class MainWin:
             row_ticks_v = self._app.last_img_scn.plane_images_data.row_ticks_v
             plane_ticks = self._app.last_img_scn.set_pnts_planes
 
-            coord_1, coord_2 = (
-                round(self._gui.imgScanPlot.vLine.value()) - 1,
-                round(self._gui.imgScanPlot.hLine.value()) - 1,
-            )
+            coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.cursor.pos)
 
             dim1_vltg = line_ticks_v[coord_1]
             dim2_vltg = row_ticks_v[coord_2]
@@ -451,6 +446,22 @@ class MainWin:
             self.move_scanners(plane_type)
 
             logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} moved to ROI ({vltgs})")
+
+    def auto_scale_image(self, clip_hist_percent: int):
+        """Doc."""
+
+        with suppress(AttributeError):
+            # AttributeError - no last image yet
+            image = self._app.last_img_scn.last_img
+            try:
+                image = display.auto_brightness_and_contrast(image, clip_hist_percent)
+            except (ZeroDivisionError, IndexError) as exc:
+                err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
+
+            pos = self._gui.imgScanPlot.cursor.pos
+            self._gui.imgScanPlot.display_image(
+                image, cursor=True, init_cursor_pos=pos, cmap="bone"
+            )
 
     def build_image(self, img_data, method, plane_idx):
         """Doc."""
@@ -531,9 +542,13 @@ class MainWin:
             # No last_img_scn yet
             image_data = self._app.last_img_scn.plane_images_data
             image = self.build_image(image_data, disp_mthd, plane_idx)
-            self._gui.imgScanPlot.replace_image(image.T)
+            self._app.last_img_scn.last_img = image.T
+            self._gui.imgScanPlot.display_image(image.T, cursor=True, cmap="bone")
+            self._gui.scaleImgScan.setValue(
+                0
+            )  # TODO: use widget collections (search and destroy '_gui')
             if auto_cross:
-                self._gui.imgScanPlot.move_crosshair(auto_crosshair_position(image))
+                self._gui.imgScanPlot.cursor.move_to_pos(auto_crosshair_position(image))
 
     def plane_choice_changed(self, plane_idx):
         """Doc."""
@@ -770,7 +785,7 @@ class MainWin:
         try:
             curr_template_prefix = re.findall("(^.*)(?=_angular_|_circular_)", curr_template)[0]
         except IndexError:
-            curr_template_prefix = re.findall("(^.*)(?=_[0-9]{6}_)", curr_template)[0]
+            curr_template_prefix = re.findall("(^.*)(?=_[0-9]{6})", curr_template)[0]
 
         if new_template_prefix == curr_template_prefix:
             logging.warning(
@@ -970,7 +985,7 @@ class MainWin:
                 p.image_data, "Forward scan - actual counts per pixel", scan_param["n_planes"] // 2
             )
             # plot it (below)
-            wdgts.img_preview_disp.obj.display_image(image, axis=False)
+            wdgts.img_preview_disp.obj.display_image(image, axis=False, cmap="bone")
 
         pass
 
@@ -1345,6 +1360,6 @@ class CamWin:
     def shoot(self, verbose=True):
         """Doc."""
 
-        self._gui.ImgDisp.display_image(self._cam.grab_image())
+        self._gui.ImgDisp.display_image(self._cam.grab_image(), cursor=True)
         if verbose:
             logging.info("Camera photo taken")
