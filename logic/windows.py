@@ -423,7 +423,7 @@ class MainWin:
             row_ticks_v = self._app.last_img_scn.plane_images_data.row_ticks_v
             plane_ticks = self._app.last_img_scn.set_pnts_planes
 
-            coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.cursor.pos)
+            coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.ax.cursor.pos)
 
             dim1_vltg = line_ticks_v[coord_1]
             dim2_vltg = row_ticks_v[coord_2]
@@ -458,7 +458,7 @@ class MainWin:
             except (ZeroDivisionError, IndexError) as exc:
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
 
-            pos = self._gui.imgScanPlot.cursor.pos
+            pos = self._gui.imgScanPlot.ax.cursor.pos
             self._gui.imgScanPlot.display_image(
                 image, cursor=True, init_cursor_pos=pos, cmap="bone"
             )
@@ -548,7 +548,7 @@ class MainWin:
                 0
             )  # TODO: use widget collections (search and destroy '_gui')
             if auto_cross:
-                self._gui.imgScanPlot.cursor.move_to_pos(auto_crosshair_position(image))
+                self._gui.imgScanPlot.ax.cursor.move_to_pos(auto_crosshair_position(image))
 
     def plane_choice_changed(self, plane_idx):
         """Doc."""
@@ -985,7 +985,7 @@ class MainWin:
                 p.image_data, "Forward scan - actual counts per pixel", scan_param["n_planes"] // 2
             )
             # plot it (below)
-            wdgts.img_preview_disp.obj.display_image(image, axis=False, cmap="bone")
+            wdgts.img_preview_disp.obj.display_image(image.T, axis=False, cmap="bone")
 
         pass
 
