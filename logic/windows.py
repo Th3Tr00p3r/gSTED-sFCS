@@ -999,41 +999,56 @@ class MainWin:
         sol_file_selection = data_import_wdgts.sol_file_selection.get()
         fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
         external_plotting = wdgt_colls.sol_data_analysis_wdgts.external_plotting.get()
+        sol_use_processed = data_import_wdgts.sol_use_processed.get()
+
+        curr_dir = self.current_date_type_dir_path()
+
+        if sol_use_processed:
+            file_path = os.path.join(curr_dir, "processed", re.sub("_[*]", "", current_template))
 
         with self._app.pause_ai_ci():
 
-            full_data = CorrFuncTDC()
+            if sol_use_processed and os.path.isfile(file_path):
+                print("Loading pre-processed data from hard drive...", end=" ")
+                full_data = file_utilities.load_pkl(file_path)
+                print("Done.")
 
-            # file selection
-            if file_dicrimination_checked_button.objectName() == "solImportUse":
-                sol_file_selection = f"{use_or_dont} {sol_file_selection}"
-            else:
-                sol_file_selection = ""
+            else:  # process data
+                full_data = CorrFuncTDC()
 
-            try:
-                with suppress(AttributeError):
-                    # No directories found
-                    full_data.read_fpga_data(
-                        os.path.join(self.current_date_type_dir_path(), current_template),
-                        file_selection=sol_file_selection,
-                        should_fix_shift=fix_shift,
-                        no_plot=not external_plotting,
-                    )
-                    if full_data.type == "angular_scan":
-                        full_data.correlate_angular_scan_data()
-                    elif full_data.type == "static":
-                        full_data.correlate_regular_data()
+                # file selection
+                if file_dicrimination_checked_button.objectName() == "solImportUse":
+                    sol_file_selection = f"{use_or_dont} {sol_file_selection}"
+                else:
+                    sol_file_selection = ""
 
-            except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
-                err_hndlr(exc, sys._getframe(), locals())
+                try:
+                    with suppress(AttributeError):
+                        # No directories found
+                        full_data.read_fpga_data(
+                            os.path.join(curr_dir, current_template),
+                            file_selection=sol_file_selection,
+                            should_fix_shift=fix_shift,
+                            no_plot=not external_plotting,
+                        )
+                        if full_data.type == "angular_scan":
+                            full_data.correlate_angular_scan_data()
+                        elif full_data.type == "static":
+                            full_data.correlate_regular_data()
 
-            else:  # save data and populate combobox
-                imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates
-                self._app.analysis.loaded_data[current_template] = full_data
-                imported_combobox.obj.addItem(current_template)
-                imported_combobox.set(current_template)
+                    file_utilities.save_processed_solution_meas(full_data, curr_dir)
 
-                logging.info(f"Data loaded for analysis: {current_template}")
+                except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
+                    err_hndlr(exc, sys._getframe(), locals())
+                    return
+
+            # save data and populate combobox
+            imported_combobox = wdgt_colls.sol_data_analysis_wdgts.imported_templates
+            self._app.analysis.loaded_data[current_template] = full_data
+            imported_combobox.obj.addItem(current_template)
+            imported_combobox.set(current_template)
+
+            logging.info(f"Data loaded for analysis: {current_template}")
 
     def get_current_full_data(self, imported_template: str = None) -> CorrFuncTDC:
         """Doc."""
@@ -1211,7 +1226,7 @@ class MainWin:
             mat_file_path = re.sub(".pkl", ".mat", file_path)
             if "solution" in mat_file_path:
                 mat_file_path = re.sub("solution", r"solution\\matlab", mat_file_path)
-            if "image" in mat_file_path:
+            elif "image" in mat_file_path:
                 mat_file_path = re.sub("image", r"image\\matlab", mat_file_path)
             os.makedirs(os.path.join(current_dir_path, "matlab"), exist_ok=True)
             file_utilities.save_mat(file_dict, mat_file_path)
@@ -1331,31 +1346,26 @@ class CamWin:
     async def toggle_video(self, keep_off=False):
         """Doc."""
 
-        try:
-            if not self.is_video_on and not keep_off:  # Turning video ON
-                logging.info("Camera video mode is ON")
-                self._gui.videoButton.setStyleSheet(
-                    "background-color: " "rgb(225, 245, 225); " "color: black;"
-                )
-                self._gui.videoButton.setText("Video ON")
+        if not self.is_video_on and not keep_off:  # Turning video ON
+            logging.info("Camera video mode is ON")
+            self._gui.videoButton.setStyleSheet(
+                "background-color: " "rgb(225, 245, 225); " "color: black;"
+            )
+            self._gui.videoButton.setText("Video ON")
 
-                self.is_video_on = True
-                while self.is_video_on:
-                    self.shoot(verbose=False)
-                    await asyncio.sleep(0.3)
+            self.is_video_on = True
+            while self.is_video_on:
+                self.shoot(verbose=False)
+                await asyncio.sleep(0.3)
 
-            else:  # Turning video Off
-                logging.debug("Camera video mode is OFF")
-                self._gui.videoButton.setStyleSheet(
-                    "background-color: " "rgb(225, 225, 225); " "color: black;"
-                )
-                self._gui.videoButton.setText("Start Video")
+        else:  # Turning video Off
+            logging.debug("Camera video mode is OFF")
+            self._gui.videoButton.setStyleSheet(
+                "background-color: " "rgb(225, 225, 225); " "color: black;"
+            )
+            self._gui.videoButton.setText("Start Video")
 
-                self.is_video_on = False
-
-        # TODO: improve error handeling
-        except Exception as exc:
-            err_hndlr(exc, sys._getframe(), locals())
+            self.is_video_on = False
 
     def shoot(self, verbose=True):
         """Doc."""

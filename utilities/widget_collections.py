@@ -44,6 +44,7 @@ data_import_wdgts = QtWidgetCollection(
     import_stacked=("importStacked", "QStackedWidget", "main", True),
     log_text=("dataDirLog", "QPlainTextEdit", "main", True),
     img_preview_disp=("imgScanPreviewDisp", None, "main", True),
+    sol_use_processed=("solImportUsePreProcessed", "QCheckBox", "main", True),
     sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", True),
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", True),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", True),

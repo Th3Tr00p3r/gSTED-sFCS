@@ -1,7 +1,6 @@
 """Data-File Loading Utilities"""
 
 import glob
-import os
 import pickle
 import re
 from collections.abc import Iterable
@@ -44,7 +43,7 @@ legacy_matlab_trans_dict = {
     # Image Scan
     "Cnt": "cnt",
     "PID": "pid",
-    "SP": "scan_param",
+    "SP": "sp",
     "LinesOdd": "lines_odd",
     "FastScan": "is_fast_scan",
     "TdcScanData": "tdc_scan_data",
@@ -119,32 +118,6 @@ default_system_info = {
     "ai_scaling_xyz": (1.243, 1.239, 1),
     "xyz_um_to_v": (70.81, 82.74, 10.0),
 }
-
-
-def estimate_disk_size(obj) -> float:
-    """Returns the estimated size in bytes."""
-
-    return len(pickle.dumps(obj))
-
-
-def save_processed_solution_meas(full_data, dir_path) -> None:
-    """
-    Save a processed measurement, lacking any raw data.
-    The template may then be loaded much more quickly.
-    """
-
-    print(f"full_data size estimate: {round(estimate_disk_size(full_data) / 1e6)} Mb")
-    [
-        print(f"{key}: {size} Mb")
-        for key, val in full_data.data[0].__dict__.items()
-        if (size := round(estimate_disk_size(val) / 1e6)) > 0
-    ]
-
-    os.makedirs(os.path.join(dir_path, "processed"), exist_ok=True)
-    file_path = os.path.join(dir_path, "processed", re.sub("_[*]", "", full_data.template))
-    with open(file_path, "wb") as f:
-        pickle.dump(full_data, f)
-    # and add a feature which uses it if it exists and a checkbox is checked/unchecked.
 
 
 def load_file_dict(file_path: str):
@@ -328,7 +301,7 @@ def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
         """
 
         try:
-            range_edges = [int(s) if int(s) != 0 else 1 for s in range_str.split("-")]
+            range_edges = [int(s) for s in range_str.split("-")]
             if len(range_edges) > 2:
                 raise ValueError
             elif len(range_edges) == 2:
@@ -367,7 +340,7 @@ def prepare_file_paths(file_path_template: str, file_selection: str) -> List[str
             print(f'(files: "{file_selection}")')
         except IndexError:
             raise ValueError(
-                f"Bad file selection string: '{file_selection}'. Try file numbers between 1 and {len(file_paths)}."
+                f"Bad file selection string: '{file_selection}'. One or more file numbers don't exist."
             )
     else:
         print("(all files)")
