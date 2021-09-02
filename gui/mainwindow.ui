@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1231</width>
-    <height>936</height>
+    <height>942</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -5107,7 +5107,7 @@ Measurement</string>
                           <string>Options</string>
                          </property>
                          <layout class="QGridLayout" name="gridLayout_10">
-                          <item row="0" column="0">
+                          <item row="1" column="0">
                            <widget class="QGroupBox" name="groupBox_9">
                             <property name="sizePolicy">
                              <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
@@ -5210,7 +5210,7 @@ Measurement</string>
                             </layout>
                            </widget>
                           </item>
-                          <item row="1" column="0">
+                          <item row="2" column="0">
                            <widget class="QGroupBox" name="groupBox_12">
                             <property name="title">
                              <string>Processing</string>
@@ -5239,6 +5239,13 @@ Plotting</string>
                               </widget>
                              </item>
                             </layout>
+                           </widget>
+                          </item>
+                          <item row="0" column="0">
+                           <widget class="QCheckBox" name="solImportUsePreProcessed">
+                            <property name="text">
+                             <string>Use Pre-Processed Data</string>
+                            </property>
                            </widget>
                           </item>
                          </layout>
@@ -5680,8 +5687,8 @@ Mean ACF</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>159</width>
-                                    <height>222</height>
+                                    <width>164</width>
+                                    <height>254</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -5902,8 +5909,8 @@ Sample</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>160</width>
-                                    <height>70</height>
+                                    <width>173</width>
+                                    <height>78</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -5986,8 +5993,8 @@ Over (ns)</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>116</width>
-                                    <height>67</height>
+                                    <width>135</width>
+                                    <height>76</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -6036,8 +6043,8 @@ Get Parameters</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>166</width>
-                                    <height>133</height>
+                                    <width>175</width>
+                                    <height>146</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">

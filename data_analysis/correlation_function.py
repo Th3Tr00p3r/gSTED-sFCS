@@ -162,7 +162,11 @@ class CorrFuncTDC(CorrFuncData):
 
         for idx, file_path in enumerate(file_paths):
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
-            file_dict = file_utilities.load_file_dict(file_path)
+            try:
+                file_dict = file_utilities.load_file_dict(file_path)
+            except OSError:
+                print("File has not been downloaded fully from cloud! Skipping.\n")
+                continue
             print("Done.")
 
             full_data = file_dict["full_data"]
@@ -330,10 +334,10 @@ class CorrFuncTDC(CorrFuncData):
 
         # convert lists/deques to numpy arrays
         roi = {key: np.array(val) for key, val in roi.items()}
-        line_start_lables = np.array(line_start_lables)
-        line_stop_labels = np.array(line_stop_labels)
-        line_starts = np.array(line_starts).astype(np.int64)
-        line_stops = np.array(line_stops).astype(np.int64)
+        line_start_lables = np.array(line_start_lables, dtype=np.int16)
+        line_stop_labels = np.array(line_stop_labels, dtype=np.int16)
+        line_starts = np.array(line_starts, dtype=np.int64)
+        line_stops = np.array(line_stops, dtype=np.int64)
 
         print("Done.")
 
@@ -343,6 +347,10 @@ class CorrFuncTDC(CorrFuncData):
         runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
         sorted_idxs = np.argsort(runtime)
         p.runtime = runtime[sorted_idxs]
+        if p.runtime.max() < 2 ** 32:
+            p.runtime = p.runtime.astype(np.int32)
+        else:
+            print("p.runtime has some large values - keeping as int64.")
         p.line_num = np.hstack(
             (
                 line_start_lables,
@@ -647,7 +655,7 @@ def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_to
     n_pix = np.mod(n_pix_tot, ppl_tot)
     line_num_tot = np.floor(n_pix_tot / ppl_tot)
     # one more line is for return to starting positon
-    line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int32)
+    line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int16)  # TESTESTEST was int32
 
     cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.int32)
     bins = np.arange(-0.5, ppl_tot)
@@ -731,7 +739,7 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
             c[0] -= 1 / prof.mean()  # subtracting shot noise, small stuff really
             image_line_corr.append(
                 {
-                    "lag": lags * 1000 / sampling_freq,  # in ms
+                    "lag": lags * 1e3 / sampling_freq,  # in ms
                     "corrfunc": c,
                 }
             )
