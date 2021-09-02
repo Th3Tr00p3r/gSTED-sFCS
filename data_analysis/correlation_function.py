@@ -705,7 +705,6 @@ def fix_data_shift(cnt) -> int:
     return pix_shift
 
 
-# NOTE: 'disk_radius' was 3
 def threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
     """Doc."""
 
