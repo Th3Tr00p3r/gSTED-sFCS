@@ -4329,11 +4329,11 @@ Pattern:</string>
                         <number>0</number>
                        </property>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_24" stretch="1,10">
+                        <layout class="QHBoxLayout" name="horizontalLayout_24" stretch="1,10,0">
                          <property name="spacing">
                           <number>0</number>
                          </property>
-                         <item>
+                         <item alignment="Qt::AlignRight">
                           <widget class="QLabel" name="label_5">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -4382,7 +4382,7 @@ Pattern:</string>
                            </property>
                            <property name="maximumSize">
                             <size>
-                             <width>9999</width>
+                             <width>200</width>
                              <height>9999</height>
                             </size>
                            </property>
@@ -4408,14 +4408,27 @@ Pattern:</string>
                            </property>
                           </widget>
                          </item>
+                         <item>
+                          <spacer name="horizontalSpacer_12">
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>40</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
                         </layout>
                        </item>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="1,10">
+                        <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="1,10,0">
                          <property name="spacing">
                           <number>0</number>
                          </property>
-                         <item>
+                         <item alignment="Qt::AlignRight">
                           <widget class="QLabel" name="label_6">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -4464,7 +4477,7 @@ Pattern:</string>
                            </property>
                            <property name="maximumSize">
                             <size>
-                             <width>9999</width>
+                             <width>200</width>
                              <height>9999</height>
                             </size>
                            </property>
@@ -4486,6 +4499,19 @@ Pattern:</string>
                             <double>999999999.000000000000000</double>
                            </property>
                           </widget>
+                         </item>
+                         <item>
+                          <spacer name="horizontalSpacer_13">
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>40</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
                          </item>
                         </layout>
                        </item>
@@ -5215,7 +5241,18 @@ Measurement</string>
                             <property name="title">
                              <string>Processing</string>
                             </property>
-                            <layout class="QHBoxLayout" name="horizontalLayout_37">
+                            <layout class="QVBoxLayout" name="verticalLayout_113">
+                             <item>
+                              <widget class="QCheckBox" name="solDataExtPlot">
+                               <property name="text">
+                                <string>Ext.
+Plotting</string>
+                               </property>
+                               <property name="tristate">
+                                <bool>false</bool>
+                               </property>
+                              </widget>
+                             </item>
                              <item>
                               <widget class="QCheckBox" name="solDataFixShift">
                                <property name="text">
@@ -5228,24 +5265,14 @@ Shift</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QCheckBox" name="solDataExtPlot">
+                              <widget class="QCheckBox" name="solImportUsePreProcessed">
                                <property name="text">
-                                <string>Ext.
-Plotting</string>
-                               </property>
-                               <property name="tristate">
-                                <bool>false</bool>
+                                <string>Load
+Pre-Processed</string>
                                </property>
                               </widget>
                              </item>
                             </layout>
-                           </widget>
-                          </item>
-                          <item row="0" column="0">
-                           <widget class="QCheckBox" name="solImportUsePreProcessed">
-                            <property name="text">
-                             <string>Use Pre-Processed Data</string>
-                            </property>
                            </widget>
                           </item>
                          </layout>
@@ -5341,7 +5368,7 @@ Plotting</string>
                           <bool>true</bool>
                          </property>
                          <property name="currentIndex">
-                          <number>0</number>
+                          <number>2</number>
                          </property>
                          <widget class="QWidget" name="tab_4">
                           <attribute name="title">
@@ -5664,7 +5691,7 @@ Mean ACF</string>
                               <number>0</number>
                              </property>
                              <item>
-                              <layout class="QVBoxLayout" name="verticalLayout_77" stretch="0">
+                              <layout class="QVBoxLayout" name="verticalLayout_77" stretch="0,0">
                                <property name="spacing">
                                 <number>0</number>
                                </property>
@@ -5677,7 +5704,7 @@ Mean ACF</string>
                                   <enum>QFrame::Sunken</enum>
                                  </property>
                                  <property name="currentIndex">
-                                  <number>3</number>
+                                  <number>0</number>
                                  </property>
                                  <property name="tabSpacing">
                                   <number>0</number>
@@ -5687,8 +5714,8 @@ Mean ACF</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>164</width>
-                                    <height>254</height>
+                                    <width>166</width>
+                                    <height>242</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -5909,8 +5936,8 @@ Sample</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>173</width>
-                                    <height>78</height>
+                                    <width>166</width>
+                                    <height>242</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -5993,8 +6020,8 @@ Over (ns)</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>135</width>
-                                    <height>76</height>
+                                    <width>166</width>
+                                    <height>242</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -6043,8 +6070,8 @@ Get Parameters</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>175</width>
-                                    <height>146</height>
+                                    <width>166</width>
+                                    <height>242</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -6176,6 +6203,16 @@ Gates</string>
                                    </item>
                                   </layout>
                                  </widget>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QFrame" name="frame_4">
+                                 <property name="frameShape">
+                                  <enum>QFrame::StyledPanel</enum>
+                                 </property>
+                                 <property name="frameShadow">
+                                  <enum>QFrame::Raised</enum>
+                                 </property>
                                 </widget>
                                </item>
                               </layout>
