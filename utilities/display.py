@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 
 
 class Display:
@@ -145,6 +145,17 @@ class Display:
         finally:
             force_aspect(ax, aspect=1)
             fig.show()
+
+
+class NavigationToolbar(NavigationToolbar2QT):
+    """
+    Only display the buttons we need.
+    https://stackoverflow.com/questions/12695678/how-to-modify-the-navigation-toolbar-easily-in-a-matplotlib-figure-window
+    """
+
+    toolitems = [
+        t for t in NavigationToolbar2QT.toolitems if t[0] in {"Home", "Pan", "Zoom", "Save"}
+    ]
 
 
 def cursor_factory(ax, init_cursor_pos):
