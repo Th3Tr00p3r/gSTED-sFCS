@@ -17,9 +17,9 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
-spinBox,40
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
+spinBox,40
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -30,8 +30,8 @@ imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solScanDur,20.0
-doubleSpinBox,0.0
 solAnalysisRemoveOverSpinner,2.0
+doubleSpinBox,0.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -60,8 +60,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
@@ -73,8 +73,9 @@ posAxisY,False
 posAxisX,True
 numPlaneShownChoice,1
 tabWidget,2
-tabWidget_2,0
+tabWidget_2,2
 autoCrosshair,True
-solDataFixShift,True
 solDataExtPlot,False
+solDataFixShift,True
 solImportUsePreProcessed,True
+toolBox,0

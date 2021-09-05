@@ -953,7 +953,7 @@ class MainWin:
 
         try:  # load the log file in path
             text_lines = helper.read_file_to_list(file_path)
-        except FileNotFoundError:  # initialize a new log file if no existing file
+        except (FileNotFoundError, OSError):  # initialize a new log file if no existing file
             with suppress(OSError, IndexError):
                 # OSError - missing file/folder (deleted during operation)
                 # IndexError - alignment file does not exist
@@ -1009,7 +1009,9 @@ class MainWin:
         with self._app.pause_ai_ci():
 
             if sol_use_processed and os.path.isfile(file_path):
-                print("Loading pre-processed data from hard drive...", end=" ")
+                print(
+                    f"Loading pre-processed data '{current_template}' from hard drive...", end=" "
+                )
                 full_data = file_utilities.load_pkl(file_path)
                 print("Done.")
 
@@ -1359,7 +1361,7 @@ class CamWin:
                 await asyncio.sleep(0.3)
 
         else:  # Turning video Off
-            logging.debug("Camera video mode is OFF")
+            logging.info("Camera video mode is OFF")
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
             )

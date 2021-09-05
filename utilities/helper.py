@@ -66,18 +66,6 @@ def paths_to_icons(paths_dict) -> dict:
     return {key: QIcon(val) for key, val in paths_dict.items()}
 
 
-async def sync_to_thread(func) -> None:
-    """
-    This is a workaround -
-    asyncio.to_thread() must be awaited, but toggle_video needs to be
-    a regular function to keep the rest of the code as it is. by creating this
-    async helper function I can make it work. A lambda would be better here
-    but there's no async lambda (yet?).
-    """
-
-    await asyncio.to_thread(func)
-
-
 def bool_str(str_: str):
     """A strict bool() for strings"""
     if str_ == "True":
@@ -104,6 +92,7 @@ getter_setter_type_dict = {
     "QTimeEdit": ("time", "setTime", None),
     "QIcon": ("icon", "setIcon", None),
     "QStackedWidget": ("currentIndex", "setCurrentIndex", int),
+    "QToolBox": ("currentIndex", "setCurrentIndex", int),
 }
 
 
@@ -133,6 +122,7 @@ def wdgt_items_to_text_lines(parent_wdgt) -> List[str]:
         "QSlider",
         "QTabWidget",
         "QCheckBox",
+        "QToolBox",
     ]
     children_class_lists = [
         parent_wdgt.findChildren(getattr(QtWidgets, wdgt_type)) for wdgt_type in wdgt_types
