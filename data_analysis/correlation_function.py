@@ -142,8 +142,6 @@ class CorrFuncTDC(CorrFuncData):
     def __init__(self):
         # list to hold the data of each file
         self.data = []
-        # dictionary for TDC calibration
-        self.tdc_calib = dict()
 
     def read_fpga_data(
         self,
@@ -420,6 +418,16 @@ class CorrFuncTDC(CorrFuncData):
 
         return p
 
+    def correlate_and_average(self, **kwargs):
+        self.correlate_data(**kwargs)
+        self.average_correlation(**kwargs)
+
+    def correlate_data(self, **kwargs):
+        if hasattr(self, "angular_scan_settings"):
+            self.correlate_angular_scan_data(**kwargs)
+        else:
+            self.correlate_regular_data(**kwargs)
+
     def correlate_regular_data(
         self,
         run_duration=-1,
@@ -644,6 +652,262 @@ class CorrFuncTDC(CorrFuncData):
             print(
                 f"{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
             )
+
+    def calibrate_tdc(
+        self,
+        tdc_chain_length=128,
+        pick_valid_bins_method="auto",
+        pick_calib_bins_method="auto",
+        calib_time_s=40e-9,
+        n_zeros_for_fine_bounds=10,
+        fine_shift=0,
+        time_bins_for_hist_ns=0.1,
+        valid_coarse_bins=np.arange(19),
+        exmpl_photon_data=dict(),
+        sync_coarse_time_to=None,
+        calibration_coarse_bins=np.arange(3, 12),
+    ):
+
+        # keep runtime elements of each file for array size allocation
+        n_elem = [0]
+        for p in self.data:
+            n_elem.append(p.runtime.size)
+
+        # unite coarse and fine times from all files
+        # float16 is used to be able to hold NaNs at minimum size cost (would otherwise use uint8)
+        coarse = np.empty(shape=(sum(n_elem),), dtype=np.float16)
+        fine = np.empty(shape=(sum(n_elem),), dtype=np.float16)
+        for i, p in enumerate(self.data):
+            coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
+            fine[n_elem[i] : n_elem[i + 1]] = p.fine
+
+        h_all = np.bincount(coarse)
+        x_all = np.arange(coarse.max() + 1)
+
+        if pick_valid_bins_method == "auto":
+            h_all = h_all[coarse.min() :]
+            x_all = np.arange(coarse.min(), coarse.max() + 1)
+            j = np.asarray(h_all > np.median(h_all) / 100).nonzero()[0]
+            x = x_all[j]
+            h = h_all[j]
+        elif pick_valid_bins_method == "forced":
+            x = valid_coarse_bins
+            h = h_all[x]
+        elif pick_valid_bins_method == "by example":
+            x = exmpl_photon_data.coarse["bins"]
+            h = h_all[x]
+        #     elif  pick_valid_bins_method == 'interactive':
+        #         semilogy(x_all, h_all, '-o');
+        #         title('Zoom into valid bins and hit any key', 'FontSize', 20)
+        #         figure(gcf)
+        #         pause;
+        #         J = InAxes;
+        #         x = x_all(J);
+        #         h = h_all(J);
+        else:
+            raise NotImplementedError(
+                f"Unknown method '{pick_valid_bins_method}' for picking valid bins!"
+            )
+
+        self.coarse = dict(bins=x, h=h)
+
+        # rearranging the bins
+        if sync_coarse_time_to is None:
+            max_j = np.argmax(h)
+        elif isinstance(sync_coarse_time_to, int):
+            max_j = sync_coarse_time_to
+        elif isinstance(sync_coarse_time_to, dict) and hasattr(sync_coarse_time_to, "tdc_calib"):
+            max_j = sync_coarse_time_to.tdc_calib["max_j"]
+        else:
+            raise ValueError(
+                "Syncing coarse time is possible to a number or to an object that has the attribute 'tdc_calib'!"
+            )
+
+        jj = np.arange(len(h))
+        #        Hshift = np.roll(h, -max_j+2) # not used?
+        j_shift = np.roll(jj, -max_j + 2)
+
+        if pick_calib_bins_method == "auto":
+            # pick data at more than 20ns delay from maximum
+            j = np.where(j >= (calib_time_s * self.fpga_freq_hz + 2))[0]
+            Jcalib = j_shift[j]
+            Xcalib = x[Jcalib]
+        elif pick_calib_bins_method == "forced":
+            Xcalib = calibration_coarse_bins
+        elif (
+            pick_calib_bins_method == "by example"
+            or pick_calib_bins_method == "External calibration"
+        ):
+            Xcalib = exmpl_photon_data.tdc_calib["bins"]
+        #         case 'interactive'
+        #         semilogy(x, HJshift(1, :), '-o'); figure(gcf)
+
+        #         title('Zoom into bins for TDC calibration', 'FontSize', 20)
+        #         figure(gcf)
+        #         pause;
+        #         J = InAxes;
+        #         Jcalib = HJshift(2, J);
+        #         Xcalib = x(Jcalib);
+
+        else:
+            raise NotImplementedError(
+                f"Unknown method '{pick_calib_bins_method}' for picking valid bins!"
+            )
+
+        if pick_calib_bins_method == "External calibration":
+            self.tdc_calib = exmpl_photon_data.tdc_calib
+            max_j = exmpl_photon_data.tdc_calib["max_j"]
+
+            if "l_quarter_tdc" in self.tdc_calib:
+                l_quarter_tdc = self.tdc_calib["l_quarter_tdc"]
+                r_quarter_tdc = self.tdc_calib["r_quarter_tdc"]
+        else:
+            fig, axs = plt.subplots(2, 2)
+            axs[0, 0].semilogy(
+                x_all, h_all, "-o", x, h, "-o", x(np.isin(x, Xcalib)), h(np.isin(x, Xcalib)), "-o"
+            )
+            plt.legend(["all hist", "valid bins", "calibration bins"], "Location", "SouthEast")
+            plt.show()
+
+            self.tdc_calib["coarse_bins"] = Xcalib
+
+            fine_calib = fine[np.isin(coarse, Xcalib)]
+
+            self.tdc_calib["fine_bins"] = np.arange(tdc_chain_length)
+            # x_tdc_calib_nonzero, h_tdc_calib_nonzero = np.unique(fine_calib, return_counts=True) #histogram check also np.bincount
+            # h_tdc_calib = np.zeros(x_tdc_calib.shape, dtype = h_tdc_calib_nonzero.dtype)
+            # h_tdc_calib[x_tdc_calib_nonzero] = h_tdc_calib_nonzero
+            h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length)
+
+            # changes on 12.12.17
+            # if isfield(S.data, 'Version'),
+            #    if (S.data(1).Version == 3),
+            # find effective range of TDC by, say, finding 10 zeros in a row
+            cumusum_h_tdc_calib = np.cumsum(h_tdc_calib)
+            diff_cumusum_h_tdc_calib = (
+                cumusum_h_tdc_calib[(n_zeros_for_fine_bounds - 1) :]
+                - cumusum_h_tdc_calib[: (-n_zeros_for_fine_bounds + 1)]
+            )
+            zeros_tdc = np.where(diff_cumusum_h_tdc_calib == 0)[0]
+            # find middle of TDC
+            mid_tdc = np.mean(fine_calib)
+
+            # left TDC edge: zeros stretch closest to mid_tdc
+            left_tdc = np.max(zeros_tdc[zeros_tdc < mid_tdc]) + n_zeros_for_fine_bounds - 1
+            right_tdc = np.min(zeros_tdc[zeros_tdc > mid_tdc]) + 1
+
+            l_quarter_tdc = round(left_tdc + (right_tdc - left_tdc) / 4)
+            r_quarter_tdc = round(right_tdc - (right_tdc - left_tdc) / 4)
+
+            self.tdc_calib["l_quarter_tdc"] = l_quarter_tdc
+            self.tdc_calib["r_quarter_tdc"] = r_quarter_tdc
+
+            # plot(x_tdc_calib, h_tdc_calib, [left_tdc+9 right_tdc+1], [0 0], 'o'); figure(gcf)
+            h_tdc_calib[
+                :left_tdc
+            ] = 0  # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
+            h_tdc_calib[right_tdc:] = 0
+
+            # h_tdc_calib = circshift(h_tdc_calib, [0 fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
+            t_calib = (
+                (1 - np.cumsum(h_tdc_calib) / np.sum(h_tdc_calib)) / self.fpga_freq_hz * 1e9
+            )  # invert and to ns
+            # t_calib = circshift(t_calib, [0 -fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
+            # h_tdc_calib = circshift(h_tdc_calib, [0 -fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
+            t_calib = np.flip(t_calib)  # avoids sorting further on
+
+            self.tdc_calib["h"] = h_tdc_calib
+            self.tdc_calib["t_calib"] = t_calib
+
+            coarse_len = self.tdc_calib["coarse_bins"].size
+
+            t_weight = np.tile(self.tdc_calib["h"] / np.mean(self.tdc_calib["h"]), coarse_len)
+            t_weight = np.flip(t_weight)
+            coarse_times = (
+                np.tile(np.arange(coarse_len), [t_calib.size, 1]) / self.fpga_freq_hz * 1e9
+            )
+            delay_times = np.tile(t_calib, coarse_len) + coarse_times.flatten("F")
+            # Js = np.argsort(delay_times) # initially delay times are piece wise inverted. After "flip" in line 323 there should be no need in sorting
+            self.tdc_calib["delay_times"] = delay_times  # [Js]
+
+            self.tdc_calib["t_weight"] = t_weight  # [Js]
+
+            self.tdc_calib["max_j"] = max_j  # added on 14.01.17 for processing by example
+
+            axs[0, 1].plot(self.tdc_calib["t_calib"], "-o")
+            plt.legend(["TDC calibration"], "Location", "NorthWest")
+            plt.show()
+
+        # assign time delays to all photons
+        self["total_laser_pulses"] = 0
+        max_j_m1 = max_j - 1
+        if max_j_m1 == -1:
+            max_j_m1 = self.tdc_calib["coarse_bins"][-1]
+
+        delay_time = np.ndarray((0,), dtype=np.float64)
+        # for i in self['Jgood']:
+        for p in self.data:
+            crs = (
+                np.min(p.coarse, self.tdc_calib["coarse_bins"][-1])
+                - self.tdc_calib["coarse_bins"][max_j_m1]
+            )
+            crs[crs < 0] = (
+                crs[crs < 0]
+                + self.tdc_calib["coarse_bins"][-1]
+                - self.tdc_calib["coarse_bins"][0]
+                + 1
+            )
+
+            delta_coarse = p.coarse2 - p.coarse
+            delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
+
+            # in the TDC midrange use "coarse" counter
+            in_mid_tdc = (p.fine >= l_quarter_tdc) and (p.fine <= r_quarter_tdc)
+            delta_coarse[in_mid_tdc] = 0
+
+            # on the right of TDC use "coarse2" counter (no change in delta)
+            # on the left of TDC use "coarse2" counter decremented by 1
+            on_left_tdc = p.fine < l_quarter_tdc
+            delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
+
+            phtns = np.logical_not(np.isnan(p.fine))  # nans are starts/ends of lines
+            p.delay_time[phtns] = (
+                self.tdc_calib["t_calib"][p.fine[phtns]]
+                + (crs[phtns] + delta_coarse[phtns]) / self.fpga_freq_hz * 1e9
+            )
+            self["total_laser_pulses"] = self["total_laser_pulses"] + p.runtime[-1]
+            p.delay_time[np.isnan(p.fine)] = np.nan  # line ends/starts
+
+            delay_time = np.append(p.delay_time)
+
+        self.tdc_calib["t_hist"] = np.arange(
+            0, np.max(delay_time) + time_bins_for_hist_ns, time_bins_for_hist_ns
+        )
+        bin_edges = np.append(
+            -time_bins_for_hist_ns / 2, (self.tdc_calib["t_hist"] + time_bins_for_hist_ns / 2)
+        )
+        k = np.digitize(self.tdc_calib["delay_times"], bin_edges)  # starts from 1
+
+        self.tdc_calib["hist_weight"] = np.array((0, 1), dtype=np.float64)
+        for i in range(len(self.tdc_calib["t_calib"])):
+            j = k == (i + 1)
+            self.tdc_calib["hist_weight"][i] = np.sum(self.tdc_calib["t_weight"][j])
+
+        self.tdc_calib["all_hist"] = np.histogram(delay_time, bins=bin_edges)
+        self.tdc_calib["all_hist_norm"] = (
+            self.tdc_calib["all_hist"]
+            / self.tdc_calib["hist_weight"]
+            / self.tdc_calib["total_laser_pulses"]
+        )
+        self.tdc_calib["error_all_hist_norm"] = (
+            np.sqrt(self.tdc_calib["all_hist"])
+            / self.tdc_calib["hist_weight"]
+            / self.tdc_calib["total_laser_pulses"]
+        )
+
+        axs[1, 1].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
+        plt.legend(["Photon lifetime histogram"], "Location", "NorthEast")
+        plt.show()
 
 
 @nb.njit(cache=True)

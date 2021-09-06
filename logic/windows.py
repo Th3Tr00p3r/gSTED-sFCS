@@ -15,11 +15,11 @@ from typing import List, Tuple
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
+import data_analysis.image
 import logic.devices as dvcs
 import logic.measurements as meas
 from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
-from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, helper
 from utilities import widget_collections as wdgt_colls
@@ -894,7 +894,7 @@ class MainWin:
                     os.path.join(date_dir_path, template),
                     no_plot=True,
                 )
-                full_data.correlate_regular_data()
+                full_data.correlate_and_average()
 
             except AttributeError:
                 # No directories found
@@ -903,7 +903,6 @@ class MainWin:
             except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                 err_hndlr(exc, sys._getframe(), locals())
 
-            full_data.average_correlation()
             try:
                 full_data.fit_correlation_function()
             except fit_tools.FitError as exc:
@@ -979,10 +978,11 @@ class MainWin:
             ao = file_dict["ao"]
             scan_param = file_dict["scan_param"]
             um_v_ratio = file_dict["xyz_um_to_v"]
-            p = PhotonData()
-            p.convert_counts_to_images(counts, ao, scan_param, um_v_ratio)
+            image_data = data_analysis.image.convert_counts_to_images(
+                counts, ao, scan_param, um_v_ratio
+            )
             image = self.build_image(
-                p.image_data, "Forward scan - actual counts per pixel", scan_param["n_planes"] // 2
+                image_data, "Forward scan - actual counts per pixel", scan_param["n_planes"] // 2
             )
             # plot it (below)
             wdgts.img_preview_disp.obj.display_image(image.T, axis=False, cmap="bone")
@@ -1033,10 +1033,7 @@ class MainWin:
                             should_fix_shift=fix_shift,
                             no_plot=not external_plotting,
                         )
-                        if full_data.type == "angular_scan":
-                            full_data.correlate_angular_scan_data()
-                        elif full_data.type == "static":
-                            full_data.correlate_regular_data()
+                        full_data.correlate_data()
 
                     file_utilities.save_processed_solution_meas(full_data, curr_dir)
 

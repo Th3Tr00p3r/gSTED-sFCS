@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import nidaqmx.constants as ni_consts
 import numpy as np
 
+import data_analysis.image
 import logic.devices as dvcs
 from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
@@ -490,11 +491,9 @@ class SFCSImageMeasurement(Measurement):
             # if not manually stopped
             # prepare data
             counts = np.array(self.counter_dvc.ci_buffer, dtype=np.int)
-            p = PhotonData()
-            p.convert_counts_to_images(
+            self.plane_images_data = data_analysis.image.convert_counts_to_images(
                 counts, self.ao_buffer, helper.namespace_to_dict(self.scan_params), self.um_v_ratio
             )
-            self.plane_images_data = p.image_data
 
             # save data
             self.save_data(self.prep_data_dict(), self.build_filename())
@@ -585,8 +584,7 @@ class SFCSSolutionMeasurement(Measurement):
             s.after_pulse_param = self.sys_info["after_pulse_param"]
             s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
             s.data.append(p)
-            s.correlate_regular_data()
-            s.average_correlation()
+            s.correlate_and_average()
             return s
 
         if self.repeat is True:
