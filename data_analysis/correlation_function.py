@@ -730,15 +730,15 @@ class CorrFuncTDC(CorrFuncData):
         if pick_calib_bins_method == "auto":
             # pick data at more than 20ns delay from maximum
             j = np.where(j >= (calib_time_s * self.fpga_freq_hz + 2))[0]
-            Jcalib = j_shift[j]
-            Xcalib = x[Jcalib]
+            j_calib = j_shift[j]
+            x_calib = x[j_calib]
         elif pick_calib_bins_method == "forced":
-            Xcalib = calibration_coarse_bins
+            x_calib = calibration_coarse_bins
         elif (
             pick_calib_bins_method == "by example"
             or pick_calib_bins_method == "External calibration"
         ):
-            Xcalib = exmpl_photon_data.tdc_calib["bins"]
+            x_calib = exmpl_photon_data.tdc_calib["bins"]
         #         case 'interactive'
         #         semilogy(x, HJshift(1, :), '-o'); figure(gcf)
 
@@ -746,8 +746,8 @@ class CorrFuncTDC(CorrFuncData):
         #         figure(gcf)
         #         pause;
         #         J = InAxes;
-        #         Jcalib = HJshift(2, J);
-        #         Xcalib = x(Jcalib);
+        #         j_calib = HJshift(2, J);
+        #         x_calib = x(j_calib);
 
         else:
             raise NotImplementedError(
@@ -764,14 +764,14 @@ class CorrFuncTDC(CorrFuncData):
         else:
             fig, axs = plt.subplots(2, 2)
             axs[0, 0].semilogy(
-                x_all, h_all, "-o", x, h, "-o", x(np.isin(x, Xcalib)), h(np.isin(x, Xcalib)), "-o"
+                x_all, h_all, "-o", x, h, "-o", x(np.isin(x, x_calib)), h(np.isin(x, x_calib)), "-o"
             )
             plt.legend(["all hist", "valid bins", "calibration bins"], "Location", "SouthEast")
             plt.show()
 
-            self.tdc_calib["coarse_bins"] = Xcalib
+            self.tdc_calib["coarse_bins"] = x_calib
 
-            fine_calib = fine[np.isin(coarse, Xcalib)]
+            fine_calib = fine[np.isin(coarse, x_calib)]
 
             self.tdc_calib["fine_bins"] = np.arange(tdc_chain_length)
             # x_tdc_calib_nonzero, h_tdc_calib_nonzero = np.unique(fine_calib, return_counts=True) #histogram check also np.bincount
@@ -803,9 +803,8 @@ class CorrFuncTDC(CorrFuncData):
             self.tdc_calib["r_quarter_tdc"] = r_quarter_tdc
 
             # plot(x_tdc_calib, h_tdc_calib, [left_tdc+9 right_tdc+1], [0 0], 'o'); figure(gcf)
-            h_tdc_calib[
-                :left_tdc
-            ] = 0  # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
+            # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
+            h_tdc_calib[:left_tdc] = 0
             h_tdc_calib[right_tdc:] = 0
 
             # h_tdc_calib = circshift(h_tdc_calib, [0 fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
