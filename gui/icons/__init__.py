@@ -3,6 +3,7 @@
 import glob
 import os
 import subprocess
+from contextlib import suppress
 
 from utilities.helper import write_list_to_file
 
@@ -48,5 +49,6 @@ def gen_icon_paths_dict(dir_path="./gui/icons", filetype="png"):
 
 
 # Create resource (.qrc) file
-gen_icons_resource_file()
+with suppress(FileNotFoundError):
+    gen_icons_resource_file()
 icon_paths_dict = gen_icon_paths_dict()
