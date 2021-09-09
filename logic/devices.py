@@ -18,6 +18,7 @@ from gui.icons import icon_paths_dict
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
+from utilities.widget_collections import QtWidgetCollection
 
 # TODO: refactoring - toggling should be seperate from opening/closing connection with device.
 # this would make redundent many flag arguments I have in dvc_toggle(), device_toggle_button_released(), toggle() etc.
@@ -753,7 +754,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 class DeviceAttrs:
     class_name: str
     log_ref: str
-    param_widgets: helper.QtWidgetCollection
+    param_widgets: QtWidgetCollection
     led_color: str = "green"
     cls_xtra_args: List[str] = None
 
@@ -763,7 +764,7 @@ DEVICE_ATTR_DICT = {
         class_name="SimpleDO",
         log_ref="Excitation Laser",
         led_color="blue",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledExc", "QIcon", "main", True),
             switch_widget=("excOnButton", "QIcon", "main", True),
             model=("excMod", "QLineEdit", "settings", False),
@@ -776,7 +777,7 @@ DEVICE_ATTR_DICT = {
     "dep_shutter": DeviceAttrs(
         class_name="SimpleDO",
         log_ref="Shutter",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledShutter", "QIcon", "main", True),
             switch_widget=("depShutterOn", "QIcon", "main", True),
             address=("depShutterAddr", "QLineEdit", "settings", False),
@@ -785,7 +786,7 @@ DEVICE_ATTR_DICT = {
     "TDC": DeviceAttrs(
         class_name="SimpleDO",
         log_ref="TDC",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledTdc", "QIcon", "main", True),
             address=("TDCaddress", "QLineEdit", "settings", False),
             data_vrsn=("TDCdataVersion", "QLineEdit", "settings", False),
@@ -798,7 +799,7 @@ DEVICE_ATTR_DICT = {
         class_name="DepletionLaser",
         log_ref="Depletion Laser",
         led_color="orange",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledDep", "QIcon", "main", True),
             switch_widget=("depEmissionOn", "QIcon", "main", True),
             model_query=("depModelQuery", "QLineEdit", "settings", False),
@@ -807,7 +808,7 @@ DEVICE_ATTR_DICT = {
     "stage": DeviceAttrs(
         class_name="StepperStage",
         log_ref="Stage",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledStage", "QIcon", "main", True),
             switch_widget=("stageOn", "QIcon", "main", True),
             address=("arduinoAddr", "QLineEdit", "settings", False),
@@ -816,7 +817,7 @@ DEVICE_ATTR_DICT = {
     "UM232H": DeviceAttrs(
         class_name="UM232H",
         log_ref="UM232H",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledUm232h", "QIcon", "main", True),
             bit_mode=("um232BitMode", "QLineEdit", "settings", False),
             timeout_ms=("um232Timeout", "QSpinBox", "settings", False),
@@ -830,7 +831,7 @@ DEVICE_ATTR_DICT = {
         class_name="Camera",
         cls_xtra_args=["loop", "gui.camera"],
         log_ref="Camera",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledCam", "QIcon", "main", True),
             model=("uc480PlaceHolder", "QSpinBox", "settings", False),
         ),
@@ -838,7 +839,7 @@ DEVICE_ATTR_DICT = {
     "scanners": DeviceAttrs(
         class_name="Scanners",
         log_ref="Scanners",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledScn", "QIcon", "main", True),
             ao_x_init_vltg=("xAOV", "QDoubleSpinBox", "main", False),
             ao_y_init_vltg=("yAOV", "QDoubleSpinBox", "main", False),
@@ -867,7 +868,7 @@ DEVICE_ATTR_DICT = {
         class_name="PhotonDetector",
         cls_xtra_args=["devices.scanners.tasks.ai"],
         log_ref="Photon Detector",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledCounter", "QIcon", "main", True),
             pxl_clk=("counterPixelClockAddress", "QLineEdit", "settings", False),
             pxl_clk_output=("pixelClockCounterIntOutputAddress", "QLineEdit", "settings", False),
@@ -887,7 +888,7 @@ DEVICE_ATTR_DICT = {
     "pixel_clock": DeviceAttrs(
         class_name="PixelClock",
         log_ref="Pixel Clock",
-        param_widgets=helper.QtWidgetCollection(
+        param_widgets=QtWidgetCollection(
             led_widget=("ledPxlClk", "QIcon", "main", True),
             low_ticks=("pixelClockLowTicks", "QSpinBox", "settings", False),
             high_ticks=("pixelClockHighTicks", "QSpinBox", "settings", False),

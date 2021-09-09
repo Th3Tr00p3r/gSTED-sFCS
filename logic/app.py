@@ -67,7 +67,7 @@ class App:
         [
             val.hold_objects(app=self)
             for val in wdgt_colls.__dict__.values()
-            if isinstance(val, helper.QtWidgetCollection)
+            if isinstance(val, wdgt_colls.QtWidgetCollection)
         ]
 
         # create neccessary data folders based on settings paths
@@ -160,7 +160,7 @@ class App:
             param_dict["nick"] = nick
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
-            param_dict["error_display"] = helper.QtWidgetAccess(
+            param_dict["error_display"] = wdgt_colls.QtWidgetAccess(
                 "deviceErrorDisplay", "QLineEdit", "main", True
             ).hold_obj(self.gui.main)
 

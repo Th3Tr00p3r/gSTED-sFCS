@@ -1,6 +1,139 @@
 """ Widget Collections """
 
-from utilities.helper import QtWidgetCollection
+from __future__ import annotations
+
+from types import SimpleNamespace
+from typing import Union
+
+
+class QtWidgetAccess:
+    """Doc."""
+
+    def __init__(self, obj_name: str, widget_class: str, gui_parent_name: str, does_hold_obj: bool):
+        self.obj_name = obj_name
+        self.getter, self.setter, _ = getter_setter_type_dict.get(widget_class, (None,) * 3)
+        self.gui_parent_name = gui_parent_name
+        self.does_hold_obj = does_hold_obj
+
+    def hold_obj(self, parent_gui) -> QtWidgetAccess:
+        """Save the actual widget object as an attribute"""
+
+        if self.does_hold_obj:
+            self.obj = getattr(parent_gui, self.obj_name)
+        return self
+
+    def get(self, parent_gui=None) -> Union[int, float, str]:
+        """Get widget value"""
+
+        if self.getter is not None:
+            wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
+            return getattr(wdgt, self.getter)()
+        else:
+            return None
+
+    def set(self, arg, parent_gui=None) -> None:
+        """Set widget property"""
+
+        wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
+        getattr(wdgt, self.setter)(arg)
+
+
+class QtWidgetCollection:
+    """Doc."""
+
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            setattr(self, key, QtWidgetAccess(*val))
+
+    def hold_objects(self, app) -> QtWidgetCollection:
+        """Stores the actual GUI object in all widgets (for which does_hold_obj is True)."""
+
+        for wdgt in vars(self).values():
+            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+            wdgt.hold_obj(parent_gui)
+
+        return self
+
+    def write_to_gui(self, app, new_vals) -> None:
+        """
+        Fill widget collection with values from dict/list, or a single value for all.
+        if new_vals is a list, the values will be inserted in the order of vars(self).keys().
+        """
+
+        if isinstance(new_vals, list):
+            new_vals = dict(zip(vars(self).keys(), new_vals))
+
+        if isinstance(new_vals, dict):
+            for attr_name, val in new_vals.items():
+                wdgt = getattr(self, attr_name)
+                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                wdgt.set(val, parent_gui)
+        else:
+            for wdgt in vars(self).values():
+                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                wdgt.set(new_vals, parent_gui)
+
+    def read_dict_from_gui(self, app) -> dict:
+        """
+        Read values from QtWidgetAccess objects, which are the attributes of self and return a dict.
+        If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
+        QtWidgetAccess object itself instead of the value (for getting/setting live values)
+        """
+
+        wdgt_val_dict = {}
+        for attr_name, wdgt in vars(self).items():
+            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+            if hasattr(wdgt, "obj"):
+                wdgt_val_dict[attr_name] = wdgt
+            else:
+                wdgt_val_dict[attr_name] = wdgt.get(parent_gui)
+        return wdgt_val_dict
+
+    def read_namespace_from_gui(self, app) -> SimpleNamespace:
+        """
+        Same as 'read_dict_from_gui' but returns an object
+        instead of a dictionary.
+        """
+
+        wdgt_val_ns = SimpleNamespace()
+        for attr_name, wdgt in vars(self).items():
+            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+            if hasattr(wdgt, "obj"):
+                setattr(wdgt_val_ns, attr_name, wdgt)
+            else:
+                setattr(wdgt_val_ns, attr_name, wdgt.get(parent_gui))
+        return wdgt_val_ns
+
+
+def bool_str(str_: str):
+    """A strict bool() for strings"""
+
+    if str_ == "True":
+        return True
+    elif str_ == "False":
+        return False
+    else:
+        raise ValueError(f"'{str_}' is neither 'True' nor 'False'.")
+
+
+# What to do with each widget class
+getter_setter_type_dict = {
+    "QLabel": ("text", "setText", str),
+    "QComboBox": ("currentText", "setCurrentText", str),
+    "QTabWidget": ("currentIndex", "setCurrentIndex", int),
+    "QCheckBox": ("isChecked", "setChecked", bool_str),
+    "QRadioButton": ("isChecked", "setChecked", bool_str),
+    "QSlider": ("value", "setValue", int),
+    "QSpinBox": ("value", "setValue", int),
+    "QDoubleSpinBox": ("value", "setValue", float),
+    "QLineEdit": ("text", "setText", str),
+    "QPlainTextEdit": ("toPlainText", "setPlainText", str),
+    "QButtonGroup": ("checkedButton", None, None),
+    "QTimeEdit": ("time", "setTime", None),
+    "QIcon": ("icon", "setIcon", None),
+    "QStackedWidget": ("currentIndex", "setCurrentIndex", int),
+    "QToolBox": ("currentIndex", "setCurrentIndex", int),
+}
 
 # ------------------------------
 # Devices
