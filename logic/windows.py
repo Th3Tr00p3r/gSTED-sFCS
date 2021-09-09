@@ -278,13 +278,9 @@ class MainWin:
                 if meas_type == "SFCSSolution":
                     pattern = self._gui.solScanType.currentText()
                     if pattern == "angular":
-                        scan_params = wdgt_colls.sol_ang_scan_wdgts.read_namespace_from_gui(
-                            self._app
-                        )
+                        scan_params = wdgt_colls.sol_ang_scan_wdgts.read_gui(self._app)
                     elif pattern == "circle":
-                        scan_params = wdgt_colls.sol_circ_scan_wdgts.read_namespace_from_gui(
-                            self._app
-                        )
+                        scan_params = wdgt_colls.sol_circ_scan_wdgts.read_gui(self._app)
                     elif pattern == "static":
                         scan_params = SimpleNamespace()
 
@@ -294,7 +290,7 @@ class MainWin:
                         app=self._app,
                         scan_params=scan_params,
                         laser_mode=laser_mode.lower(),
-                        **wdgt_colls.sol_meas_wdgts.read_dict_from_gui(self._app),
+                        **wdgt_colls.sol_meas_wdgts.read_gui(self._app, "dict"),
                     )
 
                     self._gui.startSolScanExc.setEnabled(False)
@@ -313,9 +309,9 @@ class MainWin:
                 elif meas_type == "SFCSImage":
                     self._app.meas = meas.SFCSImageMeasurement(
                         app=self._app,
-                        scan_params=wdgt_colls.img_scan_wdgts.read_namespace_from_gui(self._app),
+                        scan_params=wdgt_colls.img_scan_wdgts.read_gui(self._app),
                         laser_mode=laser_mode.lower(),
-                        **wdgt_colls.img_meas_wdgts.read_dict_from_gui(self._app),
+                        **wdgt_colls.img_meas_wdgts.read_gui(self._app, "dict"),
                     )
 
                     self._gui.startImgScanExc.setEnabled(False)
@@ -377,7 +373,7 @@ class MainWin:
             plt_wdgt = self._gui.solScanPattern
 
         if scan_params_coll:
-            scan_params = scan_params_coll.read_namespace_from_gui(self._app)
+            scan_params = scan_params_coll.read_gui(self._app)
 
             with suppress(AttributeError, ZeroDivisionError, ValueError):
                 # AttributeError - devices not yet initialized
@@ -505,7 +501,6 @@ class MainWin:
     def disp_plane_img(self, plane_idx, auto_cross=False):
         """Doc."""
 
-        # TODO: replace this with Gaussian fit (2D)
         def auto_crosshair_position(image: np.ndarray) -> Tuple[float, float]:
             """
             Beam co-alignment aid. Attempts to fit a 2D Gaussian to an image and returns the fitted center.
@@ -550,24 +545,23 @@ class MainWin:
                     #                    print(f"x0 ({x0:.1f}) and y0 ({y0:.1f}) are OUTSIDE image boundaries. using COM") # TESTESTEST
                     return helper.center_of_mass(image)
 
-        disp_mthd = self._gui.imgShowMethod.currentText()
+        wdgts = wdgt_colls.img_meas_wdgts.read_gui(self._app)
+        disp_mthd = wdgts.image_method
         with suppress(AttributeError):
             # No last_img_scn yet
             image_data = self._app.last_img_scn.plane_images_data
             image = self.build_image(image_data, disp_mthd, plane_idx)
             self._app.last_img_scn.last_img = image.T
-            self._gui.imgScanPlot.display_image(image.T, cursor=True, cmap="bone")
-            self._gui.scaleImgScan.setValue(
-                0
-            )  # TODO: use widget collections (search and destroy '_gui')
+            wdgts.image_wdgt.obj.display_image(image.T, cursor=True, cmap="bone")
+            wdgts.scale_image.set(0)
             if auto_cross:
-                self._gui.imgScanPlot.ax.cursor.move_to_pos(auto_crosshair_position(image))
+                wdgts.image_wdgt.obj.ax.cursor.move_to_pos(auto_crosshair_position(image))
 
     def plane_choice_changed(self, plane_idx):
         """Doc."""
 
         with suppress(AttributeError):
-            # no scan performed since app init
+            # AttributeError - no scan performed since app init
             self._app.meas.plane_shown.set(plane_idx)
             self.disp_plane_img(plane_idx)
 
@@ -633,11 +627,11 @@ class MainWin:
         templates_combobox = data_import_wdgts.data_templates.obj
 
         if is_image_type:
-            save_path = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            save_path = wdgt_colls.img_meas_wdgts.read_gui(self._app).save_path
             data_import_wdgts.import_stacked.set(0)
             sub_dir = "image"
         elif is_solution_type:
-            save_path = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app).save_path
+            save_path = wdgt_colls.sol_meas_wdgts.read_gui(self._app).save_path
             data_import_wdgts.import_stacked.set(1)
             sub_dir = "solution"
 
@@ -666,9 +660,9 @@ class MainWin:
         months_combobox = data_import_wdgts.data_months.obj
 
         if is_image_type:
-            meas_sett = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app)
+            meas_sett = wdgt_colls.img_meas_wdgts.read_gui(self._app)
         elif is_solution_type:
-            meas_sett = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app)
+            meas_sett = wdgt_colls.sol_meas_wdgts.read_gui(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -694,9 +688,9 @@ class MainWin:
         days_combobox = data_import_wdgts.data_days.obj
 
         if is_image_type:
-            meas_sett = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app)
+            meas_sett = wdgt_colls.img_meas_wdgts.read_gui(self._app)
         elif is_solution_type:
-            meas_sett = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app)
+            meas_sett = wdgt_colls.sol_meas_wdgts.read_gui(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -859,9 +853,9 @@ class MainWin:
         month = import_wdgts.data_months.get()
 
         if is_image_type:
-            meas_settings = wdgt_colls.img_meas_wdgts.read_namespace_from_gui(self._app)
+            meas_settings = wdgt_colls.img_meas_wdgts.read_gui(self._app)
         elif is_solution_type:
-            meas_settings = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self._app)
+            meas_settings = wdgt_colls.sol_meas_wdgts.read_gui(self._app)
         save_path = meas_settings.save_path
         sub_dir = meas_settings.sub_dir_name
         return os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir)
@@ -1105,7 +1099,7 @@ class MainWin:
 
                 scan_settings_text = "\n\n".join(
                     [
-                        f"{key}: {(val[:5] if isinstance(val, Iterable) else val)}"
+                        f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
                         for key, val in full_data.angular_scan_settings.items()
                     ]
                 )
