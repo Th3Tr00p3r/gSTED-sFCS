@@ -3,7 +3,6 @@
 import glob
 import os
 import subprocess
-from contextlib import suppress
 
 from utilities.helper import write_list_to_file
 
@@ -30,10 +29,7 @@ def gen_icons_resource_file():
     try:
         subprocess.run(pyrcc5_command, check=True, shell=True)
     except subprocess.CalledProcessError:
-        print(f"Unable to generate '{destination_path}' - older file will be used.", end=" ")
-
-
-#    os.system(pyrcc5_command)
+        print(f"Unable to generate '{destination_path}' - existing file will be used.", end=" ")
 
 
 def gen_icon_paths_dict(dir_path="./gui/icons", filetype="png"):
@@ -48,7 +44,5 @@ def gen_icon_paths_dict(dir_path="./gui/icons", filetype="png"):
     return icon_paths_dict
 
 
-# Create resource (.qrc) file
-with suppress(FileNotFoundError):
-    gen_icons_resource_file()
+gen_icons_resource_file()  # Create resource (.qrc) file
 icon_paths_dict = gen_icon_paths_dict()
