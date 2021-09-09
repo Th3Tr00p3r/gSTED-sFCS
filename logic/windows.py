@@ -18,10 +18,9 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 import data_analysis.image
 import logic.devices as dvcs
 import logic.measurements as meas
-from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from logic.scan_patterns import ScanPatternAO
-from utilities import display, file_utilities, helper
+from utilities import display, file_utilities, fit_tools, helper
 from utilities import widget_collections as wdgt_colls
 from utilities.dialog import Error, Notification, Question
 from utilities.errors import DeviceError, err_hndlr
@@ -458,10 +457,7 @@ class MainWin:
             except (ZeroDivisionError, IndexError) as exc:
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
 
-            pos = self._gui.imgScanPlot.ax.cursor.pos
-            self._gui.imgScanPlot.display_image(
-                image, cursor=True, init_cursor_pos=pos, cmap="bone"
-            )
+            self._gui.imgScanPlot.display_image(image, cursor=True, cmap="bone")
 
     def build_image(self, img_data, method, plane_idx):
         """Doc."""
@@ -512,30 +508,47 @@ class MainWin:
         # TODO: replace this with Gaussian fit (2D)
         def auto_crosshair_position(image: np.ndarray) -> Tuple[float, float]:
             """
-            Gets the current image, calculates its weighted mean
-            location and returns the position to which to move the crosshair.
-            (later perhaps using gaussian fit?)
+            Beam co-alignment aid. Attempts to fit a 2D Gaussian to an image and returns the fitted center.
+            If the fit fails, or if the fitted Gaussian is centered outside the image limits, it instead
+            returns the center of mass.
             """
 
-            # Use some good-old heuristic thresholding
-            n, bin_edges = np.histogram(image.ravel())
-            T = 1
-            for i in range(1, len(n)):
-                if n[i] <= n.max() * 0.1:
-                    if n[i + 1] >= n[i] * 10:
-                        continue
-                    else:
-                        T = i
-                        break
-                else:
-                    continue
-            thresh = (bin_edges[T] - bin_edges[T - 1]) / 2
-            image[image < thresh] = 0
+            #            # Use some good-old heuristic thresholding
+            #            n, bin_edges = np.histogram(image.ravel())
+            #            T = 1
+            #            for i in range(1, len(n)):
+            #                if n[i] <= n.max() * 0.1:
+            #                    if n[i + 1] >= n[i] * 10:
+            #                        continue
+            #                    else:
+            #                        T = i
+            #                        break
+            #                else:
+            #                    continue
+            #            thresh = (bin_edges[T] - bin_edges[T - 1]) / 2
+            #            image[image < thresh] = 0
 
-            # calculate the weighted mean
-            x = 1 / image.sum() * np.dot(np.arange(image.shape[1]), image.sum(axis=0))
-            y = 1 / image.sum() * np.dot(np.arange(image.shape[0]), image.sum(axis=1))
-            return (x, y)
+            try:
+                fit_param = fit_tools.fit_2d_gaussian(image)
+
+            except fit_tools.FitError:
+                #                print("Gaussian fit failed, using COM") # TESTESTEST
+                return helper.center_of_mass(image)
+
+            else:
+                _, x0, y0, sigma_x, sigma_y, *_ = fit_param["beta"]
+                height, width = image.shape
+                if (
+                    (0 < x0 < width)
+                    and (0 < y0 < height)
+                    and (sigma_x < width)
+                    and (sigma_y < height)
+                ):
+                    #                    print(f"x0 ({x0:.1f}) and y0 ({y0:.1f}) are within image boundaries. Good!") # TESTESTEST
+                    return (x0, y0)
+                else:
+                    #                    print(f"x0 ({x0:.1f}) and y0 ({y0:.1f}) are OUTSIDE image boundaries. using COM") # TESTESTEST
+                    return helper.center_of_mass(image)
 
         disp_mthd = self._gui.imgShowMethod.currentText()
         with suppress(AttributeError):
@@ -1177,7 +1190,7 @@ class MainWin:
             else:  # fit succeeded
                 fit_params = full_data.fit_param["diffusion_3d_fit"]
                 g0, tau, _ = fit_params["beta"]
-                fit_func = getattr(fit_tools, fit_params["fit_func"])
+                fit_func = getattr(fit_tools, fit_params["func_name"])
                 wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
                 wdgts.mean_tau.set(tau * 1e3)
                 y_fit = fit_func(fit_params["x"], *fit_params["beta"])
