@@ -1204,6 +1204,7 @@ class MainWin:
         data_type, *_ = re.split(" -", template)
         self._app.analysis.loaded_data[data_type] = None
         imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
+        # TODO: clear image properties!
 
     def convert_files_to_matlab_format(self) -> None:
         """

@@ -283,8 +283,6 @@ def auto_brightness_and_contrast(image: np.ndarray, clip_hist_percent=0) -> np.n
         if (bin_counts > 0).sum() >= (bin_counts.size / 2):
             break
 
-    print(f"n_bins: {n_bins}")  # TESTESTEST
-
     # Calculate histogram
     # hist definition to match 'hist = cv2.calcHist([gray],[0],None,[256],[0,256])',
     # derived from https://stackoverflow.com/questions/25013732/comparing-rgb-histograms-plt-hist-np-histogram-and-cv2-comparehist
