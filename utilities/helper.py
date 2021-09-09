@@ -8,6 +8,7 @@ import re
 import time
 from typing import Callable, List
 
+import numpy as np
 import PyQt5.QtWidgets as QtWidgets
 from PyQt5.QtGui import QIcon
 
@@ -57,6 +58,15 @@ def timer(threshold: float = 0) -> Callable:
         return wrapper
 
     return outer_wrapper
+
+
+def center_of_mass(img_2d: np.ndarray) -> tuple:
+    """Returns the center of mass of a 2D image"""
+
+    height, width = img_2d.shape
+    x = 1 / img_2d.sum() * np.dot(np.arange(width), img_2d.sum(axis=0))
+    y = 1 / img_2d.sum() * np.dot(np.arange(height), img_2d.sum(axis=1))
+    return (x, y)
 
 
 def paths_to_icons(paths_dict) -> dict:

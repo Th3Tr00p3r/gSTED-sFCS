@@ -17,12 +17,11 @@ import numpy as np
 
 import data_analysis.image
 import logic.devices as dvcs
-from data_analysis import fit_tools
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.photon_data import PhotonData
 from gui.icons import icon_paths_dict
 from logic.scan_patterns import ScanPatternAO
-from utilities import errors, helper
+from utilities import errors, fit_tools, helper
 
 
 class Measurement:
@@ -610,7 +609,7 @@ class SFCSSolutionMeasurement(Measurement):
                     fit_params = s.fit_param["diffusion_3d_fit"]
                     g0, tau, _ = fit_params["beta"]
                     x, y = fit_params["x"], fit_params["y"]
-                    fit_func = getattr(fit_tools, fit_params["fit_func"])
+                    fit_func = getattr(fit_tools, fit_params["func_name"])
                     self.g0_wdgt.set(g0)
                     self.tau_wdgt.set(tau * 1e3)
                     self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0)

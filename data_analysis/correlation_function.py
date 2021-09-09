@@ -10,10 +10,9 @@ from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
-from data_analysis import fit_tools
 from data_analysis.photon_data import PhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities import display, file_utilities, helper
+from utilities import display, file_utilities, fit_tools, helper
 
 
 class CorrFuncData:
@@ -133,7 +132,7 @@ class CorrFuncData:
         if not hasattr(self, "fit_param"):
             self.fit_param = dict()
 
-        self.fit_param[FP["fit_func"]] = FP
+        self.fit_param[FP["func_name"]] = FP
 
 
 class CorrFuncTDC(CorrFuncData):

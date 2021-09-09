@@ -52,9 +52,7 @@ class Display:
         with self._show_internal_ax(clear=True, show_axis=False) as ax:
             ax.plot(x, y, "k", lw=0.3)
 
-    def display_image(
-        self, image: np.ndarray, axis=True, cursor=False, init_cursor_pos=(0, 0), *args, **kwargs
-    ):
+    def display_image(self, image: np.ndarray, axis=True, cursor=False, *args, **kwargs):
         """Doc."""
 
         with self._show_internal_ax(
@@ -63,7 +61,6 @@ class Display:
             show_axis=False,
             scroll_zoom=True,
             cursor=cursor,
-            init_cursor_pos=init_cursor_pos,
         ) as ax:
             ax.imshow(image, *args, **kwargs)
 
@@ -105,9 +102,13 @@ class Display:
         show_axis=None,
         scroll_zoom=False,
         cursor=False,
-        init_cursor_pos=(0, 0),
     ):
         """Doc."""
+
+        try:
+            last_pos = self.ax.cursor.pos
+        except AttributeError:
+            last_pos = (0, 0)
 
         if clear:
             self.figure.clear()
@@ -125,7 +126,7 @@ class Display:
                 ax.org_dims = tuple(abs(lim[1] - lim[0]) for lim in ax.org_lims)
                 ax.zoom_func = zoom_factory(ax)
             if cursor:
-                ax.cursor = cursor_factory(ax, init_cursor_pos)
+                ax.cursor = cursor_factory(ax, last_pos)
             if show_axis is not None:
                 ax.axis(show_axis)
             self.ax = ax
@@ -176,20 +177,20 @@ def cursor_factory(ax, init_cursor_pos):
             # text location in axes coordinates
             self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes)
 
-        def set_cross_hair_visible(self, visible):
+        def _set_crosshair_visible(self, visible):
             need_redraw = self.horizontal_line.get_visible() != visible
             self.horizontal_line.set_visible(visible)
             self.vertical_line.set_visible(visible)
             self.text.set_visible(visible)
             return need_redraw
 
-        def on_mouse_release(self, event):
+        def _on_mouse_release(self, event):
             if not event.inaxes:
-                need_redraw = self.set_cross_hair_visible(False)
+                need_redraw = self._set_crosshair_visible(False)
                 if need_redraw:
                     self.ax.figure.canvas.draw()
             else:
-                self.set_cross_hair_visible(True)
+                self._set_crosshair_visible(True)
                 self.move_to_pos((event.xdata, event.ydata))
 
         def move_to_pos(self, pos):
@@ -204,7 +205,7 @@ def cursor_factory(ax, init_cursor_pos):
             self.pos = pos
 
     cursor = Cursor(ax)
-    ax.figure.canvas.mpl_connect("button_release_event", cursor.on_mouse_release)
+    ax.figure.canvas.mpl_connect("button_release_event", cursor._on_mouse_release)
     return cursor
 
 
@@ -267,7 +268,7 @@ def auto_brightness_and_contrast(image: np.ndarray, clip_hist_percent=0) -> np.n
     https://stackoverflow.com/questions/56905592/automatic-contrast-and-brightness-adjustment-of-a-color-photo-of-a-sheet-of-pape
     """
 
-    def convertScale(image: np.ndarray, alpha: float, beta: float) -> np.ndarray:
+    def convert_scale(image: np.ndarray, alpha: float, beta: float) -> np.ndarray:
         new_img = image * alpha + beta
         new_img[new_img < 0] = 0
         new_img[new_img > 255] = 255
@@ -282,14 +283,13 @@ def auto_brightness_and_contrast(image: np.ndarray, clip_hist_percent=0) -> np.n
         if (bin_counts > 0).sum() >= (bin_counts.size / 2):
             break
 
-    #    print(f"n_bins: {n_bins}") # TESTESTEST
+    print(f"n_bins: {n_bins}")  # TESTESTEST
 
     # Calculate histogram
     # hist definition to match 'hist = cv2.calcHist([gray],[0],None,[256],[0,256])',
     # derived from https://stackoverflow.com/questions/25013732/comparing-rgb-histograms-plt-hist-np-histogram-and-cv2-comparehist
-    bin_counts, _ = np.histogram(image, bins=n_bins)
     hist = bin_counts.ravel().astype(float)
-    hist_size = len(hist)
+    hist_size = n_bins
 
     # Calculate cumulative distribution from the histogram
     accumulator = []
@@ -317,7 +317,7 @@ def auto_brightness_and_contrast(image: np.ndarray, clip_hist_percent=0) -> np.n
     beta = -minimum_gray * alpha
 
     #    print(f"alpha: {alpha:.1f}\nbeta: {beta:.1f}\n") # TESTESTEST
-    return convertScale(image, alpha=alpha, beta=beta)
+    return convert_scale(image, alpha=alpha, beta=beta)
 
 
 def force_aspect(ax, aspect=1) -> None:
