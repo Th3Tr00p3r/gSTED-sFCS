@@ -92,7 +92,7 @@ class App:
 
         # init scan patterns
         self.gui.main.imp.disp_scn_pttrn("image")
-        sol_pattern = wdgt_colls.sol_meas_wdgts.read_namespace_from_gui(self).scan_type
+        sol_pattern = wdgt_colls.sol_meas_wdgts.read_gui(self).scan_type
         self.gui.main.imp.disp_scn_pttrn(sol_pattern)
 
         # init existing data folders (solution by default)
@@ -156,7 +156,7 @@ class App:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
             print(f"        Initializing {dvc_attrs.log_ref}...")
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
-            param_dict = dvc_attrs.param_widgets.hold_objects(app=self).read_dict_from_gui(self)
+            param_dict = dvc_attrs.param_widgets.hold_objects(app=self).read_gui(self, "dict")
             param_dict["nick"] = nick
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]

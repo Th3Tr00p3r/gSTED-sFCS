@@ -73,36 +73,29 @@ class QtWidgetCollection:
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(new_vals, parent_gui)
 
-    def read_dict_from_gui(self, app) -> dict:
+    def read_gui(self, app_obj, out="namespace") -> SimpleNamespace:
         """
-        Read values from QtWidgetAccess objects, which are the attributes of self and return a dict.
+        Read values from QtWidgetAccess objects, which are the attributes of self and return a namespace.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
-        QtWidgetAccess object itself instead of the value (for getting/setting live values)
+        QtWidgetAccess object itself instead of the value (for getting/setting live values).
         """
 
-        wdgt_val_dict = {}
+        wdgt_val = SimpleNamespace()
         for attr_name, wdgt in vars(self).items():
-            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+            parent_gui = getattr(app_obj.gui, wdgt.gui_parent_name)
             if hasattr(wdgt, "obj"):
-                wdgt_val_dict[attr_name] = wdgt
+                setattr(wdgt_val, attr_name, wdgt)
             else:
-                wdgt_val_dict[attr_name] = wdgt.get(parent_gui)
-        return wdgt_val_dict
+                setattr(wdgt_val, attr_name, wdgt.get(parent_gui))
 
-    def read_namespace_from_gui(self, app) -> SimpleNamespace:
-        """
-        Same as 'read_dict_from_gui' but returns an object
-        instead of a dictionary.
-        """
-
-        wdgt_val_ns = SimpleNamespace()
-        for attr_name, wdgt in vars(self).items():
-            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-            if hasattr(wdgt, "obj"):
-                setattr(wdgt_val_ns, attr_name, wdgt)
-            else:
-                setattr(wdgt_val_ns, attr_name, wdgt.get(parent_gui))
-        return wdgt_val_ns
+        if out == "namespace":
+            return wdgt_val
+        elif out == "dict":
+            return vars(wdgt_val).copy()
+        else:
+            raise ValueError(
+                f"Keyword argument 'out' ({out}) accepts either 'namespace' or 'dict'."
+            )
 
 
 def bool_str(str_: str):
@@ -133,6 +126,7 @@ getter_setter_type_dict = {
     "QIcon": ("icon", "setIcon", None),
     "QStackedWidget": ("currentIndex", "setCurrentIndex", int),
     "QToolBox": ("currentIndex", "setCurrentIndex", int),
+    "QDial": {"value", "setValue", int},
 }
 
 # ------------------------------
@@ -274,4 +268,6 @@ img_meas_wdgts = QtWidgetCollection(
     plane_choice=("numPlaneShownChoice", "QSlider", "main", True),
     image_wdgt=("imgScanPlot", None, "main", True),
     pattern_wdgt=("imgScanPattern", None, "main", True),
+    scale_image=("scaleImgScan", "QDial", "main", True),
+    image_method=("imgShowMethod", "QComboBox", "main", False),
 )
