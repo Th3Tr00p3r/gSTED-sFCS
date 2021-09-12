@@ -226,7 +226,7 @@ class App:
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
         if restart:
-            # restarting
+            logging.info("Restarting application.")
 
             if self.gui.camera is not None:
                 self.gui.camera.close()
@@ -240,21 +240,19 @@ class App:
 
             self.gui.main.deviceErrorDisplay.setText("")
 
-            # finish current timeout loop
-            self.timeout_loop.not_finished = False
+            self.timeout_loop.not_finished = False  # finish current timeout loop
 
             lights_out(self.gui.main)
             self.gui.main.depActualCurr.setValue(0)
             self.gui.main.depActualPow.setValue(0)
             self.gui.main.imp.load(self.DEFAULT_LOADOUT_FILE_PATH)
-            #            self.gui.settings.imp.load(DEFAULT_SETTINGS_FILE_PATH)
 
+            print("Initializing Devices:")
             self.init_devices()
+            print("        Done.")
 
             # restart timeout loop
             self.timeout_loop = Timeout(self)
-
-            logging.info("Restarting application.")
 
         else:  # exiting
             self.timeout_loop.not_finished = False
