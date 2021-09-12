@@ -126,7 +126,7 @@ getter_setter_type_dict = {
     "QIcon": ("icon", "setIcon", None),
     "QStackedWidget": ("currentIndex", "setCurrentIndex", int),
     "QToolBox": ("currentIndex", "setCurrentIndex", int),
-    "QDial": {"value", "setValue", int},
+    "QDial": ("value", "setValue", int),
 }
 
 # ------------------------------
