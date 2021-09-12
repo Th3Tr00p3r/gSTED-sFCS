@@ -238,11 +238,11 @@ class CorrFuncTDC(CorrFuncData):
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         angular_scan_settings = full_data["angular_scan_settings"]
-        linear_part = angular_scan_settings["linear_part"].astype(np.int32, copy=False)
+        linear_part = np.array(angular_scan_settings["linear_part"], dtype=np.int32)
         self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
         sample_freq_hz = angular_scan_settings["sample_freq_hz"]
-        ppl_tot = angular_scan_settings["points_per_line_total"]
-        n_lines = angular_scan_settings["n_lines"]
+        ppl_tot = int(angular_scan_settings["points_per_line_total"])
+        n_lines = int(angular_scan_settings["n_lines"])
 
         print("Converting angular scan to image...", end=" ")
 
@@ -619,9 +619,8 @@ class CorrFuncTDC(CorrFuncData):
 
                 if len(self.lag) < len(cf.lag):
                     self.lag = cf.lag
+                    # TODO: ask Oleg - isn't it always "multi_exponent_fit"?
                     if self.after_pulse_param[0] == "multi_exponent_fit":
-                        # work with any number of exponents
-                        # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
                         beta = self.after_pulse_param[1]
                         self.after_pulse = np.dot(
                             beta[::2], np.exp(-np.outer(beta[1::2], self.lag))

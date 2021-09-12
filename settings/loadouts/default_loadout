@@ -1,12 +1,7 @@
-imgScanFileTemplate,img
 solScanFileTemplate,
 newTemplate,
 solImportFileSelectionPattern,1
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,1
+imgScanFileTemplate,img
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -20,36 +15,41 @@ maxScanFreq,40
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
 spinBox,40
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,1
 depPow,130
 depCurr,1500
 stageSteps,250
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,10.0
-imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solScanDur,20.0
 solAnalysisRemoveOverSpinner,2.0
 doubleSpinBox,0.0
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,10.0
+imgScanLinFrac,0.9
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,0.0
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - actual counts per pixel
 solMeasPreset,Standard Alignment
 solScanType,static
 solScanDurUnits,seconds
-dataMonth,8
+dataMonth,9
 dataYear,2021
-dataDay,15
-dataTemplate,testestest_angular_exc_174909_*.pkl
+dataDay,12
+dataTemplate,mat_174909_*.mat
 solImportUseDontUse,Use
 importedSolDataTemplates,
 comboBox,
-solAnalysisLifetime,Lifetime
+solAnalysisLifetime,
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - actual counts per pixel
 avgInterval,200
 solScanParamsStacked,2
 importStacked,1
@@ -72,10 +72,10 @@ posAxisZ,False
 posAxisY,False
 posAxisX,True
 numPlaneShownChoice,1
-tabWidget,2
+tabWidget,0
 tabWidget_2,2
-autoCrosshair,True
 solDataExtPlot,False
 solDataFixShift,True
 solImportUsePreProcessed,True
+autoCrosshair,True
 toolBox,0
