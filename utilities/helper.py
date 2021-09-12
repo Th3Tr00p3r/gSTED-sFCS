@@ -19,7 +19,7 @@ from utilities.widget_collections import getter_setter_type_dict
 # print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
 
 
-def timer(threshold: float = 0) -> Callable:
+def timer(threshold_ms: int = 0) -> Callable:
     """
     Meant to be used as a decorator (@helper.timer(threshold))
     for quickly setting up function timing for testing.
@@ -39,8 +39,10 @@ def timer(threshold: float = 0) -> Callable:
                 value = await func(*args, **kwargs)
                 toc = time.perf_counter()
                 elapsed_time_ms = (toc - tic) * 1e3
-                if elapsed_time_ms > threshold:
-                    print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
+                if elapsed_time_ms > threshold_ms:
+                    print(
+                        f"{func.__name__}() took {elapsed_time_ms:.2f} ms ({threshold_ms:d} ms threshold)"
+                    )
                 return value
 
         else:
@@ -51,8 +53,10 @@ def timer(threshold: float = 0) -> Callable:
                 value = func(*args, **kwargs)
                 toc = time.perf_counter()
                 elapsed_time_ms = (toc - tic) * 1e3
-                if elapsed_time_ms > threshold:
-                    print(f"{func.__name__}() took {elapsed_time_ms:0.4f} ms")
+                if elapsed_time_ms > threshold_ms:
+                    print(
+                        f"{func.__name__}() took {elapsed_time_ms:.2f} ms ({threshold_ms:d} ms threshold)"
+                    )
                 return value
 
         return wrapper

@@ -24,7 +24,7 @@ class Display:
         """Doc."""
 
         self.figure.clear()
-        self.canvas.draw()
+        self.canvas.draw_idle()
 
     def entitle_and_label(self, x_label: str = "", y_label: str = "", title: str = ""):
         """Doc"""
@@ -44,7 +44,7 @@ class Display:
             self.ax = self.figure.add_subplot(111)
             self.ax.plot(x, y, *args, **kwargs)
         finally:
-            self.canvas.draw()
+            self.canvas.draw_idle()
 
     def display_pattern(self, x, y):
         """Doc."""
@@ -130,7 +130,7 @@ class Display:
             if show_axis is not None:
                 ax.axis(show_axis)
             self.ax = ax
-            self.canvas.draw()
+            self.canvas.draw_idle()
 
     @contextmanager
     def show_external_ax(self):
@@ -184,11 +184,11 @@ def cursor_factory(ax, init_cursor_pos):
             self.text.set_visible(visible)
             return need_redraw
 
-        def _on_mouse_release(self, event):
+        def _on_mouse_press(self, event):
             if not event.inaxes:
                 need_redraw = self._set_crosshair_visible(False)
                 if need_redraw:
-                    self.ax.figure.canvas.draw()
+                    self.ax.figure.canvas.draw_idle()
             else:
                 self._set_crosshair_visible(True)
                 self.move_to_pos((event.xdata, event.ydata))
@@ -201,11 +201,11 @@ def cursor_factory(ax, init_cursor_pos):
             self.horizontal_line.set_ydata(y)
             self.vertical_line.set_xdata(x)
             #                self.text.set_text('x=%1.2f, y=%1.2f' % (x, y))
-            self.ax.figure.canvas.draw()
+            self.ax.figure.canvas.draw_idle()
             self.pos = pos
 
     cursor = Cursor(ax)
-    ax.figure.canvas.mpl_connect("button_release_event", cursor._on_mouse_release)
+    ax.figure.canvas.mpl_connect("button_press_event", cursor._on_mouse_press)
     return cursor
 
 
@@ -228,8 +228,12 @@ def zoom_factory(ax, base_scale=1.5):
         ymouse = event.ydata  # get event y location
         cur_xcentre = (cur_xlim[1] + cur_xlim[0]) * 0.5
         cur_ycentre = (cur_ylim[1] + cur_ylim[0]) * 0.5
-        xdata = cur_xcentre + 0.25 * (xmouse - cur_xcentre)
-        ydata = cur_ycentre + 0.25 * (ymouse - cur_ycentre)
+        try:
+            xdata = cur_xcentre + 0.25 * (xmouse - cur_xcentre)
+            ydata = cur_ycentre + 0.25 * (ymouse - cur_ycentre)
+        except TypeError:
+            # scrolling outside of image results in None
+            return
         if event.button == "up":
             # deal with zoom in
             scale_factor = 1 / base_scale
