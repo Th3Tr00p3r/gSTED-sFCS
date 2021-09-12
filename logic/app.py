@@ -249,7 +249,7 @@ class App:
 
             print("Initializing Devices:")
             self.init_devices()
-            print("        Done.")
+            print("Done.")
 
             # restart timeout loop
             self.timeout_loop = Timeout(self)
