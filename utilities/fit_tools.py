@@ -54,7 +54,7 @@ def curve_fit_lims(
         plt.plot(xs[in_lims], fit_func(xs[in_lims], *fit_param["beta"]), zorder=10)
         plt.xscale(x_scale)
         plt.yscale(y_scale)
-        plt.gcf().canvas.draw()
+        plt.gcf().canvas.draw_idle()
         plt.autoscale()
         plt.show()
 
