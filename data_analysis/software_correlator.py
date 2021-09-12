@@ -74,6 +74,9 @@ class SoftwareCorrelator:
     ):
         """Doc."""
 
+        if sys.platform == "darwin":  # should fix operation for mac users
+            photon_array = photon_array.astype(np.int64)
+
         if len(photon_array.shape) == 1:
             n_entries = photon_array.size
         else:

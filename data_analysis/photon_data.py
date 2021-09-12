@@ -73,7 +73,7 @@ class PhotonData:
         # some fix due to an issue in FPGA
         if self.version >= 3:
             self.coarse = np.mod(coarse, 64)
-            self.coarse2 = coarse - np.mod(coarse, 4) + (coarse // 64)
+            self.coarse2 = self.coarse - np.mod(self.coarse, 4) + (coarse // 64)
         else:
             self.coarse = coarse
 
