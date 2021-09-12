@@ -15,10 +15,10 @@ from typing import List, Tuple
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 
-import data_analysis.image
 import logic.devices as dvcs
 import logic.measurements as meas
 from data_analysis.correlation_function import CorrFuncTDC
+from data_analysis.image import ImageScanData
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
 from utilities import widget_collections as wdgt_colls
@@ -455,51 +455,19 @@ class MainWin:
 
             self._gui.imgScanPlot.display_image(image, cursor=True, cmap="bone")
 
-    def build_image(self, img_data, method, plane_idx):
-        """Doc."""
-
-        if method == "Forward scan - actual counts per pixel":
-            return img_data.image_forward[:, :, plane_idx]
-
-        elif method == "Forward scan - points per pixel":
-            return img_data.norm_forward[:, :, plane_idx]
-
-        elif method == "Forward scan - normalized":
-            return img_data.image_forward[:, :, plane_idx] / img_data.norm_forward[:, :, plane_idx]
-
-        elif method == "Backwards scan - actual counts per pixel":
-            return img_data.image_backward[:, :, plane_idx]
-
-        elif method == "Backwards scan - points per pixel":
-            return img_data.norm_backward[:, :, plane_idx]
-
-        elif method == "Backwards scan - normalized":
-            return (
-                img_data.image_backward[:, :, plane_idx] / img_data.norm_backward[:, :, plane_idx]
-            )
-
-        elif method == "Both scans - interlaced":
-            p1_norm = (
-                img_data.image_forward[:, :, plane_idx] / img_data.norm_forward[:, :, plane_idx]
-            )
-            p2_norm = (
-                img_data.image_backward[:, :, plane_idx] / img_data.norm_backward[:, :, plane_idx]
-            )
-            n_lines = p1_norm.shape[0] + p2_norm.shape[0]
-            p = np.zeros(p1_norm.shape)
-            p[:n_lines:2, :] = p1_norm[:n_lines:2, :]
-            p[1:n_lines:2, :] = p2_norm[1:n_lines:2, :]
-            return p
-
-        elif method == "Both scans - averaged":
-            p1 = img_data.image_forward[:, :, plane_idx]
-            p2 = img_data.image_backward[:, :, plane_idx]
-            norm1 = img_data.norm_forward[:, :, plane_idx]
-            norm2 = img_data.norm_backward[:, :, plane_idx]
-            return (p1 + p2) / (norm1 + norm2)
-
     def disp_plane_img(self, plane_idx, auto_cross=False):
         """Doc."""
+
+        method_dict = {
+            "Forward scan - actual counts per pixel": "forward",
+            "Forward scan - points per pixel": "forward normalization",
+            "Forward scan - normalized": "forward normalized",
+            "Backwards scan - actual counts per pixel": "backward",
+            "Backwards scan - points per pixel": "backward normalization",
+            "Backwards scan - normalized": "backward normalized",
+            "Both scans - interlaced": "interlaced",
+            "Both scans - averaged": "averaged",
+        }
 
         def auto_crosshair_position(image: np.ndarray) -> Tuple[float, float]:
             """
@@ -550,7 +518,7 @@ class MainWin:
         with suppress(AttributeError):
             # No last_img_scn yet
             image_data = self._app.last_img_scn.plane_images_data
-            image = self.build_image(image_data, disp_mthd, plane_idx)
+            image = image_data.build_image(method_dict[disp_mthd], plane_idx)
             self._app.last_img_scn.last_img = image.T
             wdgts.image_wdgt.obj.display_image(image.T, cursor=True, cmap="bone")
             wdgts.scale_image.set(0)
@@ -985,12 +953,8 @@ class MainWin:
             ao = file_dict["ao"]
             scan_param = file_dict["scan_param"]
             um_v_ratio = file_dict["xyz_um_to_v"]
-            image_data = data_analysis.image.convert_counts_to_images(
-                counts, ao, scan_param, um_v_ratio
-            )
-            image = self.build_image(
-                image_data, "Forward scan - actual counts per pixel", scan_param["n_planes"] // 2
-            )
+            image_data = ImageScanData(counts, ao, scan_param, um_v_ratio)
+            image = image_data.build_image("forward", scan_param["n_planes"] // 2)
             # plot it (below)
             wdgts.img_preview_disp.obj.display_image(image.T, axis=False, cmap="bone")
 
