@@ -16,8 +16,8 @@ class ImageScanData:
             """Doc."""
 
             n_lines, _, n_planes = counts_stack.shape
-            image_stack = np.empty((n_lines, pxls_per_line, n_planes))
-            norm_stack = np.empty((n_lines, pxls_per_line, n_planes))
+            image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+            norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
 
             for i in range(pxls_per_line):
                 image_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].sum(axis=1)
