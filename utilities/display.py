@@ -6,6 +6,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+from skimage.exposure import rescale_intensity
+from skimage.filters import threshold_yen
 
 
 class Display:
@@ -29,7 +31,7 @@ class Display:
     def entitle_and_label(self, x_label: str = "", y_label: str = "", title: str = ""):
         """Doc"""
 
-        with self._show_internal_ax() as ax:
+        with self._show_internal_ax(clear=False) as ax:
             if title:
                 ax.set_title(title)
             ax.set_xlabel(x_label)
@@ -49,14 +51,13 @@ class Display:
     def display_pattern(self, x, y):
         """Doc."""
 
-        with self._show_internal_ax(clear=True, show_axis=False) as ax:
+        with self._show_internal_ax(show_axis=False) as ax:
             ax.plot(x, y, "k", lw=0.3)
 
     def display_image(self, image: np.ndarray, axis=True, cursor=False, *args, **kwargs):
         """Doc."""
 
         with self._show_internal_ax(
-            clear=True,
             fix_aspect=True,
             show_axis=False,
             scroll_zoom=True,
@@ -71,7 +72,7 @@ class Display:
 
         x, x_type = x
 
-        with self._show_internal_ax(clear=True) as ax:
+        with self._show_internal_ax() as ax:
             if x_type == "lag":
                 ax.set_xscale("log")
                 ax.set_xlim(1e-4, 1e1)
@@ -97,7 +98,7 @@ class Display:
     @contextmanager
     def _show_internal_ax(
         self,
-        clear=False,
+        clear=True,
         fix_aspect=False,
         show_axis=None,
         scroll_zoom=False,
@@ -266,60 +267,14 @@ def zoom_factory(ax, base_scale=1.5):
     return zoom_fun
 
 
-def auto_brightness_and_contrast(image: np.ndarray, clip_hist_percent=0) -> np.ndarray:
+def auto_brightness_and_contrast(image: np.ndarray, percent_factor=300) -> np.ndarray:
     """
     See:
     https://stackoverflow.com/questions/56905592/automatic-contrast-and-brightness-adjustment-of-a-color-photo-of-a-sheet-of-pape
     """
 
-    def convert_scale(image: np.ndarray, alpha: float, beta: float) -> np.ndarray:
-        new_img = image * alpha + beta
-        new_img[new_img < 0] = 0
-        new_img[new_img > 255] = 255
-        return new_img.astype(np.uint8)
-
-    if clip_hist_percent == 0:
-        return image
-
-    # Estimate the best number of bins to use - choose 'n_bins' such that at least half have a single count in them
-    for n_bins in reversed(range(10, 256)):
-        bin_counts, _ = np.histogram(image, bins=n_bins)
-        if (bin_counts > 0).sum() >= (bin_counts.size / 2):
-            break
-
-    # Calculate histogram
-    # hist definition to match 'hist = cv2.calcHist([gray],[0],None,[256],[0,256])',
-    # derived from https://stackoverflow.com/questions/25013732/comparing-rgb-histograms-plt-hist-np-histogram-and-cv2-comparehist
-    hist = bin_counts.ravel().astype(float)
-    hist_size = n_bins
-
-    # Calculate cumulative distribution from the histogram
-    accumulator = []
-    accumulator.append(float(hist[0]))
-    for index in range(1, hist_size):
-        accumulator.append(accumulator[index - 1] + float(hist[index]))
-
-    # Locate points to clip
-    maximum = accumulator[-1]
-    clip_hist_percent *= maximum / 100.0
-    clip_hist_percent /= 2.0
-
-    # Locate left cut
-    minimum_gray = 0
-    while accumulator[minimum_gray] < clip_hist_percent:
-        minimum_gray += 1
-
-    # Locate right cut
-    maximum_gray = hist_size - 1
-    while accumulator[maximum_gray] >= (maximum - clip_hist_percent):
-        maximum_gray -= 1
-
-    # Calculate alpha and beta values
-    alpha = 255 / (maximum_gray - minimum_gray)
-    beta = -minimum_gray * alpha
-
-    #    print(f"alpha: {alpha:.1f}\nbeta: {beta:.1f}\n") # TESTESTEST
-    return convert_scale(image, alpha=alpha, beta=beta)
+    yen_threshold = threshold_yen(image) * percent_factor / 100
+    return rescale_intensity(image, (0, yen_threshold), (0, image.max()))
 
 
 def force_aspect(ax, aspect=1) -> None:

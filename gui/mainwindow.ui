@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -1637,8 +1637,23 @@ to Scan</string>
                          <height>50</height>
                         </size>
                        </property>
+                       <property name="minimum">
+                        <number>1</number>
+                       </property>
                        <property name="maximum">
-                        <number>99</number>
+                        <number>300</number>
+                       </property>
+                       <property name="value">
+                        <number>1</number>
+                       </property>
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="invertedAppearance">
+                        <bool>true</bool>
+                       </property>
+                       <property name="invertedControls">
+                        <bool>false</bool>
                        </property>
                        <property name="wrapping">
                         <bool>false</bool>
@@ -5714,8 +5729,8 @@ Mean ACF</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>166</width>
-                                    <height>242</height>
+                                    <width>159</width>
+                                    <height>222</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -5936,8 +5951,8 @@ Sample</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>166</width>
-                                    <height>242</height>
+                                    <width>160</width>
+                                    <height>70</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -6020,8 +6035,8 @@ Over (ns)</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>166</width>
-                                    <height>242</height>
+                                    <width>116</width>
+                                    <height>67</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -6071,7 +6086,7 @@ Get Parameters</string>
                                     <x>0</x>
                                     <y>0</y>
                                     <width>166</width>
-                                    <height>242</height>
+                                    <height>133</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
