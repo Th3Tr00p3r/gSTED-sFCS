@@ -442,14 +442,14 @@ class MainWin:
 
             logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} moved to ROI ({vltgs})")
 
-    def auto_scale_image(self, clip_hist_percent: int):
+    def auto_scale_image(self, percent_factor: int):
         """Doc."""
 
         with suppress(AttributeError):
             # AttributeError - no last image yet
             image = self._app.last_img_scn.last_img
             try:
-                image = display.auto_brightness_and_contrast(image, clip_hist_percent)
+                image = display.auto_brightness_and_contrast(image, percent_factor)
             except (ZeroDivisionError, IndexError) as exc:
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
 
@@ -521,7 +521,6 @@ class MainWin:
             image = image_data.build_image(method_dict[disp_mthd], plane_idx)
             self._app.last_img_scn.last_img = image.T
             wdgts.image_wdgt.obj.display_image(image.T, cursor=True, cmap="bone")
-            wdgts.scale_image.set(0)
             if auto_cross:
                 wdgts.image_wdgt.obj.ax.cursor.move_to_pos(auto_crosshair_position(image))
 

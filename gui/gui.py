@@ -269,10 +269,10 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.imp.roi_to_scan()
 
     @PyQt5.QtCore.pyqtSlot(int)
-    def on_scaleImgScan_valueChanged(self, clip_hist_percent) -> None:
+    def on_scaleImgScan_valueChanged(self, percent_factor: int) -> None:
         """Doc."""
 
-        self.imp.auto_scale_image(clip_hist_percent)
+        self.imp.auto_scale_image(percent_factor)
 
     @PyQt5.QtCore.pyqtSlot(int)
     def on_imgShowMethod_currentIndexChanged(self) -> None:

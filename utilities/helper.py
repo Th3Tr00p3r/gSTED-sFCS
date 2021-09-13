@@ -93,6 +93,7 @@ def wdgt_items_to_text_lines(parent_wdgt) -> List[str]:
         "QTabWidget",
         "QCheckBox",
         "QToolBox",
+        "QDial",
     ]
     children_class_lists = [
         parent_wdgt.findChildren(getattr(QtWidgets, wdgt_type)) for wdgt_type in wdgt_types
