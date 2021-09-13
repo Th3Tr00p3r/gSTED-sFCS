@@ -4,7 +4,7 @@ import glob
 import os
 import pickle
 import re
-from collections.abc import Iterable
+from contextlib import suppress
 from typing import List, Set
 
 import numpy as np
@@ -166,9 +166,13 @@ def load_file_dict(file_path: str):
         print("'system_info' is missing, using defaults...", end=" ")
         file_dict["system_info"] = default_system_info
     else:
-        if not isinstance(file_dict["system_info"]["after_pulse_param"], Iterable):
-            file_dict["system_info"]["after_pulse_param"] = default_system_info["after_pulse_param"]
-            print("'after_pulse_param' is outdated, using defaults...", end=" ")
+        with suppress(KeyError):
+            if not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
+                file_dict["system_info"]["after_pulse_param"] = (
+                    "multi_exponent_fit",
+                    file_dict["system_info"]["after_pulse_param"],
+                )
+                # TODO: check somehow that this is indeed meant foor "multi_exponent_fit"? ask Oleg.
 
     return file_dict
 
