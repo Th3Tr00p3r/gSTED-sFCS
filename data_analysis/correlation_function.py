@@ -345,6 +345,7 @@ class CorrFuncTDC(CorrFuncData):
         sorted_idxs = np.argsort(runtime)
         p.runtime = runtime[sorted_idxs]
         if p.runtime.max() < 2 ** 32:
+            # TODO: should this test be made beforehand, in photon_data.py?
             p.runtime = p.runtime.astype(np.int32)
         else:
             print("p.runtime has some large values - keeping as int64.")
@@ -358,22 +359,22 @@ class CorrFuncTDC(CorrFuncData):
         # TODO: Ask Oleg - will nan's be needed in TDC analysis?
         p.coarse = np.hstack(
             (
-                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int8),
-                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int8),
+                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int16),
+                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int16),
                 p.coarse,
             )
         )[sorted_idxs]
         p.coarse2 = np.hstack(
             (
-                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int8),
-                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int8),
+                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int16),
+                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int16),
                 p.coarse2,
             )
         )[sorted_idxs]
         p.fine = np.hstack(
             (
-                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int8),
-                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int8),
+                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int16),
+                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int16),
                 p.fine,
             )
         )[sorted_idxs]
@@ -497,9 +498,7 @@ class CorrFuncTDC(CorrFuncData):
 
                 n_splits = helper.div_ceil(segment_time, run_duration)
                 splits = np.linspace(0, (se_end - se_start), n_splits + 1, dtype=np.int32)
-                ts = time_stamps[se_start:se_end].astype(
-                    np.int64
-                )  # changes Oleg from np.int32 to np.int64
+                ts = time_stamps[se_start:se_end]
 
                 for k in range(n_splits):
 
@@ -564,7 +563,7 @@ class CorrFuncTDC(CorrFuncData):
         for p in self.data:
             print(f"({p.file_num})", end=" ")
 
-            time_stamps = np.diff(p.runtime).astype(np.int32)
+            time_stamps = np.diff(p.runtime)
             line_num = p.line_num
             min_line, max_line = line_num[line_num > 0].min(), line_num.max()
             for line_idx, j in enumerate(range(min_line, max_line + 1)):
@@ -676,9 +675,8 @@ class CorrFuncTDC(CorrFuncData):
 
         n_elem = np.cumsum(n_elem)
         # unite coarse and fine times from all files
-        # float16 is used to be able to hold NaNs at minimum size cost (would otherwise use uint8)
-        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int8)
-        fine = np.empty(shape=(n_elem[-1],), dtype=np.int8)
+        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+        fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
         for i, p in enumerate(self.data):
             coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
             fine[n_elem[i] : n_elem[i + 1]] = p.fine
