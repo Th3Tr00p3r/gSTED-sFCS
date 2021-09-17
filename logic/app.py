@@ -58,9 +58,9 @@ class App:
         print("Initializing GUI...", end=" ")
         self.gui = SimpleNamespace()
         self.gui.main = gui.gui.MainWin(self)
-        self.gui.main.imp.load(self.DEFAULT_LOADOUT_FILE_PATH)
+        self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
         self.gui.settings = gui.gui.SettWin(self)
-        self.gui.settings.imp.load(self.default_settings_path())
+        self.gui.settings.impl.load(self.default_settings_path())
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
         # populate all widget collections in 'utilities.widget_collections' with objects
@@ -91,13 +91,13 @@ class App:
         ]
 
         # init scan patterns
-        self.gui.main.imp.disp_scn_pttrn("image")
+        self.gui.main.impl.disp_scn_pttrn("image")
         sol_pattern = wdgt_colls.sol_meas_wdgts.read_gui(self).scan_type
-        self.gui.main.imp.disp_scn_pttrn(sol_pattern)
+        self.gui.main.impl.disp_scn_pttrn(sol_pattern)
 
         # init existing data folders (solution by default)
         self.gui.main.solDataImport.setChecked(True)
-        self.gui.main.imp.populate_all_data_dates()
+        self.gui.main.impl.populate_all_data_dates()
 
         # show the GUI
         self.gui.main.show()
@@ -232,7 +232,7 @@ class App:
                 self.gui.camera.close()
 
             if self.meas.type is not None:
-                await self.gui.main.imp.toggle_meas(
+                await self.gui.main.impl.toggle_meas(
                     self.meas.type, self.meas.laser_mode.capitalize()
                 )
 
@@ -245,7 +245,7 @@ class App:
             lights_out(self.gui.main)
             self.gui.main.depActualCurr.setValue(0)
             self.gui.main.depActualPow.setValue(0)
-            self.gui.main.imp.load(self.DEFAULT_LOADOUT_FILE_PATH)
+            self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
 
             print("Initializing Devices:")
             self.init_devices()
@@ -258,7 +258,7 @@ class App:
             self.timeout_loop.not_finished = False
 
             if self.meas.type is not None:
-                await self.gui.main.imp.toggle_meas(
+                await self.gui.main.impl.toggle_meas(
                     self.meas.type, self.meas.laser_mode.capitalize()
                 )
 
