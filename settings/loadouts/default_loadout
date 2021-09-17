@@ -20,8 +20,8 @@ imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
-depCurr,1500
 depPow,130
+depCurr,1500
 stageSteps,250
 solAnalysisRemoveOverSpinner,2.0
 doubleSpinBox,0.0
@@ -54,7 +54,7 @@ avgInterval,200
 importStacked,1
 analysisStacked_2,1
 solScanParamsStacked,2
-depModeStacked,1
+depModeStacked,0
 imageDataImport,False
 solDataImport,True
 solImportUseAll,True
@@ -66,8 +66,8 @@ solAveragingPlotSpatial,False
 regularSolMeas,False
 repeatSolMeas,True
 finalSolMeas,False
-currMode,False
-powMode,True
+currMode,True
+powMode,False
 posAxisZ,False
 posAxisY,False
 posAxisX,True

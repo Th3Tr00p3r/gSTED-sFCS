@@ -76,21 +76,21 @@ class Measurement:
         # turn off devices and return to starting position if scanning
         with suppress(errors.DeviceError, MeasurementError):
             await self.toggle_lasers(finish=True)
-            self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
+            self._app.gui.main.impl.dvc_toggle("TDC", leave_off=True)
 
             if self.scanning:
                 self.return_to_regular_tasks()
-                self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_off=True)
+                self._app.gui.main.impl.dvc_toggle("pixel_clock", leave_off=True)
 
                 if self.type == "SFCSSolution":
-                    self._app.gui.main.imp.go_to_origin("XY")
+                    self._app.gui.main.impl.go_to_origin("XY")
                 elif self.type == "SFCSImage":
-                    self._app.gui.main.imp.move_scanners(destination=self.scan_params.initial_ao)
+                    self._app.gui.main.impl.move_scanners(destination=self.scan_params.initial_ao)
 
         self.is_running = False
-        await self._app.gui.main.imp.toggle_meas(self.type, self.laser_mode.capitalize())
+        await self._app.gui.main.impl.toggle_meas(self.type, self.laser_mode.capitalize())
         self.prog_bar_wdgt.set(0)
-        self._app.gui.main.imp.populate_all_data_dates()  # refresh saved measurements
+        self._app.gui.main.impl.populate_all_data_dates()  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
 
     async def record_data(self, timed: bool = False, size_limited: bool = False):
@@ -100,7 +100,7 @@ class Measurement:
         return the time it took (seconds).
         """
 
-        self._app.gui.main.imp.dvc_toggle("TDC", leave_on=True)
+        self._app.gui.main.impl.dvc_toggle("TDC", leave_on=True)
 
         if timed:
             # Solution
@@ -130,7 +130,7 @@ class Measurement:
                 )
 
         await self.data_dvc.read_TDC()  # read leftovers
-        self._app.gui.main.imp.dvc_toggle("TDC", leave_off=True)
+        self._app.gui.main.impl.dvc_toggle("TDC", leave_off=True)
 
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
@@ -191,28 +191,28 @@ class Measurement:
         if finish:
             # measurement finishing
             if self.laser_mode == "exc":
-                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
+                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "dep":
-                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
+                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "sted":
-                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
-                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
+                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_off=True)
+                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_off=True)
         else:
             # measurement begins
             if self.laser_mode == "exc":
                 # turn excitation ON and depletion shutter OFF
-                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
-                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_off=True)
+                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_on=True)
+                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "dep":
                 await self.prep_dep() if not self.laser_dvcs.dep.emission_state else None
                 # turn depletion shutter ON and excitation OFF
-                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
-                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_off=True)
+                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_on=True)
+                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "sted":
                 await self.prep_dep() if not self.laser_dvcs.dep.emission_state else None
                 # turn both depletion shutter and excitation ON
-                self._app.gui.main.imp.dvc_toggle("exc_laser", leave_on=True)
-                self._app.gui.main.imp.dvc_toggle("dep_shutter", leave_on=True)
+                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_on=True)
+                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_on=True)
 
             if current_emission_state() != self.laser_mode:
                 # cancel measurement if relevant lasers are not ON,
@@ -223,7 +223,7 @@ class Measurement:
     async def prep_dep(self):
         """Doc."""
 
-        toggle_succeeded = self._app.gui.main.imp.dvc_toggle(
+        toggle_succeeded = self._app.gui.main.impl.dvc_toggle(
             "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
         )
         if toggle_succeeded:
@@ -432,7 +432,7 @@ class SFCSImageMeasurement(Measurement):
             await self.toggle_lasers()
             self.data_dvc.init_data()
             self.data_dvc.purge_buffers()
-            self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
+            self._app.gui.main.impl.dvc_toggle("pixel_clock", leave_on=True)
             self.scanners_dvc.init_ai_buffer(type="inf")
             self.counter_dvc.init_ci_buffer(type="inf")
 
@@ -503,7 +503,7 @@ class SFCSImageMeasurement(Measurement):
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
             should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "exc")
-            self._app.gui.main.imp.disp_plane_img(mid_plane, auto_cross=should_display_autocross)
+            self._app.gui.main.impl.disp_plane_img(mid_plane, auto_cross=should_display_autocross)
 
         if self.is_running:  # if not manually before completion
             await self.stop()
@@ -526,7 +526,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
         self.scanning = not (self.scan_params.pattern == "static")
-        self._app.gui.main.imp.go_to_origin("XY")
+        self._app.gui.main.impl.go_to_origin("XY")
 
     def build_filename(self, file_no: int) -> str:
         """Doc."""
@@ -681,7 +681,7 @@ class SFCSSolutionMeasurement(Measurement):
         try:
             if self.scanning:
                 self.setup_scan()
-                self._app.gui.main.imp.dvc_toggle("pixel_clock", leave_on=True)
+                self._app.gui.main.impl.dvc_toggle("pixel_clock", leave_on=True)
                 # make the circular ai buffer clip as long as the ao buffer
                 self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
             else:
