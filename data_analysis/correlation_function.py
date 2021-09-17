@@ -89,8 +89,8 @@ class CorrFuncData:
         plt.plot(x, y, "o")  # skip 0 lag time
         plt.xlabel(x_field)
         plt.ylabel(y_field)
-        plt.gca().set_x_scale(x_scale)
-        plt.gca().set_y_scale(y_scale)
+        plt.gca().set_xscale(x_scale)
+        plt.gca().set_yscale(y_scale)
         plt.show()
 
     def fit_correlation_function(
@@ -132,15 +132,15 @@ class CorrFuncData:
         if not hasattr(self, "fit_param"):
             self.fit_param = dict()
 
-        self.fit_param[FP["func_name"]] = FP
+        self.fit_param[FP["fit_func"]] = FP
 
 
 class CorrFuncTDC(CorrFuncData):
     """Doc."""
 
     def __init__(self):
-        # list to hold the data of each file
-        self.data = []
+        self.data = []  # list to hold the data of each file
+        self.nan_placebo = -100
 
     def read_fpga_data(
         self,
@@ -238,7 +238,7 @@ class CorrFuncTDC(CorrFuncData):
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         angular_scan_settings = full_data["angular_scan_settings"]
-        linear_part = np.array(angular_scan_settings["linear_part"], dtype=np.int32)
+        linear_part = np.array(np.round(angular_scan_settings["linear_part"]), dtype=np.int32)
         self.v_um_ms = angular_scan_settings["actual_speed_um_s"] / 1000
         sample_freq_hz = angular_scan_settings["sample_freq_hz"]
         ppl_tot = int(angular_scan_settings["points_per_line_total"])
@@ -358,22 +358,22 @@ class CorrFuncTDC(CorrFuncData):
         # TODO: Ask Oleg - will nan's be needed in TDC analysis?
         p.coarse = np.hstack(
             (
-                np.full(runtime_line_starts.size, np.nan, dtype=np.float16),
-                np.full(runtime_line_stops.size, np.nan, dtype=np.float16),
+                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int8),
+                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int8),
                 p.coarse,
             )
         )[sorted_idxs]
         p.coarse2 = np.hstack(
             (
-                np.full(runtime_line_starts.size, np.nan, dtype=np.float16),
-                np.full(runtime_line_stops.size, np.nan, dtype=np.float16),
+                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int8),
+                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int8),
                 p.coarse2,
             )
         )[sorted_idxs]
         p.fine = np.hstack(
             (
-                np.full(runtime_line_starts.size, np.nan, dtype=np.float16),
-                np.full(runtime_line_stops.size, np.nan, dtype=np.float16),
+                np.full(runtime_line_starts.size, self.nan_placebo, dtype=np.int8),
+                np.full(runtime_line_stops.size, self.nan_placebo, dtype=np.int8),
                 p.fine,
             )
         )[sorted_idxs]
@@ -497,7 +497,9 @@ class CorrFuncTDC(CorrFuncData):
 
                 n_splits = helper.div_ceil(segment_time, run_duration)
                 splits = np.linspace(0, (se_end - se_start), n_splits + 1, dtype=np.int32)
-                ts = time_stamps[se_start:se_end].astype(np.int32)
+                ts = time_stamps[se_start:se_end].astype(
+                    np.int64
+                )  # changes Oleg from np.int32 to np.int64
 
                 for k in range(n_splits):
 
@@ -619,8 +621,9 @@ class CorrFuncTDC(CorrFuncData):
 
                 if len(self.lag) < len(cf.lag):
                     self.lag = cf.lag
-                    # TODO: ask Oleg - isn't it always "multi_exponent_fit"?
                     if self.after_pulse_param[0] == "multi_exponent_fit":
+                        # work with any number of exponents
+                        # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
                         beta = self.after_pulse_param[1]
                         self.after_pulse = np.dot(
                             beta[::2], np.exp(-np.outer(beta[1::2], self.lag))
@@ -671,15 +674,21 @@ class CorrFuncTDC(CorrFuncData):
         for p in self.data:
             n_elem.append(p.runtime.size)
 
+        n_elem = np.cumsum(n_elem)
         # unite coarse and fine times from all files
         # float16 is used to be able to hold NaNs at minimum size cost (would otherwise use uint8)
-        coarse = np.empty(shape=(sum(n_elem),), dtype=np.float16)
-        fine = np.empty(shape=(sum(n_elem),), dtype=np.float16)
+        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int8)
+        fine = np.empty(shape=(n_elem[-1],), dtype=np.int8)
         for i, p in enumerate(self.data):
             coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
             fine[n_elem[i] : n_elem[i + 1]] = p.fine
 
-        h_all = np.bincount(coarse)
+        if self.type == "angular_scan":
+            phtns = fine > self.nan_placebo  # remove line starts/ends
+            coarse = coarse[phtns]
+            fine = fine[phtns]
+
+        h_all = np.bincount(coarse.astype("int"))
         x_all = np.arange(coarse.max() + 1)
 
         if pick_valid_bins_method == "auto":
@@ -736,7 +745,7 @@ class CorrFuncTDC(CorrFuncData):
             pick_calib_bins_method == "by example"
             or pick_calib_bins_method == "External calibration"
         ):
-            x_calib = exmpl_photon_data.tdc_calib["bins"]
+            x_calib = exmpl_photon_data.tdc_calib["coarse_bins"]
         #         case 'interactive'
         #         semilogy(x, HJshift(1, :), '-o'); figure(gcf)
 
@@ -762,9 +771,9 @@ class CorrFuncTDC(CorrFuncData):
         else:
             fig, axs = plt.subplots(2, 2)
             axs[0, 0].semilogy(
-                x_all, h_all, "-o", x, h, "-o", x(np.isin(x, x_calib)), h(np.isin(x, x_calib)), "-o"
+                x_all, h_all, "-o", x, h, "-o", x[np.isin(x, x_calib)], h[np.isin(x, x_calib)], "-o"
             )
-            plt.legend(["all hist", "valid bins", "calibration bins"], "Location", "SouthEast")
+            plt.legend(["all hist", "valid bins", "calibration bins"], loc="lower right")
             plt.show()
 
             self.tdc_calib["coarse_bins"] = x_calib
@@ -811,55 +820,51 @@ class CorrFuncTDC(CorrFuncData):
             )  # invert and to ns
             # t_calib = circshift(t_calib, [0 -fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
             # h_tdc_calib = circshift(h_tdc_calib, [0 -fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
-            t_calib = np.flip(t_calib)  # avoids sorting further on
+            # t_calib = np.flip(t_calib)  # avoids sorting further on : no, not good
 
             self.tdc_calib["h"] = h_tdc_calib
             self.tdc_calib["t_calib"] = t_calib
 
-            coarse_len = self.tdc_calib["coarse_bins"].size
+            coarse_len = self.coarse["bins"].size
 
             t_weight = np.tile(self.tdc_calib["h"] / np.mean(self.tdc_calib["h"]), coarse_len)
-            t_weight = np.flip(t_weight)
+            # t_weight = np.flip(t_weight)
             coarse_times = (
                 np.tile(np.arange(coarse_len), [t_calib.size, 1]) / self.fpga_freq_hz * 1e9
             )
             delay_times = np.tile(t_calib, coarse_len) + coarse_times.flatten("F")
-            # Js = np.argsort(delay_times) # initially delay times are piece wise inverted. After "flip" in line 323 there should be no need in sorting
-            self.tdc_calib["delay_times"] = delay_times  # [Js]
+            Js = np.argsort(
+                delay_times
+            )  # initially delay times are piece wise inverted. After "flip" in line 323 there should be no need in sorting
+            self.tdc_calib["delay_times"] = delay_times[Js]
 
-            self.tdc_calib["t_weight"] = t_weight  # [Js]
+            self.tdc_calib["t_weight"] = t_weight[Js]
 
             self.tdc_calib["max_j"] = max_j  # added on 14.01.17 for processing by example
 
             axs[0, 1].plot(self.tdc_calib["t_calib"], "-o")
-            plt.legend(["TDC calibration"], "Location", "NorthWest")
+            plt.legend(["TDC calibration"], loc="upper left")
             plt.show()
 
         # assign time delays to all photons
-        self["total_laser_pulses"] = 0
+        self.tdc_calib["total_laser_pulses"] = 0
+        lastCoarseBin = self.coarse["bins"][-1]
         max_j_m1 = max_j - 1
         if max_j_m1 == -1:
-            max_j_m1 = self.tdc_calib["coarse_bins"][-1]
+            max_j_m1 = lastCoarseBin
 
         delay_time = np.ndarray((0,), dtype=np.float64)
         # for i in self['Jgood']:
         for p in self.data:
-            crs = (
-                np.min(p.coarse, self.tdc_calib["coarse_bins"][-1])
-                - self.tdc_calib["coarse_bins"][max_j_m1]
-            )
-            crs[crs < 0] = (
-                crs[crs < 0]
-                + self.tdc_calib["coarse_bins"][-1]
-                - self.tdc_calib["coarse_bins"][0]
-                + 1
-            )
+            p.delay_time = np.ndarray(p.coarse.shape, dtype=np.float64)
+            crs = np.minimum(p.coarse, lastCoarseBin) - self.coarse["bins"][max_j_m1]
+            crs[crs < 0] = crs[crs < 0] + lastCoarseBin - self.coarse["bins"][0] + 1
 
             delta_coarse = p.coarse2 - p.coarse
             delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
 
             # in the TDC midrange use "coarse" counter
-            in_mid_tdc = (p.fine >= l_quarter_tdc) and (p.fine <= r_quarter_tdc)
+            in_mid_tdc = np.logical_and((p.fine >= l_quarter_tdc), (p.fine <= r_quarter_tdc))
             delta_coarse[in_mid_tdc] = 0
 
             # on the right of TDC use "coarse2" counter (no change in delta)
@@ -867,44 +872,143 @@ class CorrFuncTDC(CorrFuncData):
             on_left_tdc = p.fine < l_quarter_tdc
             delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
 
-            phtns = np.logical_not(np.isnan(p.fine))  # nans are starts/ends of lines
+            phtns = p.fine > self.nan_placebo  # self.nan_placebo are starts/ends of lines
             p.delay_time[phtns] = (
                 self.tdc_calib["t_calib"][p.fine[phtns]]
-                + (crs[phtns] + delta_coarse[phtns]) / self.fpga_freq_hz * 1e9
+                + (crs[phtns] + delta_coarse[phtns]).astype(np.float16) / self.fpga_freq_hz * 1e9
             )
-            self["total_laser_pulses"] = self["total_laser_pulses"] + p.runtime[-1]
-            p.delay_time[np.isnan(p.fine)] = np.nan  # line ends/starts
+            self.tdc_calib["total_laser_pulses"] = (
+                self.tdc_calib["total_laser_pulses"] + p.runtime[-1]
+            )
+            p.delay_time[np.logical_not(phtns)] = np.nan  # line ends/starts
 
-            delay_time = np.append(p.delay_time)
+            delay_time = np.append(delay_time, p.delay_time[phtns])
 
-        self.tdc_calib["t_hist"] = np.arange(
-            0, np.max(delay_time) + time_bins_for_hist_ns, time_bins_for_hist_ns
+        bin_edges = np.arange(
+            -time_bins_for_hist_ns / 2,
+            np.max(delay_time) + time_bins_for_hist_ns,
+            time_bins_for_hist_ns,
         )
-        bin_edges = np.append(
-            -time_bins_for_hist_ns / 2, (self.tdc_calib["t_hist"] + time_bins_for_hist_ns / 2)
-        )
+
+        self.tdc_calib["t_hist"] = (bin_edges[:-1] + bin_edges[1:]) / 2
         k = np.digitize(self.tdc_calib["delay_times"], bin_edges)  # starts from 1
 
-        self.tdc_calib["hist_weight"] = np.array((0, 1), dtype=np.float64)
-        for i in range(len(self.tdc_calib["t_calib"])):
+        self.tdc_calib["hist_weight"] = np.ndarray(self.tdc_calib["t_hist"].shape, dtype=np.float64)
+        for i in range(len(self.tdc_calib["t_hist"])):
             j = k == (i + 1)
             self.tdc_calib["hist_weight"][i] = np.sum(self.tdc_calib["t_weight"][j])
 
-        self.tdc_calib["all_hist"] = np.histogram(delay_time, bins=bin_edges)
-        self.tdc_calib["all_hist_norm"] = (
-            self.tdc_calib["all_hist"]
-            / self.tdc_calib["hist_weight"]
+        self.tdc_calib["all_hist"] = np.histogram(delay_time, bins=bin_edges)[0]
+        self.tdc_calib["all_hist_norm"] = np.ndarray(
+            self.tdc_calib["all_hist"].shape, dtype=np.float64
+        )
+        self.tdc_calib["error_all_hist_norm"] = np.ndarray(
+            self.tdc_calib["all_hist"].shape, dtype=np.float64
+        )
+        nonzero = self.tdc_calib["hist_weight"] > 0
+        self.tdc_calib["all_hist_norm"][nonzero] = (
+            self.tdc_calib["all_hist"][nonzero]
+            / self.tdc_calib["hist_weight"][nonzero]
             / self.tdc_calib["total_laser_pulses"]
         )
-        self.tdc_calib["error_all_hist_norm"] = (
-            np.sqrt(self.tdc_calib["all_hist"])
-            / self.tdc_calib["hist_weight"]
+        self.tdc_calib["error_all_hist_norm"][nonzero] = (
+            np.sqrt(self.tdc_calib["all_hist"][nonzero])
+            / self.tdc_calib["hist_weight"][nonzero]
             / self.tdc_calib["total_laser_pulses"]
         )
 
-        axs[1, 1].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
-        plt.legend(["Photon lifetime histogram"], "Location", "NorthEast")
+        self.tdc_calib["all_hist_norm"][np.logical_not(nonzero)] = np.nan
+        self.tdc_calib["error_all_hist_norm"][np.logical_not(nonzero)] = np.nan
+
+        axs[1, 0].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
+        plt.legend(["Photon lifetime histogram"], loc="upper right")
         plt.show()
+
+    def compare_lifetimes(
+        self,
+        normalization_type="Per Time",
+        legend_label="",
+        **kwargs  # dictionary, where keys are to be used as legends and values are objects that are
+        # supposed to have their own compare_lifetimes method. But there can be other key/value
+        # pairs related e.g. to plot fonts.
+    ):
+
+        # Possible normalization types: 'NO', 'Per Time'
+        if normalization_type == "NO":
+            H = self.tdc_calib["all_hist"] / self.tdc_calib["t_weight"]
+        elif normalization_type == "Per Time":
+            H = self.tdc_calib["all_hist_norm"]
+        elif normalization_type == "By Sum":
+            H = self.tdc_calib["all_hist_norm"] / np.sum(
+                self.tdc_calib["all_hist_norm"][np.isfinite(self.tdc_calib["all_hist_norm"])]
+            )
+        else:
+            raise Exception("Unknown normalization type")
+
+        if "fontsize" not in kwargs:
+            axisLabelFontSize = 18
+        else:
+            axisLabelFontSize = kwargs["fontsize"]
+        #    kwargs.pop('fontsize')
+
+        # plt.subplots(1, 1)
+        plt.semilogy(self.tdc_calib["t_hist"], H, "-o", label=legend_label)
+        print(legend_label)
+
+        for key, value in kwargs.items():
+            if hasattr(
+                value, "compare_lifetimes"
+            ):  # assume other objects that have TDCcalib structures
+                value.compare_lifetimes(normalization_type, legend_label=key)
+
+        # set(gca, 'FontSize', 16);
+        plt.xlabel("life time (ns)", fontsize=axisLabelFontSize)
+        plt.ylabel("freq", fontsize=axisLabelFontSize)
+        plt.legend(loc="best")
+        plt.show()
+
+    def fit_lifetime_hist(
+        self,
+        fit_func="exponent_with_background_fit",
+        x_field="t_hist",
+        y_field="all_hist_norm",
+        y_error_field="error_all_hist_norm",
+        fit_param_estimate=np.array([0.1, 4, 0.001]),
+        fit_range=(3.5, 30),
+        x_scale="linear",
+        y_scale="log",
+        constant_param=[],
+        no_plot=False,
+        MaxIter=3,
+        **kwargs,
+    ):
+
+        x = self.tdc_calib[x_field]
+        y = self.tdc_calib[y_field]
+        error_y = self.tdc_calib[y_error_field]
+
+        isfiniteY = np.isfinite(y)
+        x = x[isfiniteY]
+        y = y[isfiniteY]
+        error_y = error_y[isfiniteY]
+
+        FP = fit_tools.curve_fit_lims(
+            fit_func,
+            fit_param_estimate,
+            x,
+            y,
+            error_y,
+            x_limits=fit_range,
+            no_plot=no_plot,
+            x_scale=x_scale,
+            y_scale=y_scale,
+        )
+
+        if "fit_param" in self.tdc_calib:
+            self.tdc_calib["fit_param"][FP["fit_func"]] = FP
+        else:
+            self.tdc_calib["fit_param"] = dict()
+            self.tdc_calib["fit_param"][FP["fit_func"]] = FP
 
 
 @nb.njit(cache=True)
