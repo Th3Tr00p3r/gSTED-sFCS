@@ -125,6 +125,10 @@ def diffusion_3d_fit(t, A, tau, w_sq):
     return A / (1 + t / tau) / np.sqrt(1 + t / tau / w_sq)
 
 
+def exponent_with_background_fit(t, A, tau, BG):
+    return A * np.exp(-t / tau) + BG
+
+
 def weighted_average(data_vectors_list, data_errors_list):
     """Doc."""
 
