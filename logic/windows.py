@@ -338,7 +338,7 @@ class MainWin:
                 helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")(
                     f"{laser_mode} \nScan"
                 )
-                self._gui.imp.go_to_origin("XY")
+                self._gui.impl.go_to_origin("XY")
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanDur.setEnabled(True)
                 self._gui.solScanDurUnits.setEnabled(True)
@@ -399,7 +399,7 @@ class MainWin:
         self._gui.actionCamera_Control.setEnabled(False)
         self._app.gui.camera.show()
         self._app.gui.camera.activateWindow()
-        self._app.gui.camera.imp.init_cam()
+        self._app.gui.camera.impl.init_cam()
 
     def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
@@ -1300,7 +1300,7 @@ class CamWin:
         """Doc."""
 
         self._cam = self._app.devices.camera
-        self._app.gui.main.imp.dvc_toggle("camera")
+        self._app.gui.main.impl.dvc_toggle("camera")
         logging.debug("Camera connection opened")
 
     async def clean_up(self):
@@ -1308,7 +1308,7 @@ class CamWin:
 
         if self._cam is not None:
             await self.toggle_video(keep_off=True)
-            self._app.gui.main.imp.dvc_toggle("camera")
+            self._app.gui.main.impl.dvc_toggle("camera")
             self._app.gui.main.actionCamera_Control.setEnabled(True)
             self._cam = None
             logging.debug("Camera connection closed")
