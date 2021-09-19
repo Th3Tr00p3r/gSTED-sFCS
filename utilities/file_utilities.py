@@ -133,18 +133,17 @@ def save_processed_solution_meas(full_data, dir_path) -> None:
     The template may then be loaded much more quickly.
     """
 
-    print(f"full_data size estimate: {round(estimate_disk_size(full_data) / 1e6)} Mb")
-    [
-        print(f"{key}: {size} Mb")
-        for key, val in full_data.data[0].__dict__.items()
-        if (size := round(estimate_disk_size(val) / 1e6)) > 0
-    ]
+    #    print(f"full_data size estimate: {round(estimate_disk_size(full_data) / 1e6)} Mb")
+    #    [
+    #        print(f"{key}: {size} Mb ({val.dtype})")
+    #        for key, val in full_data.data[0].__dict__.items()
+    #        if (size := round(estimate_disk_size(val) / 1e6)) > 0
+    #    ]
 
     os.makedirs(os.path.join(dir_path, "processed"), exist_ok=True)
     file_path = os.path.join(dir_path, "processed", re.sub("_[*]", "", full_data.template))
     with open(file_path, "wb") as f:
         pickle.dump(full_data, f)
-    # and add a feature which uses it if it exists and a checkbox is checked/unchecked.
 
 
 def load_file_dict(file_path: str):

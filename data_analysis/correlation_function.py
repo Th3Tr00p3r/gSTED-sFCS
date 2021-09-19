@@ -132,7 +132,7 @@ class CorrFuncData:
         if not hasattr(self, "fit_param"):
             self.fit_param = dict()
 
-        self.fit_param[FP["fit_func"]] = FP
+        self.fit_param[FP["func_name"]] = FP
 
 
 class CorrFuncTDC(CorrFuncData):
@@ -469,7 +469,7 @@ class CorrFuncTDC(CorrFuncData):
             if verbose:
                 print(f"({p.file_num})", end=" ")
             # find additional outliers
-            time_stamps = np.diff(p.runtime)
+            time_stamps = np.diff(p.runtime).astype(np.int32)
             # for exponential distribution MEDIAN and MAD are the same, but for
             # biexponential MAD seems more sensitive
             mu = max(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from types import SimpleNamespace
 from typing import Union
 
@@ -15,7 +16,7 @@ class QtWidgetAccess:
         self.gui_parent_name = gui_parent_name
         self.does_hold_obj = does_hold_obj
 
-    def hold_obj(self, parent_gui) -> QtWidgetAccess:
+    def hold_widget(self, parent_gui) -> QtWidgetAccess:
         """Save the actual widget object as an attribute"""
 
         if self.does_hold_obj:
@@ -45,14 +46,21 @@ class QtWidgetCollection:
         for key, val in kwargs.items():
             setattr(self, key, QtWidgetAccess(*val))
 
-    def hold_objects(self, app) -> QtWidgetCollection:
+    def hold_widgets(self, app) -> QtWidgetCollection:
         """Stores the actual GUI object in all widgets (for which does_hold_obj is True)."""
 
-        for wdgt in vars(self).values():
-            parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-            wdgt.hold_obj(parent_gui)
-
+        for wdgt_access in vars(self).values():
+            parent_gui = getattr(app.gui, wdgt_access.gui_parent_name)
+            wdgt_access.hold_widget(parent_gui)
         return self
+
+    def clear_all_objects(self) -> None:
+        """Issues a clear() command for all widgets held (clears the GUI)"""
+
+        for wdgt_access in vars(self).values():
+            if wdgt_access.does_hold_obj:
+                with suppress(AttributeError):
+                    wdgt_access.obj.clear()
 
     def write_to_gui(self, app, new_vals) -> None:
         """
@@ -82,10 +90,10 @@ class QtWidgetCollection:
 
         wdgt_val = SimpleNamespace()
         for attr_name, wdgt in vars(self).items():
-            parent_gui = getattr(app_obj.gui, wdgt.gui_parent_name)
             if hasattr(wdgt, "obj"):
                 setattr(wdgt_val, attr_name, wdgt)
             else:
+                parent_gui = getattr(app_obj.gui, wdgt.gui_parent_name)
                 setattr(wdgt_val, attr_name, wdgt.get(parent_gui))
 
         if out == "namespace":
@@ -160,32 +168,32 @@ switch_wdgts = QtWidgetCollection(
 # Widgets that need .obj should be 'True'
 
 data_import_wdgts = QtWidgetCollection(
-    is_image_type=("imageDataImport", "QRadioButton", "main", True),
-    is_solution_type=("solDataImport", "QRadioButton", "main", True),
+    is_image_type=("imageDataImport", "QRadioButton", "main", False),
+    is_solution_type=("solDataImport", "QRadioButton", "main", False),
     data_days=("dataDay", "QComboBox", "main", True),
     data_months=("dataMonth", "QComboBox", "main", True),
     data_years=("dataYear", "QComboBox", "main", True),
     data_templates=("dataTemplate", "QComboBox", "main", True),
     n_files=("dataNumFiles", "QLabel", "main", True),
-    new_template=("newTemplate", "QLineEdit", "main", True),
+    new_template=("newTemplate", "QLineEdit", "main", False),
     import_stacked=("importStacked", "QStackedWidget", "main", True),
     log_text=("dataDirLog", "QPlainTextEdit", "main", True),
-    img_preview_disp=("imgScanPreviewDisp", None, "main", True),
-    sol_use_processed=("solImportUsePreProcessed", "QCheckBox", "main", True),
-    sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", True),
-    sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", True),
-    sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", True),
+    img_preview_disp=("imgScanPreviewDisp", None, "main", False),
+    sol_use_processed=("solImportUsePreProcessed", "QCheckBox", "main", False),
+    sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", False),
+    sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
+    sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
 )
 
 sol_data_analysis_wdgts = QtWidgetCollection(
-    fix_shift=("solDataFixShift", "QCheckBox", "main", True),
-    external_plotting=("solDataExtPlot", "QCheckBox", "main", True),
+    fix_shift=("solDataFixShift", "QCheckBox", "main", False),
+    external_plotting=("solDataExtPlot", "QCheckBox", "main", False),
     scan_image_disp=("solScanImgDisp", None, "main", True),
-    row_dicrimination=("rowDiscriminationGroup", "QButtonGroup", "main", True),
-    remove_over=("solAnalysisRemoveOverSpinner", "QDoubleSpinBox", "main", True),
-    remove_worst=("solAnalysisRemoveWorstSpinner", "QDoubleSpinBox", "main", True),
-    plot_spatial=("solAveragingPlotSpatial", "QRadioButton", "main", True),
-    plot_temporal=("solAveragingPlotTemporal", "QRadioButton", "main", True),
+    row_dicrimination=("rowDiscriminationGroup", "QButtonGroup", "main", False),
+    remove_over=("solAnalysisRemoveOverSpinner", "QDoubleSpinBox", "main", False),
+    remove_worst=("solAnalysisRemoveWorstSpinner", "QDoubleSpinBox", "main", False),
+    plot_spatial=("solAveragingPlotSpatial", "QRadioButton", "main", False),
+    plot_temporal=("solAveragingPlotTemporal", "QRadioButton", "main", False),
     row_acf_disp=("solScanAcfDisp", None, "main", True),
     imported_templates=("importedSolDataTemplates", "QComboBox", "main", True),
     scan_img_file_num=("scanImgFileNum", "QSpinBox", "main", True),
