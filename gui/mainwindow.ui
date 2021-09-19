@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5280,10 +5280,18 @@ Shift</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QCheckBox" name="solImportUsePreProcessed">
+                              <widget class="QCheckBox" name="solImportSaveProcessed">
+                               <property name="text">
+                                <string>Save
+Processed Data</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QCheckBox" name="solImportLoadProcessed">
                                <property name="text">
                                 <string>Load
-Pre-Processed</string>
+Processed Data</string>
                                </property>
                               </widget>
                              </item>
@@ -5729,8 +5737,8 @@ Mean ACF</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>159</width>
-                                    <height>222</height>
+                                    <width>166</width>
+                                    <height>242</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
