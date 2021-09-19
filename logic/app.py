@@ -14,7 +14,7 @@ import logic.devices as dvcs
 import utilities.helper as helper
 import utilities.widget_collections as wdgt_colls
 from logic.timeout import Timeout
-from utilities.dialog import Question
+from utilities.dialog import QuestionDialog
 from utilities.errors import DeviceError
 
 
@@ -65,7 +65,7 @@ class App:
 
         # populate all widget collections in 'utilities.widget_collections' with objects
         [
-            val.hold_objects(app=self)
+            val.hold_widgets(app=self)
             for val in wdgt_colls.__dict__.values()
             if isinstance(val, wdgt_colls.QtWidgetCollection)
         ]
@@ -156,13 +156,13 @@ class App:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
             print(f"        Initializing {dvc_attrs.log_ref}...")
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
-            param_dict = dvc_attrs.param_widgets.hold_objects(app=self).read_gui(self, "dict")
+            param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).read_gui(self, "dict")
             param_dict["nick"] = nick
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
             param_dict["error_display"] = wdgt_colls.QtWidgetAccess(
                 "deviceErrorDisplay", "QLineEdit", "main", True
-            ).hold_obj(self.gui.main)
+            ).hold_widget(self.gui.main)
 
             if dvc_attrs.cls_xtra_args:
                 x_args = [
@@ -272,7 +272,7 @@ class App:
 
         try:
             if not self.exiting:
-                pressed = Question(
+                pressed = QuestionDialog(
                     txt="Are you sure you want to quit?", title="Quitting Program"
                 ).display()
                 if pressed == QMessageBox.Yes:

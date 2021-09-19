@@ -12,11 +12,11 @@ import nidaqmx.constants as ni_consts
 import numpy as np
 from nidaqmx.errors import DaqError
 
-import utilities.dialog as dialog
 import utilities.helper as helper
 from gui.icons import icon_paths_dict
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT
+from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.widget_collections import QtWidgetCollection
 
@@ -675,7 +675,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             except Exception as exc:
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            dialog.Error(
+            ErrorDialog(
                 custom_txt=f"Power out of range [{self.power_limits_mW['low']}, {self.power_limits_mW['high']}]"
             ).display()
 
@@ -694,7 +694,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             except Exception as exc:
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            dialog.Error(
+            ErrorDialog(
                 custom_txt=f"Current out of range [{self.current_limits_mA['low']}, {self.current_limits_mA['high']}]"
             ).display()
 

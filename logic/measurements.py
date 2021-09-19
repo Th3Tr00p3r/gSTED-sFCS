@@ -491,7 +491,7 @@ class SFCSImageMeasurement(Measurement):
             # prepare data
             counts = np.array(self.counter_dvc.ci_buffer, dtype=np.int)
             self.plane_images_data = ImageScanData(
-                counts, self.ao_buffer, helper.namespace_to_dict(self.scan_params), self.um_v_ratio
+                counts, self.ao_buffer, vars(self.scan_params).copy(), self.um_v_ratio
             )
 
             # save data

@@ -9,7 +9,7 @@ import traceback
 from types import FunctionType
 from typing import Callable
 
-from utilities.dialog import Error
+from utilities.dialog import ErrorDialog
 
 
 def build_error_dict(exc: Exception) -> str:
@@ -68,7 +68,7 @@ def err_hndlr(exc, func_frame, func_locals, dvc=None, lvl="error", disp=False) -
     else:  # logic eror
         log_str = f"{error_dict['type']}: {error_dict['msg']} ({func_string}, {location_string})"
         if disp:
-            Error(**error_dict).display()
+            ErrorDialog(**error_dict).display()
 
     getattr(logging, lvl)(log_str, exc_info=False)
 

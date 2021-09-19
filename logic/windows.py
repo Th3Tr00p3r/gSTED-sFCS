@@ -22,7 +22,7 @@ from data_analysis.image import ImageScanData
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
 from utilities import widget_collections as wdgt_colls
-from utilities.dialog import Error, Notification, Question
+from utilities.dialog import ErrorDialog, NotificationDialog, QuestionDialog
 from utilities.errors import DeviceError, err_hndlr
 
 
@@ -52,7 +52,7 @@ class MainWin:
     def restart(self) -> None:
         """Restart all devices (except camera) and the timeout loop."""
 
-        pressed = Question(txt="Are you sure?", title="Restarting Application").display()
+        pressed = QuestionDialog(txt="Are you sure?", title="Restarting Application").display()
         if pressed == QMessageBox.Yes:
             self._app.loop.create_task(self._app.clean_up_app(restart=True))
 
@@ -155,7 +155,9 @@ class MainWin:
         dvc_nick = led_name_to_nick_dict[led_obj_name]
         error_dict = getattr(self._app.devices, dvc_nick).error_dict
         if error_dict is not None:
-            Error(**error_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref).display()
+            ErrorDialog(
+                **error_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref
+            ).display()
 
     def dep_sett_apply(self):
         """Doc."""
@@ -584,34 +586,24 @@ class MainWin:
     def populate_all_data_dates(self) -> None:
         """Doc."""
 
-        # define widgets
-        data_import_wdgts = wdgt_colls.data_import_wdgts
-        is_image_type = data_import_wdgts.is_image_type.get()
-        is_solution_type = data_import_wdgts.is_solution_type.get()
-        years_combobox = data_import_wdgts.data_years.obj
-        months_combobox = data_import_wdgts.data_months.obj
-        days_combobox = data_import_wdgts.data_days.obj
-        templates_combobox = data_import_wdgts.data_templates.obj
+        data_import_wdgts = wdgt_colls.data_import_wdgts.read_gui(self._app)
 
-        if is_image_type:
+        if data_import_wdgts.is_image_type:
             save_path = wdgt_colls.img_meas_wdgts.read_gui(self._app).save_path
             data_import_wdgts.import_stacked.set(0)
             sub_dir = "image"
-        elif is_solution_type:
+        elif data_import_wdgts.is_solution_type:
             save_path = wdgt_colls.sol_meas_wdgts.read_gui(self._app).save_path
             data_import_wdgts.import_stacked.set(1)
             sub_dir = "solution"
 
-        years_combobox.clear()
-        months_combobox.clear()
-        days_combobox.clear()
-        templates_combobox.clear()
+        wdgt_colls.data_import_wdgts.clear_all_objects()
 
         with suppress(TypeError, IndexError, FileNotFoundError):
             # no directories found... (dir_years is None or [])
             # FileNotFoundError - data directory deleted while app running!
             dir_years = helper.dir_date_parts(save_path, sub_dir)
-            years_combobox.addItems(dir_years)
+            data_import_wdgts.data_years.obj.addItems(dir_years)
 
     def populate_data_dates_from_year(self, year: str) -> None:
         """Doc."""
@@ -621,24 +613,21 @@ class MainWin:
             return
 
         # define widgets
-        data_import_wdgts = wdgt_colls.data_import_wdgts
-        is_image_type = data_import_wdgts.is_image_type.get()
-        is_solution_type = data_import_wdgts.is_solution_type.get()
-        months_combobox = data_import_wdgts.data_months.obj
+        data_import_wdgts = wdgt_colls.data_import_wdgts.read_gui(self._app)
 
-        if is_image_type:
+        if data_import_wdgts.is_image_type:
             meas_sett = wdgt_colls.img_meas_wdgts.read_gui(self._app)
-        elif is_solution_type:
+        elif data_import_wdgts.is_solution_type:
             meas_sett = wdgt_colls.sol_meas_wdgts.read_gui(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
-        months_combobox.clear()
+        data_import_wdgts.data_months.obj.clear()
 
         with suppress(TypeError, IndexError):
             # no directories found... (dir_years is None or [])
             dir_months = helper.dir_date_parts(save_path, sub_dir, year=year)
-            months_combobox.addItems(dir_months)
+            data_import_wdgts.data_months.obj.addItems(dir_months)
 
     def populate_data_dates_from_month(self, month: str) -> None:
         """Doc."""
@@ -648,15 +637,13 @@ class MainWin:
             return
 
         # define widgets
-        data_import_wdgts = wdgt_colls.data_import_wdgts
-        is_image_type = data_import_wdgts.is_image_type.get()
-        is_solution_type = data_import_wdgts.is_solution_type.get()
+        data_import_wdgts = wdgt_colls.data_import_wdgts.read_gui(self._app)
         year = data_import_wdgts.data_years.get()
         days_combobox = data_import_wdgts.data_days.obj
 
-        if is_image_type:
+        if data_import_wdgts.is_image_type:
             meas_sett = wdgt_colls.img_meas_wdgts.read_gui(self._app)
-        elif is_solution_type:
+        elif data_import_wdgts.is_solution_type:
             meas_sett = wdgt_colls.sol_meas_wdgts.read_gui(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
@@ -780,7 +767,7 @@ class MainWin:
             logging.warning("Current template is missing! (Probably manually deleted)")
             return
 
-        pressed = Question(
+        pressed = QuestionDialog(
             txt=f"Change current template from:\n{curr_template}\nto:\n{new_template}\n?",
             title="Edit File Template",
         ).display()
@@ -811,17 +798,15 @@ class MainWin:
     def current_date_type_dir_path(self) -> str:
         """Returns path to directory of currently selected date and measurement type"""
 
-        import_wdgts = wdgt_colls.data_import_wdgts
+        import_wdgts = wdgt_colls.data_import_wdgts.read_gui(self._app)
 
-        is_image_type = import_wdgts.is_image_type.get()
-        is_solution_type = import_wdgts.is_solution_type.get()
         day = import_wdgts.data_days.get()
         year = import_wdgts.data_years.get()
         month = import_wdgts.data_months.get()
 
-        if is_image_type:
+        if import_wdgts.is_image_type:
             meas_settings = wdgt_colls.img_meas_wdgts.read_gui(self._app)
-        elif is_solution_type:
+        elif import_wdgts.is_solution_type:
             meas_settings = wdgt_colls.sol_meas_wdgts.read_gui(self._app)
         save_path = meas_settings.save_path
         sub_dir = meas_settings.sub_dir_name
@@ -843,7 +828,7 @@ class MainWin:
         text_lines = data_import_wdgts.log_text.get().split("\n")
         curr_template = data_import_wdgts.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
-        with suppress(AttributeError, TypeError):
+        with suppress(AttributeError, TypeError, FileNotFoundError):
             # no directories found
             file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
             helper.write_list_to_file(file_path, text_lines)
@@ -914,13 +899,13 @@ class MainWin:
         if not template:
             return
 
-        data_import_wdgts = wdgt_colls.data_import_wdgts
+        data_import_wdgts = wdgt_colls.data_import_wdgts.read_gui(self._app)
         data_import_wdgts.log_text.set("")  # clear first
 
         # get the log file path
-        if data_import_wdgts.is_solution_type.get():
+        if data_import_wdgts.is_solution_type:
             log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
-        elif data_import_wdgts.is_image_type.get():
+        elif data_import_wdgts.is_image_type:
             log_filename = re.sub("\\.\\w{3}", ".log", template)
         file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
 
@@ -941,9 +926,9 @@ class MainWin:
         if not template:
             return
 
-        wdgts = wdgt_colls.data_import_wdgts
+        wdgts = wdgt_colls.data_import_wdgts.read_gui(self._app)
 
-        if wdgts.is_image_type.get():
+        if wdgts.is_image_type:
             # import the data
             file_path = os.path.join(self.current_date_type_dir_path(), template)
             file_dict = file_utilities.load_file_dict(file_path)
@@ -962,23 +947,17 @@ class MainWin:
     def import_sol_data(self) -> None:
         """Doc."""
 
-        data_import_wdgts = wdgt_colls.data_import_wdgts
-        current_template = data_import_wdgts.data_templates.get()
-        file_dicrimination_checked_button = data_import_wdgts.sol_file_dicrimination.get()
-        use_or_dont = data_import_wdgts.sol_file_use_or_dont.get()
-        sol_file_selection = data_import_wdgts.sol_file_selection.get()
-        fix_shift = wdgt_colls.sol_data_analysis_wdgts.fix_shift.get()
-        external_plotting = wdgt_colls.sol_data_analysis_wdgts.external_plotting.get()
-        sol_use_processed = data_import_wdgts.sol_use_processed.get()
-
+        import_wdgts = wdgt_colls.data_import_wdgts.read_gui(self._app)
+        current_template = import_wdgts.data_templates.get()
+        sol_analysis_wdgts = wdgt_colls.sol_data_analysis_wdgts.read_gui(self._app)
         curr_dir = self.current_date_type_dir_path()
 
-        if sol_use_processed:
+        if import_wdgts.sol_use_processed:
             file_path = os.path.join(curr_dir, "processed", re.sub("_[*]", "", current_template))
 
         with self._app.pause_ai_ci():
 
-            if sol_use_processed and os.path.isfile(file_path):
+            if import_wdgts.sol_use_processed and os.path.isfile(file_path):
                 print(
                     f"Loading pre-processed data '{current_template}' from hard drive...", end=" "
                 )
@@ -989,8 +968,10 @@ class MainWin:
                 full_data = CorrFuncTDC()
 
                 # file selection
-                if file_dicrimination_checked_button.objectName() == "solImportUse":
-                    sol_file_selection = f"{use_or_dont} {sol_file_selection}"
+                if import_wdgts.sol_file_dicrimination.objectName() == "solImportUse":
+                    sol_file_selection = (
+                        f"{import_wdgts.sol_file_use_or_dont} {import_wdgts.sol_file_selection}"
+                    )
                 else:
                     sol_file_selection = ""
 
@@ -1000,8 +981,8 @@ class MainWin:
                         full_data.read_fpga_data(
                             os.path.join(curr_dir, current_template),
                             file_selection=sol_file_selection,
-                            should_fix_shift=fix_shift,
-                            no_plot=not external_plotting,
+                            should_fix_shift=sol_analysis_wdgts.fix_shift,
+                            no_plot=not sol_analysis_wdgts.external_plotting,
                         )
                         full_data.correlate_data()
 
@@ -1030,15 +1011,14 @@ class MainWin:
     def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
 
-        wdgts = wdgt_colls.sol_data_analysis_wdgts
+        wdgts = wdgt_colls.sol_data_analysis_wdgts.read_gui(self._app)
 
         try:
             full_data = self.get_current_full_data(imported_template)
             num_files = len(full_data.data)
         except AttributeError:
             # no imported templates (deleted)
-            wdgts.scan_image_disp.obj.clear()
-            wdgts.row_acf_disp.obj.clear()
+            wdgt_colls.sol_data_analysis_wdgts.clear_all_objects()
             wdgts.scan_img_file_num.obj.setRange(1, 1)
             wdgts.scan_img_file_num.set(1)
         else:
@@ -1094,18 +1074,18 @@ class MainWin:
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
 
-        wdgts = wdgt_colls.sol_data_analysis_wdgts
+        wdgts = wdgt_colls.sol_data_analysis_wdgts.read_gui(self._app)
         full_data = self.get_current_full_data(imported_template)
 
         if full_data is None:
             return
 
         if full_data.type == "angular_scan":
-            row_disc_method = wdgts.row_dicrimination.get().objectName()
+            row_disc_method = wdgts.row_dicrimination.objectName()
             if row_disc_method == "solAnalysisRemoveOver":
-                avg_corr_args = dict(rejection=wdgts.remove_over.get())
+                avg_corr_args = dict(rejection=wdgts.remove_over)
             elif row_disc_method == "solAnalysisRemoveWorst":
-                avg_corr_args = dict(rejection=None, reject_n_worst=wdgts.remove_worst.get())
+                avg_corr_args = dict(rejection=None, reject_n_worst=wdgts.remove_worst)
             else:  # use all rows
                 avg_corr_args = dict(rejection=None)
 
@@ -1113,7 +1093,7 @@ class MainWin:
                 # no data loaded
                 full_data.average_correlation(**avg_corr_args)
 
-                if wdgts.plot_spatial.get():
+                if wdgts.plot_spatial:
                     x = (full_data.vt_um, "disp")
                     x_label = r"squared displacement ($um^2$)"
                 else:
@@ -1179,7 +1159,7 @@ class MainWin:
         current_template = data_import_wdgts.data_templates.get()
         current_dir_path = self.current_date_type_dir_path()
 
-        pressed = Question(
+        pressed = QuestionDialog(
             txt=f"Are you sure you wish to convert '{current_template}'?",
             title="Conversion to .mat Format",
         ).display()
@@ -1235,14 +1215,14 @@ class SettWin:
                 )
 
             if current_state != last_loaded_state:
-                pressed = Question(
+                pressed = QuestionDialog(
                     "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
                 ).display()
                 if pressed == QMessageBox.No:
                     self.load(self._gui.settingsFileName.text())
 
         else:
-            Notification("Using Current settings.").display()
+            NotificationDialog("Using Current settings.").display()
 
     def save(self):
         """
