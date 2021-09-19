@@ -3,7 +3,7 @@
 from PyQt5.QtWidgets import QMessageBox
 
 
-class UserDialog:
+class Dialog:
     """Doc."""
 
     def __init__(
@@ -34,7 +34,7 @@ class UserDialog:
         return self._msg_box.exec_()  # warning: blocks!
 
 
-class Error(UserDialog):
+class ErrorDialog(Dialog):
     """Doc."""
 
     def __init__(self, type="", loc="", msg="", tb="", custom_txt="", custom_title=""):
@@ -55,7 +55,7 @@ class Error(UserDialog):
             )
 
 
-class Question(UserDialog):
+class QuestionDialog(Dialog):
     """Doc."""
 
     def __init__(self, txt, title="User Input Needed"):
@@ -65,9 +65,9 @@ class Question(UserDialog):
         self._msg_box.setDefaultButton(QMessageBox.No)
 
 
-class Notification(UserDialog):
+class NotificationDialog(Dialog):
     """Doc."""
 
-    def __init__(self, txt, title="Notification"):
+    def __init__(self, txt, title="NotificationDialog"):
 
         super().__init__(msg_icon=QMessageBox.Question, msg_title=title, msg_text=txt)
