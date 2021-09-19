@@ -986,7 +986,10 @@ class MainWin:
                         )
                         full_data.correlate_data()
 
-                    file_utilities.save_processed_solution_meas(full_data, curr_dir)
+                    if import_wdgts.sol_save_processed:
+                        print("Saving the processed data...", end=" ")
+                        file_utilities.save_processed_solution_meas(full_data, curr_dir)
+                        print("Done.")
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())

@@ -1,12 +1,7 @@
-imgScanFileTemplate,img
 solScanFileTemplate,
+imgScanFileTemplate,img
 newTemplate,
 solImportFileSelectionPattern,1
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -17,31 +12,36 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
-spinBox,40
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 solAnalysisRemoveWorstSpinner,0
+spinBox,40
 scanImgFileNum,1
 depPow,130
 depCurr,1500
 stageSteps,250
+solScanMaxFileSize,20.0
+solLinFrac,0.9
+solScanDur,20.0
 imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
-solScanMaxFileSize,20.0
-solLinFrac,0.9
-solScanDur,20.0
-doubleSpinBox,0.0
 solAnalysisRemoveOverSpinner,2.0
+doubleSpinBox,0.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,0.0
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - actual counts per pixel
 solMeasPreset,Standard Alignment
 solScanType,static
 solScanDurUnits,seconds
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,9
 dataYear,2021
 dataDay,12
@@ -77,6 +77,7 @@ tabWidget_2,0
 autoCrosshair,True
 solDataExtPlot,False
 solDataFixShift,True
-solImportUsePreProcessed,False
+solImportSaveProcessed,True
+solImportLoadProcessed,False
 toolBox,0
 scaleImgScan,300
