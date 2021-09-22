@@ -44,8 +44,7 @@ class PhotonData:
         time_stamps = np.diff(runtime)
 
         # find simple "inversions": the data with a missing byte
-        # decrease in runtime on data j+1, yet the next runtime data (j+2) is
-        # higher than j.
+        # decrease in runtime on data j+1, yet the next runtime data (j+2) is higher than j.
         inv_idxs = np.where((time_stamps[:-1] < 0) & ((time_stamps[:-1] + time_stamps[1:]) > 0))[0]
         if (inv_idxs.size) != 0:
             if verbose:

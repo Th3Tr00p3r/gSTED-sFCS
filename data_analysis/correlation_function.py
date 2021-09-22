@@ -348,7 +348,7 @@ class CorrFuncTDC(CorrFuncData):
             # TODO: should this test be made beforehand, in photon_data.py?
             p.runtime = p.runtime.astype(np.int32)
         else:
-            print("p.runtime has some large values - keeping as int64.")
+            print(f"p.runtime has some large values ({p.runtime.max():e}) - keeping as int64.")
         p.line_num = np.hstack(
             (
                 line_start_lables,
@@ -397,7 +397,6 @@ class CorrFuncTDC(CorrFuncData):
 
         # get image line correlation to subtract trends
         img = p.image * p.bw_mask
-        # lineNos = find(sum(p.bw_mask, 2));
 
         p.image_line_corr = line_correlations(img, p.bw_mask, roi, sample_freq_hz)
 
@@ -422,11 +421,11 @@ class CorrFuncTDC(CorrFuncData):
         self.correlate_data(**kwargs)
         self.average_correlation(**kwargs)
 
-    def correlate_data(self, **kwargs):
+    def correlate_data(self, verbose=False, **kwargs):
         if hasattr(self, "angular_scan_settings"):
             self.correlate_angular_scan_data(**kwargs)
         else:
-            self.correlate_regular_data(**kwargs)
+            self.correlate_regular_data(**kwargs, verbose=verbose)
 
     def correlate_regular_data(
         self,
@@ -513,7 +512,6 @@ class CorrFuncTDC(CorrFuncData):
                         self.lag = cf.lag
                         if self.after_pulse_param[0] == "multi_exponent_fit":
                             # work with any number of exponents
-                            # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
                             beta = self.after_pulse_param[1]
                             self.after_pulse = np.dot(
                                 beta[::2], np.exp(-np.outer(beta[1::2], self.lag))
@@ -566,11 +564,11 @@ class CorrFuncTDC(CorrFuncData):
         for p in self.data:
             print(f"({p.file_num})", end=" ")
 
-            time_stamps = np.diff(p.runtime)
+            time_stamps = np.diff(p.runtime).astype(np.int32)
             line_num = p.line_num
             min_line, max_line = line_num[line_num > 0].min(), line_num.max()
             for line_idx, j in enumerate(range(min_line, max_line + 1)):
-                valid = (line_num == j).astype(np.int32)
+                valid = (line_num == j).astype(np.int8)
                 valid[line_num == -j] = -1
                 valid[line_num == -j - self.line_end_adder] = -2
                 # both photons separated by time-stamp should belong to the line
@@ -858,9 +856,7 @@ class CorrFuncTDC(CorrFuncData):
                 self.tdc_calib["t_calib"][p.fine[phtns]]
                 + (crs[phtns] + delta_coarse[phtns]).astype(np.float16) / self.fpga_freq_hz * 1e9
             )
-            self.tdc_calib["total_laser_pulses"] = (
-                self.tdc_calib["total_laser_pulses"] + p.runtime[-1]
-            )
+            self.tdc_calib["total_laser_pulses"] += p.runtime[-1].astype(np.int64)
             p.delay_time[~phtns] = np.nan  # line ends/starts
 
             delay_time = np.append(delay_time, p.delay_time[phtns])
