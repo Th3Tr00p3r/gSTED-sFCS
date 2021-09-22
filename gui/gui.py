@@ -152,6 +152,11 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.actionStepper_Stage_Control.setChecked(True)
         self.stageButtonsGroup.setEnabled(False)
 
+    def on_calTdc_released(self) -> None:
+        """Doc."""
+
+        self.impl.calibrate_tdc()
+
     @PyQt5.QtCore.pyqtSlot()
     def on_renameTemplate_released(self) -> None:
         """Doc."""
