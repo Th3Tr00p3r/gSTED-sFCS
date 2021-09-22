@@ -78,6 +78,6 @@ autoCrosshair,True
 solDataExtPlot,False
 solDataFixShift,True
 solImportSaveProcessed,True
-solImportLoadProcessed,True
+solImportLoadProcessed,False
 toolBox,1
 scaleImgScan,300
