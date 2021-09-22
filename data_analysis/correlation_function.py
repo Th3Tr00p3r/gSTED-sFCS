@@ -539,10 +539,13 @@ class CorrFuncTDC(CorrFuncData):
         self.cf_cr = np.array(self.cf_cr)
 
         self.total_duration = sum(duration)
-        if verbose and self.total_duration_skipped:
-            print(
-                f"Done.\n{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
-            )
+        if verbose:
+            if self.total_duration_skipped:
+                print(
+                    f"- Done.\n{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s."
+                )
+            else:
+                print("- Done.")
 
     def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True):
         """Doc."""
@@ -667,6 +670,8 @@ class CorrFuncTDC(CorrFuncData):
         sync_coarse_time_to=None,
         calibration_coarse_bins=np.arange(3, 12),
     ):
+
+        self.tdc_calib = dict()
 
         # keep runtime elements of each file for array size allocation
         n_elem = [0]
