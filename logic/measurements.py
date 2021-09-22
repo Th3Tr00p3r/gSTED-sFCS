@@ -22,6 +22,7 @@ from data_analysis.photon_data import PhotonData
 from gui.icons import icon_paths_dict
 from logic.scan_patterns import ScanPatternAO
 from utilities import errors, fit_tools, helper
+from utilities.widgets import paths_to_icons
 
 
 class Measurement:
@@ -33,7 +34,7 @@ class Measurement:
         self.type = type
         self.tdc_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
-        self.icon_dict = helper.paths_to_icons(icon_paths_dict)  # get icons
+        self.icon_dict = paths_to_icons(icon_paths_dict)  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
         self.pxl_clk_dvc = app.devices.pixel_clock
