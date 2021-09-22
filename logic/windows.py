@@ -737,16 +737,18 @@ class MainWin:
         """Doc."""
 
         dir_path = self.current_date_type_dir_path()
-        curr_template = wdgt_colls.data_import_wdgts.data_templates.get()
-        new_template_prefix = wdgt_colls.data_import_wdgts.new_template.get()
+        wdgts = wdgt_colls.data_import_wdgts.read_gui(self._app)
+        curr_template = wdgts.data_templates.get()
+        new_template_prefix = wdgts.new_template
 
         if not new_template_prefix:
             return
 
         try:
-            curr_template_prefix = re.findall("(^.*)(?=_angular_|_circular_)", curr_template)[0]
-        except IndexError:
             curr_template_prefix = re.findall("(^.*)(?=_[0-9]{6})", curr_template)[0]
+        except IndexError:
+            # template does not contain timestamp
+            curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
 
         if new_template_prefix == curr_template_prefix:
             logging.warning(
@@ -754,7 +756,7 @@ class MainWin:
             )
             return
 
-        new_template = re.sub(curr_template_prefix, new_template_prefix, curr_template)
+        new_template = re.sub(curr_template_prefix, new_template_prefix, curr_template, count=1)
 
         # check if new template already exists (unlikely)
         if glob.glob(os.path.join(dir_path, new_template)):
@@ -792,7 +794,7 @@ class MainWin:
             )
 
         # refresh templates
-        day = wdgt_colls.data_import_wdgts.data_days.get()
+        day = wdgts.data_days
         self.populate_data_templates_from_day(day)
 
     def current_date_type_dir_path(self) -> str:
@@ -984,7 +986,7 @@ class MainWin:
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
                             no_plot=not sol_analysis_wdgts.external_plotting,
                         )
-                        full_data.correlate_data()
+                        full_data.correlate_data(verbose=True)
 
                     if import_wdgts.sol_save_processed:
                         print("Saving the processed data...", end=" ")

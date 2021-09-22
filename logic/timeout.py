@@ -10,7 +10,7 @@ from contextlib import suppress
 import utilities.helper as helper
 from utilities.errors import err_hndlr
 
-TIMEOUT = 0.005  # seconds (5 ms)
+TIMEOUT = 0.005  # 5 ms
 LOG_PATH = "./log/log"
 
 
