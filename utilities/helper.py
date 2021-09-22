@@ -4,15 +4,10 @@ import asyncio
 import functools
 import logging
 import os
-import re
 import time
 from typing import Callable, List
 
 import numpy as np
-import PyQt5.QtWidgets as QtWidgets
-from PyQt5.QtGui import QIcon
-
-from utilities.widget_collections import getter_setter_type_dict
 
 # import time # TESTING
 # tic = time.perf_counter() # TESTING
@@ -73,59 +68,6 @@ def center_of_mass(img_2d: np.ndarray) -> tuple:
     return (x, y)
 
 
-def paths_to_icons(paths_dict) -> dict:
-    """Doc."""
-
-    return {key: QIcon(val) for key, val in paths_dict.items()}
-
-
-def wdgt_items_to_text_lines(parent_wdgt) -> List[str]:
-    """Doc."""
-
-    wdgt_types = [
-        "QLineEdit",
-        "QSpinBox",
-        "QDoubleSpinBox",
-        "QComboBox",
-        "QStackedWidget",
-        "QRadioButton",
-        "QSlider",
-        "QTabWidget",
-        "QCheckBox",
-        "QToolBox",
-        "QDial",
-    ]
-    children_class_lists = [
-        parent_wdgt.findChildren(getattr(QtWidgets, wdgt_type)) for wdgt_type in wdgt_types
-    ]
-    children_list = [child for child_list in children_class_lists for child in child_list]
-
-    lines = []
-    for child in children_list:
-        child_class = child.__class__.__name__
-        child_name = child.objectName()
-        getter, _, _ = getter_setter_type_dict.get(child_class, (None,) * 3)
-
-        if (
-            (hasattr(child, "isReadOnly") and not child.isReadOnly())
-            or not hasattr(child, "isReadOnly")
-        ) and child_name not in {"qt_spinbox_lineedit", "qt_tabwidget_stackedwidget"}:
-            val = getattr(child, getter)()
-        else:
-            # ignore read-only and weird auto-widgets
-            continue
-
-        lines.append(f"{child_name},{val}")
-
-    return lines
-
-
-def write_gui_to_file(parent_wdgt, file_path):
-    """Doc."""
-
-    write_list_to_file(file_path, wdgt_items_to_text_lines(parent_wdgt))
-
-
 def write_list_to_file(file_path, lines: List[str]) -> None:
     """Accepts a list of strings 'lines' and writes them to 'file_path'."""
 
@@ -140,25 +82,15 @@ def read_file_to_list(file_path) -> List[str]:
         return f.read().splitlines()
 
 
-def read_file_to_gui(file_path, gui_parent):
-    """Doc."""
+def bool_str(str_: str):
+    """A strict bool() for strings"""
 
-    lines = read_file_to_list(file_path)
-
-    for line in lines:
-        wdgt_name, val = re.split(",", line, maxsplit=1)
-        child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
-        _, setter, type_func = getter_setter_type_dict.get(child.__class__.__name__, (None,) * 3)
-
-        if type_func not in {None, str}:
-            val = type_func(val)
-
-        try:
-            getattr(child, setter)(val)
-        except TypeError:
-            logging.warning(
-                f"read_file_to_gui(): Child widget '{wdgt_name}' was not found in parent widget '{gui_parent.objectName()}' - probably removed from GUI. Overwrite the defaults to stop seeing this warning."
-            )
+    if str_ == "True":
+        return True
+    elif str_ == "False":
+        return False
+    else:
+        raise ValueError(f"'{str_}' is neither 'True' nor 'False'.")
 
 
 def deep_getattr(obj, deep_attr_name: str, recursion=False):

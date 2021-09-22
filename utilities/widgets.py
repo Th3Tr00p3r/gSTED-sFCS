@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from contextlib import suppress
 from types import SimpleNamespace
-from typing import Union
+from typing import List, Union
+
+import PyQt5.QtWidgets as QtWidgets
+from PyQt5.QtGui import QIcon
+
+from utilities import helper
 
 
 class QtWidgetAccess:
@@ -106,15 +113,78 @@ class QtWidgetCollection:
             )
 
 
-def bool_str(str_: str):
-    """A strict bool() for strings"""
+def paths_to_icons(paths_dict) -> dict:
+    """Doc."""
 
-    if str_ == "True":
-        return True
-    elif str_ == "False":
-        return False
-    else:
-        raise ValueError(f"'{str_}' is neither 'True' nor 'False'.")
+    return {key: QIcon(val) for key, val in paths_dict.items()}
+
+
+def wdgt_items_to_text_lines(parent_wdgt) -> List[str]:
+    """Doc."""
+
+    wdgt_types = [
+        "QLineEdit",
+        "QSpinBox",
+        "QDoubleSpinBox",
+        "QComboBox",
+        "QStackedWidget",
+        "QRadioButton",
+        "QSlider",
+        "QTabWidget",
+        "QCheckBox",
+        "QToolBox",
+        "QDial",
+    ]
+    children_class_lists = [
+        parent_wdgt.findChildren(getattr(QtWidgets, wdgt_type)) for wdgt_type in wdgt_types
+    ]
+    children_list = [child for child_list in children_class_lists for child in child_list]
+
+    lines = []
+    for child in children_list:
+        child_class = child.__class__.__name__
+        child_name = child.objectName()
+        getter, _, _ = getter_setter_type_dict.get(child_class, (None,) * 3)
+
+        if (
+            (hasattr(child, "isReadOnly") and not child.isReadOnly())
+            or not hasattr(child, "isReadOnly")
+        ) and child_name not in {"qt_spinbox_lineedit", "qt_tabwidget_stackedwidget"}:
+            val = getattr(child, getter)()
+        else:
+            # ignore read-only and weird auto-widgets
+            continue
+
+        lines.append(f"{child_name},{val}")
+
+    return lines
+
+
+def write_gui_to_file(parent_wdgt, file_path):
+    """Doc."""
+
+    helper.write_list_to_file(file_path, wdgt_items_to_text_lines(parent_wdgt))
+
+
+def read_file_to_gui(file_path, gui_parent):
+    """Doc."""
+
+    lines = helper.read_file_to_list(file_path)
+
+    for line in lines:
+        wdgt_name, val = re.split(",", line, maxsplit=1)
+        child = gui_parent.findChild(QtWidgets.QWidget, wdgt_name)
+        _, setter, type_func = getter_setter_type_dict.get(child.__class__.__name__, (None,) * 3)
+
+        if type_func not in {None, str}:
+            val = type_func(val)
+
+        try:
+            getattr(child, setter)(val)
+        except TypeError:
+            logging.warning(
+                f"read_file_to_gui(): Child widget '{wdgt_name}' was not found in parent widget '{gui_parent.objectName()}' - probably removed from GUI. Overwrite the defaults to stop seeing this warning."
+            )
 
 
 # What to do with each widget class
@@ -122,8 +192,8 @@ getter_setter_type_dict = {
     "QLabel": ("text", "setText", str),
     "QComboBox": ("currentText", "setCurrentText", str),
     "QTabWidget": ("currentIndex", "setCurrentIndex", int),
-    "QCheckBox": ("isChecked", "setChecked", bool_str),
-    "QRadioButton": ("isChecked", "setChecked", bool_str),
+    "QCheckBox": ("isChecked", "setChecked", helper.bool_str),
+    "QRadioButton": ("isChecked", "setChecked", helper.bool_str),
     "QSlider": ("value", "setValue", int),
     "QSpinBox": ("value", "setValue", int),
     "QDoubleSpinBox": ("value", "setValue", float),
@@ -141,7 +211,7 @@ getter_setter_type_dict = {
 # Devices
 # ------------------------------
 
-led_wdgts = QtWidgetCollection(
+led_coll = QtWidgetCollection(
     exc=("ledExc", "QIcon", "main", True),
     dep=("ledDep", "QIcon", "main", True),
     shutter=("ledShutter", "QIcon", "main", True),
@@ -154,7 +224,7 @@ led_wdgts = QtWidgetCollection(
     pxl_clk=("ledPxlClk", "QIcon", "main", True),
 )
 
-switch_wdgts = QtWidgetCollection(
+switch_coll = QtWidgetCollection(
     exc=("excOnButton", "QIcon", "main", True),
     dep=("depEmissionOn", "QIcon", "main", True),
     shutter=("depShutterOn", "QIcon", "main", True),
@@ -167,7 +237,7 @@ switch_wdgts = QtWidgetCollection(
 # TODO: change unneeded widgets to 'False', and implement using "read widgets" instead of manually reading each one using .get()
 # Widgets that need .obj should be 'True'
 
-data_import_wdgts = QtWidgetCollection(
+data_import_coll = QtWidgetCollection(
     is_image_type=("imageDataImport", "QRadioButton", "main", False),
     is_solution_type=("solDataImport", "QRadioButton", "main", False),
     data_days=("dataDay", "QComboBox", "main", True),
@@ -186,7 +256,7 @@ data_import_wdgts = QtWidgetCollection(
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
 )
 
-sol_data_analysis_wdgts = QtWidgetCollection(
+sol_data_analysis_coll = QtWidgetCollection(
     fix_shift=("solDataFixShift", "QCheckBox", "main", False),
     external_plotting=("solDataExtPlot", "QCheckBox", "main", False),
     scan_image_disp=("solScanImgDisp", None, "main", True),
@@ -211,7 +281,7 @@ sol_data_analysis_wdgts = QtWidgetCollection(
 # Measurement Widget Collections
 # ----------------------------------------------
 
-sol_ang_scan_wdgts = QtWidgetCollection(
+sol_ang_scan_coll = QtWidgetCollection(
     max_line_len_um=("maxLineLen", "QDoubleSpinBox", "main", False),
     ao_samp_freq_Hz=("angAoSampFreq", "QDoubleSpinBox", "main", False),
     angle_deg=("angle", "QSpinBox", "main", False),
@@ -222,13 +292,13 @@ sol_ang_scan_wdgts = QtWidgetCollection(
     max_scan_freq_Hz=("maxScanFreq", "QSpinBox", "main", False),
 )
 
-sol_circ_scan_wdgts = QtWidgetCollection(
+sol_circ_scan_coll = QtWidgetCollection(
     ao_samp_freq_Hz=("circAoSampFreq", "QSpinBox", "main", False),
     diameter_um=("circDiameter", "QDoubleSpinBox", "main", False),
     speed_um_s=("circSpeed", "QSpinBox", "main", False),
 )
 
-sol_meas_wdgts = QtWidgetCollection(
+sol_meas_coll = QtWidgetCollection(
     scan_type=("solScanType", "QComboBox", "main", False),
     file_template=("solScanFileTemplate", "QLineEdit", "main", False),
     regular=("regularSolMeas", "QRadioButton", "main", False),
@@ -251,7 +321,7 @@ sol_meas_wdgts = QtWidgetCollection(
     fit_led=("ledFit", "QIcon", "main", True),
 )
 
-img_scan_wdgts = QtWidgetCollection(
+img_scan_coll = QtWidgetCollection(
     scan_plane=("imgScanType", "QComboBox", "main", False),
     dim1_lines_um=("imgScanDim1", "QDoubleSpinBox", "main", False),
     dim2_col_um=("imgScanDim2", "QDoubleSpinBox", "main", False),
@@ -267,7 +337,7 @@ img_scan_wdgts = QtWidgetCollection(
     auto_cross=("autoCrosshair", "QCheckBox", "main", False),
 )
 
-img_meas_wdgts = QtWidgetCollection(
+img_meas_coll = QtWidgetCollection(
     file_template=("imgScanFileTemplate", "QLineEdit", "main", False),
     save_path=("dataPath", "QLineEdit", "settings", False),
     sub_dir_name=("imgSubdirName", "QLineEdit", "settings", False),
