@@ -1144,6 +1144,15 @@ class MainWin:
                 )
                 wdgts.row_acf_disp.obj.plot(fit_params["x"], y_fit, color="red")
 
+    def calibrate_tdc(self):
+        """Doc."""
+        # TODO: this is still a work in progress - only use for testing!
+
+        imported_template = wdgt_colls.sol_data_analysis_wdgts.imported_templates.get()
+        full_data = self.get_current_full_data(imported_template)
+        full_data.calibrate_tdc()
+        full_data.fit_lifetime_hist()
+
     def remove_imported_template(self):
         """Doc."""
 

@@ -18,8 +18,8 @@ imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
 solAnalysisRemoveWorstSpinner,0
-spinBox,40
 scanImgFileNum,1
+spinBox,40
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -42,10 +42,10 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,9
+dataMonth,4
 dataYear,2021
-dataDay,12
-dataTemplate,mat_174909_*.mat
+dataDay,22
+dataTemplate,atto_static_exc_175600_*.mat
 solImportUseDontUse,Use
 importedSolDataTemplates,
 comboBox,
@@ -73,11 +73,11 @@ posAxisY,False
 posAxisX,True
 numPlaneShownChoice,0
 tabWidget,2
-tabWidget_2,0
+tabWidget_2,2
 autoCrosshair,True
 solDataExtPlot,False
 solDataFixShift,True
 solImportSaveProcessed,True
-solImportLoadProcessed,False
-toolBox,0
+solImportLoadProcessed,True
+toolBox,1
 scaleImgScan,300
