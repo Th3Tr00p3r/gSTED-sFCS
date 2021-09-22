@@ -9,8 +9,6 @@ class PhotonData:
     def convert_fpga_data_to_photons(self, fpga_data, version=3, verbose=False):
         """Doc."""
 
-        type_ = np.int64
-
         if version >= 2:
             group_len = 7
             maxval = 256 ** 3
@@ -41,7 +39,7 @@ class PhotonData:
         # calculate the runtime in terms of the number of laser pulses since the beginning of the file
         runtime = (
             fpga_data[idxs + 1] * 256 ** 2 + fpga_data[idxs + 2] * 256 + fpga_data[idxs + 3]
-        ).astype(type_)
+        ).astype(np.int64)
 
         time_stamps = np.diff(runtime)
 
@@ -56,8 +54,8 @@ class PhotonData:
                     end=" ",
                 )
             temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
-            time_stamps[inv_idxs] = np.floor(temp).astype(type_)
-            time_stamps[inv_idxs + 1] = np.ceil(temp).astype(type_)
+            time_stamps[inv_idxs] = np.floor(temp).astype(np.int64)
+            time_stamps[inv_idxs + 1] = np.ceil(temp).astype(np.int64)
             runtime[inv_idxs + 1] = runtime[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
         # repairing drops in runtime (happens when number of laser pulses passes 'maxval')
@@ -67,8 +65,8 @@ class PhotonData:
             runtime[i:] += maxval
 
         # saving coarse and fine times
-        coarse = fpga_data[idxs + 4]
-        self.fine = fpga_data[idxs + 5]
+        coarse = fpga_data[idxs + 4].astype(np.int16)
+        self.fine = fpga_data[idxs + 5].astype(np.int16)
 
         # some fix due to an issue in FPGA
         if self.version >= 3:
