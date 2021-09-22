@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QMessageBox
 import gui.gui
 import logic.devices as dvcs
 import utilities.helper as helper
-import utilities.widget_collections as wdgt_colls
+import utilities.widgets as wdgts
 from logic.timeout import Timeout
 from utilities.dialog import QuestionDialog
 from utilities.errors import DeviceError
@@ -52,7 +52,7 @@ class App:
         self.analysis.loaded_data = dict()
 
         # get icons
-        self.icon_dict = helper.paths_to_icons(gui.icons.icon_paths_dict)
+        self.icon_dict = wdgts.paths_to_icons(gui.icons.icon_paths_dict)
 
         # init windows
         print("Initializing GUI...", end=" ")
@@ -63,11 +63,11 @@ class App:
         self.gui.settings.impl.load(self.default_settings_path())
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
-        # populate all widget collections in 'utilities.widget_collections' with objects
+        # populate all widget collections in 'utilities.widgets' with objects
         [
             val.hold_widgets(app=self)
-            for val in wdgt_colls.__dict__.values()
-            if isinstance(val, wdgt_colls.QtWidgetCollection)
+            for val in wdgts.__dict__.values()
+            if isinstance(val, wdgts.QtWidgetCollection)
         ]
 
         # create neccessary data folders based on settings paths
@@ -92,7 +92,7 @@ class App:
 
         # init scan patterns
         self.gui.main.impl.disp_scn_pttrn("image")
-        sol_pattern = wdgt_colls.sol_meas_wdgts.read_gui(self).scan_type
+        sol_pattern = wdgts.sol_meas_coll.read_gui(self).scan_type
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
 
         # init existing data folders (solution by default)
@@ -160,7 +160,7 @@ class App:
             param_dict["nick"] = nick
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
-            param_dict["error_display"] = wdgt_colls.QtWidgetAccess(
+            param_dict["error_display"] = wdgts.QtWidgetAccess(
                 "deviceErrorDisplay", "QLineEdit", "main", True
             ).hold_widget(self.gui.main)
 
@@ -221,8 +221,8 @@ class App:
             """turn OFF all device switch/LED icons"""
 
             led_list = [self.icon_dict["led_off"]] * 6 + [self.icon_dict["led_green"]] * 3
-            wdgt_colls.led_wdgts.write_to_gui(self, led_list)
-            wdgt_colls.switch_wdgts.write_to_gui(self, self.icon_dict["switch_off"])
+            wdgts.led_coll.write_to_gui(self, led_list)
+            wdgts.switch_coll.write_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
         if restart:
