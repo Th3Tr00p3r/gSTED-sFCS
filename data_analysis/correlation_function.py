@@ -656,7 +656,7 @@ class CorrFuncTDC(CorrFuncData):
                 f"{self.total_duration_skipped:.2f} s skipped out of {self.total_duration:.2f} s. Done."
             )
 
-    def calibrate_tdc(
+    def calibrate_tdc(  # NOQA C901
         self,
         tdc_chain_length=128,
         pick_valid_bins_method="auto",
@@ -666,7 +666,7 @@ class CorrFuncTDC(CorrFuncData):
         fine_shift=0,
         time_bins_for_hist_ns=0.1,
         valid_coarse_bins=np.arange(19),
-        exmpl_photon_data=dict(),
+        exmpl_photon_data=None,
         sync_coarse_time_to=None,
         calibration_coarse_bins=np.arange(3, 12),
     ):
@@ -706,18 +706,10 @@ class CorrFuncTDC(CorrFuncData):
         elif pick_valid_bins_method == "by example":
             x = exmpl_photon_data.coarse["bins"]
             h = h_all[x]
-        #     elif  pick_valid_bins_method == 'interactive':
-        #         semilogy(x_all, h_all, '-o');
-        #         title('Zoom into valid bins and hit any key', 'FontSize', 20)
-        #         figure(gcf)
-        #         pause;
-        #         J = InAxes;
-        #         x = x_all(J);
-        #         h = h_all(J);
+        elif pick_valid_bins_method == "interactive":
+            raise NotImplementedError("'interactive' valid bins selection is not yet implemented.")
         else:
-            raise NotImplementedError(
-                f"Unknown method '{pick_valid_bins_method}' for picking valid bins!"
-            )
+            raise ValueError(f"Unknown method '{pick_valid_bins_method}' for picking valid bins!")
 
         self.coarse = dict(bins=x, h=h)
 
@@ -730,11 +722,10 @@ class CorrFuncTDC(CorrFuncData):
             max_j = sync_coarse_time_to.tdc_calib["max_j"]
         else:
             raise ValueError(
-                "Syncing coarse time is possible to a number or to an object that has the attribute 'tdc_calib'!"
+                "Syncing coarse time is possible to either a number or to an object that has the attribute 'tdc_calib'!"
             )
 
         jj = np.arange(len(h))
-        #        Hshift = np.roll(h, -max_j+2) # not used?
         j_shift = np.roll(jj, -max_j + 2)
 
         if pick_calib_bins_method == "auto":
@@ -749,19 +740,13 @@ class CorrFuncTDC(CorrFuncData):
             or pick_calib_bins_method == "External calibration"
         ):
             x_calib = exmpl_photon_data.tdc_calib["coarse_bins"]
-        #         case 'interactive'
-        #         semilogy(x, HJshift(1, :), '-o'); figure(gcf)
-
-        #         title('Zoom into bins for TDC calibration', 'FontSize', 20)
-        #         figure(gcf)
-        #         pause;
-        #         J = InAxes;
-        #         j_calib = HJshift(2, J);
-        #         x_calib = x(j_calib);
-
-        else:
+        elif pick_valid_bins_method == "interactive":
             raise NotImplementedError(
-                f"Unknown method '{pick_calib_bins_method}' for picking valid bins!"
+                "'interactive' calibration bins selection is not yet implemented."
+            )
+        else:
+            raise ValueError(
+                f"Unknown method '{pick_calib_bins_method}' for picking calibration bins!"
             )
 
         if pick_calib_bins_method == "External calibration":
@@ -789,9 +774,6 @@ class CorrFuncTDC(CorrFuncData):
             # h_tdc_calib[x_tdc_calib_nonzero] = h_tdc_calib_nonzero
             h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length)
 
-            # changes on 12.12.17
-            # if isfield(S.data, 'Version'),
-            #    if (S.data(1).Version == 3),
             # find effective range of TDC by, say, finding 10 zeros in a row
             cumusum_h_tdc_calib = np.cumsum(h_tdc_calib)
             diff_cumusum_h_tdc_calib = (
@@ -812,7 +794,6 @@ class CorrFuncTDC(CorrFuncData):
             self.tdc_calib["l_quarter_tdc"] = l_quarter_tdc
             self.tdc_calib["r_quarter_tdc"] = r_quarter_tdc
 
-            # plot(x_tdc_calib, h_tdc_calib, [left_tdc+9 right_tdc+1], [0 0], 'o'); figure(gcf)
             # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
             h_tdc_calib[:left_tdc] = 0
             h_tdc_calib[right_tdc:] = 0
@@ -821,9 +802,6 @@ class CorrFuncTDC(CorrFuncData):
             t_calib = (
                 (1 - np.cumsum(h_tdc_calib) / np.sum(h_tdc_calib)) / self.fpga_freq_hz * 1e9
             )  # invert and to ns
-            # t_calib = circshift(t_calib, [0 -fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
-            # h_tdc_calib = circshift(h_tdc_calib, [0 -fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
-            # t_calib = np.flip(t_calib)  # avoids sorting further on : no, not good
 
             self.tdc_calib["h"] = h_tdc_calib
             self.tdc_calib["t_calib"] = t_calib
@@ -867,7 +845,7 @@ class CorrFuncTDC(CorrFuncData):
             delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
 
             # in the TDC midrange use "coarse" counter
-            in_mid_tdc = np.logical_and((p.fine >= l_quarter_tdc), (p.fine <= r_quarter_tdc))
+            in_mid_tdc = (p.fine >= l_quarter_tdc) & (p.fine <= r_quarter_tdc)
             delta_coarse[in_mid_tdc] = 0
 
             # on the right of TDC use "coarse2" counter (no change in delta)
@@ -883,7 +861,7 @@ class CorrFuncTDC(CorrFuncData):
             self.tdc_calib["total_laser_pulses"] = (
                 self.tdc_calib["total_laser_pulses"] + p.runtime[-1]
             )
-            p.delay_time[np.logical_not(phtns)] = np.nan  # line ends/starts
+            p.delay_time[~phtns] = np.nan  # line ends/starts
 
             delay_time = np.append(delay_time, p.delay_time[phtns])
 
@@ -920,8 +898,8 @@ class CorrFuncTDC(CorrFuncData):
             / self.tdc_calib["total_laser_pulses"]
         )
 
-        self.tdc_calib["all_hist_norm"][np.logical_not(nonzero)] = np.nan
-        self.tdc_calib["error_all_hist_norm"][np.logical_not(nonzero)] = np.nan
+        self.tdc_calib["all_hist_norm"][~nonzero] = np.nan
+        self.tdc_calib["error_all_hist_norm"][~nonzero] = np.nan
 
         axs[1, 0].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
         plt.legend(["Photon lifetime histogram"], loc="upper right")
@@ -1008,10 +986,10 @@ class CorrFuncTDC(CorrFuncData):
         )
 
         if "fit_param" in self.tdc_calib:
-            self.tdc_calib["fit_param"][FP["fit_func"]] = FP
+            self.tdc_calib["fit_param"][FP["func_name"]] = FP
         else:
             self.tdc_calib["fit_param"] = dict()
-            self.tdc_calib["fit_param"][FP["fit_func"]] = FP
+            self.tdc_calib["fit_param"][FP["func_name"]] = FP
 
 
 @nb.njit(cache=True)
