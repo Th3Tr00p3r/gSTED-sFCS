@@ -5290,7 +5290,7 @@ Processed Data</string>
                              <item>
                               <widget class="QCheckBox" name="solImportLoadProcessed">
                                <property name="text">
-                                <string>Load
+                                <string>Load Available
 Processed Data</string>
                                </property>
                               </widget>
