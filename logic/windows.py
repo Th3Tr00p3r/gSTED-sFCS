@@ -1149,6 +1149,13 @@ class MainWin:
                 )
                 sol_data_analysis_wdgts.row_acf_disp.obj.plot(fit_params["x"], y_fit, color="red")
 
+    def assign_template(self, type) -> None:
+        """Doc."""
+
+        curr_template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
+        assigned_wdgt = getattr(wdgts.SOL_ANALYSIS_COLL, type)
+        assigned_wdgt.set(curr_template)
+
     def calibrate_tdc(self):
         """Doc."""
         # TODO: this is still a work in progress - only use for testing!
