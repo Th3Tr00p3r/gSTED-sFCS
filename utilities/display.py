@@ -13,14 +13,13 @@ from skimage.filters import threshold_yen
 class Display:
     """Doc."""
 
-    def __init__(self, layout=None, parent=None):
-        if layout is not None:
-            self.figure = plt.figure(tight_layout=True)
-            self.canvas = FigureCanvas(self.figure)
-            if parent is not None:
-                self.toolbar = NavigationToolbar(self.canvas, parent)
-                layout.addWidget(self.toolbar)
-            layout.addWidget(self.canvas)
+    def __init__(self, layout, parent=None):
+        self.figure = plt.figure(tight_layout=True)
+        self.canvas = FigureCanvas(self.figure)
+        if parent is not None:
+            self.toolbar = NavigationToolbar(self.canvas, parent)
+            layout.addWidget(self.toolbar)
+        layout.addWidget(self.canvas)
 
     def clear(self):
         """Doc."""
@@ -132,21 +131,6 @@ class Display:
                 ax.axis(show_axis)
             self.ax = ax
             self.canvas.draw_idle()
-
-    @contextmanager
-    def show_external_ax(self):
-        """
-        Creates a Matplotlib figure, and yields a single ax object
-        which is to be manipulated, then shows the figure.
-        """
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        try:
-            yield ax
-        finally:
-            force_aspect(ax, aspect=1)
-            fig.show()
 
 
 class NavigationToolbar(NavigationToolbar2QT):
@@ -286,3 +270,20 @@ def force_aspect(ax, aspect=1) -> None:
     im = ax.get_images()
     extent = im[0].get_extent()
     ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
+
+
+@contextmanager
+def show_external_ax(should_force_aspect=False):
+    """
+    Creates a Matplotlib figure, and yields a single ax object
+    which is to be manipulated, then shows the figure.
+    """
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    try:
+        yield ax
+    finally:
+        if should_force_aspect:
+            force_aspect(ax, aspect=1)
+        fig.show()

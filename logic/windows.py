@@ -1100,7 +1100,7 @@ class MainWin:
                 avg_corr_args = dict(rejection=None)
 
             with suppress(AttributeError):
-                # no data loaded
+                # AttributeError - no data loaded
                 full_data.average_correlation(**avg_corr_args)
 
                 if sol_data_analysis_wdgts.plot_spatial:
