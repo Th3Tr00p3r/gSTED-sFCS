@@ -5727,7 +5727,7 @@ Mean ACF</string>
                                   <enum>QFrame::Sunken</enum>
                                  </property>
                                  <property name="currentIndex">
-                                  <number>1</number>
+                                  <number>0</number>
                                  </property>
                                  <property name="tabSpacing">
                                   <number>0</number>
@@ -5761,7 +5761,7 @@ Mean ACF</string>
                                           <number>0</number>
                                          </property>
                                          <item>
-                                          <widget class="QPushButton" name="pushButton_2">
+                                          <widget class="QPushButton" name="assignExcCal">
                                            <property name="sizePolicy">
                                             <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                                              <horstretch>0</horstretch>
@@ -5787,7 +5787,7 @@ Calibration</string>
                                             </widget>
                                            </item>
                                            <item>
-                                            <widget class="QLineEdit" name="lineEdit">
+                                            <widget class="QLineEdit" name="excCal">
                                              <property name="readOnly">
                                               <bool>true</bool>
                                              </property>
@@ -5806,7 +5806,7 @@ Calibration</string>
                                           <number>0</number>
                                          </property>
                                          <item>
-                                          <widget class="QPushButton" name="pushButton_3">
+                                          <widget class="QPushButton" name="assignStedCal">
                                            <property name="sizePolicy">
                                             <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                                              <horstretch>0</horstretch>
@@ -5832,7 +5832,7 @@ Calibration</string>
                                             </widget>
                                            </item>
                                            <item>
-                                            <widget class="QLineEdit" name="lineEdit_3">
+                                            <widget class="QLineEdit" name="stedCal">
                                              <property name="readOnly">
                                               <bool>true</bool>
                                              </property>
@@ -5851,7 +5851,7 @@ Calibration</string>
                                           <number>0</number>
                                          </property>
                                          <item>
-                                          <widget class="QPushButton" name="pushButton_4">
+                                          <widget class="QPushButton" name="assignExcSamp">
                                            <property name="sizePolicy">
                                             <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                                              <horstretch>0</horstretch>
@@ -5877,7 +5877,7 @@ Sample</string>
                                             </widget>
                                            </item>
                                            <item>
-                                            <widget class="QLineEdit" name="lineEdit_2">
+                                            <widget class="QLineEdit" name="excSamp">
                                              <property name="readOnly">
                                               <bool>true</bool>
                                              </property>
@@ -5896,7 +5896,7 @@ Sample</string>
                                           <number>0</number>
                                          </property>
                                          <item>
-                                          <widget class="QPushButton" name="pushButton_5">
+                                          <widget class="QPushButton" name="assignStedSamp">
                                            <property name="sizePolicy">
                                             <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                                              <horstretch>0</horstretch>
@@ -5922,7 +5922,7 @@ Sample</string>
                                             </widget>
                                            </item>
                                            <item>
-                                            <widget class="QLineEdit" name="lineEdit_4">
+                                            <widget class="QLineEdit" name="stedSamp">
                                              <property name="readOnly">
                                               <bool>true</bool>
                                              </property>
@@ -6043,8 +6043,8 @@ Over (ns)</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>166</width>
-                                    <height>242</height>
+                                    <width>116</width>
+                                    <height>67</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -6094,7 +6094,7 @@ Get Parameters</string>
                                     <x>0</x>
                                     <y>0</y>
                                     <width>166</width>
-                                    <height>242</height>
+                                    <height>133</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
