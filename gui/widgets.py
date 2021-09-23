@@ -285,6 +285,10 @@ SOL_ANALYSIS_COLL = QtWidgetCollection(
     mean_tau=("solAnalysisMeanTau", "QDoubleSpinBox", "main", True),
     n_good_rows=("solAnalysisGoodRows", "QSpinBox", "main", True),
     n_bad_rows=("solAnalysisBadRows", "QSpinBox", "main", True),
+    exc_cal=("excCal", "QLineEdit", "main", True),
+    sted_cal=("stedCal", "QLineEdit", "main", True),
+    exc_samp=("excSamp", "QLineEdit", "main", True),
+    sted_samp=("stedSamp", "QLineEdit", "main", True),
 )
 # ----------------------------------------------
 # Measurement Widget Collections

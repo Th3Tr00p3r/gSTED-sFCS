@@ -87,6 +87,12 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.solAveragingPlotSpatial.released.connect(self.impl.calculate_and_show_sol_mean_acf)
         self.solAveragingPlotTemporal.released.connect(self.impl.calculate_and_show_sol_mean_acf)
 
+        # TDC calibration
+        self.assignExcCal.released.connect(lambda: self.impl.assign_template("exc_cal"))
+        self.assignStedCal.released.connect(lambda: self.impl.assign_template("sted_cal"))
+        self.assignExcSamp.released.connect(lambda: self.impl.assign_template("exc_samp"))
+        self.assignStedSamp.released.connect(lambda: self.impl.assign_template("sted_samp"))
+
         # Device LEDs
         def led_clicked(wdgt):
             self.impl.led_clicked(str(wdgt.sender().objectName()))
