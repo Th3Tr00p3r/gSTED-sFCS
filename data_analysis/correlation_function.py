@@ -344,11 +344,6 @@ class CorrFuncTDC(CorrFuncData):
         runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
         sorted_idxs = np.argsort(runtime)
         p.runtime = runtime[sorted_idxs]
-        if p.runtime.max() < 2 ** 32:
-            # TODO: should this test be made beforehand, in photon_data.py?
-            p.runtime = p.runtime.astype(np.int32)
-        else:
-            print(f"p.runtime has some large values ({p.runtime.max():e}) - keeping as int64.")
         p.line_num = np.hstack(
             (
                 line_start_lables,
