@@ -13,8 +13,8 @@ import gui.gui
 import gui.widgets as wdgts
 import logic.devices as dvcs
 import utilities.helper as helper
+from gui.dialog import QuestionDialog
 from logic.timeout import Timeout
-from utilities.dialog import QuestionDialog
 from utilities.errors import DeviceError
 
 
