@@ -13,12 +13,11 @@ import numpy as np
 from nidaqmx.errors import DaqError
 
 import utilities.helper as helper
-from gui.icons import icon_paths_dict
+from gui.widgets import QtWidgetCollection, get_icon_paths
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT
 from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
-from utilities.widgets import QtWidgetCollection, paths_to_icons
 
 # TODO: refactoring - toggling should be seperate from opening/closing connection with device.
 # this would make redundent many flag arguments I have in dvc_toggle(), device_toggle_button_released(), toggle() etc.
@@ -40,7 +39,7 @@ class BaseDevice:
 
         if not hasattr(self, "icon_dict"):
             # get icons
-            self.icon_dict = paths_to_icons(icon_paths_dict)
+            self.icon_dict = get_icon_paths()
 
         has_switch = hasattr(self, "switch_widget")
         if command == "on":

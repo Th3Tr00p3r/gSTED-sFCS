@@ -10,9 +10,9 @@ import yaml
 from PyQt5.QtWidgets import QMessageBox
 
 import gui.gui
+import gui.widgets as wdgts
 import logic.devices as dvcs
 import utilities.helper as helper
-import utilities.widgets as wdgts
 from logic.timeout import Timeout
 from utilities.dialog import QuestionDialog
 from utilities.errors import DeviceError
@@ -52,7 +52,7 @@ class App:
         self.analysis.loaded_data = dict()
 
         # get icons
-        self.icon_dict = wdgts.paths_to_icons(gui.icons.icon_paths_dict)
+        self.icon_dict = wdgts.get_icon_paths()
 
         # init windows
         print("Initializing GUI...", end=" ")
@@ -63,7 +63,7 @@ class App:
         self.gui.settings.impl.load(self.default_settings_path())
         self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
-        # populate all widget collections in 'utilities.widgets' with objects
+        # populate all widget collections in 'gui.widgets' with objects
         [
             val.hold_widgets(app=self)
             for val in wdgts.__dict__.values()
@@ -92,7 +92,7 @@ class App:
 
         # init scan patterns
         self.gui.main.impl.disp_scn_pttrn("image")
-        sol_pattern = wdgts.sol_meas_coll.read_gui(self).scan_type
+        sol_pattern = wdgts.SOL_MEAS_COLL.read_gui(self).scan_type
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
 
         # init existing data folders (solution by default)
@@ -221,8 +221,8 @@ class App:
             """turn OFF all device switch/LED icons"""
 
             led_list = [self.icon_dict["led_off"]] * 6 + [self.icon_dict["led_green"]] * 3
-            wdgts.led_coll.write_to_gui(self, led_list)
-            wdgts.switch_coll.write_to_gui(self, self.icon_dict["switch_off"])
+            wdgts.LED_COLL.write_to_gui(self, led_list)
+            wdgts.SWITCH_COLL.write_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
         if restart:
