@@ -3,10 +3,10 @@
 import sys
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as opt
 
+import utilities.display as display
 from utilities.errors import err_hndlr
 
 warnings.simplefilter("error", opt.OptimizeWarning)
@@ -49,14 +49,13 @@ def curve_fit_lims(
     chi_sq_arr = np.square((fit_func(x, *fit_param["beta"]) - y) / y_err)
     fit_param["chi_sq_norm"] = chi_sq_arr.sum() / x.size
 
+    # TODO: needs testing
     if not no_plot:
-        plt.errorbar(xs, ys, ys_errors, fmt=".")
-        plt.plot(xs[in_lims], fit_func(xs[in_lims], *fit_param["beta"]), zorder=10)
-        plt.xscale(x_scale)
-        plt.yscale(y_scale)
-        plt.gcf().canvas.draw_idle()
-        plt.autoscale()
-        plt.show()
+        with display.show_external_ax() as ax:
+            ax.set_xscale(x_scale)
+            ax.set_yscale(y_scale)
+            ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_param["beta"]), zorder=10)
+            ax.errorbar(xs, ys, ys_errors, fmt=".")
 
     return fit_param
 
