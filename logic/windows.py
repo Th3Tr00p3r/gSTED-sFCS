@@ -20,9 +20,9 @@ import logic.measurements as meas
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.image import ImageScanData
 from gui import widgets as wdgts
+from gui.dialog import ErrorDialog, NotificationDialog, QuestionDialog
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
-from utilities.dialog import ErrorDialog, NotificationDialog, QuestionDialog
 from utilities.errors import DeviceError, err_hndlr
 
 

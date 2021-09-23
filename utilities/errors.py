@@ -9,7 +9,7 @@ import traceback
 from types import FunctionType
 from typing import Callable
 
-from utilities.dialog import ErrorDialog
+from gui.dialog import ErrorDialog
 
 
 def build_error_dict(exc: Exception) -> str:

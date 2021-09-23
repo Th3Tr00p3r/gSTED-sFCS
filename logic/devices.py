@@ -13,10 +13,10 @@ import numpy as np
 from nidaqmx.errors import DaqError
 
 import utilities.helper as helper
+from gui.dialog import ErrorDialog
 from gui.widgets import QtWidgetCollection, get_icon_paths
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT
-from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 
 # TODO: refactoring - toggling should be seperate from opening/closing connection with device.
