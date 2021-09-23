@@ -13,14 +13,14 @@ from types import SimpleNamespace
 from typing import List, Tuple
 
 import numpy as np
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
+from PyQt5.QtWidgets import QFileDialog, QWidget
 
+import gui.dialog as dialog
 import logic.devices as dvcs
 import logic.measurements as meas
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.image import ImageScanData
 from gui import widgets as wdgts
-from gui.dialog import ErrorDialog, NotificationDialog, QuestionDialog
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
 from utilities.errors import DeviceError, err_hndlr
@@ -52,8 +52,8 @@ class MainWin:
     def restart(self) -> None:
         """Restart all devices (except camera) and the timeout loop."""
 
-        pressed = QuestionDialog(txt="Are you sure?", title="Restarting Application").display()
-        if pressed == QMessageBox.Yes:
+        pressed = dialog.Question(txt="Are you sure?", title="Restarting Application").display()
+        if pressed == dialog.YES:
             self._app.loop.create_task(self._app.clean_up_app(restart=True))
 
     def save(self) -> None:
@@ -155,7 +155,7 @@ class MainWin:
         dvc_nick = led_name_to_nick_dict[led_obj_name]
         error_dict = getattr(self._app.devices, dvc_nick).error_dict
         if error_dict is not None:
-            ErrorDialog(
+            dialog.Error(
                 **error_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref
             ).display()
 
@@ -769,11 +769,11 @@ class MainWin:
             logging.warning("Current template is missing! (Probably manually deleted)")
             return
 
-        pressed = QuestionDialog(
+        pressed = dialog.Question(
             txt=f"Change current template from:\n{curr_template}\nto:\n{new_template}\n?",
             title="Edit File Template",
         ).display()
-        if pressed == QMessageBox.No:
+        if pressed == dialog.NO:
             return
 
         # generate new filanames
@@ -1178,11 +1178,11 @@ class MainWin:
         current_template = DATA_IMPORT_COLL.data_templates.get()
         current_dir_path = self.current_date_type_dir_path()
 
-        pressed = QuestionDialog(
+        pressed = dialog.Question(
             txt=f"Are you sure you wish to convert '{current_template}'?",
             title="Conversion to .mat Format",
         ).display()
-        if pressed == QMessageBox.No:
+        if pressed == dialog.NO:
             return
 
         file_template_path = os.path.join(current_dir_path, current_template)
@@ -1234,16 +1234,16 @@ class SettWin:
                 )
 
             if current_state != last_loaded_state:
-                pressed = QuestionDialog(
+                pressed = dialog.Question(
                     "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
                 ).display()
-                if pressed == QMessageBox.No:
+                if pressed == dialog.NO:
                     self.load(self._gui.settingsFileName.text())
 
         else:
-            NotificationDialog("Using Current settings.").display()
+            dialog.Notification("Using Current settings.").display()
 
-    def save(self):
+    def save(self) -> None:
         """
         Write all QLineEdit, QspinBox and QdoubleSpinBox
         of settings window to 'file_path'.

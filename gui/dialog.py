@@ -2,6 +2,9 @@
 
 from PyQt5.QtWidgets import QMessageBox
 
+YES = QMessageBox.Yes
+NO = QMessageBox.No
+
 
 class Dialog:
     """Doc."""
@@ -34,7 +37,7 @@ class Dialog:
         return self._msg_box.exec_()  # warning: blocks!
 
 
-class ErrorDialog(Dialog):
+class Error(Dialog):
     """Doc."""
 
     def __init__(self, type="", loc="", msg="", tb="", custom_txt="", custom_title=""):
@@ -55,19 +58,19 @@ class ErrorDialog(Dialog):
             )
 
 
-class QuestionDialog(Dialog):
+class Question(Dialog):
     """Doc."""
 
     def __init__(self, txt, title="User Input Needed"):
 
         super().__init__(msg_icon=QMessageBox.Question, msg_title=title, msg_text=txt)
         self.set_buttons(["Yes", "No"])
-        self._msg_box.setDefaultButton(QMessageBox.No)
+        self._msg_box.setDefaultButton(NO)
 
 
-class NotificationDialog(Dialog):
+class Notification(Dialog):
     """Doc."""
 
-    def __init__(self, txt, title="NotificationDialog"):
+    def __init__(self, txt, title="Notification"):
 
         super().__init__(msg_icon=QMessageBox.Question, msg_title=title, msg_text=txt)

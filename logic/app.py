@@ -7,13 +7,12 @@ from contextlib import contextmanager, suppress
 from types import SimpleNamespace
 
 import yaml
-from PyQt5.QtWidgets import QMessageBox
 
+import gui.dialog as dialog
 import gui.gui
 import gui.widgets as wdgts
 import logic.devices as dvcs
 import utilities.helper as helper
-from gui.dialog import QuestionDialog
 from logic.timeout import Timeout
 from utilities.errors import DeviceError
 
@@ -272,10 +271,10 @@ class App:
 
         try:
             if not self.exiting:
-                pressed = QuestionDialog(
+                pressed = dialog.Question(
                     txt="Are you sure you want to quit?", title="Quitting Program"
                 ).display()
-                if pressed == QMessageBox.Yes:
+                if pressed == dialog.YES:
                     self.exiting = True
                     self.loop.create_task(self.clean_up_app())
                 else:
