@@ -75,23 +75,25 @@ class CorrFuncData:
         ).sum()
         self.normalized = self.average_cf_cr / self.g0
         self.error_normalized = self.error_cf_cr / self.g0
+
         if not no_plot:
             self.plot_correlation_function()
 
     def plot_correlation_function(
         self, x_field="lag", y_field="average_cf_cr", x_scale="log", y_scale="linear"
     ):
+
         x = getattr(self, x_field)
         y = getattr(self, y_field)
-        if x_scale == "log":
-            x = x[1:]  # remove zero point data
-            y = y[1:]
-        plt.plot(x, y, "o")  # skip 0 lag time
-        plt.xlabel(x_field)
-        plt.ylabel(y_field)
-        plt.gca().set_xscale(x_scale)
-        plt.gca().set_yscale(y_scale)
-        plt.show()
+        if x_scale == "log":  # remove zero point data
+            x, y = x[1:], y[1:]
+
+        with display.show_external_ax() as ax:
+            ax.set_xlabel(x_field)
+            ax.set_ylabel(y_field)
+            ax.set_xscale(x_scale)
+            ax.set_yscale(y_scale)
+            ax.plot(x, y, "o")
 
     def fit_correlation_function(
         self,
@@ -379,12 +381,12 @@ class CorrFuncTDC(CorrFuncData):
 
         # plotting of scan image and ROI
         if not no_plot:
-            with display.Display().show_external_ax() as ax:
+            with display.show_external_ax(should_force_aspect=True) as ax:
                 ax.set_title(f"file No. {p.file_num} of {self.template}")
                 ax.set_xlabel("Pixel Number")
                 ax.set_ylabel("Line Number")
                 ax.imshow(cnt)
-                ax.plot(roi["col"], roi["row"], color="white")  # plot the ROI
+                ax.plot(roi["col"], roi["row"], color="white")
 
         # reverse rows again
         bw[1::2, :] = np.flip(bw[1::2, :], 1)
@@ -412,15 +414,15 @@ class CorrFuncTDC(CorrFuncData):
 
         return p
 
-    def correlate_and_average(self, **kwargs):
-        self.correlate_data(**kwargs)
+    def correlate_and_average(self, verbose=False, **kwargs):
+        self.correlate_data(verbose=verbose, **kwargs)
         self.average_correlation(**kwargs)
 
     def correlate_data(self, verbose=False, **kwargs):
         if hasattr(self, "angular_scan_settings"):
             self.correlate_angular_scan_data(**kwargs)
         else:
-            self.correlate_regular_data(**kwargs, verbose=verbose)
+            self.correlate_regular_data(verbose=verbose, **kwargs)
 
     def correlate_regular_data(
         self,
