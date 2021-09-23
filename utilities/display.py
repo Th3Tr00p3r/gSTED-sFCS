@@ -286,4 +286,5 @@ def show_external_ax(should_force_aspect=False):
     finally:
         if should_force_aspect:
             force_aspect(ax, aspect=1)
+        ax.autoscale()
         fig.show()
