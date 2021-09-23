@@ -133,6 +133,11 @@ def save_processed_solution_meas(full_data, dir_path) -> None:
     The template may then be loaded much more quickly.
     """
 
+    # lower size if possible
+    for p in full_data.data:
+        if p.runtime.max() <= np.iinfo(np.int32).max:
+            p.runtime = p.runtime.astype(np.int32)
+
     #    print(f"full_data size estimate: {round(estimate_disk_size(full_data) / 1e6)} Mb")
     #    [
     #        print(f"{key}: {size} Mb ({val.dtype})")

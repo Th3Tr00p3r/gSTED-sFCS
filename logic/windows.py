@@ -964,6 +964,9 @@ class MainWin:
                     f"Loading pre-processed data '{current_template}' from hard drive...", end=" "
                 )
                 full_data = file_utilities.load_pkl(file_path)
+                # Load runtimes as int64 if they are not already of that type
+                for p in full_data.data:
+                    p.runtime = p.runtime.astype(np.int64, copy=False)
                 print("Done.")
 
             else:  # process data
