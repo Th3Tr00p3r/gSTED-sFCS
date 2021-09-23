@@ -19,9 +19,9 @@ import logic.devices as dvcs
 import logic.measurements as meas
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.image import ImageScanData
+from gui import widgets as wdgts
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
-from utilities import widgets as wdgts
 from utilities.dialog import ErrorDialog, NotificationDialog, QuestionDialog
 from utilities.errors import DeviceError, err_hndlr
 
@@ -65,7 +65,7 @@ class MainWin:
             self._app.LOADOUT_DIR_PATH,
         )
         if file_path != "":
-            wdgts.write_gui_to_file(self._gui, file_path)
+            wdgts.write_gui_to_file(self._gui, wdgts.MAIN_TYPES, file_path)
             logging.debug(f"Loadout saved as: '{file_path}'")
 
     def load(self, file_path="") -> None:
@@ -90,7 +90,7 @@ class MainWin:
         try:
             is_dvc_on = getattr(dvc, state_attr)
         except AttributeError:
-            exc = DeviceError(f"{dvc.log_ref} was not properly initialized. Cannot Toggle.")
+            exc = DeviceError(f"{dvc.log_ref} was not properly initialized. Cannot toggle.")
             if nick == "stage":
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
                 return False
@@ -280,9 +280,9 @@ class MainWin:
                 if meas_type == "SFCSSolution":
                     pattern = self._gui.solScanType.currentText()
                     if pattern == "angular":
-                        scan_params = wdgts.sol_ang_scan_coll.read_gui(self._app)
+                        scan_params = wdgts.SOL_ANG_SCAN_COLL.read_gui(self._app)
                     elif pattern == "circle":
-                        scan_params = wdgts.sol_circ_scan_coll.read_gui(self._app)
+                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.read_gui(self._app)
                     elif pattern == "static":
                         scan_params = SimpleNamespace()
 
@@ -292,7 +292,7 @@ class MainWin:
                         app=self._app,
                         scan_params=scan_params,
                         laser_mode=laser_mode.lower(),
-                        **wdgts.sol_meas_coll.read_gui(self._app, "dict"),
+                        **wdgts.SOL_MEAS_COLL.read_gui(self._app, "dict"),
                     )
 
                     self._gui.startSolScanExc.setEnabled(False)
@@ -311,9 +311,9 @@ class MainWin:
                 elif meas_type == "SFCSImage":
                     self._app.meas = meas.SFCSImageMeasurement(
                         app=self._app,
-                        scan_params=wdgts.img_scan_coll.read_gui(self._app),
+                        scan_params=wdgts.IMG_SCAN_COLL.read_gui(self._app),
                         laser_mode=laser_mode.lower(),
-                        **wdgts.img_meas_coll.read_gui(self._app, "dict"),
+                        **wdgts.IMG_MEAS_COLL.read_gui(self._app, "dict"),
                     )
 
                     self._gui.startImgScanExc.setEnabled(False)
@@ -362,13 +362,13 @@ class MainWin:
         """Doc."""
 
         if pattern == "image":
-            scan_params_coll = wdgts.img_scan_coll
+            scan_params_coll = wdgts.IMG_SCAN_COLL
             plt_wdgt = self._gui.imgScanPattern
         elif pattern == "angular":
-            scan_params_coll = wdgts.sol_ang_scan_coll
+            scan_params_coll = wdgts.SOL_ANG_SCAN_COLL
             plt_wdgt = self._gui.solScanPattern
         elif pattern == "circle":
-            scan_params_coll = wdgts.sol_circ_scan_coll
+            scan_params_coll = wdgts.SOL_CIRC_SCAN_COLL
             plt_wdgt = self._gui.solScanPattern
         elif pattern == "static":
             scan_params_coll = None
@@ -515,7 +515,7 @@ class MainWin:
                     #                    print(f"x0 ({x0:.1f}) and y0 ({y0:.1f}) are OUTSIDE image boundaries. using COM") # TESTESTEST
                     return helper.center_of_mass(image)
 
-        img_meas_wdgts = wdgts.img_meas_coll.read_gui(self._app)
+        img_meas_wdgts = wdgts.IMG_MEAS_COLL.read_gui(self._app)
         disp_mthd = img_meas_wdgts.image_method
         with suppress(AttributeError):
             # No last_img_scn yet
@@ -546,7 +546,7 @@ class MainWin:
             "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
         }
 
-        wdgts.img_scan_coll.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
+        wdgts.IMG_SCAN_COLL.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
 
     ####################
@@ -576,7 +576,7 @@ class MainWin:
             },
         }
 
-        wdgts.sol_meas_coll.write_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
+        wdgts.SOL_MEAS_COLL.write_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
 
     ####################
@@ -586,24 +586,24 @@ class MainWin:
     def populate_all_data_dates(self) -> None:
         """Doc."""
 
-        data_import_coll = wdgts.data_import_coll.read_gui(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
 
-        if data_import_coll.is_image_type:
-            save_path = wdgts.img_meas_coll.read_gui(self._app).save_path
-            data_import_coll.import_stacked.set(0)
+        if DATA_IMPORT_COLL.is_image_type:
+            save_path = wdgts.IMG_MEAS_COLL.read_gui(self._app).save_path
+            DATA_IMPORT_COLL.import_stacked.set(0)
             sub_dir = "image"
-        elif data_import_coll.is_solution_type:
-            save_path = wdgts.sol_meas_coll.read_gui(self._app).save_path
-            data_import_coll.import_stacked.set(1)
+        elif DATA_IMPORT_COLL.is_solution_type:
+            save_path = wdgts.SOL_MEAS_COLL.read_gui(self._app).save_path
+            DATA_IMPORT_COLL.import_stacked.set(1)
             sub_dir = "solution"
 
-        wdgts.data_import_coll.clear_all_objects()
+        wdgts.DATA_IMPORT_COLL.clear_all_objects()
 
         with suppress(TypeError, IndexError, FileNotFoundError):
             # no directories found... (dir_years is None or [])
             # FileNotFoundError - data directory deleted while app running!
             dir_years = helper.dir_date_parts(save_path, sub_dir)
-            data_import_coll.data_years.obj.addItems(dir_years)
+            DATA_IMPORT_COLL.data_years.obj.addItems(dir_years)
 
     def populate_data_dates_from_year(self, year: str) -> None:
         """Doc."""
@@ -613,21 +613,21 @@ class MainWin:
             return
 
         # define widgets
-        data_import_coll = wdgts.data_import_coll.read_gui(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
 
-        if data_import_coll.is_image_type:
-            meas_sett = wdgts.img_meas_coll.read_gui(self._app)
-        elif data_import_coll.is_solution_type:
-            meas_sett = wdgts.sol_meas_coll.read_gui(self._app)
+        if DATA_IMPORT_COLL.is_image_type:
+            meas_sett = wdgts.IMG_MEAS_COLL.read_gui(self._app)
+        elif DATA_IMPORT_COLL.is_solution_type:
+            meas_sett = wdgts.SOL_MEAS_COLL.read_gui(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
-        data_import_coll.data_months.obj.clear()
+        DATA_IMPORT_COLL.data_months.obj.clear()
 
         with suppress(TypeError, IndexError):
             # no directories found... (dir_years is None or [])
             dir_months = helper.dir_date_parts(save_path, sub_dir, year=year)
-            data_import_coll.data_months.obj.addItems(dir_months)
+            DATA_IMPORT_COLL.data_months.obj.addItems(dir_months)
 
     def populate_data_dates_from_month(self, month: str) -> None:
         """Doc."""
@@ -637,14 +637,14 @@ class MainWin:
             return
 
         # define widgets
-        data_import_coll = wdgts.data_import_coll.read_gui(self._app)
-        year = data_import_coll.data_years.get()
-        days_combobox = data_import_coll.data_days.obj
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        year = DATA_IMPORT_COLL.data_years.get()
+        days_combobox = DATA_IMPORT_COLL.data_days.obj
 
-        if data_import_coll.is_image_type:
-            meas_sett = wdgts.img_meas_coll.read_gui(self._app)
-        elif data_import_coll.is_solution_type:
-            meas_sett = wdgts.sol_meas_coll.read_gui(self._app)
+        if DATA_IMPORT_COLL.is_image_type:
+            meas_sett = wdgts.IMG_MEAS_COLL.read_gui(self._app)
+        elif DATA_IMPORT_COLL.is_solution_type:
+            meas_sett = wdgts.SOL_MEAS_COLL.read_gui(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -697,8 +697,8 @@ class MainWin:
             return
 
         # define widgets
-        data_import_coll = wdgts.data_import_coll
-        templates_combobox = data_import_coll.data_templates.obj
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
+        templates_combobox = DATA_IMPORT_COLL.data_templates.obj
 
         templates_combobox.clear()
 
@@ -710,7 +710,7 @@ class MainWin:
     def show_num_files(self, template) -> None:
         """Doc."""
 
-        n_files_wdgt = wdgts.data_import_coll.n_files
+        n_files_wdgt = wdgts.DATA_IMPORT_COLL.n_files
         dir_path = self.current_date_type_dir_path()
         n_files = len(glob.glob(os.path.join(dir_path, template)))
         n_files_wdgt.set(f"({n_files} Files)")
@@ -718,7 +718,7 @@ class MainWin:
     def cycle_through_data_templates(self, dir: str) -> None:
         """Cycle through the daily data templates in order (next or previous)"""
 
-        data_templates_combobox = wdgts.data_import_coll.data_templates.obj
+        data_templates_combobox = wdgts.DATA_IMPORT_COLL.data_templates.obj
         curr_idx = data_templates_combobox.currentIndex()
         n_items = data_templates_combobox.count()
 
@@ -737,7 +737,7 @@ class MainWin:
         """Doc."""
 
         dir_path = self.current_date_type_dir_path()
-        data_import_wdgts = wdgts.data_import_coll.read_gui(self._app)
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
         curr_template = data_import_wdgts.data_templates.get()
         new_template_prefix = data_import_wdgts.new_template
 
@@ -800,16 +800,16 @@ class MainWin:
     def current_date_type_dir_path(self) -> str:
         """Returns path to directory of currently selected date and measurement type"""
 
-        import_wdgts = wdgts.data_import_coll.read_gui(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
 
         day = import_wdgts.data_days.get()
         year = import_wdgts.data_years.get()
         month = import_wdgts.data_months.get()
 
         if import_wdgts.is_image_type:
-            meas_settings = wdgts.img_meas_coll.read_gui(self._app)
+            meas_settings = wdgts.IMG_MEAS_COLL.read_gui(self._app)
         elif import_wdgts.is_solution_type:
-            meas_settings = wdgts.sol_meas_coll.read_gui(self._app)
+            meas_settings = wdgts.SOL_MEAS_COLL.read_gui(self._app)
         save_path = meas_settings.save_path
         sub_dir = meas_settings.sub_dir_name
         return os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir)
@@ -826,9 +826,9 @@ class MainWin:
     def update_dir_log_file(self) -> None:
         """Doc."""
 
-        data_import_coll = wdgts.data_import_coll
-        text_lines = data_import_coll.log_text.get().split("\n")
-        curr_template = data_import_coll.data_templates.get()
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
+        text_lines = DATA_IMPORT_COLL.log_text.get().split("\n")
+        curr_template = DATA_IMPORT_COLL.data_templates.get()
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
         with suppress(AttributeError, TypeError, FileNotFoundError):
             # no directories found
@@ -901,13 +901,13 @@ class MainWin:
         if not template:
             return
 
-        data_import_coll = wdgts.data_import_coll.read_gui(self._app)
-        data_import_coll.log_text.set("")  # clear first
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        DATA_IMPORT_COLL.log_text.set("")  # clear first
 
         # get the log file path
-        if data_import_coll.is_solution_type:
+        if DATA_IMPORT_COLL.is_solution_type:
             log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
-        elif data_import_coll.is_image_type:
+        elif DATA_IMPORT_COLL.is_image_type:
             log_filename = re.sub("\\.\\w{3}", ".log", template)
         file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
 
@@ -920,7 +920,7 @@ class MainWin:
                 initialize_dir_log_file(file_path, *self.get_daily_alignment())
                 text_lines = helper.read_file_to_list(file_path)
         finally:  # write file to widget
-            data_import_coll.log_text.set("\n".join(text_lines))
+            DATA_IMPORT_COLL.log_text.set("\n".join(text_lines))
 
     def preview_img_scan(self, template: str) -> None:
         """Doc."""
@@ -928,7 +928,7 @@ class MainWin:
         if not template:
             return
 
-        data_import_wdgts = wdgts.data_import_coll.read_gui(self._app)
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
 
         if data_import_wdgts.is_image_type:
             # import the data
@@ -949,9 +949,9 @@ class MainWin:
     def import_sol_data(self) -> None:
         """Doc."""
 
-        import_wdgts = wdgts.data_import_coll.read_gui(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
         current_template = import_wdgts.data_templates.get()
-        sol_analysis_wdgts = wdgts.sol_data_analysis_coll.read_gui(self._app)
+        sol_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
         curr_dir = self.current_date_type_dir_path()
 
         if import_wdgts.sol_use_processed:
@@ -998,7 +998,7 @@ class MainWin:
                     return
 
             # save data and populate combobox
-            imported_combobox = wdgts.sol_data_analysis_coll.imported_templates
+            imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
             self._app.analysis.loaded_data[current_template] = full_data
             imported_combobox.obj.addItem(current_template)
             imported_combobox.set(current_template)
@@ -1009,21 +1009,21 @@ class MainWin:
         """Doc."""
 
         if imported_template is None:
-            imported_template = wdgts.sol_data_analysis_coll.imported_templates.get()
+            imported_template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", imported_template)
         return self._app.analysis.loaded_data.get(curr_data_type)
 
     def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.sol_data_analysis_coll.read_gui(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
 
         try:
             full_data = self.get_current_full_data(imported_template)
             num_files = len(full_data.data)
         except AttributeError:
             # no imported templates (deleted)
-            wdgts.sol_data_analysis_coll.clear_all_objects()
+            wdgts.SOL_ANALYSIS_COLL.clear_all_objects()
             sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
             sol_data_analysis_wdgts.scan_img_file_num.set(1)
         else:
@@ -1071,7 +1071,7 @@ class MainWin:
             img = full_data.data[file_num - 1].image
             roi = full_data.data[file_num - 1].roi
 
-            scan_image_disp = wdgts.sol_data_analysis_coll.scan_image_disp.obj
+            scan_image_disp = wdgts.SOL_ANALYSIS_COLL.scan_image_disp.obj
             scan_image_disp.display_image(img)
             scan_image_disp.plot(roi["col"], roi["row"], color="white")
             scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
@@ -1079,7 +1079,7 @@ class MainWin:
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.sol_data_analysis_coll.read_gui(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
         full_data = self.get_current_full_data(imported_template)
 
         if full_data is None:
@@ -1150,7 +1150,7 @@ class MainWin:
         """Doc."""
         # TODO: this is still a work in progress - only use for testing!
 
-        imported_template = wdgts.sol_data_analysis_coll.imported_templates.get()
+        imported_template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
         full_data = self.get_current_full_data(imported_template)
         full_data.calibrate_tdc()
         full_data.fit_lifetime_hist()
@@ -1158,7 +1158,7 @@ class MainWin:
     def remove_imported_template(self):
         """Doc."""
 
-        imported_templates = wdgts.sol_data_analysis_coll.imported_templates
+        imported_templates = wdgts.SOL_ANALYSIS_COLL.imported_templates
         template = imported_templates.get()
         data_type, *_ = re.split(" -", template)
         self._app.analysis.loaded_data[data_type] = None
@@ -1171,8 +1171,8 @@ class MainWin:
         after translating their dictionaries to the legacy matlab format.
         """
 
-        data_import_coll = wdgts.data_import_coll
-        current_template = data_import_coll.data_templates.get()
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
+        current_template = DATA_IMPORT_COLL.data_templates.get()
         current_dir_path = self.current_date_type_dir_path()
 
         pressed = QuestionDialog(
@@ -1218,7 +1218,7 @@ class SettWin:
         if self.check_on_close is True:
             curr_file_path = self._gui.settingsFileName.text()
 
-            current_state = set(wdgts.wdgt_items_to_text_lines(self._gui))
+            current_state = set(wdgts.wdgt_items_to_text_lines(self._gui, wdgts.SETTINGS_TYPES))
             last_loaded_state = set(helper.read_file_to_list(curr_file_path))
 
             if not len(current_state) == len(last_loaded_state):
@@ -1254,7 +1254,7 @@ class SettWin:
         )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
-            wdgts.write_gui_to_file(self._gui.frame, file_path)
+            wdgts.write_gui_to_file(self._gui.frame, wdgts.SETTINGS_TYPES, file_path)
             logging.debug(f"Settings file saved as: '{file_path}'")
 
     def load(self, file_path=""):

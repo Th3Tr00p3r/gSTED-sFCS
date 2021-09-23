@@ -1,4 +1,3 @@
-arduinoAddr,COM3
 um232FlowControl,RTS-CTS
 um232BitMode,Single Channel Synchronous 245 FIFO
 counterPixelClockAddress,Dev1/Ctr0
@@ -13,12 +12,6 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
-excMod,PicoQuant
-excTriggerExtAddr,Dev1/port0/line6
-excTriggerIntAddr,Dev3/port0/
-excAddr,Dev1/port0/line6
-depShutterAddr,Dev3/port0/line11
-depModelQuery,getmodel
 AOXaddr,Dev3/ao2, Dev3/ao3
 AOYaddr,Dev3/ao0, Dev3/ao1
 AOZaddr,Dev1/ao1
@@ -31,6 +24,13 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
+arduinoAddr,COM3
+excMod,PicoQuant
+excTriggerExtAddr,Dev1/port0/line6
+excTriggerIntAddr,Dev3/port0/
+excAddr,Dev1/port0/line6
+depShutterAddr,Dev3/port0/line11
+depModelQuery,getmodel
 dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
 solSubdirName,solution
 imgSubdirName,image
@@ -52,9 +52,7 @@ xConv,70.81
 yConv,82.74
 zConv,10.0
 counterTriggerEdge,Rising
-excTriggerSrc,External (TDC)
 AOtriggerEdge,Rising
 AOwfType,Sine
-stackedWidget,1
-tabWidget,0
+excTriggerSrc,External (TDC)
 counterCIdupCountPrevention,True
