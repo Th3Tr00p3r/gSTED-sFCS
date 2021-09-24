@@ -42,14 +42,14 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,9
+dataMonth,4
 dataYear,2021
-dataDay,12
-dataTemplate,pkl_174909_*.pkl
+dataDay,22
+dataTemplate,atto_static_exc_175600_*.mat
 solImportUseDontUse,Use
-importedSolDataTemplates,
+importedSolDataTemplates,atto_static_exc_175600_*.mat
 comboBox,
-solAnalysisLifetime,Lifetime
+solAnalysisLifetime,
 avgInterval,200
 solScanParamsStacked,2
 importStacked,1
@@ -78,6 +78,6 @@ autoCrosshair,True
 solDataExtPlot,False
 solDataFixShift,True
 solImportSaveProcessed,True
-solImportLoadProcessed,False
-toolBox,0
+solImportLoadProcessed,True
+toolBox,1
 scaleImgScan,300

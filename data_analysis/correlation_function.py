@@ -399,7 +399,7 @@ class CorrFuncTDC(CorrFuncData):
 
         return p
 
-    def process_static_data(self, full_data, idx):
+    def process_static_data(self, full_data, idx) -> PhotonData:
         """Doc."""
 
         print("Converting raw data to photons...", end=" ")
@@ -660,10 +660,10 @@ class CorrFuncTDC(CorrFuncData):
         n_zeros_for_fine_bounds=10,
         fine_shift=0,
         time_bins_for_hist_ns=0.1,
-        valid_coarse_bins=np.arange(19),
         exmpl_photon_data=None,
         sync_coarse_time_to=None,
-        calibration_coarse_bins=np.arange(3, 12),
+        forced_valid_coarse_bins=np.arange(19),
+        forced_calibration_coarse_bins=np.arange(3, 12),
     ):
 
         self.tdc_calib = dict()
@@ -672,8 +672,8 @@ class CorrFuncTDC(CorrFuncData):
         n_elem = [0]
         for p in self.data:
             n_elem.append(p.runtime.size)
-
         n_elem = np.cumsum(n_elem)
+
         # unite coarse and fine times from all files
         coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
         fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
@@ -682,21 +682,21 @@ class CorrFuncTDC(CorrFuncData):
             fine[n_elem[i] : n_elem[i + 1]] = p.fine
 
         if self.type == "angular_scan":
-            phtns = fine > self.nan_placebo  # remove line starts/ends
-            coarse = coarse[phtns]
-            fine = fine[phtns]
+            photon_idxs = fine > self.nan_placebo  # remove line starts/ends
+            coarse = coarse[photon_idxs]
+            fine = fine[photon_idxs]
 
-        h_all = np.bincount(coarse.astype("int"))
+        h_all = np.bincount(coarse)
         x_all = np.arange(coarse.max() + 1)
 
         if pick_valid_bins_method == "auto":
             h_all = h_all[coarse.min() :]
             x_all = np.arange(coarse.min(), coarse.max() + 1)
-            j = np.asarray(h_all > np.median(h_all) / 100).nonzero()[0]
+            j = (h_all > (np.median(h_all) / 100)).nonzero()[0]
             x = x_all[j]
             h = h_all[j]
         elif pick_valid_bins_method == "forced":
-            x = valid_coarse_bins
+            x = forced_valid_coarse_bins
             h = h_all[x]
         elif pick_valid_bins_method == "by example":
             x = exmpl_photon_data.coarse["bins"]
@@ -720,8 +720,7 @@ class CorrFuncTDC(CorrFuncData):
                 "Syncing coarse time is possible to either a number or to an object that has the attribute 'tdc_calib'!"
             )
 
-        jj = np.arange(len(h))
-        j_shift = np.roll(jj, -max_j + 2)
+        j_shift = np.roll(np.arange(len(h)), -max_j + 2)
 
         if pick_calib_bins_method == "auto":
             # pick data at more than 20ns delay from maximum
@@ -729,7 +728,7 @@ class CorrFuncTDC(CorrFuncData):
             j_calib = j_shift[j]
             x_calib = x[j_calib]
         elif pick_calib_bins_method == "forced":
-            x_calib = calibration_coarse_bins
+            x_calib = forced_calibration_coarse_bins
         elif (
             pick_calib_bins_method == "by example"
             or pick_calib_bins_method == "External calibration"
@@ -793,7 +792,6 @@ class CorrFuncTDC(CorrFuncData):
             h_tdc_calib[:left_tdc] = 0
             h_tdc_calib[right_tdc:] = 0
 
-            # h_tdc_calib = circshift(h_tdc_calib, [0 fine_shift]); seems no longer used. Test and remove fine_shift from parameter list
             t_calib = (
                 (1 - np.cumsum(h_tdc_calib) / np.sum(h_tdc_calib)) / self.fpga_freq_hz * 1e9
             )  # invert and to ns
@@ -809,14 +807,13 @@ class CorrFuncTDC(CorrFuncData):
                 np.tile(np.arange(coarse_len), [t_calib.size, 1]) / self.fpga_freq_hz * 1e9
             )
             delay_times = np.tile(t_calib, coarse_len) + coarse_times.flatten("F")
-            Js = np.argsort(
-                delay_times
-            )  # initially delay times are piece wise inverted. After "flip" in line 323 there should be no need in sorting
-            self.tdc_calib["delay_times"] = delay_times[Js]
+            # initially delay times are piece wise inverted. After "flip" in line 323 there should be no need in sorting:
+            j_sorted = np.argsort(delay_times)
+            self.tdc_calib["delay_times"] = delay_times[j_sorted]
 
-            self.tdc_calib["t_weight"] = t_weight[Js]
+            self.tdc_calib["t_weight"] = t_weight[j_sorted]
 
-            self.tdc_calib["max_j"] = max_j  # added on 14.01.17 for processing by example
+            self.tdc_calib["max_j"] = max_j
 
             axs[0, 1].plot(self.tdc_calib["t_calib"], "-o")
             plt.legend(["TDC calibration"], loc="upper left")
@@ -824,17 +821,16 @@ class CorrFuncTDC(CorrFuncData):
 
         # assign time delays to all photons
         self.tdc_calib["total_laser_pulses"] = 0
-        lastCoarseBin = self.coarse["bins"][-1]
+        last_coarse_bin = self.coarse["bins"][-1]
         max_j_m1 = max_j - 1
         if max_j_m1 == -1:
-            max_j_m1 = lastCoarseBin
+            max_j_m1 = last_coarse_bin
 
-        delay_time = np.ndarray((0,), dtype=np.float64)
-        # for i in self['Jgood']:
+        delay_time = np.empty((0,), dtype=np.float64)
         for p in self.data:
-            p.delay_time = np.ndarray(p.coarse.shape, dtype=np.float64)
-            crs = np.minimum(p.coarse, lastCoarseBin) - self.coarse["bins"][max_j_m1]
-            crs[crs < 0] = crs[crs < 0] + lastCoarseBin - self.coarse["bins"][0] + 1
+            p.delay_time = np.empty(p.coarse.shape, dtype=np.float64)
+            crs = np.minimum(p.coarse, last_coarse_bin) - self.coarse["bins"][max_j_m1]
+            crs[crs < 0] = crs[crs < 0] + last_coarse_bin - self.coarse["bins"][0] + 1
 
             delta_coarse = p.coarse2 - p.coarse
             delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
@@ -848,15 +844,15 @@ class CorrFuncTDC(CorrFuncData):
             on_left_tdc = p.fine < l_quarter_tdc
             delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
 
-            phtns = p.fine > self.nan_placebo  # self.nan_placebo are starts/ends of lines
-            p.delay_time[phtns] = (
-                self.tdc_calib["t_calib"][p.fine[phtns]]
-                + (crs[phtns] + delta_coarse[phtns]).astype(np.float16) / self.fpga_freq_hz * 1e9
+            photon_idxs = p.fine > self.nan_placebo  # self.nan_placebo are starts/ends of lines
+            p.delay_time[photon_idxs] = (
+                self.tdc_calib["t_calib"][p.fine[photon_idxs]]
+                + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
             )
-            self.tdc_calib["total_laser_pulses"] += p.runtime[-1].astype(np.int64)
-            p.delay_time[~phtns] = np.nan  # line ends/starts
+            self.tdc_calib["total_laser_pulses"] += p.runtime[-1]
+            p.delay_time[~photon_idxs] = np.nan  # line ends/starts
 
-            delay_time = np.append(delay_time, p.delay_time[phtns])
+            delay_time = np.append(delay_time, p.delay_time[photon_idxs])
 
         bin_edges = np.arange(
             -time_bins_for_hist_ns / 2,
@@ -867,16 +863,16 @@ class CorrFuncTDC(CorrFuncData):
         self.tdc_calib["t_hist"] = (bin_edges[:-1] + bin_edges[1:]) / 2
         k = np.digitize(self.tdc_calib["delay_times"], bin_edges)  # starts from 1
 
-        self.tdc_calib["hist_weight"] = np.ndarray(self.tdc_calib["t_hist"].shape, dtype=np.float64)
+        self.tdc_calib["hist_weight"] = np.empty(self.tdc_calib["t_hist"].shape, dtype=np.float64)
         for i in range(len(self.tdc_calib["t_hist"])):
             j = k == (i + 1)
             self.tdc_calib["hist_weight"][i] = np.sum(self.tdc_calib["t_weight"][j])
 
         self.tdc_calib["all_hist"] = np.histogram(delay_time, bins=bin_edges)[0]
-        self.tdc_calib["all_hist_norm"] = np.ndarray(
+        self.tdc_calib["all_hist_norm"] = np.empty(
             self.tdc_calib["all_hist"].shape, dtype=np.float64
         )
-        self.tdc_calib["error_all_hist_norm"] = np.ndarray(
+        self.tdc_calib["error_all_hist_norm"] = np.empty(
             self.tdc_calib["all_hist"].shape, dtype=np.float64
         )
         nonzero = self.tdc_calib["hist_weight"] > 0

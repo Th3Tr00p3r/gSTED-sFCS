@@ -635,7 +635,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         if self.scanning:
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
-            full_data["ai"] = np.array(self.scanners_dvc.ai_buffer, dtype=np.float)
+            full_data["ai"] = np.array(self.scanners_dvc.ai_buffer, dtype=np.float32)
             full_data["ao"] = self.ao_buffer
 
             if self.scan_params.pattern == "circle":
