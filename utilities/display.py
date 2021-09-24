@@ -1,5 +1,6 @@
 """Plotting and image-showing utilities"""
 
+from collections.abc import Iterable
 from contextlib import contextmanager
 
 import numpy as np
@@ -273,18 +274,21 @@ def force_aspect(ax, aspect=1) -> None:
 
 
 @contextmanager
-def show_external_ax(should_force_aspect=False):
+def show_external_axes(subplots=(1, 1), should_force_aspect=False):
     """
     Creates a Matplotlib figure, and yields a single ax object
     which is to be manipulated, then shows the figure.
     """
 
     fig = plt.figure()
-    ax = fig.add_subplot(111)
+    axes = fig.subplots(*subplots)
     try:
-        yield ax
+        yield axes
     finally:
-        if should_force_aspect:
-            force_aspect(ax, aspect=1)
-        ax.autoscale()
+        if not isinstance(axes, Iterable):
+            axes = np.array([axes])
+        for ax in axes.ravel():
+            if should_force_aspect:
+                force_aspect(ax, aspect=1)
+            ax.autoscale()
         fig.show()
