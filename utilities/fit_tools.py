@@ -51,7 +51,7 @@ def curve_fit_lims(
 
     # TODO: needs testing
     if not no_plot:
-        with display.show_external_ax() as ax:
+        with display.show_external_axes() as ax:
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)
             ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_param["beta"]), zorder=10)

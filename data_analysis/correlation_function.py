@@ -88,7 +88,7 @@ class CorrFuncData:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        with display.show_external_ax() as ax:
+        with display.show_external_axes() as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
             ax.set_xscale(x_scale)
@@ -381,7 +381,7 @@ class CorrFuncTDC(CorrFuncData):
 
         # plotting of scan image and ROI
         if not no_plot:
-            with display.show_external_ax(should_force_aspect=True) as ax:
+            with display.show_external_axes(should_force_aspect=True) as ax:
                 ax.set_title(f"file No. {p.file_num} of {self.template}")
                 ax.set_xlabel("Pixel Number")
                 ax.set_ylabel("Line Number")
@@ -664,6 +664,7 @@ class CorrFuncTDC(CorrFuncData):
         sync_coarse_time_to=None,
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
+        should_plot=False,
     ):
 
         self.tdc_calib = dict()
@@ -750,14 +751,8 @@ class CorrFuncTDC(CorrFuncData):
             if "l_quarter_tdc" in self.tdc_calib:
                 l_quarter_tdc = self.tdc_calib["l_quarter_tdc"]
                 r_quarter_tdc = self.tdc_calib["r_quarter_tdc"]
-        else:
-            fig, axs = plt.subplots(2, 2)
-            axs[0, 0].semilogy(
-                x_all, h_all, "-o", x, h, "-o", x[np.isin(x, x_calib)], h[np.isin(x, x_calib)], "-o"
-            )
-            plt.legend(["all hist", "valid bins", "calibration bins"], loc="lower right")
-            plt.show()
 
+        else:
             self.tdc_calib["coarse_bins"] = x_calib
 
             fine_calib = fine[np.isin(coarse, x_calib)]
@@ -814,10 +809,6 @@ class CorrFuncTDC(CorrFuncData):
             self.tdc_calib["t_weight"] = t_weight[j_sorted]
 
             self.tdc_calib["max_j"] = max_j
-
-            axs[0, 1].plot(self.tdc_calib["t_calib"], "-o")
-            plt.legend(["TDC calibration"], loc="upper left")
-            plt.show()
 
         # assign time delays to all photons
         self.tdc_calib["total_laser_pulses"] = 0
@@ -890,9 +881,26 @@ class CorrFuncTDC(CorrFuncData):
         self.tdc_calib["all_hist_norm"][~nonzero] = np.nan
         self.tdc_calib["error_all_hist_norm"][~nonzero] = np.nan
 
-        axs[1, 0].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
-        plt.legend(["Photon lifetime histogram"], loc="upper right")
-        plt.show()
+        if should_plot:
+            with display.show_external_axes(subplots=(2, 2)) as axes:
+                axes[0, 0].semilogy(
+                    x_all,
+                    h_all,
+                    "-o",
+                    x,
+                    h,
+                    "-o",
+                    x[np.isin(x, x_calib)],
+                    h[np.isin(x, x_calib)],
+                    "-o",
+                )
+                axes[0, 0].legend(["all hist", "valid bins", "calibration bins"], loc="lower right")
+
+                axes[0, 1].plot(self.tdc_calib["t_calib"], "-o")
+                axes[0, 1].legend(["TDC calibration"], loc="upper left")
+
+                axes[1, 0].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
+                axes[1, 0].legend(["Photon lifetime histogram"], loc="upper right")
 
     def compare_lifetimes(
         self,
@@ -948,7 +956,7 @@ class CorrFuncTDC(CorrFuncData):
         x_scale="linear",
         y_scale="log",
         constant_param=[],
-        no_plot=False,
+        should_plot=False,
         MaxIter=3,
         **kwargs,
     ):
@@ -969,7 +977,7 @@ class CorrFuncTDC(CorrFuncData):
             y,
             error_y,
             x_limits=fit_range,
-            no_plot=no_plot,
+            no_plot=not should_plot,
             x_scale=x_scale,
             y_scale=y_scale,
         )
