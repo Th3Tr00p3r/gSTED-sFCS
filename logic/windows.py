@@ -853,7 +853,7 @@ class MainWin:
             try:
                 full_data.read_fpga_data(
                     os.path.join(date_dir_path, template),
-                    no_plot=True,
+                    should_plot=False,
                 )
                 full_data.correlate_and_average()
 
@@ -987,7 +987,7 @@ class MainWin:
                             os.path.join(curr_dir, current_template),
                             file_selection=sol_file_selection,
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
-                            no_plot=not sol_analysis_wdgts.external_plotting,
+                            should_plot=sol_analysis_wdgts.external_plotting,
                         )
                         full_data.correlate_data(verbose=True)
 
