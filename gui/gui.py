@@ -161,7 +161,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
     def on_calTdc_released(self) -> None:
         """Doc."""
 
-        self.impl.calibrate_tdc()
+        self.impl.calibrate_tdc_all()
 
     @PyQt5.QtCore.pyqtSlot()
     def on_renameTemplate_released(self) -> None:

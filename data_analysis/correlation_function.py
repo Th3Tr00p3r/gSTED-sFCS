@@ -664,8 +664,9 @@ class CorrFuncTDC(CorrFuncData):
         sync_coarse_time_to=None,
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
-        should_plot=False,
+        should_plot=True,
     ):
+        """Doc."""
 
         self.tdc_calib = dict()
 
@@ -883,6 +884,8 @@ class CorrFuncTDC(CorrFuncData):
 
         if should_plot:
             with display.show_external_axes(subplots=(2, 2)) as axes:
+                # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable
+                # plotting later on?
                 axes[0, 0].semilogy(
                     x_all,
                     h_all,
@@ -894,13 +897,13 @@ class CorrFuncTDC(CorrFuncData):
                     h[np.isin(x, x_calib)],
                     "-o",
                 )
-                axes[0, 0].legend(["all hist", "valid bins", "calibration bins"], loc="lower right")
+                axes[0, 0].legend(["all hist", "valid bins", "calibration bins"])
 
                 axes[0, 1].plot(self.tdc_calib["t_calib"], "-o")
-                axes[0, 1].legend(["TDC calibration"], loc="upper left")
+                axes[0, 1].legend(["TDC calibration"])
 
                 axes[1, 0].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
-                axes[1, 0].legend(["Photon lifetime histogram"], loc="upper right")
+                axes[1, 0].legend(["Photon lifetime histogram"])
 
     def compare_lifetimes(
         self,
@@ -956,9 +959,8 @@ class CorrFuncTDC(CorrFuncData):
         x_scale="linear",
         y_scale="log",
         constant_param=[],
-        should_plot=False,
         MaxIter=3,
-        **kwargs,
+        should_plot=True,
     ):
 
         y = self.tdc_calib[y_field]
