@@ -25,7 +25,7 @@ def curve_fit_lims(
     ys_errors,
     x_limits=(np.NINF, np.Inf),
     y_limits=(np.NINF, np.Inf),
-    no_plot=False,
+    should_plot=True,
     x_scale="log",
     y_scale="linear",
 ) -> dict:
@@ -50,7 +50,7 @@ def curve_fit_lims(
     fit_param["chi_sq_norm"] = chi_sq_arr.sum() / x.size
 
     # TODO: needs testing
-    if not no_plot:
+    if should_plot:
         with display.show_external_axes() as ax:
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)

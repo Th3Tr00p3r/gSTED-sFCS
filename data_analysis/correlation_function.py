@@ -24,7 +24,7 @@ class CorrFuncData:
         reject_n_worst=None,
         norm_range=(1e-3, 2e-3),
         delete_list=[],
-        no_plot=True,
+        should_plot=False,
     ):
         """Doc."""
 
@@ -76,7 +76,7 @@ class CorrFuncData:
         self.normalized = self.average_cf_cr / self.g0
         self.error_normalized = self.error_cf_cr / self.g0
 
-        if not no_plot:
+        if should_plot:
             self.plot_correlation_function()
 
     def plot_correlation_function(
@@ -103,7 +103,7 @@ class CorrFuncData:
         fit_func="diffusion_3d_fit",
         fit_param_estimate=None,
         fit_range=(1e-3, 100),
-        no_plot=True,
+        should_plot=False,
         x_scale="log",
         y_scale="linear",
     ):
@@ -126,7 +126,7 @@ class CorrFuncData:
             y,
             error_y,
             x_limits=fit_range,
-            no_plot=no_plot,
+            should_plot=should_plot,
             x_scale=x_scale,
             y_scale=y_scale,
         )
@@ -150,7 +150,7 @@ class CorrFuncTDC(CorrFuncData):
         file_selection: str = "",
         should_fix_shift: bool = False,
         roi_selection: str = "auto",
-        no_plot: bool = False,
+        should_plot: bool = True,
     ):
         """Doc."""
 
@@ -189,7 +189,7 @@ class CorrFuncTDC(CorrFuncData):
                     self.line_end_adder = 1000
                 if (
                     p := self.process_angular_scan_data(
-                        full_data, idx, should_fix_shift, roi_selection, no_plot
+                        full_data, idx, should_fix_shift, roi_selection, should_plot
                     )
                 ) is None:
                     continue
@@ -225,7 +225,7 @@ class CorrFuncTDC(CorrFuncData):
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
 
     def process_angular_scan_data(
-        self, full_data, idx, should_fix_shift, roi_selection, no_plot
+        self, full_data, idx, should_fix_shift, roi_selection, should_plot
     ) -> PhotonData:
         """Doc."""
 
@@ -380,7 +380,7 @@ class CorrFuncTDC(CorrFuncData):
         p.roi = roi
 
         # plotting of scan image and ROI
-        if not no_plot:
+        if should_plot:
             with display.show_external_axes(should_force_aspect=True) as ax:
                 ax.set_title(f"file No. {p.file_num} of {self.template}")
                 ax.set_xlabel("Pixel Number")
@@ -961,32 +961,26 @@ class CorrFuncTDC(CorrFuncData):
         **kwargs,
     ):
 
-        x = self.tdc_calib[x_field]
         y = self.tdc_calib[y_field]
-        error_y = self.tdc_calib[y_error_field]
+        is_finite_y = np.isfinite(y)
 
-        isfiniteY = np.isfinite(y)
-        x = x[isfiniteY]
-        y = y[isfiniteY]
-        error_y = error_y[isfiniteY]
-
-        FP = fit_tools.curve_fit_lims(
+        fit_param = fit_tools.curve_fit_lims(
             fit_func,
             fit_param_estimate,
-            x,
-            y,
-            error_y,
+            xs=self.tdc_calib[x_field][is_finite_y],
+            ys=y[is_finite_y],
+            ys_errors=self.tdc_calib[y_error_field][is_finite_y],
             x_limits=fit_range,
-            no_plot=not should_plot,
+            should_plot=should_plot,
             x_scale=x_scale,
             y_scale=y_scale,
         )
 
-        if "fit_param" in self.tdc_calib:
-            self.tdc_calib["fit_param"][FP["func_name"]] = FP
-        else:
+        try:
+            self.tdc_calib["fit_param"][fit_param["func_name"]] = fit_param
+        except KeyError:
             self.tdc_calib["fit_param"] = dict()
-            self.tdc_calib["fit_param"][FP["func_name"]] = FP
+            self.tdc_calib["fit_param"][fit_param["func_name"]] = fit_param
 
 
 @nb.njit(cache=True)
