@@ -1001,19 +1001,21 @@ class MainWin:
                     return
 
             # save data and populate combobox
-            imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
-            self._app.analysis.loaded_data[current_template] = full_data
-            imported_combobox.obj.addItem(current_template)
-            imported_combobox.set(current_template)
+            if self._app.analysis.loaded_data.get(current_template) is None:
+                imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
+                self._app.analysis.loaded_data[current_template] = full_data
+                imported_combobox.obj.addItem(current_template)
+                imported_combobox.set(current_template)
+                logging.info(f"Data loaded for analysis: '{current_template}'")
+            else:
+                logging.info(f"Data '{current_template}' already loaded - ignoring.")
 
-            logging.info(f"Data loaded for analysis: {current_template}")
-
-    def get_current_full_data(self, imported_template: str = None) -> CorrFuncTDC:
+    def get_full_data_from_template(self, template: str = None) -> CorrFuncTDC:
         """Doc."""
 
-        if imported_template is None:
-            imported_template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
-        curr_data_type, *_ = re.split(" -", imported_template)
+        if not template:
+            template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
+        curr_data_type, *_ = re.split(" -", template)
         return self._app.analysis.loaded_data.get(curr_data_type)
 
     def populate_sol_meas_analysis(self, imported_template):
@@ -1022,7 +1024,7 @@ class MainWin:
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
 
         try:
-            full_data = self.get_current_full_data(imported_template)
+            full_data = self.get_full_data_from_template(imported_template)
             num_files = len(full_data.data)
         except AttributeError:
             # no imported templates (deleted)
@@ -1070,7 +1072,7 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            full_data = self.get_current_full_data(imported_template)
+            full_data = self.get_full_data_from_template(imported_template)
             img = full_data.data[file_num - 1].image
             roi = full_data.data[file_num - 1].roi
 
@@ -1083,7 +1085,7 @@ class MainWin:
         """Doc."""
 
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
-        full_data = self.get_current_full_data(imported_template)
+        full_data = self.get_full_data_from_template(imported_template)
 
         if full_data is None:
             return
@@ -1156,14 +1158,20 @@ class MainWin:
         assigned_wdgt = getattr(wdgts.SOL_ANALYSIS_COLL, type)
         assigned_wdgt.set(curr_template)
 
-    def calibrate_tdc(self):
+    # TODO: add a generalized function to correlation_function.py
+    # which does calibrate_tdc() followed by fit_lifetime_hist(),
+    # and plots the fitted histogram instead of the [1][0] figure ax.
+    def calibrate_tdc_all(self):
         """Doc."""
-        # TODO: this is still a work in progress - only use for testing!
 
-        imported_template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
-        full_data = self.get_current_full_data(imported_template)
-        full_data.calibrate_tdc()
-        full_data.fit_lifetime_hist()
+        data_types = ["exc_cal", "sted_cal", "exc_samp", "sted_samp"]
+        assigned_templates = [getattr(wdgts.SOL_ANALYSIS_COLL, type).get() for type in data_types]
+        if "" in assigned_templates:
+            print("Not all data types are assigned. TDC calibration canceled.")
+            return
+        for template in assigned_templates:
+            full_data = self.get_full_data_from_template(template)
+            full_data.calibrate_tdc()  # TODO: add nanosecond calibration gating from widget
 
     def remove_imported_template(self):
         """Doc."""
