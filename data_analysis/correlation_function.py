@@ -119,7 +119,7 @@ class CorrFuncData:
             y = y[1:]
             error_y = error_y[1:]
 
-        FP = fit_tools.curve_fit_lims(
+        fit_param = fit_tools.curve_fit_lims(
             fit_func,
             fit_param_estimate,
             x,
@@ -131,10 +131,11 @@ class CorrFuncData:
             y_scale=y_scale,
         )
 
-        if not hasattr(self, "fit_param"):
+        try:
+            self.fit_param[fit_param["func_name"]] = fit_param
+        except KeyError:
             self.fit_param = dict()
-
-        self.fit_param[FP["func_name"]] = FP
+            self.fit_param[fit_param["func_name"]] = fit_param
 
 
 class CorrFuncTDC(CorrFuncData):
@@ -962,15 +963,15 @@ class CorrFuncTDC(CorrFuncData):
         MaxIter=3,
         should_plot=True,
     ):
+        """Doc."""
 
-        y = self.tdc_calib[y_field]
-        is_finite_y = np.isfinite(y)
+        is_finite_y = np.isfinite(self.tdc_calib[y_field])
 
         fit_param = fit_tools.curve_fit_lims(
             fit_func,
             fit_param_estimate,
             xs=self.tdc_calib[x_field][is_finite_y],
-            ys=y[is_finite_y],
+            ys=self.tdc_calib[y_field][is_finite_y],
             ys_errors=self.tdc_calib[y_error_field][is_finite_y],
             x_limits=fit_range,
             should_plot=should_plot,
