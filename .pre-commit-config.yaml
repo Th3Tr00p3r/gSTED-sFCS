@@ -16,19 +16,19 @@ repos:
             # args: [--no-strict-optional, --ignore-missing-imports]
 
     - repo: https://github.com/pycqa/isort
-      rev: 5.8.0
+      rev: 5.9.3
       hooks:
           - id: isort
             args: [--profile, black, --filter-files]
 
     - repo: https://github.com/ambv/black
-      rev: 20.8b1
+      rev: 21.9b0
       hooks:
           - id: black
             language_version: python3.9
 
     - repo: https://gitlab.com/pycqa/flake8
-      rev: 3.9.0
+      rev: 3.9.2
       hooks:
           - id: flake8
 
