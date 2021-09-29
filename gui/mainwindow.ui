@@ -5709,7 +5709,7 @@ Mean ACF</string>
                           </attribute>
                           <layout class="QGridLayout" name="gridLayout_46">
                            <item row="0" column="0">
-                            <layout class="QHBoxLayout" name="horizontalLayout_43" stretch="20,34">
+                            <layout class="QHBoxLayout" name="horizontalLayout_43" stretch="21,34">
                              <property name="spacing">
                               <number>0</number>
                              </property>
@@ -5727,7 +5727,7 @@ Mean ACF</string>
                                   <enum>QFrame::Sunken</enum>
                                  </property>
                                  <property name="currentIndex">
-                                  <number>0</number>
+                                  <number>1</number>
                                  </property>
                                  <property name="tabSpacing">
                                   <number>0</number>
@@ -5737,8 +5737,8 @@ Mean ACF</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>166</width>
-                                    <height>242</height>
+                                    <width>172</width>
+                                    <height>263</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -5751,12 +5751,12 @@ Mean ACF</string>
                                       <number>0</number>
                                      </property>
                                      <item>
-                                      <layout class="QVBoxLayout" name="verticalLayout_79">
+                                      <layout class="QVBoxLayout" name="verticalLayout_115">
                                        <property name="spacing">
-                                        <number>0</number>
+                                        <number>2</number>
                                        </property>
                                        <item>
-                                        <layout class="QHBoxLayout" name="horizontalLayout_51">
+                                        <layout class="QVBoxLayout" name="verticalLayout_116">
                                          <property name="spacing">
                                           <number>0</number>
                                          </property>
@@ -5769,39 +5769,24 @@ Mean ACF</string>
                                             </sizepolicy>
                                            </property>
                                            <property name="text">
-                                            <string>Assign</string>
+                                            <string>Assign Excitation Calibration</string>
                                            </property>
                                           </widget>
                                          </item>
                                          <item>
-                                          <layout class="QVBoxLayout" name="verticalLayout_71">
-                                           <property name="spacing">
-                                            <number>0</number>
+                                          <widget class="QLineEdit" name="excCal">
+                                           <property name="readOnly">
+                                            <bool>true</bool>
                                            </property>
-                                           <item>
-                                            <widget class="QLabel" name="label_8">
-                                             <property name="text">
-                                              <string>Excitation
-Calibration</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                           <item>
-                                            <widget class="QLineEdit" name="excCal">
-                                             <property name="readOnly">
-                                              <bool>true</bool>
-                                             </property>
-                                             <property name="placeholderText">
-                                              <string>Template</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                          </layout>
+                                           <property name="placeholderText">
+                                            <string>Template</string>
+                                           </property>
+                                          </widget>
                                          </item>
                                         </layout>
                                        </item>
                                        <item>
-                                        <layout class="QHBoxLayout" name="horizontalLayout_50">
+                                        <layout class="QVBoxLayout" name="verticalLayout_117">
                                          <property name="spacing">
                                           <number>0</number>
                                          </property>
@@ -5814,39 +5799,24 @@ Calibration</string>
                                             </sizepolicy>
                                            </property>
                                            <property name="text">
-                                            <string>Assign</string>
+                                            <string>Assign STED Calibration</string>
                                            </property>
                                           </widget>
                                          </item>
                                          <item>
-                                          <layout class="QVBoxLayout" name="verticalLayout_74">
-                                           <property name="spacing">
-                                            <number>0</number>
+                                          <widget class="QLineEdit" name="stedCal">
+                                           <property name="readOnly">
+                                            <bool>true</bool>
                                            </property>
-                                           <item>
-                                            <widget class="QLabel" name="label_10">
-                                             <property name="text">
-                                              <string>STED
-Calibration</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                           <item>
-                                            <widget class="QLineEdit" name="stedCal">
-                                             <property name="readOnly">
-                                              <bool>true</bool>
-                                             </property>
-                                             <property name="placeholderText">
-                                              <string>Template</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                          </layout>
+                                           <property name="placeholderText">
+                                            <string>Template</string>
+                                           </property>
+                                          </widget>
                                          </item>
                                         </layout>
                                        </item>
                                        <item>
-                                        <layout class="QHBoxLayout" name="horizontalLayout_44">
+                                        <layout class="QVBoxLayout" name="verticalLayout_118">
                                          <property name="spacing">
                                           <number>0</number>
                                          </property>
@@ -5859,39 +5829,24 @@ Calibration</string>
                                             </sizepolicy>
                                            </property>
                                            <property name="text">
-                                            <string>Assign</string>
+                                            <string>Assign Excitation Sample</string>
                                            </property>
                                           </widget>
                                          </item>
                                          <item>
-                                          <layout class="QVBoxLayout" name="verticalLayout_80">
-                                           <property name="spacing">
-                                            <number>0</number>
+                                          <widget class="QLineEdit" name="excSamp">
+                                           <property name="readOnly">
+                                            <bool>true</bool>
                                            </property>
-                                           <item>
-                                            <widget class="QLabel" name="label_9">
-                                             <property name="text">
-                                              <string>Excitation
-Sample</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                           <item>
-                                            <widget class="QLineEdit" name="excSamp">
-                                             <property name="readOnly">
-                                              <bool>true</bool>
-                                             </property>
-                                             <property name="placeholderText">
-                                              <string>Template</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                          </layout>
+                                           <property name="placeholderText">
+                                            <string>Template</string>
+                                           </property>
+                                          </widget>
                                          </item>
                                         </layout>
                                        </item>
                                        <item>
-                                        <layout class="QHBoxLayout" name="horizontalLayout_52">
+                                        <layout class="QVBoxLayout" name="verticalLayout_119">
                                          <property name="spacing">
                                           <number>0</number>
                                          </property>
@@ -5904,34 +5859,19 @@ Sample</string>
                                             </sizepolicy>
                                            </property>
                                            <property name="text">
-                                            <string>Assign</string>
+                                            <string>Assign STED Sample</string>
                                            </property>
                                           </widget>
                                          </item>
                                          <item>
-                                          <layout class="QVBoxLayout" name="verticalLayout_125">
-                                           <property name="spacing">
-                                            <number>0</number>
+                                          <widget class="QLineEdit" name="stedSamp">
+                                           <property name="readOnly">
+                                            <bool>true</bool>
                                            </property>
-                                           <item>
-                                            <widget class="QLabel" name="label_11">
-                                             <property name="text">
-                                              <string>STED
-Sample</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                           <item>
-                                            <widget class="QLineEdit" name="stedSamp">
-                                             <property name="readOnly">
-                                              <bool>true</bool>
-                                             </property>
-                                             <property name="placeholderText">
-                                              <string>Template</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                          </layout>
+                                           <property name="placeholderText">
+                                            <string>Template</string>
+                                           </property>
+                                          </widget>
                                          </item>
                                         </layout>
                                        </item>
@@ -5959,8 +5899,8 @@ Sample</string>
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>166</width>
-                                    <height>242</height>
+                                    <width>172</width>
+                                    <height>263</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">
@@ -6038,63 +5978,13 @@ Over (ns)</string>
                                    </item>
                                   </layout>
                                  </widget>
-                                 <widget class="QWidget" name="page_4">
-                                  <property name="geometry">
-                                   <rect>
-                                    <x>0</x>
-                                    <y>0</y>
-                                    <width>116</width>
-                                    <height>67</height>
-                                   </rect>
-                                  </property>
-                                  <attribute name="label">
-                                   <string>Lifetime Parameters</string>
-                                  </attribute>
-                                  <layout class="QGridLayout" name="gridLayout_43">
-                                   <item row="0" column="0">
-                                    <layout class="QVBoxLayout" name="verticalLayout_128" stretch="1,10">
-                                     <property name="spacing">
-                                      <number>0</number>
-                                     </property>
-                                     <item>
-                                      <widget class="QPushButton" name="pushButton_6">
-                                       <property name="sizePolicy">
-                                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                         <horstretch>0</horstretch>
-                                         <verstretch>0</verstretch>
-                                        </sizepolicy>
-                                       </property>
-                                       <property name="text">
-                                        <string>Compare Lifetimes
-and
-Get Parameters</string>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item>
-                                      <spacer name="verticalSpacer_14">
-                                       <property name="orientation">
-                                        <enum>Qt::Vertical</enum>
-                                       </property>
-                                       <property name="sizeHint" stdset="0">
-                                        <size>
-                                         <width>20</width>
-                                         <height>40</height>
-                                        </size>
-                                       </property>
-                                      </spacer>
-                                     </item>
-                                    </layout>
-                                   </item>
-                                  </layout>
-                                 </widget>
                                  <widget class="QWidget" name="page_5">
                                   <property name="geometry">
                                    <rect>
                                     <x>0</x>
                                     <y>0</y>
-                                    <width>166</width>
-                                    <height>133</height>
+                                    <width>172</width>
+                                    <height>263</height>
                                    </rect>
                                   </property>
                                   <attribute name="label">

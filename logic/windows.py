@@ -1013,7 +1013,7 @@ class MainWin:
     def get_full_data_from_template(self, template: str = None) -> CorrFuncTDC:
         """Doc."""
 
-        if not template:
+        if template is None:
             template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
         return self._app.analysis.loaded_data.get(curr_data_type)
@@ -1166,14 +1166,20 @@ class MainWin:
 
         data_types = ["exc_cal", "sted_cal", "exc_samp", "sted_samp"]
         assigned_templates = [getattr(wdgts.SOL_ANALYSIS_COLL, type).get() for type in data_types]
-        if "" in assigned_templates:
-            print("Not all data types are assigned. TDC calibration canceled.")
-            return
         for template in assigned_templates:
             full_data = self.get_full_data_from_template(template)
-            full_data.calibrate_tdc()  # TODO: add nanosecond calibration gating from widget
+            with suppress(AttributeError):
+                # AttributeError - template is empty, meaning full_data is None
+                full_data.calibrate_tdc()  # TODO: add nanosecond calibration gating from widget
 
-    def remove_imported_template(self):
+        for idx in range(0, len(assigned_templates), 2):
+            exc_data = self.get_full_data_from_template(assigned_templates[idx])
+            sted_data = self.get_full_data_from_template(assigned_templates[idx + 1])
+            with suppress(AttributeError):
+                # AttributeError - template is empty, meaning full_data is None
+                exc_data.compare_lifetimes(legend_label="exc", sted=sted_data)
+
+    def remove_imported_template(self) -> None:
         """Doc."""
 
         imported_templates = wdgts.SOL_ANALYSIS_COLL.imported_templates
