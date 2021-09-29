@@ -2,8 +2,8 @@
 
 import os
 from collections import deque
+from contextlib import suppress
 
-import matplotlib.pyplot as plt
 import numba as nb
 import numpy as np
 from scipy import ndimage, stats
@@ -133,7 +133,7 @@ class CorrFuncData:
 
         try:
             self.fit_param[fit_param["func_name"]] = fit_param
-        except KeyError:
+        except AttributeError:
             self.fit_param = dict()
             self.fit_param[fit_param["func_name"]] = fit_param
 
@@ -672,10 +672,7 @@ class CorrFuncTDC(CorrFuncData):
         self.tdc_calib = dict()
 
         # keep runtime elements of each file for array size allocation
-        n_elem = [0]
-        for p in self.data:
-            n_elem.append(p.runtime.size)
-        n_elem = np.cumsum(n_elem)
+        n_elem = np.cumsum([0] + [p.runtime.size for p in self.data])
 
         # unite coarse and fine times from all files
         coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
@@ -883,6 +880,7 @@ class CorrFuncTDC(CorrFuncData):
         self.tdc_calib["all_hist_norm"][~nonzero] = np.nan
         self.tdc_calib["error_all_hist_norm"][~nonzero] = np.nan
 
+        # TODO: add some title (template?) - e.g. f"TDC Calibration - '{template}'"
         if should_plot:
             with display.show_external_axes(subplots=(2, 2)) as axes:
                 # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable
@@ -909,45 +907,50 @@ class CorrFuncTDC(CorrFuncData):
     def compare_lifetimes(
         self,
         normalization_type="Per Time",
-        legend_label="",
-        **kwargs  # dictionary, where keys are to be used as legends and values are objects that are
-        # supposed to have their own compare_lifetimes method. But there can be other key/value
-        # pairs related e.g. to plot fonts.
+        legend_label=None,
+        fontsize=18,
+        **kwargs,
     ):
+        """
+        Plots a comparison of lifetime histograms.
+        'kwargs' is a dictionary, where keys are to be used as legend labels and values are 'full_data'
+        objects which are supposed to have their own TDC calibrations.
+        """
 
-        # Possible normalization types: 'NO', 'Per Time'
-        if normalization_type == "NO":
-            H = self.tdc_calib["all_hist"] / self.tdc_calib["t_weight"]
-        elif normalization_type == "Per Time":
-            H = self.tdc_calib["all_hist_norm"]
-        elif normalization_type == "By Sum":
-            H = self.tdc_calib["all_hist_norm"] / np.sum(
-                self.tdc_calib["all_hist_norm"][np.isfinite(self.tdc_calib["all_hist_norm"])]
-            )
-        else:
-            raise Exception("Unknown normalization type")
+        if legend_label is None:
+            legend_label = self.template
 
-        if "fontsize" not in kwargs:
-            axisLabelFontSize = 18
-        else:
-            axisLabelFontSize = kwargs["fontsize"]
-        #    kwargs.pop('fontsize')
+        # add self to compared TDC calibrations
+        kwargs.update([(legend_label, self)])
 
-        # plt.subplots(1, 1)
-        plt.semilogy(self.tdc_calib["t_hist"], H, "-o", label=legend_label)
-        print(legend_label)
+        h = []
+        for label, full_data in kwargs.items():
+            with suppress(AttributeError):
+                # AttributeError - assume other objects that have TDCcalib structures
+                x = full_data.tdc_calib["t_hist"]
+                if normalization_type == "NO":
+                    y = full_data.tdc_calib["all_hist"] / full_data.tdc_calib["t_weight"]
+                elif normalization_type == "Per Time":
+                    y = full_data.tdc_calib["all_hist_norm"]
+                elif normalization_type == "By Sum":
+                    y = full_data.tdc_calib["all_hist_norm"] / np.sum(
+                        full_data.tdc_calib["all_hist_norm"][
+                            np.isfinite(full_data.tdc_calib["all_hist_norm"])
+                        ]
+                    )
+                else:
+                    raise ValueError(f"Unknown normalization type '{normalization_type}'.")
+                h.append((x, y, label))
 
-        for key, value in kwargs.items():
-            if hasattr(
-                value, "compare_lifetimes"
-            ):  # assume other objects that have TDCcalib structures
-                value.compare_lifetimes(normalization_type, legend_label=key)
-
-        # set(gca, 'FontSize', 16);
-        plt.xlabel("life time (ns)", fontsize=axisLabelFontSize)
-        plt.ylabel("freq", fontsize=axisLabelFontSize)
-        plt.legend(loc="best")
-        plt.show()
+        with display.show_external_axes() as ax:
+            labels = []
+            for tuple_ in h:
+                x, y, label = tuple_
+                labels.append(label)
+                ax.semilogy(x, y, "-o", label=label)
+            ax.set_xlabel("Life Time (ns)", fontsize=fontsize)
+            ax.set_ylabel("Frequency", fontsize=fontsize)
+            ax.legend(labels)
 
     def fit_lifetime_hist(
         self,

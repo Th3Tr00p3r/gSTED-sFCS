@@ -45,11 +45,11 @@ imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,9
 dataYear,2021
 dataDay,12
-dataTemplate,mat_174909_*.mat
+dataTemplate,pkl_174909_*.pkl
 solImportUseDontUse,Use
-importedSolDataTemplates,
+importedSolDataTemplates,pkl_174909_*.pkl
 comboBox,
-solAnalysisLifetime,
+solAnalysisLifetime,Lifetime
 avgInterval,200
 solScanParamsStacked,2
 importStacked,1
@@ -79,5 +79,5 @@ solDataExtPlot,False
 solDataFixShift,True
 solImportSaveProcessed,True
 solImportLoadProcessed,False
-toolBox,1
+toolBox,0
 scaleImgScan,300
