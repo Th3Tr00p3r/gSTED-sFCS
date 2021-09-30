@@ -65,7 +65,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.analysisDataTypeGroup = PyQt5.QtWidgets.QButtonGroup()
         self.analysisDataTypeGroup.addButton(self.imageDataImport)
         self.analysisDataTypeGroup.addButton(self.solDataImport)
-        self.analysisDataTypeGroup.buttonReleased.connect(self.impl.populate_all_data_dates)
+        self.analysisDataTypeGroup.buttonReleased.connect(self.impl.switch_data_type)
 
         self.rowDiscriminationGroup = PyQt5.QtWidgets.QButtonGroup()
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
@@ -401,7 +401,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
 
 class SettWin(PyQt5.QtWidgets.QDialog):
-    """ Documentation."""
+    """Documentation."""
 
     UI_PATH = "./gui/settingswindow.ui"
 

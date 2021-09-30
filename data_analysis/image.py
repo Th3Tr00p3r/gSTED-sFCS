@@ -72,6 +72,7 @@ class ImageScanData:
 
         self.line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         self.row_ticks_v = scan_params["set_pnts_lines_odd"]
+        self.n_planes = n_planes
 
     def build_image(self, method, plane_idx):
         """Doc."""

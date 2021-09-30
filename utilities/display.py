@@ -274,9 +274,9 @@ def force_aspect(ax, aspect=1) -> None:
 
 
 @contextmanager
-def show_external_axes(subplots=(1, 1), should_force_aspect=False):
+def show_external_axes(subplots=(1, 1), super_title=None, should_force_aspect=False, fontsize=14):
     """
-    Creates a Matplotlib figure, and yields a single ax object
+    Creates a Matplotlib figure, and yields a 'matplotlib.axes.Axes' object
     which is to be manipulated, then shows the figure.
     """
 
@@ -291,4 +291,7 @@ def show_external_axes(subplots=(1, 1), should_force_aspect=False):
             if should_force_aspect:
                 force_aspect(ax, aspect=1)
             ax.autoscale()
+            [item.set_fontsize(fontsize) for item in [ax.title, ax.xaxis.label, ax.yaxis.label]]
+        if super_title is not None:
+            fig.suptitle(super_title, fontsize=(fontsize + 2))
         fig.show()
