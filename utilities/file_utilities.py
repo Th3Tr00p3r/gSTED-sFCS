@@ -150,6 +150,11 @@ def save_processed_solution_meas(full_data, dir_path) -> None:
     with open(file_path, "wb") as f:
         pickle.dump(full_data, f)
 
+    # return to int64 (the actual object was changed!)
+    for p in full_data.data:
+        if p.runtime.dtype == np.int32:
+            p.runtime = p.runtime.astype(np.int64)
+
 
 def load_file_dict(file_path: str):
     """
