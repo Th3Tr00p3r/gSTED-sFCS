@@ -312,9 +312,10 @@ class TDCPhotonData:
         self.tdc_calib["all_hist_norm"][~nonzero] = np.nan
         self.tdc_calib["error_all_hist_norm"][~nonzero] = np.nan
 
-        # TODO: add some title (template?) - e.g. f"TDC Calibration - '{template}'"
         if should_plot:
-            with display.show_external_axes(subplots=(2, 2)) as axes:
+            with display.show_external_axes(
+                subplots=(2, 2), super_title=f"TDC Calibration - '{self.template}'"
+            ) as axes:
                 # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable
                 # plotting later on?
                 axes[0, 0].semilogy(
@@ -340,7 +341,7 @@ class TDCPhotonData:
         self,
         normalization_type="Per Time",
         legend_label=None,
-        fontsize=18,
+        fontsize=14,
         **kwargs,
     ):
         """
@@ -374,14 +375,16 @@ class TDCPhotonData:
                     raise ValueError(f"Unknown normalization type '{normalization_type}'.")
                 h.append((x, y, label))
 
-        with display.show_external_axes() as ax:
+        with display.show_external_axes(
+            super_title="Life Time Comparison", fontsize=fontsize
+        ) as ax:
             labels = []
             for tuple_ in h:
                 x, y, label = tuple_
                 labels.append(label)
                 ax.semilogy(x, y, "-o", label=label)
-            ax.set_xlabel("Life Time (ns)", fontsize=fontsize)
-            ax.set_ylabel("Frequency", fontsize=fontsize)
+            ax.set_xlabel("Life Time (ns)")
+            ax.set_ylabel("Frequency")
             ax.legend(labels)
 
     def fit_lifetime_hist(

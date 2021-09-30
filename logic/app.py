@@ -96,7 +96,7 @@ class App:
 
         # init existing data folders (solution by default)
         self.gui.main.solDataImport.setChecked(True)
-        self.gui.main.impl.populate_all_data_dates()
+        self.gui.main.impl.switch_data_type()
 
         # show the GUI
         self.gui.main.show()
