@@ -243,8 +243,6 @@ SWITCH_COLL = QtWidgetCollection(
 # ----------------------------------------------
 # Analysis Widget Collections
 # ----------------------------------------------
-# TODO: change unneeded widgets to 'False', and implement using "read widgets" instead of manually reading each one using .get()
-# Widgets that need .obj should be 'True'
 
 DATA_IMPORT_COLL = QtWidgetCollection(
     is_image_type=("imageDataImport", "QRadioButton", "main", False),
@@ -256,8 +254,9 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     n_files=("dataNumFiles", "QLabel", "main", True),
     new_template=("newTemplate", "QLineEdit", "main", False),
     import_stacked=("importStacked", "QStackedWidget", "main", True),
+    analysis_stacked=("analysisStacked", "QStackedWidget", "main", True),
     log_text=("dataDirLog", "QPlainTextEdit", "main", True),
-    img_preview_disp=("imgScanPreviewDisp", None, "main", False),
+    img_preview_disp=("imgScanPreviewDisp", None, "main", True),
     sol_save_processed=("solImportSaveProcessed", "QCheckBox", "main", False),
     sol_use_processed=("solImportLoadProcessed", "QCheckBox", "main", False),
     sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", False),

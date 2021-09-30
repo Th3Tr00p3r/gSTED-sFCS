@@ -108,7 +108,7 @@ class MainWin:
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
                 return False
 
-            if (is_dvc_on := getattr(dvc, state_attr)) :
+            if is_dvc_on := getattr(dvc, state_attr):
                 # if managed to turn ON
                 logging.debug(f"{dvc.log_ref} toggled ON")
                 if nick == "stage":
@@ -583,26 +583,44 @@ class MainWin:
     ## Analysis Tab
     ####################
 
-    def populate_all_data_dates(self) -> None:
+    def switch_data_type(self) -> None:
         """Doc."""
 
+        # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
         DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
 
         if DATA_IMPORT_COLL.is_image_type:
-            save_path = wdgts.IMG_MEAS_COLL.read_gui(self._app).save_path
             DATA_IMPORT_COLL.import_stacked.set(0)
-            sub_dir = "image"
+            DATA_IMPORT_COLL.analysis_stacked.set(0)
+            type_ = "image"
         elif DATA_IMPORT_COLL.is_solution_type:
-            save_path = wdgts.SOL_MEAS_COLL.read_gui(self._app).save_path
             DATA_IMPORT_COLL.import_stacked.set(1)
-            sub_dir = "solution"
+            DATA_IMPORT_COLL.analysis_stacked.set(1)
+            type_ = "solution"
+
+        self.populate_all_data_dates(type_)
+
+    def populate_all_data_dates(self, type_) -> None:
+        """Doc."""
+
+        # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+
+        if type_ == "image":
+            save_path = wdgts.IMG_MEAS_COLL.read_gui(self._app).save_path
+        elif type_ == "solution":
+            save_path = wdgts.SOL_MEAS_COLL.read_gui(self._app).save_path
+        else:
+            raise ValueError(
+                f"Data type '{type_}'' is not supported; use either 'image' or 'solution'."
+            )
 
         wdgts.DATA_IMPORT_COLL.clear_all_objects()
 
         with suppress(TypeError, IndexError, FileNotFoundError):
             # no directories found... (dir_years is None or [])
             # FileNotFoundError - data directory deleted while app running!
-            dir_years = helper.dir_date_parts(save_path, sub_dir)
+            dir_years = helper.dir_date_parts(save_path, type_)
             DATA_IMPORT_COLL.data_years.obj.addItems(dir_years)
 
     def populate_data_dates_from_year(self, year: str) -> None:
@@ -821,7 +839,7 @@ class MainWin:
             webbrowser.open(dir_path)
         else:
             # dir was deleted, refresh all dates
-            self.populate_all_data_dates()
+            self.switch_data_type()
 
     def update_dir_log_file(self) -> None:
         """Doc."""
@@ -940,7 +958,7 @@ class MainWin:
             scan_param = file_dict["scan_param"]
             um_v_ratio = file_dict["xyz_um_to_v"]
             image_data = ImageScanData(counts, ao, scan_param, um_v_ratio)
-            image = image_data.build_image("forward", scan_param["n_planes"] // 2)
+            image = image_data.build_image("forward", image_data.n_planes // 2)
             # plot it (below)
             data_import_wdgts.img_preview_disp.obj.display_image(image.T, axis=False, cmap="bone")
 
