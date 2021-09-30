@@ -1176,9 +1176,6 @@ class MainWin:
         assigned_wdgt = getattr(wdgts.SOL_ANALYSIS_COLL, type)
         assigned_wdgt.set(curr_template)
 
-    # TODO: add a generalized function to correlation_function.py
-    # which does calibrate_tdc() followed by fit_lifetime_hist(),
-    # and plots the fitted histogram instead of the [1][0] figure ax.
     def calibrate_tdc_all(self):
         """Doc."""
 
@@ -1216,6 +1213,9 @@ class MainWin:
         DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
         current_template = DATA_IMPORT_COLL.data_templates.get()
         current_dir_path = self.current_date_type_dir_path()
+
+        if not current_template or current_template.endswith(".mat"):
+            return
 
         pressed = dialog.Question(
             txt=f"Are you sure you wish to convert '{current_template}'?",
