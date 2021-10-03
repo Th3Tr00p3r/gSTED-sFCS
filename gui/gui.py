@@ -77,6 +77,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         self.solScanImgDisp = Display(self.solAnalysisScanImageLayout, self)
         self.solScanAcfDisp = Display(self.solAnalysisAveragingLayout, self)
+        self.solScanTdcDisp = Display(self.solAnalysisTDCLayout, self)
         self.solScanGstedDisp = Display(self.solAnalysisGSTEDLayout, self)
 
         self.imgScanPreviewDisp = Display(self.importImgPreviewLayout)

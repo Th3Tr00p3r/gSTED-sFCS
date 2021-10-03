@@ -17,8 +17,8 @@ imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
-solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
+solAnalysisRemoveWorstSpinner,0
 spinBox,40
 depPow,130
 depCurr,1500
@@ -30,8 +30,8 @@ imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
+doubleSpinBox_2,0.0
 solAnalysisRemoveOverSpinner,2.0
-doubleSpinBox,0.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -45,10 +45,10 @@ imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,9
 dataYear,2021
 dataDay,12
-dataTemplate,pkl_174909_*.pkl
+dataTemplate,mat_174909_*.mat
 solImportUseDontUse,Use
 importedSolDataTemplates,
-comboBox,
+comboBox_2,
 solAnalysisLifetime,Lifetime
 avgInterval,200
 solScanParamsStacked,2
@@ -79,5 +79,4 @@ solDataExtPlot,False
 solDataFixShift,True
 solImportSaveProcessed,True
 solImportLoadProcessed,False
-toolBox,0
 scaleImgScan,300
