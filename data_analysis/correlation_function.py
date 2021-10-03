@@ -9,12 +9,12 @@ from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
-from data_analysis.photon_data import PhotonData, TDCPhotonData
+from data_analysis.photon_data import TDCPhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import display, file_utilities, fit_tools, helper
 
 
-class CorrFuncData:
+class CorrFunc:
     """Doc."""
 
     def average_correlation(
@@ -137,10 +137,11 @@ class CorrFuncData:
             self.fit_param[fit_param["func_name"]] = fit_param
 
 
-class CorrFuncTDC(CorrFuncData, TDCPhotonData):
+class CorrFuncTDC(CorrFunc, TDCPhotonData):
     """Doc."""
 
     def __init__(self):
+        # TODO: self.data probably belongs in read_fpga_data()?
         self.data = []  # list to hold the data of each file
         self.nan_placebo = -100
 
@@ -226,12 +227,11 @@ class CorrFuncTDC(CorrFuncData, TDCPhotonData):
 
     def process_angular_scan_data(
         self, full_data, idx, should_fix_shift, roi_selection, should_plot
-    ) -> PhotonData:
+    ):
         """Doc."""
 
         print("Converting raw data to photons...", end=" ")
-        p = PhotonData()
-        p.convert_fpga_data_to_photons(
+        p = self.convert_fpga_data_to_photons(
             full_data["data"], version=full_data["version"], verbose=True
         )
         print("Done.")
@@ -399,13 +399,12 @@ class CorrFuncTDC(CorrFuncData, TDCPhotonData):
 
         return p
 
-    def process_static_data(self, full_data, idx) -> PhotonData:
+    def process_static_data(self, full_data, idx):
         """Doc."""
 
         print("Converting raw data to photons...", end=" ")
-        p = PhotonData()
-        p.convert_fpga_data_to_photons(
-            full_data["data"], version=full_data["version"], verbose=True
+        p = self.convert_fpga_data_to_photons(
+            full_data["data"], ignore_coarse_fine=True, version=full_data["version"], verbose=True
         )
         print("Done.")
 
