@@ -19,7 +19,6 @@ import gui.widgets as wdgts
 import logic.devices as dvcs
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.image import ImageScanData
-from data_analysis.photon_data import PhotonData
 from logic.scan_patterns import ScanPatternAO
 from utilities import errors, fit_tools, helper
 
@@ -577,11 +576,12 @@ class SFCSSolutionMeasurement(Measurement):
         def compute_acf(data):
             """Doc."""
 
-            p = PhotonData()
-            p.convert_fpga_data_to_photons(np.array(data, dtype=np.uint8))
             s = CorrFuncTDC()
             s.after_pulse_param = self.sys_info["after_pulse_param"]
             s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
+            p = s.convert_fpga_data_to_photons(
+                np.array(data, dtype=np.uint8), ignore_coarse_fine=True
+            )
             s.data.append(p)
             s.correlate_and_average()
             return s

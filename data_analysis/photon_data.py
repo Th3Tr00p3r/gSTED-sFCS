@@ -1,22 +1,27 @@
 """Raw data handling."""
 
 from contextlib import suppress
+from types import SimpleNamespace
 
 import numpy as np
 
 from utilities import display, fit_tools
 
 
-class PhotonData:
+class TDCPhotonData:
     """Doc."""
 
-    def convert_fpga_data_to_photons(self, fpga_data, version=3, verbose=False):
+    def convert_fpga_data_to_photons(
+        self, fpga_data, ignore_coarse_fine=False, version=3, verbose=False
+    ):
         """Doc."""
+
+        p = SimpleNamespace()
 
         if version >= 2:
             group_len = 7
             maxval = 256 ** 3
-        self.version = version
+        p.version = version
 
         section_edges, tot_single_errors = find_all_section_edges(fpga_data, group_len)
 
@@ -67,22 +72,21 @@ class PhotonData:
         for i in neg_time_stamp_idxs + 1:
             runtime[i:] += maxval
 
-        # saving coarse and fine times
-        coarse = fpga_data[idxs + 4].astype(np.int16)
-        self.fine = fpga_data[idxs + 5].astype(np.int16)
+        # handling coarse and fine times (for gating)
+        if not ignore_coarse_fine:
+            coarse = fpga_data[idxs + 4].astype(np.int16)
+            p.fine = fpga_data[idxs + 5].astype(np.int16)
 
-        # some fix due to an issue in FPGA
-        if self.version >= 3:
-            self.coarse = np.mod(coarse, 64)
-            self.coarse2 = self.coarse - np.mod(self.coarse, 4) + (coarse // 64)
-        else:
-            self.coarse = coarse
+            # some fix due to an issue in FPGA
+            if p.version >= 3:
+                p.coarse = np.mod(coarse, 64)
+                p.coarse2 = p.coarse - np.mod(p.coarse, 4) + (coarse // 64)
+            else:
+                p.coarse = coarse
 
-        self.runtime = runtime
+        p.runtime = runtime
 
-
-class TDCPhotonData:
-    """Doc."""
+        return p
 
     def calibrate_tdc(  # NOQA C901
         self,
