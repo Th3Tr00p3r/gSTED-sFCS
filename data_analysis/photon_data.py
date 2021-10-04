@@ -21,6 +21,9 @@ class TDCPhotonData:
         if version >= 2:
             group_len = 7
             maxval = 256 ** 3
+        else:
+            raise ValueError(f"Version ({version}) must be greater than 2")
+
         p.version = version
 
         section_edges, tot_single_errors = find_all_section_edges(fpga_data, group_len)
@@ -50,7 +53,7 @@ class TDCPhotonData:
             fpga_data[idxs + 1] * 256 ** 2 + fpga_data[idxs + 2] * 256 + fpga_data[idxs + 3]
         ).astype(np.int64)
 
-        time_stamps = np.diff(runtime)
+        time_stamps = np.diff(runtime).astype(np.int32)
 
         # find simple "inversions": the data with a missing byte
         # decrease in runtime on data j+1, yet the next runtime data (j+2) is higher than j.
@@ -62,13 +65,12 @@ class TDCPhotonData:
                     end=" ",
                 )
             temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
-            time_stamps[inv_idxs] = np.floor(temp).astype(np.int64)
-            time_stamps[inv_idxs + 1] = np.ceil(temp).astype(np.int64)
+            time_stamps[inv_idxs] = np.floor(temp, dtype=np.int32)
+            time_stamps[inv_idxs + 1] = np.ceil(temp, dtype=np.int32)
             runtime[inv_idxs + 1] = runtime[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
         # repairing drops in runtime (happens when number of laser pulses passes 'maxval')
         neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
-        time_stamps[neg_time_stamp_idxs] += maxval
         for i in neg_time_stamp_idxs + 1:
             runtime[i:] += maxval
 
