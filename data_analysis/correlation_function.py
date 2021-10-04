@@ -346,6 +346,7 @@ class CorrFuncTDC(CorrFunc, TDCPhotonData):
         runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
         sorted_idxs = np.argsort(runtime)
         p.runtime = runtime[sorted_idxs]
+        p.time_stamps = np.diff(p.runtime).astype(np.int32)
         p.line_num = np.hstack(
             (
                 line_start_lables,
@@ -408,6 +409,7 @@ class CorrFuncTDC(CorrFunc, TDCPhotonData):
         )
         print("Done.")
 
+        p.time_stamps = np.diff(p.runtime).astype(np.int32)
         p.file_num = idx + 1
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
@@ -438,8 +440,7 @@ class CorrFuncTDC(CorrFunc, TDCPhotonData):
         if run_duration < 0:  # auto determination of run duration
             total_duration_estimate = 0
             for p in self.data:
-                time_stamps = np.diff(p.runtime)
-                mu = np.median(time_stamps) / np.log(2)
+                mu = np.median(p.time_stamps) / np.log(2)
                 total_duration_estimate = (
                     total_duration_estimate + mu * len(p.runtime) / self.laser_freq_hz
                 )
@@ -464,20 +465,19 @@ class CorrFuncTDC(CorrFunc, TDCPhotonData):
             if verbose:
                 print(f"({p.file_num})", end=" ")
             # find additional outliers
-            time_stamps = np.diff(p.runtime).astype(np.int32)
             # for exponential distribution MEDIAN and MAD are the same, but for
             # biexponential MAD seems more sensitive
             mu = max(
-                np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()
+                np.median(p.time_stamps), np.abs(p.time_stamps - p.time_stamps.mean()).mean()
             ) / np.log(2)
-            max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
-            sec_edges = (time_stamps > max_time_stamp).nonzero()[0]
+            max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(p.time_stamps), scale=mu)
+            sec_edges = (p.time_stamps > max_time_stamp).nonzero()[0]
             no_outliers = len(sec_edges)
             if no_outliers > 0:
                 if verbose:
                     print(f"{no_outliers} of all outliers")
 
-            sec_edges = np.append(np.insert(sec_edges, 0, 0), len(time_stamps))
+            sec_edges = np.append(np.insert(sec_edges, 0, 0), len(p.time_stamps))
             p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
 
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
@@ -493,7 +493,7 @@ class CorrFuncTDC(CorrFunc, TDCPhotonData):
 
                 n_splits = helper.div_ceil(segment_time, run_duration)
                 splits = np.linspace(0, (se_end - se_start), n_splits + 1, dtype=np.int32)
-                ts = time_stamps[se_start:se_end]
+                ts = p.time_stamps[se_start:se_end]
 
                 for k in range(n_splits):
 
@@ -559,8 +559,6 @@ class CorrFuncTDC(CorrFunc, TDCPhotonData):
 
         for p in self.data:
             print(f"({p.file_num})", end=" ")
-
-            time_stamps = np.diff(p.runtime).astype(np.int32)
             line_num = p.line_num
             min_line, max_line = line_num[line_num > 0].min(), line_num.max()
             for line_idx, j in enumerate(range(min_line, max_line + 1)):
@@ -571,7 +569,7 @@ class CorrFuncTDC(CorrFunc, TDCPhotonData):
                 valid = valid[1:]
 
                 # remove photons from wrong lines
-                timest = time_stamps[valid != 0]
+                timest = p.time_stamps[valid != 0]
                 valid = valid[valid != 0]
 
                 if not valid.size:
@@ -581,16 +579,16 @@ class CorrFuncTDC(CorrFunc, TDCPhotonData):
                 # check that we start with the line beginning and not its end
                 if valid[0] != -1:
                     # remove photons till the first found beginning
-                    Jstrt = np.where(valid == -1)[0][0]
-                    timest = timest[Jstrt:]
-                    valid = valid[Jstrt:]
+                    j_start = np.where(valid == -1)[0][0]
+                    timest = timest[j_start:]
+                    valid = valid[j_start:]
 
                     # check that we stop with the line ending and not its beginning
                 if valid[-1] != -2:
                     # remove photons till the last found ending
-                    Jend = np.where(valid == -2)[0][-1]
-                    timest = timest[:Jend]
-                    valid = valid[:Jend]
+                    j_end = np.where(valid == -2)[0][-1]
+                    timest = timest[:j_end]
+                    valid = valid[:j_end]
 
                 # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
                 dur = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
