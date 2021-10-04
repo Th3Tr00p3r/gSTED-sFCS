@@ -53,7 +53,7 @@ class TDCPhotonData:
             fpga_data[idxs + 1] * 256 ** 2 + fpga_data[idxs + 2] * 256 + fpga_data[idxs + 3]
         ).astype(np.int64)
 
-        time_stamps = np.diff(runtime).astype(np.int32)
+        time_stamps = np.diff(runtime)
 
         # find simple "inversions": the data with a missing byte
         # decrease in runtime on data j+1, yet the next runtime data (j+2) is higher than j.
@@ -65,8 +65,8 @@ class TDCPhotonData:
                     end=" ",
                 )
             temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
-            time_stamps[inv_idxs] = np.floor(temp, dtype=np.int32)
-            time_stamps[inv_idxs + 1] = np.ceil(temp, dtype=np.int32)
+            time_stamps[inv_idxs] = np.floor(temp, dtype="int")
+            time_stamps[inv_idxs + 1] = np.ceil(temp, dtype="int")
             runtime[inv_idxs + 1] = runtime[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
         # repairing drops in runtime (happens when number of laser pulses passes 'maxval')
@@ -87,6 +87,7 @@ class TDCPhotonData:
                 p.coarse = coarse
 
         p.runtime = runtime
+        p.time_stamps = np.diff(runtime).astype(np.int32)
 
         return p
 
@@ -120,7 +121,7 @@ class TDCPhotonData:
             fine[n_elem[i] : n_elem[i + 1]] = p.fine
 
         if self.type == "angular_scan":
-            photon_idxs = fine > self.nan_placebo  # remove line starts/ends
+            photon_idxs = fine > self.NAN_PLACEBO  # remove line starts/ends
             coarse = coarse[photon_idxs]
             fine = fine[photon_idxs]
 
@@ -272,7 +273,7 @@ class TDCPhotonData:
             on_left_tdc = p.fine < l_quarter_tdc
             delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
 
-            photon_idxs = p.fine > self.nan_placebo  # self.nan_placebo are starts/ends of lines
+            photon_idxs = p.fine > self.NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
             p.delay_time[photon_idxs] = (
                 self.tdc_calib["t_calib"][p.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9

@@ -998,6 +998,10 @@ class MainWin:
                 else:
                     sol_file_selection = ""
 
+                # Inferring data_dype from template
+                data_type = self.infer_data_type_from_template(current_template)
+
+                # loading and correlating
                 try:
                     with suppress(AttributeError):
                         # No directories found
@@ -1007,7 +1011,7 @@ class MainWin:
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
                             should_plot=sol_analysis_wdgts.external_plotting,
                         )
-                        full_data.correlate_data(verbose=True)
+                    full_data.correlate_data(data_type, verbose=True)
 
                     if import_wdgts.sol_save_processed:
                         print("Saving the processed data...", end=" ")
@@ -1035,6 +1039,17 @@ class MainWin:
             template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
         return self._app.analysis.loaded_data.get(curr_data_type)
+
+    def infer_data_type_from_template(self, template: str) -> str:
+        """Doc."""
+
+        if ((data_type := "_exc_") in template) or ((data_type := "_sted_") in template):
+            return data_type[1:-1]
+        else:
+            print(
+                f"Data type could not be inferred from template ({template}). Treating as 'exc' data (consider changing the template)."
+            )
+            return "exc"
 
     def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
@@ -1111,51 +1126,55 @@ class MainWin:
         if full_data.type == "angular_scan":
             row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
             if row_disc_method == "solAnalysisRemoveOver":
-                avg_corr_args = dict(rejection=sol_data_analysis_wdgts.remove_over)
+                avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
             elif row_disc_method == "solAnalysisRemoveWorst":
-                avg_corr_args = dict(
+                avg_corr_kwargs = dict(
                     rejection=None, reject_n_worst=sol_data_analysis_wdgts.remove_worst
                 )
             else:  # use all rows
-                avg_corr_args = dict(rejection=None)
+                avg_corr_kwargs = dict(rejection=None)
 
             with suppress(AttributeError):
                 # AttributeError - no data loaded
-                full_data.average_correlation(**avg_corr_args)
+                data_type = self.infer_data_type_from_template(full_data.template)
+                cf = full_data.cf[data_type]
+                cf.average_correlation(**avg_corr_kwargs)
 
                 if sol_data_analysis_wdgts.plot_spatial:
-                    x = (full_data.vt_um, "disp")
+                    x = (cf.vt_um, "disp")
                     x_label = r"squared displacement ($um^2$)"
                 else:
-                    x = (full_data.lag, "lag")
+                    x = (cf.lag, "lag")
                     x_label = "lag (ms)"
 
                 sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
                     x,
-                    full_data.average_cf_cr,
-                    full_data.g0,
-                    full_data.cf_cr[full_data.j_good, :],
+                    cf.avg_cf_cr,
+                    cf.g0,
+                    cf.cf_cr[cf.j_good, :],
                 )
                 sol_data_analysis_wdgts.row_acf_disp.obj.entitle_and_label(x_label, "G0")
 
-                sol_data_analysis_wdgts.mean_g0.set(full_data.g0 / 1e3)  # shown in thousands
+                sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
                 sol_data_analysis_wdgts.mean_tau.set(0)
 
-                sol_data_analysis_wdgts.n_good_rows.set(n_good := len(full_data.j_good))
-                sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(full_data.j_bad))
+                sol_data_analysis_wdgts.n_good_rows.set(n_good := len(cf.j_good))
+                sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(cf.j_bad))
                 sol_data_analysis_wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
 
-        if full_data.type == "static":
-            full_data.average_correlation()
+        elif full_data.type == "static":
+            data_type = self.infer_data_type_from_template(full_data.template)
+            cf = full_data.cf[data_type]
+            cf.average_correlation()
             try:
-                full_data.fit_correlation_function()
+                cf.fit_correlation_function()
             except fit_tools.FitError as exc:
                 # fit failed, use g0 calculated in 'average_correlation()'
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
-                sol_data_analysis_wdgts.mean_g0.set(full_data.g0 / 1e3)  # shown in thousands
+                sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
                 sol_data_analysis_wdgts.mean_tau.set(0)
             else:  # fit succeeded
-                fit_params = full_data.fit_param["diffusion_3d_fit"]
+                fit_params = cf.fit_param["diffusion_3d_fit"]
                 g0, tau, _ = fit_params["beta"]
                 fit_func = getattr(fit_tools, fit_params["func_name"])
                 sol_data_analysis_wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
@@ -1163,9 +1182,9 @@ class MainWin:
                 y_fit = fit_func(fit_params["x"], *fit_params["beta"])
                 sol_data_analysis_wdgts.row_acf_disp.obj.clear()
                 sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
-                    (full_data.lag, "lag"),
-                    full_data.average_cf_cr,
-                    full_data.g0,
+                    (cf.lag, "lag"),
+                    cf.avg_cf_cr,
+                    cf.g0,
                 )
                 sol_data_analysis_wdgts.row_acf_disp.obj.plot(fit_params["x"], y_fit, color="red")
 

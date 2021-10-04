@@ -583,7 +583,7 @@ class SFCSSolutionMeasurement(Measurement):
                 np.array(data, dtype=np.uint8), ignore_coarse_fine=True
             )
             s.data.append(p)
-            s.correlate_and_average()
+            s.correlate_and_average(self.laser_mode)
             return s
 
         if self.repeat is True:
@@ -593,20 +593,21 @@ class SFCSSolutionMeasurement(Measurement):
             except Exception as exc:
                 errors.err_hndlr(exc, sys._getframe(), locals())
             else:
+                cf = s.cf[self.laser_mode]
                 try:
-                    s.fit_correlation_function()
+                    cf.fit_correlation_function()
                 except fit_tools.FitError as exc:
                     # fit failed
                     errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
                     self.fit_led.set(self.icon_dict["led_red"])
-                    g0, tau = s.g0, 0.1
-                    self.g0_wdgt.set(s.g0)
+                    g0, tau = cf.g0, 0.1
+                    self.g0_wdgt.set(g0)
                     self.tau_wdgt.set(0)
-                    self.plot_wdgt.obj.plot_acfs((s.lag, "lag"), s.average_cf_cr, g0)
+                    self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
                 else:
                     # fit succeeded
                     self.fit_led.set(self.icon_dict["led_off"])
-                    fit_params = s.fit_param["diffusion_3d_fit"]
+                    fit_params = cf.fit_param["diffusion_3d_fit"]
                     g0, tau, _ = fit_params["beta"]
                     x, y = fit_params["x"], fit_params["y"]
                     fit_func = getattr(fit_tools, fit_params["func_name"])
