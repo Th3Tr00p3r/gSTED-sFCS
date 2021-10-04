@@ -66,7 +66,7 @@ class Display:
             ax.imshow(image, *args, **kwargs)
 
     def plot_acfs(
-        self, x: (np.ndarray, str), average_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
+        self, x: (np.ndarray, str), avg_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
     ):
         """Doc."""
 
@@ -93,7 +93,7 @@ class Display:
             if cf_cr is not None:
                 for row_acf in cf_cr:
                     ax.plot(x, row_acf)
-            ax.plot(x, average_cf_cr, "k")
+            ax.plot(x, avg_cf_cr, "k")
 
     @contextmanager
     def _show_internal_ax(
