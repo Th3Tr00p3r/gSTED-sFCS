@@ -5,7 +5,7 @@ import functools
 import logging
 import os
 import time
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 import numpy as np
 
@@ -59,13 +59,48 @@ def timer(threshold_ms: int = 0) -> Callable:
     return outer_wrapper
 
 
-def center_of_mass(img_2d: np.ndarray) -> tuple:
-    """Returns the center of mass of a 2D image"""
+# TODO: consider removing - not used...
+def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
+    """
+    Applies custom thresholding (idomic) to an image.
+    Returns the thresholded image and the threshold.
+    """
 
-    height, width = img_2d.shape
-    x = 1 / img_2d.sum() * np.dot(np.arange(width), img_2d.sum(axis=0))
-    y = 1 / img_2d.sum() * np.dot(np.arange(height), img_2d.sum(axis=1))
-    return (x, y)
+    n, bin_edges = np.histogram(img.ravel())
+    thresh_idx = 1
+    for i in range(1, len(n)):
+        if n[i] <= n.max() * 0.1:
+            if n[i + 1] >= n[i] * 10:
+                continue
+            else:
+                thresh_idx = i
+                break
+        else:
+            continue
+    thresh = (bin_edges[thresh_idx] - bin_edges[thresh_idx - 1]) / 2
+    img[img < thresh] = 0
+
+    return img, thresh
+
+
+def center_of_mass_of_dimension(arr: np.ndarray, dim: int = 0) -> float:
+    """
+    Returns the center of mass of an Numpy along a specific axis.
+    Default axis is 0 (easier calling for 1d arrays)
+
+    Based on the COM formula: 1/M * \\Sigma_i (m_i * x_i)
+    """
+
+    total_mass = arr.sum()
+    displacements = np.arange(arr.shape[dim])
+    masses_at_displacements = np.atleast_2d(arr).sum(axis=dim)
+    return 1 / total_mass * np.dot(displacements, masses_at_displacements)
+
+
+def center_of_mass(arr: np.ndarray) -> Tuple:
+    """Returns the center of mass coordinates of a Numpy ndarray"""
+
+    return tuple(center_of_mass_of_dimension(arr, dim) for dim in range(len(arr.shape)))
 
 
 def write_list_to_file(file_path, lines: List[str]) -> None:

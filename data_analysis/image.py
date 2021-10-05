@@ -6,6 +6,8 @@ import utilities.helper as helper
 
 
 class ImageScanData:
+    """Doc."""
+
     def __init__(self, *args):
         self._counts_to_image_stack(*args)
 
@@ -78,24 +80,24 @@ class ImageScanData:
         """Doc."""
 
         if method == "forward":
-            return self.image_stack_forward[:, :, plane_idx]
+            img = self.image_stack_forward[:, :, plane_idx]
 
         elif method == "forward normalization":
-            return self.norm_stack_forward[:, :, plane_idx]
+            img = self.norm_stack_forward[:, :, plane_idx]
 
         elif method == "forward normalized":
-            return (
+            img = (
                 self.image_stack_forward[:, :, plane_idx] / self.norm_stack_forward[:, :, plane_idx]
             )
 
         elif method == "backward":
-            return self.image_stack_backward[:, :, plane_idx]
+            img = self.image_stack_backward[:, :, plane_idx]
 
         elif method == "backward normalization":
-            return self.norm_stack_backward[:, :, plane_idx]
+            img = self.norm_stack_backward[:, :, plane_idx]
 
         elif method == "backward normalized":
-            return (
+            img = (
                 self.image_stack_backward[:, :, plane_idx]
                 / self.norm_stack_backward[:, :, plane_idx]
             )
@@ -109,14 +111,15 @@ class ImageScanData:
                 / self.norm_stack_backward[:, :, plane_idx]
             )
             n_lines = p1_norm.shape[0] + p2_norm.shape[0]
-            p = np.zeros(p1_norm.shape)
-            p[:n_lines:2, :] = p1_norm[:n_lines:2, :]
-            p[1:n_lines:2, :] = p2_norm[1:n_lines:2, :]
-            return p
+            img = np.zeros(p1_norm.shape)
+            img[:n_lines:2, :] = p1_norm[:n_lines:2, :]
+            img[1:n_lines:2, :] = p2_norm[1:n_lines:2, :]
 
         elif method == "averaged":
             p1 = self.image_stack_forward[:, :, plane_idx]
             p2 = self.image_stack_backward[:, :, plane_idx]
             norm1 = self.norm_stack_forward[:, :, plane_idx]
             norm2 = self.norm_stack_backward[:, :, plane_idx]
-            return (p1 + p2) / (norm1 + norm2)
+            img = (p1 + p2) / (norm1 + norm2)
+
+        return img
