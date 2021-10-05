@@ -497,7 +497,7 @@ class MainWin:
                     # x0 and y0 are within image boundaries. Using the Gaussian fit
                     return (x0, y0)
                 else:
-                    # x0, y0 are OUTSIDE image boundaries. using COM
+                    # using COM
                     return helper.center_of_mass(image)
 
         img_meas_wdgts = wdgts.IMG_MEAS_COLL.read_gui(self._app)
@@ -852,13 +852,17 @@ class MainWin:
             g0, tau = (None, None)
         else:
             # TODO: loading properly (err hndling) should be a seperate function
+
+            # Inferring data_dype from template
+            data_type = self.infer_data_type_from_template(template)
+
             full_data = CorrFuncTDC()
             try:
                 full_data.read_fpga_data(
                     os.path.join(date_dir_path, template),
                     should_plot=False,
                 )
-                full_data.correlate_and_average()
+                full_data.correlate_and_average(data_type)
 
             except AttributeError:
                 # No directories found
@@ -867,13 +871,15 @@ class MainWin:
             except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                 err_hndlr(exc, sys._getframe(), locals())
 
+            cf = full_data.cf[data_type]
+
             try:
-                full_data.fit_correlation_function()
+                cf.fit_correlation_function()
             except fit_tools.FitError as exc:
                 err_hndlr(exc, sys._getframe(), locals())
                 g0, tau = (None, None)
             else:
-                fit_params = full_data.fit_param["diffusion_3d_fit"]
+                fit_params = cf.fit_param["diffusion_3d_fit"]
                 g0, tau, _ = fit_params["beta"]
 
         return g0, tau
