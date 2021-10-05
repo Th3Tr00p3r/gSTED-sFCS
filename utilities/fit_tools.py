@@ -60,7 +60,7 @@ def curve_fit_lims(
     return fit_param
 
 
-def fit_2d_gaussian(data: np.ndarray) -> dict:
+def fit_2d_gaussian_to_image(data: np.ndarray) -> dict:
     """Doc."""
 
     height, width = data.shape
@@ -93,7 +93,6 @@ def fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> dict:
     return fit_param
 
 
-# Fit functions
 def gaussian_2d_fit(xy_tuple, amplitude, xo, yo, sigma_x, sigma_y, theta, offset):
     """
     Adapted from:
