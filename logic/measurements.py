@@ -88,6 +88,10 @@ class Measurement:
                     self._app.gui.main.impl.move_scanners(destination=self.scan_params.initial_ao)
                     type_ = "image"
 
+            # TODO: make this more readable - the idea is that static measurements are also of type_ "solution"
+            elif self.type == "SFCSSolution":
+                type_ = "solution"
+
         self.is_running = False
         await self._app.gui.main.impl.toggle_meas(self.type, self.laser_mode.capitalize())
         self.prog_bar_wdgt.set(0)
@@ -618,6 +622,7 @@ class SFCSSolutionMeasurement(Measurement):
                     self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0)
                     y_fit = fit_func(x, *fit_params["beta"])
                     self.plot_wdgt.obj.plot(x, y_fit, "-.r")
+                    self.plot_wdgt.obj.ax.autoscale()
                     logging.info(
                         f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
                     )

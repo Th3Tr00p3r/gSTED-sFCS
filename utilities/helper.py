@@ -59,7 +59,7 @@ def timer(threshold_ms: int = 0) -> Callable:
     return outer_wrapper
 
 
-# TODO: consider removing - not used...
+# TODO: this needs testing - not working as expected!
 def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     """
     Applies custom thresholding (idomic) to an image.
