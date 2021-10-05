@@ -83,13 +83,15 @@ class Measurement:
 
                 if self.type == "SFCSSolution":
                     self._app.gui.main.impl.go_to_origin("XY")
+                    type_ = "solution"
                 elif self.type == "SFCSImage":
                     self._app.gui.main.impl.move_scanners(destination=self.scan_params.initial_ao)
+                    type_ = "image"
 
         self.is_running = False
         await self._app.gui.main.impl.toggle_meas(self.type, self.laser_mode.capitalize())
         self.prog_bar_wdgt.set(0)
-        self._app.gui.main.impl.populate_all_data_dates()  # refresh saved measurements
+        self._app.gui.main.impl.populate_all_data_dates(type_)  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
 
     async def record_data(self, timed: bool = False, size_limited: bool = False):

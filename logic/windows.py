@@ -471,33 +471,18 @@ class MainWin:
             "Both scans - averaged": "averaged",
         }
 
-        def auto_crosshair_position(image: np.ndarray) -> Tuple[float, float]:
+        def auto_crosshair_position(image: np.ndarray, thresholding=False) -> Tuple[float, float]:
             """
             Beam co-alignment aid. Attempts to fit a 2D Gaussian to an image and returns the fitted center.
             If the fit fails, or if the fitted Gaussian is centered outside the image limits, it instead
-            returns the center of mass.
+            returns the image's center of mass.
             """
 
-            #            # Use some good-old heuristic thresholding
-            #            n, bin_edges = np.histogram(image.ravel())
-            #            T = 1
-            #            for i in range(1, len(n)):
-            #                if n[i] <= n.max() * 0.1:
-            #                    if n[i + 1] >= n[i] * 10:
-            #                        continue
-            #                    else:
-            #                        T = i
-            #                        break
-            #                else:
-            #                    continue
-            #            thresh = (bin_edges[T] - bin_edges[T - 1]) / 2
-            #            image[image < thresh] = 0
-
             try:
-                fit_param = fit_tools.fit_2d_gaussian(image)
+                fit_param = fit_tools.fit_2d_gaussian_to_image(image)
 
             except fit_tools.FitError:
-                #                print("Gaussian fit failed, using COM") # TESTESTEST
+                # Gaussian fit failed, using COM
                 return helper.center_of_mass(image)
 
             else:
@@ -509,20 +494,20 @@ class MainWin:
                     and (sigma_x < width)
                     and (sigma_y < height)
                 ):
-                    #                    print(f"x0 ({x0:.1f}) and y0 ({y0:.1f}) are within image boundaries. Good!") # TESTESTEST
+                    # x0 and y0 are within image boundaries. Using the Gaussian fit
                     return (x0, y0)
                 else:
-                    #                    print(f"x0 ({x0:.1f}) and y0 ({y0:.1f}) are OUTSIDE image boundaries. using COM") # TESTESTEST
+                    # x0, y0 are OUTSIDE image boundaries. using COM
                     return helper.center_of_mass(image)
 
         img_meas_wdgts = wdgts.IMG_MEAS_COLL.read_gui(self._app)
         disp_mthd = img_meas_wdgts.image_method
         with suppress(AttributeError):
-            # No last_img_scn yet
+            # AttributeError - No last_img_scn yet
             image_data = self._app.last_img_scn.plane_images_data
             image = image_data.build_image(method_dict[disp_mthd], plane_idx)
-            self._app.last_img_scn.last_img = image.T
-            img_meas_wdgts.image_wdgt.obj.display_image(image.T, cursor=True, cmap="bone")
+            self._app.last_img_scn.last_img = image
+            img_meas_wdgts.image_wdgt.obj.display_image(image, cursor=True, cmap="bone")
             if auto_cross:
                 img_meas_wdgts.image_wdgt.obj.ax.cursor.move_to_pos(auto_crosshair_position(image))
 
@@ -960,7 +945,7 @@ class MainWin:
             image_data = ImageScanData(counts, ao, scan_param, um_v_ratio)
             image = image_data.build_image("forward", image_data.n_planes // 2)
             # plot it (below)
-            data_import_wdgts.img_preview_disp.obj.display_image(image.T, axis=False, cmap="bone")
+            data_import_wdgts.img_preview_disp.obj.display_image(image, axis=False, cmap="bone")
 
         pass
 
