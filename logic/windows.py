@@ -970,18 +970,11 @@ class MainWin:
         with self._app.pause_ai_ci():
 
             if import_wdgts.sol_use_processed and os.path.isfile(file_path):
-                print(
-                    f"Loading pre-processed data '{current_template}' from hard drive...", end=" "
-                )
-                full_data = file_utilities.load_pkl(file_path)
-                # Load runtimes as int64 if they are not already of that type
-                for p in full_data.data:
-                    p.runtime = p.runtime.astype(np.int64, copy=False)
+                print(f"Loading processed data '{current_template}' from hard drive...", end=" ")
+                full_data = file_utilities.load_processed_solution_measurement(file_path)
                 print("Done.")
 
             else:  # process data
-                full_data = CorrFuncTDC()
-
                 # file selection
                 if import_wdgts.sol_file_dicrimination.objectName() == "solImportUse":
                     sol_file_selection = (
@@ -996,7 +989,8 @@ class MainWin:
                 # loading and correlating
                 try:
                     with suppress(AttributeError):
-                        # No directories found
+                        # AttributeError - No directories found
+                        full_data = CorrFuncTDC()
                         full_data.read_fpga_data(
                             os.path.join(curr_dir, current_template),
                             file_selection=sol_file_selection,
