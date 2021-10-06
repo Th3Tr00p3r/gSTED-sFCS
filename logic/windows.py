@@ -889,13 +889,14 @@ class MainWin:
 
         def initialize_dir_log_file(file_path, g0, tau) -> None:
             """Doc."""
+            # TODO: change arguments to exc_params, sted_params which would be tuples (g0, tau) and set the free atto sted alignment too
 
             basic_header = []
             basic_header.append("-" * 40)
             basic_header.append("Measurement Log File")
             basic_header.append("-" * 40)
-            basic_header.append("Excitation Power: ")
-            basic_header.append("Depletion Power: ")
+            basic_header.append("Excitation Power: 20 uW @ BFP")
+            basic_header.append("Depletion Power: 200 mW @ BFP (set to 260 mW)")
             if g0 is not None:
                 basic_header.append(
                     f"Free Atto FCS @ 12 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"
@@ -1125,7 +1126,7 @@ class MainWin:
             else:  # use all rows
                 avg_corr_kwargs = dict(rejection=None)
 
-            with suppress(AttributeError):
+            with suppress(AttributeError, RuntimeError):
                 # AttributeError - no data loaded
                 data_type = self.infer_data_type_from_template(full_data.template)
                 cf = full_data.cf[data_type]
