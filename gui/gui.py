@@ -3,7 +3,7 @@
 import PyQt5
 import PyQt5.uic
 
-import gui.icons  # for initial icons loadout # NOQA
+# import gui.icons  # for initial icons loadout # NOQA
 import logic.windows
 from utilities.display import Display
 

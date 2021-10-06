@@ -150,8 +150,8 @@ class CorrFuncTDC(TDCPhotonData):
         self,
         file_path_template: str,
         file_selection: str = "",
-        should_fix_shift: bool = False,
         roi_selection: str = "auto",
+        should_fix_shift: bool = False,
         should_plot: bool = True,
     ):
         """Doc."""
@@ -241,7 +241,7 @@ class CorrFuncTDC(TDCPhotonData):
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         angular_scan_settings = full_data["angular_scan_settings"]
-        linear_part = np.array(np.round(angular_scan_settings["linear_part"]), dtype=np.int32)
+        linear_part = angular_scan_settings["linear_part"].round().astype(np.uint16)
         self.v_um_ms = angular_scan_settings["actual_speed_um_s"] * 1e-3
         sample_freq_hz = int(angular_scan_settings["sample_freq_hz"])
         ppl_tot = int(angular_scan_settings["points_per_line_total"])
