@@ -3,7 +3,6 @@
 import os
 from collections import deque
 
-import numba as nb
 import numpy as np
 from scipy import ndimage, stats
 from skimage import filters as skifilt
@@ -679,22 +678,20 @@ class SFCSExperiment:
         self.name = exp_name
 
 
-@nb.njit(cache=True)
 def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
     """utility function for opening Angular Scans"""
 
     n_pix_tot = np.floor(runtime * sample_freq_hz / laser_freq_hz).astype(np.int64)
     # to which pixel photon belongs
     n_pix = np.mod(n_pix_tot, ppl_tot)
-    line_num_tot = np.floor(n_pix_tot / ppl_tot)
+    line_num_tot = n_pix_tot // ppl_tot
     # one more line is for return to starting positon
-    line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int16)  # TESTESTEST was int32
+    line_num = np.mod(line_num_tot, n_lines + 1, dtype=np.int16)
 
-    cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.int32)
+    cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.int16)
     bins = np.arange(-0.5, ppl_tot)
     for j in range(n_lines + 1):
-        cnt_line, _ = np.histogram(n_pix[line_num == j], bins=bins)
-        cnt[j, :] = cnt_line
+        cnt[j, :], _ = np.histogram(n_pix[line_num == j], bins=bins)
 
     return cnt, n_pix_tot, n_pix, line_num
 
