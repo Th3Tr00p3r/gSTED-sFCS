@@ -89,6 +89,8 @@ class Measurement:
                     type_ = "image"
 
             # TODO: make this more readable - the idea is that static measurements are also of type_ "solution"
+            # An option is to change the type of measurement from "SFCSSolution" to "solution" ("SFCSImage" -> "image")
+            # or the other way around.
             elif self.type == "SFCSSolution":
                 type_ = "solution"
 

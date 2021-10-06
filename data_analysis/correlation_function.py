@@ -32,9 +32,7 @@ class CorrFunc:
             """Doc."""
 
             tot_weights = weights.sum(0)
-
             avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
-
             error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
 
             return avg_cf_cr, error_cf_cr
@@ -57,6 +55,10 @@ class CorrFunc:
             delete_list = np.argsort(self.score)[-reject_n_worst:]
         elif rejection is not None:
             delete_list = np.where(self.score >= self.rejection)[0]
+            if len(delete_list) == total_n_rows:
+                raise RuntimeError(
+                    "All rows are in 'delete_list'! Increase the rejection limit. Ignoring."
+                )
 
         # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list.
         # if no delete list is supplied, use all rows.
@@ -438,7 +440,7 @@ class CorrFuncTDC(TDCPhotonData):
         verbose=False,
         **kwargs,
     ):
-        """Correlates Data for static (regular) FCS"""
+        """Correlates Data for static FCS"""
 
         cf = CorrFunc()
         self.cf[data_type] = cf
@@ -458,9 +460,9 @@ class CorrFuncTDC(TDCPhotonData):
         cf.min_duration_frac = min_time_frac
         duration = []
         cf.lag = []
-        cf.corrfunc = []
-        cf.weights = []
-        cf.cf_cr = []
+        corrfunc_list = []
+        weights_list = []
+        cf_cr_list = []
         cf.countrate = []
 
         cf.total_duration_skipped = 0
@@ -521,25 +523,24 @@ class CorrFuncTDC(TDCPhotonData):
                                 beta[::2], np.exp(-np.outer(beta[1::2], cf.lag))
                             )
 
-                    cf.corrfunc.append(soft_corr.corrfunc)
-                    cf.weights.append(soft_corr.weights)
+                    corrfunc_list.append(soft_corr.corrfunc)
+                    weights_list.append(soft_corr.weights)
                     cf.countrate.append(soft_corr.countrate)
-                    cf.cf_cr.append(
+                    cf_cr_list.append(
                         soft_corr.countrate * soft_corr.corrfunc
                         - cf.after_pulse[: soft_corr.corrfunc.size]
                     )
 
-        # zero pad
+        # padding and building arrays
         lag_len = len(cf.lag)
+        cf.corrfunc = np.empty(shape=(n_splits, lag_len), dtype=np.float64)
+        cf.weights = np.empty(shape=(n_splits, lag_len), dtype=np.float64)
+        cf.cf_cr = np.empty(shape=(n_splits, lag_len), dtype=np.float64)
         for idx in range(n_splits):
-            pad_len = lag_len - len(cf.corrfunc[idx])
-            cf.corrfunc[idx] = np.pad(cf.corrfunc[idx], (0, pad_len), "constant")
-            cf.weights[idx] = np.pad(cf.weights[idx], (0, pad_len), "constant")
-            cf.cf_cr[idx] = np.pad(cf.cf_cr[idx], (0, pad_len), "constant")
-
-        cf.corrfunc = np.array(cf.corrfunc)
-        cf.weights = np.array(cf.weights)
-        cf.cf_cr = np.array(cf.cf_cr)
+            pad_len = lag_len - len(corrfunc_list[idx])
+            cf.corrfunc[idx] = np.pad(corrfunc_list[idx], (0, pad_len))
+            cf.weights[idx] = np.pad(weights_list[idx], (0, pad_len))
+            cf.cf_cr[idx] = np.pad(cf_cr_list[idx], (0, pad_len))
 
         cf.total_duration = sum(duration)
 
@@ -554,7 +555,7 @@ class CorrFuncTDC(TDCPhotonData):
     def correlate_angular_scan_data(
         self, data_type: str, min_time_frac=0.5, subtract_bg_corr=True, **kwargs  # exc or sted
     ):
-        """Doc."""
+        """Correlates data for angular scans"""
 
         cf = CorrFunc()
         self.cf[data_type] = cf
@@ -564,9 +565,9 @@ class CorrFuncTDC(TDCPhotonData):
         self.min_duration_frac = min_time_frac
         duration = []
         cf.lag = []
-        cf.corrfunc = []
-        cf.weights = []
-        cf.cf_cr = []
+        corrfunc_list = []
+        weights_list = []
+        cf_cr_list = []
         cf.countrate = []
         cf.total_duration_skipped = 0
 
@@ -576,7 +577,7 @@ class CorrFuncTDC(TDCPhotonData):
             print(f"({p.file_num})", end=" ")
             line_num = p.line_num
             min_line, max_line = line_num[line_num > 0].min(), line_num.max()
-            for line_idx, j in enumerate(range(min_line, max_line + 1)):
+            for j in range(min_line, max_line + 1):
                 valid = (line_num == j).astype(np.int8)
                 valid[line_num == -j] = -1
                 valid[line_num == -j - self.LINE_END_ADDER] = -2
@@ -619,8 +620,8 @@ class CorrFuncTDC(TDCPhotonData):
                 if subtract_bg_corr:
                     bg_corr = np.interp(
                         soft_corr.lag,
-                        p.image_line_corr[line_idx]["lag"],
-                        p.image_line_corr[line_idx]["corrfunc"],
+                        p.image_line_corr[j - 1]["lag"],
+                        p.image_line_corr[j - 1]["corrfunc"],
                         right=0,
                     )
                 else:
@@ -636,26 +637,28 @@ class CorrFuncTDC(TDCPhotonData):
                         beta = self.after_pulse_param[1]
                         cf.after_pulse = np.dot(beta[::2], np.exp(-np.outer(beta[1::2], cf.lag)))
 
-                cf.corrfunc.append(soft_corr.corrfunc)
-                cf.weights.append(soft_corr.weights)
+                corrfunc_list.append(soft_corr.corrfunc)
+                weights_list.append(soft_corr.weights)
                 cf.countrate.append(soft_corr.countrate)
-                cf.cf_cr.append(
+                cf_cr_list.append(
                     soft_corr.countrate * soft_corr.corrfunc
                     - cf.after_pulse[: soft_corr.corrfunc.size]
                 )
 
         print("- Done.")
 
-        len_lag = len(cf.lag)
-        for idx in range(len(cf.corrfunc)):  # zero pad
-            pad_len = len_lag - len(cf.corrfunc[idx])
-            cf.corrfunc[idx] = np.pad(cf.corrfunc[idx], (0, pad_len), "constant")
-            cf.weights[idx] = np.pad(cf.weights[idx], (0, pad_len), "constant")
-            cf.cf_cr[idx] = np.pad(cf.cf_cr[idx], (0, pad_len), "constant")
+        # padding and building arrays
+        n_lines = len(corrfunc_list)
+        lag_len = len(cf.lag)
+        cf.corrfunc = np.empty(shape=(n_lines, lag_len), dtype=np.float64)
+        cf.weights = np.empty(shape=(n_lines, lag_len), dtype=np.float64)
+        cf.cf_cr = np.empty(shape=(n_lines, lag_len), dtype=np.float64)
+        for idx in range(n_lines):  # zero pad
+            pad_len = lag_len - len(corrfunc_list[idx])
+            cf.corrfunc[idx] = np.pad(corrfunc_list[idx], (0, pad_len))
+            cf.weights[idx] = np.pad(weights_list[idx], (0, pad_len))
+            cf.cf_cr[idx] = np.pad(cf_cr_list[idx], (0, pad_len))
 
-        cf.corrfunc = np.array(cf.corrfunc)
-        cf.weights = np.array(cf.weights)
-        cf.cf_cr = np.array(cf.cf_cr)
         cf.vt_um = self.v_um_ms * cf.lag
         cf.total_duration = sum(duration)
 
