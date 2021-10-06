@@ -3,7 +3,6 @@
 import logging
 from math import cos, pi, sin, sqrt
 
-import numba as nb
 import numpy as np
 
 
@@ -28,7 +27,6 @@ class ScanPatternAO:
     def calc_image_pattern(self, params, um_v_ratio):
         """Doc."""
 
-        @nb.njit(cache=True)
         def calc_ao(set_pnts_lines_odd, single_line_ao, ppl):
             """Doc."""
 
