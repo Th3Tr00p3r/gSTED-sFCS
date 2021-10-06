@@ -236,7 +236,7 @@ def convert_types_to_matlab_format(obj, key_name=None):
     # stop condition
     if not isinstance(obj, dict):
         if isinstance(obj, (list, tuple)):
-            return np.array(obj, dtype=np.double)
+            return np.array(obj, dtype=np.int64)
         elif isinstance(obj, int):
             return float(obj)
         else:
@@ -287,7 +287,7 @@ def load_mat(filename):
             elem = matobj.__dict__[name]
             if isinstance(elem, spio.matlab.mio5_params.mat_struct):
                 d[name] = _todict(elem)
-            elif isinstance(elem, np.ndarray) and name not in {"Data", "data"}:
+            elif isinstance(elem, np.ndarray) and name not in {"Data", "data", "LinearPart"}:
                 d[name] = _tolist(elem)
             else:
                 d[name] = elem

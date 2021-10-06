@@ -9,9 +9,7 @@ from types import SimpleNamespace
 from typing import List, Union
 
 import PyQt5.QtWidgets as QtWidgets
-from PyQt5.QtGui import QIcon
 
-from gui.icons import icon_paths_dict
 from utilities import helper
 
 
@@ -167,10 +165,6 @@ def read_file_to_gui(file_path, gui_parent):
             logging.warning(
                 f"read_file_to_gui(): Child widget '{wdgt_name}' was not found in parent widget '{gui_parent.objectName()}' - probably removed from GUI. Overwrite the defaults to stop seeing this warning."
             )
-
-
-def get_icon_paths():
-    return {key: QIcon(val) for key, val in icon_paths_dict.items()}
 
 
 MAIN_TYPES = [
