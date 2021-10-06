@@ -174,8 +174,8 @@ class CorrFuncTDC(TDCPhotonData):
 
             if idx == 0:
                 self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
-                self.laser_freq_hz = full_data["laser_freq_mhz"] * 1e6
-                self.fpga_freq_hz = full_data["fpga_freq_mhz"] * 1e6
+                self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
+                self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
 
             # Circular sFCS
             if full_data.get("circle_speed_um_s"):
@@ -243,7 +243,7 @@ class CorrFuncTDC(TDCPhotonData):
         angular_scan_settings = full_data["angular_scan_settings"]
         linear_part = np.array(np.round(angular_scan_settings["linear_part"]), dtype=np.int32)
         self.v_um_ms = angular_scan_settings["actual_speed_um_s"] * 1e-3
-        sample_freq_hz = angular_scan_settings["sample_freq_hz"]
+        sample_freq_hz = int(angular_scan_settings["sample_freq_hz"])
         ppl_tot = int(angular_scan_settings["points_per_line_total"])
         n_lines = int(angular_scan_settings["n_lines"])
 
@@ -333,7 +333,7 @@ class CorrFuncTDC(TDCPhotonData):
             return None
 
         # convert lists/deques to numpy arrays
-        roi = {key: np.array(val) for key, val in roi.items()}
+        roi = {key: np.array(val, dtype=np.uint16) for key, val in roi.items()}
         line_start_lables = np.array(line_start_lables, dtype=np.int16)
         line_stop_labels = np.array(line_stop_labels, dtype=np.int16)
         line_starts = np.array(line_starts, dtype=np.int64)
@@ -355,7 +355,6 @@ class CorrFuncTDC(TDCPhotonData):
                 line_num * bw[line_num, n_pix].flatten(),
             )
         )[sorted_idxs]
-        # TODO: Ask Oleg - will nan's be needed in TDC analysis?
         p.coarse = np.hstack(
             (
                 np.full(runtime_line_starts.size, self.NAN_PLACEBO, dtype=np.int16),
@@ -681,14 +680,14 @@ class SFCSExperiment:
 def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
     """utility function for opening Angular Scans"""
 
-    n_pix_tot = np.floor(runtime * sample_freq_hz / laser_freq_hz).astype(np.int64)
+    n_pix_tot = runtime * sample_freq_hz // laser_freq_hz
     # to which pixel photon belongs
     n_pix = np.mod(n_pix_tot, ppl_tot)
     line_num_tot = n_pix_tot // ppl_tot
     # one more line is for return to starting positon
-    line_num = np.mod(line_num_tot, n_lines + 1, dtype=np.int16)
+    line_num = np.mod(line_num_tot, n_lines + 1)
 
-    cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.int16)
+    cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.uint16)
     bins = np.arange(-0.5, ppl_tot)
     for j in range(n_lines + 1):
         cnt[j, :], _ = np.histogram(n_pix[line_num == j], bins=bins)
@@ -702,10 +701,10 @@ def fix_data_shift(cnt) -> int:
     def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
         """Doc."""
 
-        score = np.empty(shape=(max_shift - min_shift), dtype=np.float64)
+        score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
         pix_shifts = np.arange(min_shift, max_shift)
         for idx, pix_shift in enumerate(range(min_shift, max_shift)):
-            rolled_img = np.roll(img, pix_shift).astype(np.float64)
+            rolled_img = np.roll(img, pix_shift).astype(np.uint32)
             score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
         return pix_shifts[score.argmin()]
 
@@ -720,7 +719,7 @@ def fix_data_shift(cnt) -> int:
     # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
     # OR if the 'return row' (the empty one) is not at the bottom for some reason
     # TODO: ask Oleg how the latter can happen
-    rolled_cnt = np.roll(cnt, pix_shift).astype(np.double)
+    rolled_cnt = np.roll(cnt, pix_shift)
     inner_half_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
     outer_half_sum = rolled_cnt.sum() - inner_half_sum
     return_row_idx = rolled_cnt.sum(axis=1).argmin()
@@ -739,7 +738,7 @@ def threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.n
     """Doc."""
 
     thresh = skifilt.threshold_multiotsu(
-        skifilt.median(img).astype(np.float), otsu_classes, nbins=n_bins
+        skifilt.median(img).astype(np.float32), otsu_classes, nbins=n_bins
     )  # minor filtering of outliers
     cnt_dig = np.digitize(img, bins=thresh)
     plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
@@ -757,15 +756,14 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
 
     image_line_corr = []
     for j in range(roi["row"].min(), roi["row"].max() + 1):
-        prof = image[j]
-        prof = prof[bw_mask[j] > 0]
+        line = image[j][bw_mask[j] > 0]
         try:
-            c, lags = auto_corr(prof)
+            c, lags = auto_corr(line)
         except ValueError:
             print(f"Auto correlation of line #{j} has failed. Skipping.", end=" ")
         else:
-            c = c / prof.mean() ** 2 - 1
-            c[0] -= 1 / prof.mean()  # subtracting shot noise, small stuff really
+            c = c / line.mean() ** 2 - 1
+            c[0] -= 1 / line.mean()  # subtracting shot noise, small stuff really
             image_line_corr.append(
                 {
                     "lag": lags * 1e3 / sampling_freq,  # in ms
@@ -781,6 +779,6 @@ def auto_corr(a):
     c = np.correlate(a, a, mode="full")
     c = c[c.size // 2 :]
     c = c / np.arange(c.size, 0, -1)
-    lags = np.arange(c.size)
+    lags = np.arange(c.size, dtype=np.uint16)
 
     return c, lags

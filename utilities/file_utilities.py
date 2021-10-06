@@ -156,6 +156,17 @@ def save_processed_solution_meas(full_data, dir_path) -> None:
             p.runtime = p.runtime.astype(np.int64)
 
 
+def load_processed_solution_measurement(file_path):
+    """Doc."""
+
+    full_data = load_pkl(file_path)
+    # Load runtimes as int64 if they are not already of that type
+    for p in full_data.data:
+        p.runtime = p.runtime.astype(np.int64, copy=False)
+
+    return full_data
+
+
 def load_file_dict(file_path: str):
     """
     Load files according to extension,
