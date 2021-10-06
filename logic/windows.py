@@ -16,7 +16,6 @@ import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QWidget
 
 import gui.dialog as dialog
-import logic.devices as dvcs
 import logic.measurements as meas
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.image import ImageScanData
@@ -156,7 +155,8 @@ class MainWin:
         error_dict = getattr(self._app.devices, dvc_nick).error_dict
         if error_dict is not None:
             dialog.Error(
-                **error_dict, custom_title=dvcs.DEVICE_ATTR_DICT[dvc_nick].log_ref
+                **error_dict,
+                custom_title=helper.deep_getattr(self._app.devices, f"{dvc_nick}.log_ref"),
             ).display()
 
     def dep_sett_apply(self):
@@ -192,9 +192,7 @@ class MainWin:
         except DeviceError as exc:
             err_hndlr(exc, sys._getframe(), locals())
 
-        logging.debug(
-            f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} were moved to {str(destination)} V"
-        )
+        logging.debug(f"{self._app.devices.scanners.log_ref} were moved to {str(destination)} V")
 
     # TODO: implement a 'go_to_last_position' - same as origin, just need to save last location each time (if it's not the origin)
     def go_to_origin(self, which_axes: str) -> None:
@@ -212,7 +210,7 @@ class MainWin:
 
         self.move_scanners(which_axes)
 
-        logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} sent to {which_axes} origin")
+        logging.debug(f"{self._app.devices.scanners.log_ref} sent to {which_axes} origin")
 
     def displace_scanner_axis(self, sign: int) -> None:
         """Doc."""
@@ -245,16 +243,14 @@ class MainWin:
             self.move_scanners(axis)
 
             logging.debug(
-                f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref}({axis}) was displaced {str(um_disp)} um"
+                f"{self._app.devices.scanners.log_ref}({axis}) was displaced {str(um_disp)} um"
             )
 
     def move_stage(self, dir: str, steps: int):
         """Doc."""
 
         self._app.loop.create_task(self._app.devices.stage.move(dir=dir, steps=steps))
-        logging.info(
-            f"{dvcs.DEVICE_ATTR_DICT['stage'].log_ref} moved {str(steps)} steps {str(dir)}"
-        )
+        logging.info(f"{self._app.devices.stage.log_ref} moved {str(steps)} steps {str(dir)}")
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -442,7 +438,7 @@ class MainWin:
 
             self.move_scanners(plane_type)
 
-            logging.debug(f"{dvcs.DEVICE_ATTR_DICT['scanners'].log_ref} moved to ROI ({vltgs})")
+            logging.debug(f"{self._app.devices.scanners.log_ref} moved to ROI ({vltgs})")
 
     def auto_scale_image(self, percent_factor: int):
         """Doc."""

@@ -14,7 +14,8 @@ from nidaqmx.errors import DaqError
 
 import utilities.helper as helper
 from gui.dialog import Error
-from gui.widgets import QtWidgetCollection, get_icon_paths
+from gui.icons import get_icon_paths
+from gui.widgets import QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr

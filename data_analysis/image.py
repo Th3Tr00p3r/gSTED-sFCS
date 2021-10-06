@@ -2,7 +2,7 @@
 
 import numpy as np
 
-import utilities.helper as helper
+from utilities.helper import div_ceil
 
 
 class ImageScanData:
@@ -30,7 +30,7 @@ class ImageScanData:
         n_planes = scan_params["n_planes"]
         n_lines = scan_params["n_lines"]
         pxl_size_um = scan_params["dim2_col_um"] / n_lines
-        pxls_per_line = helper.div_ceil(scan_params["dim1_lines_um"], pxl_size_um)
+        pxls_per_line = div_ceil(scan_params["dim1_lines_um"], pxl_size_um)
         scan_plane = scan_params["scan_plane"]
         ppl = scan_params["ppl"]
         ppp = n_lines * ppl
@@ -48,7 +48,7 @@ class ImageScanData:
         dim1_min = dim1_center - line_len_v / 2
 
         pxl_size_v = pxl_size_um / um_per_v
-        pxls_per_line = helper.div_ceil(scan_params["dim1_lines_um"], pxl_size_um)
+        pxls_per_line = div_ceil(scan_params["dim1_lines_um"], pxl_size_um)
 
         # prepare to remove counts from outside limits
         dim1_ao_single = ao[0][:ppl]

@@ -15,10 +15,9 @@ from types import SimpleNamespace
 import nidaqmx.constants as ni_consts
 import numpy as np
 
-import gui.widgets as wdgts
-import logic.devices as dvcs
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.image import ImageScanData
+from gui.icons import get_icon_paths
 from logic.scan_patterns import ScanPatternAO
 from utilities import errors, fit_tools, helper
 
@@ -32,7 +31,7 @@ class Measurement:
         self.type = type
         self.tdc_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
-        self.icon_dict = wdgts.get_icon_paths()  # get icons
+        self.icon_dict = get_icon_paths()  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
         self.pxl_clk_dvc = app.devices.pixel_clock
@@ -235,7 +234,7 @@ class Measurement:
         )
         if toggle_succeeded:
             logging.info(
-                f"{dvcs.DEVICE_ATTR_DICT['dep_laser'].log_ref} isn't on. Turning on and waiting 5 s before measurement."
+                f"{self._app.devices.dep_laser.log_ref} isn't on. Turning on and waiting 5 s before measurement."
             )
             if self.type == "SFCSImage" and self.laser_mode == "dep":
                 button = self._app.gui.main.startImgScanDep

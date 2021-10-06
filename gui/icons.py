@@ -1,9 +1,10 @@
-"""Icons Initialization"""
-
 import glob
 import os
 import subprocess
 
+from PyQt5.QtGui import QIcon
+
+from gui import ICON_PATHS
 from utilities.helper import write_list_to_file
 
 
@@ -44,5 +45,5 @@ def gen_icon_paths_dict(dir_path="./gui/icons", filetype="png"):
     return icon_paths_dict
 
 
-gen_icons_resource_file()  # Create resource (.qrc) file
-icon_paths_dict = gen_icon_paths_dict()
+def get_icon_paths():
+    return {key: QIcon(val) for key, val in ICON_PATHS.items()}
