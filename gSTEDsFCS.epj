@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-10-07, 14:32:14"
+    "saved": "2021-10-07, 15:24:36"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -164,7 +164,8 @@
       "gui/widgets.py",
       "gui/dialog.py",
       "gui/__init__.py",
-      "gui/icons/icons.py"
+      "gui/icons/icons.py",
+      "gui/icons/__init__.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",
