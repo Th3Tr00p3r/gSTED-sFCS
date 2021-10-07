@@ -17,7 +17,7 @@ import numpy as np
 
 from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.image import ImageScanData
-from gui.icons import get_icon_paths
+from gui.icons import icons
 from logic.scan_patterns import ScanPatternAO
 from utilities import errors, fit_tools, helper
 
@@ -31,7 +31,7 @@ class Measurement:
         self.type = type
         self.tdc_dvc = app.devices.TDC
         self.data_dvc = app.devices.UM232H
-        self.icon_dict = get_icon_paths()  # get icons
+        self.icon_dict = icons.get_icon_paths()  # get icons
         [setattr(self, key, val) for key, val in kwargs.items()]
         self.counter_dvc = app.devices.photon_detector
         self.pxl_clk_dvc = app.devices.pixel_clock

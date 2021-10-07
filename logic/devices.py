@@ -14,7 +14,7 @@ from nidaqmx.errors import DaqError
 
 import utilities.helper as helper
 from gui.dialog import Error
-from gui.icons import get_icon_paths
+from gui.icons import icons
 from gui.widgets import QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT
@@ -28,6 +28,10 @@ from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_h
 class BaseDevice:
     """Doc."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.error_dict = None
+
     def change_icons(self, command):
         """Doc."""
 
@@ -40,7 +44,7 @@ class BaseDevice:
 
         if not hasattr(self, "icon_dict"):
             # get icons
-            self.icon_dict = get_icon_paths()
+            self.icon_dict = icons.get_icon_paths()
 
         has_switch = hasattr(self, "switch_widget")
         if command == "on":

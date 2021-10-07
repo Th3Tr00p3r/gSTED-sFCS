@@ -1,11 +1,5 @@
-#!/usr/bin/env python3
-"""
-Created on Sun Jan 17 14:08:54 2021
+"""Software correlator"""
 
-@author: oleg
-"""
-
-import enum
 import sys
 from ctypes import CDLL, c_double, c_int, c_long
 
@@ -15,7 +9,7 @@ from numpy.ctypeslib import ndpointer
 SOFT_CORR_DYNAMIC_LIB_PATH = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
 
 
-class CorrelatorType(enum.Enum):
+class CorrelatorType:
     PH_DELAY_CORRELATOR = 1
     PH_COUNT_CORRELATOR = 2
     PH_DELAY_CROSS_CORRELATOR = 3
@@ -124,7 +118,7 @@ class SoftwareCorrelator:
         else:
             raise ValueError("Invalid correlator type!")
 
-        self.soft_corr(c_type.value, n_entries, ph_hist, n_corr_channels, self.corr_py)
+        self.soft_corr(c_type, n_entries, ph_hist, n_corr_channels, self.corr_py)
         if n_corr_channels[0] != self.tot_corr_chan_len:
             raise ValueError("Number of correlator channels inconsistent!")
 

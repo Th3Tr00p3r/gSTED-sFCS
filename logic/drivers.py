@@ -10,7 +10,9 @@ import nidaqmx as ni
 import numpy as np
 import pyvisa as visa
 from instrumental.drivers.cameras import uc480
-from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader  # NOQA
+from nidaqmx.stream_readers import (
+    CounterReader,  # AnalogMultiChannelReader for AI, if ever
+)
 
 import utilities.helper as helper
 from utilities.errors import IOError
@@ -27,7 +29,6 @@ class Ftd2xx:
     def __init__(self, param_dict):
         param_dict = helper.translate_dict_values(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.error_dict = None
 
         # auto-find UM232H serial number
         num_devs = ftd2xx.createDeviceInfoList()
@@ -88,7 +89,6 @@ class NIDAQmx:
     AO_TIMEOUT = 0.1
 
     def __init__(self, param_dict, task_types, **kwargs):
-        self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.tasks = SimpleNamespace()
         self.task_types = task_types
@@ -259,7 +259,6 @@ class PyVISA:
         read_termination="",
         write_termination="",
     ):
-        self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.read_termination = read_termination
         self.write_termination = write_termination
@@ -373,7 +372,6 @@ class Instrumental:
     """Doc."""
 
     def __init__(self, param_dict):
-        self.error_dict = None
         [setattr(self, key, val) for key, val in param_dict.items()]
         self._inst = None
 

@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-10-06, 19:30:16"
+    "saved": "2021-10-07, 14:32:14"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -157,15 +157,14 @@
       "data_analysis/correlation_function.py",
       "data_analysis/photon_data.py",
       "data_analysis/software_correlator.py",
-      "gui/icons/__init__.py",
       "utilities/file_utilities.py",
       "utilities/display.py",
       "utilities/fit_tools.py",
       "data_analysis/image.py",
       "gui/widgets.py",
       "gui/dialog.py",
-      "gui/icons.py",
-      "gui/__init__.py"
+      "gui/__init__.py",
+      "gui/icons/icons.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",
