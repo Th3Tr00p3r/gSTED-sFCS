@@ -88,7 +88,7 @@ def device_error_checker(func) -> Callable:
         async def wrapper(self, *args, **kwargs):
 
             try:
-                if not self.error_dict:
+                if hasattr(self, "error_dict") and not self.error_dict:
                     return await func(self, *args, **kwargs)
                 else:
                     if (func.__name__ == "_toggle") and (args[0] is False):
@@ -108,19 +108,15 @@ def device_error_checker(func) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
 
-            try:
-                if not self.error_dict:
-                    return func(self, *args, **kwargs)
-                else:
-                    if (func.__name__ == "_toggle") and (args[0] is False):
-                        # if toggling off
-                        pass
-                    else:
-                        self.error_display.set(f"{self.log_ref} error. Click LED for details.")
-                        raise DeviceError(self.error_dict["msg"])
-            except AttributeError:
-                # if not hasattr(self, "error_dict")
+            if not self.error_dict:
                 return func(self, *args, **kwargs)
+            else:
+                if (func.__name__ == "_toggle") and (args[0] is False):
+                    # if toggling off
+                    pass
+                else:
+                    self.error_display.set(f"{self.log_ref} error. Click LED for details.")
+                    raise DeviceError(self.error_dict["msg"])
 
     return wrapper
 
@@ -131,14 +127,19 @@ class DeviceCheckerMetaClass(type):
     with 'device_error_checker()'
     """
 
-    def __new__(meta, classname, bases, classDict):
+    ignored_attributes = {"__init__", "__module__", "__doc__", "__qualname__", "__classcell__"}
+
+    def __new__(self, classname, bases, classDict):
         newClassDict = {}
-        for attributeName, attribute in classDict.items():
-            if isinstance(attribute, FunctionType):
+        for attribute_name, attribute in classDict.items():
+            if (
+                isinstance(attribute, FunctionType)
+                and attribute_name not in self.ignored_attributes
+            ):
                 # replace it with a wrapped version
                 attribute = device_error_checker(attribute)
-            newClassDict[attributeName] = attribute
-        return type.__new__(meta, classname, bases, newClassDict)
+            newClassDict[attribute_name] = attribute
+        return type.__new__(self, classname, bases, newClassDict)
 
 
 class DeviceError(Exception):
