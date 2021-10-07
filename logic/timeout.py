@@ -6,11 +6,11 @@ import sys
 from collections import deque
 from contextlib import suppress
 
-# import time # TESTING
 import utilities.helper as helper
 from utilities.errors import err_hndlr
 
-TIMEOUT = 0.005  # 5 ms
+TIMEOUT_INTERVAL = 0.005  # 5 ms
+GUI_UPDATE_INTERVAL = 0.2  # 200 ms
 LOG_PATH = "./log/log"
 
 
@@ -23,16 +23,7 @@ class Timeout:
         self._app = app
         self.main_gui = self._app.gui.main
 
-        # initial intervals (some change during run)
-        self.updt_intrvl = {
-            "gui": 0.2,
-            "dep": self._app.devices.dep_laser.UPDATE_TIME,
-            "cntr_avg": self._app.devices.photon_detector.UPDATE_TIME,
-        }
-
         self.log_buffer_deque = deque([""], maxlen=50)
-
-        self.um232_buff_sz = self._app.devices.UM232H.tx_size
 
         self.cntr_dvc = self._app.devices.photon_detector
         self.scan_dvc = self._app.devices.scanners
@@ -73,7 +64,7 @@ class Timeout:
 
         while self.not_finished:
             fill_buffers()
-            await asyncio.sleep(TIMEOUT)
+            await asyncio.sleep(TIMEOUT_INTERVAL)
 
     async def _update_gui(self) -> None:  # noqa: C901
         """Doc."""
@@ -123,18 +114,18 @@ class Timeout:
                 if meas.is_running and meas.scanning:
                     if meas.type == "SFCSSolution":
                         self.cntr_dvc.average_counts(
-                            interval=self.updt_intrvl["cntr_avg"],
+                            interval=self.cntr_dvc.UPDATE_INTERVAL,
                             rate=meas.scan_params.ao_samp_freq_Hz,
                         )
 
                     elif meas.type == "SFCSImage":
                         self.cntr_dvc.average_counts(
-                            interval=self.updt_intrvl["cntr_avg"],
+                            interval=self.cntr_dvc.UPDATE_INTERVAL,
                             rate=meas.scan_params.line_freq_Hz * meas.scan_params.ppl,
                         )
                 else:
                     # no scanning measurement running
-                    self.cntr_dvc.average_counts(interval=self.updt_intrvl["cntr_avg"])
+                    self.cntr_dvc.average_counts(interval=self.cntr_dvc.UPDATE_INTERVAL)
 
                 self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate_khz)
 
@@ -162,8 +153,7 @@ class Timeout:
             last_line = helper.file_last_line(LOG_PATH)
 
             if (last_line is not None) and (last_line.find("INFO") != -1):
-                line_time = last_line[12:23]
-                line_text = last_line[38:]
+                line_time, line_text = last_line[12:23], last_line[38:]
                 last_line = line_time + line_text
 
                 if last_line != self.log_buffer_deque[0]:
@@ -191,7 +181,7 @@ class Timeout:
             # log file widget
             update_log_wdgt()
 
-            await asyncio.sleep(self.updt_intrvl["gui"])
+            await asyncio.sleep(GUI_UPDATE_INTERVAL)
 
     async def _update_dep(self) -> None:
         """Update depletion laser GUI"""
@@ -214,4 +204,4 @@ class Timeout:
                 else:
                     self.main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
-            await asyncio.sleep(self.updt_intrvl["dep"])
+            await asyncio.sleep(self.dep_dvc.UPDATE_INTERVAL)

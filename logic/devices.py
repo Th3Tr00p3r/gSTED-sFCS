@@ -17,7 +17,7 @@ from gui.dialog import Error
 from gui.icons import icons
 from gui.widgets import QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
-from logic.timeout import TIMEOUT
+from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 
 # TODO: refactoring - toggling should be seperate from opening/closing connection with device.
@@ -98,7 +98,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             byte_array = await self.async_read()
         else:
             byte_array = self.read()
-            await asyncio.sleep(TIMEOUT)
+            await asyncio.sleep(TIMEOUT_INTERVAL)
 
         self.data.extend(byte_array)
         self.tot_bytes_read += len(byte_array)
@@ -412,7 +412,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     fluorescence photons coming from the sample.
     """
 
-    UPDATE_TIME = 0.2
+    UPDATE_INTERVAL = 0.2
     CI_BUFFER_SIZE = int(1e4)
 
     def __init__(self, param_dict, scanners_ai_tasks):
@@ -603,7 +603,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control depletion laser through pyVISA"""
 
-    UPDATE_TIME = 0.3
+    UPDATE_INTERVAL = 0.3
     MIN_SHG_TEMP = 53  # Celsius
     power_limits_mW = dict(low=99, high=1000)
     current_limits_mA = dict(low=1500, high=2500)
