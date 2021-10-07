@@ -13,7 +13,7 @@ import gui.gui
 import gui.widgets as wdgts
 import logic.devices as dvcs
 import utilities.helper as helper
-from gui.icons import get_icon_paths
+from gui.icons import icons
 from logic.timeout import Timeout
 from utilities.errors import DeviceError
 
@@ -52,7 +52,7 @@ class App:
         self.analysis.loaded_data = dict()
 
         # get icons
-        self.icon_dict = get_icon_paths()
+        self.icon_dict = icons.get_icon_paths()
 
         # init windows
         print("Initializing GUI...", end=" ")
