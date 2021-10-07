@@ -402,7 +402,7 @@ class MainWin:
     def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
 
-        self._app.timeout_loop.updt_intrvl["cntr_avg"] = val / 1000  # convert to seconds
+        self._app.devices.photon_detector.UPDATE_INTERVAL = val / 1000  # convert to seconds
 
     ####################
     ## Image Tab
