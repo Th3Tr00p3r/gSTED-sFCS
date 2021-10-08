@@ -405,7 +405,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         print("Converting raw data to photons...", end=" ")
         p = self.convert_fpga_data_to_photons(
-            full_data["data"], ignore_coarse_fine=True, version=full_data["version"], verbose=True
+            full_data["data"], version=full_data["version"], verbose=True
         )
         print("Done.")
 
