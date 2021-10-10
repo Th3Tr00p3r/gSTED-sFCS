@@ -2,6 +2,7 @@
 
 import os
 from collections import deque
+from contextlib import contextmanager
 
 import numpy as np
 from scipy import ndimage, stats
@@ -15,6 +16,9 @@ from utilities import display, file_utilities, fit_tools, helper
 
 class CorrFunc:
     """Doc."""
+
+    def __init__(self):
+        self.fit_param = dict()
 
     def average_correlation(
         self,
@@ -79,7 +83,7 @@ class CorrFunc:
             self.plot_correlation_function()
 
     def plot_correlation_function(
-        self, x_field="lag", y_field="avg_cf_cr", x_scale="log", y_scale="linear"
+        self, x_field="lag", y_field="avg_cf_cr", x_scale="log", y_scale="linear", **kwargs
     ):
 
         x = getattr(self, x_field)
@@ -92,7 +96,8 @@ class CorrFunc:
             ax.set_ylabel(y_field)
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)
-            ax.plot(x, y, "o")
+            ax.plot(x, y, "o", **kwargs)
+            ax.legend(loc="best")
 
     def fit_correlation_function(
         self,
@@ -130,11 +135,35 @@ class CorrFunc:
             y_scale=y_scale,
         )
 
+        self.fit_param[fit_param["func_name"]] = fit_param
+
+    @contextmanager
+    def accumulate_and_pad_corrfuncs(self):
+        """Doc."""
+
+        self.corrfunc_list = []
+        self.weights_list = []
+        self.cf_cr_list = []
+
         try:
-            self.fit_param[fit_param["func_name"]] = fit_param
-        except AttributeError:
-            self.fit_param = dict()
-            self.fit_param[fit_param["func_name"]] = fit_param
+            yield
+
+        finally:
+            # padding and building arrays
+            n_corrs = len(self.corrfunc_list)
+            lag_len = len(self.lag)
+            self.corrfunc = np.empty(shape=(n_corrs, lag_len), dtype=np.float64)
+            self.weights = np.empty(shape=(n_corrs, lag_len), dtype=np.float64)
+            self.cf_cr = np.empty(shape=(n_corrs, lag_len), dtype=np.float64)
+            for idx in range(n_corrs):
+                pad_len = lag_len - len(self.corrfunc_list[idx])
+                self.corrfunc[idx] = np.pad(self.corrfunc_list[idx], (0, pad_len))
+                self.weights[idx] = np.pad(self.weights_list[idx], (0, pad_len))
+                self.cf_cr[idx] = np.pad(self.cf_cr_list[idx], (0, pad_len))
+
+            delattr(self, "corrfunc_list")
+            delattr(self, "weights_list")
+            delattr(self, "cf_cr_list")
 
 
 class CorrFuncTDC(TDCPhotonData):
@@ -400,13 +429,29 @@ class CorrFuncTDC(TDCPhotonData):
 
         return p
 
-    def process_static_data(self, full_data, idx):
+    def process_static_data(self, full_data, idx, max_outlier_prob=1e-5):
         """Doc."""
 
         print("Converting raw data to photons...", end=" ")
+
         p = self.convert_fpga_data_to_photons(
             full_data["data"], version=full_data["version"], verbose=True
         )
+
+        # find additional outliers (improbably large time_stamps) and break into
+        # additional segments if they exist.
+        # for exponential distribution MEDIAN and MAD are the same, but for
+        # biexponential MAD seems more sensitive
+        mu = max(
+            np.median(p.time_stamps), np.abs(p.time_stamps - p.time_stamps.mean()).mean()
+        ) / np.log(2)
+        max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(p.time_stamps), scale=mu)
+        sec_edges = (p.time_stamps > max_time_stamp).nonzero()[0].tolist()
+        if (n_outliers := len(sec_edges)) > 0:
+            print(f"found {n_outliers} outliers.", end=" ")
+        sec_edges = [0] + sec_edges + [len(p.time_stamps)]
+        p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
+
         print("Done.")
 
         p.file_num = idx + 1
@@ -414,26 +459,33 @@ class CorrFuncTDC(TDCPhotonData):
 
         return p
 
-    def correlate_and_average(self, data_type, **kwargs):
+    def correlate_and_average(self, **kwargs):
         """Doc."""
 
-        self.correlate_data(data_type, **kwargs)
-        self.cf[data_type].average_correlation(**kwargs)
+        cf = self.correlate_data(**kwargs)
+        cf.average_correlation(**kwargs)
 
-    def correlate_data(self, data_type: str, **kwargs):
+    def correlate_data(self, **kwargs):
         """Doc."""
 
         if hasattr(self, "angular_scan_settings"):
-            self.correlate_angular_scan_data(data_type, **kwargs)
+            cf = self.correlate_angular_scan_data(**kwargs)
         else:
-            self.correlate_static_data(data_type, **kwargs)
+            cf = self.correlate_static_data(**kwargs)
+
+        if "cf_name" in kwargs:
+            cf_name = kwargs["cf_name"]
+        else:
+            cf_name = f"gate {cf.gate_ns}"
+        self.cf[cf_name] = cf
+
+        return cf
 
     def correlate_static_data(
         self,
-        data_type: str,  # exc or sted
-        run_duration=-1,
+        gate_ns=(0, np.inf),
+        run_duration=None,
         min_time_frac=0.5,
-        max_outlier_prob=1e-5,
         n_runs_requested=60,
         verbose=False,
         **kwargs,
@@ -441,104 +493,96 @@ class CorrFuncTDC(TDCPhotonData):
         """Correlates Data for static FCS"""
 
         cf = CorrFunc()
-        self.cf[data_type] = cf
-
         soft_corr = SoftwareCorrelator()
 
-        if run_duration < 0:  # auto determination of run duration
-            total_duration_estimate = 0
-            for p in self.data:
-                mu = np.median(p.time_stamps) / np.log(2)
-                total_duration_estimate = (
-                    total_duration_estimate + mu * len(p.runtime) / self.laser_freq_hz
-                )
+        if run_duration is None:  # auto determination of run duration
+            if len(self.cf) > 0:  # read run_time from the last calculated correlation function
+                run_duration = next(reversed(self.cf.values())).run_duration
+            else:  # auto determine
+                total_duration_estimate = 0
+                for p in self.data:
+                    mu = np.median(p.time_stamps) / np.log(2)
+                    total_duration_estimate = (
+                        total_duration_estimate + mu * len(p.runtime) / self.laser_freq_hz
+                    )
+                run_duration = total_duration_estimate / n_runs_requested
 
-            run_duration = total_duration_estimate / n_runs_requested
-
+        cf.lag = []
+        cf.countrate_list = []
         cf.min_duration_frac = min_time_frac
         duration = []
-        cf.lag = []
-        corrfunc_list = []
-        weights_list = []
-        cf_cr_list = []
-        cf.countrate = []
-
+        cf.run_duration = run_duration
         cf.total_duration_skipped = 0
+        cf.gate_ns = gate_ns
 
         if verbose:
             print(f"Correlating {self.template}:", end=" ")
 
-        for p in self.data:
+        with cf.accumulate_and_pad_corrfuncs():
+            for p in self.data:
 
-            if verbose:
-                print(f"({p.file_num})", end=" ")
-            # find additional outliers
-            # for exponential distribution MEDIAN and MAD are the same, but for
-            # biexponential MAD seems more sensitive
-            mu = max(
-                np.median(p.time_stamps), np.abs(p.time_stamps - p.time_stamps.mean()).mean()
-            ) / np.log(2)
-            max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(p.time_stamps), scale=mu)
-            sec_edges = (p.time_stamps > max_time_stamp).nonzero()[0]
-            no_outliers = len(sec_edges)
-            if no_outliers > 0:
                 if verbose:
-                    print(f"{no_outliers} of all outliers")
+                    print(f"({p.file_num})", end=" ")
 
-            sec_edges = np.append(np.insert(sec_edges, 0, 0), len(p.time_stamps))
-            p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
-
-            for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
-                # split into segments of approx time of run_duration
-                segment_time = (p.runtime[se_end] - p.runtime[se_start]) / self.laser_freq_hz
-                if segment_time < min_time_frac * run_duration:
-                    if verbose:
-                        print(
-                            f"Duration of segment No. {se_idx} of file {p.fname} is {segment_time}s: too short. Skipping segment..."
-                        )
-                    cf.total_duration_skipped += segment_time
-                    continue
-
-                n_splits = helper.div_ceil(segment_time, run_duration)
-                splits = np.linspace(0, (se_end - se_start), n_splits + 1, dtype=np.int32)
-                ts = p.time_stamps[se_start:se_end]
-
-                for k in range(n_splits):
-
-                    ts_split = ts[splits[k] : splits[k + 1]]
-                    duration.append(ts_split.sum() / self.laser_freq_hz)
-                    soft_corr.soft_cross_correlate(
-                        ts_split,
-                        CorrelatorType.PH_DELAY_CORRELATOR,
-                        timebase_ms=1000 / self.laser_freq_hz,
-                    )  # time base of 20MHz to ms
-                    if len(cf.lag) < len(soft_corr.lag):
-                        cf.lag = soft_corr.lag
-                        if self.after_pulse_param[0] == "multi_exponent_fit":
-                            # work with any number of exponents
-                            beta = self.after_pulse_param[1]
-                            cf.after_pulse = np.dot(
-                                beta[::2], np.exp(-np.outer(beta[1::2], cf.lag))
+                # Ignore short segments (default is below half the run_duration)
+                for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
+                    segment_time = (p.runtime[se_end] - p.runtime[se_start]) / self.laser_freq_hz
+                    if segment_time < min_time_frac * run_duration:
+                        if verbose:
+                            print(
+                                f"Duration of segment No. {se_idx} of file No. {p.file_num} ({segment_time:.2f}s) is too short. Skipping segment...",
+                                end=" ",
                             )
+                        cf.total_duration_skipped += segment_time
+                        continue
 
-                    corrfunc_list.append(soft_corr.corrfunc)
-                    weights_list.append(soft_corr.weights)
-                    cf.countrate.append(soft_corr.countrate)
-                    cf_cr_list.append(
-                        soft_corr.countrate * soft_corr.corrfunc
-                        - cf.after_pulse[: soft_corr.corrfunc.size]
-                    )
+                    runtime = p.runtime[se_start : se_end + 1]
 
-        # padding and building arrays
-        lag_len = len(cf.lag)
-        cf.corrfunc = np.empty(shape=(n_splits, lag_len), dtype=np.float64)
-        cf.weights = np.empty(shape=(n_splits, lag_len), dtype=np.float64)
-        cf.cf_cr = np.empty(shape=(n_splits, lag_len), dtype=np.float64)
-        for idx in range(n_splits):
-            pad_len = lag_len - len(corrfunc_list[idx])
-            cf.corrfunc[idx] = np.pad(corrfunc_list[idx], (0, pad_len))
-            cf.weights[idx] = np.pad(weights_list[idx], (0, pad_len))
-            cf.cf_cr[idx] = np.pad(cf_cr_list[idx], (0, pad_len))
+                    # Gating
+                    if hasattr(p, "delay_time"):
+                        delay_time = p.delay_time[se_start : se_end + 1]
+                        j_gate = np.logical_and(
+                            delay_time >= cf.gate_ns[0], delay_time <= cf.gate_ns[1]
+                        )
+                        runtime = runtime[j_gate]
+                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
+                    elif gate_ns != (0, np.inf):
+                        raise RuntimeError("For gating, TDC must first be calibrated!")
+
+                    # split into segments of approx time of run_duration
+                    n_splits = helper.div_ceil(segment_time, run_duration)
+                    splits = np.linspace(0, runtime.size, n_splits + 1, dtype=np.int32)
+                    time_stamps = np.diff(runtime).astype(np.int32)
+
+                    for k in range(n_splits):
+
+                        ts_split = time_stamps[splits[k] : splits[k + 1]]
+                        duration.append(ts_split.sum() / self.laser_freq_hz)
+                        soft_corr.soft_cross_correlate(
+                            ts_split,
+                            CorrelatorType.PH_DELAY_CORRELATOR,
+                            timebase_ms=1000 / self.laser_freq_hz,
+                        )  # time base of 20MHz to ms
+
+                        gate_to_laser_pulses = np.min(
+                            [1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9]
+                        )
+                        if len(cf.lag) < len(soft_corr.lag):
+                            cf.lag = soft_corr.lag
+                            if self.after_pulse_param[0] == "multi_exponent_fit":
+                                # work with any number of exponents
+                                beta = self.after_pulse_param[1]
+                                cf.after_pulse = gate_to_laser_pulses * np.dot(
+                                    beta[::2], np.exp(-np.outer(beta[1::2], cf.lag))
+                                )
+
+                        cf.corrfunc_list.append(soft_corr.corrfunc)
+                        cf.weights_list.append(soft_corr.weights)
+                        cf.cf_cr_list.append(
+                            soft_corr.countrate * soft_corr.corrfunc
+                            - cf.after_pulse[: soft_corr.corrfunc.size]
+                        )
+                        cf.countrate_list.append(soft_corr.countrate)
 
         cf.total_duration = sum(duration)
 
@@ -550,112 +594,96 @@ class CorrFuncTDC(TDCPhotonData):
             else:
                 print("- Done.")
 
-    def correlate_angular_scan_data(
-        self, data_type: str, min_time_frac=0.5, subtract_bg_corr=True, **kwargs  # exc or sted
-    ):
+        return cf
+
+    def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True, **kwargs):
         """Correlates data for angular scans"""
 
         cf = CorrFunc()
-        self.cf[data_type] = cf
-
         soft_corr = SoftwareCorrelator()
 
         self.min_duration_frac = min_time_frac
         duration = []
         cf.lag = []
-        corrfunc_list = []
-        weights_list = []
-        cf_cr_list = []
         cf.countrate = []
         cf.total_duration_skipped = 0
 
-        print(f"Correlating angular scan data '{self.template}' of type '{data_type}':", end=" ")
+        print(f"Correlating angular scan data '{self.template}':", end=" ")
 
-        for p in self.data:
-            print(f"({p.file_num})", end=" ")
-            line_num = p.line_num
-            min_line, max_line = line_num[line_num > 0].min(), line_num.max()
-            for j in range(min_line, max_line + 1):
-                valid = (line_num == j).astype(np.int8)
-                valid[line_num == -j] = -1
-                valid[line_num == -j - self.LINE_END_ADDER] = -2
-                # both photons separated by time-stamp should belong to the line
-                valid = valid[1:]
+        with cf.accumulate_and_pad_corrfuncs():
+            for p in self.data:
+                print(f"({p.file_num})", end=" ")
+                line_num = p.line_num
+                min_line, max_line = line_num[line_num > 0].min(), line_num.max()
+                for j in range(min_line, max_line + 1):
+                    valid = (line_num == j).astype(np.int8)
+                    valid[line_num == -j] = -1
+                    valid[line_num == -j - self.LINE_END_ADDER] = -2
+                    # both photons separated by time-stamp should belong to the line
+                    valid = valid[1:]
 
-                # remove photons from wrong lines
-                timest = p.time_stamps[valid != 0]
-                valid = valid[valid != 0]
+                    # remove photons from wrong lines
+                    timest = p.time_stamps[valid != 0]
+                    valid = valid[valid != 0]
 
-                if not valid.size:
-                    print(f"No valid photons in line {j}. Skipping.")
-                    continue
+                    if not valid.size:
+                        print(f"No valid photons in line {j}. Skipping.")
+                        continue
 
-                # check that we start with the line beginning and not its end
-                if valid[0] != -1:
-                    # remove photons till the first found beginning
-                    j_start = np.where(valid == -1)[0][0]
-                    timest = timest[j_start:]
-                    valid = valid[j_start:]
+                    # check that we start with the line beginning and not its end
+                    if valid[0] != -1:
+                        # remove photons till the first found beginning
+                        j_start = np.where(valid == -1)[0][0]
+                        timest = timest[j_start:]
+                        valid = valid[j_start:]
 
-                    # check that we stop with the line ending and not its beginning
-                if valid[-1] != -2:
-                    # remove photons till the last found ending
-                    j_end = np.where(valid == -2)[0][-1]
-                    timest = timest[:j_end]
-                    valid = valid[:j_end]
+                        # check that we stop with the line ending and not its beginning
+                    if valid[-1] != -2:
+                        # remove photons till the last found ending
+                        j_end = np.where(valid == -2)[0][-1]
+                        timest = timest[:j_end]
+                        valid = valid[:j_end]
 
-                # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
-                dur = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
-                duration.append(dur)
-                ts_split = np.vstack((timest, valid))
-                soft_corr.soft_cross_correlate(
-                    ts_split,
-                    CorrelatorType.PH_DELAY_CORRELATOR_LINES,
-                    # time base of 20MHz to ms
-                    timebase_ms=1000 / self.laser_freq_hz,
-                )
-
-                if subtract_bg_corr:
-                    bg_corr = np.interp(
-                        soft_corr.lag,
-                        p.image_line_corr[j - 1]["lag"],
-                        p.image_line_corr[j - 1]["corrfunc"],
-                        right=0,
+                    # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
+                    dur = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
+                    duration.append(dur)
+                    ts_split = np.vstack((timest, valid))
+                    soft_corr.soft_cross_correlate(
+                        ts_split,
+                        CorrelatorType.PH_DELAY_CORRELATOR_LINES,
+                        # time base of 20MHz to ms
+                        timebase_ms=1000 / self.laser_freq_hz,
                     )
-                else:
-                    bg_corr = 0
 
-                soft_corr.corrfunc = soft_corr.corrfunc - bg_corr
+                    if subtract_bg_corr:
+                        bg_corr = np.interp(
+                            soft_corr.lag,
+                            p.image_line_corr[j - 1]["lag"],
+                            p.image_line_corr[j - 1]["corrfunc"],
+                            right=0,
+                        )
+                    else:
+                        bg_corr = 0
 
-                if len(cf.lag) < len(soft_corr.lag):
-                    cf.lag = soft_corr.lag
-                    if self.after_pulse_param[0] == "multi_exponent_fit":
-                        # work with any number of exponents
-                        # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
-                        beta = self.after_pulse_param[1]
-                        cf.after_pulse = np.dot(beta[::2], np.exp(-np.outer(beta[1::2], cf.lag)))
+                    soft_corr.corrfunc = soft_corr.corrfunc - bg_corr
 
-                corrfunc_list.append(soft_corr.corrfunc)
-                weights_list.append(soft_corr.weights)
-                cf.countrate.append(soft_corr.countrate)
-                cf_cr_list.append(
-                    soft_corr.countrate * soft_corr.corrfunc
-                    - cf.after_pulse[: soft_corr.corrfunc.size]
-                )
+                    if len(cf.lag) < len(soft_corr.lag):
+                        cf.lag = soft_corr.lag
+                        if self.after_pulse_param[0] == "multi_exponent_fit":
+                            # work with any number of exponents
+                            # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
+                            beta = self.after_pulse_param[1]
+                            cf.after_pulse = np.dot(
+                                beta[::2], np.exp(-np.outer(beta[1::2], cf.lag))
+                            )
 
-        print("- Done.")
-
-        # padding and building arrays
-        n_lines = len(corrfunc_list)
-        lag_len = len(cf.lag)
-        cf.corrfunc = np.empty(shape=(n_lines, lag_len), dtype=np.float64)
-        cf.weights = np.empty(shape=(n_lines, lag_len), dtype=np.float64)
-        cf.cf_cr = np.empty(shape=(n_lines, lag_len), dtype=np.float64)
-        for idx in range(n_lines):  # zero pad
-            pad_len = lag_len - len(corrfunc_list[idx])
-            cf.corrfunc[idx] = np.pad(corrfunc_list[idx], (0, pad_len))
-            cf.weights[idx] = np.pad(weights_list[idx], (0, pad_len))
-            cf.cf_cr[idx] = np.pad(cf_cr_list[idx], (0, pad_len))
+                    cf.corrfunc_list.append(soft_corr.corrfunc)
+                    cf.weights_list.append(soft_corr.weights)
+                    cf.cf_cr_list.append(
+                        soft_corr.countrate * soft_corr.corrfunc
+                        - cf.after_pulse[: soft_corr.corrfunc.size]
+                    )
+                    cf.countrate.append(soft_corr.countrate)
 
         cf.vt_um = self.v_um_ms * cf.lag
         cf.total_duration = sum(duration)
@@ -666,6 +694,18 @@ class CorrFuncTDC(TDCPhotonData):
             )
         else:
             print("- Done.")
+
+        return cf
+
+    def plot_correlation_functions(
+        self, x_field="lag", y_field="avg_cf_cr", x_scale="log", y_scale="linear", **kwargs
+    ):
+
+        fig, _ = display.get_fig_with_axes()
+        for cf_name, cf in self.cf.items():
+            cf.plot_correlation_function(
+                x_field, y_field, x_scale, y_scale, label=cf_name, fig_handle=fig
+            )
 
 
 class SFCSExperiment:

@@ -858,7 +858,7 @@ class MainWin:
                     os.path.join(date_dir_path, template),
                     should_plot=False,
                 )
-                full_data.correlate_and_average(data_type)
+                full_data.correlate_and_average(cf_name=data_type)
 
             except AttributeError:
                 # No directories found
@@ -993,7 +993,7 @@ class MainWin:
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
                             should_plot=sol_analysis_wdgts.external_plotting,
                         )
-                    full_data.correlate_data(data_type, verbose=True)
+                    full_data.correlate_data(cf_name=data_type, verbose=True)
 
                     if import_wdgts.sol_save_processed:
                         print("Saving the processed data...", end=" ")
@@ -1200,8 +1200,7 @@ class MainWin:
 
         imported_templates = wdgts.SOL_ANALYSIS_COLL.imported_templates
         template = imported_templates.get()
-        data_type, *_ = re.split(" -", template)
-        self._app.analysis.loaded_data[data_type] = None
+        self._app.analysis.loaded_data[template] = None
         imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
         # TODO: clear image properties!
 
