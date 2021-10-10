@@ -4,6 +4,7 @@ from contextlib import suppress
 from types import SimpleNamespace
 
 import numpy as np
+from scipy import stats
 
 from utilities import display, fit_tools
 
@@ -12,7 +13,13 @@ class TDCPhotonData:
     """Doc."""
 
     def convert_fpga_data_to_photons(
-        self, fpga_data, ignore_coarse_fine=False, version=3, verbose=False
+        self,
+        fpga_data,
+        ignore_coarse_fine=False,
+        version=3,
+        locate_outliers=False,
+        max_outlier_prob=1e-5,
+        verbose=False,
     ):
         """Doc."""
 
@@ -88,6 +95,21 @@ class TDCPhotonData:
 
         p.runtime = runtime
         p.time_stamps = np.diff(runtime).astype(np.int32)
+
+        # find additional outliers (improbably large time_stamps) and break into
+        # additional segments if they exist.
+        # for exponential distribution MEDIAN and MAD are the same, but for
+        # biexponential MAD seems more sensitive
+        if locate_outliers:  # relevent for static data
+            mu = max(
+                np.median(p.time_stamps), np.abs(p.time_stamps - p.time_stamps.mean()).mean()
+            ) / np.log(2)
+            max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(p.time_stamps), scale=mu)
+            sec_edges = (p.time_stamps > max_time_stamp).nonzero()[0].tolist()
+            if (n_outliers := len(sec_edges)) > 0:
+                print(f"found {n_outliers} outliers.", end=" ")
+            sec_edges = [0] + sec_edges + [len(p.time_stamps)]
+            p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
 
         return p
 

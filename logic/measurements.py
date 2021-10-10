@@ -587,10 +587,10 @@ class SFCSSolutionMeasurement(Measurement):
             s.after_pulse_param = self.sys_info["after_pulse_param"]
             s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
             p = s.convert_fpga_data_to_photons(
-                np.array(data, dtype=np.uint8), ignore_coarse_fine=True
+                np.array(data, dtype=np.uint8), ignore_coarse_fine=True, locate_outliers=True
             )
             s.data.append(p)
-            s.correlate_and_average(self.laser_mode)
+            s.correlate_and_average(cf_name=self.laser_mode)
             return s
 
         if self.repeat is True:
