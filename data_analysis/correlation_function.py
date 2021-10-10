@@ -2,7 +2,6 @@
 
 import os
 from collections import deque
-from contextlib import contextmanager
 
 import numpy as np
 from scipy import ndimage, stats
@@ -136,34 +135,6 @@ class CorrFunc:
         )
 
         self.fit_param[fit_param["func_name"]] = fit_param
-
-    @contextmanager
-    def accumulate_and_pad_corrfuncs(self):
-        """Doc."""
-
-        self.corrfunc_list = []
-        self.weights_list = []
-        self.cf_cr_list = []
-
-        try:
-            yield
-
-        finally:
-            # padding and building arrays
-            n_corrs = len(self.corrfunc_list)
-            lag_len = len(self.lag)
-            self.corrfunc = np.empty(shape=(n_corrs, lag_len), dtype=np.float64)
-            self.weights = np.empty(shape=(n_corrs, lag_len), dtype=np.float64)
-            self.cf_cr = np.empty(shape=(n_corrs, lag_len), dtype=np.float64)
-            for idx in range(n_corrs):
-                pad_len = lag_len - len(self.corrfunc_list[idx])
-                self.corrfunc[idx] = np.pad(self.corrfunc_list[idx], (0, pad_len))
-                self.weights[idx] = np.pad(self.weights_list[idx], (0, pad_len))
-                self.cf_cr[idx] = np.pad(self.cf_cr_list[idx], (0, pad_len))
-
-            delattr(self, "corrfunc_list")
-            delattr(self, "weights_list")
-            delattr(self, "cf_cr_list")
 
 
 class CorrFuncTDC(TDCPhotonData):
@@ -479,9 +450,6 @@ class CorrFuncTDC(TDCPhotonData):
     ):
         """Correlates Data for static FCS"""
 
-        cf = CorrFunc()
-        soft_corr = SoftwareCorrelator()
-
         if run_duration is None:  # auto determination of run duration
             if len(self.cf) > 0:  # read run_time from the last calculated correlation function
                 run_duration = next(reversed(self.cf.values())).run_duration
@@ -494,18 +462,19 @@ class CorrFuncTDC(TDCPhotonData):
                     )
                 run_duration = total_duration_estimate / n_runs_requested
 
-        cf.lag = []
-        cf.countrate_list = []
-        cf.min_duration_frac = min_time_frac
         duration = []
-        cf.run_duration = run_duration
-        cf.total_duration_skipped = 0
-        cf.gate_ns = gate_ns
+
+        CF = CorrFunc()
+        CF.lag = []
+        CF.min_duration_frac = min_time_frac
+        CF.run_duration = run_duration
+        CF.skipped_duration = 0
+        CF.gate_ns = gate_ns
 
         if verbose:
             print(f"Correlating {self.template}:", end=" ")
 
-        with cf.accumulate_and_pad_corrfuncs():
+        with SoftwareCorrelator(CF) as SC:
             for p in self.data:
 
                 if verbose:
@@ -520,7 +489,7 @@ class CorrFuncTDC(TDCPhotonData):
                                 f"Duration of segment No. {se_idx} of file No. {p.file_num} ({segment_time:.2f}s) is too short. Skipping segment...",
                                 end=" ",
                             )
-                        cf.total_duration_skipped += segment_time
+                        CF.skipped_duration += segment_time
                         continue
 
                     runtime = p.runtime[se_start : se_end + 1]
@@ -529,7 +498,7 @@ class CorrFuncTDC(TDCPhotonData):
                     if hasattr(p, "delay_time"):
                         delay_time = p.delay_time[se_start : se_end + 1]
                         j_gate = np.logical_and(
-                            delay_time >= cf.gate_ns[0], delay_time <= cf.gate_ns[1]
+                            delay_time >= CF.gate_ns[0], delay_time <= CF.gate_ns[1]
                         )
                         runtime = runtime[j_gate]
                         delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
@@ -545,7 +514,7 @@ class CorrFuncTDC(TDCPhotonData):
 
                         ts_split = time_stamps[splits[k] : splits[k + 1]]
                         duration.append(ts_split.sum() / self.laser_freq_hz)
-                        soft_corr.soft_cross_correlate(
+                        SC.soft_cross_correlate(
                             ts_split,
                             CorrelatorType.PH_DELAY_CORRELATOR,
                             timebase_ms=1000 / self.laser_freq_hz,
@@ -554,50 +523,42 @@ class CorrFuncTDC(TDCPhotonData):
                         gate_to_laser_pulses = np.min(
                             [1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9]
                         )
-                        if len(cf.lag) < len(soft_corr.lag):
-                            cf.lag = soft_corr.lag
+                        if len(CF.lag) < len(SC.lag):
+                            CF.lag = SC.lag
                             if self.after_pulse_param[0] == "multi_exponent_fit":
                                 # work with any number of exponents
                                 beta = self.after_pulse_param[1]
-                                cf.after_pulse = gate_to_laser_pulses * np.dot(
-                                    beta[::2], np.exp(-np.outer(beta[1::2], cf.lag))
+                                CF.after_pulse = gate_to_laser_pulses * np.dot(
+                                    beta[::2], np.exp(-np.outer(beta[1::2], CF.lag))
                                 )
 
-                        cf.corrfunc_list.append(soft_corr.corrfunc)
-                        cf.weights_list.append(soft_corr.weights)
-                        cf.cf_cr_list.append(
-                            soft_corr.countrate * soft_corr.corrfunc
-                            - cf.after_pulse[: soft_corr.corrfunc.size]
-                        )
-                        cf.countrate_list.append(soft_corr.countrate)
+                        SC.accumulate()
 
-        cf.total_duration = sum(duration)
+        CF.total_duration = sum(duration)
 
         if verbose:
-            if cf.total_duration_skipped:
-                print(
-                    f"- Done.\n{cf.total_duration_skipped:.2f} s skipped out of {cf.total_duration:.2f} s."
-                )
-            else:
-                print("- Done.")
+            if CF.skipped_duration:
+                skipped_ratio = CF.skipped_duration / CF.total_duration
+                print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
+            print("- Done.")
 
-        return cf
+        return CF
 
     def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True, **kwargs):
         """Correlates data for angular scans"""
 
-        cf = CorrFunc()
-        soft_corr = SoftwareCorrelator()
-
         self.min_duration_frac = min_time_frac
         duration = []
-        cf.lag = []
-        cf.countrate = []
-        cf.total_duration_skipped = 0
+
+        CF = CorrFunc()
+        CF.lag = []
+        CF.countrate = []
+        CF.skipped_duration = 0
 
         print(f"Correlating angular scan data '{self.template}':", end=" ")
 
-        with cf.accumulate_and_pad_corrfuncs():
+        with SoftwareCorrelator(CF) as SC:
+
             for p in self.data:
                 print(f"({p.file_num})", end=" ")
                 line_num = p.line_num
@@ -635,7 +596,7 @@ class CorrFuncTDC(TDCPhotonData):
                     dur = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
                     duration.append(dur)
                     ts_split = np.vstack((timest, valid))
-                    soft_corr.soft_cross_correlate(
+                    SC.soft_cross_correlate(
                         ts_split,
                         CorrelatorType.PH_DELAY_CORRELATOR_LINES,
                         # time base of 20MHz to ms
@@ -644,7 +605,7 @@ class CorrFuncTDC(TDCPhotonData):
 
                     if subtract_bg_corr:
                         bg_corr = np.interp(
-                            soft_corr.lag,
+                            SC.lag,
                             p.image_line_corr[j - 1]["lag"],
                             p.image_line_corr[j - 1]["corrfunc"],
                             right=0,
@@ -652,37 +613,29 @@ class CorrFuncTDC(TDCPhotonData):
                     else:
                         bg_corr = 0
 
-                    soft_corr.corrfunc = soft_corr.corrfunc - bg_corr
+                    SC.corrfunc = SC.corrfunc - bg_corr
 
-                    if len(cf.lag) < len(soft_corr.lag):
-                        cf.lag = soft_corr.lag
+                    if len(CF.lag) < len(SC.lag):
+                        CF.lag = SC.lag
                         if self.after_pulse_param[0] == "multi_exponent_fit":
                             # work with any number of exponents
                             # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
                             beta = self.after_pulse_param[1]
-                            cf.after_pulse = np.dot(
-                                beta[::2], np.exp(-np.outer(beta[1::2], cf.lag))
+                            CF.after_pulse = np.dot(
+                                beta[::2], np.exp(-np.outer(beta[1::2], CF.lag))
                             )
 
-                    cf.corrfunc_list.append(soft_corr.corrfunc)
-                    cf.weights_list.append(soft_corr.weights)
-                    cf.cf_cr_list.append(
-                        soft_corr.countrate * soft_corr.corrfunc
-                        - cf.after_pulse[: soft_corr.corrfunc.size]
-                    )
-                    cf.countrate.append(soft_corr.countrate)
+                    SC.accumulate()
 
-        cf.vt_um = self.v_um_ms * cf.lag
-        cf.total_duration = sum(duration)
+        CF.vt_um = self.v_um_ms * CF.lag
+        CF.total_duration = sum(duration)
 
-        if cf.total_duration_skipped:
-            print(
-                f"{cf.total_duration_skipped:.2f} s skipped out of {cf.total_duration:.2f} s. Done."
-            )
-        else:
-            print("- Done.")
+        if CF.skipped_duration:
+            skipped_ratio = CF.skipped_duration / CF.total_duration
+            print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
+        print("- Done.")
 
-        return cf
+        return CF
 
     def plot_correlation_functions(
         self, x_field="lag", y_field="avg_cf_cr", x_scale="log", y_scale="linear", **kwargs
