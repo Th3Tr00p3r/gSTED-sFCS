@@ -30,28 +30,26 @@ def timer(threshold_ms: int = 0) -> Callable:
             # timing async funcitons
             @functools.wraps(func)
             async def wrapper(*args, **kwargs):
+                print(f"Funtion '{func.__name__}()' was called...", end=" ")
                 tic = time.perf_counter()
                 value = await func(*args, **kwargs)
                 toc = time.perf_counter()
                 elapsed_time_ms = (toc - tic) * 1e3
                 if elapsed_time_ms > threshold_ms:
-                    print(
-                        f"{func.__name__}() took {elapsed_time_ms:.2f} ms ({threshold_ms:d} ms threshold)"
-                    )
+                    print(f"It took {elapsed_time_ms:.2f} ms ({threshold_ms:d} ms threshold).")
                 return value
 
         else:
 
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
+                print(f"Funtion '{func.__name__}()' was called...", end=" ")
                 tic = time.perf_counter()
                 value = func(*args, **kwargs)
                 toc = time.perf_counter()
                 elapsed_time_ms = (toc - tic) * 1e3
                 if elapsed_time_ms > threshold_ms:
-                    print(
-                        f"{func.__name__}() took {elapsed_time_ms:.2f} ms ({threshold_ms:d} ms threshold)"
-                    )
+                    print(f"It took {elapsed_time_ms:.2f} ms ({threshold_ms:d} ms threshold).")
                 return value
 
         return wrapper

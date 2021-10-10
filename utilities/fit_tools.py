@@ -87,7 +87,10 @@ def fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> dict:
     fit_param = dict()
     fit_param["func_name"] = fit_func.__name__
     fit_param["beta"] = popt
-    fit_param["beta_error"] = np.sqrt(np.diag(pcov))
+    try:
+        fit_param["beta_error"] = np.sqrt(np.diag(pcov))
+    except Exception as exc:
+        raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
     fit_param["x"] = x
     fit_param["y"] = y
     return fit_param

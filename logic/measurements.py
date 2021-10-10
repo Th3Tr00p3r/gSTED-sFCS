@@ -499,13 +499,11 @@ class SFCSImageMeasurement(Measurement):
             self.plane_images_data = ImageScanData(
                 counts, self.ao_buffer, vars(self.scan_params).copy(), self.um_v_ratio
             )
-
             # save data
             self.save_data(self.prep_data_dict(), self.build_filename())
             self.keep_last_meas()
-
             # show middle plane
-            mid_plane = len(self.scan_params.set_pnts_planes) // 2
+            mid_plane = int(len(self.scan_params.set_pnts_planes) / 2)
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
             should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "exc")

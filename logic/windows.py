@@ -476,11 +476,9 @@ class MainWin:
 
             try:
                 fit_param = fit_tools.fit_2d_gaussian_to_image(image)
-
             except fit_tools.FitError:
                 # Gaussian fit failed, using COM
                 return helper.center_of_mass(image)
-
             else:
                 _, x0, y0, sigma_x, sigma_y, *_ = fit_param["beta"]
                 height, width = image.shape
