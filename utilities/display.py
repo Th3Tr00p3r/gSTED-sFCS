@@ -274,14 +274,20 @@ def force_aspect(ax, aspect=1) -> None:
 
 
 @contextmanager
-def show_external_axes(subplots=(1, 1), super_title=None, should_force_aspect=False, fontsize=14):
+def show_external_axes(
+    fig=None, subplots=(1, 1), super_title=None, should_force_aspect=False, fontsize=14
+):
     """
     Creates a Matplotlib figure, and yields a 'matplotlib.axes.Axes' object
     which is to be manipulated, then shows the figure.
     """
 
-    fig = plt.figure()
-    axes = fig.subplots(*subplots)
+    if fig is None:
+        fig = plt.figure()
+        axes = fig.subplots(*subplots)
+    else:
+        axes = fig.get_axes()
+
     try:
         yield axes
     finally:
@@ -295,3 +301,12 @@ def show_external_axes(subplots=(1, 1), super_title=None, should_force_aspect=Fa
         if super_title is not None:
             fig.suptitle(super_title, fontsize=(fontsize + 2))
         fig.show()
+
+
+def get_fig_with_axes(subplots=(1, 1)):
+    """Doc."""
+
+    fig = plt.figure()
+    axes = fig.subplots(*subplots)
+
+    return fig, axes

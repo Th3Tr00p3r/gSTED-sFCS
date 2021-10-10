@@ -53,16 +53,6 @@ class SoftwareCorrelator:
 
         self.corr_py = np.zeros((3, self.tot_corr_chan_len), dtype=float)
 
-    def get_correlator_params(self):
-        """Doc."""
-
-        doub_size = np.zeros(1, dtype=np.int32)
-        num_corr = np.zeros(1, dtype=np.int32)
-        self.get_corr_params(doub_size, num_corr)
-        self.doubling_size = doub_size[0]
-        self.num_of_correlators = num_corr[0]
-        return doub_size[0], num_corr[0]
-
     def soft_cross_correlate(
         self, photon_array, c_type=CorrelatorType.PH_DELAY_CORRELATOR, timebase_ms=1
     ):
@@ -122,10 +112,7 @@ class SoftwareCorrelator:
         if n_corr_channels[0] != self.tot_corr_chan_len:
             raise ValueError("Number of correlator channels inconsistent!")
 
-        self.lag = self.corr_py[1, :] * timebase_ms
-        self.corrfunc = self.corr_py[0, :]
-        self.weights = self.corr_py[2, :]
-        valid_corr = self.weights > 0
-        self.lag = self.lag[valid_corr]
-        self.corrfunc = self.corrfunc[valid_corr]
-        self.weights = self.weights[valid_corr]
+        valid_corr = self.corr_py[2, :] > 0
+        self.lag = (self.corr_py[1, :] * timebase_ms)[valid_corr]
+        self.corrfunc = self.corr_py[0, :][valid_corr]
+        self.weights = self.corr_py[2, :][valid_corr]
