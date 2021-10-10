@@ -926,7 +926,9 @@ class MainWin:
                 initialize_dir_log_file(file_path, *self.get_daily_alignment())
                 text_lines = helper.read_file_to_list(file_path)
         finally:  # write file to widget
-            DATA_IMPORT_COLL.log_text.set("\n".join(text_lines))
+            with suppress(UnboundLocalError):
+                # UnboundLocalError
+                DATA_IMPORT_COLL.log_text.set("\n".join(text_lines))
 
     def preview_img_scan(self, template: str) -> None:
         """Doc."""
@@ -939,7 +941,11 @@ class MainWin:
         if data_import_wdgts.is_image_type:
             # import the data
             file_path = os.path.join(self.current_date_type_dir_path(), template)
-            file_dict = file_utilities.load_file_dict(file_path)
+            try:
+                file_dict = file_utilities.load_file_dict(file_path)
+            except FileNotFoundError:
+                self.switch_data_type()
+                return
             # get the center plane image
             counts = file_dict["ci"]
             ao = file_dict["ao"]
@@ -949,8 +955,6 @@ class MainWin:
             image = image_data.build_image("forward", image_data.n_planes // 2)
             # plot it (below)
             data_import_wdgts.img_preview_disp.obj.display_image(image, axis=False, cmap="bone")
-
-        pass
 
     def import_sol_data(self) -> None:
         """Doc."""

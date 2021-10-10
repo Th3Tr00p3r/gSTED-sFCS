@@ -228,7 +228,7 @@ class CorrFuncTDC(TDCPhotonData):
             # FCS
             else:
                 self.type = "static"
-                if (p := self.process_static_data(full_data, idx)) is None:
+                if (p := self.process_static_data(full_data, idx, verbose=True)) is None:
                     continue
 
             p.file_path = file_path
@@ -254,6 +254,23 @@ class CorrFuncTDC(TDCPhotonData):
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
+
+    def process_static_data(self, full_data, idx, **kwargs):
+        """Doc."""
+
+        print("Converting raw data to photons...", end=" ")
+        p = self.convert_fpga_data_to_photons(
+            full_data["data"],
+            version=full_data["version"],
+            locate_outliers=True,
+            **kwargs,
+        )
+        print("Done.")
+
+        p.file_num = idx + 1
+        p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
+
+        return p
 
     def process_angular_scan_data(
         self, full_data, idx, should_fix_shift, roi_selection, should_plot
@@ -426,36 +443,6 @@ class CorrFuncTDC(TDCPhotonData):
         img = p.image * p.bw_mask
 
         p.image_line_corr = line_correlations(img, p.bw_mask, roi, sample_freq_hz)
-
-        return p
-
-    def process_static_data(self, full_data, idx, max_outlier_prob=1e-5):
-        """Doc."""
-
-        print("Converting raw data to photons...", end=" ")
-
-        p = self.convert_fpga_data_to_photons(
-            full_data["data"], version=full_data["version"], verbose=True
-        )
-
-        # find additional outliers (improbably large time_stamps) and break into
-        # additional segments if they exist.
-        # for exponential distribution MEDIAN and MAD are the same, but for
-        # biexponential MAD seems more sensitive
-        mu = max(
-            np.median(p.time_stamps), np.abs(p.time_stamps - p.time_stamps.mean()).mean()
-        ) / np.log(2)
-        max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(p.time_stamps), scale=mu)
-        sec_edges = (p.time_stamps > max_time_stamp).nonzero()[0].tolist()
-        if (n_outliers := len(sec_edges)) > 0:
-            print(f"found {n_outliers} outliers.", end=" ")
-        sec_edges = [0] + sec_edges + [len(p.time_stamps)]
-        p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
-
-        print("Done.")
-
-        p.file_num = idx + 1
-        p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         return p
 
