@@ -127,6 +127,17 @@ def estimate_disk_size(obj) -> float:
     return len(pickle.dumps(obj))
 
 
+def save_object_to_disk(obj, dir_path, file_name) -> None:
+    """Doc."""
+
+    # estimate_disk_size
+
+    os.makedirs(dir_path, exist_ok=True)
+    file_path = os.path.join(dir_path, file_name)
+    with open(file_path, "wb") as f:
+        pickle.dump(obj, f)
+
+
 def save_processed_solution_meas(full_data, dir_path) -> None:
     """
     Save a processed measurement, lacking any raw data.
