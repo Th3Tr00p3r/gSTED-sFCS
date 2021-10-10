@@ -647,6 +647,11 @@ class CorrFuncTDC(TDCPhotonData):
                 x_field, y_field, x_scale, y_scale, label=cf_name, fig_handle=fig
             )
 
+    def dump_data_to_disk(self, temp_dump_path):
+        """Doc."""
+
+        pass
+
 
 class SFCSExperiment:
     """Doc."""
