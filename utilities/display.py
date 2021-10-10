@@ -183,10 +183,8 @@ def cursor_factory(ax, init_cursor_pos):
             """Doc."""
 
             x, y = pos
-            # update the line positions
             self.horizontal_line.set_ydata(y)
             self.vertical_line.set_xdata(x)
-            #                self.text.set_text('x=%1.2f, y=%1.2f' % (x, y))
             self.ax.figure.canvas.draw_idle()
             self.pos = pos
 
