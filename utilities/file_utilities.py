@@ -130,19 +130,26 @@ def estimate_bytes(obj) -> int:
     return len(pickle.dumps(obj))
 
 
-# TODO: test me!
-def deep_size_estimate(obj, name="Whole", level=1, indent=0) -> None:
+def deep_size_estimate(obj, name="Object", size_thresh_mb=0.1, level=np.inf, indent=0) -> None:
     """Doc."""
 
     size_mb = estimate_bytes(obj) / 1e6
-    if size_mb > 1:
-        print(f"{indent * ' '}{name}: {size_mb:.2f}")
+    if (size_mb > size_thresh_mb) and (level >= 0):
+        print(f"{indent * ' '}{name}: {size_mb:.2f} Mb")
 
+        if isinstance(obj, (list, tuple, set)):
+            [
+                deep_size_estimate(elem, f"{name}[{idx}]", size_thresh_mb, level - 1, indent + 4)
+                for idx, elem in enumerate(obj)
+            ]
         if hasattr(obj, "__dict__"):
             # convert namespaces into dicts
             obj = copy.deepcopy(vars(obj))
         if isinstance(obj, dict):
-            [deep_size_estimate(val, key, level - 1, indent + 1) for key, val in obj]
+            [
+                deep_size_estimate(val, key, size_thresh_mb, level - 1, indent + 4)
+                for key, val in obj.items()
+            ]
         else:
             return
     else:

@@ -397,8 +397,8 @@ class SFCSImageMeasurement(Measurement):
 
         return {
             "version": self.tdc_dvc.tdc_vrsn,
-            "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float),
-            "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int),
+            "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float64),
+            "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int64),
             "pid": [],  # check
             "ao": self.ao_buffer,
             "is_fast_scan": True,
