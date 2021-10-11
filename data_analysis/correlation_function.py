@@ -151,7 +151,7 @@ class CorrFunc:
             self.countrate_list.append(sc.countrate)
         except AttributeError:
             raise RuntimeError(
-                "Method 'accumulate()' is meant to be used in the context of the 'accumulator()' context manager!"
+                "Use 'accumulate()' in the context of the 'accumulator()' context manager!"
             )
 
     @contextmanager
@@ -195,6 +195,7 @@ class CorrFuncTDC(TDCPhotonData):
     def __init__(self):
         self.data = []  # list to hold the data of each file
         self.cf = dict()
+        self.is_data_dumped = False
 
     def read_fpga_data(
         self,
@@ -671,9 +672,6 @@ class CorrFuncTDC(TDCPhotonData):
                         bg_corr = 0
                     SC.corrfunc -= bg_corr
 
-                    # append new corrfunc, weights, cf_cr and countrate to inner lists
-                    CF.accumulate(SC)
-
                     if len(CF.lag) < len(SC.lag):
                         CF.lag = SC.lag
                         if self.after_pulse_param[0] == "multi_exponent_fit":
@@ -683,6 +681,9 @@ class CorrFuncTDC(TDCPhotonData):
                             CF.after_pulse = np.dot(
                                 beta[::2], np.exp(-np.outer(beta[1::2], CF.lag))
                             )
+
+                    # append new corrfunc, weights, cf_cr and countrate to inner lists
+                    CF.accumulate(SC)
 
         CF.vt_um = self.v_um_ms * CF.lag
         CF.total_duration = sum(duration)
@@ -710,14 +711,24 @@ class CorrFuncTDC(TDCPhotonData):
         with suppress(AttributeError):
             # AttributeError - name_on_disk is not defined (happens when doing alignment, for example)
             if should_load:
-                print(f"Loading dumped '{self.name_on_disk}' from '{self.DUMP_PATH}'...", end=" ")
-                with suppress(FileNotFoundError):
-                    file_utilities.load_pkl(os.path.join(self.DUMP_PATH + self.name_on_disk))
-                print("Done.")
+                if self.is_data_dumped:
+                    print(
+                        f"Loading dumped '{self.name_on_disk}' from '{self.DUMP_PATH}'...", end=" "
+                    )
+                    with suppress(FileNotFoundError):
+                        self.data = file_utilities.load_pkl(
+                            os.path.join(self.DUMP_PATH + self.name_on_disk)
+                        )
+                        self.is_data_dumped = False
+                    print("Done.")
             else:  # should dump
                 print(f"Dumping '{self.name_on_disk}' to '{self.DUMP_PATH}'...", end=" ")
                 file_utilities.save_object_to_disk(self.data, self.DUMP_PATH, self.name_on_disk)
+                self.data = []
+                self.is_data_dumped = True
                 print("Done.")
+
+        file_utilities.deep_size_estimate(self)  # TESTESTEST
 
 
 class SFCSExperiment:
