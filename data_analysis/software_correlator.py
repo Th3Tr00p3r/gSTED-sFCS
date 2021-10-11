@@ -53,39 +53,6 @@ class SoftwareCorrelator:
 
         self.corr_py = np.zeros((3, self.tot_corr_chan_len), dtype=float)
 
-        self.cf = cf
-
-    def __enter__(self):
-        """Initiates accumulation lists, and returns self. for use as a context manager"""
-
-        self.corrfunc_list = []
-        self.weights_list = []
-        self.cf_cr_list = []
-        self.countrate_list = []
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        """Builds properly padded Numpy ndarrays from the accumulation lists upon exiting"""
-
-        n_corrfuncs = len(self.corrfunc_list)
-        lag_len = len(self.cf.lag)
-        self.cf.corrfunc = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-        self.cf.weights = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-        self.cf.cf_cr = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-        for idx in range(n_corrfuncs):
-            pad_len = lag_len - len(self.corrfunc_list[idx])
-            self.cf.corrfunc[idx] = np.pad(self.corrfunc_list[idx], (0, pad_len))
-            self.cf.weights[idx] = np.pad(self.weights_list[idx], (0, pad_len))
-            self.cf.cf_cr[idx] = np.pad(self.cf_cr_list[idx], (0, pad_len))
-
-        self.cf.countrate_list = self.countrate_list
-
-        delattr(self, "corrfunc_list")
-        delattr(self, "weights_list")
-        delattr(self, "cf_cr_list")
-        delattr(self, "countrate_list")
-        # TODO: delete the cf object attribute??
-
     def soft_cross_correlate(
         self, photon_array, c_type=CorrelatorType.PH_DELAY_CORRELATOR, timebase_ms=1
     ):
@@ -149,13 +116,3 @@ class SoftwareCorrelator:
         self.lag = (self.corr_py[1, :] * timebase_ms)[valid_corr]
         self.corrfunc = self.corr_py[0, :][valid_corr]
         self.weights = self.corr_py[2, :][valid_corr]
-
-    def accumulate(self):
-        """Doc."""
-
-        self.corrfunc_list.append(self.corrfunc)
-        self.weights_list.append(self.weights)
-        self.cf_cr_list.append(
-            self.countrate * self.corrfunc - self.cf.after_pulse[: self.corrfunc.size]
-        )
-        self.countrate_list.append(self.countrate)

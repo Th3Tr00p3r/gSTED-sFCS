@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 from scipy import stats
 
-from utilities import display, fit_tools
+from utilities import display, file_utilities, fit_tools
 
 
 class TDCPhotonData:
@@ -113,6 +113,7 @@ class TDCPhotonData:
 
         return p
 
+    @file_utilities.rotate_data_to_disk
     def calibrate_tdc(  # NOQA C901
         self,
         tdc_chain_length=128,
