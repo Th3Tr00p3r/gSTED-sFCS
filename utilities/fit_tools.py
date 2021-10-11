@@ -49,7 +49,6 @@ def curve_fit_lims(
     chi_sq_arr = np.square((fit_func(x, *fit_param["beta"]) - y) / y_err)
     fit_param["chi_sq_norm"] = chi_sq_arr.sum() / x.size
 
-    # TODO: needs testing
     if should_plot:
         with display.show_external_axes() as ax:
             ax.set_xscale(x_scale)
