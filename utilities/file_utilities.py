@@ -1,6 +1,8 @@
 """Data-File Loading Utilities"""
 
+import copy
 import glob
+import logging
 import os
 import pickle
 import re
@@ -121,21 +123,44 @@ default_system_info = {
 }
 
 
-def estimate_disk_size(obj) -> float:
+def estimate_bytes(obj) -> int:
     """Returns the estimated size in bytes."""
 
     return len(pickle.dumps(obj))
 
 
+def deep_size_estimate(obj, name="Whole", level=1, indent=0) -> None:
+    """Doc."""
+
+    size_mb = estimate_bytes(obj) / 1e6
+    if size_mb > 1:
+        print(f"{indent * ' '}{name}: {size_mb:.2f}")
+
+        if hasattr(obj, "__dict__"):
+            # convert namespaces into dicts
+            obj = copy.deepcopy(vars(obj))
+        if isinstance(obj, dict):
+            [deep_size_estimate(val, key, level - 1, indent + 1) for key, val in obj]
+        else:
+            return
+    else:
+        return
+
+
 def save_object_to_disk(obj, dir_path, file_name) -> None:
     """Doc."""
 
-    # estimate_disk_size
+    disk_size_mb = estimate_bytes(obj) / 1e6
+    if 100 < disk_size_mb < 1e4:
+        os.makedirs(dir_path, exist_ok=True)
+        file_path = os.path.join(dir_path, file_name)
+        with open(file_path, "wb") as f:
+            pickle.dump(obj, f)
 
-    os.makedirs(dir_path, exist_ok=True)
-    file_path = os.path.join(dir_path, file_name)
-    with open(file_path, "wb") as f:
-        pickle.dump(obj, f)
+    elif 1e4 < disk_size_mb:
+        raise RuntimeError(f"Object ({obj}) is over 10 Gb! Please check.")
+    else:
+        logging.debug("Object is under 100 Mb. Not saving.")
 
 
 def save_processed_solution_meas(full_data, dir_path) -> None:
@@ -149,17 +174,9 @@ def save_processed_solution_meas(full_data, dir_path) -> None:
         if p.runtime.max() <= np.iinfo(np.int32).max:
             p.runtime = p.runtime.astype(np.int32)
 
-    #    print(f"full_data size estimate: {round(estimate_disk_size(full_data) / 1e6)} Mb")
-    #    [
-    #        print(f"{key}: {size} Mb ({val.dtype})")
-    #        for key, val in full_data.data[0].__dict__.items()
-    #        if (size := round(estimate_disk_size(val) / 1e6)) > 0
-    #    ]
-
-    os.makedirs(os.path.join(dir_path, "processed"), exist_ok=True)
-    file_path = os.path.join(dir_path, "processed", re.sub("_[*]", "", full_data.template))
-    with open(file_path, "wb") as f:
-        pickle.dump(full_data, f)
+    dir_path = os.path.join(dir_path, "processed")
+    file_name = re.sub("_[*]", "", full_data.template)
+    save_object_to_disk(full_data, dir_path, file_name)
 
     # return to int64 (the actual object was changed!)
     for p in full_data.data:
