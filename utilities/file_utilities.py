@@ -1,13 +1,14 @@
 """Data-File Loading Utilities"""
 
 import copy
+import functools
 import glob
 import logging
 import os
 import pickle
 import re
 from contextlib import suppress
-from typing import List, Set
+from typing import Callable, List, Set
 
 import numpy as np
 import scipy.io as spio
@@ -129,6 +130,7 @@ def estimate_bytes(obj) -> int:
     return len(pickle.dumps(obj))
 
 
+# TODO: test me!
 def deep_size_estimate(obj, name="Whole", level=1, indent=0) -> None:
     """Doc."""
 
@@ -425,3 +427,16 @@ def prepare_file_paths(file_path_template: str, file_selection: str) -> List[str
         print("(all files)")
 
     return file_paths
+
+
+def rotate_data_to_disk(func) -> Callable:
+    """Doc."""
+
+    @functools.wraps(func)
+    def method_wrapper(self, *args, **kwargs):
+        self.dump_or_load_data(should_load=True)
+        value = func(self, *args, **kwargs)
+        self.dump_or_load_data(should_load=False)
+        return value
+
+    return method_wrapper
