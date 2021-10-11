@@ -3,6 +3,7 @@
 import logging
 import logging.config
 import os
+import shutil
 from contextlib import contextmanager, suppress
 from types import SimpleNamespace
 
@@ -187,6 +188,7 @@ class App:
 
         try:
             yield
+
         finally:
             logging.debug("Resuming 'ai' and 'ci' tasks")
             with suppress(DeviceError):
@@ -264,6 +266,10 @@ class App:
 
             close_all_wins(self)
             close_all_dvcs(self)
+
+            # clear temp folder
+            shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True)
+
             logging.info("Quitting application.")
             print("Application closed.")
 

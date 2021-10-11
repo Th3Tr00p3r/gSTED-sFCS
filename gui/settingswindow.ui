@@ -273,7 +273,7 @@
                   </font>
                  </property>
                  <property name="text">
-                  <string>C:/temp/</string>
+                  <string>C:/temp_sfcs_folder/</string>
                  </property>
                 </widget>
                </item>

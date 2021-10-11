@@ -3,6 +3,7 @@
 import os
 import re
 from collections import deque
+from contextlib import contextmanager, suppress
 
 import numpy as np
 from scipy import ndimage, stats
@@ -18,6 +19,7 @@ class CorrFunc:
     """Doc."""
 
     def __init__(self):
+        self.lag = []
         self.fit_param = dict()
 
     def average_correlation(
@@ -137,12 +139,58 @@ class CorrFunc:
 
         self.fit_param[fit_param["func_name"]] = fit_param
 
+    def accumulate(self, sc):
+        """Doc."""
+
+        try:
+            self.corrfunc_list.append(sc.corrfunc)
+            self.weights_list.append(sc.weights)
+            self.cf_cr_list.append(
+                sc.countrate * sc.corrfunc - self.after_pulse[: sc.corrfunc.size]
+            )
+            self.countrate_list.append(sc.countrate)
+        except AttributeError:
+            raise RuntimeError(
+                "Method 'accumulate()' is meant to be used in the context of the 'accumulator()' context manager!"
+            )
+
+    @contextmanager
+    def accumulator(self):
+        """Doc."""
+
+        self.corrfunc_list = []
+        self.weights_list = []
+        self.cf_cr_list = []
+        self.countrate_list = []
+
+        try:
+            yield
+
+        finally:
+            n_corrfuncs = len(self.corrfunc_list)
+            lag_len = len(self.lag)
+            self.corrfunc = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
+            self.weights = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
+            self.cf_cr = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
+            for idx in range(n_corrfuncs):
+                pad_len = lag_len - len(self.corrfunc_list[idx])
+                self.corrfunc[idx] = np.pad(self.corrfunc_list[idx], (0, pad_len))
+                self.weights[idx] = np.pad(self.weights_list[idx], (0, pad_len))
+                self.cf_cr[idx] = np.pad(self.cf_cr_list[idx], (0, pad_len))
+
+            self.countrate_list = self.countrate_list
+
+            delattr(self, "corrfunc_list")
+            delattr(self, "weights_list")
+            delattr(self, "cf_cr_list")
+            delattr(self, "countrate_list")
+
 
 class CorrFuncTDC(TDCPhotonData):
     """Doc."""
 
     NAN_PLACEBO = -100
-    DUMP_PATH = "C:/temp/"
+    DUMP_PATH = "C:/temp_sfcs_data/"
 
     def __init__(self):
         self.data = []  # list to hold the data of each file
@@ -426,6 +474,7 @@ class CorrFuncTDC(TDCPhotonData):
         cf = self.correlate_data(**kwargs)
         cf.average_correlation(**kwargs)
 
+    @file_utilities.rotate_data_to_disk
     def correlate_data(self, **kwargs):
         """Doc."""
 
@@ -453,6 +502,9 @@ class CorrFuncTDC(TDCPhotonData):
     ):
         """Correlates Data for static FCS"""
 
+        if verbose:
+            print(f"Correlating {self.template}:", end=" ")
+
         if run_duration is None:  # auto determination of run duration
             if len(self.cf) > 0:  # read run_time from the last calculated correlation function
                 run_duration = next(reversed(self.cf.values())).run_duration
@@ -465,19 +517,17 @@ class CorrFuncTDC(TDCPhotonData):
                     )
                 run_duration = total_duration_estimate / n_runs_requested
 
+        self.min_duration_frac = min_time_frac
         duration = []
 
+        SC = SoftwareCorrelator()
+
         CF = CorrFunc()
-        CF.lag = []
-        CF.min_duration_frac = min_time_frac
         CF.run_duration = run_duration
         CF.skipped_duration = 0
         CF.gate_ns = gate_ns
 
-        if verbose:
-            print(f"Correlating {self.template}:", end=" ")
-
-        with SoftwareCorrelator(CF) as SC:
+        with CF.accumulator():
             for p in self.data:
 
                 if verbose:
@@ -535,7 +585,8 @@ class CorrFuncTDC(TDCPhotonData):
                                     beta[::2], np.exp(-np.outer(beta[1::2], CF.lag))
                                 )
 
-                        SC.accumulate()
+                        # Append new correlation functions
+                        CF.accumulate(SC)
 
         CF.total_duration = sum(duration)
 
@@ -550,17 +601,18 @@ class CorrFuncTDC(TDCPhotonData):
     def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True, **kwargs):
         """Correlates data for angular scans"""
 
+        print(f"Correlating angular scan data '{self.template}':", end=" ")
+
         self.min_duration_frac = min_time_frac
         duration = []
 
+        SC = SoftwareCorrelator()
+
         CF = CorrFunc()
         CF.lag = []
-        CF.countrate = []
         CF.skipped_duration = 0
 
-        print(f"Correlating angular scan data '{self.template}':", end=" ")
-
-        with SoftwareCorrelator(CF) as SC:
+        with CF.accumulator():
 
             for p in self.data:
                 print(f"({p.file_num})", end=" ")
@@ -599,6 +651,7 @@ class CorrFuncTDC(TDCPhotonData):
                     dur = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
                     duration.append(dur)
                     ts_split = np.vstack((timest, valid))
+
                     SC.soft_cross_correlate(
                         ts_split,
                         CorrelatorType.PH_DELAY_CORRELATOR_LINES,
@@ -606,6 +659,7 @@ class CorrFuncTDC(TDCPhotonData):
                         timebase_ms=1000 / self.laser_freq_hz,
                     )
 
+                    # remove background correlation
                     if subtract_bg_corr:
                         bg_corr = np.interp(
                             SC.lag,
@@ -615,8 +669,10 @@ class CorrFuncTDC(TDCPhotonData):
                         )
                     else:
                         bg_corr = 0
+                    SC.corrfunc -= bg_corr
 
-                    SC.corrfunc = SC.corrfunc - bg_corr
+                    # append new corrfunc, weights, cf_cr and countrate to inner lists
+                    CF.accumulate(SC)
 
                     if len(CF.lag) < len(SC.lag):
                         CF.lag = SC.lag
@@ -627,8 +683,6 @@ class CorrFuncTDC(TDCPhotonData):
                             CF.after_pulse = np.dot(
                                 beta[::2], np.exp(-np.outer(beta[1::2], CF.lag))
                             )
-
-                    SC.accumulate()
 
         CF.vt_um = self.v_um_ms * CF.lag
         CF.total_duration = sum(duration)
@@ -650,17 +704,20 @@ class CorrFuncTDC(TDCPhotonData):
                 x_field, y_field, x_scale, y_scale, label=cf_name, fig_handle=fig
             )
 
-    def rotate_data_to_disk(self, should_load=False):
+    def dump_or_load_data(self, should_load: bool):
         """Doc."""
 
-        if should_load:
-            if self.is_data_dumped:
-                file_utilities.load_pkl(os.path.join(self.DUMP_PATH + self.name_on_disk))
-                self.is_data_dumped = False
-        else:  # should dump
-            if not self.is_data_dumped:
+        with suppress(AttributeError):
+            # AttributeError - name_on_disk is not defined (happens when doing alignment, for example)
+            if should_load:
+                print(f"Loading dumped '{self.name_on_disk}' from '{self.DUMP_PATH}'...", end=" ")
+                with suppress(FileNotFoundError):
+                    file_utilities.load_pkl(os.path.join(self.DUMP_PATH + self.name_on_disk))
+                print("Done.")
+            else:  # should dump
+                print(f"Dumping '{self.name_on_disk}' to '{self.DUMP_PATH}'...", end=" ")
                 file_utilities.save_object_to_disk(self.data, self.DUMP_PATH, self.name_on_disk)
-                self.is_data_dumped = True
+                print("Done.")
 
 
 class SFCSExperiment:
