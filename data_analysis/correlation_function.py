@@ -1,6 +1,7 @@
 """Data organization and manipulation."""
 
 import os
+import re
 from collections import deque
 
 import numpy as np
@@ -141,6 +142,7 @@ class CorrFuncTDC(TDCPhotonData):
     """Doc."""
 
     NAN_PLACEBO = -100
+    DUMP_PATH = "C:/temp/"
 
     def __init__(self):
         self.data = []  # list to hold the data of each file
@@ -160,6 +162,7 @@ class CorrFuncTDC(TDCPhotonData):
         file_paths = file_utilities.prepare_file_paths(file_path_template, file_selection)
         n_files = len(file_paths)
         _, self.template = os.path.split(file_path_template)
+        self.name_on_disk = re.sub("_[*]", "", self.template)
 
         for idx, file_path in enumerate(file_paths):
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
@@ -647,10 +650,17 @@ class CorrFuncTDC(TDCPhotonData):
                 x_field, y_field, x_scale, y_scale, label=cf_name, fig_handle=fig
             )
 
-    def dump_data_to_disk(self, temp_dump_path):
+    def rotate_data_to_disk(self, should_load=False):
         """Doc."""
 
-        pass
+        if should_load:
+            if self.is_data_dumped:
+                file_utilities.load_pkl(os.path.join(self.DUMP_PATH + self.name_on_disk))
+                self.is_data_dumped = False
+        else:  # should dump
+            if not self.is_data_dumped:
+                file_utilities.save_object_to_disk(self.data, self.DUMP_PATH, self.name_on_disk)
+                self.is_data_dumped = True
 
 
 class SFCSExperiment:
