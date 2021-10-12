@@ -1,5 +1,6 @@
 """Data organization and manipulation."""
 
+import logging
 import os
 import re
 from collections import deque
@@ -284,7 +285,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         print("Converting raw data to photons...", end=" ")
         p = self.convert_fpga_data_to_photons(
-            full_data["data"],
+            full_data["byte_data"],
             version=full_data["version"],
             locate_outliers=True,
             **kwargs,
@@ -303,7 +304,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         print("Converting raw data to photons...", end=" ")
         p = self.convert_fpga_data_to_photons(
-            full_data["data"], version=full_data["version"], verbose=True
+            full_data["byte_data"], version=full_data["version"], verbose=True
         )
         print("Done.")
 
@@ -727,7 +728,7 @@ class CorrFuncTDC(TDCPhotonData):
             after_pulse = gate_to_laser_pulses * np.dot(
                 beta[::2], np.exp(-np.outer(beta[1::2], lag))
             )
-        elif self.after_pulse_param[0] == "exponent_of_polynom_of_log":  # for old Matlab files
+        elif self.after_pulse_param[0] == "exponent_of_polynom_of_log":  # for old MATLAB files
             beta = self.after_pulse_param[1]
             if lag[0] == 0:
                 lag[0] = np.nan
@@ -735,33 +736,29 @@ class CorrFuncTDC(TDCPhotonData):
 
         return after_pulse
 
-    def dump_or_load_data(self, should_load: bool):
+    def dump_or_load_data(self, should_load: bool, **kwargs):
         """Doc."""
 
         with suppress(AttributeError):
             # AttributeError - name_on_disk is not defined (happens when doing alignment, for example)
             if should_load:  # loading data
                 if self.is_data_dumped:
-                    print(
-                        f"Loading dumped '{self.name_on_disk}' from '{self.DUMP_PATH}'...", end=" "
+                    logging.debug(
+                        f"Loading dumped data '{self.name_on_disk}' from '{self.DUMP_PATH}'."
                     )
                     with suppress(FileNotFoundError):
                         self.data = file_utilities.load_pkl(
                             os.path.join(self.DUMP_PATH + self.name_on_disk)
                         )
                         self.is_data_dumped = False
-                    print("Done.")
             else:  # dumping data
-                print(f"Dumping '{self.name_on_disk}' to '{self.DUMP_PATH}'...", end=" ")
                 is_saved = file_utilities.save_object_to_disk(
-                    self.data, self.DUMP_PATH, self.name_on_disk
+                    self.data, self.DUMP_PATH, self.name_on_disk, **kwargs
                 )
                 if is_saved:
                     self.data = []
                     self.is_data_dumped = True
-                    print("Done.")
-                else:
-                    print("Data size under 100 Mb, not dumping.")
+                    logging.debug(f"Dumped data '{self.name_on_disk}' to '{self.DUMP_PATH}'.")
 
 
 #        file_utilities.deep_size_estimate(self)  # TESTESTEST - show 'self' sizes after loading or dumping 'self.data'

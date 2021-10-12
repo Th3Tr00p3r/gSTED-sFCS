@@ -406,7 +406,7 @@ class SFCSImageMeasurement(Measurement):
             "xyz_um_to_v": self.um_v_ratio,
             "tdc_scan_data": {
                 # TODO: prepare a function to cut the data into planes, similar to how the counts are cut
-                "data": np.array(self.data_dvc.data, dtype=np.uint8),
+                "byte_data": np.array(self.data_dvc.data, dtype=np.uint8),
                 "data_version": self.tdc_dvc.data_vrsn,  # already in 'version'
                 "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
                 "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
@@ -632,7 +632,7 @@ class SFCSSolutionMeasurement(Measurement):
 
         full_data = {
             "duration_s": self.duration_s,
-            "data": np.array(self.data_dvc.data, dtype=np.uint8),
+            "byte_data": np.array(self.data_dvc.data, dtype=np.uint8),
             "version": self.tdc_dvc.tdc_vrsn,
             "data_version": self.tdc_dvc.data_vrsn,
             "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
