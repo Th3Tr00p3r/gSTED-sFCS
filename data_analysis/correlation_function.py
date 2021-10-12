@@ -720,18 +720,18 @@ class CorrFuncTDC(TDCPhotonData):
             )
 
     def calculate_afterpulse(self, gate_ns, lag):
-        gate_to_LaserPulses = np.min([1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
+        gate_to_laser_pulses = np.min([1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
         if self.after_pulse_param[0] == "multi_exponent_fit":
             # work with any number of exponents
             beta = self.after_pulse_param[1]
-            after_pulse = gate_to_LaserPulses * np.dot(
+            after_pulse = gate_to_laser_pulses * np.dot(
                 beta[::2], np.exp(-np.outer(beta[1::2], lag))
             )
         elif self.after_pulse_param[0] == "exponent_of_polynom_of_log":  # for old Matlab files
             beta = self.after_pulse_param[1]
             if lag[0] == 0:
                 lag[0] = np.nan
-            after_pulse = gate_to_LaserPulses * np.exp(np.polyval(beta, np.log(lag)))
+            after_pulse = gate_to_laser_pulses * np.exp(np.polyval(beta, np.log(lag)))
 
         return after_pulse
 
