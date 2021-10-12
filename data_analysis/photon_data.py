@@ -72,8 +72,8 @@ class TDCPhotonData:
                     end=" ",
                 )
             temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
-            time_stamps[inv_idxs] = np.floor(temp, dtype="int")
-            time_stamps[inv_idxs + 1] = np.ceil(temp, dtype="int")
+            time_stamps[inv_idxs] = np.floor(temp).astype(np.int64)
+            time_stamps[inv_idxs + 1] = np.ceil(temp).astype(np.int64)
             runtime[inv_idxs + 1] = runtime[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
         # repairing drops in runtime (happens when number of laser pulses passes 'maxval')
