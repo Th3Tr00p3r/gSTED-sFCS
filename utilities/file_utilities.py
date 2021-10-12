@@ -130,16 +130,24 @@ def estimate_bytes(obj) -> int:
     return len(pickle.dumps(obj))
 
 
-def deep_size_estimate(obj, name="Object", size_thresh_mb=0.1, level=np.inf, indent=0) -> None:
-    """Doc."""
+def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0.01, name=None) -> None:
+    """
+     Print a cascading size description of object 'obj' up to level 'level'
+    for objects (and subobjects) requiering an estimated disk space over 'threshold_mb'.
+    """
 
     size_mb = estimate_bytes(obj) / 1e6
-    if (size_mb > size_thresh_mb) and (level >= 0):
+    if (size_mb > threshold_mb) and (level >= 0):
+        if name is None:
+            name = obj.__class__.__name__
+            print(
+                f"Displaying object '{name}' size tree up to level={level} with a threshold of {threshold_mb} Mb:"
+            )
         print(f"{indent * ' '}{name}: {size_mb:.2f} Mb")
 
         if isinstance(obj, (list, tuple, set)):
             [
-                deep_size_estimate(elem, f"{name}[{idx}]", size_thresh_mb, level - 1, indent + 4)
+                deep_size_estimate(elem, level - 1, indent + 4, threshold_mb, f"{name}[{idx}]")
                 for idx, elem in enumerate(obj)
             ]
         if hasattr(obj, "__dict__"):
@@ -147,11 +155,14 @@ def deep_size_estimate(obj, name="Object", size_thresh_mb=0.1, level=np.inf, ind
             obj = copy.deepcopy(vars(obj))
         if isinstance(obj, dict):
             [
-                deep_size_estimate(val, key, size_thresh_mb, level - 1, indent + 4)
+                deep_size_estimate(val, level - 1, indent + 4, threshold_mb, key)
                 for key, val in obj.items()
             ]
         else:
             return
+    elif name is None:
+        name = obj.__class__.__name__
+        print(f"Object '{name}' size is below the threshold ({threshold_mb} Mb).")
     else:
         return
 

@@ -710,7 +710,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         with suppress(AttributeError):
             # AttributeError - name_on_disk is not defined (happens when doing alignment, for example)
-            if should_load:
+            if should_load:  # loading data
                 if self.is_data_dumped:
                     print(
                         f"Loading dumped '{self.name_on_disk}' from '{self.DUMP_PATH}'...", end=" "
@@ -721,14 +721,15 @@ class CorrFuncTDC(TDCPhotonData):
                         )
                         self.is_data_dumped = False
                     print("Done.")
-            else:  # should dump
+            else:  # dumping data
                 print(f"Dumping '{self.name_on_disk}' to '{self.DUMP_PATH}'...", end=" ")
                 file_utilities.save_object_to_disk(self.data, self.DUMP_PATH, self.name_on_disk)
                 self.data = []
                 self.is_data_dumped = True
                 print("Done.")
 
-        file_utilities.deep_size_estimate(self)  # TESTESTEST
+
+#        file_utilities.deep_size_estimate(self)  # TESTESTEST - show 'self' sizes after loading or dumping 'self.data'
 
 
 class SFCSExperiment:
