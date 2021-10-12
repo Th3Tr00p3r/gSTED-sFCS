@@ -27,17 +27,6 @@ class ScanPatternAO:
     def calc_image_pattern(self, params, um_v_ratio):
         """Doc."""
 
-        def calc_ao(set_pnts_lines_odd, single_line_ao, ppl):
-            """Doc."""
-
-            dim1_ao = np.empty(shape=(set_pnts_lines_odd.size * ppl,))
-            dim2_ao = np.empty(shape=(set_pnts_lines_odd.size * ppl,))
-            for idx, odd_line_set_pnt in enumerate(set_pnts_lines_odd):
-                dim1_ao[idx * ppl : idx * ppl + ppl] = single_line_ao
-                dim2_ao[idx * ppl : idx * ppl + ppl] = [odd_line_set_pnt] * single_line_ao.size
-
-            return np.vstack((dim1_ao, dim2_ao))
-
         params.dt = 1 / (self.scan_params.line_freq_Hz * self.scan_params.ppl)
 
         # order according to relevant plane dimensions
@@ -51,30 +40,30 @@ class ScanPatternAO:
             dim_conv = tuple(self.um_v_ratio[i] for i in (0, 2, 1))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "xzy")
 
-        T = params.ppl
+        ppl = params.ppl
         f = params.lin_frac
-        t0 = T / 2 * (1 - f) / (2 - f)
-        v = 1 / (T / 2 - 2 * t0)
+        t0 = ppl / 2 * (1 - f) / (2 - f)
+        v = 1 / (ppl / 2 - 2 * t0)
         a = v / t0
         A = 1 / f
 
-        s = np.zeros(T)
+        s = np.zeros(ppl)
 
-        t = np.arange(T)
+        t = np.arange(ppl)
         J = t <= t0
         s[J] = a * np.power(t[J], 2)
 
-        J = (t > t0) & (t <= (T / 2 - t0))
+        J = (t > t0) & (t <= (ppl / 2 - t0))
         s[J] = v * t[J] - a * t0 ** 2 / 2
 
-        J = (t > (T / 2 - t0)) & (t <= (T / 2 + t0))
-        s[J] = A - a * np.power((t[J] - T / 2), 2) / 2
+        J = (t > (ppl / 2 - t0)) & (t <= (ppl / 2 + t0))
+        s[J] = A - a * np.power((t[J] - ppl / 2), 2) / 2
 
-        J = (t > (T / 2 + t0)) & (t <= (T - t0))
-        s[J] = A + a * t0 ** 2 / 2 - v * (t[J] - T / 2)
+        J = (t > (ppl / 2 + t0)) & (t <= (ppl - t0))
+        s[J] = A + a * t0 ** 2 / 2 - v * (t[J] - ppl / 2)
 
-        J = t > (T - t0)
-        s[J] = a * np.power((T - t[J]), 2) / 2
+        J = t > (ppl - t0)
+        s[J] = a * np.power((ppl - t[J]), 2) / 2
 
         s = s - 1 / (2 * f)
 
@@ -103,7 +92,7 @@ class ScanPatternAO:
 
         set_pnts_planes = np.atleast_1d(set_pnts_planes)
 
-        ao_buffer = calc_ao(set_pnts_lines_odd, single_line_ao, T)
+        ao_buffer = calc_ao(set_pnts_lines_odd, single_line_ao)
 
         return (
             ao_buffer,
@@ -318,3 +307,17 @@ class ScanPatternAO:
         params.scan_freq_Hz = scan_freq_Hz
 
         return ao_buffer, params
+
+
+def calc_ao(set_pnts_lines_odd, single_line_ao):
+    """Doc."""
+
+    ppl = single_line_ao.size
+
+    dim1_ao = np.empty(shape=(set_pnts_lines_odd.size * ppl,), dtype=np.float64)
+    dim2_ao = np.empty(shape=(set_pnts_lines_odd.size * ppl,), dtype=np.float64)
+    for idx, odd_line_set_pnt in enumerate(set_pnts_lines_odd):
+        dim1_ao[idx * ppl : idx * ppl + ppl] = single_line_ao
+        dim2_ao[idx * ppl : idx * ppl + ppl] = [odd_line_set_pnt] * ppl
+
+    return np.vstack((dim1_ao, dim2_ao))
