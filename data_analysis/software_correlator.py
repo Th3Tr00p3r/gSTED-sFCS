@@ -21,7 +21,7 @@ class CorrelatorType:
 class SoftwareCorrelator:
     """Doc."""
 
-    def __init__(self, cf=None):
+    def __init__(self):
         if sys.platform == "win32":
             lib_path = SOFT_CORR_DYNAMIC_LIB_PATH
         elif sys.platform == "darwin":
