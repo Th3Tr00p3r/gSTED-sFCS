@@ -6,7 +6,6 @@ import glob
 import os
 import pickle
 import re
-from contextlib import suppress
 from typing import Callable, List, Set
 
 import numpy as np
@@ -230,16 +229,23 @@ def load_file_dict(file_path: str):
     else:
         raise NotImplementedError(f"Unknown file extension: '{ext}'.")
 
+    # patch for legacy Python files (almost non-existant)
     if not file_dict.get("system_info"):
         print("'system_info' is missing, using defaults...", end=" ")
         file_dict["system_info"] = default_system_info
-    else:  # has 'system_info'
-        with suppress(KeyError):
-            if not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):  # .mat
-                file_dict["system_info"]["after_pulse_param"] = (
-                    "exponent_of_polynom_of_log",  # legacy matlab format
-                    file_dict["system_info"]["after_pulse_param"],
-                )
+
+    # patch MATLAB files
+    elif not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
+        if file_dict.get("python_converted"):
+            file_dict["system_info"]["after_pulse_param"] = (
+                "multi_exponent_fit",  # modern MATLAB format
+                file_dict["system_info"]["after_pulse_param"],
+            )
+        else:
+            file_dict["system_info"]["after_pulse_param"] = (
+                "exponent_of_polynom_of_log",  # legacy MATLAB format
+                file_dict["system_info"]["after_pulse_param"],
+            )
 
     return file_dict
 
@@ -271,6 +277,7 @@ def translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
                 translated_dict[translation_dict[org_key]] = org_val
             else:
                 translated_dict[org_key] = org_val
+
     return translated_dict
 
 
@@ -302,6 +309,7 @@ def save_mat(file_dict: dict, file_path: str) -> None:
     file_dict = translate_dict_keys(file_dict, reverse_dict(legacy_matlab_trans_dict))
     file_dict["SystemInfo"]["AfterPulseParam"] = file_dict["SystemInfo"]["AfterPulseParam"][1]
     file_dict = convert_types_to_matlab_format(file_dict)
+    file_dict["python_converted"] = True  # mark as converted-from-Python MATLAB format
     spio.savemat(file_path, file_dict)
 
 
