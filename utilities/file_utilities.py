@@ -38,7 +38,7 @@ legacy_matlab_trans_dict = {
     "LinearPart": "linear_part",
     "Xlim": "x_lim",
     "Ylim": "y_lim",
-    "Data": "data",
+    "Data": "byte_data",
     "AvgCnt": "avg_cnt_rate_khz",
     "CircleSpeed_um_sec": "circle_speed_um_s",
     "AnglularScanSettings": "angular_scan_settings",
@@ -89,6 +89,7 @@ legacy_python_trans_dict = {
     "sample_freq": "sample_freq_hz",
     "max_line_length": "max_line_length_um",
     "line_shift": "line_shift_um",
+    "data": "byte_data",
     # Image
     "cnt": "ci",
     "lines": "n_lines",
@@ -165,20 +166,22 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0.01, name=None) -
         return
 
 
-def save_object_to_disk(obj, dir_path, file_name) -> bool:
-    """Doc."""
+def save_object_to_disk(obj, dir_path, file_name, size_limits_mb=(500, 1e4)) -> bool:
+    """
+    Save object to disk, if estimated size is within the limits.
+    Returns 'True' if saved, 'False' otherwise.
+    """
 
+    lower_limit_mb, upper_limit_mb = size_limits_mb
     disk_size_mb = estimate_bytes(obj) / 1e6
-    if 100 < disk_size_mb < 1e4:
+    if lower_limit_mb < disk_size_mb < upper_limit_mb:
         os.makedirs(dir_path, exist_ok=True)
         file_path = os.path.join(dir_path, file_name)
         with open(file_path, "wb") as f:
             pickle.dump(obj, f)
         return True
 
-    elif 1e4 < disk_size_mb:
-        raise RuntimeError(f"Object ({obj}) is over 10 Gb! Please check.")
-    else:  # disk_size_mb < 100 Mb
+    else:
         return False
 
 

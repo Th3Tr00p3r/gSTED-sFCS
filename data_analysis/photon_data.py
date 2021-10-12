@@ -14,7 +14,7 @@ class TDCPhotonData:
 
     def convert_fpga_data_to_photons(
         self,
-        fpga_data,
+        byte_data,
         ignore_coarse_fine=False,
         version=3,
         locate_outliers=False,
@@ -33,7 +33,7 @@ class TDCPhotonData:
 
         p.version = version
 
-        section_edges, tot_single_errors = find_all_section_edges(fpga_data, group_len)
+        section_edges, tot_single_errors = find_all_section_edges(byte_data, group_len)
 
         section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
         if verbose:
@@ -57,7 +57,7 @@ class TDCPhotonData:
 
         # calculate the runtime in terms of the number of laser pulses since the beginning of the file
         runtime = (
-            fpga_data[idxs + 1] * 256 ** 2 + fpga_data[idxs + 2] * 256 + fpga_data[idxs + 3]
+            byte_data[idxs + 1] * 256 ** 2 + byte_data[idxs + 2] * 256 + byte_data[idxs + 3]
         ).astype(np.int64)
 
         time_stamps = np.diff(runtime)
@@ -83,8 +83,8 @@ class TDCPhotonData:
 
         # handling coarse and fine times (for gating)
         if not ignore_coarse_fine:
-            coarse = fpga_data[idxs + 4].astype(np.int16)
-            p.fine = fpga_data[idxs + 5].astype(np.int16)
+            coarse = byte_data[idxs + 4].astype(np.int16)
+            p.fine = byte_data[idxs + 5].astype(np.int16)
 
             # some fix due to an issue in FPGA
             if p.version >= 3:
@@ -453,19 +453,19 @@ class TDCPhotonData:
             self.tdc_calib["fit_param"][fit_param["func_name"]] = fit_param
 
 
-def find_section_edges(data, group_len):  # NOQA C901
+def find_section_edges(byte_data, group_len):  # NOQA C901
     """
     group_len: bytes per photon
     """
 
     # find index of first complete photon (where 248 and 254 bytes are spaced exatly (group_len -1) bytes apart)
-    edge_start = first_full_photon_idx(data, group_len)
+    edge_start = first_full_photon_idx(byte_data, group_len)
     if edge_start is None:
-        raise RuntimeError("No data found! Check detector and FPGA.")
+        raise RuntimeError("No byte data found! Check detector and FPGA.")
 
-    # slice data where assumed to be 248 and 254 (photon brackets)
-    data_presumed_248 = data[edge_start::group_len]
-    data_presumed_254 = data[(edge_start + group_len - 1) :: group_len]
+    # slice byte_data where assumed to be 248 and 254 (photon brackets)
+    data_presumed_248 = byte_data[edge_start::group_len]
+    data_presumed_254 = byte_data[(edge_start + group_len - 1) :: group_len]
 
     # find indices where this assumption breaks
     missed_248_idxs = np.where(data_presumed_248 != 248)[0]
@@ -477,14 +477,14 @@ def find_section_edges(data, group_len):  # NOQA C901
     n_single_errors = 0
     for count, missed_248_idx in enumerate(missed_248_idxs):
 
-        # hold data idx of current missing photon starting bracket
+        # hold byte_data idx of current missing photon starting bracket
         data_idx_of_missed_248 = edge_start + missed_248_idx * group_len
 
         # condition for ignoring single photon error (just test the most significant bytes of the runtime are close)
         ignore_single_error_cond = (
             abs(
-                int(data[data_idx_of_missed_248 + 1])
-                - int(data[data_idx_of_missed_248 - (group_len - 1)])
+                int(byte_data[data_idx_of_missed_248 + 1])
+                - int(byte_data[data_idx_of_missed_248 - (group_len - 1)])
             )
             < 3
         )
@@ -502,14 +502,14 @@ def find_section_edges(data, group_len):  # NOQA C901
                 np.diff(missed_248_idxs[count : (count + 2)]) > 1
             ):
                 if ignore_single_error_cond:
-                    # f"Found single photon error (data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                    # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
                     n_single_errors += 1
                 else:
-                    raise RuntimeError("Check data for strange section edges!")
+                    raise RuntimeError("Check byte data for strange section edges!")
 
             else:
                 raise RuntimeError(
-                    "Bizarre problem in data: 248 byte out of registry while 254 is in registry!"
+                    "Bizarre problem in byte data: 248 byte out of registry while 254 is in registry!"
                 )
 
         else:  # (tot_missed_254s >= count + 1)
@@ -517,7 +517,7 @@ def find_section_edges(data, group_len):  # NOQA C901
             if np.isin(missed_248_idx, missed_254_idxs):
                 # Found a section, continuing...
                 edge_stop = data_idx_of_missed_248
-                if data[edge_stop - 1] != 254:
+                if byte_data[edge_stop - 1] != 254:
                     edge_stop = edge_stop - group_len
                 break
 
@@ -526,25 +526,25 @@ def find_section_edges(data, group_len):  # NOQA C901
             ):  # np.isin(missed_248_idx, (missed_254_idxs[count]+1)): # likely a real section ? why np.isin?
                 # Found a section, continuing...
                 edge_stop = data_idx_of_missed_248
-                if data[edge_stop - 1] != 254:
+                if byte_data[edge_stop - 1] != 254:
                     edge_stop = edge_stop - group_len
                 break
 
             elif missed_248_idx < missed_254_idxs[count]:  # likely a singular error on 248 byte
                 if ignore_single_error_cond:
-                    # f"Found single photon error (data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                    # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
                     n_single_errors += 1
                     continue
                 else:
-                    raise RuntimeError("Check data for strange section edges!")
+                    raise RuntimeError("Check byte data for strange section edges!")
 
             else:  # likely a signular mistake on 254 byte
                 if ignore_single_error_cond:
-                    # f"Found single photon error (data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                    # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
                     n_single_errors += 1
                     continue
                 else:
-                    raise RuntimeError("Check data for strange section edges!")
+                    raise RuntimeError("Check byte data for strange section edges!")
 
     if tot_missed_248s > 0:
         if count == missed_248_idxs.size - 1:  # reached the end of the loop without breaking
@@ -557,16 +557,16 @@ def find_section_edges(data, group_len):  # NOQA C901
     return edge_start, edge_stop, data_end, n_single_errors
 
 
-def first_full_photon_idx(data, group_len) -> int:
+def first_full_photon_idx(byte_data, group_len) -> int:
     """Doc."""
 
-    for idx in range(data.size):
-        if (data[idx] == 248) and (data[idx + (group_len - 1)] == 254):
+    for idx in range(byte_data.size):
+        if (byte_data[idx] == 248) and (byte_data[idx + (group_len - 1)] == 254):
             return idx
     return None
 
 
-def find_all_section_edges(data, group_len):
+def find_all_section_edges(byte_data, group_len):
     """Doc."""
 
     section_edges = []
@@ -574,9 +574,9 @@ def find_all_section_edges(data, group_len):
     last_edge_stop = 0
     total_single_errors = 0
     while not data_end:
-        remaining_data = data[last_edge_stop:]
+        remaining_byte_data = byte_data[last_edge_stop:]
         new_edge_start, new_edge_stop, data_end, n_single_errors = find_section_edges(
-            remaining_data, group_len
+            remaining_byte_data, group_len
         )
         new_edge_start += last_edge_stop
         new_edge_stop += last_edge_stop
