@@ -710,7 +710,7 @@ class CorrFuncTDC(TDCPhotonData):
         return CF
 
     def plot_correlation_functions(
-        self, x_field="lag", y_field="avg_cf_cr", x_scale="log", y_scale="linear", **kwargs
+        self, x_field="lag", y_field="normalized", x_scale="log", y_scale="linear", **kwargs
     ):
 
         fig, _ = display.get_fig_with_axes()
