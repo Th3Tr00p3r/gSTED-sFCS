@@ -3,7 +3,6 @@
 import copy
 import functools
 import glob
-import logging
 import os
 import pickle
 import re
@@ -167,7 +166,7 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0.01, name=None) -
         return
 
 
-def save_object_to_disk(obj, dir_path, file_name) -> None:
+def save_object_to_disk(obj, dir_path, file_name) -> bool:
     """Doc."""
 
     disk_size_mb = estimate_bytes(obj) / 1e6
@@ -176,11 +175,12 @@ def save_object_to_disk(obj, dir_path, file_name) -> None:
         file_path = os.path.join(dir_path, file_name)
         with open(file_path, "wb") as f:
             pickle.dump(obj, f)
+        return True
 
     elif 1e4 < disk_size_mb:
         raise RuntimeError(f"Object ({obj}) is over 10 Gb! Please check.")
-    else:
-        logging.debug("Object is under 100 Mb. Not saving.")
+    else:  # disk_size_mb < 100 Mb
+        return False
 
 
 def save_processed_solution_meas(full_data, dir_path) -> None:
