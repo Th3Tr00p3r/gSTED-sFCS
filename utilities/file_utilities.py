@@ -447,14 +447,21 @@ def prepare_file_paths(file_path_template: str, file_selection: str) -> List[str
     return file_paths
 
 
-def rotate_data_to_disk(func) -> Callable:
-    """Doc."""
+def rotate_data_to_disk(method) -> Callable:
+    """
+    Loads 'self.data' object from disk prior to calling the method 'method',
+    and dumps (saves and deletes the attribute) 'self.data' afterwards.
+    if 'self' does not possess the method 'dump_or_load_data', does nothing.
+    """
 
-    @functools.wraps(func)
+    @functools.wraps(method)
     def method_wrapper(self, *args, **kwargs):
-        self.dump_or_load_data(should_load=True)
-        value = func(self, *args, **kwargs)
-        self.dump_or_load_data(should_load=False)
+        if hasattr(self, "dump_or_load_data"):
+            self.dump_or_load_data(should_load=True)
+            value = method(self, *args, **kwargs)
+            self.dump_or_load_data(should_load=False)
+        else:
+            value = method(self, *args, **kwargs)
         return value
 
     return method_wrapper
