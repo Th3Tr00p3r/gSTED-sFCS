@@ -5,6 +5,7 @@ import re
 from collections import deque
 from contextlib import contextmanager, suppress
 
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage, stats
 from skimage import filters as skifilt
@@ -82,7 +83,7 @@ class CorrFunc:
         self.error_normalized = self.error_cf_cr / self.g0
 
         if should_plot:
-            self.plot_correlation_function()
+            self.plot_correlation_function(**kwargs)
 
     def plot_correlation_function(
         self, x_field="lag", y_field="avg_cf_cr", x_scale="log", y_scale="linear", **kwargs
@@ -599,7 +600,9 @@ class CorrFuncTDC(TDCPhotonData):
 
         return CF
 
-    def correlate_angular_scan_data(self, min_time_frac=0.5, subtract_bg_corr=True, **kwargs):
+    def correlate_angular_scan_data(
+        self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
+    ):
         """Correlates data for angular scans"""
 
         print(f"Correlating angular scan data '{self.template}':", end=" ")
@@ -612,6 +615,7 @@ class CorrFuncTDC(TDCPhotonData):
         CF = CorrFunc()
         CF.lag = []
         CF.skipped_duration = 0
+        CF.gate_ns = gate_ns
 
         with CF.accumulator():
 
@@ -619,7 +623,21 @@ class CorrFuncTDC(TDCPhotonData):
                 print(f"({p.file_num})", end=" ")
                 line_num = p.line_num
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
-                for j in range(min_line, max_line + 1):
+                runtm = p.runtime
+                if hasattr(p, "delay_time"):
+                    delaytm = p.delay_time
+                    Jgate = np.logical_or(
+                        np.logical_and(delaytm >= CF.gate_ns[0], delaytm <= CF.gate_ns[1]),
+                        delaytm == np.nan,
+                    )
+                    runtm = runtm[Jgate]
+                    delaytm = delaytm[Jgate]
+                    line_num = line_num[Jgate]
+                elif gate_ns != (0, np.inf):
+                    raise RuntimeError("For gating you need to run TDCcalibration first")
+
+                time_stamps = np.diff(runtm).astype(np.int32)
+                for line_idx, j in enumerate(range(min_line, max_line + 1)):
                     valid = (line_num == j).astype(np.int8)
                     valid[line_num == -j] = -1
                     valid[line_num == -j - self.LINE_END_ADDER] = -2
@@ -627,7 +645,7 @@ class CorrFuncTDC(TDCPhotonData):
                     valid = valid[1:]
 
                     # remove photons from wrong lines
-                    timest = p.time_stamps[valid != 0]
+                    timest = time_stamps[valid != 0]
                     valid = valid[valid != 0]
 
                     if not valid.size:
@@ -637,16 +655,18 @@ class CorrFuncTDC(TDCPhotonData):
                     # check that we start with the line beginning and not its end
                     if valid[0] != -1:
                         # remove photons till the first found beginning
-                        j_start = np.where(valid == -1)[0][0]
-                        timest = timest[j_start:]
-                        valid = valid[j_start:]
+                        j_start = np.where(valid == -1)[0]
+                        if len(j_start) > 0:
+                            timest = timest[j_start[0] :]
+                            valid = valid[j_start[0] :]
 
                         # check that we stop with the line ending and not its beginning
                     if valid[-1] != -2:
                         # remove photons till the last found ending
-                        j_end = np.where(valid == -2)[0][-1]
-                        timest = timest[:j_end]
-                        valid = valid[:j_end]
+                        j_start = np.where(valid == -1)[0]
+                        if len(j_start) > 0:
+                            timest = timest[j_start[0] :]
+                            valid = valid[j_start[0] :]
 
                     # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
                     dur = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
@@ -664,8 +684,8 @@ class CorrFuncTDC(TDCPhotonData):
                     if subtract_bg_corr:
                         bg_corr = np.interp(
                             SC.lag,
-                            p.image_line_corr[j - 1]["lag"],
-                            p.image_line_corr[j - 1]["corrfunc"],
+                            p.image_line_corr[line_idx]["lag"],
+                            p.image_line_corr[line_idx]["corrfunc"],
                             right=0,
                         )
                     else:
@@ -674,13 +694,7 @@ class CorrFuncTDC(TDCPhotonData):
 
                     if len(CF.lag) < len(SC.lag):
                         CF.lag = SC.lag
-                        if self.after_pulse_param[0] == "multi_exponent_fit":
-                            # work with any number of exponents
-                            # y = beta(1)*exp(-beta(2)*t) + beta(3)*exp(-beta(4)*t) + beta(5)*exp(-beta(6)*t);
-                            beta = self.after_pulse_param[1]
-                            CF.after_pulse = np.dot(
-                                beta[::2], np.exp(-np.outer(beta[1::2], CF.lag))
-                            )
+                        CF.after_pulse = self.calculate_afterpulse(gate_ns, CF.lag)
 
                     # append new corrfunc, weights, cf_cr and countrate to inner lists
                     CF.accumulate(SC)
@@ -704,6 +718,22 @@ class CorrFuncTDC(TDCPhotonData):
             cf.plot_correlation_function(
                 x_field, y_field, x_scale, y_scale, label=cf_name, fig_handle=fig
             )
+
+    def calculate_afterpulse(self, gate_ns, lag):
+        gate_to_LaserPulses = np.min([1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
+        if self.after_pulse_param[0] == "multi_exponent_fit":
+            # work with any number of exponents
+            beta = self.after_pulse_param[1]
+            after_pulse = gate_to_LaserPulses * np.dot(
+                beta[::2], np.exp(-np.outer(beta[1::2], lag))
+            )
+        elif self.after_pulse_param[0] == "exponent_of_polynom_of_log":  # for old Matlab files
+            beta = self.after_pulse_param[1]
+            if lag[0] == 0:
+                lag[0] = np.nan
+            after_pulse = gate_to_LaserPulses * np.exp(np.polyval(beta, np.log(lag)))
+
+        return after_pulse
 
     def dump_or_load_data(self, should_load: bool):
         """Doc."""
@@ -740,10 +770,56 @@ class CorrFuncTDC(TDCPhotonData):
 class SFCSExperiment:
     """Doc."""
 
-    def __init__(self, exc_meas: CorrFuncTDC, sted_meas: CorrFuncTDC, exp_name: str = None):
-        self.exc = exc_meas
-        self.sted = sted_meas
-        self.name = exp_name
+    def __init__(self, name=None, **kwargs):
+        self.confocal = CorrFuncTDC()
+        self.sted = CorrFuncTDC()
+        self.name = name
+
+    def load_experiment(
+        self,
+        scanName: str = "confocal",  # or sted
+        file_path_template: str = "",
+        file_selection: str = "",
+        should_plot=True,
+        **kwargs,
+    ):
+
+        scan = getattr(self, scanName)
+        file_paths = file_path_template + file_selection
+        if "should_fix_shift" not in kwargs:
+            if file_paths[-4:] == ".mat":  # old Matlab data need a fix shift by default
+                kwargs["should_fix_shift"] = True
+            else:
+                kwargs["should_fix_shift"] = False
+
+        if "cf_name" not in kwargs:
+            if scanName == "confocal":
+                kwargs["cf_name"] = "Confocal"
+            else:  # sted
+                kwargs["cf_name"] = "CW STED"
+        cf_name = kwargs["cf_name"]
+
+        scan.read_fpga_data(file_paths, should_plot=should_plot, **kwargs)
+
+        if "x_field" not in kwargs:
+            if scan.type == "static":
+                kwargs["x_field"] = "lag"
+            else:  # angular or circular scan
+                kwargs["x_field"] = "vt_um"
+
+        scan.correlate_and_average(should_plot=False, **kwargs)
+
+        # TODO: adapt to use display.py
+        if should_plot:
+            plt.figure()
+            scan.cf[cf_name].plot_correlation_function(
+                y_field="average_all_cf_cr", label="average_all_cf_cr", **kwargs
+            )
+            scan.cf[cf_name].plot_correlation_function(
+                y_field="avg_cf_cr", label="avg_cf_cr", **kwargs
+            )
+            plt.legend(loc="best")
+            plt.show()
 
 
 def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
@@ -827,7 +903,9 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
     for j in range(roi["row"].min(), roi["row"].max() + 1):
         line = image[j][bw_mask[j] > 0]
         try:
-            c, lags = auto_corr(line)
+            c, lags = auto_corr(
+                line.astype(np.float64)
+            )  # TODO: try making line int16 instead of uint16, so that this astype won't be needed (check corr afterwards!)
         except ValueError:
             print(f"Auto correlation of line #{j} has failed. Skipping.", end=" ")
         else:
