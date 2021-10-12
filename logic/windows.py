@@ -8,7 +8,7 @@ import re
 import sys
 import webbrowser
 from collections.abc import Iterable
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from types import SimpleNamespace
 from typing import List, Tuple
 
@@ -1016,13 +1016,23 @@ class MainWin:
             else:
                 logging.info(f"Data '{current_template}' already loaded - ignoring.")
 
+    @contextmanager
     def get_full_data_from_template(self, template: str = None) -> CorrFuncTDC:
         """Doc."""
 
         if template is None:
             template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
-        return self._app.analysis.loaded_data.get(curr_data_type)
+        full_data = self._app.analysis.loaded_data.get(curr_data_type)
+        with suppress(AttributeError):
+            full_data.dump_or_load_data(should_load=True)
+
+        try:
+            yield full_data
+
+        finally:
+            with suppress(AttributeError):
+                full_data.dump_or_load_data(should_load=False)
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
@@ -1040,48 +1050,48 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
 
-        try:
-            full_data = self.get_full_data_from_template(imported_template)
-            num_files = len(full_data.data)
-        except AttributeError:
-            # no imported templates (deleted)
-            wdgts.SOL_ANALYSIS_COLL.clear_all_objects()
-            sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
-            sol_data_analysis_wdgts.scan_img_file_num.set(1)
-        else:
-            print("Populating analysis GUI...", end=" ")
-
-            # populate general measurement properties
-            sol_data_analysis_wdgts.n_files.set(num_files)
-            sol_data_analysis_wdgts.scan_duration_min.set(full_data.duration_min)
-            sol_data_analysis_wdgts.avg_cnt_rate_khz.set(full_data.avg_cnt_rate_khz)
-
-            if full_data.type == "angular_scan":
-                # populate scan images tab
-                print("Displaying scan images...", end=" ")
-                sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
+        with self.get_full_data_from_template(imported_template) as full_data:
+            try:
+                num_files = len(full_data.data)
+            except AttributeError:
+                # no imported templates (deleted)
+                wdgts.SOL_ANALYSIS_COLL.clear_all_objects()
+                sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
                 sol_data_analysis_wdgts.scan_img_file_num.set(1)
-                self.display_scan_image(1, imported_template)
+            else:
+                print("Populating analysis GUI...", end=" ")
 
-                # calculate average and display
-                print("Averaging and plotting...", end=" ")
-                self.calculate_and_show_sol_mean_acf(imported_template)
+                # populate general measurement properties
+                sol_data_analysis_wdgts.n_files.set(num_files)
+                sol_data_analysis_wdgts.scan_duration_min.set(full_data.duration_min)
+                sol_data_analysis_wdgts.avg_cnt_rate_khz.set(full_data.avg_cnt_rate_khz)
 
-                scan_settings_text = "\n\n".join(
-                    [
-                        f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
-                        for key, val in full_data.angular_scan_settings.items()
-                    ]
-                )
+                if full_data.type == "angular_scan":
+                    # populate scan images tab
+                    print("Displaying scan images...", end=" ")
+                    sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
+                    sol_data_analysis_wdgts.scan_img_file_num.set(1)
+                    self.display_scan_image(1, imported_template)
 
-            elif full_data.type == "static":
-                print("Averaging, plotting and fitting...", end=" ")
-                self.calculate_and_show_sol_mean_acf(imported_template)
-                scan_settings_text = "no scan."
+                    # calculate average and display
+                    print("Averaging and plotting...", end=" ")
+                    self.calculate_and_show_sol_mean_acf(imported_template)
 
-            sol_data_analysis_wdgts.scan_settings.set(scan_settings_text)
+                    scan_settings_text = "\n\n".join(
+                        [
+                            f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
+                            for key, val in full_data.angular_scan_settings.items()
+                        ]
+                    )
 
-            print("Done.")
+                elif full_data.type == "static":
+                    print("Averaging, plotting and fitting...", end=" ")
+                    self.calculate_and_show_sol_mean_acf(imported_template)
+                    scan_settings_text = "no scan."
+
+                sol_data_analysis_wdgts.scan_settings.set(scan_settings_text)
+
+                print("Done.")
 
     def display_scan_image(self, file_num, imported_template: str = None):
         """Doc."""
@@ -1089,88 +1099,90 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            full_data = self.get_full_data_from_template(imported_template)
-            img = full_data.data[file_num - 1].image
-            roi = full_data.data[file_num - 1].roi
+            with self.get_full_data_from_template(imported_template) as full_data:
+                img = full_data.data[file_num - 1].image
+                roi = full_data.data[file_num - 1].roi
 
-            scan_image_disp = wdgts.SOL_ANALYSIS_COLL.scan_image_disp.obj
-            scan_image_disp.display_image(img)
-            scan_image_disp.plot(roi["col"], roi["row"], color="white")
-            scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
+                scan_image_disp = wdgts.SOL_ANALYSIS_COLL.scan_image_disp.obj
+                scan_image_disp.display_image(img)
+                scan_image_disp.plot(roi["col"], roi["row"], color="white")
+                scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
 
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
 
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
-        full_data = self.get_full_data_from_template(imported_template)
 
-        if full_data is None:
-            return
+        with self.get_full_data_from_template(imported_template) as full_data:
+            if full_data is None:
+                return
 
-        if full_data.type == "angular_scan":
-            row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
-            if row_disc_method == "solAnalysisRemoveOver":
-                avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
-            elif row_disc_method == "solAnalysisRemoveWorst":
-                avg_corr_kwargs = dict(
-                    rejection=None, reject_n_worst=sol_data_analysis_wdgts.remove_worst
-                )
-            else:  # use all rows
-                avg_corr_kwargs = dict(rejection=None)
+            if full_data.type == "angular_scan":
+                row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
+                if row_disc_method == "solAnalysisRemoveOver":
+                    avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
+                elif row_disc_method == "solAnalysisRemoveWorst":
+                    avg_corr_kwargs = dict(
+                        rejection=None, reject_n_worst=sol_data_analysis_wdgts.remove_worst
+                    )
+                else:  # use all rows
+                    avg_corr_kwargs = dict(rejection=None)
 
-            with suppress(AttributeError, RuntimeError):
-                # AttributeError - no data loaded
+                with suppress(AttributeError, RuntimeError):
+                    # AttributeError - no data loaded
+                    data_type = self.infer_data_type_from_template(full_data.template)
+                    cf = full_data.cf[data_type]
+                    cf.average_correlation(**avg_corr_kwargs)
+
+                    if sol_data_analysis_wdgts.plot_spatial:
+                        x = (cf.vt_um, "disp")
+                        x_label = r"squared displacement ($um^2$)"
+                    else:
+                        x = (cf.lag, "lag")
+                        x_label = "lag (ms)"
+
+                    sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
+                        x,
+                        cf.avg_cf_cr,
+                        cf.g0,
+                        cf.cf_cr[cf.j_good, :],
+                    )
+                    sol_data_analysis_wdgts.row_acf_disp.obj.entitle_and_label(x_label, "G0")
+
+                    sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
+                    sol_data_analysis_wdgts.mean_tau.set(0)
+
+                    sol_data_analysis_wdgts.n_good_rows.set(n_good := len(cf.j_good))
+                    sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(cf.j_bad))
+                    sol_data_analysis_wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
+
+            elif full_data.type == "static":
                 data_type = self.infer_data_type_from_template(full_data.template)
                 cf = full_data.cf[data_type]
-                cf.average_correlation(**avg_corr_kwargs)
-
-                if sol_data_analysis_wdgts.plot_spatial:
-                    x = (cf.vt_um, "disp")
-                    x_label = r"squared displacement ($um^2$)"
-                else:
-                    x = (cf.lag, "lag")
-                    x_label = "lag (ms)"
-
-                sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
-                    x,
-                    cf.avg_cf_cr,
-                    cf.g0,
-                    cf.cf_cr[cf.j_good, :],
-                )
-                sol_data_analysis_wdgts.row_acf_disp.obj.entitle_and_label(x_label, "G0")
-
-                sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
-                sol_data_analysis_wdgts.mean_tau.set(0)
-
-                sol_data_analysis_wdgts.n_good_rows.set(n_good := len(cf.j_good))
-                sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(cf.j_bad))
-                sol_data_analysis_wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
-
-        elif full_data.type == "static":
-            data_type = self.infer_data_type_from_template(full_data.template)
-            cf = full_data.cf[data_type]
-            cf.average_correlation()
-            try:
-                cf.fit_correlation_function()
-            except fit_tools.FitError as exc:
-                # fit failed, use g0 calculated in 'average_correlation()'
-                err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
-                sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
-                sol_data_analysis_wdgts.mean_tau.set(0)
-            else:  # fit succeeded
-                fit_params = cf.fit_param["diffusion_3d_fit"]
-                g0, tau, _ = fit_params["beta"]
-                fit_func = getattr(fit_tools, fit_params["func_name"])
-                sol_data_analysis_wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
-                sol_data_analysis_wdgts.mean_tau.set(tau * 1e3)
-                y_fit = fit_func(fit_params["x"], *fit_params["beta"])
-                sol_data_analysis_wdgts.row_acf_disp.obj.clear()
-                sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
-                    (cf.lag, "lag"),
-                    cf.avg_cf_cr,
-                    cf.g0,
-                )
-                sol_data_analysis_wdgts.row_acf_disp.obj.plot(fit_params["x"], y_fit, color="red")
+                cf.average_correlation()
+                try:
+                    cf.fit_correlation_function()
+                except fit_tools.FitError as exc:
+                    # fit failed, use g0 calculated in 'average_correlation()'
+                    err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
+                    sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
+                    sol_data_analysis_wdgts.mean_tau.set(0)
+                else:  # fit succeeded
+                    fit_params = cf.fit_param["diffusion_3d_fit"]
+                    g0, tau, _ = fit_params["beta"]
+                    fit_func = getattr(fit_tools, fit_params["func_name"])
+                    sol_data_analysis_wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
+                    sol_data_analysis_wdgts.mean_tau.set(tau * 1e3)
+                    y_fit = fit_func(fit_params["x"], *fit_params["beta"])
+                    sol_data_analysis_wdgts.row_acf_disp.obj.clear()
+                    sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
+                        (cf.lag, "lag"),
+                        cf.avg_cf_cr,
+                        cf.g0,
+                    )
+                    sol_data_analysis_wdgts.row_acf_disp.obj.plot(
+                        fit_params["x"], y_fit, color="red"
+                    )
 
     def assign_template(self, type) -> None:
         """Doc."""
@@ -1185,17 +1197,20 @@ class MainWin:
         data_types = ["exc_cal", "sted_cal", "exc_samp", "sted_samp"]
         assigned_templates = [getattr(wdgts.SOL_ANALYSIS_COLL, type).get() for type in data_types]
         for template in assigned_templates:
-            full_data = self.get_full_data_from_template(template)
-            with suppress(AttributeError):
-                # AttributeError - template is empty, meaning full_data is None
-                full_data.calibrate_tdc()  # TODO: add nanosecond calibration gating from widget
+            with self.get_full_data_from_template(template) as full_data:
+                with suppress(AttributeError):
+                    # AttributeError - template is empty, meaning full_data is None
+                    full_data.calibrate_tdc()  # TODO: add nanosecond calibration gating from widget
 
         for idx in range(0, len(assigned_templates), 2):
-            exc_data = self.get_full_data_from_template(assigned_templates[idx])
-            sted_data = self.get_full_data_from_template(assigned_templates[idx + 1])
-            with suppress(AttributeError):
-                # AttributeError - template is empty, meaning full_data is None
-                exc_data.compare_lifetimes(legend_label="exc", sted=sted_data)
+            with self.get_full_data_from_template(
+                assigned_templates[idx]
+            ) as exc_data, self.get_full_data_from_template(
+                assigned_templates[idx + 1]
+            ) as sted_data:
+                with suppress(AttributeError):
+                    # AttributeError - template is empty, meaning full_data is None
+                    exc_data.compare_lifetimes(legend_label="exc", sted=sted_data)
 
     def remove_imported_template(self) -> None:
         """Doc."""
