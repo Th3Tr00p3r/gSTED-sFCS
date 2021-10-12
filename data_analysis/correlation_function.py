@@ -723,10 +723,15 @@ class CorrFuncTDC(TDCPhotonData):
                     print("Done.")
             else:  # dumping data
                 print(f"Dumping '{self.name_on_disk}' to '{self.DUMP_PATH}'...", end=" ")
-                file_utilities.save_object_to_disk(self.data, self.DUMP_PATH, self.name_on_disk)
-                self.data = []
-                self.is_data_dumped = True
-                print("Done.")
+                is_saved = file_utilities.save_object_to_disk(
+                    self.data, self.DUMP_PATH, self.name_on_disk
+                )
+                if is_saved:
+                    self.data = []
+                    self.is_data_dumped = True
+                    print("Done.")
+                else:
+                    print("Data size under 100 Mb, not dumping.")
 
 
 #        file_utilities.deep_size_estimate(self)  # TESTESTEST - show 'self' sizes after loading or dumping 'self.data'
