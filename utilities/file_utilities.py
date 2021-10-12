@@ -233,14 +233,13 @@ def load_file_dict(file_path: str):
     if not file_dict.get("system_info"):
         print("'system_info' is missing, using defaults...", end=" ")
         file_dict["system_info"] = default_system_info
-    else:
+    else:  # has 'system_info'
         with suppress(KeyError):
-            if not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
+            if not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):  # .mat
                 file_dict["system_info"]["after_pulse_param"] = (
-                    "multi_exponent_fit",
+                    "exponent_of_polynom_of_log",  # legacy matlab format
                     file_dict["system_info"]["after_pulse_param"],
                 )
-                # TODO: check somehow that this is indeed meant foor "multi_exponent_fit"? ask Oleg.
 
     return file_dict
 
