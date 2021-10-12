@@ -1233,7 +1233,7 @@ class MainWin:
 
         for idx, file_path in enumerate(file_paths):
             file_dict = file_utilities.load_file_dict(file_path)
-            mat_file_path = re.sub(".pkl", ".mat", file_path)
+            mat_file_path = re.sub("\\.pkl", ".mat", file_path)
             if "solution" in mat_file_path:
                 mat_file_path = re.sub("solution", r"solution\\matlab", mat_file_path)
             elif "image" in mat_file_path:
