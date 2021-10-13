@@ -131,6 +131,8 @@ class TDCPhotonData:
     ):
         """Doc."""
 
+        print("\nCalibrating TDC...", end=" ")
+
         self.tdc_calib = dict()
 
         # keep runtime elements of each file for array size allocation
@@ -366,6 +368,8 @@ class TDCPhotonData:
 
                 axes[1, 0].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
                 axes[1, 0].legend(["Photon lifetime histogram"])
+
+        print("Done.")
 
     def compare_lifetimes(
         self,
