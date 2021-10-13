@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-10-12, 14:23:39"
+    "saved": "2021-10-13, 14:47:11"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -167,8 +167,7 @@
       "gui/icons/__init__.py",
       "tests/integration/__init__.py",
       "tests/unit/test_scan_patterns.py",
-      "tests/unit/__init__.py",
-      "tests/unit/scan_patterns_test.py"
+      "tests/unit/__init__.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",

@@ -1194,7 +1194,6 @@ class MainWin:
         assigned_wdgt = getattr(wdgts.SOL_ANALYSIS_COLL, type)
         assigned_wdgt.set(curr_template)
 
-    # TODO: only this needs 'data'. leave to after oleg finishes
     def calibrate_tdc_all(self):
         """Doc."""
 
