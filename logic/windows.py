@@ -962,6 +962,10 @@ class MainWin:
         sol_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
         curr_dir = self.current_date_type_dir_path()
 
+        if self._app.analysis.loaded_data.get(current_template) is not None:
+            logging.info(f"Data '{current_template}' already loaded - ignoring.")
+            return
+
         if import_wdgts.sol_use_processed:
             file_path = os.path.join(curr_dir, "processed", re.sub("_[*]", "", current_template))
 
@@ -1007,14 +1011,11 @@ class MainWin:
                     return
 
             # save data and populate combobox
-            if self._app.analysis.loaded_data.get(current_template) is None:
-                imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
-                self._app.analysis.loaded_data[current_template] = full_data
-                imported_combobox.obj.addItem(current_template)
-                imported_combobox.set(current_template)
-                logging.info(f"Data '{current_template}' imported for analysis.")
-            else:
-                logging.info(f"Data '{current_template}' already loaded - ignoring.")
+            imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
+            self._app.analysis.loaded_data[current_template] = full_data
+            imported_combobox.obj.addItem(current_template)
+            imported_combobox.set(current_template)
+            logging.info(f"Data '{current_template}' imported for analysis.")
 
     @contextmanager
     def get_full_data_from_template(self, template: str = None, should_load=False) -> CorrFuncTDC:
