@@ -473,28 +473,25 @@ def find_section_edges(byte_data, group_len):  # NOQA C901
 
     # find indices where this assumption breaks
     missed_248_idxs = np.where(data_presumed_248 != 248)[0]
-    tot_missed_248s = len(missed_248_idxs)
+    tot_248s_missed = missed_248_idxs.size
     missed_254_idxs = np.where(data_presumed_254 != 254)[0]
-    tot_missed_254s = len(missed_254_idxs)
+    tot_254s_missed = missed_254_idxs.size
 
     data_end = False
     n_single_errors = 0
+    count = 0
     for count, missed_248_idx in enumerate(missed_248_idxs):
 
         # hold byte_data idx of current missing photon starting bracket
         data_idx_of_missed_248 = edge_start + missed_248_idx * group_len
 
         # condition for ignoring single photon error (just test the most significant bytes of the runtime are close)
-        ignore_single_error_cond = (
-            abs(
-                int(byte_data[data_idx_of_missed_248 + 1])
-                - int(byte_data[data_idx_of_missed_248 - (group_len - 1)])
-            )
-            < 3
-        )
+        curr_runtime_msb = int(byte_data[data_idx_of_missed_248 + 1])
+        prev_runtime_msb = int(byte_data[data_idx_of_missed_248 - (group_len - 1)])
+        ignore_single_error_cond = abs(curr_runtime_msb - prev_runtime_msb) < 3
 
         # check that this is not a case of a singular mistake in 248 byte: happens very rarely but does happen
-        if tot_missed_254s < count + 1:
+        if tot_254s_missed < count + 1:
             # no missing ending brackets, at least one missing starting bracket
             if missed_248_idx == (len(data_presumed_248) - 1):
                 # problem in the last photon in the file
@@ -502,7 +499,7 @@ def find_section_edges(byte_data, group_len):  # NOQA C901
                 edge_stop = data_idx_of_missed_248
                 break
 
-            elif (tot_missed_248s == count + 1) or (
+            elif (tot_248s_missed == count + 1) or (
                 np.diff(missed_248_idxs[count : (count + 2)]) > 1
             ):
                 if ignore_single_error_cond:
@@ -516,7 +513,7 @@ def find_section_edges(byte_data, group_len):  # NOQA C901
                     "Bizarre problem in byte data: 248 byte out of registry while 254 is in registry!"
                 )
 
-        else:  # (tot_missed_254s >= count + 1)
+        else:  # (tot_254s_missed >= count + 1)
             # if (missed_248_idxs[count] == missed_254_idxs[count]), # likely a real section
             if np.isin(missed_248_idx, missed_254_idxs):
                 # Found a section, continuing...
@@ -550,11 +547,10 @@ def find_section_edges(byte_data, group_len):  # NOQA C901
                 else:
                     raise RuntimeError("Check byte data for strange section edges!")
 
-    if tot_missed_248s > 0:
-        if count == missed_248_idxs.size - 1:  # reached the end of the loop without breaking
-            edge_stop = edge_start + (data_presumed_254.size - 1) * group_len
-            data_end = True
-    else:
+    # did reach the end of the loop without breaking?
+    were_no_breaks = not tot_248s_missed or (count == (missed_248_idxs.size - 1))
+    # case there were no problems
+    if were_no_breaks:
         edge_stop = edge_start + (data_presumed_254.size - 1) * group_len
         data_end = True
 
@@ -562,12 +558,14 @@ def find_section_edges(byte_data, group_len):  # NOQA C901
 
 
 def first_full_photon_idx(byte_data, group_len) -> int:
-    """Doc."""
+    """
+    Return the starting index of the first intact photon - a sequence of 'group_len'
+    bytes starting with 248 and ending with 254. If no intact photons are found, returns 'None'
+    """
 
     for idx in range(byte_data.size):
         if (byte_data[idx] == 248) and (byte_data[idx + (group_len - 1)] == 254):
             return idx
-    return None
 
 
 def find_all_section_edges(byte_data, group_len):
