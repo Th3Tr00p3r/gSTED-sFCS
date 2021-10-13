@@ -1012,27 +1012,30 @@ class MainWin:
                 self._app.analysis.loaded_data[current_template] = full_data
                 imported_combobox.obj.addItem(current_template)
                 imported_combobox.set(current_template)
-                logging.info(f"Data loaded for analysis: '{current_template}'")
+                logging.info(f"Data '{current_template}' imported for analysis.")
             else:
                 logging.info(f"Data '{current_template}' already loaded - ignoring.")
 
     @contextmanager
-    def get_full_data_from_template(self, template: str = None) -> CorrFuncTDC:
+    def get_full_data_from_template(self, template: str = None, should_load=False) -> CorrFuncTDC:
         """Doc."""
 
         if template is None:
             template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
         full_data = self._app.analysis.loaded_data.get(curr_data_type)
-        with suppress(AttributeError):
-            full_data.dump_or_load_data(should_load=True)
+
+        if should_load:
+            with suppress(AttributeError):
+                full_data.dump_or_load_data(should_load=True)
 
         try:
             yield full_data
 
         finally:
-            with suppress(AttributeError):
-                full_data.dump_or_load_data(should_load=False)
+            if should_load:
+                with suppress(AttributeError):
+                    full_data.dump_or_load_data(should_load=False)
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
@@ -1052,7 +1055,7 @@ class MainWin:
 
         with self.get_full_data_from_template(imported_template) as full_data:
             try:
-                num_files = len(full_data.data)
+                num_files = full_data.n_files
             except AttributeError:
                 # no imported templates (deleted)
                 wdgts.SOL_ANALYSIS_COLL.clear_all_objects()
@@ -1100,8 +1103,8 @@ class MainWin:
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
             with self.get_full_data_from_template(imported_template) as full_data:
-                img = full_data.data[file_num - 1].image
-                roi = full_data.data[file_num - 1].roi
+                img = full_data.scan_images_dstack[:, :, file_num - 1]
+                roi = full_data.roi_list[file_num - 1]
 
                 scan_image_disp = wdgts.SOL_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
@@ -1123,7 +1126,7 @@ class MainWin:
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
                 elif row_disc_method == "solAnalysisRemoveWorst":
                     avg_corr_kwargs = dict(
-                        rejection=None, reject_n_worst=sol_data_analysis_wdgts.remove_worst
+                        rejection=None, reject_n_worst=sol_data_analysis_wdgts.remove_worst.get()
                     )
                 else:  # use all rows
                     avg_corr_kwargs = dict(rejection=None)
@@ -1191,22 +1194,25 @@ class MainWin:
         assigned_wdgt = getattr(wdgts.SOL_ANALYSIS_COLL, type)
         assigned_wdgt.set(curr_template)
 
+    # TODO: only this needs 'data'. leave to after oleg finishes
     def calibrate_tdc_all(self):
         """Doc."""
 
         data_types = ["exc_cal", "sted_cal", "exc_samp", "sted_samp"]
         assigned_templates = [getattr(wdgts.SOL_ANALYSIS_COLL, type).get() for type in data_types]
         for template in assigned_templates:
-            with self.get_full_data_from_template(template) as full_data:
+            with self.get_full_data_from_template(template, should_load=True) as full_data:
                 with suppress(AttributeError):
                     # AttributeError - template is empty, meaning full_data is None
                     full_data.calibrate_tdc()  # TODO: add nanosecond calibration gating from widget
 
         for idx in range(0, len(assigned_templates), 2):
             with self.get_full_data_from_template(
-                assigned_templates[idx]
+                assigned_templates[idx],
+                should_load=True,
             ) as exc_data, self.get_full_data_from_template(
-                assigned_templates[idx + 1]
+                assigned_templates[idx + 1],
+                should_load=True,
             ) as sted_data:
                 with suppress(AttributeError):
                     # AttributeError - template is empty, meaning full_data is None
@@ -1372,25 +1378,24 @@ class CamWin:
         """Doc."""
 
         if not self.is_video_on and not keep_off:  # Turning video ON
-            logging.info("Camera video mode is ON")
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Video ON")
-
             self.is_video_on = True
+            logging.info("Camera video mode is ON")
+
             while self.is_video_on:
                 self.shoot(verbose=False)
                 await asyncio.sleep(0.3)
 
         else:  # Turning video Off
-            logging.info("Camera video mode is OFF")
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Start Video")
-
             self.is_video_on = False
+            logging.info("Camera video mode is OFF")
 
     def shoot(self, verbose=True):
         """Doc."""

@@ -129,7 +129,7 @@ def estimate_bytes(obj) -> int:
     return len(pickle.dumps(obj))
 
 
-def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0.01, name=None) -> None:
+def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> None:
     """
      Print a cascading size description of object 'obj' up to level 'level'
     for objects (and subobjects) requiering an estimated disk space over 'threshold_mb'.
@@ -166,7 +166,7 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0.01, name=None) -
         return
 
 
-def save_object_to_disk(obj, dir_path, file_name, size_limits_mb=(500, 1e4)) -> bool:
+def save_object_to_disk(obj, dir_path, file_name, size_limits_mb=(0, np.inf)) -> bool:
     """
     Save object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
@@ -238,6 +238,7 @@ def load_file_dict(file_path: str):
         file_dict["system_info"] = default_system_info
 
     # patch MATLAB files
+    # TODO: ask oleg how to convert to legacy afterpulse
     elif not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
         if file_dict.get("python_converted"):
             file_dict["system_info"]["after_pulse_param"] = (
