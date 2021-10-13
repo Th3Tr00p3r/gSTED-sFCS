@@ -5,8 +5,7 @@ from contextlib import contextmanager
 
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
 
@@ -16,7 +15,7 @@ class Display:
 
     def __init__(self, layout, parent=None):
         self.figure = plt.figure(tight_layout=True)
-        self.canvas = FigureCanvas(self.figure)
+        self.canvas = FigureCanvasQTAgg(self.figure)
         if parent is not None:
             self.toolbar = NavigationToolbar(self.canvas, parent)
             layout.addWidget(self.toolbar)

@@ -6,7 +6,6 @@ import re
 from collections import deque
 from contextlib import contextmanager, suppress
 
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage, stats
 from skimage import filters as skifilt
@@ -87,7 +86,13 @@ class CorrFunc:
             self.plot_correlation_function(**kwargs)
 
     def plot_correlation_function(
-        self, x_field="lag", y_field="avg_cf_cr", x_scale="log", y_scale="linear", **kwargs
+        self,
+        x_field="lag",
+        y_field="avg_cf_cr",
+        x_scale="log",
+        y_scale="linear",
+        fig=None,
+        **kwargs,
     ):
 
         x = getattr(self, x_field)
@@ -95,7 +100,7 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        with display.show_external_axes() as ax:
+        with display.show_external_axes(fig) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
             ax.set_xscale(x_scale)
@@ -193,6 +198,7 @@ class CorrFuncTDC(TDCPhotonData):
 
     NAN_PLACEBO = -100
     DUMP_PATH = "C:/temp_sfcs_data/"
+    SIZE_LIMITS_MB = (500, 1e4)
 
     def __init__(self):
         self.data = []  # list to hold the data of each file
@@ -261,9 +267,16 @@ class CorrFuncTDC(TDCPhotonData):
 
             print(f"Finished processing file No. {idx+1}\n")
 
-        if not len(self.data):
+        # aggregate images and ROIs for angular sFCS
+        if full_data.get("angular_scan_settings"):
+            self.scan_images_dstack = np.dstack(tuple(p.image for p in self.data))
+            self.roi_list = [p.roi for p in self.data]
+
+        self.n_files = len(self.data)
+
+        if not self.n_files:
             raise RuntimeError(
-                f"Loading FPGA data catastrophically failed (all {n_files}/{n_files} files skipped)."
+                f"Loading FPGA data catastrophically failed ({n_files}/{n_files} files skipped)."
             )
 
         # calculate average count rate
@@ -716,9 +729,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         fig, _ = display.get_fig_with_axes()
         for cf_name, cf in self.cf.items():
-            cf.plot_correlation_function(
-                x_field, y_field, x_scale, y_scale, label=cf_name, fig_handle=fig
-            )
+            cf.plot_correlation_function(x_field, y_field, x_scale, y_scale, label=cf_name, fig=fig)
 
     def calculate_afterpulse(self, gate_ns, lag):
         gate_to_laser_pulses = np.min([1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
@@ -736,7 +747,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         return after_pulse
 
-    def dump_or_load_data(self, should_load: bool, **kwargs):
+    def dump_or_load_data(self, should_load: bool):
         """Doc."""
 
         with suppress(AttributeError):
@@ -753,7 +764,7 @@ class CorrFuncTDC(TDCPhotonData):
                         self.is_data_dumped = False
             else:  # dumping data
                 is_saved = file_utilities.save_object_to_disk(
-                    self.data, self.DUMP_PATH, self.name_on_disk, **kwargs
+                    self.data, self.DUMP_PATH, self.name_on_disk, size_limits_mb=self.SIZE_LIMITS_MB
                 )
                 if is_saved:
                     self.data = []
@@ -796,7 +807,7 @@ class SFCSExperiment:
                 kwargs["cf_name"] = "CW STED"
         cf_name = kwargs["cf_name"]
 
-        scan.read_fpga_data(file_paths, should_plot=should_plot, **kwargs)
+        scan.read_fpga_data(file_paths, should_plot=should_plot)
 
         if "x_field" not in kwargs:
             if scan.type == "static":
@@ -804,19 +815,16 @@ class SFCSExperiment:
             else:  # angular or circular scan
                 kwargs["x_field"] = "vt_um"
 
-        scan.correlate_and_average(should_plot=False, **kwargs)
+        scan.correlate_and_average(**kwargs)
 
-        # TODO: adapt to use display.py
         if should_plot:
-            plt.figure()
+            fig, _ = display.get_fig_with_axes()
             scan.cf[cf_name].plot_correlation_function(
-                y_field="average_all_cf_cr", label="average_all_cf_cr", **kwargs
+                y_field="average_all_cf_cr", label="average_all_cf_cr", fig=fig, **kwargs
             )
             scan.cf[cf_name].plot_correlation_function(
-                y_field="avg_cf_cr", label="avg_cf_cr", **kwargs
+                y_field="avg_cf_cr", label="avg_cf_cr", fig=fig, **kwargs
             )
-            plt.legend(loc="best")
-            plt.show()
 
 
 def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
@@ -825,16 +833,16 @@ def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_to
     n_pix_tot = runtime * sample_freq_hz // laser_freq_hz
     # to which pixel photon belongs
     n_pix = np.mod(n_pix_tot, ppl_tot)
-    line_num_tot = n_pix_tot // ppl_tot
+    line_num_tot = np.floor_divide(n_pix_tot, ppl_tot)
     # one more line is for return to starting positon
-    line_num = np.mod(line_num_tot, n_lines + 1)
+    line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int16)
 
-    cnt = np.empty((n_lines + 1, ppl_tot), dtype=np.uint16)
+    img = np.empty((n_lines + 1, ppl_tot), dtype=np.uint16)
     bins = np.arange(-0.5, ppl_tot)
     for j in range(n_lines + 1):
-        cnt[j, :], _ = np.histogram(n_pix[line_num == j], bins=bins)
+        img[j, :], _ = np.histogram(n_pix[line_num == j], bins=bins)
 
-    return cnt, n_pix_tot, n_pix, line_num
+    return img, n_pix_tot, n_pix, line_num
 
 
 def fix_data_shift(cnt) -> int:
@@ -900,9 +908,7 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
     for j in range(roi["row"].min(), roi["row"].max() + 1):
         line = image[j][bw_mask[j] > 0]
         try:
-            c, lags = auto_corr(
-                line.astype(np.float64)
-            )  # TODO: try making line int16 instead of uint16, so that this astype won't be needed (check corr afterwards!)
+            c, lags = auto_corr(line.astype(np.float64))
         except ValueError:
             print(f"Auto correlation of line #{j} has failed. Skipping.", end=" ")
         else:
