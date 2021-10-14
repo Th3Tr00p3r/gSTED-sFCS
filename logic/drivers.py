@@ -90,9 +90,8 @@ class NIDAQmx:
 
     def __init__(self, param_dict, task_types, **kwargs):
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.tasks = SimpleNamespace()
         self.task_types = task_types
-        [setattr(self.tasks, type, []) for type in self.task_types]
+        self.tasks = SimpleNamespace(**{type: [] for type in task_types})
 
     def start_tasks(self, task_type: str) -> None:
         """Doc."""

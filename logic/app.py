@@ -46,23 +46,19 @@ class App:
         self.config_logging()
 
         self.loop = loop
-
         self.meas = SimpleNamespace(type=None, is_running=False)
-
-        self.analysis = SimpleNamespace()
-        self.analysis.loaded_data = dict()
+        self.analysis = SimpleNamespace(loaded_data=dict())
 
         # get icons
         self.icon_dict = icons.get_icon_paths()
 
         # init windows
         print("Initializing GUI...", end=" ")
-        self.gui = SimpleNamespace()
-        self.gui.main = gui.gui.MainWin(self)
+        self.gui = SimpleNamespace(
+            main=gui.gui.MainWin(self), settings=gui.gui.SettWin(self), camera=gui.gui.CamWin(self)
+        )
         self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
-        self.gui.settings = gui.gui.SettWin(self)
         self.gui.settings.impl.load(self.default_settings_path())
-        self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
         # populate all widget collections in 'gui.widgets' with objects
         [
@@ -93,7 +89,7 @@ class App:
 
         # init scan patterns
         self.gui.main.impl.disp_scn_pttrn("image")
-        sol_pattern = wdgts.SOL_MEAS_COLL.read_gui(self).scan_type
+        sol_pattern = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self).scan_type
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
 
         # init existing data folders (solution by default)
@@ -157,7 +153,9 @@ class App:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
             print(f"        Initializing {dvc_attrs.log_ref}...")
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
-            param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).read_gui(self, "dict")
+            param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).read_gui_to_obj(
+                self, "dict"
+            )
             param_dict["nick"] = nick
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
