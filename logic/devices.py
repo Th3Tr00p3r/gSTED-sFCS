@@ -412,7 +412,6 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     fluorescence photons coming from the sample.
     """
 
-    UPDATE_INTERVAL = 0.2
     CI_BUFFER_SIZE = int(1e4)
 
     def __init__(self, param_dict, scanners_ai_tasks):
@@ -498,26 +497,26 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
         self.num_reads_since_avg += num_samps_read
 
-    def average_counts(self, interval: float, rate=None) -> None:
+    def average_counts(self, interval_s: float, rate=None) -> float:
         """Doc."""
 
         if rate is None:
             rate = self.tasks.ci[-1].timing.samp_clk_rate
 
-        n_reads = helper.div_ceil(interval, (1 / rate))
+        n_reads = helper.div_ceil(interval_s, (1 / rate))
 
         if len(self.ci_buffer) > n_reads:
-            self.avg_cnt_rate_khz = (
-                (self.ci_buffer[-1] - self.ci_buffer[-(n_reads + 1)]) / interval / 1000
-            )  # Hz -> KHz
+            avg = (self.ci_buffer[-1] - self.ci_buffer[-(n_reads + 1)]) / interval_s * 1e-3
+            self.avg_cnt_rate_khz = avg
+            return avg
         else:
             # if buffer is too short for the requested interval, average over whole buffer
-            interval = len(self.ci_buffer) * (1 / rate)
+            interval_s = len(self.ci_buffer) * (1 / rate)
             with suppress(IndexError):
                 # IndexError - buffer is empty, keep last value
-                self.avg_cnt_rate_khz = (
-                    (self.ci_buffer[-1] - self.ci_buffer[0]) / interval / 1000
-                )  # Hz -> KHz
+                avg = (self.ci_buffer[-1] - self.ci_buffer[0]) / interval_s * 1e-3
+                self.avg_cnt_rate_khz = avg
+                return avg
 
     def init_ci_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
@@ -603,7 +602,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control depletion laser through pyVISA"""
 
-    UPDATE_INTERVAL = 0.3
+    update_interval_s = 0.3
     MIN_SHG_TEMP = 53  # Celsius
     power_limits_mW = dict(low=99, high=1000)
     current_limits_mA = dict(low=1500, high=2500)

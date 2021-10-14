@@ -23,15 +23,13 @@ class TDCPhotonData:
     ):
         """Doc."""
 
-        p = SimpleNamespace()
+        p = SimpleNamespace(version=version)
 
         if version >= 2:
             group_len = 7
             maxval = 256 ** 3
         else:
             raise ValueError(f"Version ({version}) must be greater than 2")
-
-        p.version = version
 
         section_edges, tot_single_errors = find_all_section_edges(byte_data, group_len)
 
