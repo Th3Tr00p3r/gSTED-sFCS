@@ -75,6 +75,7 @@ class QtWidgetCollection:
         """
 
         if isinstance(new_vals, list):
+            # convert list to dict
             new_vals = dict(zip(vars(self).keys(), new_vals))
 
         if isinstance(new_vals, dict):
@@ -87,7 +88,7 @@ class QtWidgetCollection:
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(new_vals, parent_gui)
 
-    def read_gui(self, app_obj, out="namespace") -> SimpleNamespace:
+    def read_gui_to_obj(self, app_obj, out="namespace") -> SimpleNamespace:
         """
         Read values from QtWidgetAccess objects, which are the attributes of self and return a namespace.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the

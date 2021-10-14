@@ -17,6 +17,8 @@ LOG_PATH = "./log/log"
 class Timeout:
     """Doc."""
 
+    cntr_avg_interval_s = 5
+
     def __init__(self, app) -> None:
         """Doc."""
 
@@ -113,21 +115,17 @@ class Timeout:
             if not self.cntr_dvc.error_dict:
                 if meas.is_running and meas.scanning:
                     if meas.type == "SFCSSolution":
-                        self.cntr_dvc.average_counts(
-                            interval=self.cntr_dvc.UPDATE_INTERVAL,
-                            rate=meas.scan_params.ao_samp_freq_Hz,
-                        )
-
+                        rate = meas.scan_params.ao_samp_freq_Hz
                     elif meas.type == "SFCSImage":
-                        self.cntr_dvc.average_counts(
-                            interval=self.cntr_dvc.UPDATE_INTERVAL,
-                            rate=meas.scan_params.line_freq_Hz * meas.scan_params.ppl,
-                        )
+                        rate = meas.scan_params.line_freq_Hz * meas.scan_params.ppl
                 else:
                     # no scanning measurement running
-                    self.cntr_dvc.average_counts(interval=self.cntr_dvc.UPDATE_INTERVAL)
+                    rate = None
 
-                self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate_khz)
+                avg_gui_interval = self.cntr_dvc.average_counts(GUI_UPDATE_INTERVAL, rate)
+                avg_custom_interval = self.cntr_dvc.average_counts(self.cntr_avg_interval_s, rate)
+                self._app.gui.main.counts.setValue(avg_gui_interval)
+                self._app.gui.main.counts2.setValue(avg_custom_interval)
 
         def updt_meas_progress(meas) -> None:
             """Doc."""
@@ -204,4 +202,4 @@ class Timeout:
                 else:
                     self.main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
-            await asyncio.sleep(self.dep_dvc.UPDATE_INTERVAL)
+            await asyncio.sleep(self.dep_dvc.update_interval_s)
