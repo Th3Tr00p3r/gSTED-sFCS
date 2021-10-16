@@ -122,10 +122,10 @@ class Timeout:
                     # no scanning measurement running
                     rate = None
 
-                avg_gui_interval = self.cntr_dvc.average_counts(GUI_UPDATE_INTERVAL, rate)
-                avg_custom_interval = self.cntr_dvc.average_counts(self.cntr_avg_interval_s, rate)
-                self._app.gui.main.counts.setValue(avg_gui_interval)
-                self._app.gui.main.counts2.setValue(avg_custom_interval)
+                self.cntr_dvc.average_counts(GUI_UPDATE_INTERVAL, rate)
+                self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate_khz)
+                self.cntr_dvc.average_counts(self.cntr_avg_interval_s, rate)
+                self._app.gui.main.counts2.setValue(self.cntr_dvc.avg_cnt_rate_khz)
 
         def updt_meas_progress(meas) -> None:
             """Doc."""
