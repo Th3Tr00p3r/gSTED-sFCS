@@ -31,7 +31,7 @@ class TDCPhotonData:
         else:
             raise ValueError(f"Version ({version}) must be greater than 2")
 
-        section_edges, tot_single_errors = find_all_section_edges(byte_data, group_len)
+        section_edges, tot_single_errors = _find_all_section_edges(byte_data, group_len)
 
         section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
         if verbose:
@@ -43,9 +43,7 @@ class TDCPhotonData:
             else:
                 print(f"Found a single section of length: {section_lengths[0]}.", end=" ")
             if tot_single_errors > 0:
-                print(
-                    f"Encountered a total of {tot_single_errors} ignoreable single errors.", end=" "
-                )
+                print(f"Encountered {tot_single_errors} ignoreable single errors.", end=" ")
 
         # using the largest section only
         largest_section_start_idx, largest_section_end_idx = section_edges[
@@ -455,13 +453,13 @@ class TDCPhotonData:
             self.tdc_calib["fit_param"][fit_param["func_name"]] = fit_param
 
 
-def find_section_edges(byte_data, group_len):  # NOQA C901
+def _find_section_edges(byte_data, group_len):  # NOQA C901
     """
     group_len: bytes per photon
     """
 
     # find index of first complete photon (where 248 and 254 bytes are spaced exatly (group_len -1) bytes apart)
-    edge_start = first_full_photon_idx(byte_data, group_len)
+    edge_start = _first_full_photon_idx(byte_data, group_len)
     if edge_start is None:
         raise RuntimeError("No byte data found! Check detector and FPGA.")
 
@@ -555,7 +553,7 @@ def find_section_edges(byte_data, group_len):  # NOQA C901
     return edge_start, edge_stop, data_end, n_single_errors
 
 
-def first_full_photon_idx(byte_data, group_len) -> int:
+def _first_full_photon_idx(byte_data, group_len) -> int:
     """
     Return the starting index of the first intact photon - a sequence of 'group_len'
     bytes starting with 248 and ending with 254. If no intact photons are found, returns 'None'
@@ -566,7 +564,7 @@ def first_full_photon_idx(byte_data, group_len) -> int:
             return idx
 
 
-def find_all_section_edges(byte_data, group_len):
+def _find_all_section_edges(byte_data, group_len):
     """Doc."""
 
     section_edges = []
@@ -575,7 +573,7 @@ def find_all_section_edges(byte_data, group_len):
     total_single_errors = 0
     while not data_end:
         remaining_byte_data = byte_data[last_edge_stop:]
-        new_edge_start, new_edge_stop, data_end, n_single_errors = find_section_edges(
+        new_edge_start, new_edge_stop, data_end, n_single_errors = _find_section_edges(
             remaining_byte_data, group_len
         )
         new_edge_start += last_edge_stop

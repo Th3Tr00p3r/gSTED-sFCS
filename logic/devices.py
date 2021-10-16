@@ -497,7 +497,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
         self.num_reads_since_avg += num_samps_read
 
-    def average_counts(self, interval_s: float, rate=None) -> float:
+    def average_counts(self, interval_s: float, rate=None) -> None:
         """Doc."""
 
         if rate is None:
@@ -506,17 +506,15 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         n_reads = helper.div_ceil(interval_s, (1 / rate))
 
         if len(self.ci_buffer) > n_reads:
-            avg = (self.ci_buffer[-1] - self.ci_buffer[-(n_reads + 1)]) / interval_s * 1e-3
-            self.avg_cnt_rate_khz = avg
-            return avg
+            self.avg_cnt_rate_khz = (
+                (self.ci_buffer[-1] - self.ci_buffer[-(n_reads + 1)]) / interval_s * 1e-3
+            )
         else:
             # if buffer is too short for the requested interval, average over whole buffer
             interval_s = len(self.ci_buffer) * (1 / rate)
             with suppress(IndexError):
                 # IndexError - buffer is empty, keep last value
-                avg = (self.ci_buffer[-1] - self.ci_buffer[0]) / interval_s * 1e-3
-                self.avg_cnt_rate_khz = avg
-                return avg
+                self.avg_cnt_rate_khz = (self.ci_buffer[-1] - self.ci_buffer[0]) / interval_s * 1e-3
 
     def init_ci_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
