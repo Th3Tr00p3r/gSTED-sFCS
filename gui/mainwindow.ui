@@ -7060,7 +7060,7 @@ Pulse (ns)</string>
        </widget>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_37" stretch="10,1,0">
+       <layout class="QHBoxLayout" name="horizontalLayout_37" stretch="10,1,1">
         <property name="spacing">
          <number>0</number>
         </property>
@@ -7070,6 +7070,18 @@ Pulse (ns)</string>
            <string>Recent Log</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_14">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>9</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
            <property name="spacing">
             <number>0</number>
            </property>
@@ -7096,22 +7108,49 @@ Pulse (ns)</string>
         </item>
         <item>
          <widget class="QGroupBox" name="groupBox_16">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="title">
-           <string>Average Count Rate (KHz)</string>
+           <string>Average Coun Rate (kHz)</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_44">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>9</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <property name="spacing">
+            <number>0</number>
+           </property>
            <item row="0" column="0">
-            <layout class="QVBoxLayout" name="verticalLayout_122">
+            <layout class="QVBoxLayout" name="verticalLayout_122" stretch="6,7">
              <property name="spacing">
               <number>0</number>
              </property>
              <item>
-              <layout class="QVBoxLayout" name="verticalLayout_123" stretch="0,1">
+              <layout class="QVBoxLayout" name="verticalLayout_123" stretch="1,10">
                <property name="spacing">
                 <number>0</number>
                </property>
                <item>
                 <widget class="QLabel" name="label_40">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <property name="font">
                   <font>
                    <family>MS Shell Dlg 2</family>
@@ -7136,10 +7175,16 @@ Pulse (ns)</string>
                  <property name="enabled">
                   <bool>true</bool>
                  </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <property name="minimumSize">
                   <size>
-                   <width>120</width>
-                   <height>30</height>
+                   <width>0</width>
+                   <height>0</height>
                   </size>
                  </property>
                  <property name="maximumSize">
@@ -7152,6 +7197,9 @@ Pulse (ns)</string>
                   <font>
                    <pointsize>25</pointsize>
                   </font>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                  </property>
                  <property name="readOnly">
                   <bool>true</bool>
@@ -7182,7 +7230,7 @@ Pulse (ns)</string>
               </layout>
              </item>
              <item>
-              <layout class="QVBoxLayout" name="verticalLayout_124" stretch="0,1">
+              <layout class="QVBoxLayout" name="verticalLayout_124" stretch="1,10">
                <property name="spacing">
                 <number>0</number>
                </property>
@@ -7193,6 +7241,12 @@ Pulse (ns)</string>
                  </property>
                  <item>
                   <widget class="QComboBox" name="avgInterval">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
                    <item>
                     <property name="text">
                      <string>500</string>
@@ -7220,16 +7274,25 @@ Pulse (ns)</string>
                    <property name="orientation">
                     <enum>Qt::Horizontal</enum>
                    </property>
+                   <property name="sizeType">
+                    <enum>QSizePolicy::MinimumExpanding</enum>
+                   </property>
                    <property name="sizeHint" stdset="0">
                     <size>
-                     <width>10</width>
-                     <height>20</height>
+                     <width>0</width>
+                     <height>0</height>
                     </size>
                    </property>
                   </spacer>
                  </item>
                  <item>
                   <widget class="QLabel" name="label_54">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
                    <property name="font">
                     <font>
                      <family>MS Shell Dlg 2</family>
@@ -7254,10 +7317,13 @@ Pulse (ns)</string>
                    <property name="orientation">
                     <enum>Qt::Horizontal</enum>
                    </property>
+                   <property name="sizeType">
+                    <enum>QSizePolicy::MinimumExpanding</enum>
+                   </property>
                    <property name="sizeHint" stdset="0">
                     <size>
-                     <width>80</width>
-                     <height>20</height>
+                     <width>0</width>
+                     <height>0</height>
                     </size>
                    </property>
                   </spacer>
@@ -7269,10 +7335,16 @@ Pulse (ns)</string>
                  <property name="enabled">
                   <bool>true</bool>
                  </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
                  <property name="minimumSize">
                   <size>
-                   <width>120</width>
-                   <height>30</height>
+                   <width>0</width>
+                   <height>0</height>
                   </size>
                  </property>
                  <property name="maximumSize">
@@ -7285,6 +7357,9 @@ Pulse (ns)</string>
                   <font>
                    <pointsize>25</pointsize>
                   </font>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                  </property>
                  <property name="readOnly">
                   <bool>true</bool>
@@ -7329,7 +7404,7 @@ Pulse (ns)</string>
             <number>0</number>
            </property>
            <property name="topMargin">
-            <number>0</number>
+            <number>9</number>
            </property>
            <property name="rightMargin">
             <number>0</number>
