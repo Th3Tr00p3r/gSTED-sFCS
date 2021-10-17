@@ -19,9 +19,11 @@ from utilities import display, file_utilities, fit_tools, helper
 class CorrFunc:
     """Doc."""
 
-    def __init__(self):
+    def __init__(self, gate_ns):
+        self.gate_ns = gate_ns
         self.lag = []
         self.fit_param = dict()
+        self.skipped_duration = 0
 
     def average_correlation(
         self,
@@ -491,7 +493,7 @@ class CorrFuncTDC(TDCPhotonData):
         cf.average_correlation(**kwargs)
 
     @file_utilities.rotate_data_to_disk
-    def correlate_data(self, **kwargs):
+    def correlate_data(self, cf_name=None, **kwargs):
         """Doc."""
 
         if hasattr(self, "angular_scan_settings"):
@@ -499,11 +501,10 @@ class CorrFuncTDC(TDCPhotonData):
         else:
             cf = self.correlate_static_data(**kwargs)
 
-        if "cf_name" in kwargs:
-            cf_name = kwargs["cf_name"]
+        if cf_name is not None:
+            self.cf[cf_name] = cf
         else:
-            cf_name = f"gate {cf.gate_ns}"
-        self.cf[cf_name] = cf
+            self.cf[f"gate {cf.gate_ns}"] = cf
 
         return cf
 
@@ -538,10 +539,8 @@ class CorrFuncTDC(TDCPhotonData):
 
         SC = SoftwareCorrelator()
 
-        CF = CorrFunc()
+        CF = CorrFunc(gate_ns)
         CF.run_duration = run_duration
-        CF.skipped_duration = 0
-        CF.gate_ns = gate_ns
 
         with CF.accumulator():
             for p in self.data:
@@ -626,10 +625,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         SC = SoftwareCorrelator()
 
-        CF = CorrFunc()
-        CF.lag = []
-        CF.skipped_duration = 0
-        CF.gate_ns = gate_ns
+        CF = CorrFunc(gate_ns)
 
         with CF.accumulator():
 
