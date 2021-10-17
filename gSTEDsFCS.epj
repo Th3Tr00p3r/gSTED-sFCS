@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-10-17, 19:32:17"
+    "saved": "2021-10-17, 19:37:43"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -150,7 +150,6 @@
       "logic/measurements.py",
       "logic/scan_patterns.py",
       "logic/timeout.py",
-      "logic/windows.py",
       "main.py",
       "utilities/errors.py",
       "utilities/helper.py",
