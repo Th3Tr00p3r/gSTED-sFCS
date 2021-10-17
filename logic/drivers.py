@@ -37,7 +37,7 @@ class Ftd2xx:
             if info_dict["description"] == b"UM232H":
                 self.serial = info_dict["serial"]
 
-    def open(self):
+    def open_instrument(self):
         """Doc."""
 
         try:
@@ -50,6 +50,11 @@ class Ftd2xx:
         self._inst.setLatencyTimer(self.ltncy_tmr_val)
         self._inst.setFlowControl(self.flow_ctrl)
         self._inst.setUSBParameters(self.tx_size)
+
+    def close_instrument(self) -> None:
+        """Doc."""
+
+        self._inst.close()
 
     def read(self) -> bytes:
         """Doc."""
@@ -68,12 +73,6 @@ class Ftd2xx:
         """Doc."""
 
         self._inst.purge(ftd2xx.defines.PURGE_RX)
-
-    def close(self) -> None:
-        """Doc."""
-
-        self._inst.close()
-        self.state = False
 
     def get_queue_status(self) -> None:
         """Doc."""
@@ -303,7 +302,7 @@ class PyVISA:
             # VisaIOError - this happens if device was disconnected during the autofind process...
             [inst.close() for inst in inst_list]
 
-    def open_inst(self) -> None:
+    def open_instrument(self) -> None:
         """Doc."""
 
         # auto-find serial connection for depletion laser
@@ -327,7 +326,7 @@ class PyVISA:
         except ValueError:
             raise IOError(f"{self.log_ref} is unplugged or the address ({self.address}) is wrong.")
 
-    def close_inst(self) -> None:
+    def close_instrument(self) -> None:
         """Doc."""
 
         try:

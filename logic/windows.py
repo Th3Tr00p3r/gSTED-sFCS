@@ -188,7 +188,7 @@ class MainWin:
 
         try:
             scanners_dvc.start_write_task(data, type_str)
-            scanners_dvc.toggle(True)  # restart cont. reading
+            scanners_dvc.start_continuous_read_task()  # restart cont. reading
         except DeviceError as exc:
             err_hndlr(exc, sys._getframe(), locals())
 
