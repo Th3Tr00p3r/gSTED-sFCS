@@ -136,7 +136,7 @@ class Timeout:
                     progress = (
                         meas.time_passed_s / meas.duration_s * meas.prog_bar_wdgt.obj.maximum()
                     )
-                    meas.time_left_wdgt.set(int(meas.duration_s - meas.time_passed_s))
+                    meas.time_left_wdgt.set(round(meas.duration_s - meas.time_passed_s))
                 elif meas.type == "SFCSImage":
                     progress = (
                         meas.time_passed_s
