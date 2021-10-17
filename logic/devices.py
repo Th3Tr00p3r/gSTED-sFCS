@@ -56,12 +56,10 @@ class BaseDevice:
         self.toggle(False)
 
     def toggle_led(self, is_being_switched_on, should_change_icons=True):
-        """Doc."""
+        """Toggle the devices LED widget ON/OFF"""
 
-        if not self.error_dict:
-            self.state = is_being_switched_on
-            if should_change_icons:
-                self.change_icons("on" if is_being_switched_on else "off")
+        if not self.error_dict and should_change_icons:
+            self.change_icons("on" if is_being_switched_on else "off")
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -541,6 +539,8 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.close_all_tasks()
             self.toggle_led(False)
 
+        self.state = is_being_switched_on
+
     def _start_co_clock_sync(self) -> None:
         """Doc."""
 
@@ -586,6 +586,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led(is_being_switched_on)
+            self.state = is_being_switched_on
 
 
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
@@ -623,6 +624,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             self.close_instrument()
 
         self.toggle_led(is_being_switched_on, **kwargs)
+        self.state = is_being_switched_on
 
     def laser_toggle(self, is_being_switched_on):
         """Doc."""
@@ -744,6 +746,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         self.init_cam() if is_being_switched_on else self.close_cam()
         self.toggle_led(is_being_switched_on)
+        self.state = is_being_switched_on
 
 
 @dataclass
