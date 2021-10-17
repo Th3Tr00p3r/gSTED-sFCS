@@ -30,7 +30,6 @@ from utilities.errors import DeviceError, err_hndlr
 # That would require either replacing the gui.main object with 3 different ones (gui.image_tab, gui.solution_tab, gui.analysis_tab)
 # or adding 3 seperate namespaces to main (gui.main.image_tab, etc.).
 # MainWin would still need to exist for restart/closing/loadouts/other general stuff such as device/measurement toggling, somehow.
-# It would also make sense to rename this module 'gui_implementation.py' or something.
 class MainWin:
     """Doc."""
 

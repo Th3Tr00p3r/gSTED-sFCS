@@ -238,7 +238,6 @@ def load_file_dict(file_path: str):
         file_dict["system_info"] = default_system_info
 
     # patch MATLAB files
-    # TODO: ask oleg how to convert to legacy afterpulse
     elif not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
         if file_dict.get("python_converted"):
             file_dict["system_info"]["after_pulse_param"] = (
