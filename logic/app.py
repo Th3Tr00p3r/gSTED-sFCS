@@ -151,7 +151,7 @@ class App:
         self.devices = SimpleNamespace()
         for nick in self.DVC_NICKS:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
-            print(f"        Initializing {dvc_attrs.log_ref}...")
+            print(f"        Initializing {dvc_attrs.log_ref}...", end=" ")
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
             param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).read_gui_to_obj(
                 self, "dict"
@@ -170,6 +170,8 @@ class App:
                 setattr(self.devices, nick, dvc_class(param_dict, *x_args))
             else:
                 setattr(self.devices, nick, dvc_class(param_dict))
+
+            print("Done.")
 
     @contextmanager
     def pause_ai_ci(self):
@@ -204,7 +206,7 @@ class App:
 
             for nick in self.DVC_NICKS:
                 dvc = getattr(app.devices, nick)
-                dvc.toggle(False)
+                dvc.close()
 
         def close_all_wins(app):
             """Doc."""

@@ -20,10 +20,6 @@ from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 
-# TODO: refactoring - toggling should be seperate from opening/closing connection with device.
-# this would make redundent many flag arguments I have in dvc_toggle(), device_toggle_button_released(), toggle() etc.
-# and would make a distinction between toggle vs. "connect" (e.g), which would be clearer, cleaner and more modular.
-
 
 class BaseDevice:
     """Doc."""
@@ -54,18 +50,18 @@ class BaseDevice:
         elif command == "error":
             set_icon_wdgts(self.icon_dict["led_red"], False)
 
-    def toggle(self, is_being_switched_on, should_change_icons=True):
+    def close(self):
+        """Defualt device close(). Some classes override this."""
+
+        self.toggle(False)
+
+    def toggle_led(self, is_being_switched_on, should_change_icons=True):
         """Doc."""
 
-        try:
-            self._toggle(is_being_switched_on)
-        except Exception as exc:
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-        else:
-            if not self.error_dict:
-                self.state = is_being_switched_on
-                if should_change_icons:
-                    self.change_icons("on" if is_being_switched_on else "off")
+        if not self.error_dict:
+            self.state = is_being_switched_on
+            if should_change_icons:
+                self.change_icons("on" if is_being_switched_on else "off")
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -78,18 +74,14 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         super().__init__(
             param_dict=param_dict,
         )
-
         self.init_data()
-        self.toggle(True)
+        self.open_instrument()
+        self.purge()
 
-    def _toggle(self, is_being_switched_on):
+    def close(self):
         """Doc."""
 
-        if is_being_switched_on:
-            self.open()
-            self.purge()
-        else:
-            self.close()
+        self.close_instrument()
 
     async def read_TDC(self, async_read=False):
         """Doc."""
@@ -152,10 +144,8 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             param_dict,
             task_types=("ai", "ao"),
         )
-
         rse = ni_consts.TerminalConfiguration.RSE
         diff = ni_consts.TerminalConfiguration.DIFFERENTIAL
-
         self.ai_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
@@ -166,7 +156,6 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
-
         self.ao_int_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ao_int_{axis}_addr"),
@@ -176,7 +165,6 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             }
             for axis, trm_cnfg, inst in zip("xyz", (diff, diff, rse), ("galvo", "galvo", "piezo"))
         ]
-
         self.ao_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ao_{axis}_addr"),
@@ -185,18 +173,14 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
+        self.um_v_ratio = tuple(getattr(self, f"{ax}_um2v_const") for ax in "xyz")
 
-        self.um_v_ratio = (self.x_um2v_const, self.y_um2v_const, self.z_um2v_const)
+        self.start_continuous_read_task()
 
-        self.toggle(True)
-
-    def _toggle(self, is_being_switched_on):
+    def close(self):
         """Doc."""
 
-        if is_being_switched_on:
-            self.start_continuous_read_task()
-        else:
-            self.close_all_tasks()
+        self.close_all_tasks()
 
     def start_continuous_read_task(self) -> None:
         """Doc."""
@@ -216,6 +200,8 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.start_tasks("ai")
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.toggle_led(False)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
@@ -338,6 +324,9 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         except DaqError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
+        else:
+            self.toggle_led(True)
+
     def init_ai_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
 
@@ -374,8 +363,6 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         conv_array[5, :] = read_samples[7, :]
 
         return conv_array.T.tolist()
-
-    #        return [s[:3] + [(s[3] - s[4]) / 2, (s[5] - s[6]) / 2] + [s[7]] for s in read_samples]
 
     def _limit_ao_data(self, ao_task, ao_data: np.ndarray) -> np.ndarray:
         ao_min = ao_task.channels.ao_min
@@ -440,15 +427,15 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 "initial_count": 0,
                 "count_direction": ni_consts.CountDirection.COUNT_UP,
             }
-            self.toggle(True)
 
-    def _toggle(self, is_being_switched_on):
+            self.start_continuous_read_task()
+            self.toggle_led(True)
+
+    def close(self):
         """Doc."""
 
-        if is_being_switched_on:
-            self.start_continuous_read_task()
-        else:
-            self.close_all_tasks()
+        self.close_all_tasks()
+        self.toggle_led(False)
 
     def start_continuous_read_task(self) -> None:
         """Doc."""
@@ -544,13 +531,15 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         self.toggle(False)
 
-    def _toggle(self, is_being_switched_on):
+    def toggle(self, is_being_switched_on):
         """Doc."""
 
         if is_being_switched_on:
             self._start_co_clock_sync()
+            self.toggle_led(True)
         else:
             self.close_all_tasks()
+            self.toggle_led(False)
 
     def _start_co_clock_sync(self) -> None:
         """Doc."""
@@ -585,7 +574,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         )
         self.toggle(False)
 
-    def _toggle(self, is_being_switched_on):
+    def toggle(self, is_being_switched_on):
         """Doc."""
 
         try:
@@ -595,6 +584,8 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
             )
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.toggle_led(is_being_switched_on)
 
 
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
@@ -620,16 +611,18 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         if self.state:
             self.set_current(1500)
 
-    def _toggle(self, is_being_switched_on):
+    def toggle(self, is_being_switched_on, **kwargs):
         """Doc."""
 
         if is_being_switched_on:
-            self.open_inst()
+            self.open_instrument()
             self.laser_toggle(False)
         else:
             if self.state is True:
                 self.laser_toggle(False)
-            self.close_inst()
+            self.close_instrument()
+
+        self.toggle_led(is_being_switched_on, **kwargs)
 
     def laser_toggle(self, is_being_switched_on):
         """Doc."""
@@ -712,10 +705,11 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         self.toggle(True)
         self.toggle(False)
 
-    def _toggle(self, is_being_switched_on):
+    def toggle(self, is_being_switched_on):
         """Doc."""
 
-        self.open_inst() if is_being_switched_on else self.close_inst()
+        self.open_instrument() if is_being_switched_on else self.close_instrument()
+        self.toggle_led(is_being_switched_on)
 
     async def move(self, dir, steps):
         """Doc."""
@@ -745,10 +739,11 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         )
         self.state = False
 
-    def _toggle(self, is_being_switched_on):
+    def toggle(self, is_being_switched_on):
         """Doc."""
 
         self.init_cam() if is_being_switched_on else self.close_cam()
+        self.toggle_led(is_being_switched_on)
 
 
 @dataclass
