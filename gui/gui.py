@@ -4,7 +4,7 @@ import PyQt5
 import PyQt5.uic
 
 # import gui.icons  # for initial icons loadout # NOQA
-import logic.windows
+import logic.slot_implementations as impl
 from utilities.display import Display
 
 try:
@@ -23,7 +23,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         super(MainWin, self).__init__(parent)
         PyQt5.uic.loadUi(self.UI_PATH, self)
         self.move(600, 30)
-        self.impl = logic.windows.MainWin(self, app)
+        self.impl = impl.MainWin(self, app)
         self._loop = app.loop
 
         # graphics
@@ -411,7 +411,7 @@ class SettWin(PyQt5.QtWidgets.QDialog):
 
         super(SettWin, self).__init__(parent)
         PyQt5.uic.loadUi(self.UI_PATH, self)
-        self.impl = logic.windows.SettWin(self, app)
+        self.impl = impl.SettWin(self, app)
 
     def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""
@@ -450,7 +450,7 @@ class CamWin(PyQt5.QtWidgets.QWidget):
         super(CamWin, self).__init__(parent, PyQt5.QtCore.Qt.WindowStaysOnTopHint)
         PyQt5.uic.loadUi(self.UI_PATH, self)
         self.move(30, 180)
-        self.impl = logic.windows.CamWin(self, app)
+        self.impl = impl.CamWin(self, app)
         self._loop = app.loop
 
         # add matplotlib-ready widget (canvas) for showing camera output
