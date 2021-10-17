@@ -691,12 +691,9 @@ class SFCSSolutionMeasurement(Measurement):
                 self._app.gui.main.impl.dvc_toggle("pixel_clock", leave_on=True)
                 # make the circular ai buffer clip as long as the ao buffer
                 self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
+                self.counter_dvc.init_ci_buffer()
             else:
                 self.scanners_dvc.init_ai_buffer()
-
-            if not self.repeat:
-                # during alignment we don't change the counter_dvc tasks, do no need to initialize
-                self.counter_dvc.init_ci_buffer()
 
         except errors.DeviceError as exc:
             await self.stop()
@@ -710,17 +707,15 @@ class SFCSSolutionMeasurement(Measurement):
             file_num = 1
             logging.info(f"Running {self.type} measurement")
 
-        try:  # TESTESTEST`
+        try:  # TESTESTEST
             while self.is_running and self.time_passed_s < self.duration_s:
 
                 # initialize data buffer
                 self.data_dvc.init_data()
                 self.data_dvc.purge_buffers()
 
-                if not self.repeat:
-                    # during alignment we don't change the counter_dvc tasks, do no need to initialize
-                    self.counter_dvc.init_ci_buffer()
                 if self.scanning:
+                    self.counter_dvc.init_ci_buffer()
                     # re-start scan for each file
                     self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
                     self.init_scan_tasks("CONTINUOUS")

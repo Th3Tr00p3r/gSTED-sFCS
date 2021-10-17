@@ -35,7 +35,7 @@ imgScanLinFrac,0.9
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
-axisMoveUm,0.0
+axisMoveUm,5.0
 dataMonth,10
 dataYear,2021
 dataDay,5
