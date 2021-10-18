@@ -4,7 +4,7 @@ import logging
 import os
 import re
 from collections import deque
-from contextlib import contextmanager, suppress
+from contextlib import suppress
 
 import numpy as np
 from scipy import ndimage, stats
@@ -22,8 +22,48 @@ class CorrFunc:
     def __init__(self, gate_ns):
         self.gate_ns = gate_ns
         self.lag = []
+        self.countrate_list = []
         self.fit_param = dict()
         self.skipped_duration = 0
+
+    def __enter__(self):
+        """Initiate temporary lists for accumulating SoftwareCorrelator outputs."""
+
+        self._corrfunc_list = []
+        self._weights_list = []
+        self._cf_cr_list = []
+        return self
+
+    def __exit__(self, *exc):
+        """Create padded 2D ndarrays from the accumulated lists and delete the lists."""
+
+        n_corrfuncs = len(self._corrfunc_list)
+        lag_len = len(self.lag)
+        self.corrfunc = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
+        self.weights = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
+        self.cf_cr = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
+        for idx in range(n_corrfuncs):
+            pad_len = lag_len - len(self._corrfunc_list[idx])
+            self.corrfunc[idx] = np.pad(self._corrfunc_list[idx], (0, pad_len))
+            self.weights[idx] = np.pad(self._weights_list[idx], (0, pad_len))
+            self.cf_cr[idx] = np.pad(self._cf_cr_list[idx], (0, pad_len))
+
+        delattr(self, "_corrfunc_list")
+        delattr(self, "_weights_list")
+        delattr(self, "_cf_cr_list")
+
+    def accumulate(self, sc: SoftwareCorrelator):
+        """Accepts a 'SoftwareCorrelator' object and appends the results to the temporary lists."""
+
+        try:
+            self._corrfunc_list.append(sc.corrfunc)
+            self._weights_list.append(sc.weights)
+            self._cf_cr_list.append(
+                sc.countrate * sc.corrfunc - self.after_pulse[: sc.corrfunc.size]
+            )
+            self.countrate_list.append(sc.countrate)
+        except AttributeError:
+            raise RuntimeError("Only use 'accumulate()' inside a 'with CorrFunc...' context!")
 
     def average_correlation(
         self,
@@ -147,52 +187,6 @@ class CorrFunc:
         )
 
         self.fit_param[fit_param["func_name"]] = fit_param
-
-    def accumulate(self, sc):
-        """Doc."""
-
-        try:
-            self.corrfunc_list.append(sc.corrfunc)
-            self.weights_list.append(sc.weights)
-            self.cf_cr_list.append(
-                sc.countrate * sc.corrfunc - self.after_pulse[: sc.corrfunc.size]
-            )
-            self.countrate_list.append(sc.countrate)
-        except AttributeError:
-            raise RuntimeError(
-                "Use 'accumulate()' in the context of the 'accumulator()' context manager!"
-            )
-
-    @contextmanager
-    def accumulator(self):
-        """Doc."""
-
-        self.corrfunc_list = []
-        self.weights_list = []
-        self.cf_cr_list = []
-        self.countrate_list = []
-
-        try:
-            yield
-
-        finally:
-            n_corrfuncs = len(self.corrfunc_list)
-            lag_len = len(self.lag)
-            self.corrfunc = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-            self.weights = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-            self.cf_cr = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-            for idx in range(n_corrfuncs):
-                pad_len = lag_len - len(self.corrfunc_list[idx])
-                self.corrfunc[idx] = np.pad(self.corrfunc_list[idx], (0, pad_len))
-                self.weights[idx] = np.pad(self.weights_list[idx], (0, pad_len))
-                self.cf_cr[idx] = np.pad(self.cf_cr_list[idx], (0, pad_len))
-
-            self.countrate_list = self.countrate_list
-
-            delattr(self, "corrfunc_list")
-            delattr(self, "weights_list")
-            delattr(self, "cf_cr_list")
-            delattr(self, "countrate_list")
 
 
 class CorrFuncTDC(TDCPhotonData):
@@ -539,10 +533,10 @@ class CorrFuncTDC(TDCPhotonData):
 
         SC = SoftwareCorrelator()
 
-        CF = CorrFunc(gate_ns)
-        CF.run_duration = run_duration
+        with CorrFunc(gate_ns) as CF:
 
-        with CF.accumulator():
+            CF.run_duration = run_duration
+
             for p in self.data:
 
                 if verbose:
@@ -582,7 +576,7 @@ class CorrFuncTDC(TDCPhotonData):
 
                         ts_split = time_stamps[splits[k] : splits[k + 1]]
                         duration.append(ts_split.sum() / self.laser_freq_hz)
-                        SC.soft_cross_correlate(
+                        SC.correlate(
                             ts_split,
                             CorrelatorType.PH_DELAY_CORRELATOR,
                             timebase_ms=1000 / self.laser_freq_hz,
@@ -625,9 +619,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         SC = SoftwareCorrelator()
 
-        CF = CorrFunc(gate_ns)
-
-        with CF.accumulator():
+        with CorrFunc(gate_ns) as CF:
 
             for p in self.data:
                 print(f"({p.file_num})", end=" ")
@@ -683,7 +675,7 @@ class CorrFuncTDC(TDCPhotonData):
                     duration.append(dur)
                     ts_split = np.vstack((timest, valid))
 
-                    SC.soft_cross_correlate(
+                    SC.correlate(
                         ts_split,
                         CorrelatorType.PH_DELAY_CORRELATOR_LINES,
                         # time base of 20MHz to ms
