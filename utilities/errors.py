@@ -91,7 +91,7 @@ def device_error_checker(func) -> Callable:
                 if hasattr(self, "error_dict") and not self.error_dict:
                     return await func(self, *args, **kwargs)
                 else:
-                    if (func.__name__ == "_toggle") and (args[0] is False):
+                    if (func.__name__ == "toggle") and (args[0] is False):
                         # if toggling off
                         pass
                     else:
@@ -111,7 +111,7 @@ def device_error_checker(func) -> Callable:
             if not self.error_dict:
                 return func(self, *args, **kwargs)
             else:
-                if (func.__name__ == "_toggle") and (args[0] is False):
+                if (func.__name__ == "toggle") and (args[0] is False):
                     # if toggling off
                     pass
                 else:

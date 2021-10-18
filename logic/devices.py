@@ -715,6 +715,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
         self.open_instrument() if is_being_switched_on else self.close_instrument()
         self.toggle_led(is_being_switched_on)
+        self.state = is_being_switched_on
 
     async def move(self, dir, steps):
         """Doc."""
