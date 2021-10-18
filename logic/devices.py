@@ -615,16 +615,19 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     def toggle(self, is_being_switched_on, **kwargs):
         """Doc."""
 
-        if is_being_switched_on:
-            self.open_instrument()
-            self.laser_toggle(False)
-        else:
-            if self.state is True:
+        try:
+            if is_being_switched_on:
+                self.open_instrument()
                 self.laser_toggle(False)
-            self.close_instrument()
-
-        self.toggle_led(is_being_switched_on, **kwargs)
-        self.state = is_being_switched_on
+            else:
+                if self.state is True:
+                    self.laser_toggle(False)
+                self.close_instrument()
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.toggle_led(is_being_switched_on, **kwargs)
+            self.state = is_being_switched_on
 
     def laser_toggle(self, is_being_switched_on):
         """Doc."""
