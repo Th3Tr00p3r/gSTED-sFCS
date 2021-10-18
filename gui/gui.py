@@ -18,9 +18,9 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
     UI_PATH = "./gui/mainwindow.ui"
 
-    def __init__(self, app, parent: None = None) -> None:
+    def __init__(self, app) -> None:
 
-        super(MainWin, self).__init__(parent)
+        super(MainWin, self).__init__()
         PyQt5.uic.loadUi(self.UI_PATH, self)
         self.move(600, 30)
         self.impl = impl.MainWin(self, app)
@@ -406,10 +406,10 @@ class SettWin(PyQt5.QtWidgets.QDialog):
 
     UI_PATH = "./gui/settingswindow.ui"
 
-    def __init__(self, app, parent=None) -> None:
+    def __init__(self, app) -> None:
         """Doc."""
 
-        super(SettWin, self).__init__(parent)
+        super(SettWin, self).__init__()
         PyQt5.uic.loadUi(self.UI_PATH, self)
         self.impl = impl.SettWin(self, app)
 
@@ -444,10 +444,10 @@ class CamWin(PyQt5.QtWidgets.QWidget):
 
     UI_PATH = "./gui/camerawindow.ui"
 
-    def __init__(self, app, parent=None) -> None:
+    def __init__(self, app) -> None:
         """Doc."""
 
-        super(CamWin, self).__init__(parent, PyQt5.QtCore.Qt.WindowStaysOnTopHint)
+        super(CamWin, self).__init__(None, PyQt5.QtCore.Qt.WindowStaysOnTopHint)
         PyQt5.uic.loadUi(self.UI_PATH, self)
         self.move(30, 180)
         self.impl = impl.CamWin(self, app)
