@@ -206,7 +206,8 @@ class App:
 
             for nick in self.DVC_NICKS:
                 dvc = getattr(app.devices, nick)
-                dvc.close()
+                with suppress(DeviceError):
+                    dvc.close()
 
         def close_all_wins(app):
             """Doc."""
