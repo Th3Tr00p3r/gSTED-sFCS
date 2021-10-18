@@ -25,11 +25,6 @@ from utilities import display, file_utilities, fit_tools, helper
 from utilities.errors import DeviceError, err_hndlr
 
 
-# TODO: refactoring - this is getting too big, I need to think on how to break it down.
-# Perhaps I can divide MainWin into seperate classes for each tab (image, solution, analysis).
-# That would require either replacing the gui.main object with 3 different ones (gui.image_tab, gui.solution_tab, gui.analysis_tab)
-# or adding 3 seperate namespaces to main (gui.main.image_tab, etc.).
-# MainWin would still need to exist for restart/closing/loadouts/other general stuff such as device/measurement toggling, somehow.
 class MainWin:
     """Doc."""
 
@@ -1345,11 +1340,6 @@ class SettWin:
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
             wdgts.read_file_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
-
-    def confirm(self):
-        """Doc."""
-
-        self.check_on_close = False
 
 
 class CamWin:

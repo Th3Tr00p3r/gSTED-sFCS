@@ -435,7 +435,7 @@ class SettWin(PyQt5.QtWidgets.QDialog):
     def on_confirmButton_released(self) -> None:
         """Doc."""
 
-        self.impl.confirm()
+        self.impl.check_on_close = False
         self.close()
 
 
