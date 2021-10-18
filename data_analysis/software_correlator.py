@@ -53,9 +53,7 @@ class SoftwareCorrelator:
 
         self.corr_py = np.zeros((3, self.tot_corr_chan_len), dtype=float)
 
-    def soft_cross_correlate(
-        self, photon_array, c_type=CorrelatorType.PH_DELAY_CORRELATOR, timebase_ms=1
-    ):
+    def correlate(self, photon_array, c_type=CorrelatorType.PH_DELAY_CORRELATOR, timebase_ms=1):
         """Doc."""
 
         if sys.platform == "darwin":  # fix operation for Mac users
