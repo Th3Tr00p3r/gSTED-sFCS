@@ -1,10 +1,15 @@
 newTemplate,
 solImportFileSelectionPattern,1
-solScanFileTemplate,
 imgScanFileTemplate,img
+solScanFileTemplate,
 spinBox,40
 scanImgFileNum,1
 solAnalysisRemoveWorstSpinner,0
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -15,23 +20,18 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
-depCurr,1500
 depPow,130
+depCurr,1500
 stageSteps,250
 doubleSpinBox_2,0.0
 solAnalysisRemoveOverSpinner,2.0
-solScanMaxFileSize,20.0
-solLinFrac,0.9
-solScanDur,25.0
 imgScanDim1,1.0
 imgScanDim2,1.0
 imgScanDim3,0.0
 imgScanLinFrac,0.9
+solScanMaxFileSize,20.0
+solLinFrac,0.9
+solScanDur,25.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -44,17 +44,17 @@ solImportUseDontUse,Use
 importedSolDataTemplates,
 comboBox_2,
 solAnalysisLifetime,Lifetime
-solMeasPreset,Standard Alignment
-solScanType,static
-solScanDurUnits,seconds
 imgScanPreset,GB - XY single bead
 imgScanType,XY
 imgShowMethod,Forward scan - actual counts per pixel
+solMeasPreset,Standard Alignment
+solScanType,static
+solScanDurUnits,seconds
 avgInterval,5000
 importStacked,1
 analysisStacked,1
 solScanParamsStacked,2
-depModeStacked,1
+depModeStacked,0
 imageDataImport,False
 solDataImport,True
 solImportUseAll,False
@@ -66,13 +66,13 @@ solAveragingPlotSpatial,False
 regularSolMeas,False
 repeatSolMeas,True
 finalSolMeas,False
-currMode,False
-powMode,True
+currMode,True
+powMode,False
 posAxisZ,False
 posAxisY,False
 posAxisX,True
 numPlaneShownChoice,0
-tabWidget,0
+tabWidget,1
 tabWidget_2,1
 solDataExtPlot,False
 solDataFixShift,True
