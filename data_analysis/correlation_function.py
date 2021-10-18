@@ -209,7 +209,7 @@ class CorrFuncTDC(TDCPhotonData):
         should_fix_shift: bool = False,
         should_plot: bool = True,
     ):
-        """Doc."""
+        """Processes a complete FCS measurement (multiple files)."""
 
         print("\nLoading FPGA data from hard drive:", end=" ")
         file_paths = file_utilities.prepare_file_paths(file_path_template, file_selection)
@@ -290,7 +290,10 @@ class CorrFuncTDC(TDCPhotonData):
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
 
     def process_static_data(self, full_data, idx, **kwargs):
-        """Doc."""
+        """
+        Processes a single static FCS data file ('full_data').
+        Returns the processed results as a 'TDCPhotonData' object.
+        '"""
 
         print("Converting raw data to photons...", end=" ")
         p = self.convert_fpga_data_to_photons(
@@ -309,7 +312,10 @@ class CorrFuncTDC(TDCPhotonData):
     def process_angular_scan_data(
         self, full_data, idx, should_fix_shift, roi_selection, should_plot
     ):
-        """Doc."""
+        """
+        Processes a single angular sFCS data file ('full_data').
+        Returns the processed results as a 'TDCPhotonData' object.
+        '"""
 
         print("Converting raw data to photons...", end=" ")
         p = self.convert_fpga_data_to_photons(
@@ -481,14 +487,17 @@ class CorrFuncTDC(TDCPhotonData):
         return p
 
     def correlate_and_average(self, **kwargs):
-        """Doc."""
+        """High level function for correlating and averaging any data."""
 
         cf = self.correlate_data(**kwargs)
         cf.average_correlation(**kwargs)
 
     @file_utilities.rotate_data_to_disk
     def correlate_data(self, cf_name=None, **kwargs):
-        """Doc."""
+        """
+        High level function for correlating any data. Returns a 'CorrFunc' object.
+        Data attribute is possibly rotated from/to disk.
+        """
 
         if hasattr(self, "angular_scan_settings"):
             cf = self.correlate_angular_scan_data(**kwargs)
@@ -510,8 +519,8 @@ class CorrFuncTDC(TDCPhotonData):
         n_runs_requested=60,
         verbose=False,
         **kwargs,
-    ):
-        """Correlates Data for static FCS"""
+    ) -> CorrFunc:
+        """Correlates data for static FCS. Returns a CorrFunc object"""
 
         if verbose:
             print(f"Correlating {self.template}:", end=" ")
@@ -609,8 +618,8 @@ class CorrFuncTDC(TDCPhotonData):
 
     def correlate_angular_scan_data(
         self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
-    ):
-        """Correlates data for angular scans"""
+    ) -> CorrFunc:
+        """Correlates data for angular scans. Returns a CorrFunc object"""
 
         print(f"Correlating angular scan data '{self.template}':", end=" ")
 
@@ -714,29 +723,35 @@ class CorrFuncTDC(TDCPhotonData):
     def plot_correlation_functions(
         self, x_field="lag", y_field="normalized", x_scale="log", y_scale="linear", **kwargs
     ):
+        """Doc."""
 
         fig, _ = display.get_fig_with_axes()
         for cf_name, cf in self.cf.items():
             cf.plot_correlation_function(x_field, y_field, x_scale, y_scale, label=cf_name, fig=fig)
 
-    def calculate_afterpulse(self, gate_ns, lag):
+    def calculate_afterpulse(self, gate_ns, lag) -> np.ndarray:
+        """Doc."""
+
         gate_to_laser_pulses = np.min([1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
         if self.after_pulse_param[0] == "multi_exponent_fit":
             # work with any number of exponents
             beta = self.after_pulse_param[1]
-            after_pulse = gate_to_laser_pulses * np.dot(
+            afterpulse = gate_to_laser_pulses * np.dot(
                 beta[::2], np.exp(-np.outer(beta[1::2], lag))
             )
         elif self.after_pulse_param[0] == "exponent_of_polynom_of_log":  # for old MATLAB files
             beta = self.after_pulse_param[1]
             if lag[0] == 0:
                 lag[0] = np.nan
-            after_pulse = gate_to_laser_pulses * np.exp(np.polyval(beta, np.log(lag)))
+            afterpulse = gate_to_laser_pulses * np.exp(np.polyval(beta, np.log(lag)))
 
-        return after_pulse
+        return afterpulse
 
     def dump_or_load_data(self, should_load: bool):
-        """Doc."""
+        """
+        Load or save the 'data' attribute.
+        (relieve RAM - important during multiple experiments analysis)
+        """
 
         with suppress(AttributeError):
             # AttributeError - name_on_disk is not defined (happens when doing alignment, for example)
@@ -758,9 +773,6 @@ class CorrFuncTDC(TDCPhotonData):
                     self.data = []
                     self.is_data_dumped = True
                     logging.debug(f"Dumped data '{self.name_on_disk}' to '{self.DUMP_PATH}'.")
-
-
-#        file_utilities.deep_size_estimate(self)  # TESTESTEST - show 'self' sizes after loading or dumping 'self.data'
 
 
 class SFCSExperiment:
