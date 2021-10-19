@@ -11,6 +11,7 @@ from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
 
+from data_analysis.image import ImageData
 from data_analysis.photon_data import TDCPhotonData
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import display, file_utilities, fit_tools, helper
@@ -208,7 +209,7 @@ class CorrFuncTDC(TDCPhotonData):
         roi_selection: str = "auto",
         should_fix_shift: bool = False,
         should_plot: bool = True,
-    ):
+    ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
 
         print("\nLoading FPGA data from hard drive:", end=" ")
@@ -767,7 +768,9 @@ class CorrFuncTDC(TDCPhotonData):
                         self.is_data_dumped = False
             else:  # dumping data
                 is_saved = file_utilities.save_object_to_disk(
-                    self.data, self.DUMP_PATH, self.name_on_disk, size_limits_mb=self.SIZE_LIMITS_MB
+                    self.data,
+                    os.path.join(self.DUMP_PATH, self.name_on_disk),
+                    size_limits_mb=self.SIZE_LIMITS_MB,
                 )
                 if is_saved:
                     self.data = []
@@ -825,6 +828,32 @@ class SFCSExperiment:
             scan.cf[cf_name].plot_correlation_function(
                 y_field="avg_cf_cr", label="avg_cf_cr", fig=fig, **kwargs
             )
+
+
+class ImageTDC(TDCPhotonData):
+    """Doc."""
+
+    def __init__(self):
+        pass
+
+    def read_image_data(self, file_path=None, file_dict=None) -> None:
+        """Doc."""
+
+        if file_dict is None:
+            # Load the data from disk if not supplied
+            file_dict = file_utilities.load_file_dict(file_path)
+
+        # store relevant attributes (add more as needed)
+        self.laser_mode = file_dict.get("laser_mode")
+        self.scan_params = file_dict.get("scan_params")
+
+        # Get ungated image (excitation or sted)
+        self.image_data = ImageData(
+            file_dict["ci"], file_dict["ao"], file_dict["scan_params"], file_dict["xyz_um_to_v"]
+        )
+
+        # Deal with gating (TDCPhotonData stuff)
+        pass
 
 
 def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):

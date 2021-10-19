@@ -4,11 +4,9 @@ import asyncio
 import datetime
 import logging
 import os
-import pickle
 import re
 import sys
 import time
-from collections import deque
 from contextlib import suppress
 from datetime import datetime as dt
 from types import SimpleNamespace
@@ -16,11 +14,10 @@ from types import SimpleNamespace
 import nidaqmx.constants as ni_consts
 import numpy as np
 
-from data_analysis.correlation_function import CorrFuncTDC
-from data_analysis.image import ImageScanData
+from data_analysis.correlation_function import CorrFuncTDC, ImageTDC
 from gui.icons import icons
 from logic.scan_patterns import ScanPatternAO
-from utilities import errors, fit_tools, helper
+from utilities import errors, file_utilities, fit_tools, helper
 
 
 class Measurement:
@@ -159,16 +156,10 @@ class Measurement:
         else:
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
-        os.makedirs(save_path, exist_ok=True)
+        file_path = os.path.join(save_path, re.sub("\\s", "_", file_name)) + ".pkl"
 
-        file_path = os.path.join(save_path, re.sub("\\s", "_", file_name))
-
-        logging.debug(f"Saving measurement file: '{file_name}'...")
-
-        with open(file_path + ".pkl", "wb") as f:
-            pickle.dump(data_dict, f)
-
-        logging.debug("Saved Successfuly.")
+        file_utilities.save_object_to_disk(data_dict, file_path)
+        logging.debug(f"Saved measurement file: '{file_path}'.")
 
     async def toggle_lasers(self, finish=False) -> None:
         """Doc."""
@@ -259,7 +250,7 @@ class Measurement:
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
-            type=self.scan_params.scan_plane,
+            type=self.scan_params.plane_orientation,
             samp_clk_cnfg_xy={
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ao_sample_mode,
@@ -319,7 +310,7 @@ class SFCSImageMeasurement(Measurement):
         self.scan_params.initial_ao = tuple(getattr(scan_params, f"curr_ao_{ax}") for ax in "xyz")
 
     def build_filename(self) -> str:
-        return f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{dt.now().strftime('%H%M%S')}"
+        return f"{self.file_template}_{self.laser_mode}_{self.scan_params.plane_orientation}_{dt.now().strftime('%H%M%S')}"
 
     def setup_scan(self):
         """Doc."""
@@ -371,7 +362,7 @@ class SFCSImageMeasurement(Measurement):
         """Doc."""
 
         for axis in "XYZ":
-            if axis not in self.scan_params.scan_plane:
+            if axis not in self.scan_params.plane_orientation:
                 plane_axis = axis
                 break
 
@@ -380,25 +371,19 @@ class SFCSImageMeasurement(Measurement):
             type=plane_axis,
         )
 
-    def keep_last_meas(self):
+    def keep_last_meas(self, data_dict):
         """Doc."""
 
-        try:
-            latest_img = SimpleNamespace()
-            latest_img.plane_type = self.scan_params.scan_plane
-            latest_img.plane_images_data = self.plane_images_data
-            latest_img.set_pnts_planes = self.scan_params.set_pnts_planes
-            self._app.last_img_scn.appendleft(latest_img)
-        except AttributeError:
-            # create a deque if doesn't exist and restart function
-            self._app.last_img_scn = deque([], maxlen=10)
-            self.keep_last_meas()
+        image_tdc = ImageTDC()
+        image_tdc.read_image_data(file_dict=data_dict)
+        self._app.last_image_scans.appendleft(image_tdc)
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:
         """Doc."""
 
         return {
+            "laser_mode": self.laser_mode,
             "version": self.tdc_dvc.tdc_vrsn,
             "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float64),
             "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int64),
@@ -416,8 +401,9 @@ class SFCSImageMeasurement(Measurement):
                 "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
                 "version": self.tdc_dvc.tdc_vrsn,
             },
-            "scan_param": {
+            "scan_params": {
                 "set_pnts_lines_odd": self.scan_params.set_pnts_lines_odd,
+                "set_pnts_planes": self.scan_params.set_pnts_planes,
                 "dim1_lines_um": self.scan_params.dim1_lines_um,
                 "dim2_col_um": self.scan_params.dim2_col_um,
                 "dim3_um": self.scan_params.dim3_um,
@@ -425,7 +411,7 @@ class SFCSImageMeasurement(Measurement):
                 "n_planes": self.scan_params.n_planes,
                 "line_freq_hz": self.scan_params.line_freq_Hz,
                 "ppl": self.scan_params.ppl,
-                "scan_plane": self.scan_params.scan_plane,
+                "plane_orientation": self.scan_params.plane_orientation,
                 "initial_ao": self.scan_params.initial_ao,
                 "what_stage": "Galvanometers",
                 "linear_frac": self.scan_params.lin_frac,
@@ -495,22 +481,19 @@ class SFCSImageMeasurement(Measurement):
             errors.err_hndlr(exc, sys._getframe(), locals())  # TESTESTEST
 
         # finished measurement
-        if self.is_running:
-            # if not manually stopped
+        if self.is_running:  # if not manually stopped
             # prepare data
-            counts = np.array(self.counter_dvc.ci_buffer, dtype=np.int)
-            self.plane_images_data = ImageScanData(
-                counts, self.ao_buffer, vars(self.scan_params).copy(), self.um_v_ratio
-            )
-            # save data
-            self.save_data(self.prep_data_dict(), self.build_filename())
-            self.keep_last_meas()
+            data_dict = self.prep_data_dict()
+            if self.always_save:
+                # save data
+                self.save_data(data_dict, self.build_filename())
+            self.keep_last_meas(data_dict)
             # show middle plane
             mid_plane = int(len(self.scan_params.set_pnts_planes) / 2)
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
             should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "exc")
-            self._app.gui.main.impl.disp_plane_img(mid_plane, auto_cross=should_display_autocross)
+            self._app.gui.main.impl.disp_plane_img(auto_cross=should_display_autocross)
 
         if self.is_running:  # if not manually before completion
             await self.stop()
@@ -529,7 +512,7 @@ class SFCSSolutionMeasurement(Measurement):
 
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSSolution", scan_params=scan_params, **kwargs)
-        self.scan_params.scan_plane = "XY"
+        self.scan_params.plane_orientation = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
         self.scanning = not (self.scan_params.pattern == "static")
@@ -636,6 +619,7 @@ class SFCSSolutionMeasurement(Measurement):
         """Doc."""
 
         full_data = {
+            "laser_mode": self.laser_mode,
             "duration_s": self.duration_s,
             "byte_data": np.array(self.data_dvc.data, dtype=np.uint8),
             "version": self.tdc_dvc.tdc_vrsn,

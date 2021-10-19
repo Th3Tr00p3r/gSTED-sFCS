@@ -329,7 +329,7 @@ SOL_MEAS_COLL = QtWidgetCollection(
 )
 
 IMG_SCAN_COLL = QtWidgetCollection(
-    scan_plane=("imgScanType", "QComboBox", "main", False),
+    plane_orientation=("imgScanType", "QComboBox", "main", False),
     dim1_lines_um=("imgScanDim1", "QDoubleSpinBox", "main", False),
     dim2_col_um=("imgScanDim2", "QDoubleSpinBox", "main", False),
     dim3_um=("imgScanDim3", "QDoubleSpinBox", "main", False),
@@ -346,6 +346,7 @@ IMG_SCAN_COLL = QtWidgetCollection(
 
 IMG_MEAS_COLL = QtWidgetCollection(
     file_template=("imgScanFileTemplate", "QLineEdit", "main", False),
+    always_save=("alwaysSaveImg", "QCheckBox", "main", False),
     save_path=("dataPath", "QLineEdit", "settings", False),
     sub_dir_name=("imgSubdirName", "QLineEdit", "settings", False),
     prog_bar_wdgt=("imgScanProgressBar", "QSlider", "main", True),
