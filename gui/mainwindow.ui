@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1231</width>
-    <height>957</height>
+    <width>1236</width>
+    <height>983</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -44,7 +44,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -1357,14 +1357,69 @@ Pattern:</string>
                  </size>
                 </property>
                 <property name="title">
-                 <string>Image</string>
+                 <string>Images</string>
                 </property>
-                <layout class="QVBoxLayout" name="verticalLayout_67" stretch="0,1">
+                <layout class="QVBoxLayout" name="verticalLayout_8" stretch="1,10,0">
+                 <property name="spacing">
+                  <number>2</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>9</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>9</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>9</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>9</number>
+                 </property>
                  <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="1,10,1">
-                   <property name="spacing">
-                    <number>0</number>
-                   </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout">
+                   <item>
+                    <widget class="QToolButton" name="prevImg">
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="maximumSize">
+                      <size>
+                       <width>9999</width>
+                       <height>9999</height>
+                      </size>
+                     </property>
+                     <property name="toolTip">
+                      <string>Previous image</string>
+                     </property>
+                     <property name="text">
+                      <string>...</string>
+                     </property>
+                     <property name="shortcut">
+                      <string/>
+                     </property>
+                     <property name="popupMode">
+                      <enum>QToolButton::DelayedPopup</enum>
+                     </property>
+                     <property name="autoRaise">
+                      <bool>false</bool>
+                     </property>
+                     <property name="arrowType">
+                      <enum>Qt::LeftArrow</enum>
+                     </property>
+                    </widget>
+                   </item>
                    <item>
                     <widget class="QPushButton" name="roiImgScn">
                      <property name="sizePolicy">
@@ -1385,6 +1440,9 @@ Pattern:</string>
                        <height>999</height>
                       </size>
                      </property>
+                     <property name="toolTip">
+                      <string>Move scanners to current crosshair position</string>
+                     </property>
                      <property name="text">
                       <string>ROI
 to Scan</string>
@@ -1392,17 +1450,17 @@ to Scan</string>
                     </widget>
                    </item>
                    <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_37">
+                    <layout class="QVBoxLayout" name="verticalLayout_72">
                      <property name="spacing">
                       <number>0</number>
                      </property>
                      <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_10">
+                      <layout class="QHBoxLayout" name="horizontalLayout_35">
                        <property name="spacing">
                         <number>0</number>
                        </property>
                        <item>
-                        <spacer name="horizontalSpacer_19">
+                        <spacer name="horizontalSpacer_22">
                          <property name="orientation">
                           <enum>Qt::Horizontal</enum>
                          </property>
@@ -1415,7 +1473,7 @@ to Scan</string>
                         </spacer>
                        </item>
                        <item>
-                        <widget class="QLabel" name="label_66">
+                        <widget class="QLabel" name="label_68">
                          <property name="font">
                           <font>
                            <pointsize>8</pointsize>
@@ -1498,7 +1556,7 @@ to Scan</string>
                         </widget>
                        </item>
                        <item>
-                        <spacer name="horizontalSpacer_24">
+                        <spacer name="horizontalSpacer_27">
                          <property name="orientation">
                           <enum>Qt::Horizontal</enum>
                          </property>
@@ -1513,12 +1571,12 @@ to Scan</string>
                       </layout>
                      </item>
                      <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_22" stretch="1,0,0,1">
+                      <layout class="QHBoxLayout" name="horizontalLayout_50" stretch="1,0,0,1">
                        <property name="spacing">
                         <number>0</number>
                        </property>
                        <item>
-                        <spacer name="horizontalSpacer_25">
+                        <spacer name="horizontalSpacer_29">
                          <property name="orientation">
                           <enum>Qt::Horizontal</enum>
                          </property>
@@ -1531,7 +1589,7 @@ to Scan</string>
                         </spacer>
                        </item>
                        <item>
-                        <widget class="QLabel" name="label_27">
+                        <widget class="QLabel" name="label_29">
                          <property name="font">
                           <font>
                            <pointsize>8</pointsize>
@@ -1595,7 +1653,7 @@ to Scan</string>
                         </widget>
                        </item>
                        <item>
-                        <spacer name="horizontalSpacer_42">
+                        <spacer name="horizontalSpacer_43">
                          <property name="orientation">
                           <enum>Qt::Horizontal</enum>
                          </property>
@@ -1612,12 +1670,12 @@ to Scan</string>
                     </layout>
                    </item>
                    <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_114">
+                    <layout class="QVBoxLayout" name="verticalLayout_120">
                      <property name="spacing">
                       <number>0</number>
                      </property>
                      <item>
-                      <widget class="QLabel" name="label_32">
+                      <widget class="QLabel" name="label_37">
                        <property name="text">
                         <string>Scale Image</string>
                        </property>
@@ -1668,10 +1726,53 @@ to Scan</string>
                      </item>
                     </layout>
                    </item>
+                   <item>
+                    <widget class="QToolButton" name="nextImg">
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="maximumSize">
+                      <size>
+                       <width>9999</width>
+                       <height>9999</height>
+                      </size>
+                     </property>
+                     <property name="toolTip">
+                      <string>Next image</string>
+                     </property>
+                     <property name="text">
+                      <string>...</string>
+                     </property>
+                     <property name="shortcut">
+                      <string>Shift+Right</string>
+                     </property>
+                     <property name="popupMode">
+                      <enum>QToolButton::DelayedPopup</enum>
+                     </property>
+                     <property name="autoRaise">
+                      <bool>false</bool>
+                     </property>
+                     <property name="arrowType">
+                      <enum>Qt::RightArrow</enum>
+                     </property>
+                    </widget>
+                   </item>
                   </layout>
                  </item>
                  <item>
-                  <layout class="QGridLayout" name="gridLayout_17" rowstretch="1,0" columnstretch="0">
+                  <layout class="QGridLayout" name="gridLayout_47" rowstretch="1,0" columnstretch="0">
                    <property name="spacing">
                     <number>0</number>
                    </property>
@@ -1684,48 +1785,86 @@ to Scan</string>
                    </item>
                   </layout>
                  </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="imgFileGroup">
-                <property name="title">
-                 <string>File</string>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_18">
-                 <item row="0" column="0">
-                  <layout class="QHBoxLayout" name="horizontalLayout_11">
-                   <property name="spacing">
-                    <number>0</number>
+                 <item>
+                  <widget class="QGroupBox" name="imgFileGroup">
+                   <property name="title">
+                    <string>File</string>
                    </property>
-                   <item>
-                    <widget class="QLabel" name="label_30">
-                     <property name="text">
-                      <string>File Template</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="imgScanFileTemplate">
-                     <property name="text">
-                      <string>imgScan</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <spacer name="horizontalSpacer_26">
-                     <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
+                   <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="1,1,1,10">
+                    <property name="spacing">
+                     <number>6</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>9</number>
+                    </property>
+                    <item>
+                     <widget class="QPushButton" name="saveImg">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Save Current
+Image As</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="imgScanFileTemplate">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>imgScan</string>
+                      </property>
+                      <property name="placeholderText">
+                       <string>Template</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="alwaysSaveImg">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="text">
+                       <string>Always
+Save</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="horizontalSpacer_26">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>47</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                   </layout>
+                  </widget>
                  </item>
                 </layout>
                </widget>
@@ -10425,7 +10564,6 @@ Disp. (um)</string>
  </widget>
  <tabstops>
   <tabstop>tabWidget</tabstop>
-  <tabstop>imgScanFileTemplate</tabstop>
  </tabstops>
  <resources>
   <include location="icons/icons.qrc"/>

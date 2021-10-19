@@ -413,9 +413,10 @@ class MainWin:
 
         plane_idx = self._gui.numPlaneShown.value()
         with suppress(AttributeError):
-            line_ticks_v = self._app.last_img_scn.plane_images_data.line_ticks_v
-            row_ticks_v = self._app.last_img_scn.plane_images_data.row_ticks_v
-            plane_ticks = self._app.last_img_scn.set_pnts_planes
+            last_img_scan = self._app.last_img_scn[0]
+            line_ticks_v = last_img_scan.plane_images_data.line_ticks_v
+            row_ticks_v = last_img_scan.plane_images_data.row_ticks_v
+            plane_ticks = last_img_scan.set_pnts_planes
 
             coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.ax.cursor.pos)
 
@@ -423,7 +424,7 @@ class MainWin:
             dim2_vltg = row_ticks_v[coord_2]
             dim3_vltg = plane_ticks[plane_idx]
 
-            plane_type = self._app.last_img_scn.plane_type
+            plane_type = last_img_scan.plane_type
 
             if plane_type == "XY":
                 vltgs = (dim1_vltg, dim2_vltg, dim3_vltg)
@@ -446,7 +447,7 @@ class MainWin:
 
         with suppress(AttributeError):
             # AttributeError - no last image yet
-            image = self._app.last_img_scn.last_img
+            image = self._app.last_img
             try:
                 image = display.auto_brightness_and_contrast(image, percent_factor)
             except (ZeroDivisionError, IndexError) as exc:
@@ -499,9 +500,9 @@ class MainWin:
         disp_mthd = img_meas_wdgts.image_method
         with suppress(AttributeError):
             # AttributeError - No last_img_scn yet
-            image_data = self._app.last_img_scn.plane_images_data
+            image_data = self._app.last_img_scn[0].plane_images_data
             image = image_data.build_image(method_dict[disp_mthd], plane_idx)
-            self._app.last_img_scn.last_img = image
+            self._app.last_img = image
             img_meas_wdgts.image_wdgt.obj.display_image(image, cursor=True, cmap="bone")
             if auto_cross:
                 img_meas_wdgts.image_wdgt.obj.ax.cursor.move_to_pos(auto_crosshair_position(image))
