@@ -45,12 +45,12 @@ legacy_matlab_trans_dict = {
     # Image Scan
     "Cnt": "cnt",
     "PID": "pid",
-    "SP": "scan_param",
+    "SP": "scan_params",
     "LinesOdd": "lines_odd",
     "FastScan": "is_fast_scan",
     "TdcScanData": "tdc_scan_data",
     "Plane": "plane",
-    "ScanParam": "scan_param",
+    "ScanParam": "scan_params",
     "Dimension1_lines_um": "dim1_lines_um",
     "Dimension2_col_um": "dim2_col_um",
     "Dimension3_um": "dim3_um",
@@ -95,8 +95,9 @@ legacy_python_trans_dict = {
     "lines": "n_lines",
     "planes": "n_planes",
     "points_per_line": "ppl",
-    "scan_type": "scan_plane",
-    "lines_odd": "set_pnts_lines_odd",  # moved to scan_param
+    "scan_type": "plane_orientation",
+    "scan_plane": "plane_orientation",
+    "lines_odd": "set_pnts_lines_odd",  # moved to scan_params
     # General
 }
 
@@ -166,23 +167,23 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
         return
 
 
-def save_object_to_disk(obj, dir_path, file_name, size_limits_mb=(0, np.inf)) -> bool:
+def save_object_to_disk(obj, file_path, size_limits_mb=None) -> bool:
     """
     Save object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
     """
 
-    lower_limit_mb, upper_limit_mb = size_limits_mb
-    disk_size_mb = estimate_bytes(obj) / 1e6
-    if lower_limit_mb < disk_size_mb < upper_limit_mb:
-        os.makedirs(dir_path, exist_ok=True)
-        file_path = os.path.join(dir_path, file_name)
-        with open(file_path, "wb") as f:
-            pickle.dump(obj, f)
-        return True
+    if size_limits_mb is not None:
+        lower_limit_mb, upper_limit_mb = size_limits_mb
+        disk_size_mb = estimate_bytes(obj) / 1e6
+        if not (lower_limit_mb < disk_size_mb < upper_limit_mb):
+            return False
 
-    else:
-        return False
+    dir_path, _ = os.path.split(file_path)
+    os.makedirs(dir_path, exist_ok=True)
+    with open(file_path, "wb") as f:
+        pickle.dump(obj, f)
+    return True
 
 
 def save_processed_solution_meas(full_data, dir_path) -> None:
@@ -198,7 +199,8 @@ def save_processed_solution_meas(full_data, dir_path) -> None:
 
     dir_path = os.path.join(dir_path, "processed")
     file_name = re.sub("_[*]", "", full_data.template)
-    save_object_to_disk(full_data, dir_path, file_name)
+    file_path = os.path.join(dir_path, file_name)
+    save_object_to_disk(full_data, file_path)
 
     # return to int64 (the actual object was changed!)
     for p in full_data.data:

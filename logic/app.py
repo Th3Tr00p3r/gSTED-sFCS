@@ -4,6 +4,7 @@ import logging
 import logging.config
 import os
 import shutil
+from collections import deque
 from contextlib import contextmanager, suppress
 from types import SimpleNamespace
 
@@ -91,6 +92,9 @@ class App:
         self.gui.main.impl.disp_scn_pttrn("image")
         sol_pattern = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self).scan_type
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
+
+        # init last images deque
+        self.last_image_scans = deque([], maxlen=10)
 
         # init existing data folders (solution by default)
         self.gui.main.solDataImport.setChecked(True)
