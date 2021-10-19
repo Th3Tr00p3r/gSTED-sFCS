@@ -99,6 +99,7 @@ legacy_python_trans_dict = {
     "scan_plane": "plane_orientation",
     "lines_odd": "set_pnts_lines_odd",  # moved to scan_params
     # General
+    "scan_param": "scan_params",
 }
 
 default_system_info = {
