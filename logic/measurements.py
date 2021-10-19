@@ -8,6 +8,7 @@ import pickle
 import re
 import sys
 import time
+from collections import deque
 from contextlib import suppress
 from datetime import datetime as dt
 from types import SimpleNamespace
@@ -383,12 +384,14 @@ class SFCSImageMeasurement(Measurement):
         """Doc."""
 
         try:
-            self._app.last_img_scn.plane_type = self.scan_params.scan_plane
-            self._app.last_img_scn.plane_images_data = self.plane_images_data
-            self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
+            latest_img = SimpleNamespace()
+            latest_img.plane_type = self.scan_params.scan_plane
+            latest_img.plane_images_data = self.plane_images_data
+            latest_img.set_pnts_planes = self.scan_params.set_pnts_planes
+            self._app.last_img_scn.appendleft(latest_img)
         except AttributeError:
-            # create a namespace if doesn't exist and restart function
-            self._app.last_img_scn = SimpleNamespace()
+            # create a deque if doesn't exist and restart function
+            self._app.last_img_scn = deque([], maxlen=10)
             self.keep_last_meas()
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
