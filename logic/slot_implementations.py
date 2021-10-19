@@ -9,6 +9,7 @@ import sys
 import webbrowser
 from collections.abc import Iterable
 from contextlib import contextmanager, suppress
+from datetime import datetime as dt
 from types import SimpleNamespace
 from typing import List, Tuple
 
@@ -17,8 +18,7 @@ from PyQt5.QtWidgets import QFileDialog, QWidget
 
 import gui.dialog as dialog
 import logic.measurements as meas
-from data_analysis.correlation_function import CorrFuncTDC
-from data_analysis.image import ImageScanData
+from data_analysis.correlation_function import CorrFuncTDC, ImageTDC
 from gui import widgets as wdgts
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
@@ -413,24 +413,25 @@ class MainWin:
 
         plane_idx = self._gui.numPlaneShown.value()
         with suppress(AttributeError):
-            last_img_scan = self._app.last_img_scn[0]
-            line_ticks_v = last_img_scan.plane_images_data.line_ticks_v
-            row_ticks_v = last_img_scan.plane_images_data.row_ticks_v
-            plane_ticks = last_img_scan.set_pnts_planes
+            # IndexError - 'App' object has no attribute 'curr_img_idx'
+            last_img_scan = self._app.last_image_scans[self._app.curr_img_idx].image_data
+            line_ticks_v = last_img_scan.line_ticks_v
+            row_ticks_v = last_img_scan.row_ticks_v
+            plane_ticks_v = last_img_scan.plane_ticks_v
 
             coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.ax.cursor.pos)
 
             dim1_vltg = line_ticks_v[coord_1]
             dim2_vltg = row_ticks_v[coord_2]
-            dim3_vltg = plane_ticks[plane_idx]
+            dim3_vltg = plane_ticks_v[plane_idx]
 
-            plane_type = last_img_scan.plane_type
+            plane_orientation = last_img_scan.plane_orientation
 
-            if plane_type == "XY":
+            if plane_orientation == "XY":
                 vltgs = (dim1_vltg, dim2_vltg, dim3_vltg)
-            elif plane_type == "XZ":
+            elif plane_orientation == "XZ":
                 vltgs = (dim1_vltg, dim3_vltg, dim2_vltg)
-            elif plane_type == "YZ":
+            elif plane_orientation == "YZ":
                 vltgs = (dim3_vltg, dim1_vltg, dim2_vltg)
 
             [
@@ -438,7 +439,7 @@ class MainWin:
                 for axis, vltg in zip("XYZ", vltgs)
             ]
 
-            self.move_scanners(plane_type)
+            self.move_scanners(plane_orientation)
 
             logging.debug(f"{self._app.devices.scanners.log_ref} moved to ROI ({vltgs})")
 
@@ -447,7 +448,7 @@ class MainWin:
 
         with suppress(AttributeError):
             # AttributeError - no last image yet
-            image = self._app.last_img
+            image = self._app.curr_img
             try:
                 image = display.auto_brightness_and_contrast(image, percent_factor)
             except (ZeroDivisionError, IndexError) as exc:
@@ -455,7 +456,7 @@ class MainWin:
 
             self._gui.imgScanPlot.display_image(image, cursor=True, cmap="bone")
 
-    def disp_plane_img(self, plane_idx, auto_cross=False):
+    def disp_plane_img(self, img_idx=0, plane_idx=None, auto_cross=False):
         """Doc."""
 
         method_dict = {
@@ -498,11 +499,15 @@ class MainWin:
 
         img_meas_wdgts = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
         disp_mthd = img_meas_wdgts.image_method
-        with suppress(AttributeError):
-            # AttributeError - No last_img_scn yet
-            image_data = self._app.last_img_scn[0].plane_images_data
+        with suppress(IndexError):
+            # IndexError - No last_image_scans appended yet
+            image_data = self._app.last_image_scans[img_idx].image_data
+            if plane_idx is None:
+                # use center plane if not supplied
+                plane_idx = int(image_data.n_planes / 2)
             image = image_data.build_image(method_dict[disp_mthd], plane_idx)
-            self._app.last_img = image
+            self._app.curr_img_idx = img_idx
+            self._app.curr_img = image
             img_meas_wdgts.image_wdgt.obj.display_image(image, cursor=True, cmap="bone")
             if auto_cross:
                 img_meas_wdgts.image_wdgt.obj.ax.cursor.move_to_pos(auto_crosshair_position(image))
@@ -529,6 +534,32 @@ class MainWin:
 
         wdgts.IMG_SCAN_COLL.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
+
+    def cycle_through_image_scans(self, dir: str) -> None:
+        """Doc."""
+
+        with suppress(AttributeError):
+            n_stored_images = len(self._app.last_image_scans)
+            if dir == "next":
+                if self._app.curr_img_idx > 0:
+                    self.disp_plane_img(img_idx=self._app.curr_img_idx - 1, auto_cross=False)
+            elif dir == "prev":
+                if self._app.curr_img_idx < n_stored_images - 1:
+                    self.disp_plane_img(img_idx=self._app.curr_img_idx + 1, auto_cross=False)
+
+    def save_current_image(self) -> None:
+        """Doc."""
+
+        wdgt_coll = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
+
+        with suppress(AttributeError):
+            image_tdc = self._app.last_image_scans[self._app.curr_img_idx]
+            file_name = f"{wdgt_coll.file_template}_{image_tdc.laser_mode}_{image_tdc.scan_params['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
+            today_dir = os.path.join(wdgt_coll.save_path, dt.now().strftime("%d_%m_%Y"))
+            dir_path = os.path.join(today_dir, "image")
+            file_path = os.path.join(dir_path, re.sub("\\s", "_", file_name)) + ".pkl"
+            file_utilities.save_object_to_disk(image_tdc, file_path)
+            logging.debug(f"Saved measurement file: '{file_path}'.")
 
     ####################
     ## Solution Tab
@@ -940,19 +971,14 @@ class MainWin:
 
         if data_import_wdgts.is_image_type:
             # import the data
-            file_path = os.path.join(self.current_date_type_dir_path(), template)
             try:
-                file_dict = file_utilities.load_file_dict(file_path)
+                image_tdc = ImageTDC()
+                image_tdc.read_image_data(os.path.join(self.current_date_type_dir_path(), template))
             except FileNotFoundError:
                 self.switch_data_type()
                 return
-            # get the center plane image
-            counts = file_dict["ci"]
-            ao = file_dict["ao"]
-            scan_param = file_dict["scan_param"]
-            um_v_ratio = file_dict["xyz_um_to_v"]
-            image_data = ImageScanData(counts, ao, scan_param, um_v_ratio)
-            image = image_data.build_image("forward", image_data.n_planes // 2)
+            # get the center plane image, in "forward"
+            image = image_tdc.image_data.build_image("forward")
             # plot it (below)
             data_import_wdgts.img_preview_disp.obj.display_image(image, axis=False, cmap="bone")
 

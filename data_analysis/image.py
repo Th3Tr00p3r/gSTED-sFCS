@@ -5,11 +5,11 @@ import numpy as np
 from utilities.helper import div_ceil
 
 
-class ImageScanData:
+class ImageData:
     """Doc."""
 
-    def __init__(self, *args):
-        self._counts_to_image_stack(*args)
+    def __init__(self, *args, **kwargs):
+        self._counts_to_image_stack(*args, **kwargs)
 
     def _counts_to_image_stack(self, counts, ao, scan_params: dict, um_v_ratio) -> None:
         """Doc."""
@@ -31,16 +31,16 @@ class ImageScanData:
         n_lines = scan_params["n_lines"]
         pxl_size_um = scan_params["dim2_col_um"] / n_lines
         pxls_per_line = div_ceil(scan_params["dim1_lines_um"], pxl_size_um)
-        scan_plane = scan_params["scan_plane"]
+        plane_orientation = scan_params["plane_orientation"]
         ppl = scan_params["ppl"]
         ppp = n_lines * ppl
         turn_idx = ppl // 2
 
-        if scan_plane in {"XY", "XZ"}:
+        if plane_orientation in {"XY", "XZ"}:
             dim1_center = scan_params["initial_ao"][0]
             um_per_v = um_v_ratio[0]
 
-        elif scan_plane == "YZ":
+        elif plane_orientation == "YZ":
             dim1_center = scan_params["initial_ao"][1]
             um_per_v = um_v_ratio[1]
 
@@ -74,10 +74,15 @@ class ImageScanData:
 
         self.line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         self.row_ticks_v = scan_params["set_pnts_lines_odd"]
+        self.plane_ticks_v = scan_params.get("set_pnts_planes")  # doesn't exist in older versions
         self.n_planes = n_planes
+        self.plane_orientation = plane_orientation
 
-    def build_image(self, method, plane_idx):
+    def build_image(self, method, plane_idx=None):
         """Doc."""
+
+        if plane_idx is None:
+            plane_idx = self.n_planes // 2
 
         if method == "forward":
             img = self.image_stack_forward[:, :, plane_idx]

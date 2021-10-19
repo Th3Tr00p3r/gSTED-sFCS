@@ -61,6 +61,12 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.goToOrgXY.released.connect(lambda: self.impl.go_to_origin("XY"))
         self.goToOrgZ.released.connect(lambda: self.impl.go_to_origin("Z"))
 
+        # Image Scan Tab
+        self.nextImg.released.connect(lambda: self.impl.cycle_through_image_scans("next"))
+        self.prevImg.released.connect(lambda: self.impl.cycle_through_image_scans("prev"))
+
+        self.saveImg.released.connect(self.impl.save_current_image)
+
         # Analysis GUI
         self.analysisDataTypeGroup = PyQt5.QtWidgets.QButtonGroup()
         self.analysisDataTypeGroup.addButton(self.imageDataImport)
