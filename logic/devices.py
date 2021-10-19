@@ -72,9 +72,13 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         super().__init__(
             param_dict=param_dict,
         )
-        self.init_data()
-        self.open_instrument()
-        self.purge()
+        try:
+            self.open_instrument()
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.init_data()
+            self.purge()
 
     def close(self):
         """Doc."""
@@ -173,7 +177,10 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         ]
         self.um_v_ratio = tuple(getattr(self, f"{ax}_um2v_const") for ax in "xyz")
 
-        self.start_continuous_read_task()
+        try:
+            self.start_continuous_read_task()
+        except FileNotFoundError as exc:  # TODO: fix this by rasing an IOError in drivers.py (appears in other places too). can only be discovered on laptop
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def close(self):
         """Doc."""
@@ -584,6 +591,8 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
             )
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        except FileNotFoundError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led(is_being_switched_on)
             self.state = is_being_switched_on
@@ -713,9 +722,13 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     def toggle(self, is_being_switched_on):
         """Doc."""
 
-        self.open_instrument() if is_being_switched_on else self.close_instrument()
-        self.toggle_led(is_being_switched_on)
-        self.state = is_being_switched_on
+        try:
+            self.open_instrument() if is_being_switched_on else self.close_instrument()
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.toggle_led(is_being_switched_on)
+            self.state = is_being_switched_on
 
     async def move(self, dir, steps):
         """Doc."""
