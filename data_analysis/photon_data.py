@@ -375,9 +375,8 @@ class TDCPhotonData:
         **kwargs,
     ):
         """
-        Plots a comparison of lifetime histograms.
-        'kwargs' is a dictionary, where keys are to be used as legend labels and values are 'full_data'
-        objects which are supposed to have their own TDC calibrations.
+        Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
+        and values are 'TDCPhotonData'-inheriting objects which are supposed to have their own TDC calibrations.
         """
 
         if legend_label is None:
@@ -387,18 +386,18 @@ class TDCPhotonData:
         kwargs.update([(legend_label, self)])
 
         h = []
-        for label, full_data in kwargs.items():
+        for label, tdc_obj in kwargs.items():
             with suppress(AttributeError):
-                # AttributeError - assume other objects that have TDCcalib structures
-                x = full_data.tdc_calib["t_hist"]
+                # AttributeError - assume other tdc_objects that have TDCcalib structures
+                x = tdc_obj.tdc_calib["t_hist"]
                 if normalization_type == "NO":
-                    y = full_data.tdc_calib["all_hist"] / full_data.tdc_calib["t_weight"]
+                    y = tdc_obj.tdc_calib["all_hist"] / tdc_obj.tdc_calib["t_weight"]
                 elif normalization_type == "Per Time":
-                    y = full_data.tdc_calib["all_hist_norm"]
+                    y = tdc_obj.tdc_calib["all_hist_norm"]
                 elif normalization_type == "By Sum":
-                    y = full_data.tdc_calib["all_hist_norm"] / np.sum(
-                        full_data.tdc_calib["all_hist_norm"][
-                            np.isfinite(full_data.tdc_calib["all_hist_norm"])
+                    y = tdc_obj.tdc_calib["all_hist_norm"] / np.sum(
+                        tdc_obj.tdc_calib["all_hist_norm"][
+                            np.isfinite(tdc_obj.tdc_calib["all_hist_norm"])
                         ]
                     )
                 else:
