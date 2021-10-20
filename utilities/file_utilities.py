@@ -187,24 +187,24 @@ def save_object_to_disk(obj, file_path, size_limits_mb=None) -> bool:
     return True
 
 
-def save_processed_solution_meas(full_data, dir_path) -> None:
+def save_processed_solution_meas(tdc_obj, dir_path) -> None:
     """
     Save a processed measurement, lacking any raw data.
     The template may then be loaded much more quickly.
     """
 
     # lower size if possible
-    for p in full_data.data:
+    for p in tdc_obj.data:
         if p.runtime.max() <= np.iinfo(np.int32).max:
             p.runtime = p.runtime.astype(np.int32)
 
     dir_path = os.path.join(dir_path, "processed")
-    file_name = re.sub("_[*]", "", full_data.template)
+    file_name = re.sub("_[*]", "", tdc_obj.template)
     file_path = os.path.join(dir_path, file_name)
-    save_object_to_disk(full_data, file_path)
+    save_object_to_disk(tdc_obj, file_path)
 
     # return to int64 (the actual object was changed!)
-    for p in full_data.data:
+    for p in tdc_obj.data:
         if p.runtime.dtype == np.int32:
             p.runtime = p.runtime.astype(np.int64)
 
@@ -212,12 +212,12 @@ def save_processed_solution_meas(full_data, dir_path) -> None:
 def load_processed_solution_measurement(file_path):
     """Doc."""
 
-    full_data = load_pkl(file_path)
+    tdc_obj = load_pkl(file_path)
     # Load runtimes as int64 if they are not already of that type
-    for p in full_data.data:
+    for p in tdc_obj.data:
         p.runtime = p.runtime.astype(np.int64, copy=False)
 
-    return full_data
+    return tdc_obj
 
 
 def load_file_dict(file_path: str):
