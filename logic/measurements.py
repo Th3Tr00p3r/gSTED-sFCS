@@ -14,7 +14,7 @@ from types import SimpleNamespace
 import nidaqmx.constants as ni_consts
 import numpy as np
 
-from data_analysis.correlation_function import CorrFuncTDC, ImageTDC
+from data_analysis.correlation_function import CorrFuncTDC
 from gui.icons import icons
 from logic.scan_patterns import ScanPatternAO
 from utilities import errors, file_utilities, fit_tools, helper
@@ -374,9 +374,7 @@ class SFCSImageMeasurement(Measurement):
     def keep_last_meas(self, data_dict):
         """Doc."""
 
-        image_tdc = ImageTDC()
-        image_tdc.read_image_data(file_dict=data_dict)
-        self._app.last_image_scans.appendleft(image_tdc)
+        self._app.last_image_scans.appendleft(data_dict)
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:

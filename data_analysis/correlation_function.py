@@ -54,7 +54,10 @@ class CorrFunc:
         delattr(self, "_cf_cr_list")
 
     def accumulate(self, sc: SoftwareCorrelator):
-        """Accepts a 'SoftwareCorrelator' object and appends the results to the temporary lists."""
+        """
+        Accepts a 'SoftwareCorrelator' object and appends the results to the temporary lists
+        initiated in '__enter__()'.
+        """
 
         try:
             self._corrfunc_list.append(sc.corrfunc)
@@ -209,6 +212,7 @@ class CorrFuncTDC(TDCPhotonData):
         roi_selection: str = "auto",
         should_fix_shift: bool = False,
         should_plot: bool = True,
+        **kwargs,
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
 
@@ -219,6 +223,7 @@ class CorrFuncTDC(TDCPhotonData):
         self.name_on_disk = re.sub("_[*]", "", self.template)
 
         for idx, file_path in enumerate(file_paths):
+            # Loading file from disk
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
             try:
                 file_dict = file_utilities.load_file_dict(file_path)
@@ -227,45 +232,19 @@ class CorrFuncTDC(TDCPhotonData):
                 continue
             print("Done.")
 
-            full_data = file_dict["full_data"]
+            # Processing data
+            p = self.process_data(file_dict, idx, verbose=True, **kwargs)
 
-            if idx == 0:
-                self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
-                self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
-                self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
-
-            # Circular sFCS
-            if full_data.get("circle_speed_um_s"):
-                self.type = "circular_scan"
-                self.v_um_ms = full_data["circle_speed_um_s"] * 1e-3  # to um/ms
-                raise NotImplementedError("Circular scan analysis not yet implemented...")
-
-            # Angular sFCS
-            elif full_data.get("angular_scan_settings"):
-                if idx == 0:
-                    self.type = "angular_scan"
-                    self.angular_scan_settings = full_data["angular_scan_settings"]
-                    self.LINE_END_ADDER = 1000
-                if (
-                    p := self.process_angular_scan_data(
-                        full_data, idx, should_fix_shift, roi_selection, should_plot
-                    )
-                ) is None:
-                    continue
-
-            # FCS
+            # Appending data to self
+            if p is not None:
+                p.file_path = file_path
+                self.data.append(p)
             else:
-                self.type = "static"
-                if (p := self.process_static_data(full_data, idx, verbose=True)) is None:
-                    continue
-
-            p.file_path = file_path
-            self.data.append(p)
-
+                continue  # skip file if there's a problem
             print(f"Finished processing file No. {idx+1}\n")
 
-        # aggregate images and ROIs for angular sFCS
-        if full_data.get("angular_scan_settings"):
+        if self.type == "angular_scan":
+            # aggregate images and ROIs for angular sFCS
             self.scan_images_dstack = np.dstack(tuple(p.image for p in self.data))
             self.roi_list = [p.roi for p in self.data]
 
@@ -279,9 +258,7 @@ class CorrFuncTDC(TDCPhotonData):
         # calculate average count rate
         self.avg_cnt_rate_khz = sum([p.avg_cnt_rate_khz for p in self.data]) / len(self.data)
 
-        if full_data.get("duration_s") is not None:
-            self.duration_min = full_data["duration_s"] / 60
-        else:
+        if self.duration_min is None:
             # calculate duration if not supplied
             self.duration_min = (
                 np.mean([np.diff(p.runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
@@ -289,6 +266,38 @@ class CorrFuncTDC(TDCPhotonData):
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
+
+    def process_data(self, file_dict: dict, idx: int = 0, **kwargs) -> dict:
+        """Doc."""
+
+        full_data = file_dict["full_data"]
+
+        if idx == 0:
+            self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
+            self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
+            self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
+            with suppress(KeyError):
+                self.duration_min = None
+                self.duration_min = full_data["duration_s"] / 60
+
+        # Circular sFCS
+        if full_data.get("circle_speed_um_s"):
+            self.type = "circular_scan"
+            self.v_um_ms = full_data["circle_speed_um_s"] * 1e-3  # to um/ms
+            raise NotImplementedError("Circular scan analysis not yet implemented...")
+
+        # Angular sFCS
+        elif full_data.get("angular_scan_settings"):
+            if idx == 0:
+                self.type = "angular_scan"
+                self.angular_scan_settings = full_data["angular_scan_settings"]
+                self.LINE_END_ADDER = 1000
+            return self.process_angular_scan_data(full_data, idx, **kwargs)
+
+        # FCS
+        else:
+            self.type = "static"
+            return self.process_static_data(full_data, idx, **kwargs)
 
     def process_static_data(self, full_data, idx, **kwargs):
         """
@@ -311,7 +320,13 @@ class CorrFuncTDC(TDCPhotonData):
         return p
 
     def process_angular_scan_data(
-        self, full_data, idx, should_fix_shift, roi_selection, should_plot
+        self,
+        full_data,
+        idx,
+        should_fix_shift=True,
+        roi_selection="auto",
+        should_plot=False,
+        **kwargs,
     ):
         """
         Processes a single angular sFCS data file ('full_data').
@@ -836,24 +851,24 @@ class ImageTDC(TDCPhotonData):
     def __init__(self):
         pass
 
-    def read_image_data(self, file_path=None, file_dict=None) -> None:
+    def read_image_data(self, file_path, **kwargs) -> None:
         """Doc."""
 
-        if file_dict is None:
-            # Load the data from disk if not supplied
-            file_dict = file_utilities.load_file_dict(file_path)
+        file_dict = file_utilities.load_file_dict(file_path)
+        self.process_data(file_dict, **kwargs)
+
+    def process_data(self, file_dict: dict, **kwargs) -> None:
+        """Doc."""
 
         # store relevant attributes (add more as needed)
         self.laser_mode = file_dict.get("laser_mode")
         self.scan_params = file_dict.get("scan_params")
 
         # Get ungated image (excitation or sted)
-        self.image_data = ImageData(
-            file_dict["ci"], file_dict["ao"], file_dict["scan_params"], file_dict["xyz_um_to_v"]
-        )
+        self.image_data = ImageData(file_dict)
 
-        # Deal with gating (TDCPhotonData stuff)
-        pass
+        # gating stuff (TDC) - not yet implemented
+        self.data = None
 
 
 def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):

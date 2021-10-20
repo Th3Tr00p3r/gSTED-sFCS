@@ -414,10 +414,12 @@ class MainWin:
         plane_idx = self._gui.numPlaneShown.value()
         with suppress(AttributeError):
             # IndexError - 'App' object has no attribute 'curr_img_idx'
-            last_img_scan = self._app.last_image_scans[self._app.curr_img_idx].image_data
-            line_ticks_v = last_img_scan.line_ticks_v
-            row_ticks_v = last_img_scan.row_ticks_v
-            plane_ticks_v = last_img_scan.plane_ticks_v
+            image_tdc = ImageTDC()
+            image_tdc.process_data(file_dict=self._app.last_image_scans[self._app.curr_img_idx])
+            image_data = image_tdc.image_data
+            line_ticks_v = image_data.line_ticks_v
+            row_ticks_v = image_data.row_ticks_v
+            plane_ticks_v = image_data.plane_ticks_v
 
             coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.ax.cursor.pos)
 
@@ -425,7 +427,7 @@ class MainWin:
             dim2_vltg = row_ticks_v[coord_2]
             dim3_vltg = plane_ticks_v[plane_idx]
 
-            plane_orientation = last_img_scan.plane_orientation
+            plane_orientation = image_data.plane_orientation
 
             if plane_orientation == "XY":
                 vltgs = (dim1_vltg, dim2_vltg, dim3_vltg)
@@ -501,7 +503,9 @@ class MainWin:
         disp_mthd = img_meas_wdgts.image_method
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
-            image_data = self._app.last_image_scans[img_idx].image_data
+            image_tdc = ImageTDC()
+            image_tdc.process_data(file_dict=self._app.last_image_scans[img_idx])
+            image_data = image_tdc.image_data
             if plane_idx is None:
                 # use center plane if not supplied
                 plane_idx = int(image_data.n_planes / 2)
@@ -553,12 +557,12 @@ class MainWin:
         wdgt_coll = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
 
         with suppress(AttributeError):
-            image_tdc = self._app.last_image_scans[self._app.curr_img_idx]
-            file_name = f"{wdgt_coll.file_template}_{image_tdc.laser_mode}_{image_tdc.scan_params['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
+            file_dict = self._app.last_image_scans[self._app.curr_img_idx]
+            file_name = f"{wdgt_coll.file_template}_{file_dict['laser_mode']}_{file_dict['scan_params']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
             today_dir = os.path.join(wdgt_coll.save_path, dt.now().strftime("%d_%m_%Y"))
             dir_path = os.path.join(today_dir, "image")
             file_path = os.path.join(dir_path, re.sub("\\s", "_", file_name)) + ".pkl"
-            file_utilities.save_object_to_disk(image_tdc, file_path)
+            file_utilities.save_object_to_disk(file_dict, file_path)
             logging.debug(f"Saved measurement file: '{file_path}'.")
 
     ####################
