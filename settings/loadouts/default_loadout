@@ -32,14 +32,14 @@ imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
-xAOV,-0.0068
-yAOV,-0.00597
-zAOV,4.9989
+xAOV,0.0
+yAOV,0.0
+zAOV,5.0
 axisMoveUm,5.0
 dataMonth,10
 dataYear,2021
-dataDay,5
-dataTemplate,sol_static_exc_181325_*.pkl
+dataDay,20
+dataTemplate,img_exc_YZ_155209.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates,
 comboBox_2,
@@ -51,12 +51,12 @@ imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 avgInterval,5000
-importStacked,1
-analysisStacked,1
+importStacked,0
+analysisStacked,0
 solScanParamsStacked,2
 depModeStacked,0
-imageDataImport,False
-solDataImport,True
+imageDataImport,True
+solDataImport,False
 solImportUseAll,False
 solImportUse,True
 solAnalysisRemoveOver,True

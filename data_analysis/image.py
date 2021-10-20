@@ -11,21 +11,13 @@ class ImageData:
     def __init__(self, *args, **kwargs):
         self._counts_to_image_stack(*args, **kwargs)
 
-    def _counts_to_image_stack(self, counts, ao, scan_params: dict, um_v_ratio) -> None:
+    def _counts_to_image_stack(self, file_dict: dict) -> None:
         """Doc."""
 
-        def calc_plane_image_stack(counts_stack, eff_idxs, pxls_per_line):
-            """Doc."""
-
-            n_lines, _, n_planes = counts_stack.shape
-            image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
-            norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
-
-            for i in range(pxls_per_line):
-                image_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].sum(axis=1)
-                norm_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].shape[1]
-
-            return image_stack, norm_stack
+        scan_params = file_dict["scan_params"]
+        um_v_ratio = file_dict["xyz_um_to_v"]
+        ao = file_dict["ao"]
+        counts = file_dict["ci"]
 
         n_planes = scan_params["n_planes"]
         n_lines = scan_params["n_lines"]
@@ -65,10 +57,10 @@ class ImageData:
         counts_stack_backward = counts_stack[:, -1 : (turn_idx - 1) : -1, :]
 
         # calculate the images and normalization separately for the forward/backward parts of the scan
-        self.image_stack_forward, self.norm_stack_forward = calc_plane_image_stack(
+        self.image_stack_forward, self.norm_stack_forward = _calc_plane_image_stack(
             counts_stack_forward, eff_idxs_forward, pxls_per_line
         )
-        self.image_stack_backward, self.norm_stack_backward = calc_plane_image_stack(
+        self.image_stack_backward, self.norm_stack_backward = _calc_plane_image_stack(
             counts_stack_backward, eff_idxs_backward, pxls_per_line
         )
 
@@ -128,3 +120,17 @@ class ImageData:
             img = (p1 + p2) / (norm1 + norm2)
 
         return img
+
+
+def _calc_plane_image_stack(counts_stack, eff_idxs, pxls_per_line):
+    """Doc."""
+
+    n_lines, _, n_planes = counts_stack.shape
+    image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+    norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+
+    for i in range(pxls_per_line):
+        image_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].sum(axis=1)
+        norm_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].shape[1]
+
+    return image_stack, norm_stack
