@@ -756,14 +756,14 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         super().__init__(
             param_dict,
         )
-        self.state = False
+        self.open_instrument()
+        self.state = True
 
-    def toggle(self, is_being_switched_on):
+    def close(self) -> None:
         """Doc."""
 
-        self.init_cam() if is_being_switched_on else self.close_cam()
-        self.toggle_led(is_being_switched_on)
-        self.state = is_being_switched_on
+        self.close_instrument()
+        self.state = False
 
 
 @dataclass

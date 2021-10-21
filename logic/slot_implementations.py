@@ -395,7 +395,7 @@ class MainWin:
         self._gui.actionCamera_Control.setEnabled(False)
         self._app.gui.camera.show()
         self._app.gui.camera.activateWindow()
-        self._app.gui.camera.impl.init_cam()
+        self._app.gui.camera.impl.open_instrument()
 
     def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
@@ -1388,10 +1388,11 @@ class CamWin:
 
         self._app = app
         self._gui = gui
-        self._cam = None
+        self._cam1 = None
+        self._cam2 = None
         self.is_video_on = False
 
-    def init_cam(self):
+    def initialize_cameras(self):
         """Doc."""
 
         self._cam = self._app.devices.camera
@@ -1405,8 +1406,9 @@ class CamWin:
             await self.toggle_video(keep_off=True)
             self._app.gui.main.impl.dvc_toggle("camera")
             self._app.gui.main.actionCamera_Control.setEnabled(True)
-            self._cam = None
-            logging.debug("Camera connection closed")
+            self._cam1 = None
+            self._cam2 = None
+            logging.debug("Camera connections closed")
 
     async def toggle_video(self, keep_off=False):
         """Doc."""
@@ -1431,7 +1433,7 @@ class CamWin:
             self.is_video_on = False
             logging.info("Camera video mode is OFF")
 
-    def shoot(self, verbose=True):
+    def shoot(self, cam_num: int, verbose=True):
         """Doc."""
 
         self._gui.ImgDisp.display_image(self._cam.grab_image(), cursor=True)
