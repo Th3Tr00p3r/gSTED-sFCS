@@ -4,7 +4,7 @@ from contextlib import suppress
 from types import SimpleNamespace
 
 import numpy as np
-from scipy import stats
+import scipy
 
 from utilities import display, file_utilities, fit_tools
 
@@ -100,7 +100,9 @@ class TDCPhotonData:
             mu = max(
                 np.median(p.time_stamps), np.abs(p.time_stamps - p.time_stamps.mean()).mean()
             ) / np.log(2)
-            max_time_stamp = stats.expon.ppf(1 - max_outlier_prob / len(p.time_stamps), scale=mu)
+            max_time_stamp = scipy.stats.expon.ppf(
+                1 - max_outlier_prob / len(p.time_stamps), scale=mu
+            )
             sec_edges = (p.time_stamps > max_time_stamp).nonzero()[0].tolist()
             if (n_outliers := len(sec_edges)) > 0:
                 print(f"found {n_outliers} outliers.", end=" ")

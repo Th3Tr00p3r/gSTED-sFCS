@@ -373,7 +373,7 @@ class Instrumental:
         [setattr(self, key, val) for key, val in param_dict.items()]
         self._inst = None
 
-    def init_cam(self):
+    def open_instrument(self):
         """Doc."""
 
         try:
@@ -382,18 +382,18 @@ class Instrumental:
             # general 'Exception' is due to bad error handeling in instrumental-lib...
             raise uc480.UC480Error(msg="Camera disconnected")
 
-    def close_cam(self):
+    def close_instrument(self):
         """Doc."""
 
         if self._inst is not None:
             self._inst.close()
 
-    def grab_image(self):
+    def grab_image(self) -> np.ndarray:
         """Doc."""
 
         return self._inst.grab_image()
 
-    def toggle_vid(self, state):
+    def toggle_vid(self, state: bool) -> None:
         """Doc."""
 
         if state is True:
