@@ -167,7 +167,7 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
         return
 
 
-def save_object_to_disk(obj, file_path, size_limits_mb=None) -> bool:
+def save_object_to_disk(obj, file_path: Path, size_limits_mb=None) -> bool:
     """
     Save object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
@@ -179,14 +179,14 @@ def save_object_to_disk(obj, file_path, size_limits_mb=None) -> bool:
         if not (lower_limit_mb < disk_size_mb < upper_limit_mb):
             return False
 
-    dir_path = Path(file_path).parent
+    dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
     with open(file_path, "wb") as f:
         pickle.dump(obj, f)
     return True
 
 
-def save_processed_solution_meas(tdc_obj, dir_path) -> None:
+def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
     """
     Save a processed measurement, lacking any raw data.
     The template may then be loaded much more quickly.
@@ -197,7 +197,7 @@ def save_processed_solution_meas(tdc_obj, dir_path) -> None:
         if p.runtime.max() <= np.iinfo(np.int32).max:
             p.runtime = p.runtime.astype(np.int32)
 
-    dir_path = Path(dir_path) / "processed"
+    dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", tdc_obj.template)
     file_path = dir_path / file_name
     save_object_to_disk(tdc_obj, file_path)
@@ -208,7 +208,7 @@ def save_processed_solution_meas(tdc_obj, dir_path) -> None:
             p.runtime = p.runtime.astype(np.int64)
 
 
-def load_processed_solution_measurement(file_path):
+def load_processed_solution_measurement(file_path: Path):
     """Doc."""
 
     tdc_obj = load_pkl(file_path)
@@ -226,13 +226,12 @@ def load_file_dict(file_path: Path):
     use defaults for legacy files where 'system_info' or 'after_pulse_param' is not iterable (therefore old).
     """
 
-    ext = file_path.suffix
-    if ext == ".pkl":
+    if file_path.suffix == ".pkl":
         file_dict = translate_dict_keys(load_pkl(file_path), legacy_python_trans_dict)
-    elif ext == ".mat":
+    elif file_path.suffix == ".mat":
         file_dict = translate_dict_keys(load_mat(file_path), legacy_matlab_trans_dict)
     else:
-        raise NotImplementedError(f"Unknown file extension: '{ext}'.")
+        raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
 
     # patch for legacy Python files (almost non-existant)
     if not file_dict.get("system_info"):
@@ -305,7 +304,7 @@ def convert_types_to_matlab_format(obj, key_name=None):
     return {key: convert_types_to_matlab_format(val, key_name=str(key)) for key, val in obj.items()}
 
 
-def save_mat(file_dict: dict, file_path: str) -> None:
+def save_mat(file_dict: dict, file_path: Path) -> None:
     """
     Saves 'file_dict' as 'file_path', after converting all keys to legacy naming,
     takes care of converting 'AfterPulseParam' to old style (array only, no type),
@@ -373,7 +372,7 @@ def load_mat(filename):
     return _check_keys(data)
 
 
-def load_pkl(file_path: str) -> dict:
+def load_pkl(file_path: Path) -> dict:
     """Short cut for opening .pkl files"""
 
     with open(file_path, "rb") as f:
