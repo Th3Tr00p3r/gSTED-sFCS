@@ -241,9 +241,7 @@ class CorrFuncTDC(TDCPhotonData):
             if p is not None:
                 p.file_path = file_path
                 self.data.append(p)
-            else:
-                continue  # skip file if there's a problem
-            print(f"Finished processing file No. {idx+1}\n")
+                print(f"Finished processing file No. {idx+1}\n")
 
         if self.type == "angular_scan":
             # aggregate images and ROIs for angular sFCS
