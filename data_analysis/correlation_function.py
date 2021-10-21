@@ -5,6 +5,7 @@ import re
 from collections import deque
 from contextlib import suppress
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 from scipy import ndimage, stats
@@ -207,7 +208,7 @@ class CorrFuncTDC(TDCPhotonData):
 
     def read_fpga_data(
         self,
-        file_path_template: str,
+        file_path_template: Union[str, Path],
         file_selection: str = "",
         roi_selection: str = "auto",
         should_fix_shift: bool = False,
@@ -217,7 +218,8 @@ class CorrFuncTDC(TDCPhotonData):
         """Processes a complete FCS measurement (multiple files)."""
 
         print("\nLoading FPGA data from hard drive:", end=" ")
-        file_paths = file_utilities.prepare_file_paths(file_path_template, file_selection)
+
+        file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
         n_files = len(file_paths)
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("_[*]", "", self.template)
