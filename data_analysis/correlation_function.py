@@ -1,10 +1,10 @@
 """Data organization and manipulation."""
 
 import logging
-import os
 import re
 from collections import deque
 from contextlib import suppress
+from pathlib import Path
 
 import numpy as np
 from scipy import ndimage, stats
@@ -197,7 +197,7 @@ class CorrFuncTDC(TDCPhotonData):
     """Doc."""
 
     NAN_PLACEBO = -100
-    DUMP_PATH = "C:/temp_sfcs_data/"
+    DUMP_PATH = Path("C:/temp_sfcs_data/")
     SIZE_LIMITS_MB = (500, 1e4)
 
     def __init__(self):
@@ -219,7 +219,7 @@ class CorrFuncTDC(TDCPhotonData):
         print("\nLoading FPGA data from hard drive:", end=" ")
         file_paths = file_utilities.prepare_file_paths(file_path_template, file_selection)
         n_files = len(file_paths)
-        _, self.template = os.path.split(file_path_template)
+        *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("_[*]", "", self.template)
 
         for idx, file_path in enumerate(file_paths):
@@ -777,14 +777,12 @@ class CorrFuncTDC(TDCPhotonData):
                         f"Loading dumped data '{self.name_on_disk}' from '{self.DUMP_PATH}'."
                     )
                     with suppress(FileNotFoundError):
-                        self.data = file_utilities.load_pkl(
-                            os.path.join(self.DUMP_PATH + self.name_on_disk)
-                        )
+                        self.data = file_utilities.load_pkl(self.DUMP_PATH / self.name_on_disk)
                         self.is_data_dumped = False
             else:  # dumping data
                 is_saved = file_utilities.save_object_to_disk(
                     self.data,
-                    os.path.join(self.DUMP_PATH, self.name_on_disk),
+                    self.DUMP_PATH / self.name_on_disk,
                     size_limits_mb=self.SIZE_LIMITS_MB,
                 )
                 if is_saved:

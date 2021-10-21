@@ -2,10 +2,9 @@
 
 import copy
 import functools
-import glob
-import os
 import pickle
 import re
+from pathlib import Path
 from typing import Callable, List, Set
 
 import numpy as np
@@ -180,8 +179,8 @@ def save_object_to_disk(obj, file_path, size_limits_mb=None) -> bool:
         if not (lower_limit_mb < disk_size_mb < upper_limit_mb):
             return False
 
-    dir_path, _ = os.path.split(file_path)
-    os.makedirs(dir_path, exist_ok=True)
+    dir_path = Path(file_path).parent
+    Path.mkdir(dir_path, parents=True, exist_ok=True)
     with open(file_path, "wb") as f:
         pickle.dump(obj, f)
     return True
@@ -198,9 +197,9 @@ def save_processed_solution_meas(tdc_obj, dir_path) -> None:
         if p.runtime.max() <= np.iinfo(np.int32).max:
             p.runtime = p.runtime.astype(np.int32)
 
-    dir_path = os.path.join(dir_path, "processed")
+    dir_path = Path(dir_path) / "processed"
     file_name = re.sub("_[*]", "", tdc_obj.template)
-    file_path = os.path.join(dir_path, file_name)
+    file_path = dir_path / file_name
     save_object_to_disk(tdc_obj, file_path)
 
     # return to int64 (the actual object was changed!)
@@ -220,14 +219,14 @@ def load_processed_solution_measurement(file_path):
     return tdc_obj
 
 
-def load_file_dict(file_path: str):
+def load_file_dict(file_path: Path):
     """
     Load files according to extension,
     Allow backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files),
     use defaults for legacy files where 'system_info' or 'after_pulse_param' is not iterable (therefore old).
     """
 
-    ext = file_extension(file_path)
+    ext = file_path.suffix
     if ext == ".pkl":
         file_dict = translate_dict_keys(load_pkl(file_path), legacy_python_trans_dict)
     elif ext == ".mat":
@@ -381,13 +380,7 @@ def load_pkl(file_path: str) -> dict:
         return pickle.load(f)
 
 
-def file_extension(file_path: str) -> str:
-    """Returns the file extension as a string, i.e. file_extension('Path/file.ext') -> '.ext'."""
-
-    return re.split("(\\.[a-z]{3})$", file_path, maxsplit=1)[1]
-
-
-def sort_file_paths_by_file_number(file_paths: List[str]) -> List[str]:
+def sort_file_paths_by_file_number(file_paths: List[Path]) -> List[Path]:
     """
     Returns a path list, sorted according to file number (ascending).
     Works for file paths of the following format:
@@ -397,7 +390,7 @@ def sort_file_paths_by_file_number(file_paths: List[str]) -> List[str]:
 
     return sorted(
         file_paths,
-        key=lambda file_path: int(re.split(f"(\\d+){file_extension(file_paths[0])}", file_path)[1]),
+        key=lambda file_path: int(re.split("(\\d+)$", file_path.stem)[1]),
     )
 
 
@@ -435,10 +428,12 @@ def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
     return file_idxs, choice
 
 
-def prepare_file_paths(file_path_template: str, file_selection: str) -> List[str]:
+def prepare_file_paths(file_path_template: Path, file_selection: str) -> List[Path]:
     """Doc."""
 
-    file_paths = sort_file_paths_by_file_number(glob.glob(file_path_template))
+    dir_path, file_template = file_path_template.parent, file_path_template.name
+    unsorted_paths = list(dir_path.glob(file_template))
+    file_paths = sort_file_paths_by_file_number(unsorted_paths)
     if not file_paths:
         raise FileNotFoundError(f"File template path ('{file_path_template}') does not exist!")
 
