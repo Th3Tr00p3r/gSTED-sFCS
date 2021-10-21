@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-from scipy import ndimage, stats
-from skimage import filters as skifilt
-from skimage import morphology
+import scipy
+import skimage
 
 from data_analysis.image import ImageData
 from data_analysis.photon_data import TDCPhotonData
@@ -929,17 +928,17 @@ def fix_data_shift(cnt) -> int:
 def threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
     """Doc."""
 
-    thresh = skifilt.threshold_multiotsu(
-        skifilt.median(img).astype(np.float32), otsu_classes, nbins=n_bins
+    thresh = skimage.filter.threshold_multiotsu(
+        skimage.filter.median(img).astype(np.float32), otsu_classes, nbins=n_bins
     )  # minor filtering of outliers
     cnt_dig = np.digitize(img, bins=thresh)
     plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
-    std_plateau = stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
+    std_plateau = scipy.stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
     dev_cnt = img - plateau_lvl
     bw = dev_cnt > -std_plateau
-    bw = ndimage.binary_fill_holes(bw)
-    disk_open = morphology.selem.disk(radius=disk_radius)
-    bw = morphology.opening(bw, selem=disk_open)
+    bw = scipy.ndimage.binary_fill_holes(bw)
+    disk_open = skimage.morphology.selem.disk(radius=disk_radius)
+    bw = skimage.morphology.opening(bw, selem=disk_open)
     return bw
 
 

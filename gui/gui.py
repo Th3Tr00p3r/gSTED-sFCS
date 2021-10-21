@@ -460,21 +460,15 @@ class CamWin(PyQt5.QtWidgets.QWidget):
         self._loop = app.loop
 
         # add matplotlib-ready widget (canvas) for showing camera output
-        self.ImgDisp = Display(self.imageDisplayLayout, self)
+        self.ImgDisp1 = Display(self.imageDisplayLayout1, self)
+        self.ImgDisp2 = Display(self.imageDisplayLayout2, self)
+
+        self.shootButton1.released.connect(lambda: self.impl.shoot(1))
+        self.shootButton2.released.connect(lambda: self.impl.shoot(2))
+        self.videoButton1.released.connect(lambda: self.impl.toggle_video(1))
+        self.videoButton2.released.connect(lambda: self.impl.toggle_video(2))
 
     def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""
 
         self._loop.create_task(self.impl.clean_up())
-
-    @PyQt5.QtCore.pyqtSlot()
-    def on_shootButton_released(self) -> None:
-        """Doc."""
-
-        self.impl.shoot()
-
-    @PyQt5.QtCore.pyqtSlot()
-    def on_videoButton_released(self) -> None:
-        """Doc."""
-
-        self._loop.create_task(self.impl.toggle_video())
