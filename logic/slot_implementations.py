@@ -696,13 +696,23 @@ class MainWin:
         In case the folder contains legacy templates, they are sorted without a key.
         """
 
+        is_solution_type = "solution" in dir_path.parts
+
         pkl_template_set = {
-            re.sub("[0-9]+.pkl", "*.pkl", str(file_path.name))
+            (
+                re.sub("[0-9]+.pkl", "*.pkl", str(file_path.name))
+                if is_solution_type
+                else file_path.name
+            )
             for file_path in dir_path.iterdir()
             if file_path.suffix == ".pkl"
         }
         mat_template_set = {
-            re.sub("[0-9]+.mat", "*.mat", str(file_path.name))
+            (
+                re.sub("[0-9]+.mat", "*.mat", str(file_path.name))
+                if is_solution_type
+                else file_path.name
+            )
             for file_path in dir_path.iterdir()
             if file_path.suffix == ".mat"
         }
