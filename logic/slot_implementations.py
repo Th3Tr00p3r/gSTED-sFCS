@@ -1,15 +1,14 @@
 """ GUI windows implementations module. """
 
 import asyncio
-import glob
 import logging
-import os
 import re
 import sys
 import webbrowser
 from collections.abc import Iterable
 from contextlib import contextmanager, suppress
 from datetime import datetime as dt
+from pathlib import Path
 from types import SimpleNamespace
 from typing import List, Tuple
 
@@ -55,7 +54,7 @@ class MainWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Loadout",
-            self._app.LOADOUT_DIR_PATH,
+            str(self._app.LOADOUT_DIR_PATH),
         )
         if file_path != "":
             wdgts.write_gui_to_file(self._gui, wdgts.MAIN_TYPES, file_path)
@@ -68,7 +67,7 @@ class MainWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Loadout",
-                self._app.LOADOUT_DIR_PATH,
+                str(self._app.LOADOUT_DIR_PATH),
             )
         if file_path != "":
             wdgts.read_file_to_gui(file_path, self._gui)
@@ -559,9 +558,9 @@ class MainWin:
         with suppress(AttributeError):
             file_dict = self._app.last_image_scans[self._app.curr_img_idx]
             file_name = f"{wdgt_coll.file_template}_{file_dict['laser_mode']}_{file_dict['scan_params']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
-            today_dir = os.path.join(wdgt_coll.save_path, dt.now().strftime("%d_%m_%Y"))
-            dir_path = os.path.join(today_dir, "image")
-            file_path = os.path.join(dir_path, re.sub("\\s", "_", file_name)) + ".pkl"
+            today_dir = Path(wdgt_coll.save_path) / dt.now().strftime("%d_%m_%Y")
+            dir_path = today_dir / "image"
+            file_path = dir_path / re.sub("\\s", "_", file_name) / ".pkl"
             file_utilities.save_object_to_disk(file_dict, file_path)
             logging.debug(f"Saved measurement file: '{file_path}'.")
 
@@ -689,7 +688,7 @@ class MainWin:
             dir_days = helper.dir_date_parts(save_path, sub_dir, year=year, month=month)
             days_combobox.addItems(dir_days)
 
-    def pkl_and_mat_templates(self, dir_path: str) -> List[str]:
+    def pkl_and_mat_templates(self, dir_path: Path) -> List[str]:
         """
         Accepts a directory path and returns a list of file templates
         ending in the form '*.pkl' or '*.mat' where * is any number.
@@ -697,17 +696,15 @@ class MainWin:
         In case the folder contains legacy templates, they are sorted without a key.
         """
 
-        is_solution_type = "solution" in dir_path
-
         pkl_template_set = {
-            (re.sub("[0-9]+.pkl", "*.pkl", item) if is_solution_type else item)
-            for item in os.listdir(dir_path)
-            if item.endswith(".pkl")
+            re.sub("[0-9]+.pkl", "*.pkl", str(file_path.name))
+            for file_path in dir_path.iterdir()
+            if file_path.suffix == ".pkl"
         }
         mat_template_set = {
-            (re.sub("[0-9]+.mat", "*.mat", item) if is_solution_type else item)
-            for item in os.listdir(dir_path)
-            if item.endswith(".mat")
+            re.sub("[0-9]+.mat", "*.mat", str(file_path.name))
+            for file_path in dir_path.iterdir()
+            if file_path.suffix == ".mat"
         }
         try:
             sorted_templates = sorted(
@@ -741,13 +738,14 @@ class MainWin:
             templates = self.pkl_and_mat_templates(self.current_date_type_dir_path())
             templates_combobox.addItems(templates)
 
-    def show_num_files(self, template) -> None:
+    def show_num_files(self, template: str) -> None:
         """Doc."""
 
-        n_files_wdgt = wdgts.DATA_IMPORT_COLL.n_files
-        dir_path = self.current_date_type_dir_path()
-        n_files = len(glob.glob(os.path.join(dir_path, template)))
-        n_files_wdgt.set(f"({n_files} Files)")
+        if template:
+            n_files_wdgt = wdgts.DATA_IMPORT_COLL.n_files
+            dir_path = Path(self.current_date_type_dir_path())
+            n_files = sum(1 for file_path in dir_path.glob(template))
+            n_files_wdgt.set(f"({n_files} Files)")
 
     def cycle_through_data_templates(self, dir: str) -> None:
         """Cycle through the daily data templates in order (next or previous)"""
@@ -793,13 +791,13 @@ class MainWin:
         new_template = re.sub(curr_template_prefix, new_template_prefix, curr_template, count=1)
 
         # check if new template already exists (unlikely)
-        if glob.glob(os.path.join(dir_path, new_template)):
+        if dir_path.glob(new_template):
             logging.warning(
                 f"New template '{new_template}' already exists in '{dir_path}'. Operation canceled."
             )
             return
         # check if current template doesn't exists (can only happen if deleted manually between discovering the template and running this function)
-        if not (curr_filenames := glob.glob(os.path.join(dir_path, curr_template))):
+        if not (curr_filenames := dir_path.glob(curr_template)):
             logging.warning("Current template is missing! (Probably manually deleted)")
             return
 
@@ -817,21 +815,18 @@ class MainWin:
         ]
         # rename the files
         [
-            os.rename(curr_filename, new_filename)
+            Path(curr_filename).rename(new_filename)
             for curr_filename, new_filename in zip(curr_filenames, new_filenames)
         ]
         # rename the log file, if applicable
         with suppress(FileNotFoundError):
-            os.rename(
-                os.path.join(dir_path, curr_template[:-6] + ".log"),
-                os.path.join(dir_path, new_template[:-6] + ".log"),
-            )
+            (dir_path / curr_template[:-6] / ".log").rename(dir_path / new_template[:-6] / ".log")
 
         # refresh templates
         day = data_import_wdgts.data_days
         self.populate_data_templates_from_day(day)
 
-    def current_date_type_dir_path(self) -> str:
+    def current_date_type_dir_path(self) -> Path:
         """Returns path to directory of currently selected date and measurement type"""
 
         import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
@@ -844,14 +839,14 @@ class MainWin:
             meas_settings = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
         elif import_wdgts.is_solution_type:
             meas_settings = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app)
-        save_path = meas_settings.save_path
+        save_path = Path(meas_settings.save_path)
         sub_dir = meas_settings.sub_dir_name
-        return os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir)
+        return save_path / f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}" / sub_dir
 
     def open_data_dir(self) -> None:
         """Doc."""
 
-        if os.path.isdir(dir_path := self.current_date_type_dir_path()):
+        if (dir_path := self.current_date_type_dir_path()).is_dir():
             webbrowser.open(dir_path)
         else:
             # dir was deleted, refresh all dates
@@ -866,14 +861,14 @@ class MainWin:
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
         with suppress(AttributeError, TypeError, FileNotFoundError):
             # no directories found
-            file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
+            file_path = self.current_date_type_dir_path() / log_filename
             helper.write_list_to_file(file_path, text_lines)
             self.update_dir_log_wdgt(curr_template)
 
     def get_daily_alignment(self):
         """Doc."""
 
-        date_dir_path = re.sub("(solution|image)", "", self.current_date_type_dir_path())
+        date_dir_path = Path(re.sub("(solution|image)", "", str(self.current_date_type_dir_path())))
 
         try:
             # TODO: make this work for multiple templates (exc and sted), add both to log file and also the ratios
@@ -890,7 +885,7 @@ class MainWin:
             corr_func_tdc = CorrFuncTDC()
             try:
                 corr_func_tdc.read_fpga_data(
-                    os.path.join(date_dir_path, template),
+                    date_dir_path / template,
                     should_plot=False,
                 )
                 corr_func_tdc.correlate_and_average(cf_name=data_type)
@@ -950,7 +945,7 @@ class MainWin:
             log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
         elif DATA_IMPORT_COLL.is_image_type:
             log_filename = re.sub("\\.\\w{3}", ".log", template)
-        file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
+        file_path = self.current_date_type_dir_path() / log_filename
 
         try:  # load the log file in path
             text_lines = helper.read_file_to_list(file_path)
@@ -977,7 +972,7 @@ class MainWin:
             # import the data
             try:
                 image_tdc = ImageTDC()
-                image_tdc.read_image_data(os.path.join(self.current_date_type_dir_path(), template))
+                image_tdc.read_image_data(self.current_date_type_dir_path() / template)
             except FileNotFoundError:
                 self.switch_data_type()
                 return
@@ -999,11 +994,11 @@ class MainWin:
             return
 
         if import_wdgts.sol_use_processed:
-            file_path = os.path.join(curr_dir, "processed", re.sub("_[*]", "", current_template))
+            file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
 
         with self._app.pause_ai_ci():
 
-            if import_wdgts.sol_use_processed and os.path.isfile(file_path):
+            if import_wdgts.sol_use_processed and file_path.is_file():
                 print(f"Loading processed data '{current_template}' from hard drive...", end=" ")
                 corr_func_tdc = file_utilities.load_processed_solution_measurement(file_path)
                 print("Done.")
@@ -1026,7 +1021,7 @@ class MainWin:
                         # AttributeError - No directories found
                         corr_func_tdc = CorrFuncTDC()
                         corr_func_tdc.read_fpga_data(
-                            os.path.join(curr_dir, current_template),
+                            curr_dir / current_template,
                             file_selection=sol_file_selection,
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
                             should_plot=sol_analysis_wdgts.external_plotting,
@@ -1281,19 +1276,19 @@ class MainWin:
         if pressed == dialog.NO:
             return
 
-        file_template_path = os.path.join(current_dir_path, current_template)
-        file_paths = file_utilities.sort_file_paths_by_file_number(glob.glob(file_template_path))
+        unsorted_paths = list(current_dir_path.glob(current_template))
+        file_paths = file_utilities.sort_file_paths_by_file_number(unsorted_paths)
 
         print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
 
         for idx, file_path in enumerate(file_paths):
             file_dict = file_utilities.load_file_dict(file_path)
-            mat_file_path = re.sub("\\.pkl", ".mat", file_path)
-            if "solution" in mat_file_path:
-                mat_file_path = re.sub("solution", r"solution\\matlab", mat_file_path)
-            elif "image" in mat_file_path:
-                mat_file_path = re.sub("image", r"image\\matlab", mat_file_path)
-            os.makedirs(os.path.join(current_dir_path, "matlab"), exist_ok=True)
+            mat_file_path_str = re.sub("\\.pkl", ".mat", str(file_path))
+            if "solution" in mat_file_path_str:
+                mat_file_path = Path(re.sub("solution", r"solution\\matlab", mat_file_path_str))
+            elif "image" in mat_file_path_str:
+                mat_file_path = Path(re.sub("image", r"image\\matlab", mat_file_path_str))
+            Path.mkdir(current_dir_path / "matlab", parents=True, exist_ok=True)
             file_utilities.save_mat(file_dict, mat_file_path)
             print(f"({idx+1})", end=" ")
 
@@ -1370,7 +1365,7 @@ class SettWin:
                 self._app.SETTINGS_DIR_PATH,
             )
         if file_path != "":
-            self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
+            self._gui.frame.findChild(QWidget, "settingsFileName").setText(str(file_path))
             wdgts.read_file_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
 

@@ -2,10 +2,10 @@
 
 import logging
 import logging.config
-import os
 import shutil
 from collections import deque
 from contextlib import contextmanager, suppress
+from pathlib import Path
 from types import SimpleNamespace
 
 import yaml
@@ -23,11 +23,11 @@ from utilities.errors import DeviceError
 class App:
     """Doc."""
 
-    SETTINGS_DIR_PATH = "./settings/"
-    LOADOUT_DIR_PATH = os.path.join(SETTINGS_DIR_PATH, "loadouts/")
-    DEFAULT_LOADOUT_FILE_PATH = os.path.join(LOADOUT_DIR_PATH, "default_loadout")
-    DEFAULT_SETTINGS_FILE_PATH = os.path.join(SETTINGS_DIR_PATH, "default_settings")
-    DEFAULT_LOG_PATH = "./log/"
+    SETTINGS_DIR_PATH = Path("./settings/")
+    LOADOUT_DIR_PATH = SETTINGS_DIR_PATH / "loadouts/"
+    DEFAULT_LOADOUT_FILE_PATH = LOADOUT_DIR_PATH / "default_loadout"
+    DEFAULT_SETTINGS_FILE_PATH = SETTINGS_DIR_PATH / "default_settings"
+    DEFAULT_LOG_PATH = Path("./log/")
     DVC_NICKS = (
         "exc_laser",
         "dep_shutter",
@@ -117,10 +117,10 @@ class App:
         and ensure folder and initial files exist.
         """
 
-        os.makedirs(self.DEFAULT_LOG_PATH, exist_ok=True)
+        Path.mkdir(self.DEFAULT_LOG_PATH, parents=True, exist_ok=True)
         init_log_file_list = ["debug", "log"]
         for init_log_file in init_log_file_list:
-            file_path = os.path.join(self.DEFAULT_LOG_PATH, init_log_file)
+            file_path = self.DEFAULT_LOG_PATH / init_log_file
             open(file_path, "a").close()
 
         with open("logging_config.yaml", "r") as f:
@@ -131,20 +131,20 @@ class App:
         """Doc."""
 
         for gui_object_name in {"dataPath", "camDataPath"}:
-            rel_path = getattr(self.gui.settings, gui_object_name).text()
-            os.makedirs(rel_path, exist_ok=True)
+            rel_path = Path(getattr(self.gui.settings, gui_object_name).text())
+            Path.mkdir(rel_path, parents=True, exist_ok=True)
 
     def default_settings_path(self) -> str:
         """Doc."""
         try:
-            with open(os.path.join(self.SETTINGS_DIR_PATH, "default_settings_choice"), "r") as f:
-                return os.path.join(self.SETTINGS_DIR_PATH, f.readline())
+            with open(self.SETTINGS_DIR_PATH / "default_settings_choice", "r") as f:
+                return self.SETTINGS_DIR_PATH / f.readline()
         except FileNotFoundError:
             print(
                 "Warning - default settings choice file not found! using 'default_settings_lab'.",
                 end=" ",
             )
-            return os.path.join(self.SETTINGS_DIR_PATH, "default_settings_lab")
+            return self.SETTINGS_DIR_PATH / "default_settings_lab"
 
     def init_devices(self):
         """
