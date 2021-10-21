@@ -3,12 +3,12 @@
 import asyncio
 import datetime
 import logging
-import os
 import re
 import sys
 import time
 from contextlib import suppress
 from datetime import datetime as dt
+from pathlib import Path
 from types import SimpleNamespace
 
 import nidaqmx.constants as ni_consts
@@ -144,19 +144,19 @@ class Measurement:
         Note: does not handle overnight measurements during which the date changes
         """
 
-        today_dir = os.path.join(self.save_path, dt.now().strftime("%d_%m_%Y"))
+        today_dir = Path(self.save_path) / dt.now().strftime("%d_%m_%Y")
 
         if self.type == "SFCSSolution":
             if self.final:
                 save_path = today_dir
             else:
-                save_path = os.path.join(today_dir, "solution")
+                save_path = today_dir / "solution"
         elif self.type == "SFCSImage":
-            save_path = os.path.join(today_dir, "image")
+            save_path = today_dir / "image"
         else:
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
-        file_path = os.path.join(save_path, re.sub("\\s", "_", file_name)) + ".pkl"
+        file_path = save_path / re.sub("\\s", "_", file_name) / ".pkl"
 
         file_utilities.save_object_to_disk(data_dict, file_path)
         logging.debug(f"Saved measurement file: '{file_path}'.")
