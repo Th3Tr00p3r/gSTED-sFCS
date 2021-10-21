@@ -1,5 +1,6 @@
 """Drivers Module."""
 
+import asyncio
 import re
 from contextlib import suppress
 from types import SimpleNamespace
@@ -15,6 +16,7 @@ from nidaqmx.stream_readers import (
 )
 
 import utilities.helper as helper
+from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import IOError
 
 
@@ -401,9 +403,13 @@ class Instrumental:
         else:
             self._inst.stop_live_video()
 
-    def get_latest_frame(self):
+    async def get_latest_frame(self):
         """Doc."""
 
+        while 1:
+            pass
         frame_ready = self._inst.wait_for_frame(timeout="0 ms")
         if frame_ready:
             return self._inst.latest_frame(copy=False)
+        else:
+            asyncio.sleep(TIMEOUT_INTERVAL)
