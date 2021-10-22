@@ -53,7 +53,7 @@ class Display:
         with self._show_internal_ax(show_axis=False) as ax:
             ax.plot(x, y, "k", lw=0.3)
 
-    def display_image(self, image: np.ndarray, axis=True, cursor=False, *args, **kwargs):
+    def display_image(self, image: np.ndarray, cursor=False, *args, **kwargs):
         """Doc."""
 
         with self._show_internal_ax(

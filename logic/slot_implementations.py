@@ -1,6 +1,5 @@
 """ GUI windows implementations module. """
 
-import asyncio
 import logging
 import re
 import sys
@@ -1383,59 +1382,65 @@ class SettWin:
 class CamWin:
     """Doc."""
 
+    N_CAMERAS = 2
+
     def __init__(self, gui, app):
         """Doc."""
 
         self._app = app
         self._gui = gui
-        self._cam1 = None
-        self._cam2 = None
-        self.is_video_on = False
 
     def initialize_cameras(self):
         """Doc."""
 
-        self._cam = self._app.devices.camera
-        self._app.gui.main.impl.dvc_toggle("camera")
-        logging.debug("Camera connection opened")
+        self.cameras = [None] * self.N_CAMERAS
+        dvcs = self._app.dvcs
+        attrs = dvcs.DEVICE_ATTR_DICT["camera"]
+        for idx, nick in enumerate(f"cam_{num}" for num in range(self.N_CAMERAS)):
+            print(f"Initializing {attrs.log_ref} '{nick}'...", end=" ")
+            dvc_class = getattr(dvcs, attrs.class_name)
+            param_dict = attrs.param_widgets.hold_widgets(app=self).read_gui_to_obj(self, "dict")
+            param_dict["nick"] = nick
+            param_dict["log_ref"] = attrs.log_ref
+            param_dict["led_icon"] = self.icon_dict[f"led_{attrs.led_color}"]
+            param_dict["error_display"] = wdgts.QtWidgetAccess(
+                "deviceErrorDisplay", "QLineEdit", "main", True
+            ).hold_widget(self.gui.main)
+            self.cameras[idx] = dvc_class(param_dict)
+            print("Done.")
+
+    #        logging.debug("Camera connection opened")
 
     async def clean_up(self):
         """clean up before closing window"""
 
-        if self._cam is not None:
-            await self.toggle_video(keep_off=True)
-            self._app.gui.main.impl.dvc_toggle("camera")
-            self._app.gui.main.actionCamera_Control.setEnabled(True)
-            self._cam1 = None
-            self._cam2 = None
-            logging.debug("Camera connections closed")
+        [camera.close() for camera in self.cameras]
+        self._app.gui.main.actionCamera_Control.setEnabled(True)
+        logging.debug("Camera connections closed")
 
-    async def toggle_video(self, keep_off=False):
+    def display_image(self, cam_num: int):
         """Doc."""
 
-        if not self.is_video_on and not keep_off:  # Turning video ON
+        self._gui.ImgDisp.display_image(self.cameras[cam_num].shoot(), cursor=True)
+        logging.info("Camera photo taken")
+
+    def display_video(self, cam_num: int):
+        """Doc."""
+
+        is_in_video_mode = self.cameras[cam_num].is_in_video_mode
+
+        if not is_in_video_mode:  # Turning video ON
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Video ON")
-            self.is_video_on = True
             logging.info("Camera video mode is ON")
-
-            while self.is_video_on:
-                self.shoot(verbose=False)
-                await asyncio.sleep(0.3)
 
         else:  # Turning video Off
             self._gui.videoButton.setStyleSheet(
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
             )
             self._gui.videoButton.setText("Start Video")
-            self.is_video_on = False
             logging.info("Camera video mode is OFF")
 
-    def shoot(self, cam_num: int, verbose=True):
-        """Doc."""
-
-        self._gui.ImgDisp.display_image(self._cam.grab_image(), cursor=True)
-        if verbose:
-            logging.info("Camera photo taken")
+        self.cameras[cam_num].is_in_video_mode = not is_in_video_mode
