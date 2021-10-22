@@ -378,7 +378,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
     def on_actionCamera_Control_triggered(self) -> None:
         """Instantiate 'CameraWindow' object and show it"""
 
-        self._loop.create_task(self.impl.open_camwin())
+        self.impl.open_camwin()
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_avgInterval_currentTextChanged(self, val: str) -> None:
@@ -463,10 +463,10 @@ class CamWin(PyQt5.QtWidgets.QWidget):
         self.ImgDisp1 = Display(self.imageDisplayLayout1, self)
         self.ImgDisp2 = Display(self.imageDisplayLayout2, self)
 
-        self.shootButton1.released.connect(lambda: self.impl.shoot(1))
-        self.shootButton2.released.connect(lambda: self.impl.shoot(2))
-        self.videoButton1.released.connect(lambda: self.impl.toggle_video(1))
-        self.videoButton2.released.connect(lambda: self.impl.toggle_video(2))
+        self.shootButton1.released.connect(lambda: self.impl.display_image(1))
+        self.shootButton2.released.connect(lambda: self.impl.display_image(2))
+        self.videoButton1.released.connect(lambda: self.impl.display_video(1))
+        self.videoButton2.released.connect(lambda: self.impl.display_video(2))
 
     def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""
