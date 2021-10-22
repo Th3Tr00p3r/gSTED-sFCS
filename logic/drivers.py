@@ -380,7 +380,7 @@ class Instrumental:
             self._inst = uc480.UC480_Camera(reopen_policy="new")
         except Exception:
             # general 'Exception' is due to bad error handeling in instrumental-lib...
-            raise uc480.UC480Error(msg=f"{self.log_ref} '{self.nick}' disconnected.")
+            raise IOError(f"{self.log_ref} disconnected.")
 
     def close_instrument(self):
         """Doc."""

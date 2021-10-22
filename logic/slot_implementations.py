@@ -137,7 +137,7 @@ class MainWin:
             "ledShutter": "dep_shutter",
             "ledStage": "stage",
             "ledUm232h": "UM232H",
-            "ledCam": "camera",
+            "ledCam": "camera_1",
             "ledScn": "scanners",
             "ledCounter": "photon_detector",
             "ledPxlClk": "pixel_clock",
@@ -388,13 +388,13 @@ class MainWin:
         self._app.gui.settings.show()
         self._app.gui.settings.activateWindow()
 
-    async def open_camwin(self):
+    def open_camwin(self):
         """Doc."""
 
         self._gui.actionCamera_Control.setEnabled(False)
         self._app.gui.camera.show()
         self._app.gui.camera.activateWindow()
-        self._app.gui.camera.impl.open_instrument()
+        self._app.gui.camera.impl.initialize_cameras()
 
     def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
@@ -1389,58 +1389,58 @@ class CamWin:
 
         self._app = app
         self._gui = gui
+        self.cameras = None
 
     def initialize_cameras(self):
         """Doc."""
 
-        self.cameras = [None] * self.N_CAMERAS
-        dvcs = self._app.dvcs
-        attrs = dvcs.DEVICE_ATTR_DICT["camera"]
-        for idx, nick in enumerate(f"cam_{num}" for num in range(self.N_CAMERAS)):
-            print(f"Initializing {attrs.log_ref} '{nick}'...", end=" ")
-            dvc_class = getattr(dvcs, attrs.class_name)
-            param_dict = attrs.param_widgets.hold_widgets(app=self).read_gui_to_obj(self, "dict")
-            param_dict["nick"] = nick
-            param_dict["log_ref"] = attrs.log_ref
-            param_dict["led_icon"] = self.icon_dict[f"led_{attrs.led_color}"]
-            param_dict["error_display"] = wdgts.QtWidgetAccess(
-                "deviceErrorDisplay", "QLineEdit", "main", True
-            ).hold_widget(self.gui.main)
-            self.cameras[idx] = dvc_class(param_dict)
-            print("Done.")
-
-    #        logging.debug("Camera connection opened")
+        if not self.cameras:
+            cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
+            self.cameras = [cam for cam in cameras if cam.error_dict is None and cam.open()]
 
     async def clean_up(self):
         """clean up before closing window"""
 
         [camera.close() for camera in self.cameras]
+        self.cameras = None
         self._app.gui.main.actionCamera_Control.setEnabled(True)
         logging.debug("Camera connections closed")
 
     def display_image(self, cam_num: int):
         """Doc."""
 
-        self._gui.ImgDisp.display_image(self.cameras[cam_num].shoot(), cursor=True)
+        if cam_num > len(self.cameras):
+            logging.info(f"Camera {cam_num} not initiated properly (probably disconnected).")
+            return
+
+        getattr(self._gui, f"ImgDisp{cam_num}").display_image(
+            self.cameras[cam_num - 1].grab_image(), cursor=True
+        )
         logging.info("Camera photo taken")
 
     def display_video(self, cam_num: int):
         """Doc."""
 
-        is_in_video_mode = self.cameras[cam_num].is_in_video_mode
+        if cam_num > len(self.cameras):
+            logging.info(f"Camera {cam_num} not initiated properly (probably disconnected).")
+            return
 
+        camera = self.cameras[cam_num - 1]
+        is_in_video_mode = camera.is_in_video_mode
+
+        video_button_wdgt = getattr(self._gui, f"videoButton{cam_num}")
         if not is_in_video_mode:  # Turning video ON
-            self._gui.videoButton.setStyleSheet(
+            video_button_wdgt.setStyleSheet(
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
             )
-            self._gui.videoButton.setText("Video ON")
+            video_button_wdgt.setText("Video ON")
             logging.info("Camera video mode is ON")
 
         else:  # Turning video Off
-            self._gui.videoButton.setStyleSheet(
+            video_button_wdgt.setStyleSheet(
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
             )
-            self._gui.videoButton.setText("Start Video")
+            video_button_wdgt.setText("Start Video")
             logging.info("Camera video mode is OFF")
 
-        self.cameras[cam_num].is_in_video_mode = not is_in_video_mode
+        camera.is_in_video_mode = not is_in_video_mode

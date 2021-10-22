@@ -188,11 +188,11 @@ class Timeout:
 
         while self.not_finished:
 
-            for idx, camera in enumerate(self.camera_gui.impl.cameras):
-                if camera.is_in_video_mode:
-                    getattr(self.camera_gui, f"ImgDisp{idx}").display_image(
-                        camera.shoot(), cursor=True
-                    )
+            if cameras := self.camera_gui.impl.cameras:
+                # AttributeError - cameras not yet initialized
+                for idx, camera in enumerate(cameras):
+                    if camera.is_in_video_mode:
+                        self.camera_gui.impl.display_image(idx + 1)
 
             await asyncio.sleep(GUI_UPDATE_INTERVAL)
 

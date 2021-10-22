@@ -756,31 +756,36 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         super().__init__(
             param_dict,
         )
-        self.open_instrument()
-        self.state = True
         self.is_in_video_mode = False
+        self.is_connected = False
+
+    def open(self) -> bool:
+        """Doc."""
+
+        try:
+            self.open_instrument()
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+            return False
+        else:
+            self.is_connected = True
+            return True
 
     def close(self) -> None:
         """Doc."""
 
-        self.state = False
-        self.is_in_video_mode = False
         self.close_instrument()
+        self.is_in_video_mode = False
+        self.is_connected = False
 
-    def shoot(self) -> np.ndarray:
+    async def toggle_video(self, is_being_turned_on: bool):
         """Doc."""
 
-        return self.grab_image()
-
-
-#    async def toggle_video(self, is_being_turned_on: bool):
-#        """Doc."""
-#
-#        if is_being_turned_on:
-#            is_in_video_mode = True
-#            while is_in_video_mode:
-#                self.latest_frame = self.get_latest_frame()
-#                await asyncio.sleep(self.video_interval)
+        if is_being_turned_on:
+            is_in_video_mode = True
+            while is_in_video_mode:
+                self.latest_frame = self.get_latest_frame()
+                await asyncio.sleep(self.video_interval)
 
 
 @dataclass
@@ -860,9 +865,17 @@ DEVICE_ATTR_DICT = {
             n_bytes=("um232NumBytes", "QSpinBox", "settings", False),
         ),
     ),
-    "camera": DeviceAttrs(
+    "camera_1": DeviceAttrs(
         class_name="Camera",
-        log_ref="Camera",
+        log_ref="Camera 1",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledCam", "QIcon", "main", True),
+            model=("uc480PlaceHolder", "QSpinBox", "settings", False),
+        ),
+    ),
+    "camera_2": DeviceAttrs(
+        class_name="Camera",
+        log_ref="Camera 2",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCam", "QIcon", "main", True),
             model=("uc480PlaceHolder", "QSpinBox", "settings", False),
