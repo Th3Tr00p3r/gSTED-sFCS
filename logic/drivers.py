@@ -1,6 +1,5 @@
 """Drivers Module."""
 
-import asyncio
 import re
 from contextlib import suppress
 from types import SimpleNamespace
@@ -16,7 +15,6 @@ from nidaqmx.stream_readers import (
 )
 
 import utilities.helper as helper
-from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import IOError
 
 
@@ -382,7 +380,7 @@ class Instrumental:
             self._inst = uc480.UC480_Camera(reopen_policy="new")
         except Exception:
             # general 'Exception' is due to bad error handeling in instrumental-lib...
-            raise uc480.UC480Error(msg="Camera disconnected")
+            raise uc480.UC480Error(msg=f"{self.log_ref} '{self.nick}' disconnected.")
 
     def close_instrument(self):
         """Doc."""
@@ -395,21 +393,16 @@ class Instrumental:
 
         return self._inst.grab_image()
 
-    def toggle_vid(self, state: bool) -> None:
+    def toggle_video_mode(self, should_turn_on: bool) -> None:
         """Doc."""
 
-        if state is True:
+        if should_turn_on:
             self._inst.start_live_video()
         else:
             self._inst.stop_live_video()
 
-    async def get_latest_frame(self):
+    def get_latest_frame(self) -> np.ndarray:
         """Doc."""
 
-        while 1:
-            pass
-        frame_ready = self._inst.wait_for_frame(timeout="0 ms")
-        if frame_ready:
-            return self._inst.latest_frame(copy=False)
-        else:
-            asyncio.sleep(TIMEOUT_INTERVAL)
+        #        if self._inst.wait_for_frame(timeout="0 ms"):
+        return self._inst.latest_frame(copy=False)

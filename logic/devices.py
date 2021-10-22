@@ -17,7 +17,7 @@ from gui.dialog import Error
 from gui.icons import icons
 from gui.widgets import QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
-from logic.timeout import TIMEOUT_INTERVAL
+from logic.timeout import GUI_UPDATE_INTERVAL, TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 
 
@@ -750,20 +750,37 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
-    vid_intrvl = 0.3
+    video_interval = GUI_UPDATE_INTERVAL
 
-    def __init__(self, param_dict, loop, gui):
+    def __init__(self, param_dict):
         super().__init__(
             param_dict,
         )
         self.open_instrument()
         self.state = True
+        self.is_in_video_mode = False
 
     def close(self) -> None:
         """Doc."""
 
-        self.close_instrument()
         self.state = False
+        self.is_in_video_mode = False
+        self.close_instrument()
+
+    def shoot(self) -> np.ndarray:
+        """Doc."""
+
+        return self.grab_image()
+
+
+#    async def toggle_video(self, is_being_turned_on: bool):
+#        """Doc."""
+#
+#        if is_being_turned_on:
+#            is_in_video_mode = True
+#            while is_in_video_mode:
+#                self.latest_frame = self.get_latest_frame()
+#                await asyncio.sleep(self.video_interval)
 
 
 @dataclass
@@ -845,7 +862,6 @@ DEVICE_ATTR_DICT = {
     ),
     "camera": DeviceAttrs(
         class_name="Camera",
-        cls_xtra_args=["loop", "gui.camera"],
         log_ref="Camera",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCam", "QIcon", "main", True),
