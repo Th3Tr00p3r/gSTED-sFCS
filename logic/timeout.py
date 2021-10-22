@@ -24,6 +24,7 @@ class Timeout:
 
         self._app = app
         self.main_gui = self._app.gui.main
+        self.camera_gui = self._app.gui.camera
 
         self.log_buffer_deque = deque([""], maxlen=50)
 
@@ -44,7 +45,8 @@ class Timeout:
             await asyncio.gather(
                 self._read_ci_and_ai(),
                 self._update_dep(),
-                self._update_gui(),
+                self._update_main_gui(),
+                self._update_camera_gui(),
             )
         except Exception as exc:
             err_hndlr(exc, sys._getframe(), locals())
@@ -68,7 +70,7 @@ class Timeout:
             fill_buffers()
             await asyncio.sleep(TIMEOUT_INTERVAL)
 
-    async def _update_gui(self) -> None:  # noqa: C901
+    async def _update_main_gui(self) -> None:  # noqa: C901
         """Doc."""
 
         def updt_scn_pos():
@@ -178,6 +180,19 @@ class Timeout:
 
             # log file widget
             update_log_wdgt()
+
+            await asyncio.sleep(GUI_UPDATE_INTERVAL)
+
+    async def _update_camera_gui(self) -> None:
+        """Doc."""
+
+        while self.not_finished:
+
+            for idx, camera in enumerate(self.camera_gui.impl.cameras):
+                if camera.is_in_video_mode:
+                    getattr(self.camera_gui, f"ImgDisp{idx}").display_image(
+                        camera.shoot(), cursor=True
+                    )
 
             await asyncio.sleep(GUI_UPDATE_INTERVAL)
 
