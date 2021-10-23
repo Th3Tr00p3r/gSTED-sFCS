@@ -377,10 +377,10 @@ class Instrumental:
         """Doc."""
 
         try:
-            self._inst = uc480.UC480_Camera(reopen_policy="new")
-        except Exception:
+            self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
+        except Exception as exc:
             # general 'Exception' is due to bad error handeling in instrumental-lib...
-            raise IOError(f"{self.log_ref} disconnected.")
+            raise IOError(f"{self.log_ref} disconnected - {exc}")
 
     def close_instrument(self):
         """Doc."""
@@ -404,5 +404,4 @@ class Instrumental:
     def get_latest_frame(self) -> np.ndarray:
         """Doc."""
 
-        #        if self._inst.wait_for_frame(timeout="0 ms"):
         return self._inst.latest_frame(copy=False)

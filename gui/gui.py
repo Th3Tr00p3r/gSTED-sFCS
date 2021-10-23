@@ -111,7 +111,6 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.ledCounter.clicked.connect(lambda: led_clicked(self))
         self.ledUm232h.clicked.connect(lambda: led_clicked(self))
         self.ledTdc.clicked.connect(lambda: led_clicked(self))
-        self.ledCam.clicked.connect(lambda: led_clicked(self))
         self.ledScn.clicked.connect(lambda: led_clicked(self))
 
         # Stage
@@ -453,7 +452,7 @@ class CamWin(PyQt5.QtWidgets.QWidget):
     def __init__(self, app) -> None:
         """Doc."""
 
-        super(CamWin, self).__init__(None, PyQt5.QtCore.Qt.WindowStaysOnTopHint)
+        super(CamWin, self).__init__(None)  # , PyQt5.QtCore.Qt.WindowStaysOnTopHint)
         PyQt5.uic.loadUi(self.UI_PATH, self)
         self.move(30, 180)
         self.impl = impl.CamWin(self, app)
@@ -468,7 +467,10 @@ class CamWin(PyQt5.QtWidgets.QWidget):
         self.videoButton1.released.connect(lambda: self.impl.display_video(1))
         self.videoButton2.released.connect(lambda: self.impl.display_video(2))
 
+        self.ledCam1.clicked.connect(lambda: self.impl.led_clicked(1))
+        self.ledCam2.clicked.connect(lambda: self.impl.led_clicked(2))
+
     def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""
 
-        self._loop.create_task(self.impl.clean_up())
+        self.impl.clean_up()

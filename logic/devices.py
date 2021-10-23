@@ -778,15 +778,6 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         self.is_in_video_mode = False
         self.is_connected = False
 
-    async def toggle_video(self, is_being_turned_on: bool):
-        """Doc."""
-
-        if is_being_turned_on:
-            is_in_video_mode = True
-            while is_in_video_mode:
-                self.latest_frame = self.get_latest_frame()
-                await asyncio.sleep(self.video_interval)
-
 
 @dataclass
 class DeviceAttrs:
@@ -869,16 +860,16 @@ DEVICE_ATTR_DICT = {
         class_name="Camera",
         log_ref="Camera 1",
         param_widgets=QtWidgetCollection(
-            led_widget=("ledCam", "QIcon", "main", True),
-            model=("uc480PlaceHolder", "QSpinBox", "settings", False),
+            led_widget=("ledCam1", "QIcon", "camera", True),
+            serial=("cam1Serial", "QLineEdit", "settings", False),
         ),
     ),
     "camera_2": DeviceAttrs(
         class_name="Camera",
         log_ref="Camera 2",
         param_widgets=QtWidgetCollection(
-            led_widget=("ledCam", "QIcon", "main", True),
-            model=("uc480PlaceHolder", "QSpinBox", "settings", False),
+            led_widget=("ledCam2", "QIcon", "camera", True),
+            serial=("cam2Serial", "QLineEdit", "settings", False),
         ),
     ),
     "scanners": DeviceAttrs(
