@@ -106,7 +106,7 @@
          </font>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>6</number>
         </property>
         <widget class="QWidget" name="data">
          <attribute name="title">
@@ -2411,43 +2411,65 @@
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="uc480">
+        <widget class="QWidget" name="cameras">
          <attribute name="title">
-          <string>UC480</string>
+          <string>Cameras</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_22">
           <item row="0" column="0">
-           <layout class="QVBoxLayout" name="verticalLayout_100">
+           <layout class="QHBoxLayout" name="horizontalLayout_14">
             <item>
-             <widget class="QLabel" name="label_88">
-              <property name="text">
-               <string>Place Holder</string>
+             <widget class="QGroupBox" name="groupBox_6">
+              <property name="title">
+               <string>Camera 1 (Vortex)</string>
               </property>
+              <layout class="QGridLayout" name="gridLayout_16">
+               <item row="0" column="0">
+                <layout class="QVBoxLayout" name="verticalLayout_5">
+                 <item>
+                  <widget class="QLabel" name="label">
+                   <property name="text">
+                    <string>Serial Number</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="cam1Serial">
+                   <property name="text">
+                    <string>4102835063</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
              </widget>
             </item>
             <item>
-             <widget class="QDoubleSpinBox" name="uc480PlaceHolder">
-              <property name="buttonSymbols">
-               <enum>QAbstractSpinBox::NoButtons</enum>
+             <widget class="QGroupBox" name="groupBox_16">
+              <property name="title">
+               <string>Camera 2 (BFP)</string>
               </property>
-              <property name="decimals">
-               <number>2</number>
-              </property>
-              <property name="minimum">
-               <double>0.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>5.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.010000000000000</double>
-              </property>
-              <property name="stepType">
-               <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-              </property>
-              <property name="value">
-               <double>0.000000000000000</double>
-              </property>
+              <layout class="QGridLayout" name="gridLayout_19">
+               <item row="0" column="0">
+                <layout class="QVBoxLayout" name="verticalLayout_9">
+                 <item>
+                  <widget class="QLabel" name="label_2">
+                   <property name="text">
+                    <string>Serial Number</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="cam2Serial">
+                   <property name="text">
+                    <string>4102737458</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
