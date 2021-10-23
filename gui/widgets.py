@@ -189,6 +189,7 @@ SETTINGS_TYPES = [
     "QComboBox",
     "QRadioButton",
     "QCheckBox",
+    "QTabWidget",
 ]
 
 # What to do with each widget class
@@ -221,7 +222,7 @@ LED_COLL = QtWidgetCollection(
     shutter=("ledShutter", "QIcon", "main", True),
     stage=("ledStage", "QIcon", "main", True),
     tdc=("ledTdc", "QIcon", "main", True),
-    cam=("ledCam", "QIcon", "main", True),
+    #    cam=("ledCam", "QIcon", "main", True),
     scnrs=("ledScn", "QIcon", "main", True),
     cntr=("ledCounter", "QIcon", "main", True),
     um232=("ledUm232h", "QIcon", "main", True),

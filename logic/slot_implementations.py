@@ -137,7 +137,6 @@ class MainWin:
             "ledShutter": "dep_shutter",
             "ledStage": "stage",
             "ledUm232h": "UM232H",
-            "ledCam": "camera_1",
             "ledScn": "scanners",
             "ledCounter": "photon_detector",
             "ledPxlClk": "pixel_clock",
@@ -1353,7 +1352,7 @@ class SettWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
-            self._app.SETTINGS_DIR_PATH,
+            str(self._app.SETTINGS_DIR_PATH),
         )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
@@ -1371,7 +1370,7 @@ class SettWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
-                self._app.SETTINGS_DIR_PATH,
+                str(self._app.SETTINGS_DIR_PATH),
             )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(str(file_path))
@@ -1381,8 +1380,6 @@ class SettWin:
 
 class CamWin:
     """Doc."""
-
-    N_CAMERAS = 2
 
     def __init__(self, gui, app):
         """Doc."""
@@ -1398,10 +1395,15 @@ class CamWin:
             cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
             self.cameras = [cam for cam in cameras if cam.error_dict is None and cam.open()]
 
-    async def clean_up(self):
+    def clean_up(self):
         """clean up before closing window"""
 
-        [camera.close() for camera in self.cameras]
+        # reset GUI video buttons
+        for cam_num in (1, 2):
+            self.video_button_gui_toggle(cam_num, False)
+
+        if self.cameras:
+            [camera.close() for camera in self.cameras]
         self.cameras = None
         self._app.gui.main.actionCamera_Control.setEnabled(True)
         logging.debug("Camera connections closed")
@@ -1413,10 +1415,15 @@ class CamWin:
             logging.info(f"Camera {cam_num} not initiated properly (probably disconnected).")
             return
 
-        getattr(self._gui, f"ImgDisp{cam_num}").display_image(
-            self.cameras[cam_num - 1].grab_image(), cursor=True
-        )
-        logging.info("Camera photo taken")
+        camera = self.cameras[cam_num - 1]
+
+        if camera.is_in_video_mode:
+            new_image = camera.get_latest_frame()
+        else:
+            new_image = camera.grab_image()
+
+        getattr(self._gui, f"ImgDisp{cam_num}").display_image(new_image, cursor=True)
+        logging.debug(f"Camera {cam_num} photo taken")
 
     def display_video(self, cam_num: int):
         """Doc."""
@@ -1427,20 +1434,34 @@ class CamWin:
 
         camera = self.cameras[cam_num - 1]
         is_in_video_mode = camera.is_in_video_mode
+        camera.is_in_video_mode = not is_in_video_mode
+        camera.toggle_video_mode(not is_in_video_mode)
+        self.video_button_gui_toggle(cam_num, not is_in_video_mode)
+        logging.info(f"Camera video mode is {'ON' if not is_in_video_mode else 'OFF'}")
+
+    def video_button_gui_toggle(self, cam_num: int, should_turn_on: bool) -> None:
+        """Doc."""
 
         video_button_wdgt = getattr(self._gui, f"videoButton{cam_num}")
-        if not is_in_video_mode:  # Turning video ON
+
+        if should_turn_on:
             video_button_wdgt.setStyleSheet(
                 "background-color: " "rgb(225, 245, 225); " "color: black;"
             )
             video_button_wdgt.setText("Video ON")
-            logging.info("Camera video mode is ON")
-
-        else:  # Turning video Off
+        else:
             video_button_wdgt.setStyleSheet(
                 "background-color: " "rgb(225, 225, 225); " "color: black;"
             )
             video_button_wdgt.setText("Start Video")
-            logging.info("Camera video mode is OFF")
 
-        camera.is_in_video_mode = not is_in_video_mode
+    def led_clicked(self, cam_num: int) -> None:
+        """Doc."""
+
+        dvc_nick = f"camera_{cam_num}"
+        error_dict = getattr(self._app.devices, dvc_nick).error_dict
+        if error_dict is not None:
+            dialog.Error(
+                **error_dict,
+                custom_title=helper.deep_getattr(self._app.devices, f"{dvc_nick}.log_ref"),
+            ).display()
