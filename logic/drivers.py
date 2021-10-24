@@ -379,7 +379,7 @@ class Instrumental:
         try:
             self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
         except Exception as exc:
-            # general 'Exception' is due to bad error handeling in instrumental-lib...
+            # general 'Exception' is due to bad exception handeling in instrumental-lib...
             raise IOError(f"{self.log_ref} disconnected - {exc}")
 
     def close_instrument(self):
@@ -391,17 +391,28 @@ class Instrumental:
     def grab_image(self) -> np.ndarray:
         """Doc."""
 
-        return self._inst.grab_image()
+        try:
+            return self._inst.grab_image()
+        except uc480.UC480Error:
+            raise IOError(f"{self.log_ref} disconnected after initialization.")
 
     def toggle_video_mode(self, should_turn_on: bool) -> None:
         """Doc."""
 
-        if should_turn_on:
-            self._inst.start_live_video()
+        try:
+            if should_turn_on:
+                self._inst.start_live_video()
+            else:
+                self._inst.stop_live_video()
+        except uc480.UC480Error:
+            raise IOError(f"{self.log_ref} disconnected after initialization.")
         else:
-            self._inst.stop_live_video()
+            self.is_in_video_mode = should_turn_on
 
     def get_latest_frame(self) -> np.ndarray:
         """Doc."""
 
-        return self._inst.latest_frame(copy=False)
+        try:
+            return self._inst.latest_frame(copy=False)
+        except uc480.UC480Error:
+            raise IOError(f"{self.log_ref} disconnected after initialization.")

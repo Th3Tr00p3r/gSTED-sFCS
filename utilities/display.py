@@ -56,6 +56,9 @@ class Display:
     def display_image(self, image: np.ndarray, cursor=False, *args, **kwargs):
         """Doc."""
 
+        if not isinstance(image, np.ndarray):
+            raise ValueError("Image must be of type numpy.ndarray")
+
         with self._show_internal_ax(
             fix_aspect=True,
             show_axis=False,

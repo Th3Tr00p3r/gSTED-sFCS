@@ -39,7 +39,7 @@
       </size>
      </property>
      <property name="title">
-      <string>Camera 1</string>
+      <string>Camera 1 (VPP)</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="0" column="0">
@@ -407,7 +407,7 @@ background-repeat: no-repeat;</string>
       </size>
      </property>
      <property name="title">
-      <string>Camera 2</string>
+      <string>Camera 2 (BFP)</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
       <item row="0" column="0">

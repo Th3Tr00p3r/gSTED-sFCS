@@ -188,13 +188,15 @@ class Timeout:
 
         while self.not_finished:
 
-            if cameras := self.camera_gui.impl.cameras:
-                # AttributeError - cameras not yet initialized
-                for idx, camera in enumerate(cameras):
-                    if camera.is_in_video_mode:
-                        self.camera_gui.impl.display_image(idx + 1)
+            with suppress(TypeError):
+                # TypeError - '.cameras' is None
+                [
+                    self.camera_gui.impl.display_image(idx + 1)
+                    for idx, camera in enumerate(self.camera_gui.impl.cameras)
+                    if camera is not None and camera.is_in_video_mode
+                ]
 
-            await asyncio.sleep(GUI_UPDATE_INTERVAL)
+            await asyncio.sleep(0.3)
 
     async def _update_dep(self) -> None:
         """Update depletion laser GUI"""
