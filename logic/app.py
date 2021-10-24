@@ -233,6 +233,11 @@ class App:
             wdgts.SWITCH_COLL.write_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
+            # camera LEDs
+            # TODO: make same as above (by using widget collections)
+            self.gui.camera.ledCam1.setIcon(self.icon_dict["led_off"])
+            self.gui.camera.ledCam2.setIcon(self.icon_dict["led_off"])
+
         if restart:
             logging.info("Restarting application.")
 
