@@ -757,26 +757,37 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             param_dict,
         )
         self.is_in_video_mode = False
-        self.is_connected = False
-
-    def open(self) -> bool:
-        """Doc."""
 
         try:
             self.open_instrument()
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-            return False
-        else:
-            self.is_connected = True
-            return True
 
     def close(self) -> None:
         """Doc."""
 
         self.close_instrument()
-        self.is_in_video_mode = False
-        self.is_connected = False
+
+    def get_image(self) -> np.ndarray:
+        """Doc."""
+
+        try:
+            if self.is_in_video_mode:
+                return self.get_latest_frame()
+            else:
+                return self.grab_image()
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+
+    def toggle_video(self, should_turn_on: bool) -> bool:
+        """Doc."""
+
+        try:
+            self.toggle_video_mode(should_turn_on)
+            return should_turn_on
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+            return not should_turn_on
 
 
 @dataclass
@@ -861,6 +872,7 @@ DEVICE_ATTR_DICT = {
         log_ref="Camera 1",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCam1", "QIcon", "camera", True),
+            display=("ImgDisp1", None, "camera", True),
             serial=("cam1Serial", "QLineEdit", "settings", False),
         ),
     ),
@@ -869,6 +881,7 @@ DEVICE_ATTR_DICT = {
         log_ref="Camera 2",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCam2", "QIcon", "camera", True),
+            display=("ImgDisp2", None, "camera", True),
             serial=("cam2Serial", "QLineEdit", "settings", False),
         ),
     ),

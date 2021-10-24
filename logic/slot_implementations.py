@@ -147,7 +147,7 @@ class MainWin:
         if error_dict is not None:
             dialog.Error(
                 **error_dict,
-                custom_title=helper.deep_getattr(self._app.devices, f"{dvc_nick}.log_ref"),
+                custom_title=getattr(self._app.devices, dvc_nick).log_ref,
             ).display()
 
     def dep_sett_apply(self):
@@ -287,10 +287,8 @@ class MainWin:
                     self._gui.startSolScanExc.setEnabled(False)
                     self._gui.startSolScanDep.setEnabled(False)
                     self._gui.startSolScanSted.setEnabled(False)
-                    helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setEnabled")(True)
-                    helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")(
-                        "Stop \nScan"
-                    )
+                    getattr(self._gui, f"startSolScan{laser_mode}").setEnabled(True)
+                    getattr(self._gui, f"startSolScan{laser_mode}").setText("Stop \nScan")
 
                     self._gui.solScanMaxFileSize.setEnabled(False)
                     self._gui.solScanDur.setEnabled(self._gui.repeatSolMeas.isChecked())
@@ -311,10 +309,8 @@ class MainWin:
                     self._gui.startImgScanExc.setEnabled(False)
                     self._gui.startImgScanDep.setEnabled(False)
                     self._gui.startImgScanSted.setEnabled(False)
-                    helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setEnabled")(True)
-                    helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")(
-                        "Stop \nScan"
-                    )
+                    getattr(self._gui, f"startImgScan{laser_mode}").setEnabled(True)
+                    getattr(self._gui, f"startImgScan{laser_mode}").setText("Stop \nScan")
 
                 self._app.loop.create_task(self._app.meas.run())
             else:
@@ -329,9 +325,7 @@ class MainWin:
                 self._gui.startSolScanExc.setEnabled(True)
                 self._gui.startSolScanDep.setEnabled(True)
                 self._gui.startSolScanSted.setEnabled(True)
-                helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")(
-                    f"{laser_mode} \nScan"
-                )
+                getattr(self._gui, f"startSolScan{laser_mode}").setText(f"{laser_mode} \nScan")
                 self._gui.impl.go_to_origin("XY")
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanDur.setEnabled(True)
@@ -342,9 +336,7 @@ class MainWin:
                 self._gui.startImgScanExc.setEnabled(True)
                 self._gui.startImgScanDep.setEnabled(True)
                 self._gui.startImgScanSted.setEnabled(True)
-                helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")(
-                    f"{laser_mode} \nScan"
-                )
+                getattr(self._gui, f"startImgScan{laser_mode}").setText(f"{laser_mode} \nScan")
 
             if self._app.meas.is_running:
                 # manual stop
@@ -1393,17 +1385,21 @@ class CamWin:
 
         if not self.cameras:
             cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
-            self.cameras = [cam for cam in cameras if cam.error_dict is None and cam.open()]
+            self.cameras = [(cam if cam.error_dict is None else None) for cam in cameras]
 
     def clean_up(self):
         """clean up before closing window"""
 
-        # reset GUI video buttons
-        for cam_num in (1, 2):
-            self.video_button_gui_toggle(cam_num, False)
+        # Turn off video
+        with suppress(TypeError):
+            # TypeError - self.cameras is None
+            for idx, camera in enumerate(self.cameras):
+                with suppress(AttributeError, DeviceError):
+                    # AttributeError - camera is None
+                    # DeviceError - error in camera
+                    camera.toggle_video(False)
+                self.video_button_gui_toggle(idx + 1, False)
 
-        if self.cameras:
-            [camera.close() for camera in self.cameras]
         self.cameras = None
         self._app.gui.main.actionCamera_Control.setEnabled(True)
         logging.debug("Camera connections closed")
@@ -1411,33 +1407,30 @@ class CamWin:
     def display_image(self, cam_num: int):
         """Doc."""
 
-        if cam_num > len(self.cameras):
-            logging.info(f"Camera {cam_num} not initiated properly (probably disconnected).")
+        if (camera := self.cameras[cam_num - 1]) is None:
             return
 
-        camera = self.cameras[cam_num - 1]
-
-        if camera.is_in_video_mode:
-            new_image = camera.get_latest_frame()
-        else:
-            new_image = camera.grab_image()
-
-        getattr(self._gui, f"ImgDisp{cam_num}").display_image(new_image, cursor=True)
-        logging.debug(f"Camera {cam_num} photo taken")
+        with suppress(DeviceError, ValueError, AttributeError):
+            # AttributeError - camera is None
+            # ValueError - new_image is None
+            # DeviceError - error in camera
+            new_image = camera.get_image()
+            camera.display.obj.display_image(new_image, cursor=True)
+            logging.debug(f"Camera {cam_num} photo taken")
 
     def display_video(self, cam_num: int):
         """Doc."""
 
-        if cam_num > len(self.cameras):
-            logging.info(f"Camera {cam_num} not initiated properly (probably disconnected).")
+        if (camera := self.cameras[cam_num - 1]) is None:
             return
 
-        camera = self.cameras[cam_num - 1]
-        is_in_video_mode = camera.is_in_video_mode
-        camera.is_in_video_mode = not is_in_video_mode
-        camera.toggle_video_mode(not is_in_video_mode)
-        self.video_button_gui_toggle(cam_num, not is_in_video_mode)
-        logging.info(f"Camera video mode is {'ON' if not is_in_video_mode else 'OFF'}")
+        with suppress(DeviceError, AttributeError):
+            # AttributeError - camera is None
+            # DeviceError - error in camera
+            is_in_video_mode = camera.is_in_video_mode
+            is_turned_on = camera.toggle_video(not is_in_video_mode)
+            self.video_button_gui_toggle(cam_num, is_turned_on)
+            logging.info(f"{camera.log_ref} video mode is {'ON' if is_turned_on else 'OFF'}")
 
     def video_button_gui_toggle(self, cam_num: int, should_turn_on: bool) -> None:
         """Doc."""
@@ -1463,5 +1456,5 @@ class CamWin:
         if error_dict is not None:
             dialog.Error(
                 **error_dict,
-                custom_title=helper.deep_getattr(self._app.devices, f"{dvc_nick}.log_ref"),
+                custom_title=getattr(self._app.devices, f"{dvc_nick}").log_ref,
             ).display()
