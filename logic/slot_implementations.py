@@ -489,7 +489,7 @@ class MainWin:
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
             img_meas_wdgts.image_wdgt.obj.display_image(image, cursor=True, cmap="bone")
-            if auto_cross:
+            if auto_cross and image.any():
                 img_meas_wdgts.image_wdgt.obj.ax.cursor.move_to_pos(auto_crosshair_position(image))
 
     def plane_choice_changed(self, plane_idx):
