@@ -1,7 +1,7 @@
 solScanFileTemplate,
-imgScanFileTemplate,img
 newTemplate,
 solImportFileSelectionPattern,1
+imgScanFileTemplate,img
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -12,26 +12,26 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
+spinBox,40
+scanImgFileNum,1
+solAnalysisRemoveWorstSpinner,0
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
-spinBox,40
-scanImgFileNum,1
-solAnalysisRemoveWorstSpinner,0
 depPow,130
 depCurr,1500
 stageSteps,250
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solScanDur,25.0
+doubleSpinBox_2,0.0
+solAnalysisRemoveOverSpinner,2.0
 imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
-doubleSpinBox_2,0.0
-solAnalysisRemoveOverSpinner,2.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -39,17 +39,17 @@ axisMoveUm,5.0
 solMeasPreset,Standard Alignment
 solScanType,static
 solScanDurUnits,seconds
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,10
 dataYear,2021
 dataDay,5
-dataTemplate,
+dataTemplate,sol_static_exc_181325_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates,
 comboBox_2,
 solAnalysisLifetime,Lifetime
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - actual counts per pixel
 avgInterval,5000
 solScanParamsStacked,2
 importStacked,1
@@ -72,12 +72,18 @@ posAxisZ,False
 posAxisY,False
 posAxisX,True
 numPlaneShownChoice,0
-tabWidget,2
+pixel_clock1,70
+framerate1,70
+exposure1,70
+pixel_clock2,70
+framerate2,70
+exposure2,70
+tabWidget,0
 tabWidget_2,1
-autoCrosshair,True
-alwaysSaveImg,False
 solDataExtPlot,False
 solDataFixShift,True
 solImportSaveProcessed,False
 solImportLoadProcessed,False
+autoCrosshair,True
+alwaysSaveImg,False
 scaleImgScan,299
