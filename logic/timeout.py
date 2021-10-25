@@ -7,7 +7,7 @@ from collections import deque
 from contextlib import suppress
 
 import utilities.helper as helper
-from utilities.errors import err_hndlr
+from utilities.errors import DeviceError, err_hndlr
 
 TIMEOUT_INTERVAL = 0.005  # 5 ms
 GUI_UPDATE_INTERVAL = 0.2  # 200 ms
@@ -24,7 +24,6 @@ class Timeout:
 
         self._app = app
         self.main_gui = self._app.gui.main
-        self.camera_gui = self._app.gui.camera
 
         self.log_buffer_deque = deque([""], maxlen=50)
 
@@ -46,7 +45,7 @@ class Timeout:
                 self._read_ci_and_ai(),
                 self._update_dep(),
                 self._update_main_gui(),
-                self._update_camera_gui(),
+                self._update_video(),
             )
         except Exception as exc:
             err_hndlr(exc, sys._getframe(), locals())
@@ -183,17 +182,18 @@ class Timeout:
 
             await asyncio.sleep(GUI_UPDATE_INTERVAL)
 
-    async def _update_camera_gui(self) -> None:
+    async def _update_video(self) -> None:
         """Doc."""
 
         while self.not_finished:
 
-            with suppress(TypeError):
-                # TypeError - '.cameras' is None
+            with suppress(DeviceError, TypeError):
+                # DeviceError - camera error
+                # TypeError - .cameras not yet initialized
                 [
-                    self.camera_gui.impl.display_image(idx + 1)
-                    for idx, camera in enumerate(self.camera_gui.impl.cameras)
-                    if camera is not None and camera.is_in_video_mode
+                    self.main_gui.impl.display_image(idx + 1)
+                    for idx, camera in enumerate(self.main_gui.impl.cameras)
+                    if camera.is_in_video_mode
                 ]
 
             await asyncio.sleep(0.3)
