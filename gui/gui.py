@@ -22,7 +22,6 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         super(MainWin, self).__init__()
         PyQt5.uic.loadUi(self.UI_PATH, self)
-        #        self.setFixedSize(self.layout().sizeHint())
         self.impl = impl.MainWin(self, app)
         self._loop = app.loop
 
@@ -197,7 +196,8 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.stageButtonsGroup.setEnabled(False)
 
         self.move(300, 30)
-        self.setFixedSize(1235, 956)
+        self.setFixedSize(1211, 946)
+        self.setMaximumSize(int(1e5), int(1e5))
 
     def on_calTdc_released(self) -> None:
         """Doc."""
@@ -415,13 +415,14 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         self.cameraDock.setVisible(is_toggled_on)
         if is_toggled_on:
-            self.setFixedSize(1685, 956)
+            self.setFixedSize(1661, 946)
             self.move(100, 30)
             self.impl.initialize_camera_dock()
         else:
-            self.setFixedSize(1235, 956)
+            self.setFixedSize(1211, 946)
             self.move(300, 30)
             [self.impl.toggle_video(cam_num, keep_off=True) for cam_num in (1, 2)]
+        self.setMaximumSize(int(1e5), int(1e5))
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_avgInterval_currentTextChanged(self, val: str) -> None:
