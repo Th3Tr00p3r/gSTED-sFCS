@@ -22,7 +22,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         super(MainWin, self).__init__()
         PyQt5.uic.loadUi(self.UI_PATH, self)
-        self.move(600, 30)
+        #        self.setFixedSize(self.layout().sizeHint())
         self.impl = impl.MainWin(self, app)
         self._loop = app.loop
 
@@ -112,6 +112,8 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.ledUm232h.clicked.connect(lambda: led_clicked(self))
         self.ledTdc.clicked.connect(lambda: led_clicked(self))
         self.ledScn.clicked.connect(lambda: led_clicked(self))
+        self.ledCam1.clicked.connect(lambda: led_clicked(self))
+        self.ledCam2.clicked.connect(lambda: led_clicked(self))
 
         # Stage
         self.stageUp.released.connect(
@@ -159,10 +161,43 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         # status bar
         self.setStatusBar(PyQt5.QtWidgets.QStatusBar())
 
+        # Camera Dock
+        self.ImgDisp1 = Display(self.imageDisplayLayout1, self)
+        self.ImgDisp2 = Display(self.imageDisplayLayout2, self)
+
+        self.shootButton1.released.connect(lambda: self.impl.display_image(1))
+        self.shootButton2.released.connect(lambda: self.impl.display_image(2))
+        self.videoButton1.released.connect(lambda: self.impl.toggle_video(1))
+        self.videoButton2.released.connect(lambda: self.impl.toggle_video(2))
+
+        self.pixel_clock1.valueChanged.connect(
+            lambda: self.impl.set_parameter(1, "pixel_clock", self.pixel_clock1.value())
+        )
+        self.pixel_clock2.valueChanged.connect(
+            lambda: self.impl.set_parameter(2, "pixel_clock", self.pixel_clock2.value())
+        )
+        self.framerate1.valueChanged.connect(
+            lambda: self.impl.set_parameter(1, "framerate", self.framerate1.value())
+        )
+        self.framerate2.valueChanged.connect(
+            lambda: self.impl.set_parameter(2, "framerate", self.framerate2.value())
+        )
+        self.exposure1.valueChanged.connect(
+            lambda: self.impl.set_parameter(1, "exposure", self.exposure1.value())
+        )
+        self.exposure2.valueChanged.connect(
+            lambda: self.impl.set_parameter(2, "exposure", self.exposure2.value())
+        )
+
         # intialize gui
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
+        self.actionCamera_Control.setChecked(False)
+        self.cameraDock.setVisible(False)
         self.stageButtonsGroup.setEnabled(False)
+
+        self.move(300, 30)
+        self.setFixedSize(1235, 956)
 
     def on_calTdc_released(self) -> None:
         """Doc."""
@@ -362,22 +397,31 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.impl.open_settwin()
 
     @PyQt5.QtCore.pyqtSlot(bool)
-    def on_actionLaser_Control_toggled(self, p0: bool) -> None:
+    def on_actionLaser_Control_toggled(self, is_toggled_on: bool) -> None:
         """Show/hide stepper laser control dock"""
 
-        self.laserDock.setVisible(p0)
+        self.laserDock.setVisible(is_toggled_on)
 
     @PyQt5.QtCore.pyqtSlot(bool)
-    def on_actionStepper_Stage_Control_toggled(self, p0: bool) -> None:
+    def on_actionStepper_Stage_Control_toggled(self, is_toggled_on: bool) -> None:
         """Show/hide stepper stage control dock"""
 
-        self.stepperDock.setVisible(p0)
+        self.stepperDock.setVisible(is_toggled_on)
 
-    @PyQt5.QtCore.pyqtSlot()
-    def on_actionCamera_Control_triggered(self) -> None:
-        """Instantiate 'CameraWindow' object and show it"""
+    @PyQt5.QtCore.pyqtSlot(bool)
+    def on_actionCamera_Control_toggled(self, is_toggled_on: bool) -> None:
+        """Show/hide camera control dock"""
+        # TODO: move to impl
 
-        self.impl.open_camwin()
+        self.cameraDock.setVisible(is_toggled_on)
+        if is_toggled_on:
+            self.setFixedSize(1685, 956)
+            self.move(100, 30)
+            self.impl.initialize_camera_dock()
+        else:
+            self.setFixedSize(1235, 956)
+            self.move(300, 30)
+            [self.impl.toggle_video(cam_num, keep_off=True) for cam_num in (1, 2)]
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_avgInterval_currentTextChanged(self, val: str) -> None:
@@ -442,35 +486,3 @@ class SettWin(PyQt5.QtWidgets.QDialog):
 
         self.impl.check_on_close = False
         self.close()
-
-
-class CamWin(PyQt5.QtWidgets.QWidget):
-    """Doc."""
-
-    UI_PATH = "./gui/camerawindow.ui"
-
-    def __init__(self, app) -> None:
-        """Doc."""
-
-        super(CamWin, self).__init__(None)  # , PyQt5.QtCore.Qt.WindowStaysOnTopHint)
-        PyQt5.uic.loadUi(self.UI_PATH, self)
-        self.move(30, 180)
-        self.impl = impl.CamWin(self, app)
-        self._loop = app.loop
-
-        # add matplotlib-ready widget (canvas) for showing camera output
-        self.ImgDisp1 = Display(self.imageDisplayLayout1, self)
-        self.ImgDisp2 = Display(self.imageDisplayLayout2, self)
-
-        self.shootButton1.released.connect(lambda: self.impl.display_image(1))
-        self.shootButton2.released.connect(lambda: self.impl.display_image(2))
-        self.videoButton1.released.connect(lambda: self.impl.display_video(1))
-        self.videoButton2.released.connect(lambda: self.impl.display_video(2))
-
-        self.ledCam1.clicked.connect(lambda: self.impl.led_clicked(1))
-        self.ledCam2.clicked.connect(lambda: self.impl.led_clicked(2))
-
-    def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
-        """Doc."""
-
-        self.impl.clean_up()

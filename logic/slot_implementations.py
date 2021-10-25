@@ -34,6 +34,7 @@ class MainWin:
 
         self._app = app
         self._gui = gui
+        self.cameras = None
 
     def close(self, event):
         """Doc."""
@@ -140,6 +141,8 @@ class MainWin:
             "ledScn": "scanners",
             "ledCounter": "photon_detector",
             "ledPxlClk": "pixel_clock",
+            "ledCam1": "camera_1",
+            "ledCam2": "camera_2",
         }
 
         dvc_nick = led_name_to_nick_dict[led_obj_name]
@@ -206,14 +209,6 @@ class MainWin:
     def displace_scanner_axis(self, sign: int) -> None:
         """Doc."""
 
-        def limit(val: float, min: float, max: float) -> float:
-            if min <= val <= max:
-                return val
-            elif val < max:
-                return min
-            else:
-                return max
-
         um_disp = sign * self._gui.axisMoveUm.value()
 
         if um_disp != 0.0:
@@ -224,7 +219,7 @@ class MainWin:
             delta_vltg = um_disp / um_V_RATIO
 
             axis_ao_limits = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS")
-            new_vltg = limit(
+            new_vltg = helper.limit(
                 (current_vltg + delta_vltg),
                 axis_ao_limits["min_val"],
                 axis_ao_limits["max_val"],
@@ -378,14 +373,6 @@ class MainWin:
 
         self._app.gui.settings.show()
         self._app.gui.settings.activateWindow()
-
-    def open_camwin(self):
-        """Doc."""
-
-        self._gui.actionCamera_Control.setEnabled(False)
-        self._app.gui.camera.show()
-        self._app.gui.camera.activateWindow()
-        self._app.gui.camera.impl.initialize_cameras()
 
     def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
@@ -583,6 +570,88 @@ class MainWin:
 
         wdgts.SOL_MEAS_COLL.write_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
+
+    ####################
+    ## Camera Dock
+    ####################
+
+    def initialize_camera_dock(self) -> None:
+        """Doc."""
+
+        if self.cameras is None:
+            slider_const = 1e4
+            self.cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
+            for idx, camera in enumerate(self.cameras):
+                self.update_slider_range(cam_num=idx + 1)
+                [
+                    getattr(self._gui, f"{name}{idx+1}").setValue(val * slider_const)
+                    for name, val in camera.DEFAULT_PARAMETERS
+                ]
+
+    def update_slider_range(self, cam_num: int) -> None:
+        """Doc."""
+
+        slider_const = 1e4
+
+        camera = self.cameras[cam_num - 1]
+
+        for name in ("pixel_clock", "framerate", "exposure"):
+            range = tuple(limit * slider_const for limit in getattr(camera, f"{name}_range"))
+            getattr(self._gui, f"{name}{cam_num}").setRange(*range)
+
+    def set_parameter(self, cam_num: int, param_name: str, value) -> None:
+        """Doc."""
+
+        # convert from slider
+        value = (value / 1e4) + 1e-3
+
+        getattr(self._gui, f"{param_name}_val{cam_num}").setValue(value)
+
+        camera = self.cameras[cam_num - 1]
+        camera.set_parameter(param_name, value)
+        self.update_slider_range(cam_num)
+
+    def display_image(self, cam_num: int):
+        """Doc."""
+
+        camera = self.cameras[cam_num - 1]
+
+        with suppress(DeviceError, ValueError, AttributeError):
+            # AttributeError - camera is None
+            # ValueError - new_image is None
+            # DeviceError - error in camera
+            new_image = camera.get_image()
+            camera.display.obj.display_image(new_image, cursor=True)
+            logging.debug(f"Camera {cam_num} photo taken")
+
+    def toggle_video(self, cam_num: int, **kwargs):
+        """Doc."""
+
+        camera = self.cameras[cam_num - 1]
+
+        with suppress(DeviceError, AttributeError):
+            # AttributeError - camera is None
+            # DeviceError - error in camera
+            is_in_video_mode = camera.is_in_video_mode
+            is_turned_on = camera.toggle_video(not is_in_video_mode, **kwargs)
+            self.video_button_gui_toggle(cam_num, is_turned_on)
+            logging.info(f"{camera.log_ref} video mode is {'ON' if is_turned_on else 'OFF'}")
+
+    def video_button_gui_toggle(self, cam_num: int, should_turn_on: bool) -> None:
+        """Doc."""
+
+        video_button_wdgt = getattr(self._gui, f"videoButton{cam_num}")
+
+        if should_turn_on:
+            video_button_wdgt.setStyleSheet(
+                "background-color: " "rgb(225, 245, 225); " "color: black;"
+            )
+            video_button_wdgt.setText("Video ON")
+        else:
+            video_button_wdgt.setStyleSheet(
+                "background-color: " "rgb(225, 225, 225); " "color: black;"
+            )
+            video_button_wdgt.setText("Start Video")
 
     ####################
     ## Analysis Tab
@@ -1368,93 +1437,3 @@ class SettWin:
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(str(file_path))
             wdgts.read_file_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
-
-
-class CamWin:
-    """Doc."""
-
-    def __init__(self, gui, app):
-        """Doc."""
-
-        self._app = app
-        self._gui = gui
-        self.cameras = None
-
-    def initialize_cameras(self):
-        """Doc."""
-
-        if not self.cameras:
-            cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
-            self.cameras = [(cam if cam.error_dict is None else None) for cam in cameras]
-
-    def clean_up(self):
-        """clean up before closing window"""
-
-        # Turn off video
-        with suppress(TypeError):
-            # TypeError - self.cameras is None
-            for idx, camera in enumerate(self.cameras):
-                with suppress(AttributeError, DeviceError):
-                    # AttributeError - camera is None
-                    # DeviceError - error in camera
-                    camera.toggle_video(False)
-                self.video_button_gui_toggle(idx + 1, False)
-
-        self.cameras = None
-        self._app.gui.main.actionCamera_Control.setEnabled(True)
-        logging.debug("Camera connections closed")
-
-    def display_image(self, cam_num: int):
-        """Doc."""
-
-        if (camera := self.cameras[cam_num - 1]) is None:
-            return
-
-        with suppress(DeviceError, ValueError, AttributeError):
-            # AttributeError - camera is None
-            # ValueError - new_image is None
-            # DeviceError - error in camera
-            new_image = camera.get_image()
-            camera.display.obj.display_image(new_image, cursor=True)
-            logging.debug(f"Camera {cam_num} photo taken")
-
-    def display_video(self, cam_num: int):
-        """Doc."""
-
-        if (camera := self.cameras[cam_num - 1]) is None:
-            return
-
-        with suppress(DeviceError, AttributeError):
-            # AttributeError - camera is None
-            # DeviceError - error in camera
-            is_in_video_mode = camera.is_in_video_mode
-            is_turned_on = camera.toggle_video(not is_in_video_mode)
-            self.video_button_gui_toggle(cam_num, is_turned_on)
-            logging.info(f"{camera.log_ref} video mode is {'ON' if is_turned_on else 'OFF'}")
-
-    def video_button_gui_toggle(self, cam_num: int, should_turn_on: bool) -> None:
-        """Doc."""
-
-        video_button_wdgt = getattr(self._gui, f"videoButton{cam_num}")
-
-        if should_turn_on:
-            video_button_wdgt.setStyleSheet(
-                "background-color: " "rgb(225, 245, 225); " "color: black;"
-            )
-            video_button_wdgt.setText("Video ON")
-        else:
-            video_button_wdgt.setStyleSheet(
-                "background-color: " "rgb(225, 225, 225); " "color: black;"
-            )
-            video_button_wdgt.setText("Start Video")
-
-    def led_clicked(self, cam_num: int) -> None:
-        """Doc."""
-
-        dvc_nick = f"camera_{cam_num}"
-        error_dict = getattr(self._app.devices, dvc_nick).error_dict
-        if error_dict is not None:
-            dialog.Error(
-                **error_dict,
-                custom_title=getattr(self._app.devices, f"{dvc_nick}").log_ref,
-            ).display()

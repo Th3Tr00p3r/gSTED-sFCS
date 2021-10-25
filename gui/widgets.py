@@ -222,11 +222,12 @@ LED_COLL = QtWidgetCollection(
     shutter=("ledShutter", "QIcon", "main", True),
     stage=("ledStage", "QIcon", "main", True),
     tdc=("ledTdc", "QIcon", "main", True),
-    #    cam=("ledCam", "QIcon", "main", True),
+    cam1=("ledCam1", "QIcon", "main", True),
+    cam2=("ledCam2", "QIcon", "main", True),
     scnrs=("ledScn", "QIcon", "main", True),
+    pxl_clk=("ledPxlClk", "QIcon", "main", True),
     cntr=("ledCounter", "QIcon", "main", True),
     um232=("ledUm232h", "QIcon", "main", True),
-    pxl_clk=("ledPxlClk", "QIcon", "main", True),
 )
 
 SWITCH_COLL = QtWidgetCollection(
