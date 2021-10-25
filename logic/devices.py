@@ -17,7 +17,7 @@ from gui.dialog import Error
 from gui.icons import icons
 from gui.widgets import QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
-from logic.timeout import GUI_UPDATE_INTERVAL, TIMEOUT_INTERVAL
+from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 
 
@@ -750,7 +750,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
-    video_interval = GUI_UPDATE_INTERVAL
+    DEFAULT_PARAMETERS = (("pixel_clock", 25), ("framerate", 15.0), ("exposure", 1.0))
 
     def __init__(self, param_dict):
         super().__init__(
@@ -762,6 +762,8 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             self.open_instrument()
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.update_parameter_ranges()
 
     def close(self) -> None:
         """Doc."""
@@ -773,17 +775,20 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         try:
             if self.is_in_video_mode:
-                return self.get_latest_frame()
+                return self.get_latest_frame().transpose(1, 0, 2)
             else:
-                return self.grab_image()
+                return self.grab_image().transpose(1, 0, 2)
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
-    def toggle_video(self, should_turn_on: bool) -> bool:
+    def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
 
+        if keep_off:
+            should_turn_on = False
+
         try:
-            self.toggle_video_mode(should_turn_on)
+            self.toggle_video_mode(should_turn_on, **kwargs)
             return should_turn_on
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
@@ -871,8 +876,8 @@ DEVICE_ATTR_DICT = {
         class_name="Camera",
         log_ref="Camera 1",
         param_widgets=QtWidgetCollection(
-            led_widget=("ledCam1", "QIcon", "camera", True),
-            display=("ImgDisp1", None, "camera", True),
+            led_widget=("ledCam1", "QIcon", "main", True),
+            display=("ImgDisp1", None, "main", True),
             serial=("cam1Serial", "QLineEdit", "settings", False),
         ),
     ),
@@ -880,8 +885,8 @@ DEVICE_ATTR_DICT = {
         class_name="Camera",
         log_ref="Camera 2",
         param_widgets=QtWidgetCollection(
-            led_widget=("ledCam2", "QIcon", "camera", True),
-            display=("ImgDisp2", None, "camera", True),
+            led_widget=("ledCam2", "QIcon", "main", True),
+            display=("ImgDisp2", None, "main", True),
             serial=("cam2Serial", "QLineEdit", "settings", False),
         ),
     ),

@@ -57,7 +57,8 @@ class App:
         # init windows
         print("Initializing GUI...", end=" ")
         self.gui = SimpleNamespace(
-            main=gui.gui.MainWin(self), settings=gui.gui.SettWin(self), camera=gui.gui.CamWin(self)
+            main=gui.gui.MainWin(self),
+            settings=gui.gui.SettWin(self),
         )
         self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
         self.gui.settings.impl.load(self.default_settings_path())
@@ -228,21 +229,27 @@ class App:
         def lights_out(gui_wdgt):
             """turn OFF all device switch/LED icons"""
 
-            led_list = [self.icon_dict["led_off"]] * 6 + [self.icon_dict["led_green"]] * 3
+            led_list = [self.icon_dict["led_off"]] * 9 + [self.icon_dict["led_green"]] * 2
             wdgts.LED_COLL.write_to_gui(self, led_list)
             wdgts.SWITCH_COLL.write_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
-            # camera LEDs
-            # TODO: make same as above (by using widget collections)
-            self.gui.camera.ledCam1.setIcon(self.icon_dict["led_off"])
-            self.gui.camera.ledCam2.setIcon(self.icon_dict["led_off"])
+        #        # Turn off video
+        #        with suppress(TypeError):
+        #            # TypeError - self.cameras is None
+        #            for idx, camera in enumerate(self.cameras):
+        #                with suppress(AttributeError, DeviceError):
+        #                    # AttributeError - camera is None
+        #                    # DeviceError - error in camera
+        #                    camera.toggle_video(False)
+        #                self.video_button_gui_toggle(idx + 1, False)
+        #
+        #        self.cameras = None
+        #        self._app.gui.main.actionCamera_Control.setEnabled(True)
+        #        logging.debug("Camera connections closed")
 
         if restart:
             logging.info("Restarting application.")
-
-            if self.gui.camera is not None:
-                self.gui.camera.close()
 
             if self.meas.type is not None:
                 await self.gui.main.impl.toggle_meas(

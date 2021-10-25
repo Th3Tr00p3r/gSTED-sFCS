@@ -82,6 +82,17 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     return img, thresh
 
 
+def limit(val: float, min: float, max: float) -> float:
+    """Doc."""
+
+    if min <= val <= max:
+        return val
+    elif val < max:
+        return min
+    else:
+        return max
+
+
 def center_of_mass_of_dimension(arr: np.ndarray, dim: int = 0) -> float:
     """
     Returns the center of mass of an Numpy along a specific axis.
