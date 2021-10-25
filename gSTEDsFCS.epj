@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-10-17, 19:37:43"
+    "saved": "2021-10-25, 17:00:46"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -106,7 +106,6 @@
       "makefile": "OTHERS"
     },
     "FORMS": [
-      "gui/camerawindow.ui",
       "gui/mainwindow.ui",
       "gui/settingswindow.ui"
     ],
