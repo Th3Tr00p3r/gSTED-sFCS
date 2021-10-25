@@ -595,9 +595,11 @@ class MainWin:
 
         camera = self.cameras[cam_num - 1]
 
-        for name in ("pixel_clock", "framerate", "exposure"):
-            range = tuple(limit * slider_const for limit in getattr(camera, f"{name}_range"))
-            getattr(self._gui, f"{name}{cam_num}").setRange(*range)
+        with suppress(AttributeError):
+            # AttributeError - camera not properly initialized
+            for name in ("pixel_clock", "framerate", "exposure"):
+                range = tuple(limit * slider_const for limit in getattr(camera, f"{name}_range"))
+                getattr(self._gui, f"{name}{cam_num}").setRange(*range)
 
     def set_parameter(self, cam_num: int, param_name: str, value) -> None:
         """Doc."""
@@ -608,7 +610,9 @@ class MainWin:
         getattr(self._gui, f"{param_name}_val{cam_num}").setValue(value)
 
         camera = self.cameras[cam_num - 1]
-        camera.set_parameter(param_name, value)
+        with suppress(AttributeError):
+            # AttributeError - camera not properly initialized
+            camera.set_parameter(param_name, value)
         self.update_slider_range(cam_num)
 
     def display_image(self, cam_num: int):
