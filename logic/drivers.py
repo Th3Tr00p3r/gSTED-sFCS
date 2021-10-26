@@ -396,7 +396,10 @@ class Instrumental:
 
         try:
             if should_turn_on:
-                self._inst.start_live_video(exposure_time=self._inst._get_exposure())
+                if self.is_auto_exposure_on:
+                    self._inst.start_live_video()
+                else:
+                    self._inst.start_live_video(exposure_time=self._inst._get_exposure())
             else:
                 self._inst.stop_live_video()
         except UC480Error:
@@ -458,3 +461,5 @@ class Instrumental:
         except UC480Error:
             exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.is_auto_exposure_on = should_turn_on
