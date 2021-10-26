@@ -25,45 +25,28 @@ class Measurement:
 
     def __init__(self, app, type: str, scan_params, **kwargs):
 
-        self._app = app
-        self.type = type
-        self.tdc_dvc = app.devices.TDC
-        self.data_dvc = app.devices.UM232H
-        self.icon_dict = icons.get_icon_paths()  # get icons
-        [setattr(self, key, val) for key, val in kwargs.items()]
+        # devices
         self.counter_dvc = app.devices.photon_detector
         self.pxl_clk_dvc = app.devices.pixel_clock
         self.scanners_dvc = app.devices.scanners
-        self.scan_params = scan_params
-        self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2v_const") for ax in "xyz")
-        # TODO: check if 'ai_scaling_xyz' matches today's ratio
-        self.sys_info = {
-            "setup": "STED with galvos",
-            "after_pulse_param": (
-                "multi_exponent_fit",
-                1e5
-                * np.array(
-                    [
-                        0.183161051158731,
-                        0.021980256326163,
-                        6.882763042785681,
-                        0.154790280034295,
-                        0.026417532300439,
-                        0.004282749744374,
-                        0.001418363840077,
-                        0.000221275818533,
-                    ]
-                ),
-            ),
-            "ai_scaling_xyz": (1.243, 1.239, 1),
-            "xyz_um_to_v": self.um_v_ratio,
-        }
-
+        self.tdc_dvc = app.devices.TDC
+        self.data_dvc = app.devices.UM232H
         self.laser_dvcs = SimpleNamespace(
             exc=app.devices.exc_laser,
             dep=app.devices.dep_laser,
             dep_shutter=app.devices.dep_shutter,
         )
+
+        self._app = app
+        self.type = type
+        self.icon_dict = icons.get_icon_paths()  # get icons
+        [setattr(self, key, val) for key, val in kwargs.items()]
+        self.scan_params = scan_params
+        self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2v_const") for ax in "xyz")
+        # TODO: check if 'ai_scaling_xyz' matches today's ratio
+        self.sys_info = file_utilities.default_system_info
+        self.sys_info["xyz_um_to_v"] = self.um_v_ratio
+
         self.is_running = False
 
     async def stop(self):
@@ -156,7 +139,7 @@ class Measurement:
         else:
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
-        file_path = save_path / re.sub("\\s", "_", file_name) / ".pkl"
+        file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
 
         file_utilities.save_object_to_disk(data_dict, file_path)
         logging.debug(f"Saved measurement file: '{file_path}'.")
