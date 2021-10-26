@@ -6,7 +6,7 @@ import time
 from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import List
+from typing import Iterator, List
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -55,8 +55,8 @@ class BaseDevice:
 
         self.toggle(False)
 
-    def toggle_led(self, is_being_switched_on, should_change_icons=True):
-        """Toggle the devices LED widget ON/OFF"""
+    def toggle_led_and_switch(self, is_being_switched_on, should_change_icons=True):
+        """Toggle the device's LED widget ON/OFF"""
 
         if not self.error_dict and should_change_icons:
             self.change_icons("on" if is_being_switched_on else "off")
@@ -206,7 +206,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.toggle_led(False)
+            self.toggle_led_and_switch(False)
 
     def start_scan_read_task(self, samp_clk_cnfg, timing_params) -> None:
         """Doc."""
@@ -330,7 +330,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
         else:
-            self.toggle_led(True)
+            self.toggle_led_and_switch(True)
 
     def init_ai_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
@@ -434,13 +434,13 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             }
 
             self.start_continuous_read_task()
-            self.toggle_led(True)
+            self.toggle_led_and_switch(True)
 
     def close(self):
         """Doc."""
 
         self.close_all_tasks()
-        self.toggle_led(False)
+        self.toggle_led_and_switch(False)
 
     def start_continuous_read_task(self) -> None:
         """Doc."""
@@ -541,10 +541,10 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         if is_being_switched_on:
             self._start_co_clock_sync()
-            self.toggle_led(True)
+            self.toggle_led_and_switch(True)
         else:
             self.close_all_tasks()
-            self.toggle_led(False)
+            self.toggle_led_and_switch(False)
 
         self.state = is_being_switched_on
 
@@ -594,7 +594,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         except FileNotFoundError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.toggle_led(is_being_switched_on)
+            self.toggle_led_and_switch(is_being_switched_on)
             self.state = is_being_switched_on
 
 
@@ -635,7 +635,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.toggle_led(is_being_switched_on, **kwargs)
+            self.toggle_led_and_switch(is_being_switched_on, **kwargs)
             self.state = is_being_switched_on
 
     def laser_toggle(self, is_being_switched_on):
@@ -727,7 +727,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.toggle_led(is_being_switched_on)
+            self.toggle_led_and_switch(is_being_switched_on)
             self.state = is_being_switched_on
 
     async def move(self, dir, steps):
@@ -770,16 +770,20 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         self.close_instrument()
 
-    def get_image(self) -> np.ndarray:
+    def get_image(self, should_display=True) -> np.ndarray:
         """Doc."""
 
         try:
             if self.is_in_video_mode:
-                return self.get_latest_frame().transpose(1, 0, 2)
+                self.latest_image = np.flipud((self.get_latest_frame()))
             else:
-                return self.grab_image().transpose(1, 0, 2)
+                self.latest_image = np.flipud((self.grab_image()))
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            if should_display:
+                self.display.obj.display_image(self.latest_image, cursor=True)
+            return self.latest_image
 
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
@@ -789,10 +793,17 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         try:
             self.toggle_video_mode(should_turn_on, **kwargs)
+            self.toggle_led_and_switch(should_turn_on)
+            self.is_in_video_mode = should_turn_on
             return should_turn_on
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
             return not should_turn_on
+
+    def set_parameters(self, parameters: Iterator = DEFAULT_PARAMETERS) -> None:
+        """Set pixel_clock, framerate and exposure"""
+
+        [self.set_parameter(name, value) for name, value in parameters]
 
 
 @dataclass
@@ -877,6 +888,7 @@ DEVICE_ATTR_DICT = {
         log_ref="Camera 1",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCam1", "QIcon", "main", True),
+            switch_widget=("videoSwitch1", "QIcon", "main", True),
             display=("ImgDisp1", None, "main", True),
             serial=("cam1Serial", "QLineEdit", "settings", False),
         ),
@@ -886,6 +898,7 @@ DEVICE_ATTR_DICT = {
         log_ref="Camera 2",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCam2", "QIcon", "main", True),
+            switch_widget=("videoSwitch2", "QIcon", "main", True),
             display=("ImgDisp2", None, "main", True),
             serial=("cam2Serial", "QLineEdit", "settings", False),
         ),

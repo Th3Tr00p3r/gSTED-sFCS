@@ -235,6 +235,8 @@ SWITCH_COLL = QtWidgetCollection(
     dep=("depEmissionOn", "QIcon", "main", True),
     shutter=("depShutterOn", "QIcon", "main", True),
     stage=("stageOn", "QIcon", "main", True),
+    cam1=("videoSwitch1", "QIcon", "main", True),
+    cam2=("videoSwitch2", "QIcon", "main", True),
 )
 
 # ----------------------------------------------

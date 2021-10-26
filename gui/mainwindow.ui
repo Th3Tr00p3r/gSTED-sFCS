@@ -10397,7 +10397,7 @@ Disp. (um)</string>
   </widget>
   <widget class="QDockWidget" name="cameraDock">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
@@ -10405,8 +10405,17 @@ Disp. (um)</string>
    <property name="minimumSize">
     <size>
      <width>450</width>
-     <height>629</height>
+     <height>914</height>
     </size>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>450</width>
+     <height>914</height>
+    </size>
+   </property>
+   <property name="floating">
+    <bool>false</bool>
    </property>
    <property name="features">
     <set>QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetVerticalTitleBar</set>
@@ -10443,8 +10452,8 @@ Disp. (um)</string>
          </property>
          <property name="maximumSize">
           <size>
-           <width>408</width>
-           <height>447</height>
+           <width>16777215</width>
+           <height>16777215</height>
           </size>
          </property>
          <property name="title">
@@ -10460,12 +10469,15 @@ Disp. (um)</string>
              <number>0</number>
             </property>
             <item row="1" column="1">
-             <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="1,100">
+             <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="0,100">
               <property name="spacing">
                <number>0</number>
               </property>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_51">
+               <layout class="QHBoxLayout" name="horizontalLayout_22">
+                <property name="spacing">
+                 <number>3</number>
+                </property>
                 <item>
                  <layout class="QVBoxLayout" name="verticalLayout_102" stretch="1,10,1">
                   <item>
@@ -10626,7 +10638,10 @@ Disp. (um)</string>
                  </layout>
                 </item>
                 <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_104" stretch="1,10,1">
+                 <layout class="QVBoxLayout" name="verticalLayout_97" stretch="1,10,1">
+                  <property name="spacing">
+                   <number>6</number>
+                  </property>
                   <item>
                    <widget class="QLabel" name="label_99">
                     <property name="sizePolicy">
@@ -10680,23 +10695,37 @@ Disp. (um)</string>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QDoubleSpinBox" name="exposure_val1">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
+                   <layout class="QHBoxLayout" name="horizontalLayout_51">
+                    <property name="spacing">
+                     <number>0</number>
                     </property>
-                    <property name="readOnly">
-                     <bool>true</bool>
-                    </property>
-                    <property name="buttonSymbols">
-                     <enum>QAbstractSpinBox::NoButtons</enum>
-                    </property>
-                    <property name="maximum">
-                     <double>9999.000000000000000</double>
-                    </property>
-                   </widget>
+                    <item>
+                     <widget class="QDoubleSpinBox" name="exposure_val1">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="readOnly">
+                       <bool>true</bool>
+                      </property>
+                      <property name="buttonSymbols">
+                       <enum>QAbstractSpinBox::NoButtons</enum>
+                      </property>
+                      <property name="maximum">
+                       <double>9999.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="autoExp1">
+                      <property name="text">
+                       <string>Auto</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
                   </item>
                  </layout>
                 </item>
@@ -10721,7 +10750,7 @@ Disp. (um)</string>
              </layout>
             </item>
             <item row="0" column="0">
-             <layout class="QVBoxLayout" name="verticalLayout_36">
+             <layout class="QVBoxLayout" name="verticalLayout_36" stretch="3,1">
               <property name="spacing">
                <number>0</number>
               </property>
@@ -10748,23 +10777,82 @@ Disp. (um)</string>
                </widget>
               </item>
               <item>
-               <widget class="QPushButton" name="videoButton1">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+               <layout class="QVBoxLayout" name="verticalLayout_67">
+                <property name="spacing">
+                 <number>0</number>
                 </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Start Video</string>
-                </property>
-               </widget>
+                <item>
+                 <widget class="QLabel" name="label_9">
+                  <property name="text">
+                   <string>Video Switch</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="videoSwitch1">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>999</width>
+                    <height>999</height>
+                   </size>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(225, 225, 225);</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="icons/icons.qrc">
+                    <normaloff>:/switch_off.png</normaloff>
+                    <normalon>:/switch_off.png</normalon>
+                    <selectedoff>:/switch_off.png</selectedoff>
+                    <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>41</width>
+                    <height>41</height>
+                   </size>
+                  </property>
+                  <property name="checkable">
+                   <bool>false</bool>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                  <property name="default">
+                   <bool>false</bool>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </item>
@@ -10869,8 +10957,8 @@ Disp. (um)</string>
          </property>
          <property name="maximumSize">
           <size>
-           <width>408</width>
-           <height>447</height>
+           <width>16777215</width>
+           <height>16777215</height>
           </size>
          </property>
          <property name="title">
@@ -10953,7 +11041,7 @@ Disp. (um)</string>
              </layout>
             </item>
             <item row="0" column="0">
-             <layout class="QVBoxLayout" name="verticalLayout_37">
+             <layout class="QVBoxLayout" name="verticalLayout_37" stretch="3,1">
               <property name="spacing">
                <number>0</number>
               </property>
@@ -10980,35 +11068,97 @@ Disp. (um)</string>
                </widget>
               </item>
               <item>
-               <widget class="QPushButton" name="videoButton2">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+               <layout class="QVBoxLayout" name="verticalLayout_80">
+                <property name="spacing">
+                 <number>0</number>
                 </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Start Video</string>
-                </property>
-               </widget>
+                <item>
+                 <widget class="QLabel" name="label_10">
+                  <property name="text">
+                   <string>Video Switch</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="videoSwitch2">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>999</width>
+                    <height>999</height>
+                   </size>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(225, 225, 225);</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="icons/icons.qrc">
+                    <normaloff>:/switch_off.png</normaloff>
+                    <normalon>:/switch_off.png</normalon>
+                    <selectedoff>:/switch_off.png</selectedoff>
+                    <selectedon>:/switch_off.png</selectedon>:/switch_off.png</iconset>
+                  </property>
+                  <property name="iconSize">
+                   <size>
+                    <width>41</width>
+                    <height>41</height>
+                   </size>
+                  </property>
+                  <property name="checkable">
+                   <bool>false</bool>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                  <property name="default">
+                   <bool>false</bool>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </item>
             <item row="1" column="1">
-             <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="1,10">
+             <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="0,10">
               <property name="spacing">
                <number>0</number>
               </property>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_52" stretch="1,10,1">
+               <layout class="QHBoxLayout" name="horizontalLayout_52">
+                <property name="spacing">
+                 <number>3</number>
+                </property>
                 <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_105">
+                 <layout class="QVBoxLayout" name="verticalLayout_104" stretch="1,10,1">
                   <item>
                    <widget class="QLabel" name="label_104">
                     <property name="sizePolicy">
@@ -11092,7 +11242,7 @@ Disp. (um)</string>
                  </layout>
                 </item>
                 <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_106">
+                 <layout class="QVBoxLayout" name="verticalLayout_105" stretch="1,10,1">
                   <item>
                    <widget class="QLabel" name="label_105">
                     <property name="sizePolicy">
@@ -11148,7 +11298,7 @@ Disp. (um)</string>
                   <item>
                    <widget class="QDoubleSpinBox" name="framerate_val2">
                     <property name="sizePolicy">
-                     <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
@@ -11167,7 +11317,10 @@ Disp. (um)</string>
                  </layout>
                 </item>
                 <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_114">
+                 <layout class="QVBoxLayout" name="verticalLayout_98" stretch="1,10,1">
+                  <property name="spacing">
+                   <number>6</number>
+                  </property>
                   <item>
                    <widget class="QLabel" name="label_106">
                     <property name="sizePolicy">
@@ -11198,14 +11351,14 @@ Disp. (um)</string>
                   <item alignment="Qt::AlignHCenter">
                    <widget class="QSlider" name="exposure2">
                     <property name="sizePolicy">
-                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
                     </property>
                     <property name="maximumSize">
                      <size>
-                      <width>16777215</width>
+                      <width>9999</width>
                       <height>50</height>
                      </size>
                     </property>
@@ -11221,23 +11374,37 @@ Disp. (um)</string>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QDoubleSpinBox" name="exposure_val2">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
+                   <layout class="QHBoxLayout" name="horizontalLayout_55">
+                    <property name="spacing">
+                     <number>0</number>
                     </property>
-                    <property name="readOnly">
-                     <bool>true</bool>
-                    </property>
-                    <property name="buttonSymbols">
-                     <enum>QAbstractSpinBox::NoButtons</enum>
-                    </property>
-                    <property name="maximum">
-                     <double>9999.000000000000000</double>
-                    </property>
-                   </widget>
+                    <item>
+                     <widget class="QDoubleSpinBox" name="exposure_val2">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="readOnly">
+                       <bool>true</bool>
+                      </property>
+                      <property name="buttonSymbols">
+                       <enum>QAbstractSpinBox::NoButtons</enum>
+                      </property>
+                      <property name="maximum">
+                       <double>9999.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="autoExp2">
+                      <property name="text">
+                       <string>Auto</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
                   </item>
                  </layout>
                 </item>

@@ -73,7 +73,7 @@ class MainWin:
             wdgts.read_file_to_gui(file_path, self._gui)
             logging.debug(f"Loadout loaded: '{file_path}'")
 
-    def dvc_toggle(
+    def device_toggle(
         self, nick, toggle_mthd="toggle", state_attr="state", leave_on=False, leave_off=False
     ) -> bool:
         """Returns False in case operation fails"""
@@ -575,23 +575,35 @@ class MainWin:
     ## Camera Dock
     ####################
 
-    def initialize_camera_dock(self) -> None:
+    def toggle_camera_dock(self, is_toggled_on) -> None:
         """Doc."""
 
-        if self.cameras is None:
-            slider_const = 1e4
-            self.cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
-            for idx, camera in enumerate(self.cameras):
-                self.update_slider_range(cam_num=idx + 1)
-                [
-                    getattr(self._gui, f"{name}{idx+1}").setValue(val * slider_const)
-                    for name, val in camera.DEFAULT_PARAMETERS
-                ]
+        self._gui.cameraDock.setVisible(is_toggled_on)
+        if is_toggled_on:
+            if self.cameras is None:
+                slider_const = 1e2
+                self.cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
+                for idx, camera in enumerate(self.cameras):
+                    self.update_slider_range(cam_num=idx + 1)
+                    [
+                        getattr(self._gui, f"{name}{idx+1}").setValue(val * slider_const)
+                        for name, val in camera.DEFAULT_PARAMETERS
+                    ]
+            self._gui.setFixedSize(1661, 950)
+            self._gui.move(100, 30)
+        else:
+            self._gui.setFixedSize(1211, 950)
+            self._gui.move(300, 30)
+            [
+                self.device_toggle(f"camera_{cam_num}", "toggle_video", "is_in_video_mode")
+                for cam_num in (1, 2)
+            ]
+        self._gui.setMaximumSize(int(1e5), int(1e5))
 
     def update_slider_range(self, cam_num: int) -> None:
         """Doc."""
 
-        slider_const = 1e4
+        slider_const = 1e2
 
         camera = self.cameras[cam_num - 1]
 
@@ -604,8 +616,10 @@ class MainWin:
     def set_parameter(self, cam_num: int, param_name: str, value) -> None:
         """Doc."""
 
+        slider_const = 1e2
+
         # convert from slider
-        value = (value / 1e4) + 1e-3
+        value /= slider_const
 
         getattr(self._gui, f"{param_name}_val{cam_num}").setValue(value)
 
@@ -613,6 +627,7 @@ class MainWin:
         with suppress(AttributeError):
             # AttributeError - camera not properly initialized
             camera.set_parameter(param_name, value)
+            getattr(self._gui, f"autoExp{cam_num}").setChecked(False)
         self.update_slider_range(cam_num)
 
     def display_image(self, cam_num: int):
@@ -620,42 +635,28 @@ class MainWin:
 
         camera = self.cameras[cam_num - 1]
 
-        with suppress(DeviceError, ValueError, AttributeError):
-            # AttributeError - camera is None
+        with suppress(DeviceError, ValueError):
+            # TODO: not sure if 'suppress' is necessary
             # ValueError - new_image is None
             # DeviceError - error in camera
-            new_image = camera.get_image()
-            camera.display.obj.display_image(new_image, cursor=True)
-            logging.debug(f"Camera {cam_num} photo taken")
+            camera.get_image()
+            if not camera.is_in_video_mode:  # snapshot
+                logging.debug(f"Camera {cam_num} photo taken")
 
-    def toggle_video(self, cam_num: int, **kwargs):
+    def set_auto_exposure(self, cam_num: int, is_checked: bool):
         """Doc."""
 
         camera = self.cameras[cam_num - 1]
-
-        with suppress(DeviceError, AttributeError):
-            # AttributeError - camera is None
-            # DeviceError - error in camera
-            is_in_video_mode = camera.is_in_video_mode
-            is_turned_on = camera.toggle_video(not is_in_video_mode, **kwargs)
-            self.video_button_gui_toggle(cam_num, is_turned_on)
-            logging.info(f"{camera.log_ref} video mode is {'ON' if is_turned_on else 'OFF'}")
-
-    def video_button_gui_toggle(self, cam_num: int, should_turn_on: bool) -> None:
-        """Doc."""
-
-        video_button_wdgt = getattr(self._gui, f"videoButton{cam_num}")
-
-        if should_turn_on:
-            video_button_wdgt.setStyleSheet(
-                "background-color: " "rgb(225, 245, 225); " "color: black;"
+        camera.set_auto_exposure(is_checked)
+        if not is_checked:
+            parameter_names = ("pixel_clock", "framerate", "exposure")
+            parameter_values = (
+                getattr(self._gui, f"{param_name}_val{cam_num}").value()
+                for param_name in parameter_names
             )
-            video_button_wdgt.setText("Video ON")
-        else:
-            video_button_wdgt.setStyleSheet(
-                "background-color: " "rgb(225, 225, 225); " "color: black;"
-            )
-            video_button_wdgt.setText("Start Video")
+            parameters = ((name, value) for name, value in zip(parameter_names, parameter_values))
+            with suppress(DeviceError):
+                camera.set_parameters(parameters)
 
     ####################
     ## Analysis Tab
@@ -1052,7 +1053,7 @@ class MainWin:
             # get the center plane image, in "forward"
             image = image_tdc.image_data.build_image("forward")
             # plot it (below)
-            data_import_wdgts.img_preview_disp.obj.display_image(image, axis=False, cmap="bone")
+            data_import_wdgts.img_preview_disp.obj.display_image(image, cmap="bone")
 
     def import_sol_data(self) -> None:
         """Doc."""

@@ -326,6 +326,8 @@ class PyVISA:
             )
         except ValueError:
             raise IOError(f"{self.log_ref} is unplugged or the address ({self.address}) is wrong.")
+        except visa.errors.VisaIOError:
+            raise IOError(f"{self.log_ref} was manually disconnected while opening the instrument.")
 
     def close_instrument(self) -> None:
         """Doc."""
@@ -389,7 +391,7 @@ class Instrumental:
         if self._inst is not None:
             self._inst.close()
 
-    def toggle_video_mode(self, should_turn_on: bool, auto_exposure=False) -> None:
+    def toggle_video_mode(self, should_turn_on: bool) -> None:
         """Doc."""
 
         try:
@@ -401,8 +403,6 @@ class Instrumental:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
         else:
             self.is_in_video_mode = should_turn_on
-            if auto_exposure:
-                self._inst.set_auto_exposure(True)
 
     def grab_image(self) -> np.ndarray:
         """Doc."""
@@ -446,6 +446,15 @@ class Instrumental:
                 self.update_parameter_ranges()
             elif name == "exposure":
                 self._inst._set_exposure(f"{valid_value}ms")
+        except UC480Error:
+            exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+
+    def set_auto_exposure(self, should_turn_on: bool) -> None:
+        """Doc."""
+
+        try:
+            self._inst.set_auto_exposure(should_turn_on)
         except UC480Error:
             exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
