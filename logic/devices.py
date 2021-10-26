@@ -757,6 +757,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             param_dict,
         )
         self.is_in_video_mode = False
+        self.is_auto_exposure_on = False
 
         try:
             self.open_instrument()

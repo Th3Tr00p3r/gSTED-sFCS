@@ -537,7 +537,7 @@ class MainWin:
             file_name = f"{wdgt_coll.file_template}_{file_dict['laser_mode']}_{file_dict['scan_params']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
             today_dir = Path(wdgt_coll.save_path) / dt.now().strftime("%d_%m_%Y")
             dir_path = today_dir / "image"
-            file_path = dir_path / re.sub("\\s", "_", file_name) / ".pkl"
+            file_path = dir_path / (re.sub("\\s", "_", file_name) + ".pkl")
             file_utilities.save_object_to_disk(file_dict, file_path)
             logging.debug(f"Saved measurement file: '{file_path}'.")
 
@@ -589,13 +589,15 @@ class MainWin:
                         getattr(self._gui, f"{name}{idx+1}").setValue(val * slider_const)
                         for name, val in camera.DEFAULT_PARAMETERS
                     ]
-            self._gui.setFixedSize(1661, 950)
             self._gui.move(100, 30)
+            self._gui.setFixedSize(1661, 950)
         else:
-            self._gui.setFixedSize(1211, 950)
             self._gui.move(300, 30)
+            self._gui.setFixedSize(1211, 950)
             [
-                self.device_toggle(f"camera_{cam_num}", "toggle_video", "is_in_video_mode")
+                self.device_toggle(
+                    f"camera_{cam_num}", "toggle_video", "is_in_video_mode", leave_off=True
+                )
                 for cam_num in (1, 2)
             ]
         self._gui.setMaximumSize(int(1e5), int(1e5))
@@ -894,7 +896,9 @@ class MainWin:
         ]
         # rename the log file, if applicable
         with suppress(FileNotFoundError):
-            (dir_path / curr_template[:-6] / ".log").rename(dir_path / new_template[:-6] / ".log")
+            (dir_path / (curr_template[:-6] + ".log")).rename(
+                dir_path / (new_template[:-6] + ".log")
+            )
 
         # refresh templates
         day = data_import_wdgts.data_days
