@@ -129,11 +129,11 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         )
 
         # Device Toggling
-        self.excOnButton.released.connect(lambda: self.impl.dvc_toggle("exc_laser"))
+        self.excOnButton.released.connect(lambda: self.impl.device_toggle("exc_laser"))
         self.depEmissionOn.released.connect(
-            lambda: self.impl.dvc_toggle("dep_laser", "laser_toggle", "emission_state")
+            lambda: self.impl.device_toggle("dep_laser", "laser_toggle", "emission_state")
         )
-        self.depShutterOn.released.connect(lambda: self.impl.dvc_toggle("dep_shutter"))
+        self.depShutterOn.released.connect(lambda: self.impl.device_toggle("dep_shutter"))
 
         # Image Scan
         self.startImgScanExc.released.connect(
@@ -161,13 +161,24 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.setStatusBar(PyQt5.QtWidgets.QStatusBar())
 
         # Camera Dock
+        self.CAMERA_DOCK_MIN_SIZE = self.cameraDock.minimumSize()
         self.ImgDisp1 = Display(self.imageDisplayLayout1, self)
         self.ImgDisp2 = Display(self.imageDisplayLayout2, self)
 
         self.shootButton1.released.connect(lambda: self.impl.display_image(1))
         self.shootButton2.released.connect(lambda: self.impl.display_image(2))
-        self.videoButton1.released.connect(lambda: self.impl.toggle_video(1))
-        self.videoButton2.released.connect(lambda: self.impl.toggle_video(2))
+        self.videoSwitch1.released.connect(
+            lambda: self.impl.device_toggle("camera_1", "toggle_video", "is_in_video_mode")
+        )
+        self.videoSwitch2.released.connect(
+            lambda: self.impl.device_toggle("camera_2", "toggle_video", "is_in_video_mode")
+        )
+        self.autoExp1.toggled.connect(
+            lambda: self.impl.set_auto_exposure(1, self.autoExp1.isChecked())
+        )
+        self.autoExp2.toggled.connect(
+            lambda: self.impl.set_auto_exposure(2, self.autoExp2.isChecked())
+        )
 
         self.pixel_clock1.valueChanged.connect(
             lambda: self.impl.set_parameter(1, "pixel_clock", self.pixel_clock1.value())
@@ -196,8 +207,17 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.stageButtonsGroup.setEnabled(False)
 
         self.move(300, 30)
-        self.setFixedSize(1211, 946)
+        self.setFixedSize(1211, 950)
         self.setMaximumSize(int(1e5), int(1e5))
+
+    @PyQt5.QtCore.pyqtSlot(bool)
+    def on_cameraDock_topLevelChanged(self, is_floating: bool) -> None:
+        """Doc."""
+
+        if is_floating:
+            self.cameraDock.setMaximumSize(int(1e5), int(1e5))
+        else:
+            self.cameraDock.setFixedSize(self.CAMERA_DOCK_MIN_SIZE)
 
     def on_calTdc_released(self) -> None:
         """Doc."""
@@ -411,18 +431,8 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
     @PyQt5.QtCore.pyqtSlot(bool)
     def on_actionCamera_Control_toggled(self, is_toggled_on: bool) -> None:
         """Show/hide camera control dock"""
-        # TODO: move to impl
 
-        self.cameraDock.setVisible(is_toggled_on)
-        if is_toggled_on:
-            self.setFixedSize(1661, 946)
-            self.move(100, 30)
-            self.impl.initialize_camera_dock()
-        else:
-            self.setFixedSize(1211, 946)
-            self.move(300, 30)
-            [self.impl.toggle_video(cam_num, keep_off=True) for cam_num in (1, 2)]
-        self.setMaximumSize(int(1e5), int(1e5))
+        self.impl.toggle_camera_dock(is_toggled_on)
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_avgInterval_currentTextChanged(self, val: str) -> None:
@@ -448,7 +458,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
     def on_stageOn_released(self) -> None:
         """Doc."""
 
-        self.impl.dvc_toggle("stage")
+        self.impl.device_toggle("stage")
 
 
 class SettWin(PyQt5.QtWidgets.QDialog):
