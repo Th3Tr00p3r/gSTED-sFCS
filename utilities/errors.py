@@ -87,21 +87,11 @@ def device_error_checker(func) -> Callable:
         @functools.wraps(func)
         async def wrapper(self, *args, **kwargs):
 
-            try:
-                if hasattr(self, "error_dict") and not self.error_dict:
-                    return await func(self, *args, **kwargs)
-                else:
-                    if (func.__name__ == "toggle") and (args[0] is False):
-                        # if toggling off
-                        pass
-                    else:
-                        self.error_display.set(
-                            f"{self.log_ref} error. Click relevant LED for details."
-                        )
-                        raise DeviceError(self.error_dict["msg"])
-            except AttributeError:
-                # if not hasattr(self, "error_dict")
+            if not self.error_dict:
                 return await func(self, *args, **kwargs)
+            else:
+                self.error_display.set(f"{self.log_ref} error. Click LED for details.")
+                raise DeviceError(self.error_dict["msg"])
 
     else:
 
@@ -111,12 +101,8 @@ def device_error_checker(func) -> Callable:
             if not self.error_dict:
                 return func(self, *args, **kwargs)
             else:
-                if (func.__name__ == "toggle") and (args[0] is False):
-                    # if toggling off
-                    pass
-                else:
-                    self.error_display.set(f"{self.log_ref} error. Click LED for details.")
-                    raise DeviceError(self.error_dict["msg"])
+                self.error_display.set(f"{self.log_ref} error. Click LED for details.")
+                raise DeviceError(self.error_dict["msg"])
 
     return wrapper
 
