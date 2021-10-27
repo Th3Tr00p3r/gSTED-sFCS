@@ -7,10 +7,10 @@ from types import SimpleNamespace
 from typing import List
 
 import ftd2xx
+import instrumental.drivers.cameras.uc480 as uc480
 import nidaqmx as ni
 import numpy as np
 import pyvisa as visa
-from instrumental.drivers.cameras.uc480 import UC480_Camera, UC480Error, lib
 from nidaqmx.stream_readers import (
     CounterReader,  # AnalogMultiChannelReader for AI, if ever
 )
@@ -92,6 +92,9 @@ class NIDAQmx:
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.task_types = task_types
         self.tasks = SimpleNamespace(**{type: [] for type in task_types})
+
+    #        devices = ni.system.system.System.devices # TESTESTEST
+    #        print("HEY")
 
     def start_tasks(self, task_type: str) -> None:
         """Doc."""
@@ -380,7 +383,7 @@ class Instrumental:
         """Doc."""
 
         try:
-            self._inst = UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
+            self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
         except Exception as exc:
             # general 'Exception' is due to bad exception handeling in instrumental-lib...
             raise IOError(f"{self.log_ref} disconnected - {exc}")
@@ -399,7 +402,7 @@ class Instrumental:
                 self._inst.start_live_video(exposure_time=self._inst._get_exposure())
             else:
                 self._inst.stop_live_video()
-        except UC480Error:
+        except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
         else:
             self.is_in_video_mode = should_turn_on
@@ -409,7 +412,7 @@ class Instrumental:
 
         try:
             return self._inst.grab_image(copy=False, exposure_time=self._inst._get_exposure())
-        except UC480Error:
+        except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
 
     def get_latest_frame(self) -> np.ndarray:
@@ -417,16 +420,18 @@ class Instrumental:
 
         try:
             return self._inst.latest_frame(copy=False)
-        except UC480Error:
+        except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
 
     def update_parameter_ranges(self):
         """Doc."""
 
-        *self.pixel_clock_range, _ = tuple(self._inst._dev.PixelClock(lib.PIXELCLOCK_CMD_GET_RANGE))
+        *self.pixel_clock_range, _ = tuple(
+            self._inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_GET_RANGE)
+        )
         self.framerate_range = (1, self._inst.pixelclock._magnitude / 1.6)
         *self.exposure_range, _ = tuple(
-            self._inst._dev.Exposure(lib.IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE)
+            self._inst._dev.Exposure(uc480.lib.IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE)
         )
 
     def set_parameter(self, name, value) -> None:
@@ -439,14 +444,14 @@ class Instrumental:
 
         try:
             if name == "pixel_clock":
-                self._inst._dev.PixelClock(lib.PIXELCLOCK_CMD_SET, int(valid_value))
+                self._inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_SET, int(valid_value))
                 self.update_parameter_ranges()
             elif name == "framerate":
                 self._inst._dev.SetFrameRate(valid_value)
                 self.update_parameter_ranges()
             elif name == "exposure":
                 self._inst._set_exposure(f"{valid_value}ms")
-        except UC480Error:
+        except uc480.UC480Error:
             exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
@@ -455,6 +460,6 @@ class Instrumental:
 
         try:
             self._inst.set_auto_exposure(should_turn_on)
-        except UC480Error:
+        except uc480.UC480Error:
             exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
