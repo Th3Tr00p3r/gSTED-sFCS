@@ -560,40 +560,38 @@ class SFCSSolutionMeasurement(Measurement):
             s.correlate_and_average(cf_name=self.laser_mode)
             return s
 
-        if self.repeat is True:
-            # display ACF for alignments
+        try:
+            s = compute_acf(self.data_dvc.data)
+        except Exception as exc:
+            errors.err_hndlr(exc, sys._getframe(), locals())
+        else:
+            cf = s.cf[self.laser_mode]
             try:
-                s = compute_acf(self.data_dvc.data)
-            except Exception as exc:
-                errors.err_hndlr(exc, sys._getframe(), locals())
+                cf.fit_correlation_function()
+            except fit_tools.FitError as exc:
+                # fit failed
+                errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
+                self.fit_led.set(self.icon_dict["led_red"])
+                g0, tau = cf.g0, 0.1
+                self.g0_wdgt.set(g0)
+                self.tau_wdgt.set(0)
+                self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
             else:
-                cf = s.cf[self.laser_mode]
-                try:
-                    cf.fit_correlation_function()
-                except fit_tools.FitError as exc:
-                    # fit failed
-                    errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
-                    self.fit_led.set(self.icon_dict["led_red"])
-                    g0, tau = cf.g0, 0.1
-                    self.g0_wdgt.set(g0)
-                    self.tau_wdgt.set(0)
-                    self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
-                else:
-                    # fit succeeded
-                    self.fit_led.set(self.icon_dict["led_off"])
-                    fit_params = cf.fit_param["diffusion_3d_fit"]
-                    g0, tau, _ = fit_params["beta"]
-                    x, y = fit_params["x"], fit_params["y"]
-                    fit_func = getattr(fit_tools, fit_params["func_name"])
-                    self.g0_wdgt.set(g0)
-                    self.tau_wdgt.set(tau * 1e3)
-                    self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0)
-                    y_fit = fit_func(x, *fit_params["beta"])
-                    self.plot_wdgt.obj.plot(x, y_fit, "-.r")
-                    self.plot_wdgt.obj.ax.autoscale()
-                    logging.info(
-                        f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
-                    )
+                # fit succeeded
+                self.fit_led.set(self.icon_dict["led_off"])
+                fit_params = cf.fit_param["diffusion_3d_fit"]
+                g0, tau, _ = fit_params["beta"]
+                x, y = fit_params["x"], fit_params["y"]
+                fit_func = getattr(fit_tools, fit_params["func_name"])
+                self.g0_wdgt.set(g0)
+                self.tau_wdgt.set(tau * 1e3)
+                self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0)
+                y_fit = fit_func(x, *fit_params["beta"])
+                self.plot_wdgt.obj.plot(x, y_fit, "-.r")
+                self.plot_wdgt.obj.ax.autoscale()
+                logging.info(
+                    f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
+                )
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:
