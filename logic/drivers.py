@@ -11,6 +11,7 @@ import instrumental.drivers.cameras.uc480 as uc480
 import nidaqmx as ni
 import numpy as np
 import pyvisa as visa
+from instrumental import list_instruments
 from nidaqmx.stream_readers import (
     CounterReader,  # AnalogMultiChannelReader for AI, if ever
 )
@@ -93,8 +94,10 @@ class NIDAQmx:
         self.task_types = task_types
         self.tasks = SimpleNamespace(**{type: [] for type in task_types})
 
-    #        devices = ni.system.system.System.devices # TESTESTEST
-    #        print("HEY")
+        try:
+            len(ni.system.system.System().devices)
+        except FileNotFoundError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def start_tasks(self, task_type: str) -> None:
         """Doc."""
@@ -378,6 +381,10 @@ class Instrumental:
     def __init__(self, param_dict):
         [setattr(self, key, val) for key, val in param_dict.items()]
         self._inst = None
+
+        if not list_instruments(module="cameras"):
+            exc = IOError("No UC480 cameras detected.")
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def open_instrument(self):
         """Doc."""

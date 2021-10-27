@@ -25,8 +25,8 @@ class BaseDevice:
     """Doc."""
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.error_dict = None
+        super().__init__(*args, **kwargs)
 
     def change_icons(self, command):
         """Doc."""
@@ -177,10 +177,8 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         ]
         self.um_v_ratio = tuple(getattr(self, f"{ax}_um2v_const") for ax in "xyz")
 
-        try:
+        with suppress(DeviceError):
             self.start_continuous_read_task()
-        except FileNotFoundError as exc:  # TODO: fix this by rasing an IOError in drivers.py (appears in other places too). can only be discovered on laptop
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def close(self):
         """Doc."""
@@ -433,8 +431,9 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 "count_direction": ni_consts.CountDirection.COUNT_UP,
             }
 
-            self.start_continuous_read_task()
-            self.toggle_led_and_switch(True)
+            with suppress(DeviceError):
+                self.start_continuous_read_task()
+                self.toggle_led_and_switch(True)
 
     def close(self):
         """Doc."""
@@ -534,41 +533,44 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             task_types=("co",),
         )
 
-        self.toggle(False)
+        with suppress(DeviceError):
+            self.toggle(False)
 
     def toggle(self, is_being_switched_on):
         """Doc."""
 
-        if is_being_switched_on:
-            self._start_co_clock_sync()
-            self.toggle_led_and_switch(True)
+        try:
+            if is_being_switched_on:
+                self._start_co_clock_sync()
+            else:
+                self.close_all_tasks()
+        except DaqError:
+            exc = IOError(
+                f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
+            )
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.close_all_tasks()
-            self.toggle_led_and_switch(False)
-
-        self.state = is_being_switched_on
+            self.toggle_led_and_switch(is_being_switched_on)
+            self.state = is_being_switched_on
 
     def _start_co_clock_sync(self) -> None:
         """Doc."""
 
         task_name = "Pixel Clock CO"
 
-        try:
-            self.close_tasks("co")
-            self.create_co_task(
-                name=task_name,
-                chan_spec={
-                    "name_to_assign_to_channel": "pixel clock",
-                    "counter": self.cntr_addr,
-                    "source_terminal": self.tick_src,
-                    "low_ticks": self.low_ticks,
-                    "high_ticks": self.high_ticks,
-                },
-                clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
-            )
-            self.start_tasks("co")
-        except Exception as exc:
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        self.close_tasks("co")
+        self.create_co_task(
+            name=task_name,
+            chan_spec={
+                "name_to_assign_to_channel": "pixel clock",
+                "counter": self.cntr_addr,
+                "source_terminal": self.tick_src,
+                "low_ticks": self.low_ticks,
+                "high_ticks": self.high_ticks,
+            },
+            clk_cnfg={"sample_mode": ni_consts.AcquisitionType.CONTINUOUS},
+        )
+        self.start_tasks("co")
 
 
 class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
@@ -579,7 +581,8 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             param_dict,
             task_types=("do",),
         )
-        self.toggle(False)
+        with suppress(DeviceError):
+            self.toggle(False)
 
     def toggle(self, is_being_switched_on):
         """Doc."""
@@ -590,9 +593,6 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             exc = IOError(
                 f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
             )
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-        except FileNotFoundError:
-            exc = IOError("NI drivers are missing.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led_and_switch(is_being_switched_on)
@@ -617,10 +617,12 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
         self.state = None
         self.emission_state = None
-        self.toggle(True, should_change_icons=False)
 
-        if self.state:
-            self.set_current(1500)
+        with suppress(DeviceError):
+            self.toggle(True, should_change_icons=False)
+
+            if self.state:
+                self.set_current(1500)
 
     def toggle(self, is_being_switched_on, **kwargs):
         """Doc."""
@@ -717,8 +719,9 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     def __init__(self, param_dict):
         super().__init__(param_dict)
 
-        self.toggle(True)
-        self.toggle(False)
+        with suppress(DeviceError):
+            self.toggle(True)
+            self.toggle(False)
 
     def toggle(self, is_being_switched_on):
         """Doc."""
@@ -759,12 +762,14 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         )
         self.is_in_video_mode = False
 
-        try:
-            self.open_instrument()
-        except IOError as exc:
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-        else:
+        with suppress(DeviceError):
+            self.open()
             self.update_parameter_ranges()
+
+    def open(self) -> None:
+        """Doc."""
+
+        self.open_instrument()
 
     def close(self) -> None:
         """Doc."""
