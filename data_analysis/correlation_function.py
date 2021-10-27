@@ -928,8 +928,8 @@ def fix_data_shift(cnt) -> int:
 def threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
     """Doc."""
 
-    thresh = skimage.filter.threshold_multiotsu(
-        skimage.filter.median(img).astype(np.float32), otsu_classes, nbins=n_bins
+    thresh = skimage.filters.threshold_multiotsu(
+        skimage.filters.median(img).astype(np.float32), otsu_classes, nbins=n_bins
     )  # minor filtering of outliers
     cnt_dig = np.digitize(img, bins=thresh)
     plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
