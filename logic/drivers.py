@@ -408,6 +408,7 @@ class Instrumental:
             if should_turn_on:
                 if self.is_auto_exposure_on:
                     self._inst.start_live_video()
+                    self._inst.set_auto_exposure(True)
                 else:
                     self._inst.start_live_video(exposure_time=self._inst._get_exposure())
             else:
