@@ -591,7 +591,8 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
             )
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-        except FileNotFoundError as exc:
+        except FileNotFoundError:
+            exc = IOError("NI drivers are missing.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led_and_switch(is_being_switched_on)
