@@ -35,11 +35,11 @@ class App:
         "dep_laser",
         "stage",
         "UM232H",
-        "camera_1",
-        "camera_2",
         "scanners",
         "photon_detector",
         "pixel_clock",
+        "camera_1",
+        "camera_2",
     )
 
     def __init__(self, loop):

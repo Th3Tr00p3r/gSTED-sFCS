@@ -618,6 +618,9 @@ class MainWin:
     def set_parameter(self, cam_num: int, param_name: str, value) -> None:
         """Doc."""
 
+        if self.cameras is None:
+            return
+
         slider_const = 1e2
 
         # convert from slider
@@ -626,9 +629,9 @@ class MainWin:
         getattr(self._gui, f"{param_name}_val{cam_num}").setValue(value)
 
         camera = self.cameras[cam_num - 1]
-        with suppress(AttributeError):
-            # AttributeError - camera not properly initialized
-            camera.set_parameter(param_name, value)
+        with suppress(DeviceError):
+            # DeviceError - camera not properly initialized
+            camera.set_parameters([(param_name, value)])
             getattr(self._gui, f"autoExp{cam_num}").setChecked(False)
         self.update_slider_range(cam_num)
 
@@ -647,6 +650,9 @@ class MainWin:
 
     def set_auto_exposure(self, cam_num: int, is_checked: bool):
         """Doc."""
+
+        if self.cameras is None:
+            return
 
         camera = self.cameras[cam_num - 1]
         camera.set_auto_exposure(is_checked)
@@ -849,13 +855,15 @@ class MainWin:
         curr_template = data_import_wdgts.data_templates.get()
         new_template_prefix = data_import_wdgts.new_template
 
+        # cancel if no new prefix supplied
         if not new_template_prefix:
             return
 
         try:
+            # get the current prefix - anything before the timestamp
             curr_template_prefix = re.findall("(^.*)(?=_[0-9]{6})", curr_template)[0]
         except IndexError:
-            # template does not contain timestamp
+            # legacy template which has no timestamp
             curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
 
         if new_template_prefix == curr_template_prefix:
@@ -867,13 +875,13 @@ class MainWin:
         new_template = re.sub(curr_template_prefix, new_template_prefix, curr_template, count=1)
 
         # check if new template already exists (unlikely)
-        if dir_path.glob(new_template):
+        if list(dir_path.glob(new_template)):
             logging.warning(
                 f"New template '{new_template}' already exists in '{dir_path}'. Operation canceled."
             )
             return
         # check if current template doesn't exists (can only happen if deleted manually between discovering the template and running this function)
-        if not (curr_filenames := dir_path.glob(curr_template)):
+        if not (curr_filepaths := [str(filepath) for filepath in dir_path.glob(curr_template)]):
             logging.warning("Current template is missing! (Probably manually deleted)")
             return
 
@@ -885,20 +893,25 @@ class MainWin:
             return
 
         # generate new filanames
-        new_filenames = [
-            re.sub(curr_template[:-5], new_template[:-5], curr_filename)
-            for curr_filename in curr_filenames
+        new_filepaths = [
+            re.sub(curr_template_prefix, new_template_prefix, curr_filepath)
+            for curr_filepath in curr_filepaths
         ]
         # rename the files
         [
-            Path(curr_filename).rename(new_filename)
-            for curr_filename, new_filename in zip(curr_filenames, new_filenames)
+            Path(curr_filepath).rename(new_filepath)
+            for curr_filepath, new_filepath in zip(curr_filepaths, new_filepaths)
         ]
         # rename the log file, if applicable
         with suppress(FileNotFoundError):
-            (dir_path / (curr_template[:-6] + ".log")).rename(
-                dir_path / (new_template[:-6] + ".log")
+            pattern = re.sub("\\*?", "[0-9]*", curr_template)
+            replacement = re.sub("_\\*", "", curr_template)
+            current_log_filepath = re.sub(pattern, replacement, curr_filepaths[0])
+            current_log_filepath = re.sub("\\.pkl", ".log", current_log_filepath)
+            new_log_filepath = re.sub(
+                curr_template_prefix, new_template_prefix, current_log_filepath
             )
+            Path(current_log_filepath).rename(new_log_filepath)
 
         # refresh templates
         day = data_import_wdgts.data_days
