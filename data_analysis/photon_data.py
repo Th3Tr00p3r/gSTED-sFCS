@@ -121,7 +121,7 @@ class TDCPhotonData:
         n_zeros_for_fine_bounds=10,
         fine_shift=0,
         time_bins_for_hist_ns=0.1,
-        exmpl_photon_data=None,
+        example_photon_data=None,
         sync_coarse_time_to=None,
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
@@ -161,7 +161,7 @@ class TDCPhotonData:
             x = forced_valid_coarse_bins
             h = h_all[x]
         elif pick_valid_bins_method == "by example":
-            x = exmpl_photon_data.coarse["bins"]
+            x = example_photon_data.coarse["bins"]
             h = h_all[x]
         elif pick_valid_bins_method == "interactive":
             raise NotImplementedError("'interactive' valid bins selection is not yet implemented.")
@@ -195,7 +195,7 @@ class TDCPhotonData:
             pick_calib_bins_method == "by example"
             or pick_calib_bins_method == "External calibration"
         ):
-            x_calib = exmpl_photon_data.tdc_calib["coarse_bins"]
+            x_calib = example_photon_data.tdc_calib["coarse_bins"]
         elif pick_valid_bins_method == "interactive":
             raise NotImplementedError(
                 "'interactive' calibration bins selection is not yet implemented."
@@ -206,8 +206,8 @@ class TDCPhotonData:
             )
 
         if pick_calib_bins_method == "External calibration":
-            self.tdc_calib = exmpl_photon_data.tdc_calib
-            max_j = exmpl_photon_data.tdc_calib["max_j"]
+            self.tdc_calib = example_photon_data.tdc_calib
+            max_j = example_photon_data.tdc_calib["max_j"]
 
             if "l_quarter_tdc" in self.tdc_calib:
                 l_quarter_tdc = self.tdc_calib["l_quarter_tdc"]
@@ -219,9 +219,6 @@ class TDCPhotonData:
             fine_calib = fine[np.isin(coarse, x_calib)]
 
             self.tdc_calib["fine_bins"] = np.arange(tdc_chain_length)
-            # x_tdc_calib_nonzero, h_tdc_calib_nonzero = np.unique(fine_calib, return_counts=True) #histogram check also np.bincount
-            # h_tdc_calib = np.zeros(x_tdc_calib.shape, dtype = h_tdc_calib_nonzero.dtype)
-            # h_tdc_calib[x_tdc_calib_nonzero] = h_tdc_calib_nonzero
             h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length)
 
             # find effective range of TDC by, say, finding 10 zeros in a row
@@ -258,7 +255,6 @@ class TDCPhotonData:
             coarse_len = self.coarse["bins"].size
 
             t_weight = np.tile(self.tdc_calib["h"] / np.mean(self.tdc_calib["h"]), coarse_len)
-            # t_weight = np.flip(t_weight)
             coarse_times = (
                 np.tile(np.arange(coarse_len), [t_calib.size, 1]) / self.fpga_freq_hz * 1e9
             )
@@ -371,10 +367,10 @@ class TDCPhotonData:
 
     def compare_lifetimes(
         self,
+        compare_to: dict = None,
         normalization_type="Per Time",
         legend_label=None,
         fontsize=14,
-        **kwargs,
     ):
         """
         Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
@@ -385,21 +381,21 @@ class TDCPhotonData:
             legend_label = self.template
 
         # add self to compared TDC calibrations
-        kwargs.update([(legend_label, self)])
+        compared = {**{legend_label: self}, **compare_to}
 
         h = []
-        for label, tdc_obj in kwargs.items():
+        for label, corrfunc_tdc in compared.items():
             with suppress(AttributeError):
                 # AttributeError - assume other tdc_objects that have TDCcalib structures
-                x = tdc_obj.tdc_calib["t_hist"]
+                x = corrfunc_tdc.tdc_calib["t_hist"]
                 if normalization_type == "NO":
-                    y = tdc_obj.tdc_calib["all_hist"] / tdc_obj.tdc_calib["t_weight"]
+                    y = corrfunc_tdc.tdc_calib["all_hist"] / corrfunc_tdc.tdc_calib["t_weight"]
                 elif normalization_type == "Per Time":
-                    y = tdc_obj.tdc_calib["all_hist_norm"]
+                    y = corrfunc_tdc.tdc_calib["all_hist_norm"]
                 elif normalization_type == "By Sum":
-                    y = tdc_obj.tdc_calib["all_hist_norm"] / np.sum(
-                        tdc_obj.tdc_calib["all_hist_norm"][
-                            np.isfinite(tdc_obj.tdc_calib["all_hist_norm"])
+                    y = corrfunc_tdc.tdc_calib["all_hist_norm"] / np.sum(
+                        corrfunc_tdc.tdc_calib["all_hist_norm"][
+                            np.isfinite(corrfunc_tdc.tdc_calib["all_hist_norm"])
                         ]
                     )
                 else:

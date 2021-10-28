@@ -1338,7 +1338,7 @@ class MainWin:
             ) as sted_data:
                 with suppress(AttributeError):
                     # AttributeError - template is empty, meaning corrfunc_tdc is None
-                    exc_data.compare_lifetimes(legend_label="exc", sted=sted_data)
+                    exc_data.compare_lifetimes(legend_label="exc", compare_to={"sted": sted_data})
 
     def remove_imported_template(self) -> None:
         """Doc."""
