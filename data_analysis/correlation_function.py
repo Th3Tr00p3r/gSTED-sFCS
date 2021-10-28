@@ -85,6 +85,7 @@ class CorrFunc:
 
             tot_weights = weights.sum(0)
             avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
+            # TODO: error handeling for the row below (zero division) - can/should it be detected beforehand?
             error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
 
             return avg_cf_cr, error_cf_cr
