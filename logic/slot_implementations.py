@@ -973,13 +973,13 @@ class MainWin:
             # Inferring data_dype from template
             data_type = self.infer_data_type_from_template(template)
 
-            corr_func_tdc = CorrFuncTDC()
+            corrfunc_tdc = CorrFuncTDC()
             try:
-                corr_func_tdc.read_fpga_data(
+                corrfunc_tdc.read_fpga_data(
                     date_dir_path / template,
                     should_plot=False,
                 )
-                corr_func_tdc.correlate_and_average(cf_name=data_type)
+                corrfunc_tdc.correlate_and_average(cf_name=data_type)
 
             except AttributeError:
                 # No directories found
@@ -988,7 +988,7 @@ class MainWin:
             except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                 err_hndlr(exc, sys._getframe(), locals())
 
-            cf = corr_func_tdc.cf[data_type]
+            cf = corrfunc_tdc.cf[data_type]
 
             try:
                 cf.fit_correlation_function()
@@ -1091,7 +1091,7 @@ class MainWin:
 
             if import_wdgts.sol_use_processed and file_path.is_file():
                 print(f"Loading processed data '{current_template}' from hard drive...", end=" ")
-                corr_func_tdc = file_utilities.load_processed_solution_measurement(file_path)
+                corrfunc_tdc = file_utilities.load_processed_solution_measurement(file_path)
                 print("Done.")
 
             else:  # process data
@@ -1110,18 +1110,18 @@ class MainWin:
                 try:
                     with suppress(AttributeError):
                         # AttributeError - No directories found
-                        corr_func_tdc = CorrFuncTDC()
-                        corr_func_tdc.read_fpga_data(
+                        corrfunc_tdc = CorrFuncTDC()
+                        corrfunc_tdc.read_fpga_data(
                             curr_dir / current_template,
                             file_selection=sol_file_selection,
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
                             should_plot=sol_analysis_wdgts.external_plotting,
                         )
-                    corr_func_tdc.correlate_data(cf_name=data_type, verbose=True)
+                    corrfunc_tdc.correlate_data(cf_name=data_type, verbose=True)
 
                     if import_wdgts.sol_save_processed:
                         print("Saving the processed data...", end=" ")
-                        file_utilities.save_processed_solution_meas(corr_func_tdc, curr_dir)
+                        file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
                         print("Done.")
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
@@ -1130,7 +1130,7 @@ class MainWin:
 
             # save data and populate combobox
             imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
-            self._app.analysis.loaded_data[current_template] = corr_func_tdc
+            self._app.analysis.loaded_data[current_template] = corrfunc_tdc
             imported_combobox.obj.addItem(current_template)
             imported_combobox.set(current_template)
             logging.info(f"Data '{current_template}' imported for analysis.")
@@ -1144,19 +1144,19 @@ class MainWin:
         if template is None:
             template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
-        corr_func_tdc = self._app.analysis.loaded_data.get(curr_data_type)
+        corrfunc_tdc = self._app.analysis.loaded_data.get(curr_data_type)
 
         if should_load:
             with suppress(AttributeError):
-                corr_func_tdc.dump_or_load_data(should_load=True)
+                corrfunc_tdc.dump_or_load_data(should_load=True)
 
         try:
-            yield corr_func_tdc
+            yield corrfunc_tdc
 
         finally:
             if should_load:
                 with suppress(AttributeError):
-                    corr_func_tdc.dump_or_load_data(should_load=False)
+                    corrfunc_tdc.dump_or_load_data(should_load=False)
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
@@ -1174,9 +1174,9 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_corr_func_tdc_from_template(imported_template) as corr_func_tdc:
+        with self.get_corr_func_tdc_from_template(imported_template) as corrfunc_tdc:
             try:
-                num_files = corr_func_tdc.n_files
+                num_files = corrfunc_tdc.n_files
             except AttributeError:
                 # no imported templates (deleted)
                 wdgts.SOL_ANALYSIS_COLL.clear_all_objects()
@@ -1187,10 +1187,10 @@ class MainWin:
 
                 # populate general measurement properties
                 sol_data_analysis_wdgts.n_files.set(num_files)
-                sol_data_analysis_wdgts.scan_duration_min.set(corr_func_tdc.duration_min)
-                sol_data_analysis_wdgts.avg_cnt_rate_khz.set(corr_func_tdc.avg_cnt_rate_khz)
+                sol_data_analysis_wdgts.scan_duration_min.set(corrfunc_tdc.duration_min)
+                sol_data_analysis_wdgts.avg_cnt_rate_khz.set(corrfunc_tdc.avg_cnt_rate_khz)
 
-                if corr_func_tdc.type == "angular_scan":
+                if corrfunc_tdc.type == "angular_scan":
                     # populate scan images tab
                     print("Displaying scan images...", end=" ")
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
@@ -1204,11 +1204,11 @@ class MainWin:
                     scan_settings_text = "\n\n".join(
                         [
                             f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
-                            for key, val in corr_func_tdc.angular_scan_settings.items()
+                            for key, val in corrfunc_tdc.angular_scan_settings.items()
                         ]
                     )
 
-                elif corr_func_tdc.type == "static":
+                elif corrfunc_tdc.type == "static":
                     print("Averaging, plotting and fitting...", end=" ")
                     self.calculate_and_show_sol_mean_acf(imported_template)
                     scan_settings_text = "no scan."
@@ -1223,9 +1223,9 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            with self.get_corr_func_tdc_from_template(imported_template) as corr_func_tdc:
-                img = corr_func_tdc.scan_images_dstack[:, :, file_num - 1]
-                roi = corr_func_tdc.roi_list[file_num - 1]
+            with self.get_corr_func_tdc_from_template(imported_template) as corrfunc_tdc:
+                img = corrfunc_tdc.scan_images_dstack[:, :, file_num - 1]
+                roi = corrfunc_tdc.roi_list[file_num - 1]
 
                 scan_image_disp = wdgts.SOL_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
@@ -1237,11 +1237,11 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_corr_func_tdc_from_template(imported_template) as corr_func_tdc:
-            if corr_func_tdc is None:
+        with self.get_corr_func_tdc_from_template(imported_template) as corrfunc_tdc:
+            if corrfunc_tdc is None:
                 return
 
-            if corr_func_tdc.type == "angular_scan":
+            if corrfunc_tdc.type == "angular_scan":
                 row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
@@ -1254,8 +1254,8 @@ class MainWin:
 
                 with suppress(AttributeError, RuntimeError):
                     # AttributeError - no data loaded
-                    data_type = self.infer_data_type_from_template(corr_func_tdc.template)
-                    cf = corr_func_tdc.cf[data_type]
+                    data_type = self.infer_data_type_from_template(corrfunc_tdc.template)
+                    cf = corrfunc_tdc.cf[data_type]
                     cf.average_correlation(**avg_corr_kwargs)
 
                     if sol_data_analysis_wdgts.plot_spatial:
@@ -1280,9 +1280,9 @@ class MainWin:
                     sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(cf.j_bad))
                     sol_data_analysis_wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
 
-            elif corr_func_tdc.type == "static":
-                data_type = self.infer_data_type_from_template(corr_func_tdc.template)
-                cf = corr_func_tdc.cf[data_type]
+            elif corrfunc_tdc.type == "static":
+                data_type = self.infer_data_type_from_template(corrfunc_tdc.template)
+                cf = corrfunc_tdc.cf[data_type]
                 cf.average_correlation()
                 try:
                     cf.fit_correlation_function()
@@ -1321,10 +1321,12 @@ class MainWin:
         data_types = ["exc_cal", "sted_cal", "exc_samp", "sted_samp"]
         assigned_templates = [getattr(wdgts.SOL_ANALYSIS_COLL, type).get() for type in data_types]
         for template in assigned_templates:
-            with self.get_corr_func_tdc_from_template(template, should_load=True) as corr_func_tdc:
+            with self.get_corr_func_tdc_from_template(template, should_load=True) as corrfunc_tdc:
                 with suppress(AttributeError):
-                    # AttributeError - template is empty, meaning corr_func_tdc is None
-                    corr_func_tdc.calibrate_tdc()  # TODO: add nanosecond calibration gating from widget
+                    # AttributeError - template is empty, meaning corrfunc_tdc is None
+                    corrfunc_tdc.calibrate_tdc(should_plot=True)
+                    # TODO: add nanosecond calibration gating from widget
+                    # TODO: move plotting to GUI
 
         for idx in range(0, len(assigned_templates), 2):
             with self.get_corr_func_tdc_from_template(
@@ -1335,7 +1337,7 @@ class MainWin:
                 should_load=True,
             ) as sted_data:
                 with suppress(AttributeError):
-                    # AttributeError - template is empty, meaning corr_func_tdc is None
+                    # AttributeError - template is empty, meaning corrfunc_tdc is None
                     exc_data.compare_lifetimes(legend_label="exc", sted=sted_data)
 
     def remove_imported_template(self) -> None:

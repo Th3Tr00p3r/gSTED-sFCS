@@ -125,7 +125,7 @@ class TDCPhotonData:
         sync_coarse_time_to=None,
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
-        should_plot=True,
+        should_plot=False,
     ):
         """Doc."""
 
@@ -429,7 +429,7 @@ class TDCPhotonData:
         x_scale="linear",
         y_scale="log",
         max_iter=3,
-        should_plot=True,
+        should_plot=False,
     ):
         """Doc."""
 
