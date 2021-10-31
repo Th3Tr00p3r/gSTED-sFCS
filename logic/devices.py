@@ -6,7 +6,7 @@ import time
 from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Iterator, List
+from typing import Iterable, List, Union
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -15,7 +15,7 @@ from nidaqmx.errors import DaqError
 import utilities.helper as helper
 from gui.dialog import Error
 from gui.icons import icons
-from gui.widgets import QtWidgetCollection
+from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
@@ -27,6 +27,8 @@ class BaseDevice:
     def __init__(self, *args, **kwargs):
         self.error_dict = None
         super().__init__(*args, **kwargs)
+        self.led_widget: QtWidgetAccess
+        self.switch_widget: QtWidgetAccess
 
     def change_icons(self, command):
         """Doc."""
@@ -146,15 +148,15 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             param_dict,
             task_types=("ai", "ao"),
         )
-        rse = ni_consts.TerminalConfiguration.RSE
-        diff = ni_consts.TerminalConfiguration.DIFFERENTIAL
+        RSE = ni_consts.TerminalConfiguration.RSE
+        DIFF = ni_consts.TerminalConfiguration.DIFFERENTIAL
         self.ai_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} AI",
                 "min_val": -10.0,
                 "max_val": 10.0,
-                "terminal_config": rse,
+                "terminal_config": RSE,
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
@@ -165,7 +167,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 **getattr(self, f"{axis.upper()}_AO_LIMITS"),
                 "terminal_config": trm_cnfg,
             }
-            for axis, trm_cnfg, inst in zip("xyz", (diff, diff, rse), ("galvo", "galvo", "piezo"))
+            for axis, trm_cnfg, inst in zip("xyz", (DIFF, DIFF, RSE), ("galvo", "galvo", "piezo"))
         ]
         self.ao_chan_specs = [
             {
@@ -176,6 +178,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
         self.um_v_ratio = tuple(getattr(self, f"{ax}_um2v_const") for ax in "xyz")
+        self.ai_buffer: Union[list, deque]
 
         with suppress(DeviceError):
             self.start_continuous_read_task()
@@ -234,7 +237,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         def smooth_start(
-            axis: str, ao_chan_specs: dict, final_pos: float, step_sz: float = 0.25
+            axis: str, ao_chan_specs: list, final_pos: float, step_sz: float = 0.25
         ) -> None:
             """Doc."""
             # NOTE: Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)
@@ -511,6 +514,8 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
     def init_ci_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
+
+        self.ci_buffer: Union[list, deque]
 
         if type == "circular":
             if size is None:
@@ -809,7 +814,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
             return not should_turn_on
 
-    def set_parameters(self, parameters: Iterator = DEFAULT_PARAMETERS) -> None:
+    def set_parameters(self, parameters: Iterable = DEFAULT_PARAMETERS) -> None:
         """Set pixel_clock, framerate and exposure"""
 
         [self.set_parameter(name, value) for name, value in parameters]

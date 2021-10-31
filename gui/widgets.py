@@ -312,17 +312,17 @@ SOL_CIRC_SCAN_COLL = QtWidgetCollection(
 )
 
 SOL_MEAS_COLL = QtWidgetCollection(
-    scan_type=("solScanType", "QComboBox", "main", False),
     file_template=("solScanFileTemplate", "QLineEdit", "main", False),
+    save_path=("dataPath", "QLineEdit", "settings", False),
+    sub_dir_name=("solSubdirName", "QLineEdit", "settings", False),
+    prog_bar_wdgt=("solScanProgressBar", "QSlider", "main", True),
+    scan_type=("solScanType", "QComboBox", "main", False),
     regular=("regularSolMeas", "QRadioButton", "main", False),
     repeat=("repeatSolMeas", "QRadioButton", "main", False),
     final=("finalSolMeas", "QRadioButton", "main", False),
-    save_path=("dataPath", "QLineEdit", "settings", False),
-    sub_dir_name=("solSubdirName", "QLineEdit", "settings", False),
     max_file_size_mb=("solScanMaxFileSize", "QDoubleSpinBox", "main", False),
     duration=("solScanDur", "QDoubleSpinBox", "main", False),
     duration_units=("solScanDurUnits", "QComboBox", "main", False),
-    prog_bar_wdgt=("solScanProgressBar", "QSlider", "main", True),
     start_time_wdgt=("solScanStartTime", "QTimeEdit", "main", True),
     end_time_wdgt=("solScanEndTime", "QTimeEdit", "main", True),
     time_left_wdgt=("solScanTimeLeft", "QSpinBox", "main", True),
@@ -352,10 +352,10 @@ IMG_SCAN_COLL = QtWidgetCollection(
 
 IMG_MEAS_COLL = QtWidgetCollection(
     file_template=("imgScanFileTemplate", "QLineEdit", "main", False),
-    always_save=("alwaysSaveImg", "QCheckBox", "main", False),
     save_path=("dataPath", "QLineEdit", "settings", False),
     sub_dir_name=("imgSubdirName", "QLineEdit", "settings", False),
     prog_bar_wdgt=("imgScanProgressBar", "QSlider", "main", True),
+    always_save=("alwaysSaveImg", "QCheckBox", "main", False),
     curr_plane_wdgt=("currPlane", "QSpinBox", "main", True),
     plane_shown=("numPlaneShown", "QSpinBox", "main", True),
     plane_choice=("numPlaneShownChoice", "QSlider", "main", True),

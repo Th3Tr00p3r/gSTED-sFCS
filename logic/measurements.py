@@ -23,7 +23,18 @@ from utilities import errors, file_utilities, fit_tools, helper
 class Measurement:
     """Base class for measurements"""
 
-    def __init__(self, app, type: str, scan_params, **kwargs):
+    def __init__(
+        self,
+        app,
+        type: str,
+        scan_params,
+        laser_mode,
+        file_template,
+        save_path,
+        sub_dir_name,
+        prog_bar_wdgt,
+        **kwargs,
+    ):
 
         # devices
         self.counter_dvc = app.devices.photon_detector
@@ -39,14 +50,29 @@ class Measurement:
 
         self._app = app
         self.type = type
+        self.laser_mode = laser_mode
+        self.file_template = file_template
+        self.save_path = save_path
+        self.sub_dir_name = sub_dir_name
+        self.prog_bar_wdgt = prog_bar_wdgt
         self.icon_dict = icons.get_icon_paths()  # get icons
-        for key, val in kwargs.items():
-            setattr(self, key, val)
         self.scan_params = scan_params
         self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2v_const") for ax in "xyz")
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
         self.sys_info = file_utilities.default_system_info
         self.sys_info["xyz_um_to_v"] = self.um_v_ratio
+
+        # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
+        # better suit this case
+        self.start_time: float
+        self.duration_s: int
+        self.max_file_size_mb: float
+        self.est_plane_duration: float
+        self.curr_plane: int
+        self.final: bool
+        self.ao_buffer: np.ndarray
+        self.n_ao_samps: int
+        self.ai_conv_rate: float
 
         self.is_running = False
 
@@ -290,6 +316,14 @@ class SFCSImageMeasurement(Measurement):
 
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
+        self.always_save = kwargs["always_save"]
+        self.curr_plane_wdgt = kwargs["curr_plane_wdgt"]
+        self.plane_shown = kwargs["plane_shown"]
+        self.plane_choice = kwargs["plane_choice"]
+        self.image_wdgt = kwargs["image_wdgt"]
+        self.pattern_wdgt = kwargs["pattern_wdgt"]
+        self.scale_image = kwargs["scale_image"]
+        self.image_method = kwargs["image_method"]
         self.scanning = True
         self.scan_params.initial_ao = tuple(getattr(scan_params, f"curr_ao_{ax}") for ax in "xyz")
 
@@ -494,6 +528,22 @@ class SFCSSolutionMeasurement(Measurement):
 
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSSolution", scan_params=scan_params, **kwargs)
+        self.scan_type = kwargs["scan_type"]
+        self.regular = kwargs["regular"]
+        self.repeat = kwargs["repeat"]
+        self.final = kwargs["final"]
+        self.max_file_size_mb = kwargs["max_file_size_mb"]
+        self.duration = kwargs["duration"]
+        self.duration_units = kwargs["duration_units"]
+        self.start_time_wdgt = kwargs["start_time_wdgt"]
+        self.end_time_wdgt = kwargs["end_time_wdgt"]
+        self.time_left_wdgt = kwargs["time_left_wdgt"]
+        self.file_num_wdgt = kwargs["file_num_wdgt"]
+        self.pattern_wdgt = kwargs["pattern_wdgt"]
+        self.g0_wdgt = kwargs["g0_wdgt"]
+        self.tau_wdgt = kwargs["tau_wdgt"]
+        self.plot_wdgt = kwargs["plot_wdgt"]
+        self.fit_led = kwargs["fit_led"]
         self.scan_params.plane_orientation = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier

@@ -200,7 +200,8 @@ def file_last_line(file_path) -> str:
             last_line = f.readline().decode()
     except OSError:
         # File empty and was just created
-        return logging.info("Log file initialized.")
+        logging.info("Log file initialized.")
+        return None
     else:
         return last_line
 
