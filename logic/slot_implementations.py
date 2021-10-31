@@ -78,55 +78,61 @@ class MainWin:
     ) -> bool:
         """Returns False in case operation fails"""
 
-        dvc = getattr(self._app.devices, nick)
-        try:
+        was_toggled = False  # assume didn't work
+        dvc = getattr(self._app.devices, nick)  # get device
+
+        try:  # try probing device state
             is_dvc_on = getattr(dvc, state_attr)
-        except AttributeError:
+
+        except AttributeError:  # faulty device
             exc = DeviceError(f"{dvc.log_ref} was not properly initialized. Cannot toggle.")
             if nick == "stage":
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
-                return False
             else:
                 raise exc
 
-        if (leave_on and is_dvc_on) or (leave_off and not is_dvc_on):
-            return True
-
-        if not is_dvc_on:
-            # switch ON
-            try:
-                getattr(dvc, toggle_mthd)(True)
-            except DeviceError as exc:
-                err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
-                return False
-
-            if is_dvc_on := getattr(dvc, state_attr):
-                # if managed to turn ON
-                logging.debug(f"{dvc.log_ref} toggled ON")
-                if nick == "stage":
-                    self._gui.stageButtonsGroup.setEnabled(True)
-                return True
-
+        # have device state, keep going
         else:
-            # switch OFF
-            try:
-                getattr(dvc, toggle_mthd)(False)
-            except DeviceError:
-                return False
+            # no need to do anything if already ON/OFF and meant to stay that way
+            if (leave_on and is_dvc_on) or (leave_off and not is_dvc_on):
+                was_toggled = True
 
-            if not (is_dvc_on := getattr(dvc, state_attr)):
-                # if managed to turn OFF
-                logging.debug(f"{dvc.log_ref} toggled OFF")
+            # otherwise, need to toggle!
+            else:
+                # switch ON
+                if not is_dvc_on:
+                    try:
+                        getattr(dvc, toggle_mthd)(True)
+                    except DeviceError as exc:
+                        err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
+                    else:
+                        # if managed to turn ON
+                        if is_dvc_on := getattr(dvc, state_attr):
+                            logging.debug(f"{dvc.log_ref} toggled ON")
+                            if nick == "stage":
+                                self._gui.stageButtonsGroup.setEnabled(True)
+                            was_toggled = True
 
-                if nick == "stage":
-                    self._gui.stageButtonsGroup.setEnabled(False)
+                # switch OFF
+                else:
+                    with suppress(DeviceError):
+                        getattr(dvc, toggle_mthd)(False)
 
-                if nick == "dep_laser":
-                    # set curr/pow values to zero when depletion is turned OFF
-                    self._gui.depActualCurr.setValue(0)
-                    self._gui.depActualPow.setValue(0)
+                    if not (is_dvc_on := getattr(dvc, state_attr)):
+                        # if managed to turn OFF
+                        logging.debug(f"{dvc.log_ref} toggled OFF")
 
-                return True
+                        if nick == "stage":
+                            self._gui.stageButtonsGroup.setEnabled(False)
+
+                        if nick == "dep_laser":
+                            # set curr/pow values to zero when depletion is turned OFF
+                            self._gui.depActualCurr.setValue(0)
+                            self._gui.depActualPow.setValue(0)
+
+                        was_toggled = True
+
+        return was_toggled
 
     def led_clicked(self, led_obj_name) -> None:
         """Doc."""
@@ -938,7 +944,7 @@ class MainWin:
         """Doc."""
 
         if (dir_path := self.current_date_type_dir_path()).is_dir():
-            webbrowser.open(dir_path)
+            webbrowser.open(str(dir_path))
         else:
             # dir was deleted, refresh all dates
             self.switch_data_type()

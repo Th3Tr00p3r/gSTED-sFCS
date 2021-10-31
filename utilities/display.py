@@ -2,6 +2,7 @@
 
 from collections.abc import Iterable
 from contextlib import contextmanager
+from typing import Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -68,11 +69,11 @@ class Display:
             ax.imshow(image, *args, **kwargs)
 
     def plot_acfs(
-        self, x: (np.ndarray, str), avg_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
+        self, x: Tuple[np.ndarray, str], avg_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
     ):
         """Doc."""
 
-        x, x_type = x
+        x_arr, x_type = x
 
         with self._show_internal_ax() as ax:
             if x_type == "lag":
@@ -88,14 +89,14 @@ class Display:
                     ax.set_ylim(-1e4, 1e4)
             if x_type == "disp":
                 ax.set_yscale("log")
-                x = x ** 2
+                x_arr = x_arr ** 2
                 ax.set_xlim(0, 0.6)
                 ax.set_ylim(g0 * 1.5e-3, g0 * 1.1)
 
             if cf_cr is not None:
                 for row_acf in cf_cr:
-                    ax.plot(x, row_acf)
-            ax.plot(x, avg_cf_cr, "k")
+                    ax.plot(x_arr, row_acf)
+            ax.plot(x_arr, avg_cf_cr, "k")
 
     @contextmanager
     def _show_internal_ax(

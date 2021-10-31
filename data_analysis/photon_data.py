@@ -20,6 +20,7 @@ class TDCPhotonData:
         locate_outliers=False,
         max_outlier_prob=1e-5,
         verbose=False,
+        **kwargs,
     ):
         """Doc."""
 
@@ -367,9 +368,9 @@ class TDCPhotonData:
 
     def compare_lifetimes(
         self,
+        legend_label: str,
         compare_to: dict = None,
         normalization_type="Per Time",
-        legend_label=None,
         fontsize=14,
     ):
         """
@@ -377,10 +378,7 @@ class TDCPhotonData:
         and values are 'TDCPhotonData'-inheriting objects which are supposed to have their own TDC calibrations.
         """
 
-        if legend_label is None:
-            legend_label = self.template
-
-        # add self to compared TDC calibrations
+        # add self (first) to compared TDC calibrations
         compared = {**{legend_label: self}, **compare_to}
 
         h = []
@@ -559,6 +557,7 @@ def _first_full_photon_idx(byte_data, group_len) -> int:
     for idx in range(byte_data.size):
         if (byte_data[idx] == 248) and (byte_data[idx + (group_len - 1)] == 254):
             return idx
+    return None
 
 
 def _find_all_section_edges(byte_data, group_len):

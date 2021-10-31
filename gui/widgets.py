@@ -6,7 +6,7 @@ import logging
 import re
 from contextlib import suppress
 from types import SimpleNamespace
-from typing import List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import PyQt5.QtWidgets as QtWidgets
 
@@ -18,6 +18,8 @@ class QtWidgetAccess:
 
     def __init__(self, obj_name: str, widget_class: str, gui_parent_name: str, does_hold_obj: bool):
         self.obj_name = obj_name
+        self.getter: str
+        self.setter: str
         self.getter, self.setter, _ = _getter_setter_type_dict.get(widget_class, (None,) * 3)
         self.gui_parent_name = gui_parent_name
         self.does_hold_obj = does_hold_obj
@@ -88,7 +90,7 @@ class QtWidgetCollection:
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(new_vals, parent_gui)
 
-    def read_gui_to_obj(self, app_obj, out="namespace") -> SimpleNamespace:
+    def read_gui_to_obj(self, app_obj, out="namespace") -> Union[SimpleNamespace, Dict[str, Any]]:
         """
         Read values from QtWidgetAccess objects, which are the attributes of self and return a namespace.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
@@ -193,7 +195,7 @@ SETTINGS_TYPES = [
 ]
 
 # What to do with each widget class
-_getter_setter_type_dict = {
+_getter_setter_type_dict: Dict[str, Tuple[str, str, type]] = {
     "QLabel": ("text", "setText", str),
     "QComboBox": ("currentText", "setCurrentText", str),
     "QTabWidget": ("currentIndex", "setCurrentIndex", int),

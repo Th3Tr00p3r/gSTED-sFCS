@@ -40,7 +40,8 @@ class Measurement:
         self._app = app
         self.type = type
         self.icon_dict = icons.get_icon_paths()  # get icons
-        [setattr(self, key, val) for key, val in kwargs.items()]
+        for key, val in kwargs.items():
+            setattr(self, key, val)
         self.scan_params = scan_params
         self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2v_const") for ax in "xyz")
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
@@ -80,7 +81,7 @@ class Measurement:
         self._app.gui.main.impl.populate_all_data_dates(type_)  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
 
-    async def record_data(self, timed: bool = False, size_limited: bool = False):
+    async def record_data(self, start_time: float, timed: bool = False, size_limited: bool = False):
         """
         Turn ON the TDC (FPGA), read while conditions are met,
         turn OFF TDC and read leftover data,
@@ -444,7 +445,7 @@ class SFCSImageMeasurement(Measurement):
                     self.scanners_dvc.start_tasks("ao")
 
                     # recording
-                    await self.record_data(timed=False)
+                    await self.record_data(self.start_time, timed=False)
 
                     # collect final ai/CI
                     self.counter_dvc.fill_ci_buffer()
@@ -697,9 +698,9 @@ class SFCSSolutionMeasurement(Measurement):
 
                 # reading
                 if self.repeat:
-                    await self.record_data(timed=True)
+                    await self.record_data(self.start_time, timed=True)
                 else:
-                    await self.record_data(timed=True, size_limited=True)
+                    await self.record_data(self.start_time, timed=True, size_limited=True)
 
                 logging.debug("FPGA reading finished.")
 
