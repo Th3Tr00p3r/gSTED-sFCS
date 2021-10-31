@@ -63,7 +63,7 @@ class Measurement:
         self.sys_info["xyz_um_to_v"] = self.um_v_ratio
 
         # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
-        # better suit this case
+        # better suit this case. see this: https://github.com/python/mypy/issues/1996
         self.start_time: float
         self.duration_s: int
         self.max_file_size_mb: float
