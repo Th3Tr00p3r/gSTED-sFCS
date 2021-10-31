@@ -7,12 +7,12 @@ import sys
 import traceback
 from pathlib import Path
 from types import FunctionType
-from typing import Callable
+from typing import Any, Callable, Dict
 
 from gui.dialog import Error
 
 
-def build_error_dict(exc: Exception) -> str:
+def build_error_dict(exc: Exception) -> Dict[str, Any]:
     """Doc."""
 
     exc_type = exc.__class__.__name__
