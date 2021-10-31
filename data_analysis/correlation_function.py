@@ -12,7 +12,7 @@ import scipy
 import skimage
 
 from data_analysis.image import ImageData
-from data_analysis.photon_data import TDCPhotonData
+from data_analysis.photon_data import TDCPhotonData, TDCPhotonDataMixin
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import display, file_utilities, fit_tools, helper
 
@@ -195,7 +195,7 @@ class CorrFunc:
         self.fit_param[fit_param["func_name"]] = fit_param
 
 
-class CorrFuncTDC(TDCPhotonData):
+class CorrFuncTDC(TDCPhotonDataMixin):
     """Doc."""
 
     NAN_PLACEBO = -100
@@ -842,7 +842,7 @@ class SFCSExperiment:
             )
 
 
-class ImageTDC(TDCPhotonData):
+class ImageTDC(TDCPhotonDataMixin):
     """Doc."""
 
     def __init__(self):

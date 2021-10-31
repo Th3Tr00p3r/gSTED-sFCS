@@ -1,7 +1,7 @@
 """Raw data handling."""
 
 from contextlib import suppress
-from types import SimpleNamespace
+from dataclasses import dataclass
 
 import numpy as np
 import scipy
@@ -9,7 +9,20 @@ import scipy
 from utilities import display, file_utilities, fit_tools
 
 
+@dataclass
 class TDCPhotonData:
+    """Holds a single file's worth of processed, TDC-based, temporal photon data"""
+
+    version: int
+    coarse: np.ndarray
+    coarse2: np.ndarray
+    fine: np.ndarray
+    runtime: np.ndarray
+    time_stamps: np.ndarray
+    all_section_edges: np.ndarray
+
+
+class TDCPhotonDataMixin:
     """Doc."""
 
     def convert_fpga_data_to_photons(
@@ -23,8 +36,6 @@ class TDCPhotonData:
         **kwargs,
     ):
         """Doc."""
-
-        p = SimpleNamespace(version=version)
 
         if version >= 2:
             group_len = 7
@@ -81,17 +92,17 @@ class TDCPhotonData:
         # handling coarse and fine times (for gating)
         if not ignore_coarse_fine:
             coarse = byte_data[idxs + 4].astype(np.int16)
-            p.fine = byte_data[idxs + 5].astype(np.int16)
+            fine = byte_data[idxs + 5].astype(np.int16)
 
             # some fix due to an issue in FPGA
-            if p.version >= 3:
-                p.coarse = np.mod(coarse, 64)
-                p.coarse2 = p.coarse - np.mod(p.coarse, 4) + (coarse // 64)
+            if version >= 3:
+                coarse_mod64 = np.mod(coarse, 64)
+                coarse2 = coarse_mod64 - np.mod(coarse_mod64, 4) + (coarse // 64)
+                coarse = coarse_mod64
             else:
-                p.coarse = coarse
+                coarse = coarse
 
-        p.runtime = runtime
-        p.time_stamps = np.diff(runtime).astype(np.int32)
+        time_stamps = np.diff(runtime).astype(np.int32)
 
         # find additional outliers (improbably large time_stamps) and break into
         # additional segments if they exist.
@@ -99,18 +110,28 @@ class TDCPhotonData:
         # biexponential MAD seems more sensitive
         if locate_outliers:  # relevent for static data
             mu = max(
-                np.median(p.time_stamps), np.abs(p.time_stamps - p.time_stamps.mean()).mean()
+                np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()
             ) / np.log(2)
             max_time_stamp = scipy.stats.expon.ppf(
-                1 - max_outlier_prob / len(p.time_stamps), scale=mu
+                1 - max_outlier_prob / len(time_stamps), scale=mu
             )
-            sec_edges = (p.time_stamps > max_time_stamp).nonzero()[0].tolist()
+            sec_edges = (time_stamps > max_time_stamp).nonzero()[0].tolist()
             if (n_outliers := len(sec_edges)) > 0:
                 print(f"found {n_outliers} outliers.", end=" ")
-            sec_edges = [0] + sec_edges + [len(p.time_stamps)]
-            p.all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
+            sec_edges = [0] + sec_edges + [len(time_stamps)]
+            all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
+        else:
+            all_section_edges = None
 
-        return p
+        return TDCPhotonData(
+            version=version,
+            coarse=coarse,
+            coarse2=coarse2,
+            fine=fine,
+            runtime=runtime,
+            time_stamps=time_stamps,
+            all_section_edges=all_section_edges,
+        )
 
     @file_utilities.rotate_data_to_disk
     def calibrate_tdc(  # NOQA C901
@@ -375,7 +396,7 @@ class TDCPhotonData:
     ):
         """
         Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
-        and values are 'TDCPhotonData'-inheriting objects which are supposed to have their own TDC calibrations.
+        and values are 'TDCPhotonDataMixin'-inheriting objects which are supposed to have their own TDC calibrations.
         """
 
         # add self (first) to compared TDC calibrations
