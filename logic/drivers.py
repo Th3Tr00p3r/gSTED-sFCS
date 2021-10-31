@@ -31,6 +31,7 @@ class Ftd2xx:
     def __init__(self, param_dict):
         param_dict = helper.translate_dict_values(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
+        self.n_bytes = param_dict["n_bytes"]
 
         # auto-find UM232H serial number
         num_devs = ftd2xx.createDeviceInfoList()
@@ -140,6 +141,7 @@ class NIDAQmx:
     def create_ai_task(
         self,
         name: str,
+        address: str,
         chan_specs: List[dict],
         samp_clk_cnfg: dict = {},
         timing_params: dict = {},
@@ -158,7 +160,7 @@ class NIDAQmx:
         except ni.errors.DaqError:
             task.close()
             raise IOError(
-                f"NI device address ({self.ai_x_addr}) is wrong, or data acquisition board is unplugged"
+                f"NI device address ({address}) is wrong, or data acquisition board is unplugged"
             )
 
         else:
@@ -234,7 +236,7 @@ class NIDAQmx:
         else:
             ao_task.write(data, timeout=self.AO_TIMEOUT)
 
-    def counter_stream_read(self) -> int:
+    def counter_stream_read(self, cont_read_buffer: np.ndarray) -> int:
         """
          Reads all available samples on board into self.cont_read_buffer
          (1D NumPy array, overwritten each read), and returns the
@@ -243,16 +245,16 @@ class NIDAQmx:
 
         ci_task = self.tasks.ci[0]  # only ever one task
         return ci_task.sr.read_many_sample_uint32(
-            self.cont_read_buffer,
+            cont_read_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
 
-    def digital_write(self, bool) -> None:
+    def digital_write(self, address, _bool: bool) -> None:
         """Doc."""
 
         with ni.Task() as do_task:
-            do_task.do_channels.add_do_chan(self.address)
-            do_task.write(bool)
+            do_task.do_channels.add_do_chan(address)
+            do_task.write(_bool)
 
 
 class PyVISA:
@@ -265,11 +267,12 @@ class PyVISA:
         write_termination="",
     ):
         [setattr(self, key, val) for key, val in param_dict.items()]
+        self.log_ref = param_dict["log_ref"]
         self.read_termination = read_termination
         self.write_termination = write_termination
         self._rm = visa.ResourceManager()
 
-    def autofind_address(self) -> None:
+    def autofind_address(self, model: str) -> None:
         """Doc."""
 
         # list all resource addresses
@@ -294,7 +297,7 @@ class PyVISA:
         # 'model_query' the opened devices, and whoever responds is the one
         for idx, inst in enumerate(inst_list):
             try:
-                self.model = inst.query(self.model_query)
+                self.model = inst.query(model)
             except visa.errors.VisaIOError as exc:
                 if exc.abbreviation == "VI_ERROR_RSRC_BUSY":
                     raise IOError(f"{self.log_ref} couldn't be opened - a restart might help!")
@@ -309,12 +312,12 @@ class PyVISA:
             # VisaIOError - this happens if device was disconnected during the autofind process...
             [inst.close() for inst in inst_list]
 
-    def open_instrument(self) -> None:
+    def open_instrument(self, model=None) -> None:
         """Doc."""
 
         # auto-find serial connection for depletion laser
-        if hasattr(self, "model_query"):
-            self.autofind_address()
+        if model is not None:
+            self.autofind_address(model)
 
         try:
             # open
@@ -380,6 +383,7 @@ class Instrumental:
 
     def __init__(self, param_dict):
         [setattr(self, key, val) for key, val in param_dict.items()]
+        self.log_ref = param_dict["log_ref"]
         self._inst = None
 
         if not list_instruments(module="cameras"):

@@ -136,7 +136,7 @@ class App:
             rel_path = Path(getattr(self.gui.settings, gui_object_name).text())
             Path.mkdir(rel_path, parents=True, exist_ok=True)
 
-    def default_settings_path(self) -> str:
+    def default_settings_path(self) -> Path:
         """Doc."""
         try:
             with open(self.SETTINGS_DIR_PATH / "default_settings_choice", "r") as f:

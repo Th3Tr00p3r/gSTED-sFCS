@@ -5,7 +5,7 @@ import re
 from collections import deque
 from contextlib import suppress
 from pathlib import Path
-from typing import Union
+from typing import Dict, Union
 
 import numpy as np
 import scipy
@@ -26,6 +26,7 @@ class CorrFunc:
         self.countrate_list = []
         self.fit_param = dict()
         self.skipped_duration = 0
+        self.after_pulse: np.ndarray
 
     def __enter__(self):
         """Initiate temporary lists for accumulating SoftwareCorrelator outputs."""
@@ -205,14 +206,13 @@ class CorrFuncTDC(TDCPhotonData):
         self.data = []  # list to hold the data of each file
         self.cf = dict()
         self.is_data_dumped = False
+        self.type: str
+        self.duration_min: float = None
 
     def read_fpga_data(
         self,
         file_path_template: Union[str, Path],
         file_selection: str = "",
-        roi_selection: str = "auto",
-        should_fix_shift: bool = False,
-        should_plot: bool = True,
         **kwargs,
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
@@ -267,7 +267,7 @@ class CorrFuncTDC(TDCPhotonData):
 
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
 
-    def process_data(self, file_dict: dict, idx: int = 0, **kwargs) -> dict:
+    def process_data(self, file_dict: dict, idx: int = 0, **kwargs) -> TDCPhotonData:
         """Doc."""
 
         full_data = file_dict["full_data"]
@@ -277,7 +277,6 @@ class CorrFuncTDC(TDCPhotonData):
             self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
             self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
             with suppress(KeyError):
-                self.duration_min = None
                 self.duration_min = full_data["duration_s"] / 60
 
         # Circular sFCS
@@ -299,7 +298,7 @@ class CorrFuncTDC(TDCPhotonData):
             self.type = "static"
             return self.process_static_data(full_data, idx, **kwargs)
 
-    def process_static_data(self, full_data, idx, **kwargs):
+    def process_static_data(self, full_data, idx, **kwargs) -> TDCPhotonData:
         """
         Processes a single static FCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
@@ -327,7 +326,7 @@ class CorrFuncTDC(TDCPhotonData):
         roi_selection="auto",
         should_plot=False,
         **kwargs,
-    ):
+    ) -> TDCPhotonData:
         """
         Processes a single angular sFCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
@@ -399,7 +398,7 @@ class CorrFuncTDC(TDCPhotonData):
         line_stops = []
         line_start_lables = []
         line_stop_labels = []
-        roi = {"row": deque([]), "col": deque([])}
+        roi: Dict[str, deque] = {"row": deque([]), "col": deque([])}
 
         bw_rows, _ = bw.shape
         for row_idx in range(bw_rows):
@@ -443,8 +442,8 @@ class CorrFuncTDC(TDCPhotonData):
 
         print("Done.")
 
-        runtime_line_starts = line_starts * round(self.laser_freq_hz / sample_freq_hz)
-        runtime_line_stops = line_stops * round(self.laser_freq_hz / sample_freq_hz)
+        runtime_line_starts: np.ndarray = line_starts * round(self.laser_freq_hz / sample_freq_hz)
+        runtime_line_stops: np.ndarray = line_stops * round(self.laser_freq_hz / sample_freq_hz)
 
         runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
         sorted_idxs = np.argsort(runtime)

@@ -5,7 +5,7 @@ import functools
 import pickle
 import re
 from pathlib import Path
-from typing import Callable, List, Set
+from typing import Any, Callable, List, Tuple
 
 import numpy as np
 import scipy.io as spio
@@ -146,18 +146,14 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
         print(f"{indent * ' '}{name}: {size_mb:.2f} Mb")
 
         if isinstance(obj, (list, tuple, set)):
-            [
+            for idx, elem in enumerate(obj):
                 deep_size_estimate(elem, level - 1, indent + 4, threshold_mb, f"{name}[{idx}]")
-                for idx, elem in enumerate(obj)
-            ]
         if hasattr(obj, "__dict__"):
             # convert namespaces into dicts
             obj = copy.deepcopy(vars(obj))
         if isinstance(obj, dict):
-            [
+            for key, val in obj.items():
                 deep_size_estimate(val, level - 1, indent + 4, threshold_mb, key)
-                for key, val in obj.items()
-            ]
         else:
             return
     elif name is None:
@@ -317,7 +313,7 @@ def save_mat(file_dict: dict, file_path: Path) -> None:
     spio.savemat(file_path, file_dict)
 
 
-def load_mat(filename):
+def load_mat(file_path):
     """
     this function should be called instead of direct spio.loadmat
     as it cures the problem of not properly recovering python dictionaries
@@ -368,11 +364,11 @@ def load_mat(filename):
                 elem_list.append(sub_elem)
         return elem_list
 
-    data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True)
+    data = spio.loadmat(file_path, struct_as_record=False, squeeze_me=True)
     return _check_keys(data)
 
 
-def load_pkl(file_path: Path) -> dict:
+def load_pkl(file_path: Path) -> Any:
     """Short cut for opening .pkl files"""
 
     with open(file_path, "rb") as f:
@@ -393,10 +389,10 @@ def sort_file_paths_by_file_number(file_paths: List[Path]) -> List[Path]:
     )
 
 
-def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
+def file_selection_str_to_list(file_selection: str) -> Tuple[List[int], str]:
     """Doc."""
 
-    def range_str_to_list(range_str: str) -> Set[int]:
+    def range_str_to_list(range_str: str) -> List[int]:
         """
         Accept a range string and returns a list of integers, lowered by 1 to match indices.
         Examples:
@@ -418,11 +414,11 @@ def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
             raise ValueError(f"Bad range format: '{range_str}'.")
 
     _, choice, file_selection = re.split("(Use|Don't Use)", file_selection)
-    file_idxs = {
+    file_idxs = [
         file_num
         for range_str in file_selection.split(",")
         for file_num in range_str_to_list(range_str)
-    }
+    ]
 
     return file_idxs, choice
 
