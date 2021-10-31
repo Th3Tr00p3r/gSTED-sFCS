@@ -243,7 +243,7 @@ class NIDAQmx:
         number of samples read.
         """
 
-        ci_task = self.tasks.ci[0]  # only ever one task
+        ci_task, *_ = self.tasks.ci  # only ever one task
         return ci_task.sr.read_many_sample_uint32(
             cont_read_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
