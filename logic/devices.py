@@ -192,6 +192,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.close_tasks("ai")
             self.create_ai_task(
                 name="Continuous AI",
+                address=self.ai_x_addr,
                 chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
                 samp_clk_cnfg={
                     "rate": self.MIN_OUTPUT_RATE_Hz,
@@ -213,6 +214,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.close_tasks("ai")
             self.create_ai_task(
                 name="Continuous AI",
+                address=self.ai_x_addr,
                 chan_specs=self.ai_chan_specs + self.ao_int_chan_specs,
                 samp_clk_cnfg=samp_clk_cnfg,
                 timing_params=timing_params,
@@ -484,7 +486,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def fill_ci_buffer(self, n_samples=ni_consts.READ_ALL_AVAILABLE):
         """Doc."""
 
-        num_samps_read = self.counter_stream_read()
+        num_samps_read = self.counter_stream_read(self.cont_read_buffer)
         self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
         self.num_reads_since_avg += num_samps_read
 
@@ -588,7 +590,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         try:
-            self.digital_write(is_being_switched_on)
+            self.digital_write(self.address, is_being_switched_on)
         except DaqError:
             exc = IOError(
                 f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
@@ -629,7 +631,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
         try:
             if is_being_switched_on:
-                self.open_instrument()
+                self.open_instrument(model=self.model_query)
                 self.laser_toggle(False)
             else:
                 if self.state is True:
