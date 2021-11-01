@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-10-25, 17:00:46"
+    "saved": "2021-11-01, 11:55:57"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -158,7 +158,6 @@
       "utilities/file_utilities.py",
       "utilities/display.py",
       "utilities/fit_tools.py",
-      "data_analysis/image.py",
       "gui/widgets.py",
       "gui/dialog.py",
       "gui/icons/icons.py",
