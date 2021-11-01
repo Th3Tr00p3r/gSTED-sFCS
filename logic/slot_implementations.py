@@ -491,7 +491,7 @@ class MainWin:
             if plane_idx is None:
                 # use center plane if not supplied
                 plane_idx = int(image_data.n_planes / 2)
-            image = image_data.build_image(method_dict[disp_mthd], plane_idx)
+            image = image_data.get_image(method_dict[disp_mthd], plane_idx)
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
             img_meas_wdgts.image_wdgt.obj.display_image(image, cursor=True, cmap="bone")
@@ -1074,7 +1074,7 @@ class MainWin:
                 self.switch_data_type()
                 return
             # get the center plane image, in "forward"
-            image = image_tdc.image_data.build_image("forward")
+            image = image_tdc.image_data.get_image("forward")
             # plot it (below)
             data_import_wdgts.img_preview_disp.obj.display_image(image, cmap="bone")
 
