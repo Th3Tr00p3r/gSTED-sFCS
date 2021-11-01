@@ -581,7 +581,7 @@ class MainWin:
     ## Camera Dock
     ####################
 
-    def toggle_camera_dock(self, is_toggled_on) -> None:
+    def toggle_camera_dock(self, is_toggled_on: bool) -> None:
         """Doc."""
 
         self._gui.cameraDock.setVisible(is_toggled_on)
