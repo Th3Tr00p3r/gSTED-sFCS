@@ -80,16 +80,6 @@ class CorrFunc:
     ):
         """Doc."""
 
-        def calc_weighted_avg(cf_cr, weights):
-            """Doc."""
-
-            tot_weights = weights.sum(0)
-            avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
-            # TODO: error handeling for the row below (zero division) - can/should it be detected beforehand?
-            error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
-
-            return avg_cf_cr, error_cf_cr
-
         self.rejection = rejection
         self.norm_range = norm_range
         self.delete_list = delete_list
@@ -118,7 +108,7 @@ class CorrFunc:
         self.j_bad = delete_list
         self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
-        self.avg_cf_cr, self.error_cf_cr = calc_weighted_avg(
+        self.avg_cf_cr, self.error_cf_cr = _calculate_weighted_avg(
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
@@ -973,3 +963,14 @@ def _auto_corr(a):
     lags = np.arange(c.size, dtype=np.uint16)
 
     return c, lags
+
+
+def _calculate_weighted_avg(cf_cr, weights):
+    """Doc."""
+
+    tot_weights = weights.sum(0)
+    # TODO: error handeling for the row below (zero division) - can/should it be detected beforehand?
+    avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
+    error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
+
+    return avg_cf_cr, error_cf_cr
