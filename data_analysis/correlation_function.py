@@ -350,14 +350,14 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         print("Converting angular scan to image...", end=" ")
 
         runtime = p.runtime
-        cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
+        cnt, n_pix_tot, n_pix, line_num = _convert_angular_scan_to_image(
             runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
         )
 
         if should_fix_shift:
-            pix_shift = fix_data_shift(cnt)
+            pix_shift = _fix_data_shift(cnt)
             runtime = p.runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
-            cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
+            cnt, n_pix_tot, n_pix, line_num = _convert_angular_scan_to_image(
                 runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
             )
             print(f"Shifted by {pix_shift} pixels. Done.")
@@ -372,7 +372,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         if roi_selection == "auto":
             print("automatic. Thresholding and smoothing...", end=" ")
             try:
-                bw = threshold_and_smooth(cnt)
+                bw = _threshold_and_smooth(cnt)
             except ValueError:
                 print("Thresholding failed, skipping file.")
                 return None
@@ -496,7 +496,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         # get image line correlation to subtract trends
         img = p.image * p.bw_mask
 
-        p.image_line_corr = line_correlations(img, p.bw_mask, roi, sample_freq_hz)
+        p.image_line_corr = _line_correlations(img, p.bw_mask, roi, sample_freq_hz)
 
         return p
 
@@ -867,7 +867,7 @@ class ImageTDC(TDCPhotonDataMixin, CountsImageMixin):
         self.data = None
 
 
-def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
+def _convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
     """utility function for opening Angular Scans"""
 
     n_pix_tot = runtime * sample_freq_hz // laser_freq_hz
@@ -885,18 +885,19 @@ def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_to
     return img, n_pix_tot, n_pix, line_num
 
 
-def fix_data_shift(cnt) -> int:
+def _get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
     """Doc."""
 
-    def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
-        """Doc."""
+    score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
+    pix_shifts = np.arange(min_shift, max_shift)
+    for idx, pix_shift in enumerate(range(min_shift, max_shift)):
+        rolled_img = np.roll(img, pix_shift).astype(np.uint32)
+        score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
+    return pix_shifts[score.argmin()]
 
-        score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
-        pix_shifts = np.arange(min_shift, max_shift)
-        for idx, pix_shift in enumerate(range(min_shift, max_shift)):
-            rolled_img = np.roll(img, pix_shift).astype(np.uint32)
-            score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
-        return pix_shifts[score.argmin()]
+
+def _fix_data_shift(cnt) -> int:
+    """Doc."""
 
     print("Fixing line shift...", end=" ")
 
@@ -904,7 +905,7 @@ def fix_data_shift(cnt) -> int:
 
     min_pix_shift = -round(width / 2)
     max_pix_shift = min_pix_shift + width + 1
-    pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+    pix_shift = _get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
     # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
     # OR if the 'return row' (the empty one) is not at the bottom for some reason
@@ -919,12 +920,12 @@ def fix_data_shift(cnt) -> int:
             print("Data is heavily shifted, check it out!", end=" ")
         min_pix_shift = -round(cnt.size / 2)
         max_pix_shift = min_pix_shift + cnt.size + 1
-        pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+        pix_shift = _get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
     return pix_shift
 
 
-def threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
+def _threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
     """Doc."""
 
     thresh = skimage.filters.threshold_multiotsu(
@@ -941,14 +942,14 @@ def threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.n
     return bw
 
 
-def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
+def _line_correlations(image, bw_mask, roi, sampling_freq) -> list:
     """Returns a list of auto-correlations of the lines of an image"""
 
     image_line_corr = []
     for j in range(roi["row"].min(), roi["row"].max() + 1):
         line = image[j][bw_mask[j] > 0]
         try:
-            c, lags = auto_corr(line.astype(np.float64))
+            c, lags = _auto_corr(line.astype(np.float64))
         except ValueError:
             print(f"Auto correlation of line #{j} has failed. Skipping.", end=" ")
         else:
@@ -963,7 +964,7 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
     return image_line_corr
 
 
-def auto_corr(a):
+def _auto_corr(a):
     """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
     c = np.correlate(a, a, mode="full")
