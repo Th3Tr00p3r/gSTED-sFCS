@@ -29,30 +29,26 @@ class CorrFunc:
         self.after_pulse: np.ndarray
 
     def __enter__(self):
-        """Initiate temporary lists for accumulating SoftwareCorrelator outputs."""
+        """Initiate a temporary structure for accumulating SoftwareCorrelator outputs."""
 
-        self._corrfunc_list = []
-        self._weights_list = []
-        self._cf_cr_list = []
+        self._accumulator = {"corrfunc_list": [], "weights_list": [], "cf_cr_list": []}
         return self
 
     def __exit__(self, *exc):
         """Create padded 2D ndarrays from the accumulated lists and delete the lists."""
 
-        n_corrfuncs = len(self._corrfunc_list)
+        n_corrfuncs = len(self._accumulator["corrfunc_list"])
         lag_len = len(self.lag)
         self.corrfunc = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
         self.weights = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
         self.cf_cr = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
         for idx in range(n_corrfuncs):
-            pad_len = lag_len - len(self._corrfunc_list[idx])
-            self.corrfunc[idx] = np.pad(self._corrfunc_list[idx], (0, pad_len))
-            self.weights[idx] = np.pad(self._weights_list[idx], (0, pad_len))
-            self.cf_cr[idx] = np.pad(self._cf_cr_list[idx], (0, pad_len))
+            pad_len = lag_len - len(self._accumulator["corrfunc_list"][idx])
+            self.corrfunc[idx] = np.pad(self._accumulator["corrfunc_list"][idx], (0, pad_len))
+            self.weights[idx] = np.pad(self._accumulator["weights_list"][idx], (0, pad_len))
+            self.cf_cr[idx] = np.pad(self._accumulator["cf_cr_list"][idx], (0, pad_len))
 
-        delattr(self, "_corrfunc_list")
-        delattr(self, "_weights_list")
-        delattr(self, "_cf_cr_list")
+        delattr(self, "_accumulator")
 
     def accumulate(self, sc: SoftwareCorrelator):
         """
@@ -61,9 +57,9 @@ class CorrFunc:
         """
 
         try:
-            self._corrfunc_list.append(sc.corrfunc)
-            self._weights_list.append(sc.weights)
-            self._cf_cr_list.append(
+            self._accumulator["corrfunc_list"].append(sc.corrfunc)
+            self._accumulator["weights_list"].append(sc.weights)
+            self._accumulator["cf_cr_list"].append(
                 sc.countrate * sc.corrfunc - self.after_pulse[: sc.corrfunc.size]
             )
             self.countrate_list.append(sc.countrate)
