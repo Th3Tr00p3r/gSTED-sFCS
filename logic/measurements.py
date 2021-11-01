@@ -613,7 +613,12 @@ class SFCSSolutionMeasurement(Measurement):
 
         try:
             s = compute_acf(self.data_dvc.data)
+        except RuntimeWarning as exc:
+            # RuntimeWarning - some sort of zero-division in _calculate_weighted_avg
+            # (due to invalid data during beam obstruction)
+            errors.err_hndlr(exc, sys._getframe(), locals())
         except Exception as exc:
+            print("THIS SHOULD NOT HAPPEN, HANDLE THE EXCEPTION PROPERLY!")
             errors.err_hndlr(exc, sys._getframe(), locals())
         else:
             cf = s.cf[self.laser_mode]
