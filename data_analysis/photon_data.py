@@ -101,6 +101,11 @@ class TDCPhotonDataMixin:
                 coarse = coarse_mod64
             else:
                 coarse = coarse
+                coarse2 = None
+        else:
+            coarse = None
+            coarse2 = None
+            fine = None
 
         time_stamps = np.diff(runtime).astype(np.int32)
 
