@@ -11,8 +11,11 @@ import numpy as np
 import scipy
 import skimage
 
-from data_analysis.image import ImageData
-from data_analysis.photon_data import TDCPhotonData, TDCPhotonDataMixin
+from data_analysis.photon_data import (
+    CountsImageMixin,
+    TDCPhotonData,
+    TDCPhotonDataMixin,
+)
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import display, file_utilities, fit_tools, helper
 
@@ -838,7 +841,7 @@ class SFCSExperiment:
             )
 
 
-class ImageTDC(TDCPhotonDataMixin):
+class ImageTDC(TDCPhotonDataMixin, CountsImageMixin):
     """Doc."""
 
     def __init__(self):
@@ -858,7 +861,7 @@ class ImageTDC(TDCPhotonDataMixin):
         self.scan_params = file_dict.get("scan_params")
 
         # Get ungated image (excitation or sted)
-        self.image_data = ImageData(file_dict)
+        self.image_data = self.create_image_stack_data(file_dict)
 
         # gating stuff (TDC) - not yet implemented
         self.data = None
