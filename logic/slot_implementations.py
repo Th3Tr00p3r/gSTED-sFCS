@@ -1189,7 +1189,7 @@ class MainWin:
                 sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
                 sol_data_analysis_wdgts.scan_img_file_num.set(1)
             else:
-                print("Populating analysis GUI...", end=" ")
+                logging.debug("Populating analysis GUI...")
 
                 # populate general measurement properties
                 sol_data_analysis_wdgts.n_files.set(num_files)
@@ -1198,13 +1198,13 @@ class MainWin:
 
                 if corrfunc_tdc.type == "angular_scan":
                     # populate scan images tab
-                    print("Displaying scan images...", end=" ")
+                    logging.debug("Displaying scan images...")
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
                     sol_data_analysis_wdgts.scan_img_file_num.set(1)
                     self.display_scan_image(1, imported_template)
 
                     # calculate average and display
-                    print("Averaging and plotting...", end=" ")
+                    logging.debug("Averaging and plotting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
 
                     scan_settings_text = "\n\n".join(
@@ -1215,13 +1215,13 @@ class MainWin:
                     )
 
                 elif corrfunc_tdc.type == "static":
-                    print("Averaging, plotting and fitting...", end=" ")
+                    logging.debug("Averaging, plotting and fitting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
                     scan_settings_text = "no scan."
 
                 sol_data_analysis_wdgts.scan_settings.set(scan_settings_text)
 
-                print("Done.")
+                logging.debug("Done.")
 
     def display_scan_image(self, file_num, imported_template: str = None):
         """Doc."""

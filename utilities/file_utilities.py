@@ -184,9 +184,11 @@ def save_object_to_disk(obj, file_path: Path, size_limits_mb=None) -> bool:
 
 def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
     """
-    Save a processed measurement, lacking any raw data.
+    Save a processed measurement, lacking any data.
     The template may then be loaded much more quickly.
     """
+    # TODO: remove the .data attribute before saving and see if it works (after loading).
+    # don't forget to return .data to the original object, or maybe create a deep copy before doing anything. (time it!)
 
     # lower size if possible
     for p in tdc_obj.data:
