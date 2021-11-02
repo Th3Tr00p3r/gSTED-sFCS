@@ -1141,12 +1141,9 @@ class MainWin:
         """Doc."""
 
         with self.get_corrfunc_tdc_from_template() as corrfunc_tdc:
-            print("Saving the processed data...", end=" ")
             curr_dir = self.current_date_type_dir_path()
             file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
-            print("Done.")
-
-    #            self.switch_data_type()  # refresh
+            logging.info("Saved the processed data.")
 
     def toggle_save_processed_enabled(self):
         """Doc."""
@@ -1177,7 +1174,6 @@ class MainWin:
 
         if should_load:
             with suppress(AttributeError):
-                # TODO: should this be a context manager for the 'yield' here?
                 corrfunc_tdc.dump_or_load_data(should_load=True)
 
         try:
