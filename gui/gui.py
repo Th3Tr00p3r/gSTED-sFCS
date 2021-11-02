@@ -71,6 +71,10 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.analysisDataTypeGroup.addButton(self.imageDataImport)
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.impl.switch_data_type)
+        self.solImportSaveProcessed.released.connect(self.impl.save_processed_data)
+        self.solImportLoadProcessed.released.connect(
+            lambda: self.impl.import_sol_data(should_load_processed=True)
+        )
 
         self.rowDiscriminationGroup = PyQt5.QtWidgets.QButtonGroup()
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
@@ -297,6 +301,8 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.impl.show_num_files(template)
         self.impl.update_dir_log_wdgt(template)
         self.impl.preview_img_scan(template)
+        self.impl.toggle_save_processed_enabled()
+        self.impl.toggle_load_processed_enabled(template)
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_importedSolDataTemplates_currentTextChanged(self, template: str) -> None:
