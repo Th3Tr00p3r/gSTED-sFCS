@@ -61,6 +61,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.goToOrgZ.released.connect(lambda: self.impl.go_to_origin("Z"))
 
         # Image Scan Tab
+        # TODO: add a label with the image name which would be displayed above the image
         self.nextImg.released.connect(lambda: self.impl.cycle_through_image_scans("next"))
         self.prevImg.released.connect(lambda: self.impl.cycle_through_image_scans("prev"))
 
