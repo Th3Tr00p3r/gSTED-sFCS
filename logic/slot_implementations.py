@@ -15,9 +15,9 @@ import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QWidget
 
 import gui.dialog as dialog
+import gui.widgets as wdgts
 import logic.measurements as meas
 from data_analysis.correlation_function import CorrFuncTDC, ImageTDC
-from gui import widgets as wdgts
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
 from utilities.errors import DeviceError, err_hndlr
@@ -1078,7 +1078,7 @@ class MainWin:
             # plot it (below)
             data_import_wdgts.img_preview_disp.obj.display_image(image, cmap="bone")
 
-    def import_sol_data(self) -> None:
+    def import_sol_data(self, should_load_processed=False) -> None:
         """Doc."""
 
         import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
@@ -1090,12 +1090,10 @@ class MainWin:
             logging.info(f"Data '{current_template}' already loaded - ignoring.")
             return
 
-        if import_wdgts.sol_use_processed:
-            file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
-
         with self._app.pause_ai_ci():
 
-            if import_wdgts.sol_use_processed and file_path.is_file():
+            if should_load_processed:
+                file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
                 print(f"Loading processed data '{current_template}' from hard drive...", end=" ")
                 corrfunc_tdc = file_utilities.load_processed_solution_measurement(file_path)
                 print("Done.")
@@ -1125,11 +1123,6 @@ class MainWin:
                         )
                     corrfunc_tdc.correlate_data(cf_name=data_type, verbose=True)
 
-                    if import_wdgts.sol_save_processed:
-                        print("Saving the processed data...", end=" ")
-                        file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
-                        print("Done.")
-
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())
                     return
@@ -1139,10 +1132,40 @@ class MainWin:
             self._app.analysis.loaded_data[current_template] = corrfunc_tdc
             imported_combobox.obj.addItem(current_template)
             imported_combobox.set(current_template)
-            logging.info(f"Data '{current_template}' imported for analysis.")
+            logging.info(f"Data '{current_template}' ready for analysis.")
+
+            self.toggle_save_processed_enabled()  # refresh save option
+            self.toggle_load_processed_enabled(current_template)  # refresh load option
+
+    def save_processed_data(self):
+        """Doc."""
+
+        with self.get_corrfunc_tdc_from_template() as corrfunc_tdc:
+            print("Saving the processed data...", end=" ")
+            curr_dir = self.current_date_type_dir_path()
+            file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
+            print("Done.")
+
+    #            self.switch_data_type()  # refresh
+
+    def toggle_save_processed_enabled(self):
+        """Doc."""
+
+        with self.get_corrfunc_tdc_from_template() as corrfunc_tdc:
+            if corrfunc_tdc is None:
+                self._gui.solImportSaveProcessed.setEnabled(False)
+            else:
+                self._gui.solImportSaveProcessed.setEnabled(True)
+
+    def toggle_load_processed_enabled(self, current_template: str):
+        """Doc."""
+
+        curr_dir = self.current_date_type_dir_path()
+        file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
+        self._gui.solImportLoadProcessed.setEnabled(file_path.is_file())
 
     @contextmanager
-    def get_corr_func_tdc_from_template(
+    def get_corrfunc_tdc_from_template(
         self, template: str = None, should_load=False
     ) -> CorrFuncTDC:
         """Doc."""
@@ -1154,6 +1177,7 @@ class MainWin:
 
         if should_load:
             with suppress(AttributeError):
+                # TODO: should this be a context manager for the 'yield' here?
                 corrfunc_tdc.dump_or_load_data(should_load=True)
 
         try:
@@ -1180,7 +1204,7 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_corr_func_tdc_from_template(imported_template) as corrfunc_tdc:
+        with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
             try:
                 num_files = corrfunc_tdc.n_files
             except AttributeError:
@@ -1229,7 +1253,7 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            with self.get_corr_func_tdc_from_template(imported_template) as corrfunc_tdc:
+            with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
                 img = corrfunc_tdc.scan_images_dstack[:, :, file_num - 1]
                 roi = corrfunc_tdc.roi_list[file_num - 1]
 
@@ -1243,7 +1267,7 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_corr_func_tdc_from_template(imported_template) as corrfunc_tdc:
+        with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
             if corrfunc_tdc is None:
                 return
 
@@ -1327,7 +1351,7 @@ class MainWin:
         data_types = ["exc_cal", "sted_cal", "exc_samp", "sted_samp"]
         assigned_templates = [getattr(wdgts.SOL_ANALYSIS_COLL, type).get() for type in data_types]
         for template in assigned_templates:
-            with self.get_corr_func_tdc_from_template(template, should_load=True) as corrfunc_tdc:
+            with self.get_corrfunc_tdc_from_template(template, should_load=True) as corrfunc_tdc:
                 with suppress(AttributeError):
                     # AttributeError - template is empty, meaning corrfunc_tdc is None
                     corrfunc_tdc.calibrate_tdc(should_plot=True)
@@ -1335,10 +1359,10 @@ class MainWin:
                     # TODO: move plotting to GUI
 
         for idx in range(0, len(assigned_templates), 2):
-            with self.get_corr_func_tdc_from_template(
+            with self.get_corrfunc_tdc_from_template(
                 assigned_templates[idx],
                 should_load=True,
-            ) as exc_data, self.get_corr_func_tdc_from_template(
+            ) as exc_data, self.get_corrfunc_tdc_from_template(
                 assigned_templates[idx + 1],
                 should_load=True,
             ) as sted_data:
@@ -1353,6 +1377,8 @@ class MainWin:
         template = imported_templates.get()
         self._app.analysis.loaded_data[template] = None
         imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
+
+        self.toggle_save_processed_enabled()  # refresh save option
         # TODO: clear image properties!
 
     def convert_files_to_matlab_format(self) -> None:
