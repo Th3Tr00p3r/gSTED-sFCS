@@ -440,7 +440,7 @@ class MainWin:
 
             self._gui.imgScanPlot.display_image(image, cursor=True, cmap="bone")
 
-    def disp_plane_img(self, img_idx=0, plane_idx=None, auto_cross=False):
+    def disp_plane_img(self, img_idx=None, plane_idx=None, auto_cross=False):
         """Doc."""
 
         method_dict = {
@@ -481,6 +481,13 @@ class MainWin:
                     # using COM
                     return helper.center_of_mass(image)
 
+        if img_idx is None:
+            try:
+                img_idx = self._app.curr_img_idx
+            except AttributeError:
+                # .curr_img_idx not yet set
+                img_idx = 0
+
         img_meas_wdgts = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
         disp_mthd = img_meas_wdgts.image_method
         with suppress(IndexError):
@@ -504,7 +511,7 @@ class MainWin:
         with suppress(AttributeError):
             # AttributeError - no scan performed since app init
             self._app.meas.plane_shown.set(plane_idx)
-            self.disp_plane_img(plane_idx)
+            self.disp_plane_img(plane_idx=plane_idx)
 
     def fill_img_scan_preset_gui(self, curr_text: str) -> None:
         """Doc."""
