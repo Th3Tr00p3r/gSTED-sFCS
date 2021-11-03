@@ -128,7 +128,7 @@ default_system_info = {
 def estimate_bytes(obj) -> int:
     """Returns the estimated size in bytes."""
 
-    return len(pickle.dumps(obj))
+    return len(pickle.dumps(obj, protocol=-1))
 
 
 def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> None:
@@ -164,7 +164,7 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
         return
 
 
-def save_object_to_disk(obj, file_path: Path, size_limits_mb=None, should_compress=False) -> bool:
+def save_object_to_disk(obj, file_path: Path, size_limits_mb=None, should_compress=True) -> bool:
     """
     Save object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
@@ -183,10 +183,10 @@ def save_object_to_disk(obj, file_path: Path, size_limits_mb=None, should_compre
 
     if should_compress:
         with gzip.open(file_path, "wb", compresslevel=COMPRESSION_LEVEL) as f_cmprsd:
-            f_cmprsd.write(pickle.dumps(obj))
+            f_cmprsd.write(pickle.dumps(obj, protocol=-1))
     else:
         with open(file_path, "wb") as f:
-            pickle.dump(obj, f)
+            pickle.dump(obj, f, protocol=-1)
 
     return True
 
@@ -205,7 +205,10 @@ def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
     dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", tdc_obj.template)
     file_path = dir_path / file_name
-    save_object_to_disk(tdc_obj, file_path, should_compress=True)
+    save_object_to_disk(
+        tdc_obj,
+        file_path,
+    )
 
     # return to int64 (the actual object was changed!)
     for p in tdc_obj.data:
@@ -378,11 +381,10 @@ def load_mat(file_path):
 
 
 def load_pkl(file_path: Path) -> Any:
-    """Short cut for opening (possibly compressed) .pkl files"""
+    """Short cut for opening (possibly 'gzip' compressed) .pkl files"""
 
     try:
         with gzip.open(file_path, "rb") as f_cmprsd:
-            # Decompress data from file
             return pickle.loads(f_cmprsd.read())
 
     except OSError:
