@@ -2,6 +2,7 @@
 
 import copy
 import functools
+import gzip
 import pickle
 import re
 from pathlib import Path
@@ -163,11 +164,13 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
         return
 
 
-def save_object_to_disk(obj, file_path: Path, size_limits_mb=None) -> bool:
+def save_object_to_disk(obj, file_path: Path, size_limits_mb=None, should_compress=False) -> bool:
     """
     Save object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
     """
+
+    COMPRESSION_LEVEL = 1
 
     if size_limits_mb is not None:
         lower_limit_mb, upper_limit_mb = size_limits_mb
@@ -177,8 +180,14 @@ def save_object_to_disk(obj, file_path: Path, size_limits_mb=None) -> bool:
 
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
-    with open(file_path, "wb") as f:
-        pickle.dump(obj, f)
+
+    if should_compress:
+        with gzip.open(file_path, "wb", compresslevel=COMPRESSION_LEVEL) as f_cmprsd:
+            f_cmprsd.write(pickle.dumps(obj))
+    else:
+        with open(file_path, "wb") as f:
+            pickle.dump(obj, f)
+
     return True
 
 
@@ -196,7 +205,7 @@ def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
     dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", tdc_obj.template)
     file_path = dir_path / file_name
-    save_object_to_disk(tdc_obj, file_path)
+    save_object_to_disk(tdc_obj, file_path, should_compress=True)
 
     # return to int64 (the actual object was changed!)
     for p in tdc_obj.data:
@@ -369,10 +378,17 @@ def load_mat(file_path):
 
 
 def load_pkl(file_path: Path) -> Any:
-    """Short cut for opening .pkl files"""
+    """Short cut for opening (possibly compressed) .pkl files"""
 
-    with open(file_path, "rb") as f:
-        return pickle.load(f)
+    try:
+        with gzip.open(file_path, "rb") as f_cmprsd:
+            # Decompress data from file
+            return pickle.loads(f_cmprsd.read())
+
+    except OSError:
+        # OSError - file is uncompressed
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
 
 
 def sort_file_paths_by_file_number(file_paths: List[Path]) -> List[Path]:
