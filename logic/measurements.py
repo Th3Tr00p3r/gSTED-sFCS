@@ -168,7 +168,7 @@ class Measurement:
 
         file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
 
-        file_utilities.save_object_to_disk(data_dict, file_path, should_compress=True)  # TESTESTEST
+        file_utilities.save_object_to_disk(data_dict, file_path, should_compress=True)
         logging.debug(f"Saved measurement file: '{file_path}'.")
 
     async def toggle_lasers(self, finish=False) -> None:
@@ -465,7 +465,7 @@ class SFCSImageMeasurement(Measurement):
         self.init_scan_tasks("FINITE")
         self.scanners_dvc.start_tasks("ao")
 
-        try:  # TESTESTEST
+        try:
             for plane_idx in range(n_planes):
 
                 if self.is_running:
@@ -494,7 +494,7 @@ class SFCSImageMeasurement(Measurement):
             return
 
         except Exception as exc:  # TESTESTEST
-            errors.err_hndlr(exc, sys._getframe(), locals())  # TESTESTEST
+            errors.err_hndlr(exc, sys._getframe(), locals())
 
         # finished measurement
         if self.is_running:  # if not manually stopped
@@ -731,7 +731,7 @@ class SFCSSolutionMeasurement(Measurement):
             file_num = 1
             logging.info(f"Running {self.type} measurement")
 
-        try:  # TESTESTEST
+        try:
             while self.is_running and self.time_passed_s < self.duration_s:
 
                 # initialize data buffer

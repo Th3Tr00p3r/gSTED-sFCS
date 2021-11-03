@@ -551,9 +551,7 @@ class MainWin:
             today_dir = Path(wdgt_coll.save_path) / dt.now().strftime("%d_%m_%Y")
             dir_path = today_dir / "image"
             file_path = dir_path / (re.sub("\\s", "_", file_name) + ".pkl")
-            file_utilities.save_object_to_disk(
-                file_dict, file_path, should_compress=True
-            )  # TESTESTEST
+            file_utilities.save_object_to_disk(file_dict, file_path, should_compress=True)
             logging.debug(f"Saved measurement file: '{file_path}'.")
 
     ####################
