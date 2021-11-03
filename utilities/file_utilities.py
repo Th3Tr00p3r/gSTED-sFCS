@@ -464,10 +464,10 @@ def rotate_data_to_disk(method) -> Callable:
             self.dump_or_load_data(should_load=True)
             value = method(self, *args, **kwargs)
             self.dump_or_load_data(should_load=False)
+            return value
         except AttributeError:
             # no 'dump_or_load_data' attribute
             value = method(self, *args, **kwargs)
-        finally:
             return value
 
     return method_wrapper

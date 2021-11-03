@@ -1201,14 +1201,13 @@ class MainWin:
         sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
         with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
-            try:
-                num_files = corrfunc_tdc.n_files
-            except AttributeError:
+            if corrfunc_tdc is None:
                 # no imported templates (deleted)
                 wdgts.SOL_ANALYSIS_COLL.clear_all_objects()
                 sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
                 sol_data_analysis_wdgts.scan_img_file_num.set(1)
             else:
+                num_files = corrfunc_tdc.n_files
                 logging.debug("Populating analysis GUI...")
 
                 # populate general measurement properties
