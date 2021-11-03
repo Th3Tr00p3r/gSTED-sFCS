@@ -61,7 +61,6 @@ class CorrFunc:
         self.lag = []
         self.countrate_list = []
         self.fit_param = dict()
-        self.skipped_duration = 0
 
     def __enter__(self):
         """Initiate a temporary structure for accumulating SoftwareCorrelator outputs."""
@@ -556,6 +555,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         with CorrFunc(gate_ns) as CF:
 
             CF.run_duration = run_duration
+            CF.skipped_duration = 0
 
             for p in self.data:
 
@@ -716,9 +716,6 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         CF.vt_um = self.v_um_ms * CF.lag
         CF.total_duration = sum(duration)
 
-        if CF.skipped_duration:
-            skipped_ratio = CF.skipped_duration / CF.total_duration
-            print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
         print("- Done.")
 
         return CF
