@@ -17,8 +17,8 @@ imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
-spinBox,40
 scanImgFileNum,1
+spinBox,40
 solAnalysisRemoveWorstSpinner,0
 depPow,130
 depCurr,1500
@@ -42,10 +42,10 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,10
+dataMonth,11
 dataYear,2021
-dataDay,27
-dataTemplate,plasmid_yoyo_angular_exc_180619_*.pkl
+dataDay,1
+dataTemplate,bp300_yoyo_1in30bp_angular_exc_162503_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates,
 comboBox_2,
@@ -60,8 +60,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
 solImportUse,True
+solImportUseAll,False
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
@@ -72,20 +72,18 @@ posAxisZ,False
 posAxisY,False
 posAxisX,True
 numPlaneShownChoice,0
-pixel_clock1,2500
-framerate1,1500
-exposure1,100
-pixel_clock2,2500
-framerate2,1500
-exposure2,100
+pixel_clock1,99
+framerate1,99
+exposure1,99
+pixel_clock2,99
+framerate2,99
+exposure2,99
 tabWidget,2
 tabWidget_2,1
 autoCrosshair,True
 alwaysSaveImg,False
-solDataExtPlot,False
 solDataFixShift,True
-solImportSaveProcessed,False
-solImportLoadProcessed,False
+solDataExtPlot,False
 autoExp1,False
 autoExp2,False
 scaleImgScan,299
