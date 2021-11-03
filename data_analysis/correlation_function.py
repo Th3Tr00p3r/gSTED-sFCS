@@ -780,6 +780,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
                     self.data,
                     self.DUMP_PATH / self.name_on_disk,
                     size_limits_mb=self.SIZE_LIMITS_MB,
+                    should_compress=False,
                 )
                 if is_saved:
                     self.data = []
