@@ -499,27 +499,32 @@ class CorrFuncTDC(TDCPhotonDataMixin):
     def correlate_and_average(self, **kwargs):
         """High level function for correlating and averaging any data."""
 
-        cf = self.correlate_data(**kwargs)
-        cf.average_correlation(**kwargs)
+        CF = self.correlate_data(**kwargs)
+        CF.average_correlation(**kwargs)
 
     @file_utilities.rotate_data_to_disk
     def correlate_data(self, cf_name=None, **kwargs):
         """
-        High level function for correlating any data. Returns a 'CorrFunc' object.
+        High level function for correlating any type of data (e.g. static, angular scan...)
+        Returns a 'CorrFunc' object.
         Data attribute is possibly rotated from/to disk.
         """
 
-        if hasattr(self, "angular_scan_settings"):
-            cf = self.correlate_angular_scan_data(**kwargs)
+        if self.type == "angular_scan":
+            CF = self.correlate_angular_scan_data(**kwargs)
+        elif self.type == "circular_scan":
+            CF = self.correlate_circular_scan_data(**kwargs)
+        elif self.type == "static":
+            CF = self.correlate_static_data(**kwargs)
         else:
-            cf = self.correlate_static_data(**kwargs)
+            raise NotImplementedError(f"Correlating data of type '{self.type}' is not implemented.")
 
         if cf_name is not None:
-            self.cf[cf_name] = cf
+            self.cf[cf_name] = CF
         else:
-            self.cf[f"gate {cf.gate_ns}"] = cf
+            self.cf[f"gate {CF.gate_ns}"] = CF
 
-        return cf
+        return CF
 
     def correlate_static_data(
         self,
@@ -568,7 +573,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
                     if segment_time < min_time_frac * run_duration:
                         if verbose:
                             print(
-                                f"Duration of segment No. {se_idx} of file No. {p.file_num} ({segment_time:.2f}s) is too short. Skipping segment...",
+                                f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time:.2f}s).",
                                 end=" ",
                             )
                         CF.skipped_duration += segment_time
@@ -583,7 +588,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
                             delay_time >= CF.gate_ns[0], delay_time <= CF.gate_ns[1]
                         )
                         runtime = runtime[j_gate]
-                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
+                    #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
                     elif gate_ns != (0, np.inf):
                         raise RuntimeError("For gating, TDC must first be calibrated!")
 
@@ -626,7 +631,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
 
         print(f"Correlating angular scan data '{self.template}':", end=" ")
 
-        self.min_duration_frac = min_time_frac
+        self.min_duration_frac = min_time_frac  # TODO: not used?
         duration = []
 
         SC = SoftwareCorrelator()
@@ -720,6 +725,13 @@ class CorrFuncTDC(TDCPhotonDataMixin):
 
         return CF
 
+    def correlate_circular_scan_data(
+        self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
+    ) -> CorrFunc:
+        """Correlates data for circular scans. Returns a CorrFunc object"""
+
+        raise NotImplementedError("Correlation of circular scan data not yet implemented.")
+
     def plot_correlation_functions(
         self, x_field="lag", y_field="normalized", x_scale="log", y_scale="linear", **kwargs
     ):
@@ -732,7 +744,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
     def calculate_afterpulse(self, gate_ns, lag) -> np.ndarray:
         """Doc."""
 
-        gate_to_laser_pulses = np.min([1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
+        gate_to_laser_pulses = min([1.0, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
         if self.after_pulse_param[0] == "multi_exponent_fit":
             # work with any number of exponents
             beta = self.after_pulse_param[1]
