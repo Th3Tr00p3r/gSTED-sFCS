@@ -38,6 +38,9 @@ class TDCPhotonDataMixin:
     ):
         """Doc."""
 
+        if verbose:
+            print("Converting raw data to photons...", end=" ")
+
         if version >= 2:
             group_len = 7
             maxval = 256 ** 3
@@ -128,6 +131,9 @@ class TDCPhotonDataMixin:
             all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
         else:
             all_section_edges = None
+
+        if verbose:
+            print("Done.")
 
         return TDCPhotonData(
             version=version,
