@@ -531,6 +531,7 @@ class SFCSSolutionMeasurement(Measurement):
 
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSSolution", scan_params=scan_params, **kwargs)
+        # TODO: would make more sense if these were in a specified dict rather than in the kwargs dict...
         self.scan_type = kwargs["scan_type"]
         self.regular = kwargs["regular"]
         self.repeat = kwargs["repeat"]
@@ -547,6 +548,7 @@ class SFCSSolutionMeasurement(Measurement):
         self.tau_wdgt = kwargs["tau_wdgt"]
         self.plot_wdgt = kwargs["plot_wdgt"]
         self.fit_led = kwargs["fit_led"]
+
         self.scan_params.plane_orientation = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
@@ -603,13 +605,7 @@ class SFCSSolutionMeasurement(Measurement):
             """Doc."""
 
             s = CorrFuncTDC()
-            s.after_pulse_param = self.sys_info["after_pulse_param"]
-            s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
-            p = s.convert_fpga_data_to_photons(
-                np.array(data, dtype=np.uint8),
-                ignore_coarse_fine=True,
-                locate_outliers=True,
-            )
+            p = s.process_data(self.prep_data_dict(), ignore_coarse_fine=True)
             s.data.append(p)
             s.correlate_and_average(cf_name=self.laser_mode)
             return s

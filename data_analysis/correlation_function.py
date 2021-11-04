@@ -300,14 +300,12 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
 
-        print("Converting raw data to photons...", end=" ")
         p = self.convert_fpga_data_to_photons(
             full_data["byte_data"],
             version=full_data["version"],
             locate_outliers=True,
             **kwargs,
         )
-        print("Done.")
 
         p.file_num = idx + 1
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
@@ -328,11 +326,9 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
 
-        print("Converting raw data to photons...", end=" ")
         p = self.convert_fpga_data_to_photons(
             full_data["byte_data"], version=full_data["version"], verbose=True
         )
-        print("Done.")
 
         p.file_num = idx + 1
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
