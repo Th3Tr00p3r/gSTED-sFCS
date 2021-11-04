@@ -195,7 +195,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
 
     NAN_PLACEBO = -100
     DUMP_PATH = Path("C:/temp_sfcs_data/")
-    SIZE_LIMITS_MB = (500, 1e4)
+    SIZE_LIMITS_MB = (100, 1e4)
 
     def __init__(self):
         self.data = []  # list to hold the data of each file
@@ -204,6 +204,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         self.type: str
         self.duration_min: float = None
 
+    @file_utilities.rotate_data_to_disk
     def read_fpga_data(
         self,
         file_path_template: Union[str, Path],
@@ -762,7 +763,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
     def dump_or_load_data(self, should_load: bool):
         """
         Load or save the 'data' attribute.
-        (relieve RAM - important during multiple experiments analysis)
+        (relieve RAM - important during multiple-experiment analysis)
         """
 
         with suppress(AttributeError):

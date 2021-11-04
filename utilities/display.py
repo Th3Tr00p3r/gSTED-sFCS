@@ -137,6 +137,67 @@ class Display:
             self.canvas.draw_idle()
 
 
+@contextmanager
+def show_external_axes(
+    fig=None,
+    subplots=(1, 1),
+    figsize=None,
+    super_title=None,
+    should_force_aspect=False,
+    fontsize=14,
+    xlim: Tuple[float, float] = None,
+    ylim: Tuple[float, float] = None,
+    should_autoscale=False,
+):
+    """
+    Creates or accepts a Matplotlib figure, and yields a 'matplotlib.axes.Axes' object
+    which is to be manipulated, then shows the figure.
+    """
+
+    if fig is None:
+        fig = plt.figure(figsize=figsize)
+        axes = fig.subplots(*subplots)
+        if not isinstance(axes, Iterable):
+            axes = np.array([axes])
+    else:
+        axes = np.array(fig.get_axes())
+
+    try:
+        if axes.size == 1:
+            yield axes[0]
+        else:
+            yield axes
+
+    finally:
+        for ax in axes.flatten().tolist():
+            if should_force_aspect:
+                force_aspect(ax, aspect=1)
+            if xlim is None and should_autoscale:
+                ax.autoscale(enable=True, axis="x")
+            else:
+                ax.set_xlim(xlim)
+            if ylim is None and should_autoscale:
+                ax.autoscale(enable=True, axis="y")
+            else:
+                ax.set_ylim(ylim)
+
+            [item.set_fontsize(fontsize) for item in [ax.title, ax.xaxis.label, ax.yaxis.label]]
+
+        if super_title is not None:
+            fig.suptitle(super_title, fontsize=(fontsize + 2))
+
+        fig.show()
+
+
+def get_fig_with_axes(subplots=(1, 1), figsize: Tuple[float, float] = None):
+    """Doc."""
+
+    fig = plt.figure(figsize=figsize)
+    axes = fig.subplots(*subplots)
+
+    return fig, axes
+
+
 class NavigationToolbar(NavigationToolbar2QT):
     """
     Only display the buttons we need.
@@ -272,43 +333,3 @@ def force_aspect(ax, aspect=1) -> None:
     img, *_ = ax.get_images()
     extent = img.get_extent()
     ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
-
-
-@contextmanager
-def show_external_axes(
-    fig=None, subplots=(1, 1), super_title=None, should_force_aspect=False, fontsize=14
-):
-    """
-    Creates or accepts a Matplotlib figure, and yields a 'matplotlib.axes.Axes' object
-    which is to be manipulated, then shows the figure.
-    """
-
-    if fig is None:
-        fig = plt.figure()
-        axes = fig.subplots(*subplots)
-    else:
-        axes = fig.get_axes()
-
-    try:
-        yield axes
-
-    finally:
-        if not isinstance(axes, Iterable):
-            axes = np.array([axes])
-        for ax in axes.ravel():
-            if should_force_aspect:
-                force_aspect(ax, aspect=1)
-            ax.autoscale()
-            [item.set_fontsize(fontsize) for item in [ax.title, ax.xaxis.label, ax.yaxis.label]]
-        if super_title is not None:
-            fig.suptitle(super_title, fontsize=(fontsize + 2))
-        fig.show()
-
-
-def get_fig_with_axes(subplots=(1, 1)):
-    """Doc."""
-
-    fig = plt.figure()
-    axes = fig.subplots(*subplots)
-
-    return fig, axes
