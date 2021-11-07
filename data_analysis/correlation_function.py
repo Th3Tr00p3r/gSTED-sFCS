@@ -29,12 +29,12 @@ class CorrFuncAccumulator:
     cf_cr_list: list[np.ndarray] = field(default_factory=list)
     n_corrfuncs: int = 0
 
-    def accumulate(self, sc: SoftwareCorrelator, after_pulse: np.ndarray):
+    def accumulate(self, SC: SoftwareCorrelator):
         """Doc."""
 
-        self.corrfunc_list.append(sc.corrfunc)
-        self.weights_list.append(sc.weights)
-        self.cf_cr_list.append(sc.countrate * sc.corrfunc - after_pulse[: sc.corrfunc.size])
+        self.corrfunc_list.append(SC.corrfunc)
+        self.weights_list.append(SC.weights)
+        self.cf_cr_list.append(SC.cf_cr)
         self.n_corrfuncs += 1
 
     def join_and_pad(self, lag_len: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -370,7 +370,9 @@ class CorrFuncTDC(TDCPhotonDataMixin):
                 print("Thresholding failed, skipping file.")
                 return None
         else:
-            raise NotImplementedError(f"roi_selection={roi_selection} is not implemented.")
+            raise ValueError(
+                f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
+            )
 
         # cut edges
         bw_temp = np.full(bw.shape, False, dtype=bool)
@@ -529,6 +531,7 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         run_duration=None,
         min_time_frac=0.5,
         n_runs_requested=60,
+        subtract_afterpulse=True,
         verbose=False,
         **kwargs,
     ) -> CorrFunc:
@@ -608,8 +611,16 @@ class CorrFuncTDC(TDCPhotonDataMixin):
                             CF.lag = SC.lag
                             CF.afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
 
+                        # subtract afterpulse
+                        if subtract_afterpulse:
+                            SC.cf_cr = (
+                                SC.countrate * SC.corrfunc - CF.afterpulse[: SC.corrfunc.size]
+                            )
+                        else:
+                            SC.cf_cr = SC.countrate * SC.corrfunc
+
                         # Append new correlation functions
-                        CF.accumulator.accumulate(SC, CF.afterpulse)
+                        CF.accumulator.accumulate(SC)
 
         CF.total_duration = sum(duration)
 
@@ -622,7 +633,12 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         return CF
 
     def correlate_angular_scan_data(
-        self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
+        self,
+        gate_ns=(0, np.inf),
+        min_time_frac=0.5,
+        subtract_bg_corr=True,
+        subtract_afterpulse=True,
+        **kwargs,
     ) -> CorrFunc:
         """Correlates data for angular scans. Returns a CorrFunc object"""
 
@@ -632,27 +648,26 @@ class CorrFuncTDC(TDCPhotonDataMixin):
         duration = []
 
         SC = SoftwareCorrelator()
-
         with CorrFunc(gate_ns) as CF:
-
             for p in self.data:
                 print(f"({p.file_num})", end=" ")
                 line_num = p.line_num
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
-                runtm = p.runtime
                 if hasattr(p, "delay_time"):
-                    delaytm = p.delay_time
-                    Jgate = np.logical_or(
-                        np.logical_and(delaytm >= CF.gate_ns[0], delaytm <= CF.gate_ns[1]),
-                        delaytm == np.nan,
+                    Jgate = ((p.delay_time >= CF.gate_ns[0]) & (p.delay_time <= CF.gate_ns[1])) | (
+                        p.delay_time == np.nan
                     )
-                    runtm = runtm[Jgate]
-                    delaytm = delaytm[Jgate]
-                    line_num = line_num[Jgate]
+                    runtime = p.runtime[Jgate]
+                    #                    delay_time = delay_time[Jgate] # TODO: not uesed
+                    line_num = p.line_num[Jgate]
                 elif gate_ns != (0, np.inf):
-                    raise RuntimeError("For gating you need to run TDCcalibration first")
+                    raise RuntimeError(
+                        f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
+                    )
+                else:
+                    runtime = p.runtime
 
-                time_stamps = np.diff(runtm).astype(np.int32)
+                time_stamps = np.diff(runtime).astype(np.int32)
                 for line_idx, j in enumerate(range(min_line, max_line + 1)):
                     valid = (line_num == j).astype(np.int8)
                     valid[line_num == -j] = -1
@@ -712,8 +727,14 @@ class CorrFuncTDC(TDCPhotonDataMixin):
                         CF.lag = SC.lag
                         CF.afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
 
+                    # subtract afterpulse
+                    if subtract_afterpulse:
+                        SC.cf_cr = SC.countrate * SC.corrfunc - CF.afterpulse[: SC.corrfunc.size]
+                    else:
+                        SC.cf_cr = SC.countrate * SC.corrfunc
+
                     # Append new correlation functions
-                    CF.accumulator.accumulate(SC, CF.afterpulse)
+                    CF.accumulator.accumulate(SC)
 
         CF.vt_um = self.v_um_ms * CF.lag
         CF.total_duration = sum(duration)
