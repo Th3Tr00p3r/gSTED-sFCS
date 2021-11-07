@@ -181,7 +181,7 @@ def show_external_axes(
             else:
                 ax.set_ylim(ylim)
 
-            [item.set_fontsize(fontsize) for item in [ax.title, ax.xaxis.label, ax.yaxis.label]]
+            [text.set_fontsize(fontsize) for text in [ax.title, ax.xaxis.label, ax.yaxis.label]]
 
         if super_title is not None:
             fig.suptitle(super_title, fontsize=(fontsize + 2))
