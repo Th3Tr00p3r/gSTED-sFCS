@@ -1131,7 +1131,12 @@ class MainWin:
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
                             should_plot=sol_analysis_wdgts.external_plotting,
                         )
-                    corrfunc_tdc.correlate_data(cf_name=data_type, verbose=True)
+                    corrfunc_tdc.correlate_data(
+                        cf_name=data_type,
+                        subtract_afterpulse=sol_analysis_wdgts.subtract_afterpulse,
+                        subtract_bg_corr=sol_analysis_wdgts.subtract_bg_corr,
+                        verbose=True,
+                    )
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())
