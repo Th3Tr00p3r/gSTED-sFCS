@@ -166,7 +166,7 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
 
 def save_object_to_disk(obj, file_path: Path, size_limits_mb=None, should_compress=True) -> bool:
     """
-    Save object to disk, if estimated size is within the limits.
+    Save a pickle-serialized and optionally gzip-compressed object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
     """
 
@@ -189,6 +189,19 @@ def save_object_to_disk(obj, file_path: Path, size_limits_mb=None, should_compre
             pickle.dump(obj, f, protocol=-1)
 
     return True
+
+
+def load_pkl(file_path: Path) -> Any:
+    """Short cut for opening (possibly 'gzip' compressed) .pkl files"""
+
+    try:
+        with gzip.open(file_path, "rb") as f_cmprsd:
+            return pickle.loads(f_cmprsd.read())
+
+    except OSError:
+        # OSError - file is uncompressed
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
 
 
 def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
@@ -378,19 +391,6 @@ def load_mat(file_path):
 
     data = spio.loadmat(file_path, struct_as_record=False, squeeze_me=True)
     return _check_keys(data)
-
-
-def load_pkl(file_path: Path) -> Any:
-    """Short cut for opening (possibly 'gzip' compressed) .pkl files"""
-
-    try:
-        with gzip.open(file_path, "rb") as f_cmprsd:
-            return pickle.loads(f_cmprsd.read())
-
-    except OSError:
-        # OSError - file is uncompressed
-        with open(file_path, "rb") as f:
-            return pickle.load(f)
 
 
 def sort_file_paths_by_file_number(file_paths: List[Path]) -> List[Path]:
