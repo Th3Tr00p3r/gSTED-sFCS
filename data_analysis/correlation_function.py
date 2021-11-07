@@ -606,10 +606,10 @@ class CorrFuncTDC(TDCPhotonDataMixin):
 
                         if len(CF.lag) < len(SC.lag):
                             CF.lag = SC.lag
-                            afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
+                            CF.afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
 
                         # Append new correlation functions
-                        CF.accumulator.accumulate(SC, afterpulse)
+                        CF.accumulator.accumulate(SC, CF.afterpulse)
 
         CF.total_duration = sum(duration)
 
@@ -710,10 +710,10 @@ class CorrFuncTDC(TDCPhotonDataMixin):
 
                     if len(CF.lag) < len(SC.lag):
                         CF.lag = SC.lag
-                        afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
+                        CF.afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
 
                     # Append new correlation functions
-                    CF.accumulator.accumulate(SC, afterpulse)
+                    CF.accumulator.accumulate(SC, CF.afterpulse)
 
         CF.vt_um = self.v_um_ms * CF.lag
         CF.total_duration = sum(duration)
