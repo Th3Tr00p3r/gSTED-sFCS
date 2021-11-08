@@ -272,7 +272,13 @@ def force_aspect(ax, aspect=1) -> None:
 
 @contextmanager
 def show_external_axes(
-    fig=None, subplots=(1, 1), super_title=None, should_force_aspect=False, fontsize=14
+    fig=None,
+    subplots=(1, 1),
+    super_title=None,
+    should_force_aspect=False,
+    fontsize=14,
+    xlim=None,
+    ylim=None,
 ):
     """
     Creates or accepts a Matplotlib figure, and yields a 'matplotlib.axes.Axes' object
@@ -282,19 +288,33 @@ def show_external_axes(
     if fig is None:
         fig = plt.figure()
         axes = fig.subplots(*subplots)
-    else:
-        axes = fig.get_axes()
-
-    try:
-        yield axes
-
-    finally:
         if not isinstance(axes, Iterable):
             axes = np.array([axes])
-        for ax in axes.ravel():
+    else:
+        axes = np.array(fig.get_axes())
+
+    try:
+        if axes.size == 1:
+            yield axes[0]
+        else:
+            yield axes
+
+    finally:
+
+        axes = axes.flatten().tolist()
+
+        for ax in axes:  # .ravel():
             if should_force_aspect:
                 force_aspect(ax, aspect=1)
-            ax.autoscale()
+            if xlim is None:
+                ax.autoscale(enable=True, axis="x")
+            else:
+                ax.set_xlim(xlim)
+            if ylim is None:
+                ax.autoscale(enable=True, axis="y")
+            else:
+                ax.set_ylim(ylim)
+
             [item.set_fontsize(fontsize) for item in [ax.title, ax.xaxis.label, ax.yaxis.label]]
         if super_title is not None:
             fig.suptitle(super_title, fontsize=(fontsize + 2))

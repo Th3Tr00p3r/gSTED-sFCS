@@ -128,6 +128,7 @@ class TDCPhotonData:
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
         should_plot=True,
+        **kwargs,
     ):
         """Doc."""
 
@@ -176,6 +177,8 @@ class TDCPhotonData:
         elif isinstance(sync_coarse_time_to, int):
             max_j = sync_coarse_time_to
         elif isinstance(sync_coarse_time_to, dict) and hasattr(sync_coarse_time_to, "tdc_calib"):
+            max_j = sync_coarse_time_to["max_j"]
+        elif isinstance(sync_coarse_time_to, TDCPhotonData):
             max_j = sync_coarse_time_to.tdc_calib["max_j"]
         else:
             raise ValueError(
@@ -405,9 +408,15 @@ class TDCPhotonData:
                     raise ValueError(f"Unknown normalization type '{normalization_type}'.")
                 h.append((x, y, label))
 
+        if "fig" in kwargs:
+            fig = kwargs["fig"]
+        else:
+            fig = None
+
         with display.show_external_axes(
-            super_title="Life Time Comparison", fontsize=fontsize
+            super_title="Life Time Comparison", fontsize=fontsize, fig=fig
         ) as ax:
+
             labels = []
             for tuple_ in h:
                 x, y, label = tuple_
