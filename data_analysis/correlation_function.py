@@ -7,6 +7,7 @@ from collections import deque
 from contextlib import contextmanager, suppress
 
 import numpy as np
+from matplotlib import pyplot as plt
 from scipy import ndimage, stats
 from skimage import filters as skifilt
 from skimage import morphology
@@ -92,6 +93,8 @@ class CorrFunc:
         x_scale="log",
         y_scale="linear",
         fig=None,
+        xlim=None,
+        ylim=None,
         **kwargs,
     ):
 
@@ -100,12 +103,27 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        with display.show_external_axes(fig) as ax:
+        with display.show_external_axes(fig, xlim=xlim, ylim=ylim) as ax:
+            try:
+                len(ax)
+            except TypeError:  # single axes, no len property, nothing to do
+                pass
+            else:
+                if len(ax) > 1:  # if has len it must be always above 1, so this
+                    ax = fig.gca()
+            # ax = fig.gca()
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)
-            ax.plot(x, y, "o", **kwargs)
+
+            # if 'x_lim' in kwargs:
+            #     ax.set_xlim(kwargs['x_lim'])
+            #     kwargs.pop('x_lim')
+            # if 'y_lim' in kwargs:
+            #     ax.set_ylim(kwargs['x_lim'])
+            #     kwargs.pop('y_lim')
+            ax.plot(x, y, "-", **kwargs)
             ax.legend(loc="best")
 
     def fit_correlation_function(
@@ -212,6 +230,7 @@ class CorrFuncTDC(TDCPhotonData):
         roi_selection: str = "auto",
         should_fix_shift: bool = False,
         should_plot: bool = True,
+        **kwargs,
     ):
         """Doc."""
 
@@ -724,12 +743,32 @@ class CorrFuncTDC(TDCPhotonData):
         return CF
 
     def plot_correlation_functions(
-        self, x_field="lag", y_field="normalized", x_scale="log", y_scale="linear", **kwargs
+        self,
+        x_field="lag",
+        y_field="normalized",
+        x_scale="log",
+        y_scale="linear",
+        fig=None,
+        xlim=None,
+        ylim=None,
+        **kwargs,
     ):
 
-        fig, _ = display.get_fig_with_axes()
+        if fig is None:
+            fig, _ = display.get_fig_with_axes()
+
         for cf_name, cf in self.cf.items():
-            cf.plot_correlation_function(x_field, y_field, x_scale, y_scale, label=cf_name, fig=fig)
+            cf.plot_correlation_function(
+                x_field,
+                y_field,
+                x_scale,
+                y_scale,
+                label=cf_name,
+                fig=fig,
+                xlim=xlim,
+                ylim=ylim,
+                **kwargs,
+            )
 
     def calculate_afterpulse(self, gate_ns, lag):
         gate_to_laser_pulses = np.min([1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
@@ -783,7 +822,7 @@ class SFCSExperiment:
         self.sted = CorrFuncTDC()
         self.name = name
 
-    def load_experiment(
+    def load_measurement(
         self,
         scanName: str = "confocal",  # or sted
         file_path_template: str = "",
@@ -796,9 +835,12 @@ class SFCSExperiment:
         file_paths = file_path_template + file_selection
         if "should_fix_shift" not in kwargs:
             if file_paths[-4:] == ".mat":  # old Matlab data need a fix shift by default
-                kwargs["should_fix_shift"] = True
+                should_fix_shift = True
             else:
-                kwargs["should_fix_shift"] = False
+                should_fix_shift = False
+        else:
+            should_fix_shift = kwargs["should_fix_shift"]
+        kwargs.pop("should_fix_shift")
 
         if "cf_name" not in kwargs:
             if scanName == "confocal":
@@ -807,7 +849,9 @@ class SFCSExperiment:
                 kwargs["cf_name"] = "CW STED"
         cf_name = kwargs["cf_name"]
 
-        scan.read_fpga_data(file_paths, should_plot=should_plot)
+        scan.read_fpga_data(
+            file_paths, should_fix_shift=should_fix_shift, should_plot=should_plot, **kwargs
+        )
 
         if "x_field" not in kwargs:
             if scan.type == "static":
@@ -817,6 +861,10 @@ class SFCSExperiment:
 
         scan.correlate_and_average(**kwargs)
 
+        ignoresForPlot = {"cf_name"}
+        for paramName in ignoresForPlot:
+            kwargs.pop(paramName)
+
         if should_plot:
             fig, _ = display.get_fig_with_axes()
             scan.cf[cf_name].plot_correlation_function(
@@ -825,6 +873,143 @@ class SFCSExperiment:
             scan.cf[cf_name].plot_correlation_function(
                 y_field="avg_cf_cr", label="avg_cf_cr", fig=fig, **kwargs
             )
+
+    def plot_correlation_functions(
+        self,
+        x_field="vt_um",
+        y_field="normalized",
+        x_scale="linear",
+        y_scale="linear",
+        fig=None,
+        xlim=None,
+        ylim=None,
+        **kwargs,
+    ):
+        if self.confocal.type == "static":
+            x_field = "lag"
+
+        if (x_scale == "linear") and (xlim is None) and (x_field == "vt_um"):
+            xlim = (0, 1)
+
+        if fig is None:
+            fig, _ = display.get_fig_with_axes()
+
+        if len(self.confocal.cf) > 0:
+            self.confocal.plot_correlation_functions(
+                x_field, y_field, x_scale, y_scale, fig=fig, xlim=xlim, ylim=ylim, **kwargs
+            )
+
+        if len(self.sted.cf) > 0:
+            self.sted.plot_correlation_functions(
+                x_field, y_field, x_scale, y_scale, fig=fig, xlim=xlim, ylim=ylim, **kwargs
+            )
+
+    def load_experiment(
+        self,
+        confocal: str = "",  # file_path_template to confocal
+        sted: str = "",  # file_path_template to sted
+        should_plot=True,
+        **kwargs,
+    ):
+        if len(confocal) > 0:
+            self.load_measurement(
+                scanName="confocal", file_path_template=confocal, should_plot=should_plot, **kwargs
+            )
+        if len(sted) > 0:
+            self.load_measurement(
+                scanName="sted", file_path_template=sted, should_plot=should_plot, **kwargs
+            )
+
+        if should_plot and (len(confocal) > 0) and (len(sted) > 0):  # there is something to compare
+            fig, axs = plt.subplots(1, 2)
+            # fig, _ = display.get_fig_with_axes()
+            # with display.show_external_axes(fig = fig, subplots=(1, 2)) as axs:
+            fig.sca(axs[0])
+            self.plot_correlation_functions(
+                x_field="vt_um", y_field="avg_cf_cr", x_scale="log", y_scale="linear", fig=fig
+            )
+
+            fig.sca(axs[1])
+            self.plot_correlation_functions(
+                x_field="vt_um",
+                y_field="normalized",
+                x_scale="linear",
+                y_scale="linear",
+                xlim=(0, 1),
+                fig=fig,
+            )
+            fig.show()
+
+    def calibrate_tdc(
+        self,
+        tdc_chain_length=128,
+        pick_valid_bins_method="auto",
+        pick_calib_bins_method="auto",
+        calib_time_s=40e-9,
+        n_zeros_for_fine_bounds=10,
+        fine_shift=0,
+        time_bins_for_hist_ns=0.1,
+        exmpl_photon_data=None,
+        sync_coarse_time_to=None,
+        forced_valid_coarse_bins=np.arange(19),
+        forced_calibration_coarse_bins=np.arange(3, 12),
+        should_plot=True,
+    ):
+        if (len(self.confocal.data) > 0) or (self.confocal.is_data_dumped):
+            self.confocal.calibrate_tdc(
+                tdc_chain_length,
+                pick_valid_bins_method,
+                pick_calib_bins_method,
+                calib_time_s,
+                n_zeros_for_fine_bounds,
+                fine_shift,
+                time_bins_for_hist_ns,
+                exmpl_photon_data,
+                sync_coarse_time_to,
+                forced_valid_coarse_bins,
+                forced_calibration_coarse_bins,
+                should_plot,
+            )
+            sync_coarse_time_to = self.confocal  # sync sted to confocal
+
+        if (len(self.sted.data) > 0) or (self.sted.is_data_dumped):
+            self.sted.calibrate_tdc(
+                tdc_chain_length,
+                pick_valid_bins_method,
+                pick_calib_bins_method,
+                calib_time_s,
+                n_zeros_for_fine_bounds,
+                fine_shift,
+                time_bins_for_hist_ns,
+                exmpl_photon_data,
+                sync_coarse_time_to,
+                forced_valid_coarse_bins,
+                forced_calibration_coarse_bins,
+                should_plot,
+            )
+
+        if should_plot:
+            self.compare_lifetimes()
+
+    def compare_lifetimes(
+        self,
+        normalization_type="Per Time",
+        legend_label=None,
+        fontsize=14,
+        **kwargs,
+    ):
+        if hasattr(self.confocal, "tdc_calib"):
+            self.confocal.compare_lifetimes(
+                normalization_type, legend_label="confocal", fontsize=fontsize, STED=self.sted
+            )
+        # fig = plt.gcf()
+        # if hasattr(self.sted, 'tdc_calib'):
+        #     self.sted.compare_lifetimes(normalization_type, legend_label='STED', fontsize = fontsize)
+
+    def add_gate(self, meas_type="sted", gate_ns=(0, np.inf), **kwargs):
+        CF_TDC = getattr(self, meas_type)
+        CF_TDC.correlate_and_average(gate_ns=gate_ns, **kwargs)
+        self.plot_correlation_functions()
 
 
 def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
