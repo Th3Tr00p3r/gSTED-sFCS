@@ -6,7 +6,7 @@ import time
 from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Iterable, List, Union
+from typing import List, Union
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -761,7 +761,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
-    DEFAULT_PARAMETERS = (("pixel_clock", 25), ("framerate", 15.0), ("exposure", 1.0))
+    DEFAULT_PARAMETERS = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
 
     def __init__(self, param_dict):
         super().__init__(
@@ -777,7 +777,10 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     def open(self) -> None:
         """Doc."""
 
-        self.open_instrument()
+        try:
+            self.open_instrument()
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def close(self) -> None:
         """Doc."""
@@ -814,10 +817,10 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
             return not should_turn_on
 
-    def set_parameters(self, parameters: Iterable = DEFAULT_PARAMETERS) -> None:
+    def set_parameters(self, parameters: dict = DEFAULT_PARAMETERS) -> None:
         """Set pixel_clock, framerate and exposure"""
 
-        [self.set_parameter(name, value) for name, value in parameters]
+        [self.set_parameter(name, value) for name, value in parameters.items()]
 
 
 @dataclass

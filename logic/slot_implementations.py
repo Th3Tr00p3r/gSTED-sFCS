@@ -647,7 +647,7 @@ class MainWin:
         camera = self.cameras[cam_num - 1]
         with suppress(DeviceError):
             # DeviceError - camera not properly initialized
-            camera.set_parameters([(param_name, value)])
+            camera.set_parameters({param_name: value})
             getattr(self._gui, f"autoExp{cam_num}").setChecked(False)
         self.update_slider_range(cam_num)
 
