@@ -291,7 +291,7 @@ SOL_ANALYSIS_COLL = QtWidgetCollection(
     sted_samp=("stedSamp", "QLineEdit", "main", True),
 )
 # ----------------------------------------------
-# Measurement Widget Collections
+# MeasurementProcedure Widget Collections
 # ----------------------------------------------
 
 SOL_ANG_SCAN_COLL = QtWidgetCollection(

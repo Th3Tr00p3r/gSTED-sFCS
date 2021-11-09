@@ -177,7 +177,7 @@ class TDCPhotonDataMixin:
             coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
             fine[n_elem[i] : n_elem[i + 1]] = p.fine
 
-        if self.type == "angular_scan":
+        if self.scan_type == "angular_scan":
             photon_idxs = fine > self.NAN_PLACEBO  # remove line starts/ends
             coarse = coarse[photon_idxs]
             fine = fine[photon_idxs]
@@ -209,7 +209,7 @@ class TDCPhotonDataMixin:
             max_j = np.argmax(h)
         elif isinstance(sync_coarse_time_to, int):
             max_j = sync_coarse_time_to
-        elif isinstance(sync_coarse_time_to, dict) and hasattr(sync_coarse_time_to, "tdc_calib"):
+        elif hasattr(sync_coarse_time_to, "tdc_calib"):
             max_j = sync_coarse_time_to.tdc_calib["max_j"]
         else:
             raise ValueError(

@@ -173,7 +173,7 @@ class Timeout:
             if not self.cntr_dvc.error_dict:
                 update_avg_counts(meas)
 
-            # Measurement progress bar and time left
+            # MeasurementProcedure progress bar and time left
             if self._app.meas.is_running:
                 updt_meas_progress(meas)
 
