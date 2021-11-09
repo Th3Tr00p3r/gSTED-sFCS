@@ -169,8 +169,7 @@ class MeasurementProcedure:
         file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
 
         file_utilities.save_object_to_disk(
-            data_dict,
-            file_path,
+            data_dict, file_path, compression_method=None  # TODO: decide on compression_method
         )
         logging.debug(f"Saved measurement file: '{file_path}'.")
 
