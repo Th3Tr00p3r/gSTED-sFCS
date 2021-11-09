@@ -170,7 +170,7 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
 
 
 def save_object_to_disk(
-    obj, file_path: Path, size_limits_mb=None, compression_method: str = "blosc"  # "gzip" / "blosc"
+    obj, file_path: Path, size_limits_mb=None, compression_method: str = None  # "gzip" / "blosc"
 ) -> bool:
     """
     Save a pickle-serialized and optionally gzip/blosc-compressed object to disk, if estimated size is within the limits.
@@ -238,10 +238,7 @@ def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
     dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", tdc_obj.template)
     file_path = dir_path / file_name
-    save_object_to_disk(
-        tdc_obj,
-        file_path,
-    )
+    save_object_to_disk(tdc_obj, file_path, compression_method="blosc")
 
     tdc_obj.data = original_data
 
