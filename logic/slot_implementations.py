@@ -17,7 +17,10 @@ from PyQt5.QtWidgets import QFileDialog, QWidget
 import gui.dialog as dialog
 import gui.widgets as wdgts
 import logic.measurements as meas
-from data_analysis.correlation_function import CorrFuncTDC, ImageTDC
+from data_analysis.correlation_function import (
+    ImageSFCSMeasurement,
+    SolutionSFCSMeasurement,
+)
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
 from utilities.errors import DeviceError, err_hndlr
@@ -278,7 +281,7 @@ class MainWin:
 
                     kwargs = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app, "dict")
 
-                    self._app.meas = meas.SFCSSolutionMeasurement(
+                    self._app.meas = meas.SolutionMeasurementProcedure(
                         app=self._app,
                         scan_params=scan_params,
                         laser_mode=laser_mode.lower(),
@@ -300,7 +303,7 @@ class MainWin:
 
                     kwargs = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app, "dict")
 
-                    self._app.meas = meas.SFCSImageMeasurement(
+                    self._app.meas = meas.ImageMeasurementProcedure(
                         app=self._app,
                         scan_params=wdgts.IMG_SCAN_COLL.read_gui_to_obj(self._app),
                         laser_mode=laser_mode.lower(),
@@ -396,7 +399,7 @@ class MainWin:
         plane_idx = self._gui.numPlaneShown.value()
         with suppress(AttributeError):
             # IndexError - 'App' object has no attribute 'curr_img_idx'
-            image_tdc = ImageTDC()
+            image_tdc = ImageSFCSMeasurement()
             image_tdc.process_data(file_dict=self._app.last_image_scans[self._app.curr_img_idx])
             image_data = image_tdc.image_data
             line_ticks_v = image_data.line_ticks_v
@@ -492,7 +495,7 @@ class MainWin:
         disp_mthd = img_meas_wdgts.image_method
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
-            image_tdc = ImageTDC()
+            image_tdc = ImageSFCSMeasurement()
             image_tdc.process_data(file_dict=self._app.last_image_scans[img_idx])
             image_data = image_tdc.image_data
             if plane_idx is None:
@@ -989,7 +992,7 @@ class MainWin:
             # Inferring data_dype from template
             data_type = self.infer_data_type_from_template(template)
 
-            corrfunc_tdc = CorrFuncTDC()
+            corrfunc_tdc = SolutionSFCSMeasurement()
             try:
                 corrfunc_tdc.read_fpga_data(
                     date_dir_path / template,
@@ -1078,7 +1081,7 @@ class MainWin:
         if data_import_wdgts.is_image_type:
             # import the data
             try:
-                image_tdc = ImageTDC()
+                image_tdc = ImageSFCSMeasurement()
                 image_tdc.read_image_data(self.current_date_type_dir_path() / template)
             except FileNotFoundError:
                 self.switch_data_type()
@@ -1124,7 +1127,7 @@ class MainWin:
                 try:
                     with suppress(AttributeError):
                         # AttributeError - No directories found
-                        corrfunc_tdc = CorrFuncTDC()
+                        corrfunc_tdc = SolutionSFCSMeasurement()
                         corrfunc_tdc.read_fpga_data(
                             curr_dir / current_template,
                             file_selection=sol_file_selection,
@@ -1179,7 +1182,7 @@ class MainWin:
     @contextmanager
     def get_corrfunc_tdc_from_template(
         self, template: str = None, should_load=False
-    ) -> CorrFuncTDC:
+    ) -> SolutionSFCSMeasurement:
         """Doc."""
 
         if template is None:
@@ -1230,7 +1233,7 @@ class MainWin:
                 sol_data_analysis_wdgts.scan_duration_min.set(corrfunc_tdc.duration_min)
                 sol_data_analysis_wdgts.avg_cnt_rate_khz.set(corrfunc_tdc.avg_cnt_rate_khz)
 
-                if corrfunc_tdc.type == "angular_scan":
+                if corrfunc_tdc.scan_type == "angular_scan":
                     # populate scan images tab
                     logging.debug("Displaying scan images...")
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
@@ -1248,7 +1251,7 @@ class MainWin:
                         ]
                     )
 
-                elif corrfunc_tdc.type == "static":
+                elif corrfunc_tdc.scan_type == "static":
                     logging.debug("Averaging, plotting and fitting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
                     scan_settings_text = "no scan."
@@ -1281,7 +1284,7 @@ class MainWin:
             if corrfunc_tdc is None:
                 return
 
-            if corrfunc_tdc.type == "angular_scan":
+            if corrfunc_tdc.scan_type == "angular_scan":
                 row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
@@ -1320,7 +1323,7 @@ class MainWin:
                     sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(cf.j_bad))
                     sol_data_analysis_wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
 
-            elif corrfunc_tdc.type == "static":
+            elif corrfunc_tdc.scan_type == "static":
                 data_type = self.infer_data_type_from_template(corrfunc_tdc.template)
                 cf = corrfunc_tdc.cf[data_type]
                 cf.average_correlation()

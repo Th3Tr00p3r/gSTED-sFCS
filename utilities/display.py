@@ -147,7 +147,6 @@ def show_external_axes(
     fontsize=14,
     xlim: Tuple[float, float] = None,
     ylim: Tuple[float, float] = None,
-    should_autoscale=False,
 ):
     """
     Creates or accepts a Matplotlib figure, and yields a 'matplotlib.axes.Axes' object
@@ -172,15 +171,9 @@ def show_external_axes(
         for ax in axes.flatten().tolist():
             if should_force_aspect:
                 force_aspect(ax, aspect=1)
-            if xlim is None and should_autoscale:
-                ax.autoscale(enable=True, axis="x")
-            else:
-                ax.set_xlim(xlim)
-            if ylim is None and should_autoscale:
-                ax.autoscale(enable=True, axis="y")
-            else:
-                ax.set_ylim(ylim)
-
+            ax.autoscale()
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
             [text.set_fontsize(fontsize) for text in [ax.title, ax.xaxis.label, ax.yaxis.label]]
 
         if super_title is not None:

@@ -14,14 +14,14 @@ from types import SimpleNamespace
 import nidaqmx.constants as ni_consts
 import numpy as np
 
-from data_analysis.correlation_function import CorrFuncTDC
+from data_analysis.correlation_function import SolutionSFCSMeasurement
 from gui.icons import icons
 from logic.scan_patterns import ScanPatternAO
 from utilities import errors, file_utilities, fit_tools, helper
 
 
-class Measurement:
-    """Base class for measurements"""
+class MeasurementProcedure:
+    """Base class for measurement procedures"""
 
     def __init__(
         self,
@@ -314,7 +314,7 @@ class Measurement:
         self.scanners_dvc.close_tasks("ao")
 
 
-class SFCSImageMeasurement(Measurement):
+class ImageMeasurementProcedure(MeasurementProcedure):
     """Doc."""
 
     def __init__(self, app, scan_params, **kwargs):
@@ -503,8 +503,7 @@ class SFCSImageMeasurement(Measurement):
         if self.is_running:  # if not manually stopped
             # prepare data
             data_dict = self.prep_data_dict()
-            if self.always_save:
-                # save data
+            if self.always_save:  # save data
                 self.save_data(data_dict, self.build_filename())
             self.keep_last_meas(data_dict)
             # show middle plane
@@ -520,7 +519,7 @@ class SFCSImageMeasurement(Measurement):
         self.type = None
 
 
-class SFCSSolutionMeasurement(Measurement):
+class SolutionMeasurementProcedure(MeasurementProcedure):
     """Doc."""
 
     dur_mul_dict = {
@@ -604,7 +603,7 @@ class SFCSSolutionMeasurement(Measurement):
         def compute_acf(data):
             """Doc."""
 
-            s = CorrFuncTDC()
+            s = SolutionSFCSMeasurement()
             p = s.process_data(self.prep_data_dict(), ignore_coarse_fine=True)
             s.data.append(p)
             s.correlate_and_average(cf_name=self.laser_mode)
