@@ -836,7 +836,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     self.data,
                     self.DUMP_PATH / self.name_on_disk,
                     size_limits_mb=self.SIZE_LIMITS_MB,
-                    compression=None,
+                    compression_methods=None,
                 )
                 if is_saved:
                     self.data = []

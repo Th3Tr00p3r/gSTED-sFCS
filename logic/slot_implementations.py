@@ -1118,7 +1118,7 @@ class MainWin:
                         f"{import_wdgts.sol_file_use_or_dont} {import_wdgts.sol_file_selection}"
                     )
                 else:
-                    sol_file_selection = ""
+                    sol_file_selection = None
 
                 # Inferring data_dype from template
                 data_type = self.infer_data_type_from_template(current_template)
@@ -1158,7 +1158,7 @@ class MainWin:
     def save_processed_data(self):
         """Doc."""
 
-        with self.get_corrfunc_tdc_from_template() as corrfunc_tdc:
+        with self.get_corrfunc_tdc_from_template(should_load=True) as corrfunc_tdc:
             curr_dir = self.current_date_type_dir_path()
             file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
             logging.info("Saved the processed data.")
