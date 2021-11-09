@@ -7,11 +7,11 @@ import functools
 import gzip
 import pickle
 import re
-from contextlib import suppress
+
+# from contextlib import suppress
 from pathlib import Path
 from typing import Any, Callable, List, Tuple
 
-# import blosc
 import bloscpack
 import numpy as np
 import scipy.io as spio
@@ -170,17 +170,12 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
 
 
 def save_object_to_disk(
-    obj,
-    file_path: Path,
-    size_limits_mb=None,
-    compression_methods: Tuple = ("blosc",),  # , "gzip"),
+    obj, file_path: Path, size_limits_mb=None, compression_method: str = "blosc"  # "gzip" / "blosc"
 ) -> bool:
     """
-    Save a pickle-serialized and optionally gzip-compressed object to disk, if estimated size is within the limits.
+    Save a pickle-serialized and optionally gzip/blosc-compressed object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
     """
-
-    COMPRESSION_LEVELS = {"gzip": 1, "blosc": 9}
 
     if size_limits_mb is not None:
         lower_limit_mb, upper_limit_mb = size_limits_mb
@@ -191,16 +186,17 @@ def save_object_to_disk(
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
-    if (compression_methods is not None) and ("blosc" in compression_methods):
-        # blosc compress all byte-like object (Numpy arrays only, for now)
-        obj = blosc_compress_object(obj, compression_level=COMPRESSION_LEVELS["blosc"])
-
     # pickle/serialize the object
     obj = pickle.dumps(obj, protocol=-1)
 
-    if (compression_methods is not None) and ("gzip" in compression_methods):
+    if compression_method == "blosc":
+        # blosc compress the serialized object
+        blosc_args = bloscpack.BloscArgs(typesize=4, clevel=1, cname="zlib")
+        obj = bloscpack.pack_bytes_to_bytes(obj, blosc_args=blosc_args)
+
+    if compression_method == "gzip":
         # gzip compress the serialized object
-        obj = gzip.compress(obj, compresslevel=COMPRESSION_LEVELS["gzip"])
+        obj = gzip.compress(obj, compresslevel=1)
 
     # save the object
     with open(file_path, "wb") as f:
@@ -209,56 +205,21 @@ def save_object_to_disk(
     return True
 
 
-def blosc_compress_object(obj, should_decompress: bool = False, compression_level=9) -> Any:
-    """Recursively iterates over attributes/keys of object and blosc-compresses all found Numpy arrays."""
-
-    # stop condition
-    if not should_decompress and hasattr(obj, "dtype"):  # if obj is a Numpy array
-        return bloscpack.pack_ndarray_to_bytes(obj)
-    if should_decompress and isinstance(obj, bytes):  # object is a compressed Numpy array
-        # TODO: not sure if this is specific enough to a compressed blosc object
-        return bloscpack.unpack_ndarray_from_bytes(obj)
-
-    # recursion
-    if hasattr(obj, "__dict__"):  # obj is a namespace
-        for attribute_name, sub_obj in vars(obj).items():  # iterate over all attributes
-            compressed_sub_obj = blosc_compress_object(
-                sub_obj, should_decompress, compression_level
-            )
-            setattr(obj, attribute_name, compressed_sub_obj)
-    if hasattr(obj, "items"):  # obj is a dict
-        for key, sub_obj in obj.items():
-            compressed_sub_obj = blosc_compress_object(
-                sub_obj, should_decompress, compression_level
-            )
-            obj[key] = blosc_compress_object(sub_obj, should_decompress, compression_level)
-
-    return obj
-
-
-def gzip_decompress_file(file_path) -> Any:
-    """Decompresses a file and returns the contents"""
-
-    with gzip.open(file_path, "rb") as f_cmprsd:
-        return f_cmprsd.read()
-
-
 def load_file(file_path: Path) -> Any:
     """Short cut for opening (possibly 'gzip' and/or 'blosc' compressed) .pkl files"""
 
     try:  # gzip decompression
-        obj = gzip_decompress_file(file_path)
-    except gzip.BadGzipFile:
-        # file is not gzip-compressed -  unpickle/deserialize
-        with open(file_path, "rb") as f:
-            obj = pickle.load(f)
-    else:  # obj is pickled/serialized contents of gzip-decompressed file
-        obj = pickle.loads(obj)
-    finally:  # blosc decompress, if applicable (add try/except here when you know what error to look for)
-        with suppress(ValueError):
-            # ValueError - obj is not blosc-compressed
-            obj = blosc_compress_object(obj, should_decompress=True)
-        return obj
+        with gzip.open(file_path, "rb") as f_cmprsd:
+            obj = f_cmprsd.read()
+    except gzip.BadGzipFile:  # in case gzip decompression fails
+        try:  # blosc decompression
+            obj, _ = bloscpack.unpack_bytes_from_file(file_path)
+        except ValueError:  # in case blosc decompression fails
+            with open(file_path, "rb") as f:
+                return pickle.load(f)  # deserialize only
+
+    # if decompressed, still needs deserialization
+    return pickle.loads(obj)
 
 
 def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
@@ -266,6 +227,8 @@ def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
     Save a processed measurement, lacking any data.
     The template may then be loaded much more quickly.
     """
+
+    original_data = copy.deepcopy(tdc_obj.data)
 
     # lower size if possible
     for p in tdc_obj.data:
@@ -280,10 +243,7 @@ def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
         file_path,
     )
 
-    # return to int64 (the actual object was changed!)
-    for p in tdc_obj.data:
-        if p.runtime.dtype == np.int32:
-            p.runtime = p.runtime.astype(np.int64)
+    tdc_obj.data = original_data
 
 
 def load_processed_solution_measurement(file_path: Path):

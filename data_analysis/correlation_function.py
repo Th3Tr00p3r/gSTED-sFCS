@@ -459,7 +459,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
         sorted_idxs = np.argsort(runtime)
         p.runtime = runtime[sorted_idxs]
-        p.time_stamps = np.diff(p.runtime).astype(np.int32)
         p.line_num = np.hstack(
             (
                 line_start_lables,
@@ -565,7 +564,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             else:  # auto determine
                 total_duration_estimate = 0
                 for p in self.data:
-                    mu = np.median(p.time_stamps) / np.log(2)
+                    time_stamps = np.diff(p.runtime).astype(np.int32)
+                    mu = np.median(time_stamps) / np.log(2)
                     total_duration_estimate = (
                         total_duration_estimate + mu * len(p.runtime) / self.laser_freq_hz
                     )
@@ -836,7 +836,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     self.data,
                     self.DUMP_PATH / self.name_on_disk,
                     size_limits_mb=self.SIZE_LIMITS_MB,
-                    compression_methods=None,
+                    compression_method=None,
                 )
                 if is_saved:
                     self.data = []
