@@ -19,7 +19,6 @@ class TDCPhotonData:
     coarse2: np.ndarray
     fine: np.ndarray
     runtime: np.ndarray
-    time_stamps: np.ndarray
     all_section_edges: np.ndarray
 
 
@@ -141,7 +140,6 @@ class TDCPhotonDataMixin:
             coarse2=coarse2,
             fine=fine,
             runtime=runtime,
-            time_stamps=time_stamps,
             all_section_edges=all_section_edges,
         )
 
