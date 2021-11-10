@@ -140,6 +140,7 @@ class Display:
 @contextmanager
 def show_external_axes(
     fig=None,
+    ax=None,
     subplots=(1, 1),
     figsize=None,
     super_title=None,
@@ -153,18 +154,23 @@ def show_external_axes(
     which is to be manipulated, then shows the figure.
     """
 
-    if fig is None:
-        fig = plt.figure(figsize=figsize)
-        axes = fig.subplots(*subplots)
-        if not isinstance(axes, Iterable):
-            axes = np.array([axes])
-    else:
-        axes = np.array(fig.get_axes())
+    if ax is None:
+        if fig is None:
+            fig = plt.figure(figsize=figsize)
+            axes = fig.subplots(*subplots)
+            if not isinstance(axes, Iterable):
+                axes = np.array([axes])
+        else:
+            axes = np.array(fig.get_axes())
 
     try:
-        if axes.size == 1:
-            yield axes[0]
+        if ax is None:
+            if axes.size == 1:
+                yield axes[0]
+            else:
+                yield axes
         else:
+            axes = np.array([ax])
             yield axes
 
     finally:
@@ -179,7 +185,8 @@ def show_external_axes(
         if super_title is not None:
             fig.suptitle(super_title, fontsize=(fontsize + 2))
 
-        fig.show()
+        if ax is None:
+            fig.show()
 
 
 def get_fig_with_axes(subplots=(1, 1), figsize: Tuple[float, float] = None):
