@@ -2,6 +2,7 @@
 
 from contextlib import suppress
 from dataclasses import dataclass
+from typing import Any, List
 
 import numpy as np
 import scipy
@@ -22,8 +23,37 @@ class TDCPhotonData:
     all_section_edges: np.ndarray
 
 
+@dataclass
+class TDCCalibration:
+    """Doc."""
+
+    max_j: int
+    coarse_bins: Any
+    fine_bins: Any
+    l_quarter_tdc: Any
+    r_quarter_tdc: Any
+    t_calib: Any
+    hist_weight: Any
+    delay_times: Any
+    total_laser_pulses: int
+    h: Any
+    t_hist: Any
+    all_hist: Any
+    all_hist_norm: Any
+    error_all_hist_norm: Any
+    t_weight: Any
+
+
 class TDCPhotonDataMixin:
     """Methods for creating and analyzing TDCPhotonData objects"""
+
+    # NOTE: These are for mypy to be silent. The proper way to do it would be using abstract base classes (ABCs)
+    data: List
+    scan_type: str
+    NAN_PLACEBO: int
+    fpga_freq_hz: int
+    template: str
+    tdc_calib: TDCCalibration
 
     def convert_fpga_data_to_photons(
         self,
@@ -34,7 +64,7 @@ class TDCPhotonDataMixin:
         max_outlier_prob=1e-5,
         verbose=False,
         **kwargs,
-    ):
+    ) -> TDCPhotonData:
         """Doc."""
 
         if verbose:
@@ -158,12 +188,10 @@ class TDCPhotonDataMixin:
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
         should_plot=False,
-    ):
+    ) -> None:
         """Doc."""
 
         print("\nCalibrating TDC...", end=" ")
-
-        self.tdc_calib = dict()
 
         # keep runtime elements of each file for array size allocation
         n_elem = np.cumsum([0] + [p.runtime.size for p in self.data])
@@ -180,27 +208,25 @@ class TDCPhotonDataMixin:
             coarse = coarse[photon_idxs]
             fine = fine[photon_idxs]
 
-        h_all = np.bincount(coarse)
-        x_all = np.arange(coarse.max() + 1)
+        h_all = np.bincount(coarse).astype(np.uint32)
+        x_all = np.arange(coarse.max() + 1, dtype=np.uint8)
 
         if pick_valid_bins_method == "auto":
             h_all = h_all[coarse.min() :]
-            x_all = np.arange(coarse.min(), coarse.max() + 1)
+            x_all = np.arange(coarse.min(), coarse.max() + 1, dtype=np.uint8)
             j = (h_all > (np.median(h_all) / 100)).nonzero()[0]
-            x = x_all[j]
+            bins = x_all[j]
             h = h_all[j]
         elif pick_valid_bins_method == "forced":
-            x = forced_valid_coarse_bins
-            h = h_all[x]
+            bins = forced_valid_coarse_bins
+            h = h_all[bins]
         elif pick_valid_bins_method == "by example":
-            x = example_photon_data.coarse["bins"]
-            h = h_all[x]
+            bins = example_photon_data.coarse_bins
+            h = h_all[bins]
         elif pick_valid_bins_method == "interactive":
             raise NotImplementedError("'interactive' valid bins selection is not yet implemented.")
         else:
             raise ValueError(f"Unknown method '{pick_valid_bins_method}' for picking valid bins!")
-
-        self.coarse = dict(bins=x, h=h)
 
         # rearranging the bins
         if sync_coarse_time_to is None:
@@ -208,7 +234,7 @@ class TDCPhotonDataMixin:
         elif isinstance(sync_coarse_time_to, int):
             max_j = sync_coarse_time_to
         elif hasattr(sync_coarse_time_to, "tdc_calib"):
-            max_j = sync_coarse_time_to.tdc_calib["max_j"]
+            max_j = sync_coarse_time_to.tdc_calib.max_j
         else:
             raise ValueError(
                 "Syncing coarse time is possible to either a number or to an object that has the attribute 'tdc_calib'!"
@@ -220,14 +246,14 @@ class TDCPhotonDataMixin:
             # pick data at more than 20ns delay from maximum
             j = np.where(j >= (calib_time_s * self.fpga_freq_hz + 2))[0]
             j_calib = j_shift[j]
-            x_calib = x[j_calib]
+            coarse_bins = bins[j_calib]
         elif pick_calib_bins_method == "forced":
-            x_calib = forced_calibration_coarse_bins
+            coarse_bins = forced_calibration_coarse_bins
         elif (
             pick_calib_bins_method == "by example"
             or pick_calib_bins_method == "External calibration"
         ):
-            x_calib = example_photon_data.tdc_calib["coarse_bins"]
+            coarse_bins = example_photon_data.tdc_calib.coarse_bins
         elif pick_valid_bins_method == "interactive":
             raise NotImplementedError(
                 "'interactive' calibration bins selection is not yet implemented."
@@ -238,20 +264,27 @@ class TDCPhotonDataMixin:
             )
 
         if pick_calib_bins_method == "External calibration":
-            self.tdc_calib = example_photon_data.tdc_calib
-            max_j = example_photon_data.tdc_calib["max_j"]
+            #            self.tdc_calib = example_photon_data.tdc_calib # set all relevant attributes to external TDCCalibration (whatevers in the 'else')
+            max_j = example_photon_data.tdc_calib.max_j
+            coarse_bins = example_photon_data.tdc_calib.coarse_bins
+            fine_bins = example_photon_data.tdc_calib.fine_bins
+            t_calib = example_photon_data.tdc_calib.t_calib
+            h_tdc_calib = example_photon_data.tdc_calib.h_tdc_calib
+            t_weight = example_photon_data.tdc_calib.t_weight
+            l_quarter_tdc = example_photon_data.tdc_calib.l_quarter_tdc
+            r_quarter_tdc = example_photon_data.tdc_calib.r_quarter_tdc
+            h = example_photon_data.tdc_calib.h
+            delay_times = example_photon_data.tdc_calib.delay_times
 
-            if "l_quarter_tdc" in self.tdc_calib:
-                l_quarter_tdc = self.tdc_calib["l_quarter_tdc"]
-                r_quarter_tdc = self.tdc_calib["r_quarter_tdc"]
+            with suppress(AttributeError):
+                l_quarter_tdc = self.tdc_calib.l_quarter_tdc
+                r_quarter_tdc = self.tdc_calib.r_quarter_tdc
 
         else:
-            self.tdc_calib["coarse_bins"] = x_calib
 
-            fine_calib = fine[np.isin(coarse, x_calib)]
-
-            self.tdc_calib["fine_bins"] = np.arange(tdc_chain_length)
-            h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length)
+            fine_calib = fine[np.isin(coarse, coarse_bins)]
+            fine_bins = np.arange(tdc_chain_length, dtype=np.uint8)
+            h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length).astype(np.uint32)
 
             # find effective range of TDC by, say, finding 10 zeros in a row
             cumusum_h_tdc_calib = np.cumsum(h_tdc_calib)
@@ -270,9 +303,6 @@ class TDCPhotonDataMixin:
             l_quarter_tdc = round(left_tdc + (right_tdc - left_tdc) / 4)
             r_quarter_tdc = round(right_tdc - (right_tdc - left_tdc) / 4)
 
-            self.tdc_calib["l_quarter_tdc"] = l_quarter_tdc
-            self.tdc_calib["r_quarter_tdc"] = r_quarter_tdc
-
             # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
             h_tdc_calib[:left_tdc] = 0
             h_tdc_calib[right_tdc:] = 0
@@ -281,27 +311,22 @@ class TDCPhotonDataMixin:
                 (1 - np.cumsum(h_tdc_calib) / np.sum(h_tdc_calib)) / self.fpga_freq_hz * 1e9
             )  # invert and to ns
 
-            self.tdc_calib["h"] = h_tdc_calib
-            self.tdc_calib["t_calib"] = t_calib
+            coarse_len = bins.size
 
-            coarse_len = self.coarse["bins"].size
-
-            t_weight = np.tile(self.tdc_calib["h"] / np.mean(self.tdc_calib["h"]), coarse_len)
+            t_weight = np.tile(h_tdc_calib / np.mean(h_tdc_calib), coarse_len)
             coarse_times = (
                 np.tile(np.arange(coarse_len), [t_calib.size, 1]) / self.fpga_freq_hz * 1e9
             )
             delay_times = np.tile(t_calib, coarse_len) + coarse_times.flatten("F")
             # initially delay times are piece wise inverted. After "flip" in line 323 there should be no need in sorting:
             j_sorted = np.argsort(delay_times)
-            self.tdc_calib["delay_times"] = delay_times[j_sorted]
+            delay_times = delay_times[j_sorted]
 
-            self.tdc_calib["t_weight"] = t_weight[j_sorted]
-
-            self.tdc_calib["max_j"] = max_j
+            t_weight = t_weight[j_sorted]
 
         # assign time delays to all photons
-        self.tdc_calib["total_laser_pulses"] = 0
-        last_coarse_bin = self.coarse["bins"][-1]
+        total_laser_pulses = 0
+        last_coarse_bin = bins[-1]
         max_j_m1 = max_j - 1
         if max_j_m1 == -1:
             max_j_m1 = last_coarse_bin
@@ -309,8 +334,8 @@ class TDCPhotonDataMixin:
         delay_time = np.empty((0,), dtype=np.float64)
         for p in self.data:
             p.delay_time = np.empty(p.coarse.shape, dtype=np.float64)
-            crs = np.minimum(p.coarse, last_coarse_bin) - self.coarse["bins"][max_j_m1]
-            crs[crs < 0] = crs[crs < 0] + last_coarse_bin - self.coarse["bins"][0] + 1
+            crs = np.minimum(p.coarse, last_coarse_bin) - bins[max_j_m1]
+            crs[crs < 0] = crs[crs < 0] + last_coarse_bin - bins[0] + 1
 
             delta_coarse = p.coarse2 - p.coarse
             delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
@@ -326,10 +351,10 @@ class TDCPhotonDataMixin:
 
             photon_idxs = p.fine > self.NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
             p.delay_time[photon_idxs] = (
-                self.tdc_calib["t_calib"][p.fine[photon_idxs]]
+                t_calib[p.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
             )
-            self.tdc_calib["total_laser_pulses"] += p.runtime[-1]
+            total_laser_pulses += p.runtime[-1]
             p.delay_time[~photon_idxs] = np.nan  # line ends/starts
 
             delay_time = np.append(delay_time, p.delay_time[photon_idxs])
@@ -338,37 +363,28 @@ class TDCPhotonDataMixin:
             -time_bins_for_hist_ns / 2,
             np.max(delay_time) + time_bins_for_hist_ns,
             time_bins_for_hist_ns,
+            dtype=np.float16,
         )
 
-        self.tdc_calib["t_hist"] = (bin_edges[:-1] + bin_edges[1:]) / 2
-        k = np.digitize(self.tdc_calib["delay_times"], bin_edges)  # starts from 1
+        t_hist = (bin_edges[:-1] + bin_edges[1:]) / 2
+        k = np.digitize(delay_times, bin_edges)  # starts from 1
 
-        self.tdc_calib["hist_weight"] = np.empty(self.tdc_calib["t_hist"].shape, dtype=np.float64)
-        for i in range(len(self.tdc_calib["t_hist"])):
+        hist_weight = np.empty(t_hist.shape, dtype=np.float64)
+        for i in range(len(t_hist)):
             j = k == (i + 1)
-            self.tdc_calib["hist_weight"][i] = np.sum(self.tdc_calib["t_weight"][j])
+            hist_weight[i] = np.sum(t_weight[j])
 
-        self.tdc_calib["all_hist"] = np.histogram(delay_time, bins=bin_edges)[0]
-        self.tdc_calib["all_hist_norm"] = np.empty(
-            self.tdc_calib["all_hist"].shape, dtype=np.float64
-        )
-        self.tdc_calib["error_all_hist_norm"] = np.empty(
-            self.tdc_calib["all_hist"].shape, dtype=np.float64
-        )
-        nonzero = self.tdc_calib["hist_weight"] > 0
-        self.tdc_calib["all_hist_norm"][nonzero] = (
-            self.tdc_calib["all_hist"][nonzero]
-            / self.tdc_calib["hist_weight"][nonzero]
-            / self.tdc_calib["total_laser_pulses"]
-        )
-        self.tdc_calib["error_all_hist_norm"][nonzero] = (
-            np.sqrt(self.tdc_calib["all_hist"][nonzero])
-            / self.tdc_calib["hist_weight"][nonzero]
-            / self.tdc_calib["total_laser_pulses"]
+        all_hist = np.histogram(delay_time, bins=bin_edges)[0].astype(np.uint32)
+        all_hist_norm = np.empty(all_hist.shape, dtype=np.float64)
+        error_all_hist_norm = np.empty(all_hist.shape, dtype=np.float64)
+        nonzero = hist_weight > 0
+        all_hist_norm[nonzero] = all_hist[nonzero] / hist_weight[nonzero] / total_laser_pulses
+        error_all_hist_norm[nonzero] = (
+            np.sqrt(all_hist[nonzero]) / hist_weight[nonzero] / total_laser_pulses
         )
 
-        self.tdc_calib["all_hist_norm"][~nonzero] = np.nan
-        self.tdc_calib["error_all_hist_norm"][~nonzero] = np.nan
+        all_hist_norm[~nonzero] = np.nan
+        error_all_hist_norm[~nonzero] = np.nan
 
         if should_plot:
             with display.show_external_axes(
@@ -380,29 +396,46 @@ class TDCPhotonDataMixin:
                     x_all,
                     h_all,
                     "-o",
-                    x,
+                    bins,
                     h,
                     "-o",
-                    x[np.isin(x, x_calib)],
-                    h[np.isin(x, x_calib)],
+                    bins[np.isin(bins, coarse_bins)],
+                    h[np.isin(bins, coarse_bins)],
                     "-o",
                 )
                 axes[0, 0].legend(["all hist", "valid bins", "calibration bins"])
 
-                axes[0, 1].plot(self.tdc_calib["t_calib"], "-o")
+                axes[0, 1].plot(t_calib, "-o")
                 axes[0, 1].legend(["TDC calibration"])
 
-                axes[1, 0].semilogy(self.tdc_calib["t_hist"], self.tdc_calib["all_hist_norm"], "-o")
+                axes[1, 0].semilogy(t_hist, all_hist_norm, "-o")
                 axes[1, 0].legend(["Photon lifetime histogram"])
 
         print("Done.")
+
+        self.tdc_calib = TDCCalibration(
+            max_j=max_j,
+            coarse_bins=coarse_bins,
+            fine_bins=fine_bins,
+            l_quarter_tdc=l_quarter_tdc,
+            r_quarter_tdc=r_quarter_tdc,
+            h=h_tdc_calib,
+            t_calib=t_calib,
+            t_hist=t_hist,
+            hist_weight=hist_weight,
+            all_hist=all_hist,
+            all_hist_norm=all_hist_norm,
+            error_all_hist_norm=error_all_hist_norm,
+            delay_times=delay_times,
+            t_weight=t_weight,
+            total_laser_pulses=total_laser_pulses,
+        )
 
     def compare_lifetimes(
         self,
         legend_label: str,
         compare_to: dict = None,
         normalization_type="Per Time",
-        fontsize=14,
     ):
         """
         Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
@@ -413,27 +446,25 @@ class TDCPhotonDataMixin:
         compared = {**{legend_label: self}, **compare_to}
 
         h = []
-        for label, corrfunc_tdc in compared.items():
+        for label, measurement in compared.items():
             with suppress(AttributeError):
                 # AttributeError - assume other tdc_objects that have TDCcalib structures
-                x = corrfunc_tdc.tdc_calib["t_hist"]
+                x = measurement.tdc_calib.t_hist
                 if normalization_type == "NO":
-                    y = corrfunc_tdc.tdc_calib["all_hist"] / corrfunc_tdc.tdc_calib["t_weight"]
+                    y = measurement.tdc_calib.all_hist / measurement.tdc_calib.t_weight
                 elif normalization_type == "Per Time":
-                    y = corrfunc_tdc.tdc_calib["all_hist_norm"]
+                    y = measurement.tdc_calib.all_hist_norm
                 elif normalization_type == "By Sum":
-                    y = corrfunc_tdc.tdc_calib["all_hist_norm"] / np.sum(
-                        corrfunc_tdc.tdc_calib["all_hist_norm"][
-                            np.isfinite(corrfunc_tdc.tdc_calib["all_hist_norm"])
+                    y = measurement.tdc_calib.all_hist_norm / np.sum(
+                        measurement.tdc_calib.all_hist_norm[
+                            np.isfinite(measurement.tdc_calib.all_hist_norm)
                         ]
                     )
                 else:
                     raise ValueError(f"Unknown normalization type '{normalization_type}'.")
                 h.append((x, y, label))
 
-        with display.show_external_axes(
-            super_title="Life Time Comparison", fontsize=fontsize
-        ) as ax:
+        with display.show_external_axes(super_title="Life Time Comparison") as ax:
             labels = []
             for tuple_ in h:
                 x, y, label = tuple_
@@ -473,10 +504,10 @@ class TDCPhotonDataMixin:
         )
 
         try:
-            self.tdc_calib["fit_param"][fit_param["func_name"]] = fit_param
+            self.tdc_calib.fit_param[fit_param["func_name"]] = fit_param
         except KeyError:
-            self.tdc_calib["fit_param"] = dict()
-            self.tdc_calib["fit_param"][fit_param["func_name"]] = fit_param
+            self.tdc_calib.fit_param = dict()
+            self.tdc_calib.fit_param[fit_param["func_name"]] = fit_param
 
 
 @dataclass
