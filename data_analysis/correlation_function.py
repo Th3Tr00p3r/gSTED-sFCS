@@ -87,15 +87,15 @@ class CorrFunc:
         self.error_normalized = self.error_cf_cr / self.g0
 
         if should_plot:
-            self.plot_correlation_function(**plot_kwargs)
+            self.plot_correlation_function(plot_kwargs=plot_kwargs)
 
     def plot_correlation_function(
         self,
+        ax=None,
         x_field="lag",
         y_field="avg_cf_cr",
         x_scale="log",
         y_scale="linear",
-        fig=None,
         xlim=None,
         ylim=None,
         plot_kwargs={},
@@ -107,17 +107,12 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        with display.show_external_axes(fig, xlim=xlim, ylim=ylim) as ax:
-            with suppress(TypeError):
-                if len(ax) > 1:
-                    ax = fig.gca()
-
+        with display.show_external_axes(ax=ax, xlim=xlim, ylim=ylim) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)
             ax.plot(x, y, "-", **plot_kwargs)
-            ax.legend()
 
     def fit_correlation_function(
         self,
@@ -788,21 +783,24 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ):
         """Doc."""
 
-        if fig is None:
-            fig, _ = display.get_fig_with_axes()
-        for cf_name, cf in self.cf.items():
-            cf.plot_correlation_function(
-                x_field,
-                y_field,
-                x_scale,
-                y_scale,
-                label=cf_name,
-                fig=fig,
-                ax=ax,
-                ylim=ylim,
-                plot_kwargs=plot_kwargs,
-                **kwargs,
-            )
+        with display.show_external_axes(fig=fig, ax=ax) as ax:
+            labels = []
+            for cf_name, cf in self.cf.items():
+                cf.plot_correlation_function(
+                    x_field,
+                    y_field,
+                    x_scale,
+                    y_scale,
+                    ax=ax,
+                    ylim=ylim,
+                    plot_kwargs=plot_kwargs,
+                    **kwargs,
+                )
+                labels.append(cf_name)
+
+            # if this function was independently called (otherwise legend will appear on a higher level function)
+            if fig is None:
+                ax.legend([labels])
 
     def calculate_afterpulse(self, gate_ns, lag) -> np.ndarray:
         """Doc."""
@@ -889,7 +887,7 @@ class SFCSExperiment:
         self,
         confocal_template: Union[str, Path] = None,
         sted_template: Union[str, Path] = None,
-        should_plot=True,
+        should_plot=False,
         **kwargs,
     ):
         """Doc."""
@@ -936,7 +934,7 @@ class SFCSExperiment:
         self,
         meas_type: str,
         file_path_template: Union[str, Path],
-        should_plot: bool = True,
+        should_plot: bool = False,
         plot_kwargs: dict = {},
         **kwargs,
     ):
