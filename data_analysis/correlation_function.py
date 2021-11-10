@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Tuple, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 import skimage
@@ -99,7 +98,8 @@ class CorrFunc:
         fig=None,
         xlim=None,
         ylim=None,
-        **plot_kwargs,
+        plot_kwargs={},
+        **kwargs,
     ):
 
         x = getattr(self, x_field)
@@ -673,12 +673,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 line_num = p.line_num
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
                 if hasattr(p, "delay_time"):
-                    Jgate = ((p.delay_time >= CF.gate_ns[0]) & (p.delay_time <= CF.gate_ns[1])) | (
+                    j_gate = ((p.delay_time >= CF.gate_ns[0]) & (p.delay_time <= CF.gate_ns[1])) | (
                         p.delay_time == np.nan
                     )
-                    runtime = p.runtime[Jgate]
-                    #                    delay_time = delay_time[Jgate] # TODO: not uesed
-                    line_num = p.line_num[Jgate]
+                    runtime = p.runtime[j_gate]
+                    #                    delay_time = delay_time[j_gate] # TODO: not uesed
+                    line_num = p.line_num[j_gate]
                 elif gate_ns != (0, np.inf):
                     raise RuntimeError(
                         f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
@@ -776,9 +776,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         x_scale="log",
         y_scale="linear",
         fig=None,
-        xlim=None,
+        ax=None,
         ylim=(-0.20, 1.4),
         plot_kwargs={},
+        **kwargs,
     ):
         """Doc."""
 
@@ -792,9 +793,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 y_scale,
                 label=cf_name,
                 fig=fig,
-                xlim=xlim,
+                ax=ax,
                 ylim=ylim,
-                **plot_kwargs,
+                plot_kwargs=plot_kwargs,
+                **kwargs,
             )
 
     def calculate_afterpulse(self, gate_ns, lag) -> np.ndarray:
@@ -906,24 +908,24 @@ class SFCSExperiment:
             )
 
         if should_plot and (sted_template is not None) and (sted_template is not None):
-            fig, axs = plt.subplots(1, 2)
-            # fig, _ = display.get_fig_with_axes()
-            # with display.show_external_axes(fig = fig, subplots=(1, 2)) as axs:
-            fig.sca(axs[0])
-            self.plot_correlation_functions(
-                x_field="vt_um", y_field="avg_cf_cr", x_scale="log", y_scale="linear", fig=fig
-            )
+            fig, _ = display.get_fig_with_axes(subplots=(1, 2))
+            with display.show_external_axes(fig=fig) as axes:
+                self.plot_correlation_functions(
+                    x_field="vt_um",
+                    y_field="avg_cf_cr",
+                    x_scale="log",
+                    y_scale="linear",
+                    ax=axes[0],
+                )
 
-            fig.sca(axs[1])
-            self.plot_correlation_functions(
-                x_field="vt_um",
-                y_field="normalized",
-                x_scale="linear",
-                y_scale="linear",
-                xlim=(0, 1),
-                fig=fig,
-            )
-            fig.show()
+                self.plot_correlation_functions(
+                    x_field="vt_um",
+                    y_field="normalized",
+                    x_scale="linear",
+                    y_scale="linear",
+                    xlim=(0, 1),
+                    ax=axes[1],
+                )
 
     def load_measurement(
         self,
