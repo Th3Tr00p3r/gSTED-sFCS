@@ -643,8 +643,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         if verbose:
             if CF.skipped_duration:
-                skipped_ratio = CF.skipped_duration / CF.total_duration
-                print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
+                try:
+                    skipped_ratio = CF.skipped_duration / CF.total_duration
+                except RuntimeWarning:
+                    # CF.total_duration = 0
+                    print("Whole measurement was skipped! Something's wrong...", end=" ")
+                else:
+                    print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
             print("- Done.")
 
         return CF
