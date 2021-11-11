@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 import scipy.optimize as opt
 
-import utilities.display as display
+from utilities.display import Plotter
 from utilities.errors import err_hndlr
 
 warnings.simplefilter("error", opt.OptimizeWarning)
@@ -50,7 +50,7 @@ def curve_fit_lims(
     fit_param["chi_sq_norm"] = chi_sq_arr.sum() / x.size
 
     if should_plot:
-        with display.show_external_axes() as ax:
+        with Plotter() as ax:
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)
             ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_param["beta"]), zorder=10)

@@ -6,7 +6,7 @@ from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import scipy
@@ -18,7 +18,8 @@ from data_analysis.photon_data import (
     TDCPhotonDataMixin,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities import display, file_utilities, fit_tools, helper
+from utilities import file_utilities, fit_tools, helper
+from utilities.display import Plotter
 
 
 class CorrFunc:
@@ -91,7 +92,7 @@ class CorrFunc:
 
     def plot_correlation_function(
         self,
-        ax=None,
+        parent_ax=None,
         x_field="lag",
         y_field="avg_cf_cr",
         x_scale="log",
@@ -107,7 +108,7 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        with display.show_external_axes(ax=ax, xlim=xlim, ylim=ylim) as ax:
+        with Plotter(parent_ax=parent_ax, xlim=xlim, ylim=ylim, should_autoscale=True) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
             ax.set_xscale(x_scale)
@@ -208,7 +209,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     DUMP_PATH = Path("C:/temp_sfcs_data/")
     SIZE_LIMITS_MB = (100, 1e4)
 
-    def __init__(self):
+    def __init__(self, name=None):
+        self.name = name
         self.data = []  # list to hold the data of each file
         self.cf = dict()
         self.is_data_dumped = False
@@ -220,6 +222,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self,
         file_path_template: Union[str, Path],
         file_selection: str = None,
+        should_plot=False,
         **kwargs,
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
@@ -274,6 +277,24 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
+
+        # plotting of scan image and ROI
+        if should_plot:
+            print("Displaying scan images...", end=" ")
+            with Plotter(subplots=(1, n_files), should_force_aspect=True) as axes:
+                if not hasattr(
+                    axes, "size"
+                ):  # if axes is not an ndarray (only happens if reding just one file)
+                    axes = np.array([axes])
+                for idx, (ax, image, roi) in enumerate(
+                    zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
+                ):
+                    ax.set_title(f"file #{idx+1} of '{self.name}' measurement")
+                    ax.set_xlabel("Pixel Number")
+                    ax.set_ylabel("Line Number")
+                    ax.imshow(image)
+                    ax.plot(roi["col"], roi["row"], color="white")
+            print("Done.\n")
 
     def process_data(self, file_dict: dict, idx: int = 0, **kwargs) -> TDCPhotonData:
         """Doc."""
@@ -330,7 +351,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         idx,
         should_fix_shift=True,
         roi_selection="auto",
-        should_plot=False,
         **kwargs,
     ) -> TDCPhotonData:
         """
@@ -485,15 +505,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         p.image = cnt
         p.roi = roi
-
-        # plotting of scan image and ROI
-        if should_plot:
-            with display.show_external_axes(should_force_aspect=True) as ax:
-                ax.set_title(f"file No. {p.file_num} of {self.template}")
-                ax.set_xlabel("Pixel Number")
-                ax.set_ylabel("Line Number")
-                ax.imshow(cnt)
-                ax.plot(roi["col"], roi["row"], color="white")
 
         # reverse rows again
         bw[1::2, :] = np.flip(bw[1::2, :], 1)
@@ -775,32 +786,38 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         y_field="normalized",
         x_scale="log",
         y_scale="linear",
-        fig=None,
-        ax=None,
+        parent_figure=None,
+        parent_ax=None,
+        legend_labels=[],
         ylim=(-0.20, 1.4),
         plot_kwargs={},
         **kwargs,
-    ):
+    ) -> Union[List[str], None]:
         """Doc."""
 
-        with display.show_external_axes(fig=fig, ax=ax) as ax:
-            labels = []
+        super_title = f"'{self.template}' -\n Average Correlation Functions"
+        with Plotter(
+            parent_figure=parent_figure, parent_ax=parent_ax, super_title=super_title
+        ) as ax:
             for cf_name, cf in self.cf.items():
                 cf.plot_correlation_function(
-                    x_field,
-                    y_field,
-                    x_scale,
-                    y_scale,
-                    ax=ax,
+                    parent_ax=ax,
+                    x_field=x_field,
+                    y_field=y_field,
+                    x_scale=x_scale,
+                    y_scale=y_scale,
                     ylim=ylim,
                     plot_kwargs=plot_kwargs,
                     **kwargs,
                 )
-                labels.append(cf_name)
+                legend_labels.append(cf_name)
 
             # if this function was independently called (otherwise legend will appear on a higher level function)
-            if fig is None:
-                ax.legend([labels])
+            if parent_ax is None:
+                ax.legend([legend_labels])
+                return None
+            else:
+                return legend_labels
 
     def calculate_afterpulse(self, gate_ns, lag) -> np.ndarray:
         """Doc."""
@@ -879,8 +896,8 @@ class SFCSExperiment:
     """Doc."""
 
     def __init__(self, name=None, **kwargs):
-        self.confocal = SolutionSFCSMeasurement()
-        self.sted = SolutionSFCSMeasurement()
+        self.confocal = SolutionSFCSMeasurement(name="confocal")
+        self.sted = SolutionSFCSMeasurement(name="STED")
         self.name = name
 
     def load_experiment(
@@ -910,24 +927,24 @@ class SFCSExperiment:
                 **kwargs,
             )
 
-        if should_plot and (sted_template is not None) and (sted_template is not None):
-            fig, _ = display.get_fig_with_axes(subplots=(1, 2))
-            with display.show_external_axes(fig=fig) as axes:
+        if should_plot and (sted_template is not None) and (confocal_template is not None):
+            super_title = f"Experiment '{self.name}' - All ACFs"
+            with Plotter(subplots=(1, 2), super_title=super_title) as axes:
                 self.plot_correlation_functions(
+                    parent_ax=axes[0],
                     x_field="vt_um",
                     y_field="avg_cf_cr",
                     x_scale="log",
                     y_scale="linear",
-                    ax=axes[0],
                 )
 
                 self.plot_correlation_functions(
+                    parent_ax=axes[1],
                     x_field="vt_um",
                     y_field="normalized",
                     x_scale="linear",
                     y_scale="linear",
                     xlim=(0, 1),
-                    ax=axes[1],
                 )
 
     def load_measurement(
@@ -963,26 +980,26 @@ class SFCSExperiment:
             **kwargs,
         )
 
-        if "x_field" not in kwargs:
+        if (x_field := kwargs.get("x_field")) is None:
             if measurement.scan_type == "static":
-                kwargs["x_field"] = "lag"
+                x_field = "lag"
             else:  # angular or circular scan
-                kwargs["x_field"] = "vt_um"
+                x_field = "vt_um"
 
         measurement.correlate_and_average(**kwargs)
 
-        ignoresForPlot = {"cf_name"}
-        for paramName in ignoresForPlot:
-            kwargs.pop(paramName)
-
         if should_plot:
-            fig, _ = display.get_fig_with_axes()
-            measurement.cf[cf_name].plot_correlation_function(
-                y_field="average_all_cf_cr", label="average_all_cf_cr", fig=fig, **plot_kwargs
-            )
-            measurement.cf[cf_name].plot_correlation_function(
-                y_field="avg_cf_cr", label="avg_cf_cr", fig=fig, **plot_kwargs
-            )
+            super_title = f"'{self.name}' Experiment\n'{measurement.name}' Measurement - ACFs"
+            with Plotter(super_title=super_title) as ax:
+                measurement.cf[cf_name].plot_correlation_function(
+                    parent_ax=ax,
+                    y_field="average_all_cf_cr",
+                    x_field=x_field,
+                    plot_kwargs=plot_kwargs,
+                )
+                measurement.cf[cf_name].plot_correlation_function(
+                    parent_ax=ax, y_field="avg_cf_cr", x_field=x_field, plot_kwargs=plot_kwargs
+                )
 
     def plot_correlation_functions(
         self,
@@ -990,9 +1007,10 @@ class SFCSExperiment:
         y_field="normalized",
         x_scale="linear",
         y_scale="linear",
-        fig=None,
+        parent_figure=None,
+        parent_ax=None,
         xlim=None,
-        ylim=(-0.20, 1.4),
+        ylim=None,
         plot_kwargs={},
         **kwargs,
     ):
@@ -1002,60 +1020,84 @@ class SFCSExperiment:
         if (x_scale == "linear") and (xlim is None) and (x_field == "vt_um"):
             xlim = (0, 1)
 
-        if fig is None:
-            fig, _ = display.get_fig_with_axes()
+        if y_field in {"average_all_cf_cr", "avg_cf_cr"}:
+            ylim = None  # will autoscale y
+        elif y_field == "normalized":
+            ylim = (-0.20, 1.4)
 
-        if len(self.confocal.cf) > 0:
+        super_title = f"'{self.name}' Experiment - All ACFs"
+        with Plotter(
+            parent_figure=parent_figure, parent_ax=parent_ax, super_title=super_title
+        ) as ax:
             self.confocal.plot_correlation_functions(
-                x_field,
-                y_field,
-                x_scale,
-                y_scale,
-                fig=fig,
+                parent_ax=ax,
+                x_field=x_field,
+                y_field=y_field,
+                x_scale=x_scale,
+                y_scale=y_scale,
                 xlim=xlim,
                 ylim=ylim,
                 plot_kwargs=plot_kwargs,
             )
-        if len(self.sted.cf) > 0:
             self.sted.plot_correlation_functions(
-                x_field,
-                y_field,
-                x_scale,
-                y_scale,
-                fig=fig,
+                parent_ax=ax,
+                x_field=x_field,
+                y_field=y_field,
+                x_scale=x_scale,
+                y_scale=y_scale,
                 xlim=xlim,
                 ylim=ylim,
                 plot_kwargs=plot_kwargs,
             )
 
+    # TODO: seperate TDC ca;ibration from its own plotting - then you can use Plotter to plot both calibrations in a single figure (with title)
     def calibrate_tdc(self, should_plot=False, **kwargs):
-        if len(self.confocal.data) or self.confocal.is_data_dumped:
-            self.confocal.calibrate_tdc(should_plot=should_plot, **kwargs)
-            kwargs["sync_coarse_time_to"] = self.confocal  # sync sted to confocal
 
-        if len(self.sted.data) or self.sted.is_data_dumped:
-            self.sted.calibrate_tdc(should_plot=should_plot, **kwargs)
+        if hasattr(self.confocal, "scan_type"):  # if confocal maesurement quacks as if loaded
 
-        if should_plot:
-            self.compare_lifetimes()
+            super_title = f"'{self.name}' Experiment\nTDC Calibration"
+            with Plotter(subplots=(2, 4), super_title=super_title) as axes:
+                self.confocal.calibrate_tdc(
+                    should_plot=should_plot, parent_axes=axes[:, :2], **kwargs
+                )
+                kwargs["sync_coarse_time_to"] = self.confocal  # sync sted to confocal
+                if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
+                    self.sted.calibrate_tdc(
+                        should_plot=should_plot, parent_axes=axes[:, 2:], **kwargs
+                    )
+
+                if should_plot:
+                    self.compare_lifetimes(**kwargs)
+
+        else:
+            raise RuntimeError(
+                "Cannot calibrate TDC if confocal measurement is not loaded to the experiment!"
+            )
 
     def compare_lifetimes(
         self,
         normalization_type="Per Time",
         **kwargs,
     ):
-        if hasattr(self.confocal, "tdc_calib"):
-            self.confocal.compare_lifetimes(
-                "confocal",
-                compare_to=dict(STED=self.sted),
-                normalization_type=normalization_type,
-            )
+        if hasattr(self.confocal, "tdc_calib"):  # if TDC calibration performed
+            super_title = f"'{self.name}' Experiment\nLifetime Comparison"
+            with Plotter(super_title=super_title) as ax:
+                self.confocal.compare_lifetimes(
+                    "confocal",
+                    compare_to=dict(STED=self.sted),
+                    normalization_type=normalization_type,
+                    parent_ax=ax,
+                )
 
     def add_gate(self, gate_ns, should_plot=False, **kwargs):
-        sted_measurement = self.sted
-        sted_measurement.correlate_and_average(gate_ns=gate_ns, **kwargs)
-        if should_plot:
-            self.plot_correlation_functions()
+        if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
+            self.sted.correlate_and_average(gate_ns=gate_ns, **kwargs)
+            if should_plot:
+                self.plot_correlation_functions()
+        else:
+            raise RuntimeError(
+                "Cannot gate if there's no STED measurement loaded to the experiment!"
+            )
 
 
 def _convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
