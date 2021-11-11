@@ -7,7 +7,8 @@ from typing import Any, List
 import numpy as np
 import scipy
 
-from utilities import display, file_utilities, fit_tools
+from utilities import file_utilities, fit_tools
+from utilities.display import Plotter
 from utilities.helper import div_ceil
 
 
@@ -174,7 +175,7 @@ class TDCPhotonDataMixin:
         )
 
     @file_utilities.rotate_data_to_disk
-    def calibrate_tdc(  # NOQA C901
+    def calibrate_tdc(  # NO#QA C901
         self,
         tdc_chain_length=128,
         pick_valid_bins_method="auto",
@@ -188,6 +189,7 @@ class TDCPhotonDataMixin:
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
         should_plot=False,
+        parent_axes=None,
     ) -> None:
         """Doc."""
 
@@ -387,8 +389,10 @@ class TDCPhotonDataMixin:
         error_all_hist_norm[~nonzero] = np.nan
 
         if should_plot:
-            with display.show_external_axes(
-                subplots=(2, 2), super_title=f"TDC Calibration - '{self.template}'"
+            with Plotter(
+                parent_ax=parent_axes,
+                subplots=(2, 2),
+                super_title=f"TDC Calibration - '{self.template}'",
             ) as axes:
                 # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable
                 # plotting later on?
@@ -436,6 +440,7 @@ class TDCPhotonDataMixin:
         legend_label: str,
         compare_to: dict = None,
         normalization_type="Per Time",
+        parent_ax=None,
     ):
         """
         Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
@@ -464,7 +469,7 @@ class TDCPhotonDataMixin:
                     raise ValueError(f"Unknown normalization type '{normalization_type}'.")
                 h.append((x, y, label))
 
-        with display.show_external_axes(super_title="Life Time Comparison") as ax:
+        with Plotter(parent_ax=parent_ax, super_title="Life Time Comparison") as ax:
             labels = []
             for tuple_ in h:
                 x, y, label = tuple_
