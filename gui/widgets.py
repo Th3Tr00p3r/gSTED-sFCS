@@ -265,7 +265,6 @@ DATA_IMPORT_COLL = QtWidgetCollection(
 
 SOL_ANALYSIS_COLL = QtWidgetCollection(
     fix_shift=("solDataFixShift", "QCheckBox", "main", False),
-    external_plotting=("solDataExtPlot", "QCheckBox", "main", False),
     subtract_bg_corr=("solDataSubtractBgCorr", "QCheckBox", "main", False),
     subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
     scan_image_disp=("solScanImgDisp", None, "main", True),

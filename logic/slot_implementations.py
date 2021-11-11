@@ -1129,7 +1129,6 @@ class MainWin:
                             curr_dir / current_template,
                             file_selection=sol_file_selection,
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
-                            should_plot=sol_analysis_wdgts.external_plotting,
                         )
                     corrfunc_tdc.correlate_data(
                         cf_name=data_type,

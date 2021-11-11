@@ -5,7 +5,7 @@ import PyQt5.uic
 
 # import gui.icons  # for initial icons loadout # NOQA
 import logic.slot_implementations as impl
-from utilities.display import Display
+from utilities.display import GuiDisplay
 
 try:
     from gui.icons import icons_rc  # for initial icons loadout # NOQA
@@ -26,10 +26,10 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self._loop = app.loop
 
         # graphics
-        self.imgScanPlot = Display(layout=self.imageLayout, parent=self)
-        self.solScanAcf = Display(layout=self.solScanAcfLayout, parent=self)
-        self.imgScanPattern = Display(layout=self.imgScanPatternLayout)
-        self.solScanPattern = Display(layout=self.solScanPatternLayout)
+        self.imgScanPlot = GuiDisplay(layout=self.imageLayout, parent=self)
+        self.solScanAcf = GuiDisplay(layout=self.solScanAcfLayout, parent=self)
+        self.imgScanPattern = GuiDisplay(layout=self.imgScanPatternLayout)
+        self.solScanPattern = GuiDisplay(layout=self.solScanPatternLayout)
 
         # scan patterns
         # image
@@ -85,12 +85,12 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.fileSelectionGroup.addButton(self.solImportUseAll)
         self.fileSelectionGroup.addButton(self.solImportUse)
 
-        self.solScanImgDisp = Display(self.solAnalysisScanImageLayout, self)
-        self.solScanAcfDisp = Display(self.solAnalysisAveragingLayout, self)
-        self.solScanTdcDisp = Display(self.solAnalysisTDCLayout, self)
-        self.solScanGstedDisp = Display(self.solAnalysisGSTEDLayout, self)
+        self.solScanImgDisp = GuiDisplay(self.solAnalysisScanImageLayout, self)
+        self.solScanAcfDisp = GuiDisplay(self.solAnalysisAveragingLayout, self)
+        self.solScanTdcDisp = GuiDisplay(self.solAnalysisTDCLayout, self)
+        self.solScanGstedDisp = GuiDisplay(self.solAnalysisGSTEDLayout, self)
 
-        self.imgScanPreviewDisp = Display(self.importImgPreviewLayout)
+        self.imgScanPreviewDisp = GuiDisplay(self.importImgPreviewLayout)
 
         self.nextTemplate.released.connect(lambda: self.impl.cycle_through_data_templates("next"))
         self.prevTemplate.released.connect(lambda: self.impl.cycle_through_data_templates("prev"))
@@ -167,8 +167,8 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         # Camera Dock
         self.CAMERA_DOCK_MIN_SIZE = self.cameraDock.minimumSize()
-        self.ImgDisp1 = Display(self.imageDisplayLayout1, self)
-        self.ImgDisp2 = Display(self.imageDisplayLayout2, self)
+        self.ImgDisp1 = GuiDisplay(self.imageDisplayLayout1, self)
+        self.ImgDisp2 = GuiDisplay(self.imageDisplayLayout2, self)
 
         self.shootButton1.released.connect(lambda: self.impl.display_image(1))
         self.shootButton2.released.connect(lambda: self.impl.display_image(2))

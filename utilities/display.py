@@ -1,6 +1,5 @@
 """Plotting and image-showing utilities"""
 
-from collections.abc import Iterable
 from contextlib import contextmanager
 from typing import Tuple
 
@@ -11,7 +10,7 @@ from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
 
 
-class Display:
+class GuiDisplay:
     """Doc."""
 
     def __init__(self, layout, parent=None):
@@ -137,56 +136,76 @@ class Display:
             self.canvas.draw_idle()
 
 
-@contextmanager
-def show_external_axes(
-    fig=None,
-    ax=None,
-    subplots=(1, 1),
-    figsize=None,
-    super_title=None,
-    should_force_aspect=False,
-    fontsize=14,
-    xlim: Tuple[float, float] = None,
-    ylim: Tuple[float, float] = None,
-):
-    """
-    Creates or accepts a Matplotlib figure, and yields a 'matplotlib.axes.Axes' object
-    which is to be manipulated, then shows the figure.
-    """
+class Plotter:
+    """Doc."""
 
-    if ax is None:
-        if fig is None:
-            fig = plt.figure(figsize=figsize)
-            axes = fig.subplots(*subplots)
-            if not isinstance(axes, Iterable):
-                axes = np.array([axes])
+    FIGSIZE_FACTORS = (3.75, 2.5)
+
+    def __init__(
+        self,
+        parent_figure=None,
+        parent_ax=None,
+        **kwargs,
+    ):
+        self.parent_figure = parent_figure
+        self.parent_ax = parent_ax
+        self.subplots = kwargs.get("subplots", (1, 1))
+        self.figsize = kwargs.get("figsize")
+        self.super_title = kwargs.get("super_title")
+        self.should_force_aspect = kwargs.get("should_force_aspect", False)
+        self.fontsize = kwargs.get("fontsize", 14)
+        self.xlim: Tuple[float, float] = kwargs.get("xlim")
+        self.ylim: Tuple[float, float] = kwargs.get("ylim")
+        self.should_autoscale = kwargs.get("should_autoscale", False)
+
+    def __enter__(self):
+        """Prepare the 'axes' object to use in context manager"""
+
+        # dealing with a figure object
+        if self.parent_ax is None:
+            if self.parent_figure is None:  # creating a new figure
+                if self.figsize is None:  # auto-determine default size
+                    n_rows, n_cols = self.subplots
+                    width_factor, height_factor = self.FIGSIZE_FACTORS
+                    figsize = (n_cols * width_factor, n_rows * height_factor)
+                self.fig = plt.figure(figsize=figsize, constrained_layout=True)
+                self.axes = self.fig.subplots(*self.subplots)
+                if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
+                    self.axes = np.array([self.axes])
+            else:  # using given figure
+                self.axes = np.array(self.parent_figure.get_axes())
+
+        # dealing with a axes object
         else:
-            axes = np.array(fig.get_axes())
-
-    try:
-        if ax is None:
-            if axes.size == 1:
-                yield axes[0]
+            if not hasattr(self.parent_ax, "size"):  # if parent_ax is not an ndarray
+                self.axes = np.array([self.parent_ax])
             else:
-                yield axes
+                self.axes = self.parent_ax
+
+        # returning a single ax or an ndarray of axes
+        if self.axes.size == 1:
+            return self.axes[0]
         else:
-            axes = np.array([ax])
-            yield axes
+            return self.axes
 
-    finally:
-        for ax in axes.flatten().tolist():
-            if should_force_aspect:
+    def __exit__(self, *exc):
+        """Set axes attributes. Set figure attirbutes and show it if dealing with a figure"""
+
+        for ax in self.axes.flatten().tolist():  # set ax attributes
+            if self.should_force_aspect:
                 force_aspect(ax, aspect=1)
-            ax.autoscale()
-            ax.set_xlim(xlim)
-            ax.set_ylim(ylim)
-            [text.set_fontsize(fontsize) for text in [ax.title, ax.xaxis.label, ax.yaxis.label]]
+            if self.should_autoscale:
+                ax.autoscale()
+            ax.set_xlim(self.xlim)
+            ax.set_ylim(self.ylim)
+            [
+                text.set_fontsize(self.fontsize)
+                for text in [ax.title, ax.xaxis.label, ax.yaxis.label]
+            ]
 
-        if super_title is not None:
-            fig.suptitle(super_title, fontsize=(fontsize + 2))
-
-        if ax is None:
-            fig.show()
+        if self.parent_ax is None:  # set figure attributes, and show it (dealing with figure)
+            self.fig.suptitle(self.super_title, fontsize=self.fontsize)
+            self.fig.show()
 
 
 def get_fig_with_axes(subplots=(1, 1), figsize: Tuple[float, float] = None):
