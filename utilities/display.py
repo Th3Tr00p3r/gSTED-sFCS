@@ -137,7 +137,7 @@ class GuiDisplay:
 
 
 class Plotter:
-    """Doc."""
+    """A generalized, hierarchical plotting tool, designed to work as a context-manager."""
 
     FIGSIZE_FACTORS = (3.75, 2.5)
 
@@ -147,7 +147,7 @@ class Plotter:
         parent_ax=None,
         **kwargs,
     ):
-        self.parent_figure = parent_figure
+        self.parent_figure = parent_figure  # TODO: not currently used. Can possibly be used for implementing subfigures
         self.parent_ax = parent_ax
         self.subplots = kwargs.get("subplots", (1, 1))
         self.figsize = kwargs.get("figsize")
@@ -182,14 +182,13 @@ class Plotter:
             else:
                 self.axes = self.parent_ax
 
-        # returning a single ax or an ndarray of axes
         if self.axes.size == 1:
-            return self.axes[0]
+            return self.axes[0]  # return a single Axes object
         else:
-            return self.axes
+            return self.axes  # return a Numpy ndarray of Axes objects
 
     def __exit__(self, *exc):
-        """Set axes attributes. Set figure attirbutes and show it if dealing with a figure"""
+        """Set axes attributes. Set figure attirbutes and show it if Plotter is at top of hierarchy"""
 
         for ax in self.axes.flatten().tolist():  # set ax attributes
             if self.should_force_aspect:

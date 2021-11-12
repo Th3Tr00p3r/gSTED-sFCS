@@ -788,17 +788,18 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         y_scale="linear",
         parent_figure=None,
         parent_ax=None,
-        legend_labels=[],
         ylim=(-0.20, 1.4),
         plot_kwargs={},
         **kwargs,
-    ) -> Union[List[str], None]:
+    ) -> List[str]:
         """Doc."""
 
-        super_title = f"'{self.template}' -\n Average Correlation Functions"
         with Plotter(
-            parent_figure=parent_figure, parent_ax=parent_ax, super_title=super_title
+            parent_figure=parent_figure,
+            parent_ax=parent_ax,
+            super_title=f"'{self.name}' - ACFs",
         ) as ax:
+            legend_labels = []
             for cf_name, cf in self.cf.items():
                 cf.plot_correlation_function(
                     parent_ax=ax,
@@ -811,13 +812,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     **kwargs,
                 )
                 legend_labels.append(cf_name)
+            ax.legend(legend_labels)
 
-            # if this function was independently called (otherwise legend will appear on a higher level function)
-            if parent_ax is None:
-                ax.legend([legend_labels])
-                return None
-            else:
-                return legend_labels
+        return legend_labels
 
     def calculate_afterpulse(self, gate_ns, lag) -> np.ndarray:
         """Doc."""
@@ -1000,6 +997,7 @@ class SFCSExperiment:
                 measurement.cf[cf_name].plot_correlation_function(
                     parent_ax=ax, y_field="avg_cf_cr", x_field=x_field, plot_kwargs=plot_kwargs
                 )
+                ax.legend(["average_all_cf_cr", "avg_cf_cr"])
 
     def plot_correlation_functions(
         self,
@@ -1029,7 +1027,7 @@ class SFCSExperiment:
         with Plotter(
             parent_figure=parent_figure, parent_ax=parent_ax, super_title=super_title
         ) as ax:
-            self.confocal.plot_correlation_functions(
+            confocal_legend_labels = self.confocal.plot_correlation_functions(
                 parent_ax=ax,
                 x_field=x_field,
                 y_field=y_field,
@@ -1039,7 +1037,7 @@ class SFCSExperiment:
                 ylim=ylim,
                 plot_kwargs=plot_kwargs,
             )
-            self.sted.plot_correlation_functions(
+            sted_legend_labels = self.sted.plot_correlation_functions(
                 parent_ax=ax,
                 x_field=x_field,
                 y_field=y_field,
@@ -1049,12 +1047,12 @@ class SFCSExperiment:
                 ylim=ylim,
                 plot_kwargs=plot_kwargs,
             )
+            ax.legend(confocal_legend_labels + sted_legend_labels)
 
-    # TODO: seperate TDC ca;ibration from its own plotting - then you can use Plotter to plot both calibrations in a single figure (with title)
     def calibrate_tdc(self, should_plot=False, **kwargs):
+        """Doc."""
 
         if hasattr(self.confocal, "scan_type"):  # if confocal maesurement quacks as if loaded
-
             super_title = f"'{self.name}' Experiment\nTDC Calibration"
             with Plotter(subplots=(2, 4), super_title=super_title) as axes:
                 self.confocal.calibrate_tdc(
@@ -1079,6 +1077,8 @@ class SFCSExperiment:
         normalization_type="Per Time",
         **kwargs,
     ):
+        """Doc."""
+
         if hasattr(self.confocal, "tdc_calib"):  # if TDC calibration performed
             super_title = f"'{self.name}' Experiment\nLifetime Comparison"
             with Plotter(super_title=super_title) as ax:
@@ -1090,13 +1090,15 @@ class SFCSExperiment:
                 )
 
     def add_gate(self, gate_ns, should_plot=False, **kwargs):
+        """Doc."""
+
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
             self.sted.correlate_and_average(gate_ns=gate_ns, **kwargs)
             if should_plot:
                 self.plot_correlation_functions()
         else:
             raise RuntimeError(
-                "Cannot gate if there's no STED measurement loaded to the experiment!"
+                "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
 
