@@ -8,8 +8,8 @@ yacctab.py
 *.qrc
 
 # Specific folders (idomich)
-data/
 log/
+delete_me/
 
 # vim?
 .vim

@@ -2,9 +2,10 @@
 
 import logging
 import logging.config
-import os
 import shutil
+from collections import deque
 from contextlib import contextmanager, suppress
+from pathlib import Path
 from types import SimpleNamespace
 
 import yaml
@@ -22,11 +23,11 @@ from utilities.errors import DeviceError
 class App:
     """Doc."""
 
-    SETTINGS_DIR_PATH = "./settings/"
-    LOADOUT_DIR_PATH = os.path.join(SETTINGS_DIR_PATH, "loadouts/")
-    DEFAULT_LOADOUT_FILE_PATH = os.path.join(LOADOUT_DIR_PATH, "default_loadout")
-    DEFAULT_SETTINGS_FILE_PATH = os.path.join(SETTINGS_DIR_PATH, "default_settings")
-    DEFAULT_LOG_PATH = "./log/"
+    SETTINGS_DIR_PATH = Path("./settings/")
+    LOADOUT_DIR_PATH = SETTINGS_DIR_PATH / "loadouts/"
+    DEFAULT_LOADOUT_FILE_PATH = LOADOUT_DIR_PATH / "default_loadout"
+    DEFAULT_SETTINGS_FILE_PATH = SETTINGS_DIR_PATH / "default_settings"
+    DEFAULT_LOG_PATH = Path("./log/")
     DVC_NICKS = (
         "exc_laser",
         "dep_shutter",
@@ -34,10 +35,11 @@ class App:
         "dep_laser",
         "stage",
         "UM232H",
-        "camera",
         "scanners",
         "photon_detector",
         "pixel_clock",
+        "camera_1",
+        "camera_2",
     )
 
     def __init__(self, loop):
@@ -46,23 +48,20 @@ class App:
         self.config_logging()
 
         self.loop = loop
-
         self.meas = SimpleNamespace(type=None, is_running=False)
-
-        self.analysis = SimpleNamespace()
-        self.analysis.loaded_data = dict()
+        self.analysis = SimpleNamespace(loaded_data=dict())
 
         # get icons
         self.icon_dict = icons.get_icon_paths()
 
         # init windows
         print("Initializing GUI...", end=" ")
-        self.gui = SimpleNamespace()
-        self.gui.main = gui.gui.MainWin(self)
+        self.gui = SimpleNamespace(
+            main=gui.gui.MainWin(self),
+            settings=gui.gui.SettWin(self),
+        )
         self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
-        self.gui.settings = gui.gui.SettWin(self)
         self.gui.settings.impl.load(self.default_settings_path())
-        self.gui.camera = gui.gui.CamWin(self)  # instantiated on pressing camera button
 
         # populate all widget collections in 'gui.widgets' with objects
         [
@@ -93,8 +92,11 @@ class App:
 
         # init scan patterns
         self.gui.main.impl.disp_scn_pttrn("image")
-        sol_pattern = wdgts.SOL_MEAS_COLL.read_gui(self).scan_type
+        sol_pattern = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self).scan_type
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
+
+        # init last images deque
+        self.last_image_scans = deque([], maxlen=10)
 
         # init existing data folders (solution by default)
         self.gui.main.solDataImport.setChecked(True)
@@ -117,10 +119,10 @@ class App:
         and ensure folder and initial files exist.
         """
 
-        os.makedirs(self.DEFAULT_LOG_PATH, exist_ok=True)
+        Path.mkdir(self.DEFAULT_LOG_PATH, parents=True, exist_ok=True)
         init_log_file_list = ["debug", "log"]
         for init_log_file in init_log_file_list:
-            file_path = os.path.join(self.DEFAULT_LOG_PATH, init_log_file)
+            file_path = self.DEFAULT_LOG_PATH / init_log_file
             open(file_path, "a").close()
 
         with open("logging_config.yaml", "r") as f:
@@ -131,20 +133,20 @@ class App:
         """Doc."""
 
         for gui_object_name in {"dataPath", "camDataPath"}:
-            rel_path = getattr(self.gui.settings, gui_object_name).text()
-            os.makedirs(rel_path, exist_ok=True)
+            rel_path = Path(getattr(self.gui.settings, gui_object_name).text())
+            Path.mkdir(rel_path, parents=True, exist_ok=True)
 
-    def default_settings_path(self) -> str:
+    def default_settings_path(self) -> Path:
         """Doc."""
         try:
-            with open(os.path.join(self.SETTINGS_DIR_PATH, "default_settings_choice"), "r") as f:
-                return os.path.join(self.SETTINGS_DIR_PATH, f.readline())
+            with open(self.SETTINGS_DIR_PATH / "default_settings_choice", "r") as f:
+                return self.SETTINGS_DIR_PATH / f.readline()
         except FileNotFoundError:
             print(
                 "Warning - default settings choice file not found! using 'default_settings_lab'.",
                 end=" ",
             )
-            return os.path.join(self.SETTINGS_DIR_PATH, "default_settings_lab")
+            return self.SETTINGS_DIR_PATH / "default_settings_lab"
 
     def init_devices(self):
         """
@@ -155,9 +157,11 @@ class App:
         self.devices = SimpleNamespace()
         for nick in self.DVC_NICKS:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
-            print(f"        Initializing {dvc_attrs.log_ref}...")
+            print(f"        Initializing {dvc_attrs.log_ref}...", end=" ")
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
-            param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).read_gui(self, "dict")
+            param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).read_gui_to_obj(
+                self, "dict"
+            )
             param_dict["nick"] = nick
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
@@ -172,6 +176,8 @@ class App:
                 setattr(self.devices, nick, dvc_class(param_dict, *x_args))
             else:
                 setattr(self.devices, nick, dvc_class(param_dict))
+
+            print("Done.")
 
     @contextmanager
     def pause_ai_ci(self):
@@ -206,7 +212,8 @@ class App:
 
             for nick in self.DVC_NICKS:
                 dvc = getattr(app.devices, nick)
-                dvc.toggle(False)
+                with suppress(DeviceError):
+                    dvc.close()
 
         def close_all_wins(app):
             """Doc."""
@@ -222,16 +229,27 @@ class App:
         def lights_out(gui_wdgt):
             """turn OFF all device switch/LED icons"""
 
-            led_list = [self.icon_dict["led_off"]] * 6 + [self.icon_dict["led_green"]] * 3
+            led_list = [self.icon_dict["led_off"]] * 9 + [self.icon_dict["led_green"]] * 2
             wdgts.LED_COLL.write_to_gui(self, led_list)
             wdgts.SWITCH_COLL.write_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
+        #        # Turn off video
+        #        with suppress(TypeError):
+        #            # TypeError - self.cameras is None
+        #            for idx, camera in enumerate(self.cameras):
+        #                with suppress(AttributeError, DeviceError):
+        #                    # AttributeError - camera is None
+        #                    # DeviceError - error in camera
+        #                    camera.toggle_video(False)
+        #                self.video_button_gui_toggle(idx + 1, False)
+        #
+        #        self.cameras = None
+        #        self._app.gui.main.actionCamera_Control.setEnabled(True)
+        #        logging.debug("Camera connections closed")
+
         if restart:
             logging.info("Restarting application.")
-
-            if self.gui.camera is not None:
-                self.gui.camera.close()
 
             if self.meas.type is not None:
                 await self.gui.main.impl.toggle_meas(

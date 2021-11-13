@@ -1,18 +1,19 @@
-import glob
-import os
+from pathlib import Path
 
 from PyQt5.QtGui import QIcon
 
+ICONS_PATH = Path("./gui/icons")
 
-def gen_icon_paths_dict(dir_path="./gui/icons", filetype="png"):
+
+def gen_icon_paths_dict(dir_path: Path = ICONS_PATH, filetype="png"):
     """Doc."""
 
     icon_paths_dict = {}
-    icon_paths = glob.glob(f"{dir_path}/*.{filetype}")
+    icon_paths = dir_path.glob(f"*.{filetype}")
     for icon_path in icon_paths:
-        _, icon_fname = os.path.split(icon_path)
-        icon_fname_notype = os.path.splitext(icon_fname)[0]
-        icon_paths_dict[icon_fname_notype] = f"{dir_path}/{icon_fname}"
+        *_, icon_fname = Path(icon_path).parts
+        icon_fname_no_extension = Path(icon_fname).stem
+        icon_paths_dict[icon_fname_no_extension] = f"{dir_path}/{icon_fname}"
     return icon_paths_dict
 
 

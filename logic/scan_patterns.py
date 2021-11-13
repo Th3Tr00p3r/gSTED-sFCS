@@ -30,13 +30,13 @@ class ScanPatternAO:
         params.dt = 1 / (self.scan_params.line_freq_Hz * self.scan_params.ppl)
 
         # order according to relevant plane dimensions
-        if params.scan_plane == "XY":
+        if params.plane_orientation == "XY":
             dim_conv = tuple(self.um_v_ratio[i] for i in (0, 1, 2))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "xyz")
-        if params.scan_plane == "YZ":
+        if params.plane_orientation == "YZ":
             dim_conv = tuple(self.um_v_ratio[i] for i in (1, 2, 0))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "yzx")
-        if params.scan_plane == "XZ":
+        if params.plane_orientation == "XZ":
             dim_conv = tuple(self.um_v_ratio[i] for i in (0, 2, 1))
             curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "xzy")
 

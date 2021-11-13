@@ -3,69 +3,77 @@
 import asyncio
 import datetime
 import logging
-import os
-import pickle
 import re
 import sys
 import time
 from contextlib import suppress
 from datetime import datetime as dt
+from pathlib import Path
 from types import SimpleNamespace
 
 import nidaqmx.constants as ni_consts
 import numpy as np
 
-from data_analysis.correlation_function import CorrFuncTDC
-from data_analysis.image import ImageScanData
+from data_analysis.correlation_function import SolutionSFCSMeasurement
 from gui.icons import icons
 from logic.scan_patterns import ScanPatternAO
-from utilities import errors, fit_tools, helper
+from utilities import errors, file_utilities, fit_tools, helper
 
 
-class Measurement:
-    """Base class for measurements"""
+class MeasurementProcedure:
+    """Base class for measurement procedures"""
 
-    def __init__(self, app, type: str, scan_params, **kwargs):
+    def __init__(
+        self,
+        app,
+        type: str,
+        scan_params,
+        laser_mode,
+        file_template,
+        save_path,
+        sub_dir_name,
+        prog_bar_wdgt,
+        **kwargs,
+    ):
 
-        self._app = app
-        self.type = type
-        self.tdc_dvc = app.devices.TDC
-        self.data_dvc = app.devices.UM232H
-        self.icon_dict = icons.get_icon_paths()  # get icons
-        [setattr(self, key, val) for key, val in kwargs.items()]
+        # devices
         self.counter_dvc = app.devices.photon_detector
         self.pxl_clk_dvc = app.devices.pixel_clock
         self.scanners_dvc = app.devices.scanners
-        self.scan_params = scan_params
-        self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2v_const") for ax in "xyz")
-        # TODO: check if 'ai_scaling_xyz' matches today's ratio
-        self.sys_info = {
-            "setup": "STED with galvos",
-            "after_pulse_param": (
-                "multi_exponent_fit",
-                1e5
-                * np.array(
-                    [
-                        0.183161051158731,
-                        0.021980256326163,
-                        6.882763042785681,
-                        0.154790280034295,
-                        0.026417532300439,
-                        0.004282749744374,
-                        0.001418363840077,
-                        0.000221275818533,
-                    ]
-                ),
-            ),
-            "ai_scaling_xyz": (1.243, 1.239, 1),
-            "xyz_um_to_v": self.um_v_ratio,
-        }
-
+        self.tdc_dvc = app.devices.TDC
+        self.data_dvc = app.devices.UM232H
         self.laser_dvcs = SimpleNamespace(
             exc=app.devices.exc_laser,
             dep=app.devices.dep_laser,
             dep_shutter=app.devices.dep_shutter,
         )
+
+        self._app = app
+        self.type = type
+        self.laser_mode = laser_mode
+        self.file_template = file_template
+        self.save_path = save_path
+        self.sub_dir_name = sub_dir_name
+        self.prog_bar_wdgt = prog_bar_wdgt
+        self.icon_dict = icons.get_icon_paths()  # get icons
+        self.scan_params = scan_params
+        self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2v_const") for ax in "xyz")
+        # TODO: check if 'ai_scaling_xyz' matches today's ratio
+        self.sys_info = file_utilities.default_system_info
+        self.sys_info["xyz_um_to_v"] = self.um_v_ratio
+
+        # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
+        # better suit this case. see this: https://github.com/python/mypy/issues/1996
+        self.start_time: float
+        self.duration_s: int
+        self.max_file_size_mb: float
+        self.est_plane_duration: float
+        self.curr_plane: int
+        self.final: bool
+        self.ao_buffer: np.ndarray
+        self.n_ao_samps: int
+        self.ai_conv_rate: float
+
         self.is_running = False
 
     async def stop(self):
@@ -74,11 +82,11 @@ class Measurement:
         # turn off devices and return to starting position if scanning
         with suppress(errors.DeviceError, MeasurementError):
             await self.toggle_lasers(finish=True)
-            self._app.gui.main.impl.dvc_toggle("TDC", leave_off=True)
+            self._app.gui.main.impl.device_toggle("TDC", leave_off=True)
 
             if self.scanning:
                 self.return_to_regular_tasks()
-                self._app.gui.main.impl.dvc_toggle("pixel_clock", leave_off=True)
+                self._app.gui.main.impl.device_toggle("pixel_clock", leave_off=True)
 
                 if self.type == "SFCSSolution":
                     self._app.gui.main.impl.go_to_origin("XY")
@@ -99,14 +107,14 @@ class Measurement:
         self._app.gui.main.impl.populate_all_data_dates(type_)  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
 
-    async def record_data(self, timed: bool = False, size_limited: bool = False):
+    async def record_data(self, start_time: float, timed: bool = False, size_limited: bool = False):
         """
         Turn ON the TDC (FPGA), read while conditions are met,
         turn OFF TDC and read leftover data,
         return the time it took (seconds).
         """
 
-        self._app.gui.main.impl.dvc_toggle("TDC", leave_on=True)
+        self._app.gui.main.impl.device_toggle("TDC", leave_on=True)
 
         if timed:
             # Solution
@@ -136,7 +144,7 @@ class Measurement:
                 )
 
         await self.data_dvc.read_TDC()  # read leftovers
-        self._app.gui.main.impl.dvc_toggle("TDC", leave_off=True)
+        self._app.gui.main.impl.device_toggle("TDC", leave_off=True)
 
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
@@ -146,28 +154,21 @@ class Measurement:
         Note: does not handle overnight measurements during which the date changes
         """
 
-        today_dir = os.path.join(self.save_path, dt.now().strftime("%d_%m_%Y"))
+        today_dir = Path(self.save_path) / dt.now().strftime("%d_%m_%Y")
 
         if self.type == "SFCSSolution":
             if self.final:
                 save_path = today_dir
             else:
-                save_path = os.path.join(today_dir, "solution")
+                save_path = today_dir / "solution"
         elif self.type == "SFCSImage":
-            save_path = os.path.join(today_dir, "image")
+            save_path = today_dir / "image"
         else:
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
-        os.makedirs(save_path, exist_ok=True)
-
-        file_path = os.path.join(save_path, re.sub("\\s", "_", file_name))
-
-        logging.debug(f"Saving measurement file: '{file_name}'...")
-
-        with open(file_path + ".pkl", "wb") as f:
-            pickle.dump(data_dict, f)
-
-        logging.debug("Saved Successfuly.")
+        file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
+        file_utilities.save_object_to_disk(data_dict, file_path, compression_method="gzip")
+        logging.debug(f"Saved measurement file: '{file_path}'.")
 
     async def toggle_lasers(self, finish=False) -> None:
         """Doc."""
@@ -197,28 +198,28 @@ class Measurement:
         if finish:
             # measurement finishing
             if self.laser_mode == "exc":
-                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_off=True)
+                self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "dep":
-                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_off=True)
+                self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "sted":
-                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_off=True)
-                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_off=True)
+                self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
+                self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
         else:
             # measurement begins
             if self.laser_mode == "exc":
                 # turn excitation ON and depletion shutter OFF
-                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_on=True)
-                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_off=True)
+                self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
+                self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "dep":
                 await self.prep_dep() if not self.laser_dvcs.dep.emission_state else None
                 # turn depletion shutter ON and excitation OFF
-                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_on=True)
-                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_off=True)
+                self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
+                self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "sted":
                 await self.prep_dep() if not self.laser_dvcs.dep.emission_state else None
                 # turn both depletion shutter and excitation ON
-                self._app.gui.main.impl.dvc_toggle("exc_laser", leave_on=True)
-                self._app.gui.main.impl.dvc_toggle("dep_shutter", leave_on=True)
+                self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
+                self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
 
             if current_emission_state() != self.laser_mode:
                 # cancel measurement if relevant lasers are not ON,
@@ -229,7 +230,7 @@ class Measurement:
     async def prep_dep(self):
         """Doc."""
 
-        toggle_succeeded = self._app.gui.main.impl.dvc_toggle(
+        toggle_succeeded = self._app.gui.main.impl.device_toggle(
             "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
         )
         if toggle_succeeded:
@@ -258,7 +259,7 @@ class Measurement:
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
-            type=self.scan_params.scan_plane,
+            type=self.scan_params.plane_orientation,
             samp_clk_cnfg_xy={
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ao_sample_mode,
@@ -309,16 +310,24 @@ class Measurement:
         self.scanners_dvc.close_tasks("ao")
 
 
-class SFCSImageMeasurement(Measurement):
+class ImageMeasurementProcedure(MeasurementProcedure):
     """Doc."""
 
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
+        self.always_save = kwargs["always_save"]
+        self.curr_plane_wdgt = kwargs["curr_plane_wdgt"]
+        self.plane_shown = kwargs["plane_shown"]
+        self.plane_choice = kwargs["plane_choice"]
+        self.image_wdgt = kwargs["image_wdgt"]
+        self.pattern_wdgt = kwargs["pattern_wdgt"]
+        self.scale_image = kwargs["scale_image"]
+        self.image_method = kwargs["image_method"]
         self.scanning = True
         self.scan_params.initial_ao = tuple(getattr(scan_params, f"curr_ao_{ax}") for ax in "xyz")
 
     def build_filename(self) -> str:
-        return f"{self.file_template}_{self.laser_mode}_{self.scan_params.scan_plane}_{dt.now().strftime('%H%M%S')}"
+        return f"{self.file_template}_{self.laser_mode}_{self.scan_params.plane_orientation}_{dt.now().strftime('%H%M%S')}"
 
     def setup_scan(self):
         """Doc."""
@@ -370,7 +379,7 @@ class SFCSImageMeasurement(Measurement):
         """Doc."""
 
         for axis in "XYZ":
-            if axis not in self.scan_params.scan_plane:
+            if axis not in self.scan_params.plane_orientation:
                 plane_axis = axis
                 break
 
@@ -379,23 +388,17 @@ class SFCSImageMeasurement(Measurement):
             type=plane_axis,
         )
 
-    def keep_last_meas(self):
+    def keep_last_meas(self, data_dict):
         """Doc."""
 
-        try:
-            self._app.last_img_scn.plane_type = self.scan_params.scan_plane
-            self._app.last_img_scn.plane_images_data = self.plane_images_data
-            self._app.last_img_scn.set_pnts_planes = self.scan_params.set_pnts_planes
-        except AttributeError:
-            # create a namespace if doesn't exist and restart function
-            self._app.last_img_scn = SimpleNamespace()
-            self.keep_last_meas()
+        self._app.last_image_scans.appendleft(data_dict)
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:
         """Doc."""
 
         return {
+            "laser_mode": self.laser_mode,
             "version": self.tdc_dvc.tdc_vrsn,
             "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float64),
             "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int64),
@@ -413,8 +416,9 @@ class SFCSImageMeasurement(Measurement):
                 "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
                 "version": self.tdc_dvc.tdc_vrsn,
             },
-            "scan_param": {
+            "scan_params": {
                 "set_pnts_lines_odd": self.scan_params.set_pnts_lines_odd,
+                "set_pnts_planes": self.scan_params.set_pnts_planes,
                 "dim1_lines_um": self.scan_params.dim1_lines_um,
                 "dim2_col_um": self.scan_params.dim2_col_um,
                 "dim3_um": self.scan_params.dim3_um,
@@ -422,7 +426,7 @@ class SFCSImageMeasurement(Measurement):
                 "n_planes": self.scan_params.n_planes,
                 "line_freq_hz": self.scan_params.line_freq_Hz,
                 "ppl": self.scan_params.ppl,
-                "scan_plane": self.scan_params.scan_plane,
+                "plane_orientation": self.scan_params.plane_orientation,
                 "initial_ao": self.scan_params.initial_ao,
                 "what_stage": "Galvanometers",
                 "linear_frac": self.scan_params.lin_frac,
@@ -438,7 +442,7 @@ class SFCSImageMeasurement(Measurement):
             await self.toggle_lasers()
             self.data_dvc.init_data()
             self.data_dvc.purge_buffers()
-            self._app.gui.main.impl.dvc_toggle("pixel_clock", leave_on=True)
+            self._app.gui.main.impl.device_toggle("pixel_clock", leave_on=True)
             self.scanners_dvc.init_ai_buffer(type="inf")
             self.counter_dvc.init_ci_buffer(type="inf")
 
@@ -460,7 +464,7 @@ class SFCSImageMeasurement(Measurement):
         self.init_scan_tasks("FINITE")
         self.scanners_dvc.start_tasks("ao")
 
-        try:  # TESTESTEST
+        try:
             for plane_idx in range(n_planes):
 
                 if self.is_running:
@@ -474,7 +478,7 @@ class SFCSImageMeasurement(Measurement):
                     self.scanners_dvc.start_tasks("ao")
 
                     # recording
-                    await self.record_data(timed=False)
+                    await self.record_data(self.start_time, timed=False)
 
                     # collect final ai/CI
                     self.counter_dvc.fill_ci_buffer()
@@ -489,25 +493,21 @@ class SFCSImageMeasurement(Measurement):
             return
 
         except Exception as exc:  # TESTESTEST
-            errors.err_hndlr(exc, sys._getframe(), locals())  # TESTESTEST
+            errors.err_hndlr(exc, sys._getframe(), locals())
 
         # finished measurement
-        if self.is_running:
-            # if not manually stopped
+        if self.is_running:  # if not manually stopped
             # prepare data
-            counts = np.array(self.counter_dvc.ci_buffer, dtype=np.int)
-            self.plane_images_data = ImageScanData(
-                counts, self.ao_buffer, vars(self.scan_params).copy(), self.um_v_ratio
-            )
-            # save data
-            self.save_data(self.prep_data_dict(), self.build_filename())
-            self.keep_last_meas()
+            data_dict = self.prep_data_dict()
+            if self.always_save:  # save data
+                self.save_data(data_dict, self.build_filename())
+            self.keep_last_meas(data_dict)
             # show middle plane
             mid_plane = int(len(self.scan_params.set_pnts_planes) / 2)
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
             should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "exc")
-            self._app.gui.main.impl.disp_plane_img(mid_plane, auto_cross=should_display_autocross)
+            self._app.gui.main.impl.disp_plane_img(auto_cross=should_display_autocross)
 
         if self.is_running:  # if not manually before completion
             await self.stop()
@@ -515,7 +515,7 @@ class SFCSImageMeasurement(Measurement):
         self.type = None
 
 
-class SFCSSolutionMeasurement(Measurement):
+class SolutionMeasurementProcedure(MeasurementProcedure):
     """Doc."""
 
     dur_mul_dict = {
@@ -526,7 +526,25 @@ class SFCSSolutionMeasurement(Measurement):
 
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSSolution", scan_params=scan_params, **kwargs)
-        self.scan_params.scan_plane = "XY"
+        # TODO: would make more sense if these were in a specified dict rather than in the kwargs dict...
+        self.scan_type = kwargs["scan_type"]
+        self.regular = kwargs["regular"]
+        self.repeat = kwargs["repeat"]
+        self.final = kwargs["final"]
+        self.max_file_size_mb = kwargs["max_file_size_mb"]
+        self.duration = kwargs["duration"]
+        self.duration_units = kwargs["duration_units"]
+        self.start_time_wdgt = kwargs["start_time_wdgt"]
+        self.end_time_wdgt = kwargs["end_time_wdgt"]
+        self.time_left_wdgt = kwargs["time_left_wdgt"]
+        self.file_num_wdgt = kwargs["file_num_wdgt"]
+        self.pattern_wdgt = kwargs["pattern_wdgt"]
+        self.g0_wdgt = kwargs["g0_wdgt"]
+        self.tau_wdgt = kwargs["tau_wdgt"]
+        self.plot_wdgt = kwargs["plot_wdgt"]
+        self.fit_led = kwargs["fit_led"]
+
+        self.scan_params.plane_orientation = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
         self.scanning = not (self.scan_params.pattern == "static")
@@ -581,56 +599,56 @@ class SFCSSolutionMeasurement(Measurement):
         def compute_acf(data):
             """Doc."""
 
-            s = CorrFuncTDC()
-            s.after_pulse_param = self.sys_info["after_pulse_param"]
-            s.laser_freq_hz = self.tdc_dvc.laser_freq_mhz * 1e6
-            p = s.convert_fpga_data_to_photons(
-                np.array(data, dtype=np.uint8), ignore_coarse_fine=True, locate_outliers=True
-            )
+            s = SolutionSFCSMeasurement()
+            p = s.process_data(self.prep_data_dict(), ignore_coarse_fine=True)
             s.data.append(p)
             s.correlate_and_average(cf_name=self.laser_mode)
             return s
 
-        if self.repeat is True:
-            # display ACF for alignments
+        try:
+            s = compute_acf(self.data_dvc.data)
+        except RuntimeWarning as exc:
+            # RuntimeWarning - some sort of zero-division in _calculate_weighted_avg
+            # (due to invalid data during beam obstruction)
+            errors.err_hndlr(exc, sys._getframe(), locals())
+        except Exception as exc:
+            print("THIS SHOULD NOT HAPPEN, HANDLE THE EXCEPTION PROPERLY!")
+            errors.err_hndlr(exc, sys._getframe(), locals())
+        else:
+            cf = s.cf[self.laser_mode]
             try:
-                s = compute_acf(self.data_dvc.data)
-            except Exception as exc:
-                errors.err_hndlr(exc, sys._getframe(), locals())
+                cf.fit_correlation_function()
+            except fit_tools.FitError as exc:
+                # fit failed
+                errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
+                self.fit_led.set(self.icon_dict["led_red"])
+                g0, tau = cf.g0, 0.1
+                self.g0_wdgt.set(g0)
+                self.tau_wdgt.set(0)
+                self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
             else:
-                cf = s.cf[self.laser_mode]
-                try:
-                    cf.fit_correlation_function()
-                except fit_tools.FitError as exc:
-                    # fit failed
-                    errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
-                    self.fit_led.set(self.icon_dict["led_red"])
-                    g0, tau = cf.g0, 0.1
-                    self.g0_wdgt.set(g0)
-                    self.tau_wdgt.set(0)
-                    self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
-                else:
-                    # fit succeeded
-                    self.fit_led.set(self.icon_dict["led_off"])
-                    fit_params = cf.fit_param["diffusion_3d_fit"]
-                    g0, tau, _ = fit_params["beta"]
-                    x, y = fit_params["x"], fit_params["y"]
-                    fit_func = getattr(fit_tools, fit_params["func_name"])
-                    self.g0_wdgt.set(g0)
-                    self.tau_wdgt.set(tau * 1e3)
-                    self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0)
-                    y_fit = fit_func(x, *fit_params["beta"])
-                    self.plot_wdgt.obj.plot(x, y_fit, "-.r")
-                    self.plot_wdgt.obj.ax.autoscale()
-                    logging.info(
-                        f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
-                    )
+                # fit succeeded
+                self.fit_led.set(self.icon_dict["led_off"])
+                fit_params = cf.fit_param["diffusion_3d_fit"]
+                g0, tau, _ = fit_params["beta"]
+                x, y = fit_params["x"], fit_params["y"]
+                fit_func = getattr(fit_tools, fit_params["func_name"])
+                self.g0_wdgt.set(g0)
+                self.tau_wdgt.set(tau * 1e3)
+                self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0)
+                y_fit = fit_func(x, *fit_params["beta"])
+                self.plot_wdgt.obj.plot(x, y_fit, "-.r")
+                self.plot_wdgt.obj.ax.autoscale()
+                logging.info(
+                    f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
+                )
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
     def prep_data_dict(self) -> dict:
         """Doc."""
 
         full_data = {
+            "laser_mode": self.laser_mode,
             "duration_s": self.duration_s,
             "byte_data": np.array(self.data_dvc.data, dtype=np.uint8),
             "version": self.tdc_dvc.tdc_vrsn,
@@ -688,15 +706,12 @@ class SFCSSolutionMeasurement(Measurement):
         try:
             if self.scanning:
                 self.setup_scan()
-                self._app.gui.main.impl.dvc_toggle("pixel_clock", leave_on=True)
+                self._app.gui.main.impl.device_toggle("pixel_clock", leave_on=True)
                 # make the circular ai buffer clip as long as the ao buffer
                 self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
+                self.counter_dvc.init_ci_buffer()
             else:
                 self.scanners_dvc.init_ai_buffer()
-
-            if not self.repeat:
-                # during alignment we don't change the counter_dvc tasks, do no need to initialize
-                self.counter_dvc.init_ci_buffer()
 
         except errors.DeviceError as exc:
             await self.stop()
@@ -710,17 +725,15 @@ class SFCSSolutionMeasurement(Measurement):
             file_num = 1
             logging.info(f"Running {self.type} measurement")
 
-        try:  # TESTESTEST`
+        try:
             while self.is_running and self.time_passed_s < self.duration_s:
 
                 # initialize data buffer
                 self.data_dvc.init_data()
                 self.data_dvc.purge_buffers()
 
-                if not self.repeat:
-                    # during alignment we don't change the counter_dvc tasks, do no need to initialize
-                    self.counter_dvc.init_ci_buffer()
                 if self.scanning:
+                    self.counter_dvc.init_ci_buffer()
                     # re-start scan for each file
                     self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
                     self.init_scan_tasks("CONTINUOUS")
@@ -734,9 +747,9 @@ class SFCSSolutionMeasurement(Measurement):
 
                 # reading
                 if self.repeat:
-                    await self.record_data(timed=True)
+                    await self.record_data(self.start_time, timed=True)
                 else:
-                    await self.record_data(timed=True, size_limited=True)
+                    await self.record_data(self.start_time, timed=True, size_limited=True)
 
                 logging.debug("FPGA reading finished.")
 

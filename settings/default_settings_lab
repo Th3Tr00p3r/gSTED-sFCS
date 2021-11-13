@@ -1,3 +1,4 @@
+arduinoAddr,COM3
 um232FlowControl,RTS-CTS
 um232BitMode,Single Channel Synchronous 245 FIFO
 counterPixelClockAddress,Dev1/Ctr0
@@ -24,18 +25,20 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-arduinoAddr,COM3
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
 excAddr,Dev1/port0/line6
 depShutterAddr,Dev3/port0/line11
 depModelQuery,getmodel
+cam1Serial,4102737458
+cam2Serial,4102835063
 dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
 solSubdirName,solution
 imgSubdirName,image
 camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
 logDataPath,./log/
+tempDataPath,C:/temp_sfcs_folder/
 um232LatencyTimerVal,2
 um232Timeout,2
 um232NumBytes,256000
@@ -47,7 +50,6 @@ pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
 AIclkDiv,100
-uc480PlaceHolder,0.0
 xConv,70.81
 yConv,82.74
 zConv,10.0
@@ -56,3 +58,4 @@ AOtriggerEdge,Rising
 AOwfType,Sine
 excTriggerSrc,External (TDC)
 counterCIdupCountPrevention,True
+tabWidget,0
