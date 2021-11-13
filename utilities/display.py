@@ -137,18 +137,15 @@ class GuiDisplay:
 
 
 class Plotter:
-    """A generalized, hierarchical plotting tool, designed to work as a context-manager."""
+    """A generalized, hierarchical plotting tool, designed to work as a context manager."""
 
-    FIGSIZE_FACTORS = (3.75, 2.5)
+    AX_SIZE = (3.75, 2.5)
 
-    def __init__(
-        self,
-        parent_figure=None,
-        parent_ax=None,
-        **kwargs,
-    ):
-        self.parent_figure = parent_figure  # TODO: not currently used. Can possibly be used for implementing subfigures
-        self.parent_ax = parent_ax
+    def __init__(self, **kwargs):
+        self.parent_figure = kwargs.get(
+            "parent_figure"
+        )  # TODO: not currently used. Can possibly be used for implementing subfigures
+        self.parent_ax = kwargs.get("parent_ax")
         self.subplots = kwargs.get("subplots", (1, 1))
         self.figsize = kwargs.get("figsize")
         self.super_title = kwargs.get("super_title")
@@ -164,10 +161,10 @@ class Plotter:
         # dealing with a figure object
         if self.parent_ax is None:
             if self.parent_figure is None:  # creating a new figure
-                if self.figsize is None:  # auto-determine default size
+                if self.figsize is None:  # auto-determine size
                     n_rows, n_cols = self.subplots
-                    width_factor, height_factor = self.FIGSIZE_FACTORS
-                    figsize = (n_cols * width_factor, n_rows * height_factor)
+                    ax_width, ax_height = self.AX_SIZE
+                    figsize = (n_cols * ax_width, n_rows * ax_height)
                 self.fig = plt.figure(figsize=figsize, constrained_layout=True)
                 self.axes = self.fig.subplots(*self.subplots)
                 if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
@@ -188,7 +185,10 @@ class Plotter:
             return self.axes  # return a Numpy ndarray of Axes objects
 
     def __exit__(self, *exc):
-        """Set axes attributes. Set figure attirbutes and show it if Plotter is at top of hierarchy"""
+        """
+        Set axes attributes.
+        Set figure attirbutes and show it, if Plotter is at top of hierarchy.
+        """
 
         for ax in self.axes.flatten().tolist():  # set ax attributes
             if self.should_force_aspect:
@@ -205,15 +205,6 @@ class Plotter:
         if self.parent_ax is None:  # set figure attributes, and show it (dealing with figure)
             self.fig.suptitle(self.super_title, fontsize=self.fontsize)
             self.fig.show()
-
-
-def get_fig_with_axes(subplots=(1, 1), figsize: Tuple[float, float] = None):
-    """Doc."""
-
-    fig = plt.figure(figsize=figsize)
-    axes = fig.subplots(*subplots)
-
-    return fig, axes
 
 
 class NavigationToolbar(NavigationToolbar2QT):

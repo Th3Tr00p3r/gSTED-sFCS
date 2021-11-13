@@ -205,8 +205,9 @@ class TDCPhotonDataMixin:
             coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
             fine[n_elem[i] : n_elem[i + 1]] = p.fine
 
+        # remove line starts/ends from angular scan data
         if self.scan_type == "angular_scan":
-            photon_idxs = fine > self.NAN_PLACEBO  # remove line starts/ends
+            photon_idxs = fine > self.NAN_PLACEBO
             coarse = coarse[photon_idxs]
             fine = fine[photon_idxs]
 
@@ -223,7 +224,7 @@ class TDCPhotonDataMixin:
             bins = forced_valid_coarse_bins
             h = h_all[bins]
         elif pick_valid_bins_method == "by example":
-            bins = example_photon_data.coarse_bins
+            bins = example_photon_data.tdc_calib.coarse_bins
             h = h_all[bins]
         elif pick_valid_bins_method == "interactive":
             raise NotImplementedError("'interactive' valid bins selection is not yet implemented.")
@@ -266,7 +267,6 @@ class TDCPhotonDataMixin:
             )
 
         if pick_calib_bins_method == "External calibration":
-            #            self.tdc_calib = example_photon_data.tdc_calib # set all relevant attributes to external TDCCalibration (whatevers in the 'else')
             max_j = example_photon_data.tdc_calib.max_j
             coarse_bins = example_photon_data.tdc_calib.coarse_bins
             fine_bins = example_photon_data.tdc_calib.fine_bins
@@ -394,8 +394,7 @@ class TDCPhotonDataMixin:
                 subplots=(2, 2),
                 super_title=f"TDC Calibration - '{self.template}'",
             ) as axes:
-                # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable
-                # plotting later on?
+                # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable plotting later on?
                 axes[0, 0].semilogy(
                     x_all,
                     h_all,
