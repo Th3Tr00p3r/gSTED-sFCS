@@ -232,7 +232,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
         n_files = len(file_paths)
         *_, self.template = Path(file_path_template).parts
-        self.name_on_disk = re.sub("_[*]", "", self.template)
+        self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
 
         for idx, file_path in enumerate(file_paths):
             # Loading file from disk
