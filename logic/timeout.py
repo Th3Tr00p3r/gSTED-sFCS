@@ -7,7 +7,7 @@ from collections import deque
 from contextlib import suppress
 
 import utilities.helper as helper
-from utilities.errors import err_hndlr
+from utilities.errors import DeviceError, err_hndlr
 
 TIMEOUT_INTERVAL = 0.005  # 5 ms
 GUI_UPDATE_INTERVAL = 0.2  # 200 ms
@@ -16,6 +16,8 @@ LOG_PATH = "./log/log"
 
 class Timeout:
     """Doc."""
+
+    cntr_avg_interval_s = 5
 
     def __init__(self, app) -> None:
         """Doc."""
@@ -42,7 +44,8 @@ class Timeout:
             await asyncio.gather(
                 self._read_ci_and_ai(),
                 self._update_dep(),
-                self._update_gui(),
+                self._update_main_gui(),
+                self._update_video(),
             )
         except Exception as exc:
             err_hndlr(exc, sys._getframe(), locals())
@@ -66,7 +69,7 @@ class Timeout:
             fill_buffers()
             await asyncio.sleep(TIMEOUT_INTERVAL)
 
-    async def _update_gui(self) -> None:  # noqa: C901
+    async def _update_main_gui(self) -> None:  # noqa: C901
         """Doc."""
 
         def updt_scn_pos():
@@ -113,21 +116,17 @@ class Timeout:
             if not self.cntr_dvc.error_dict:
                 if meas.is_running and meas.scanning:
                     if meas.type == "SFCSSolution":
-                        self.cntr_dvc.average_counts(
-                            interval=self.cntr_dvc.UPDATE_INTERVAL,
-                            rate=meas.scan_params.ao_samp_freq_Hz,
-                        )
-
+                        rate = meas.scan_params.ao_samp_freq_Hz
                     elif meas.type == "SFCSImage":
-                        self.cntr_dvc.average_counts(
-                            interval=self.cntr_dvc.UPDATE_INTERVAL,
-                            rate=meas.scan_params.line_freq_Hz * meas.scan_params.ppl,
-                        )
+                        rate = meas.scan_params.line_freq_Hz * meas.scan_params.ppl
                 else:
                     # no scanning measurement running
-                    self.cntr_dvc.average_counts(interval=self.cntr_dvc.UPDATE_INTERVAL)
+                    rate = None
 
+                self.cntr_dvc.average_counts(GUI_UPDATE_INTERVAL, rate)
                 self._app.gui.main.counts.setValue(self.cntr_dvc.avg_cnt_rate_khz)
+                self.cntr_dvc.average_counts(self.cntr_avg_interval_s, rate)
+                self._app.gui.main.counts2.setValue(self.cntr_dvc.avg_cnt_rate_khz)
 
         def updt_meas_progress(meas) -> None:
             """Doc."""
@@ -138,7 +137,7 @@ class Timeout:
                     progress = (
                         meas.time_passed_s / meas.duration_s * meas.prog_bar_wdgt.obj.maximum()
                     )
-                    meas.time_left_wdgt.set(int(meas.duration_s - meas.time_passed_s))
+                    meas.time_left_wdgt.set(round(meas.duration_s - meas.time_passed_s))
                 elif meas.type == "SFCSImage":
                     progress = (
                         meas.time_passed_s
@@ -174,7 +173,7 @@ class Timeout:
             if not self.cntr_dvc.error_dict:
                 update_avg_counts(meas)
 
-            # Measurement progress bar and time left
+            # MeasurementProcedure progress bar and time left
             if self._app.meas.is_running:
                 updt_meas_progress(meas)
 
@@ -182,6 +181,22 @@ class Timeout:
             update_log_wdgt()
 
             await asyncio.sleep(GUI_UPDATE_INTERVAL)
+
+    async def _update_video(self) -> None:
+        """Doc."""
+
+        while self.not_finished:
+
+            with suppress(DeviceError, TypeError):
+                # DeviceError - camera error
+                # TypeError - .cameras not yet initialized
+                [
+                    self.main_gui.impl.display_image(idx + 1)
+                    for idx, camera in enumerate(self.main_gui.impl.cameras)
+                    if camera.is_in_video_mode
+                ]
+
+            await asyncio.sleep(0.3)
 
     async def _update_dep(self) -> None:
         """Update depletion laser GUI"""
@@ -204,4 +219,4 @@ class Timeout:
                 else:
                     self.main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
 
-            await asyncio.sleep(self.dep_dvc.UPDATE_INTERVAL)
+            await asyncio.sleep(self.dep_dvc.update_interval_s)

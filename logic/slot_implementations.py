@@ -1,14 +1,13 @@
 """ GUI windows implementations module. """
 
-import asyncio
-import glob
 import logging
-import os
 import re
 import sys
 import webbrowser
 from collections.abc import Iterable
 from contextlib import contextmanager, suppress
+from datetime import datetime as dt
+from pathlib import Path
 from types import SimpleNamespace
 from typing import List, Tuple
 
@@ -16,21 +15,17 @@ import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QWidget
 
 import gui.dialog as dialog
+import gui.widgets as wdgts
 import logic.measurements as meas
-from data_analysis.correlation_function import CorrFuncTDC
-from data_analysis.image import ImageScanData
-from gui import widgets as wdgts
+from data_analysis.correlation_function import (
+    ImageSFCSMeasurement,
+    SolutionSFCSMeasurement,
+)
 from logic.scan_patterns import ScanPatternAO
 from utilities import display, file_utilities, fit_tools, helper
 from utilities.errors import DeviceError, err_hndlr
 
 
-# TODO: refactoring - this is getting too big, I need to think on how to break it down.
-# Perhaps I can divide MainWin into seperate classes for each tab (image, solution, analysis).
-# That would require either replacing the gui.main object with 3 different ones (gui.image_tab, gui.solution_tab, gui.analysis_tab)
-# or adding 3 seperate namespaces to main (gui.main.image_tab, etc.).
-# MainWin would still need to exist for restart/closing/loadouts/other general stuff such as device/measurement toggling, somehow.
-# It would also make sense to rename this module 'gui_implementation.py' or something.
 class MainWin:
     """Doc."""
 
@@ -42,6 +37,7 @@ class MainWin:
 
         self._app = app
         self._gui = gui
+        self.cameras = None
 
     def close(self, event):
         """Doc."""
@@ -61,7 +57,7 @@ class MainWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Loadout",
-            self._app.LOADOUT_DIR_PATH,
+            str(self._app.LOADOUT_DIR_PATH),
         )
         if file_path != "":
             wdgts.write_gui_to_file(self._gui, wdgts.MAIN_TYPES, file_path)
@@ -74,66 +70,72 @@ class MainWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Loadout",
-                self._app.LOADOUT_DIR_PATH,
+                str(self._app.LOADOUT_DIR_PATH),
             )
         if file_path != "":
             wdgts.read_file_to_gui(file_path, self._gui)
             logging.debug(f"Loadout loaded: '{file_path}'")
 
-    def dvc_toggle(
+    def device_toggle(
         self, nick, toggle_mthd="toggle", state_attr="state", leave_on=False, leave_off=False
     ) -> bool:
         """Returns False in case operation fails"""
 
-        dvc = getattr(self._app.devices, nick)
-        try:
+        was_toggled = False  # assume didn't work
+        dvc = getattr(self._app.devices, nick)  # get device
+
+        try:  # try probing device state
             is_dvc_on = getattr(dvc, state_attr)
-        except AttributeError:
+
+        except AttributeError:  # faulty device
             exc = DeviceError(f"{dvc.log_ref} was not properly initialized. Cannot toggle.")
             if nick == "stage":
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
-                return False
             else:
                 raise exc
 
-        if (leave_on and is_dvc_on) or (leave_off and not is_dvc_on):
-            return True
-
-        if not is_dvc_on:
-            # switch ON
-            try:
-                getattr(dvc, toggle_mthd)(True)
-            except DeviceError as exc:
-                err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
-                return False
-
-            if is_dvc_on := getattr(dvc, state_attr):
-                # if managed to turn ON
-                logging.debug(f"{dvc.log_ref} toggled ON")
-                if nick == "stage":
-                    self._gui.stageButtonsGroup.setEnabled(True)
-                return True
-
+        # have device state, keep going
         else:
-            # switch OFF
-            try:
-                getattr(dvc, toggle_mthd)(False)
-            except DeviceError:
-                return False
+            # no need to do anything if already ON/OFF and meant to stay that way
+            if (leave_on and is_dvc_on) or (leave_off and not is_dvc_on):
+                was_toggled = True
 
-            if not (is_dvc_on := getattr(dvc, state_attr)):
-                # if managed to turn OFF
-                logging.debug(f"{dvc.log_ref} toggled OFF")
+            # otherwise, need to toggle!
+            else:
+                # switch ON
+                if not is_dvc_on:
+                    try:
+                        getattr(dvc, toggle_mthd)(True)
+                    except DeviceError as exc:
+                        err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
+                    else:
+                        # if managed to turn ON
+                        if is_dvc_on := getattr(dvc, state_attr):
+                            logging.debug(f"{dvc.log_ref} toggled ON")
+                            if nick == "stage":
+                                self._gui.stageButtonsGroup.setEnabled(True)
+                            was_toggled = True
 
-                if nick == "stage":
-                    self._gui.stageButtonsGroup.setEnabled(False)
+                # switch OFF
+                else:
+                    with suppress(DeviceError):
+                        getattr(dvc, toggle_mthd)(False)
 
-                if nick == "dep_laser":
-                    # set curr/pow values to zero when depletion is turned OFF
-                    self._gui.depActualCurr.setValue(0)
-                    self._gui.depActualPow.setValue(0)
+                    if not (is_dvc_on := getattr(dvc, state_attr)):
+                        # if managed to turn OFF
+                        logging.debug(f"{dvc.log_ref} toggled OFF")
 
-                return True
+                        if nick == "stage":
+                            self._gui.stageButtonsGroup.setEnabled(False)
+
+                        if nick == "dep_laser":
+                            # set curr/pow values to zero when depletion is turned OFF
+                            self._gui.depActualCurr.setValue(0)
+                            self._gui.depActualPow.setValue(0)
+
+                        was_toggled = True
+
+        return was_toggled
 
     def led_clicked(self, led_obj_name) -> None:
         """Doc."""
@@ -145,10 +147,11 @@ class MainWin:
             "ledShutter": "dep_shutter",
             "ledStage": "stage",
             "ledUm232h": "UM232H",
-            "ledCam": "camera",
             "ledScn": "scanners",
             "ledCounter": "photon_detector",
             "ledPxlClk": "pixel_clock",
+            "ledCam1": "camera_1",
+            "ledCam2": "camera_2",
         }
 
         dvc_nick = led_name_to_nick_dict[led_obj_name]
@@ -156,7 +159,7 @@ class MainWin:
         if error_dict is not None:
             dialog.Error(
                 **error_dict,
-                custom_title=helper.deep_getattr(self._app.devices, f"{dvc_nick}.log_ref"),
+                custom_title=getattr(self._app.devices, dvc_nick).log_ref,
             ).display()
 
     def dep_sett_apply(self):
@@ -188,7 +191,7 @@ class MainWin:
 
         try:
             scanners_dvc.start_write_task(data, type_str)
-            scanners_dvc.toggle(True)  # restart cont. reading
+            scanners_dvc.start_continuous_read_task()  # restart cont. reading
         except DeviceError as exc:
             err_hndlr(exc, sys._getframe(), locals())
 
@@ -215,14 +218,6 @@ class MainWin:
     def displace_scanner_axis(self, sign: int) -> None:
         """Doc."""
 
-        def limit(val: float, min: float, max: float) -> float:
-            if min <= val <= max:
-                return val
-            elif val < max:
-                return min
-            else:
-                return max
-
         um_disp = sign * self._gui.axisMoveUm.value()
 
         if um_disp != 0.0:
@@ -233,7 +228,7 @@ class MainWin:
             delta_vltg = um_disp / um_V_RATIO
 
             axis_ao_limits = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS")
-            new_vltg = limit(
+            new_vltg = helper.limit(
                 (current_vltg + delta_vltg),
                 axis_ao_limits["min_val"],
                 axis_ao_limits["max_val"],
@@ -276,28 +271,28 @@ class MainWin:
                 if meas_type == "SFCSSolution":
                     pattern = self._gui.solScanType.currentText()
                     if pattern == "angular":
-                        scan_params = wdgts.SOL_ANG_SCAN_COLL.read_gui(self._app)
+                        scan_params = wdgts.SOL_ANG_SCAN_COLL.read_gui_to_obj(self._app)
                     elif pattern == "circle":
-                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.read_gui(self._app)
+                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.read_gui_to_obj(self._app)
                     elif pattern == "static":
                         scan_params = SimpleNamespace()
 
                     scan_params.pattern = pattern
 
-                    self._app.meas = meas.SFCSSolutionMeasurement(
+                    kwargs = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app, "dict")
+
+                    self._app.meas = meas.SolutionMeasurementProcedure(
                         app=self._app,
                         scan_params=scan_params,
                         laser_mode=laser_mode.lower(),
-                        **wdgts.SOL_MEAS_COLL.read_gui(self._app, "dict"),
+                        **kwargs,
                     )
 
                     self._gui.startSolScanExc.setEnabled(False)
                     self._gui.startSolScanDep.setEnabled(False)
                     self._gui.startSolScanSted.setEnabled(False)
-                    helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setEnabled")(True)
-                    helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")(
-                        "Stop \nScan"
-                    )
+                    getattr(self._gui, f"startSolScan{laser_mode}").setEnabled(True)
+                    getattr(self._gui, f"startSolScan{laser_mode}").setText("Stop \nScan")
 
                     self._gui.solScanMaxFileSize.setEnabled(False)
                     self._gui.solScanDur.setEnabled(self._gui.repeatSolMeas.isChecked())
@@ -305,20 +300,21 @@ class MainWin:
                     self._gui.solScanFileTemplate.setEnabled(False)
 
                 elif meas_type == "SFCSImage":
-                    self._app.meas = meas.SFCSImageMeasurement(
+
+                    kwargs = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app, "dict")
+
+                    self._app.meas = meas.ImageMeasurementProcedure(
                         app=self._app,
-                        scan_params=wdgts.IMG_SCAN_COLL.read_gui(self._app),
+                        scan_params=wdgts.IMG_SCAN_COLL.read_gui_to_obj(self._app),
                         laser_mode=laser_mode.lower(),
-                        **wdgts.IMG_MEAS_COLL.read_gui(self._app, "dict"),
+                        **kwargs,
                     )
 
                     self._gui.startImgScanExc.setEnabled(False)
                     self._gui.startImgScanDep.setEnabled(False)
                     self._gui.startImgScanSted.setEnabled(False)
-                    helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setEnabled")(True)
-                    helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")(
-                        "Stop \nScan"
-                    )
+                    getattr(self._gui, f"startImgScan{laser_mode}").setEnabled(True)
+                    getattr(self._gui, f"startImgScan{laser_mode}").setText("Stop \nScan")
 
                 self._app.loop.create_task(self._app.meas.run())
             else:
@@ -333,9 +329,7 @@ class MainWin:
                 self._gui.startSolScanExc.setEnabled(True)
                 self._gui.startSolScanDep.setEnabled(True)
                 self._gui.startSolScanSted.setEnabled(True)
-                helper.deep_getattr(self._gui, f"startSolScan{laser_mode}.setText")(
-                    f"{laser_mode} \nScan"
-                )
+                getattr(self._gui, f"startSolScan{laser_mode}").setText(f"{laser_mode} \nScan")
                 self._gui.impl.go_to_origin("XY")
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanDur.setEnabled(True)
@@ -346,9 +340,7 @@ class MainWin:
                 self._gui.startImgScanExc.setEnabled(True)
                 self._gui.startImgScanDep.setEnabled(True)
                 self._gui.startImgScanSted.setEnabled(True)
-                helper.deep_getattr(self._gui, f"startImgScan{laser_mode}.setText")(
-                    f"{laser_mode} \nScan"
-                )
+                getattr(self._gui, f"startImgScan{laser_mode}").setText(f"{laser_mode} \nScan")
 
             if self._app.meas.is_running:
                 # manual stop
@@ -371,7 +363,7 @@ class MainWin:
             plt_wdgt = self._gui.solScanPattern
 
         if scan_params_coll:
-            scan_params = scan_params_coll.read_gui(self._app)
+            scan_params = scan_params_coll.read_gui_to_obj(self._app)
 
             with suppress(AttributeError, ZeroDivisionError, ValueError):
                 # AttributeError - devices not yet initialized
@@ -391,18 +383,12 @@ class MainWin:
         self._app.gui.settings.show()
         self._app.gui.settings.activateWindow()
 
-    async def open_camwin(self):
-        """Doc."""
-
-        self._gui.actionCamera_Control.setEnabled(False)
-        self._app.gui.camera.show()
-        self._app.gui.camera.activateWindow()
-        self._app.gui.camera.impl.init_cam()
-
     def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
 
-        self._app.devices.photon_detector.UPDATE_INTERVAL = val / 1000  # convert to seconds
+        with suppress(AttributeError):
+            # AttributeError - devices not yet initialized
+            self._app.timeout_loop.cntr_avg_interval_s = val * 1e-3  # convert to seconds
 
     ####################
     ## Image Tab
@@ -412,23 +398,27 @@ class MainWin:
 
         plane_idx = self._gui.numPlaneShown.value()
         with suppress(AttributeError):
-            line_ticks_v = self._app.last_img_scn.plane_images_data.line_ticks_v
-            row_ticks_v = self._app.last_img_scn.plane_images_data.row_ticks_v
-            plane_ticks = self._app.last_img_scn.set_pnts_planes
+            # IndexError - 'App' object has no attribute 'curr_img_idx'
+            image_tdc = ImageSFCSMeasurement()
+            image_tdc.process_data(file_dict=self._app.last_image_scans[self._app.curr_img_idx])
+            image_data = image_tdc.image_data
+            line_ticks_v = image_data.line_ticks_v
+            row_ticks_v = image_data.row_ticks_v
+            plane_ticks_v = image_data.plane_ticks_v
 
             coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.ax.cursor.pos)
 
             dim1_vltg = line_ticks_v[coord_1]
             dim2_vltg = row_ticks_v[coord_2]
-            dim3_vltg = plane_ticks[plane_idx]
+            dim3_vltg = plane_ticks_v[plane_idx]
 
-            plane_type = self._app.last_img_scn.plane_type
+            plane_orientation = image_data.plane_orientation
 
-            if plane_type == "XY":
+            if plane_orientation == "XY":
                 vltgs = (dim1_vltg, dim2_vltg, dim3_vltg)
-            elif plane_type == "XZ":
+            elif plane_orientation == "XZ":
                 vltgs = (dim1_vltg, dim3_vltg, dim2_vltg)
-            elif plane_type == "YZ":
+            elif plane_orientation == "YZ":
                 vltgs = (dim3_vltg, dim1_vltg, dim2_vltg)
 
             [
@@ -436,7 +426,7 @@ class MainWin:
                 for axis, vltg in zip("XYZ", vltgs)
             ]
 
-            self.move_scanners(plane_type)
+            self.move_scanners(plane_orientation)
 
             logging.debug(f"{self._app.devices.scanners.log_ref} moved to ROI ({vltgs})")
 
@@ -445,7 +435,7 @@ class MainWin:
 
         with suppress(AttributeError):
             # AttributeError - no last image yet
-            image = self._app.last_img_scn.last_img
+            image = self._app.curr_img
             try:
                 image = display.auto_brightness_and_contrast(image, percent_factor)
             except (ZeroDivisionError, IndexError) as exc:
@@ -453,7 +443,7 @@ class MainWin:
 
             self._gui.imgScanPlot.display_image(image, cursor=True, cmap="bone")
 
-    def disp_plane_img(self, plane_idx, auto_cross=False):
+    def disp_plane_img(self, img_idx=None, plane_idx=None, auto_cross=False):
         """Doc."""
 
         method_dict = {
@@ -494,15 +484,28 @@ class MainWin:
                     # using COM
                     return helper.center_of_mass(image)
 
-        img_meas_wdgts = wdgts.IMG_MEAS_COLL.read_gui(self._app)
+        if img_idx is None:
+            try:
+                img_idx = self._app.curr_img_idx
+            except AttributeError:
+                # .curr_img_idx not yet set
+                img_idx = 0
+
+        img_meas_wdgts = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
         disp_mthd = img_meas_wdgts.image_method
-        with suppress(AttributeError):
-            # AttributeError - No last_img_scn yet
-            image_data = self._app.last_img_scn.plane_images_data
-            image = image_data.build_image(method_dict[disp_mthd], plane_idx)
-            self._app.last_img_scn.last_img = image
+        with suppress(IndexError):
+            # IndexError - No last_image_scans appended yet
+            image_tdc = ImageSFCSMeasurement()
+            image_tdc.process_data(file_dict=self._app.last_image_scans[img_idx])
+            image_data = image_tdc.image_data
+            if plane_idx is None:
+                # use center plane if not supplied
+                plane_idx = int(image_data.n_planes / 2)
+            image = image_data.get_image(method_dict[disp_mthd], plane_idx)
+            self._app.curr_img_idx = img_idx
+            self._app.curr_img = image
             img_meas_wdgts.image_wdgt.obj.display_image(image, cursor=True, cmap="bone")
-            if auto_cross:
+            if auto_cross and image.any():
                 img_meas_wdgts.image_wdgt.obj.ax.cursor.move_to_pos(auto_crosshair_position(image))
 
     def plane_choice_changed(self, plane_idx):
@@ -511,7 +514,7 @@ class MainWin:
         with suppress(AttributeError):
             # AttributeError - no scan performed since app init
             self._app.meas.plane_shown.set(plane_idx)
-            self.disp_plane_img(plane_idx)
+            self.disp_plane_img(plane_idx=plane_idx)
 
     def fill_img_scan_preset_gui(self, curr_text: str) -> None:
         """Doc."""
@@ -527,6 +530,32 @@ class MainWin:
 
         wdgts.IMG_SCAN_COLL.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
+
+    def cycle_through_image_scans(self, dir: str) -> None:
+        """Doc."""
+
+        with suppress(AttributeError):
+            n_stored_images = len(self._app.last_image_scans)
+            if dir == "next":
+                if self._app.curr_img_idx > 0:
+                    self.disp_plane_img(img_idx=self._app.curr_img_idx - 1, auto_cross=False)
+            elif dir == "prev":
+                if self._app.curr_img_idx < n_stored_images - 1:
+                    self.disp_plane_img(img_idx=self._app.curr_img_idx + 1, auto_cross=False)
+
+    def save_current_image(self) -> None:
+        """Doc."""
+
+        wdgt_coll = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
+
+        with suppress(AttributeError):
+            file_dict = self._app.last_image_scans[self._app.curr_img_idx]
+            file_name = f"{wdgt_coll.file_template}_{file_dict['laser_mode']}_{file_dict['scan_params']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
+            today_dir = Path(wdgt_coll.save_path) / dt.now().strftime("%d_%m_%Y")
+            dir_path = today_dir / "image"
+            file_path = dir_path / (re.sub("\\s", "_", file_name) + ".pkl")
+            file_utilities.save_object_to_disk(file_dict, file_path, compression_method="gzip")
+            logging.debug(f"Saved measurement file: '{file_path}'.")
 
     ####################
     ## Solution Tab
@@ -559,6 +588,101 @@ class MainWin:
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
 
     ####################
+    ## Camera Dock
+    ####################
+
+    def toggle_camera_dock(self, is_toggled_on: bool) -> None:
+        """Doc."""
+
+        self._gui.cameraDock.setVisible(is_toggled_on)
+        if is_toggled_on:
+            if self.cameras is None:
+                slider_const = 1e2
+                self.cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
+                for idx, camera in enumerate(self.cameras):
+                    self.update_slider_range(cam_num=idx + 1)
+                    [
+                        getattr(self._gui, f"{name}{idx+1}").setValue(val * slider_const)
+                        for name, val in camera.DEFAULT_PARAMETERS
+                    ]
+            self._gui.move(100, 30)
+            self._gui.setFixedSize(1661, 950)
+        else:
+            self._gui.move(300, 30)
+            self._gui.setFixedSize(1211, 950)
+            [
+                self.device_toggle(
+                    f"camera_{cam_num}", "toggle_video", "is_in_video_mode", leave_off=True
+                )
+                for cam_num in (1, 2)
+            ]
+        self._gui.setMaximumSize(int(1e5), int(1e5))
+
+    def update_slider_range(self, cam_num: int) -> None:
+        """Doc."""
+
+        slider_const = 1e2
+
+        camera = self.cameras[cam_num - 1]
+
+        with suppress(AttributeError):
+            # AttributeError - camera not properly initialized
+            for name in ("pixel_clock", "framerate", "exposure"):
+                range = tuple(limit * slider_const for limit in getattr(camera, f"{name}_range"))
+                getattr(self._gui, f"{name}{cam_num}").setRange(*range)
+
+    def set_parameter(self, cam_num: int, param_name: str, value) -> None:
+        """Doc."""
+
+        if self.cameras is None:
+            return
+
+        slider_const = 1e2
+
+        # convert from slider
+        value /= slider_const
+
+        getattr(self._gui, f"{param_name}_val{cam_num}").setValue(value)
+
+        camera = self.cameras[cam_num - 1]
+        with suppress(DeviceError):
+            # DeviceError - camera not properly initialized
+            camera.set_parameters({param_name: value})
+            getattr(self._gui, f"autoExp{cam_num}").setChecked(False)
+        self.update_slider_range(cam_num)
+
+    def display_image(self, cam_num: int):
+        """Doc."""
+
+        camera = self.cameras[cam_num - 1]
+
+        with suppress(DeviceError, ValueError):
+            # TODO: not sure if 'suppress' is necessary
+            # ValueError - new_image is None
+            # DeviceError - error in camera
+            camera.get_image()
+            if not camera.is_in_video_mode:  # snapshot
+                logging.debug(f"Camera {cam_num} photo taken")
+
+    def set_auto_exposure(self, cam_num: int, is_checked: bool):
+        """Doc."""
+
+        if self.cameras is None:
+            return
+
+        camera = self.cameras[cam_num - 1]
+        camera.set_auto_exposure(is_checked)
+        if not is_checked:
+            parameter_names = ("pixel_clock", "framerate", "exposure")
+            parameter_values = (
+                getattr(self._gui, f"{param_name}_val{cam_num}").value()
+                for param_name in parameter_names
+            )
+            parameters = ((name, value) for name, value in zip(parameter_names, parameter_values))
+            with suppress(DeviceError):
+                camera.set_parameters(parameters)
+
+    ####################
     ## Analysis Tab
     ####################
 
@@ -566,7 +690,7 @@ class MainWin:
         """Doc."""
 
         # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
 
         if DATA_IMPORT_COLL.is_image_type:
             DATA_IMPORT_COLL.import_stacked.set(0)
@@ -583,12 +707,12 @@ class MainWin:
         """Doc."""
 
         # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
 
         if type_ == "image":
-            save_path = wdgts.IMG_MEAS_COLL.read_gui(self._app).save_path
+            save_path = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app).save_path
         elif type_ == "solution":
-            save_path = wdgts.SOL_MEAS_COLL.read_gui(self._app).save_path
+            save_path = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app).save_path
         else:
             raise ValueError(
                 f"Data type '{type_}'' is not supported; use either 'image' or 'solution'."
@@ -610,12 +734,12 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
 
         if DATA_IMPORT_COLL.is_image_type:
-            meas_sett = wdgts.IMG_MEAS_COLL.read_gui(self._app)
+            meas_sett = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
         elif DATA_IMPORT_COLL.is_solution_type:
-            meas_sett = wdgts.SOL_MEAS_COLL.read_gui(self._app)
+            meas_sett = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -634,14 +758,14 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
         year = DATA_IMPORT_COLL.data_years.get()
         days_combobox = DATA_IMPORT_COLL.data_days.obj
 
         if DATA_IMPORT_COLL.is_image_type:
-            meas_sett = wdgts.IMG_MEAS_COLL.read_gui(self._app)
+            meas_sett = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
         elif DATA_IMPORT_COLL.is_solution_type:
-            meas_sett = wdgts.SOL_MEAS_COLL.read_gui(self._app)
+            meas_sett = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -652,7 +776,7 @@ class MainWin:
             dir_days = helper.dir_date_parts(save_path, sub_dir, year=year, month=month)
             days_combobox.addItems(dir_days)
 
-    def pkl_and_mat_templates(self, dir_path: str) -> List[str]:
+    def pkl_and_mat_templates(self, dir_path: Path) -> List[str]:
         """
         Accepts a directory path and returns a list of file templates
         ending in the form '*.pkl' or '*.mat' where * is any number.
@@ -660,17 +784,25 @@ class MainWin:
         In case the folder contains legacy templates, they are sorted without a key.
         """
 
-        is_solution_type = "solution" in dir_path
+        is_solution_type = "solution" in dir_path.parts
 
         pkl_template_set = {
-            (re.sub("[0-9]+.pkl", "*.pkl", item) if is_solution_type else item)
-            for item in os.listdir(dir_path)
-            if item.endswith(".pkl")
+            (
+                re.sub("[0-9]+.pkl", "*.pkl", str(file_path.name))
+                if is_solution_type
+                else file_path.name
+            )
+            for file_path in dir_path.iterdir()
+            if file_path.suffix == ".pkl"
         }
         mat_template_set = {
-            (re.sub("[0-9]+.mat", "*.mat", item) if is_solution_type else item)
-            for item in os.listdir(dir_path)
-            if item.endswith(".mat")
+            (
+                re.sub("[0-9]+.mat", "*.mat", str(file_path.name))
+                if is_solution_type
+                else file_path.name
+            )
+            for file_path in dir_path.iterdir()
+            if file_path.suffix == ".mat"
         }
         try:
             sorted_templates = sorted(
@@ -704,13 +836,14 @@ class MainWin:
             templates = self.pkl_and_mat_templates(self.current_date_type_dir_path())
             templates_combobox.addItems(templates)
 
-    def show_num_files(self, template) -> None:
+    def show_num_files(self, template: str) -> None:
         """Doc."""
 
-        n_files_wdgt = wdgts.DATA_IMPORT_COLL.n_files
-        dir_path = self.current_date_type_dir_path()
-        n_files = len(glob.glob(os.path.join(dir_path, template)))
-        n_files_wdgt.set(f"({n_files} Files)")
+        if template:
+            n_files_wdgt = wdgts.DATA_IMPORT_COLL.n_files
+            dir_path = Path(self.current_date_type_dir_path())
+            n_files = sum(1 for file_path in dir_path.glob(template))
+            n_files_wdgt.set(f"({n_files} Files)")
 
     def cycle_through_data_templates(self, dir: str) -> None:
         """Cycle through the daily data templates in order (next or previous)"""
@@ -734,17 +867,19 @@ class MainWin:
         """Doc."""
 
         dir_path = self.current_date_type_dir_path()
-        data_import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
         curr_template = data_import_wdgts.data_templates.get()
         new_template_prefix = data_import_wdgts.new_template
 
+        # cancel if no new prefix supplied
         if not new_template_prefix:
             return
 
         try:
+            # get the current prefix - anything before the timestamp
             curr_template_prefix = re.findall("(^.*)(?=_[0-9]{6})", curr_template)[0]
         except IndexError:
-            # template does not contain timestamp
+            # legacy template which has no timestamp
             curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
 
         if new_template_prefix == curr_template_prefix:
@@ -756,13 +891,13 @@ class MainWin:
         new_template = re.sub(curr_template_prefix, new_template_prefix, curr_template, count=1)
 
         # check if new template already exists (unlikely)
-        if glob.glob(os.path.join(dir_path, new_template)):
+        if list(dir_path.glob(new_template)):
             logging.warning(
                 f"New template '{new_template}' already exists in '{dir_path}'. Operation canceled."
             )
             return
         # check if current template doesn't exists (can only happen if deleted manually between discovering the template and running this function)
-        if not (curr_filenames := glob.glob(os.path.join(dir_path, curr_template))):
+        if not (curr_filepaths := [str(filepath) for filepath in dir_path.glob(curr_template)]):
             logging.warning("Current template is missing! (Probably manually deleted)")
             return
 
@@ -774,48 +909,52 @@ class MainWin:
             return
 
         # generate new filanames
-        new_filenames = [
-            re.sub(curr_template[:-5], new_template[:-5], curr_filename)
-            for curr_filename in curr_filenames
+        new_filepaths = [
+            re.sub(curr_template_prefix, new_template_prefix, curr_filepath)
+            for curr_filepath in curr_filepaths
         ]
         # rename the files
         [
-            os.rename(curr_filename, new_filename)
-            for curr_filename, new_filename in zip(curr_filenames, new_filenames)
+            Path(curr_filepath).rename(new_filepath)
+            for curr_filepath, new_filepath in zip(curr_filepaths, new_filepaths)
         ]
         # rename the log file, if applicable
         with suppress(FileNotFoundError):
-            os.rename(
-                os.path.join(dir_path, curr_template[:-6] + ".log"),
-                os.path.join(dir_path, new_template[:-6] + ".log"),
+            pattern = re.sub("\\*?", "[0-9]*", curr_template)
+            replacement = re.sub("_\\*", "", curr_template)
+            current_log_filepath = re.sub(pattern, replacement, curr_filepaths[0])
+            current_log_filepath = re.sub("\\.pkl", ".log", current_log_filepath)
+            new_log_filepath = re.sub(
+                curr_template_prefix, new_template_prefix, current_log_filepath
             )
+            Path(current_log_filepath).rename(new_log_filepath)
 
         # refresh templates
         day = data_import_wdgts.data_days
         self.populate_data_templates_from_day(day)
 
-    def current_date_type_dir_path(self) -> str:
+    def current_date_type_dir_path(self) -> Path:
         """Returns path to directory of currently selected date and measurement type"""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
 
         day = import_wdgts.data_days.get()
         year = import_wdgts.data_years.get()
         month = import_wdgts.data_months.get()
 
         if import_wdgts.is_image_type:
-            meas_settings = wdgts.IMG_MEAS_COLL.read_gui(self._app)
+            meas_settings = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
         elif import_wdgts.is_solution_type:
-            meas_settings = wdgts.SOL_MEAS_COLL.read_gui(self._app)
-        save_path = meas_settings.save_path
+            meas_settings = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app)
+        save_path = Path(meas_settings.save_path)
         sub_dir = meas_settings.sub_dir_name
-        return os.path.join(save_path, f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}", sub_dir)
+        return save_path / f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}" / sub_dir
 
     def open_data_dir(self) -> None:
         """Doc."""
 
-        if os.path.isdir(dir_path := self.current_date_type_dir_path()):
-            webbrowser.open(dir_path)
+        if (dir_path := self.current_date_type_dir_path()).is_dir():
+            webbrowser.open(str(dir_path))
         else:
             # dir was deleted, refresh all dates
             self.switch_data_type()
@@ -829,14 +968,14 @@ class MainWin:
         log_filename = re.sub("_\\*.\\w{3}", ".log", curr_template)
         with suppress(AttributeError, TypeError, FileNotFoundError):
             # no directories found
-            file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
+            file_path = self.current_date_type_dir_path() / log_filename
             helper.write_list_to_file(file_path, text_lines)
             self.update_dir_log_wdgt(curr_template)
 
     def get_daily_alignment(self):
         """Doc."""
 
-        date_dir_path = re.sub("(solution|image)", "", self.current_date_type_dir_path())
+        date_dir_path = Path(re.sub("(solution|image)", "", str(self.current_date_type_dir_path())))
 
         try:
             # TODO: make this work for multiple templates (exc and sted), add both to log file and also the ratios
@@ -850,13 +989,13 @@ class MainWin:
             # Inferring data_dype from template
             data_type = self.infer_data_type_from_template(template)
 
-            full_data = CorrFuncTDC()
+            corrfunc_tdc = SolutionSFCSMeasurement()
             try:
-                full_data.read_fpga_data(
-                    os.path.join(date_dir_path, template),
+                corrfunc_tdc.read_fpga_data(
+                    date_dir_path / template,
                     should_plot=False,
                 )
-                full_data.correlate_and_average(cf_name=data_type)
+                corrfunc_tdc.correlate_and_average(cf_name=data_type)
 
             except AttributeError:
                 # No directories found
@@ -865,7 +1004,7 @@ class MainWin:
             except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                 err_hndlr(exc, sys._getframe(), locals())
 
-            cf = full_data.cf[data_type]
+            cf = corrfunc_tdc.cf[data_type]
 
             try:
                 cf.fit_correlation_function()
@@ -905,7 +1044,7 @@ class MainWin:
         if not template:
             return
 
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
         DATA_IMPORT_COLL.log_text.set("")  # clear first
 
         # get the log file path
@@ -913,7 +1052,7 @@ class MainWin:
             log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
         elif DATA_IMPORT_COLL.is_image_type:
             log_filename = re.sub("\\.\\w{3}", ".log", template)
-        file_path = os.path.join(self.current_date_type_dir_path(), log_filename)
+        file_path = self.current_date_type_dir_path() / log_filename
 
         try:  # load the log file in path
             text_lines = helper.read_file_to_list(file_path)
@@ -934,42 +1073,39 @@ class MainWin:
         if not template:
             return
 
-        data_import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
 
         if data_import_wdgts.is_image_type:
             # import the data
-            file_path = os.path.join(self.current_date_type_dir_path(), template)
             try:
-                file_dict = file_utilities.load_file_dict(file_path)
+                image_tdc = ImageSFCSMeasurement()
+                image_tdc.read_image_data(self.current_date_type_dir_path() / template)
             except FileNotFoundError:
                 self.switch_data_type()
                 return
-            # get the center plane image
-            counts = file_dict["ci"]
-            ao = file_dict["ao"]
-            scan_param = file_dict["scan_param"]
-            um_v_ratio = file_dict["xyz_um_to_v"]
-            image_data = ImageScanData(counts, ao, scan_param, um_v_ratio)
-            image = image_data.build_image("forward", image_data.n_planes // 2)
+            # get the center plane image, in "forward"
+            image = image_tdc.image_data.get_image("forward")
             # plot it (below)
-            data_import_wdgts.img_preview_disp.obj.display_image(image, axis=False, cmap="bone")
+            data_import_wdgts.img_preview_disp.obj.display_image(image, cmap="bone")
 
-    def import_sol_data(self) -> None:
+    def import_sol_data(self, should_load_processed=False) -> None:
         """Doc."""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
         current_template = import_wdgts.data_templates.get()
-        sol_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
+        sol_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
         curr_dir = self.current_date_type_dir_path()
 
-        if import_wdgts.sol_use_processed:
-            file_path = os.path.join(curr_dir, "processed", re.sub("_[*]", "", current_template))
+        if self._app.analysis.loaded_data.get(current_template) is not None:
+            logging.info(f"Data '{current_template}' already loaded - ignoring.")
+            return
 
         with self._app.pause_ai_ci():
 
-            if import_wdgts.sol_use_processed and os.path.isfile(file_path):
+            if should_load_processed:
+                file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
                 print(f"Loading processed data '{current_template}' from hard drive...", end=" ")
-                full_data = file_utilities.load_processed_solution_measurement(file_path)
+                corrfunc_tdc = file_utilities.load_processed_solution_measurement(file_path)
                 print("Done.")
 
             else:  # process data
@@ -979,7 +1115,7 @@ class MainWin:
                         f"{import_wdgts.sol_file_use_or_dont} {import_wdgts.sol_file_selection}"
                     )
                 else:
-                    sol_file_selection = ""
+                    sol_file_selection = None
 
                 # Inferring data_dype from template
                 data_type = self.infer_data_type_from_template(current_template)
@@ -988,54 +1124,79 @@ class MainWin:
                 try:
                     with suppress(AttributeError):
                         # AttributeError - No directories found
-                        full_data = CorrFuncTDC()
-                        full_data.read_fpga_data(
-                            os.path.join(curr_dir, current_template),
+                        corrfunc_tdc = SolutionSFCSMeasurement()
+                        corrfunc_tdc.read_fpga_data(
+                            curr_dir / current_template,
                             file_selection=sol_file_selection,
                             should_fix_shift=sol_analysis_wdgts.fix_shift,
-                            should_plot=sol_analysis_wdgts.external_plotting,
                         )
-                    full_data.correlate_data(cf_name=data_type, verbose=True)
-
-                    if import_wdgts.sol_save_processed:
-                        print("Saving the processed data...", end=" ")
-                        file_utilities.save_processed_solution_meas(full_data, curr_dir)
-                        print("Done.")
+                    corrfunc_tdc.correlate_data(
+                        cf_name=data_type,
+                        subtract_afterpulse=sol_analysis_wdgts.subtract_afterpulse,
+                        subtract_bg_corr=sol_analysis_wdgts.subtract_bg_corr,
+                        verbose=True,
+                    )
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())
                     return
 
             # save data and populate combobox
-            if self._app.analysis.loaded_data.get(current_template) is None:
-                imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
-                self._app.analysis.loaded_data[current_template] = full_data
-                imported_combobox.obj.addItem(current_template)
-                imported_combobox.set(current_template)
-                logging.info(f"Data '{current_template}' imported for analysis.")
+            imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
+            self._app.analysis.loaded_data[current_template] = corrfunc_tdc
+            imported_combobox.obj.addItem(current_template)
+            imported_combobox.set(current_template)
+            logging.info(f"Data '{current_template}' ready for analysis.")
+
+            self.toggle_save_processed_enabled()  # refresh save option
+            self.toggle_load_processed_enabled(current_template)  # refresh load option
+
+    def save_processed_data(self):
+        """Doc."""
+
+        with self.get_corrfunc_tdc_from_template(should_load=True) as corrfunc_tdc:
+            curr_dir = self.current_date_type_dir_path()
+            file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
+            logging.info("Saved the processed data.")
+
+    def toggle_save_processed_enabled(self):
+        """Doc."""
+
+        with self.get_corrfunc_tdc_from_template() as corrfunc_tdc:
+            if corrfunc_tdc is None:
+                self._gui.solImportSaveProcessed.setEnabled(False)
             else:
-                logging.info(f"Data '{current_template}' already loaded - ignoring.")
+                self._gui.solImportSaveProcessed.setEnabled(True)
+
+    def toggle_load_processed_enabled(self, current_template: str):
+        """Doc."""
+
+        curr_dir = self.current_date_type_dir_path()
+        file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
+        self._gui.solImportLoadProcessed.setEnabled(file_path.is_file())
 
     @contextmanager
-    def get_full_data_from_template(self, template: str = None, should_load=False) -> CorrFuncTDC:
+    def get_corrfunc_tdc_from_template(
+        self, template: str = None, should_load=False
+    ) -> SolutionSFCSMeasurement:
         """Doc."""
 
         if template is None:
             template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
-        full_data = self._app.analysis.loaded_data.get(curr_data_type)
+        corrfunc_tdc = self._app.analysis.loaded_data.get(curr_data_type)
 
         if should_load:
             with suppress(AttributeError):
-                full_data.dump_or_load_data(should_load=True)
+                corrfunc_tdc.dump_or_load_data(should_load=True)
 
         try:
-            yield full_data
+            yield corrfunc_tdc
 
         finally:
             if should_load:
                 with suppress(AttributeError):
-                    full_data.dump_or_load_data(should_load=False)
+                    corrfunc_tdc.dump_or_load_data(should_load=False)
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
@@ -1051,50 +1212,49 @@ class MainWin:
     def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_full_data_from_template(imported_template) as full_data:
-            try:
-                num_files = full_data.n_files
-            except AttributeError:
+        with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
+            if corrfunc_tdc is None:
                 # no imported templates (deleted)
                 wdgts.SOL_ANALYSIS_COLL.clear_all_objects()
                 sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
                 sol_data_analysis_wdgts.scan_img_file_num.set(1)
             else:
-                print("Populating analysis GUI...", end=" ")
+                num_files = corrfunc_tdc.n_files
+                logging.debug("Populating analysis GUI...")
 
                 # populate general measurement properties
                 sol_data_analysis_wdgts.n_files.set(num_files)
-                sol_data_analysis_wdgts.scan_duration_min.set(full_data.duration_min)
-                sol_data_analysis_wdgts.avg_cnt_rate_khz.set(full_data.avg_cnt_rate_khz)
+                sol_data_analysis_wdgts.scan_duration_min.set(corrfunc_tdc.duration_min)
+                sol_data_analysis_wdgts.avg_cnt_rate_khz.set(corrfunc_tdc.avg_cnt_rate_khz)
 
-                if full_data.type == "angular_scan":
+                if corrfunc_tdc.scan_type == "angular_scan":
                     # populate scan images tab
-                    print("Displaying scan images...", end=" ")
+                    logging.debug("Displaying scan images...")
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
                     sol_data_analysis_wdgts.scan_img_file_num.set(1)
                     self.display_scan_image(1, imported_template)
 
                     # calculate average and display
-                    print("Averaging and plotting...", end=" ")
+                    logging.debug("Averaging and plotting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
 
                     scan_settings_text = "\n\n".join(
                         [
                             f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
-                            for key, val in full_data.angular_scan_settings.items()
+                            for key, val in corrfunc_tdc.angular_scan_settings.items()
                         ]
                     )
 
-                elif full_data.type == "static":
-                    print("Averaging, plotting and fitting...", end=" ")
+                elif corrfunc_tdc.scan_type == "static":
+                    logging.debug("Averaging, plotting and fitting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
                     scan_settings_text = "no scan."
 
                 sol_data_analysis_wdgts.scan_settings.set(scan_settings_text)
 
-                print("Done.")
+                logging.debug("Done.")
 
     def display_scan_image(self, file_num, imported_template: str = None):
         """Doc."""
@@ -1102,9 +1262,9 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            with self.get_full_data_from_template(imported_template) as full_data:
-                img = full_data.scan_images_dstack[:, :, file_num - 1]
-                roi = full_data.roi_list[file_num - 1]
+            with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
+                img = corrfunc_tdc.scan_images_dstack[:, :, file_num - 1]
+                roi = corrfunc_tdc.roi_list[file_num - 1]
 
                 scan_image_disp = wdgts.SOL_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
@@ -1114,13 +1274,13 @@ class MainWin:
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_full_data_from_template(imported_template) as full_data:
-            if full_data is None:
+        with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
+            if corrfunc_tdc is None:
                 return
 
-            if full_data.type == "angular_scan":
+            if corrfunc_tdc.scan_type == "angular_scan":
                 row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
@@ -1133,8 +1293,8 @@ class MainWin:
 
                 with suppress(AttributeError, RuntimeError):
                     # AttributeError - no data loaded
-                    data_type = self.infer_data_type_from_template(full_data.template)
-                    cf = full_data.cf[data_type]
+                    data_type = self.infer_data_type_from_template(corrfunc_tdc.template)
+                    cf = corrfunc_tdc.cf[data_type]
                     cf.average_correlation(**avg_corr_kwargs)
 
                     if sol_data_analysis_wdgts.plot_spatial:
@@ -1159,9 +1319,9 @@ class MainWin:
                     sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(cf.j_bad))
                     sol_data_analysis_wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
 
-            elif full_data.type == "static":
-                data_type = self.infer_data_type_from_template(full_data.template)
-                cf = full_data.cf[data_type]
+            elif corrfunc_tdc.scan_type == "static":
+                data_type = self.infer_data_type_from_template(corrfunc_tdc.template)
+                cf = corrfunc_tdc.cf[data_type]
                 cf.average_correlation()
                 try:
                     cf.fit_correlation_function()
@@ -1194,29 +1354,30 @@ class MainWin:
         assigned_wdgt = getattr(wdgts.SOL_ANALYSIS_COLL, type)
         assigned_wdgt.set(curr_template)
 
-    # TODO: only this needs 'data'. leave to after oleg finishes
     def calibrate_tdc_all(self):
         """Doc."""
 
         data_types = ["exc_cal", "sted_cal", "exc_samp", "sted_samp"]
         assigned_templates = [getattr(wdgts.SOL_ANALYSIS_COLL, type).get() for type in data_types]
         for template in assigned_templates:
-            with self.get_full_data_from_template(template, should_load=True) as full_data:
+            with self.get_corrfunc_tdc_from_template(template, should_load=True) as corrfunc_tdc:
                 with suppress(AttributeError):
-                    # AttributeError - template is empty, meaning full_data is None
-                    full_data.calibrate_tdc()  # TODO: add nanosecond calibration gating from widget
+                    # AttributeError - template is empty, meaning corrfunc_tdc is None
+                    corrfunc_tdc.calibrate_tdc(should_plot=True)
+                    # TODO: add nanosecond calibration gating from widget
+                    # TODO: move plotting to GUI
 
         for idx in range(0, len(assigned_templates), 2):
-            with self.get_full_data_from_template(
+            with self.get_corrfunc_tdc_from_template(
                 assigned_templates[idx],
                 should_load=True,
-            ) as exc_data, self.get_full_data_from_template(
+            ) as exc_data, self.get_corrfunc_tdc_from_template(
                 assigned_templates[idx + 1],
                 should_load=True,
             ) as sted_data:
                 with suppress(AttributeError):
-                    # AttributeError - template is empty, meaning full_data is None
-                    exc_data.compare_lifetimes(legend_label="exc", sted=sted_data)
+                    # AttributeError - template is empty, meaning corrfunc_tdc is None
+                    exc_data.compare_lifetimes(legend_label="exc", compare_to={"sted": sted_data})
 
     def remove_imported_template(self) -> None:
         """Doc."""
@@ -1225,6 +1386,8 @@ class MainWin:
         template = imported_templates.get()
         self._app.analysis.loaded_data[template] = None
         imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
+
+        self.toggle_save_processed_enabled()  # refresh save option
         # TODO: clear image properties!
 
     def convert_files_to_matlab_format(self) -> None:
@@ -1247,19 +1410,19 @@ class MainWin:
         if pressed == dialog.NO:
             return
 
-        file_template_path = os.path.join(current_dir_path, current_template)
-        file_paths = file_utilities.sort_file_paths_by_file_number(glob.glob(file_template_path))
+        unsorted_paths = list(current_dir_path.glob(current_template))
+        file_paths = file_utilities.sort_file_paths_by_file_number(unsorted_paths)
 
         print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
 
         for idx, file_path in enumerate(file_paths):
             file_dict = file_utilities.load_file_dict(file_path)
-            mat_file_path = re.sub("\\.pkl", ".mat", file_path)
-            if "solution" in mat_file_path:
-                mat_file_path = re.sub("solution", r"solution\\matlab", mat_file_path)
-            elif "image" in mat_file_path:
-                mat_file_path = re.sub("image", r"image\\matlab", mat_file_path)
-            os.makedirs(os.path.join(current_dir_path, "matlab"), exist_ok=True)
+            mat_file_path_str = re.sub("\\.pkl", ".mat", str(file_path))
+            if "solution" in mat_file_path_str:
+                mat_file_path = Path(re.sub("solution", r"solution\\matlab", mat_file_path_str))
+            elif "image" in mat_file_path_str:
+                mat_file_path = Path(re.sub("image", r"image\\matlab", mat_file_path_str))
+            Path.mkdir(current_dir_path / "matlab", parents=True, exist_ok=True)
             file_utilities.save_mat(file_dict, mat_file_path)
             print(f"({idx+1})", end=" ")
 
@@ -1315,7 +1478,7 @@ class SettWin:
         file_path, _ = QFileDialog.getSaveFileName(
             self._gui,
             "Save Settings",
-            self._app.SETTINGS_DIR_PATH,
+            str(self._app.SETTINGS_DIR_PATH),
         )
         if file_path != "":
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
@@ -1333,73 +1496,9 @@ class SettWin:
             file_path, _ = QFileDialog.getOpenFileName(
                 self._gui,
                 "Load Settings",
-                self._app.SETTINGS_DIR_PATH,
+                str(self._app.SETTINGS_DIR_PATH),
             )
         if file_path != "":
-            self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
+            self._gui.frame.findChild(QWidget, "settingsFileName").setText(str(file_path))
             wdgts.read_file_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
-
-    def confirm(self):
-        """Doc."""
-
-        self.check_on_close = False
-
-
-class CamWin:
-    """Doc."""
-
-    def __init__(self, gui, app):
-        """Doc."""
-
-        self._app = app
-        self._gui = gui
-        self._cam = None
-        self.is_video_on = False
-
-    def init_cam(self):
-        """Doc."""
-
-        self._cam = self._app.devices.camera
-        self._app.gui.main.impl.dvc_toggle("camera")
-        logging.debug("Camera connection opened")
-
-    async def clean_up(self):
-        """clean up before closing window"""
-
-        if self._cam is not None:
-            await self.toggle_video(keep_off=True)
-            self._app.gui.main.impl.dvc_toggle("camera")
-            self._app.gui.main.actionCamera_Control.setEnabled(True)
-            self._cam = None
-            logging.debug("Camera connection closed")
-
-    async def toggle_video(self, keep_off=False):
-        """Doc."""
-
-        if not self.is_video_on and not keep_off:  # Turning video ON
-            self._gui.videoButton.setStyleSheet(
-                "background-color: " "rgb(225, 245, 225); " "color: black;"
-            )
-            self._gui.videoButton.setText("Video ON")
-            self.is_video_on = True
-            logging.info("Camera video mode is ON")
-
-            while self.is_video_on:
-                self.shoot(verbose=False)
-                await asyncio.sleep(0.3)
-
-        else:  # Turning video Off
-            self._gui.videoButton.setStyleSheet(
-                "background-color: " "rgb(225, 225, 225); " "color: black;"
-            )
-            self._gui.videoButton.setText("Start Video")
-            self.is_video_on = False
-            logging.info("Camera video mode is OFF")
-
-    def shoot(self, verbose=True):
-        """Doc."""
-
-        self._gui.ImgDisp.display_image(self._cam.grab_image(), cursor=True)
-        if verbose:
-            logging.info("Camera photo taken")

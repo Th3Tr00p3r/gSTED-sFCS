@@ -4,8 +4,8 @@ import PyQt5
 import PyQt5.uic
 
 # import gui.icons  # for initial icons loadout # NOQA
-import logic.windows
-from utilities.display import Display
+import logic.slot_implementations as impl
+from utilities.display import GuiDisplay
 
 try:
     from gui.icons import icons_rc  # for initial icons loadout # NOQA
@@ -18,19 +18,18 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
     UI_PATH = "./gui/mainwindow.ui"
 
-    def __init__(self, app, parent: None = None) -> None:
+    def __init__(self, app) -> None:
 
-        super(MainWin, self).__init__(parent)
+        super(MainWin, self).__init__()
         PyQt5.uic.loadUi(self.UI_PATH, self)
-        self.move(600, 30)
-        self.impl = logic.windows.MainWin(self, app)
+        self.impl = impl.MainWin(self, app)
         self._loop = app.loop
 
         # graphics
-        self.imgScanPlot = Display(layout=self.imageLayout, parent=self)
-        self.solScanAcf = Display(layout=self.solScanAcfLayout, parent=self)
-        self.imgScanPattern = Display(layout=self.imgScanPatternLayout)
-        self.solScanPattern = Display(layout=self.solScanPatternLayout)
+        self.imgScanPlot = GuiDisplay(layout=self.imageLayout, parent=self)
+        self.solScanAcf = GuiDisplay(layout=self.solScanAcfLayout, parent=self)
+        self.imgScanPattern = GuiDisplay(layout=self.imgScanPatternLayout)
+        self.solScanPattern = GuiDisplay(layout=self.solScanPatternLayout)
 
         # scan patterns
         # image
@@ -61,11 +60,22 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.goToOrgXY.released.connect(lambda: self.impl.go_to_origin("XY"))
         self.goToOrgZ.released.connect(lambda: self.impl.go_to_origin("Z"))
 
+        # Image Scan Tab
+        # TODO: add a label with the image name which would be displayed above the image
+        self.nextImg.released.connect(lambda: self.impl.cycle_through_image_scans("next"))
+        self.prevImg.released.connect(lambda: self.impl.cycle_through_image_scans("prev"))
+
+        self.saveImg.released.connect(self.impl.save_current_image)
+
         # Analysis GUI
         self.analysisDataTypeGroup = PyQt5.QtWidgets.QButtonGroup()
         self.analysisDataTypeGroup.addButton(self.imageDataImport)
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.impl.switch_data_type)
+        self.solImportSaveProcessed.released.connect(self.impl.save_processed_data)
+        self.solImportLoadProcessed.released.connect(
+            lambda: self.impl.import_sol_data(should_load_processed=True)
+        )
 
         self.rowDiscriminationGroup = PyQt5.QtWidgets.QButtonGroup()
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
@@ -75,12 +85,12 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.fileSelectionGroup.addButton(self.solImportUseAll)
         self.fileSelectionGroup.addButton(self.solImportUse)
 
-        self.solScanImgDisp = Display(self.solAnalysisScanImageLayout, self)
-        self.solScanAcfDisp = Display(self.solAnalysisAveragingLayout, self)
-        self.solScanTdcDisp = Display(self.solAnalysisTDCLayout, self)
-        self.solScanGstedDisp = Display(self.solAnalysisGSTEDLayout, self)
+        self.solScanImgDisp = GuiDisplay(self.solAnalysisScanImageLayout, self)
+        self.solScanAcfDisp = GuiDisplay(self.solAnalysisAveragingLayout, self)
+        self.solScanTdcDisp = GuiDisplay(self.solAnalysisTDCLayout, self)
+        self.solScanGstedDisp = GuiDisplay(self.solAnalysisGSTEDLayout, self)
 
-        self.imgScanPreviewDisp = Display(self.importImgPreviewLayout)
+        self.imgScanPreviewDisp = GuiDisplay(self.importImgPreviewLayout)
 
         self.nextTemplate.released.connect(lambda: self.impl.cycle_through_data_templates("next"))
         self.prevTemplate.released.connect(lambda: self.impl.cycle_through_data_templates("prev"))
@@ -105,8 +115,9 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.ledCounter.clicked.connect(lambda: led_clicked(self))
         self.ledUm232h.clicked.connect(lambda: led_clicked(self))
         self.ledTdc.clicked.connect(lambda: led_clicked(self))
-        self.ledCam.clicked.connect(lambda: led_clicked(self))
         self.ledScn.clicked.connect(lambda: led_clicked(self))
+        self.ledCam1.clicked.connect(lambda: led_clicked(self))
+        self.ledCam2.clicked.connect(lambda: led_clicked(self))
 
         # Stage
         self.stageUp.released.connect(
@@ -123,11 +134,11 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         )
 
         # Device Toggling
-        self.excOnButton.released.connect(lambda: self.impl.dvc_toggle("exc_laser"))
+        self.excOnButton.released.connect(lambda: self.impl.device_toggle("exc_laser"))
         self.depEmissionOn.released.connect(
-            lambda: self.impl.dvc_toggle("dep_laser", "laser_toggle", "emission_state")
+            lambda: self.impl.device_toggle("dep_laser", "laser_toggle", "emission_state")
         )
-        self.depShutterOn.released.connect(lambda: self.impl.dvc_toggle("dep_shutter"))
+        self.depShutterOn.released.connect(lambda: self.impl.device_toggle("dep_shutter"))
 
         # Image Scan
         self.startImgScanExc.released.connect(
@@ -154,10 +165,64 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         # status bar
         self.setStatusBar(PyQt5.QtWidgets.QStatusBar())
 
+        # Camera Dock
+        self.CAMERA_DOCK_MIN_SIZE = self.cameraDock.minimumSize()
+        self.ImgDisp1 = GuiDisplay(self.imageDisplayLayout1, self)
+        self.ImgDisp2 = GuiDisplay(self.imageDisplayLayout2, self)
+
+        self.shootButton1.released.connect(lambda: self.impl.display_image(1))
+        self.shootButton2.released.connect(lambda: self.impl.display_image(2))
+        self.videoSwitch1.released.connect(
+            lambda: self.impl.device_toggle("camera_1", "toggle_video", "is_in_video_mode")
+        )
+        self.videoSwitch2.released.connect(
+            lambda: self.impl.device_toggle("camera_2", "toggle_video", "is_in_video_mode")
+        )
+        self.autoExp1.toggled.connect(
+            lambda: self.impl.set_auto_exposure(1, self.autoExp1.isChecked())
+        )
+        self.autoExp2.toggled.connect(
+            lambda: self.impl.set_auto_exposure(2, self.autoExp2.isChecked())
+        )
+
+        self.pixel_clock1.valueChanged.connect(
+            lambda: self.impl.set_parameter(1, "pixel_clock", self.pixel_clock1.value())
+        )
+        self.pixel_clock2.valueChanged.connect(
+            lambda: self.impl.set_parameter(2, "pixel_clock", self.pixel_clock2.value())
+        )
+        self.framerate1.valueChanged.connect(
+            lambda: self.impl.set_parameter(1, "framerate", self.framerate1.value())
+        )
+        self.framerate2.valueChanged.connect(
+            lambda: self.impl.set_parameter(2, "framerate", self.framerate2.value())
+        )
+        self.exposure1.valueChanged.connect(
+            lambda: self.impl.set_parameter(1, "exposure", self.exposure1.value())
+        )
+        self.exposure2.valueChanged.connect(
+            lambda: self.impl.set_parameter(2, "exposure", self.exposure2.value())
+        )
+
         # intialize gui
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
+        self.actionCamera_Control.setChecked(False)
+        self.cameraDock.setVisible(False)
         self.stageButtonsGroup.setEnabled(False)
+
+        self.move(300, 30)
+        self.setFixedSize(1211, 950)
+        self.setMaximumSize(int(1e5), int(1e5))
+
+    @PyQt5.QtCore.pyqtSlot(bool)
+    def on_cameraDock_topLevelChanged(self, is_floating: bool) -> None:
+        """Doc."""
+
+        if is_floating:
+            self.cameraDock.setMaximumSize(int(1e5), int(1e5))
+        else:
+            self.cameraDock.setFixedSize(self.CAMERA_DOCK_MIN_SIZE)
 
     def on_calTdc_released(self) -> None:
         """Doc."""
@@ -237,6 +302,8 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.impl.show_num_files(template)
         self.impl.update_dir_log_wdgt(template)
         self.impl.preview_img_scan(template)
+        self.impl.toggle_save_processed_enabled()
+        self.impl.toggle_load_processed_enabled(template)
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_importedSolDataTemplates_currentTextChanged(self, template: str) -> None:
@@ -357,22 +424,22 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.impl.open_settwin()
 
     @PyQt5.QtCore.pyqtSlot(bool)
-    def on_actionLaser_Control_toggled(self, p0: bool) -> None:
+    def on_actionLaser_Control_toggled(self, is_toggled_on: bool) -> None:
         """Show/hide stepper laser control dock"""
 
-        self.laserDock.setVisible(p0)
+        self.laserDock.setVisible(is_toggled_on)
 
     @PyQt5.QtCore.pyqtSlot(bool)
-    def on_actionStepper_Stage_Control_toggled(self, p0: bool) -> None:
+    def on_actionStepper_Stage_Control_toggled(self, is_toggled_on: bool) -> None:
         """Show/hide stepper stage control dock"""
 
-        self.stepperDock.setVisible(p0)
+        self.stepperDock.setVisible(is_toggled_on)
 
-    @PyQt5.QtCore.pyqtSlot()
-    def on_actionCamera_Control_triggered(self) -> None:
-        """Instantiate 'CameraWindow' object and show it"""
+    @PyQt5.QtCore.pyqtSlot(bool)
+    def on_actionCamera_Control_toggled(self, is_toggled_on: bool) -> None:
+        """Show/hide camera control dock"""
 
-        self._loop.create_task(self.impl.open_camwin())
+        self.impl.toggle_camera_dock(is_toggled_on)
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_avgInterval_currentTextChanged(self, val: str) -> None:
@@ -398,7 +465,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
     def on_stageOn_released(self) -> None:
         """Doc."""
 
-        self.impl.dvc_toggle("stage")
+        self.impl.device_toggle("stage")
 
 
 class SettWin(PyQt5.QtWidgets.QDialog):
@@ -406,12 +473,12 @@ class SettWin(PyQt5.QtWidgets.QDialog):
 
     UI_PATH = "./gui/settingswindow.ui"
 
-    def __init__(self, app, parent=None) -> None:
+    def __init__(self, app) -> None:
         """Doc."""
 
-        super(SettWin, self).__init__(parent)
+        super(SettWin, self).__init__()
         PyQt5.uic.loadUi(self.UI_PATH, self)
-        self.impl = logic.windows.SettWin(self, app)
+        self.impl = impl.SettWin(self, app)
 
     def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
         """Doc."""
@@ -435,40 +502,5 @@ class SettWin(PyQt5.QtWidgets.QDialog):
     def on_confirmButton_released(self) -> None:
         """Doc."""
 
-        self.impl.confirm()
+        self.impl.check_on_close = False
         self.close()
-
-
-class CamWin(PyQt5.QtWidgets.QWidget):
-    """Doc."""
-
-    UI_PATH = "./gui/camerawindow.ui"
-
-    def __init__(self, app, parent=None) -> None:
-        """Doc."""
-
-        super(CamWin, self).__init__(parent, PyQt5.QtCore.Qt.WindowStaysOnTopHint)
-        PyQt5.uic.loadUi(self.UI_PATH, self)
-        self.move(30, 180)
-        self.impl = logic.windows.CamWin(self, app)
-        self._loop = app.loop
-
-        # add matplotlib-ready widget (canvas) for showing camera output
-        self.ImgDisp = Display(self.imageDisplayLayout, self)
-
-    def closeEvent(self, event: PyQt5.QtCore.QEvent) -> None:
-        """Doc."""
-
-        self._loop.create_task(self.impl.clean_up())
-
-    @PyQt5.QtCore.pyqtSlot()
-    def on_shootButton_released(self) -> None:
-        """Doc."""
-
-        self.impl.shoot()
-
-    @PyQt5.QtCore.pyqtSlot()
-    def on_videoButton_released(self) -> None:
-        """Doc."""
-
-        self._loop.create_task(self.impl.toggle_video())
