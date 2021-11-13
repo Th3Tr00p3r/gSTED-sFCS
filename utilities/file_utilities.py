@@ -1,13 +1,18 @@
 """Data-File Loading Utilities"""
 
+from __future__ import annotations
+
 import copy
 import functools
-import glob
-import os
+import gzip
 import pickle
 import re
-from typing import Callable, List, Set
 
+# from contextlib import suppress
+from pathlib import Path
+from typing import Any, Callable, List, Tuple
+
+import bloscpack
 import numpy as np
 import scipy.io as spio
 
@@ -45,12 +50,12 @@ legacy_matlab_trans_dict = {
     # Image Scan
     "Cnt": "cnt",
     "PID": "pid",
-    "SP": "scan_param",
+    "SP": "scan_params",
     "LinesOdd": "lines_odd",
     "FastScan": "is_fast_scan",
     "TdcScanData": "tdc_scan_data",
     "Plane": "plane",
-    "ScanParam": "scan_param",
+    "ScanParam": "scan_params",
     "Dimension1_lines_um": "dim1_lines_um",
     "Dimension2_col_um": "dim2_col_um",
     "Dimension3_um": "dim3_um",
@@ -95,9 +100,11 @@ legacy_python_trans_dict = {
     "lines": "n_lines",
     "planes": "n_planes",
     "points_per_line": "ppl",
-    "scan_type": "scan_plane",
-    "lines_odd": "set_pnts_lines_odd",  # moved to scan_param
+    "scan_type": "plane_orientation",
+    "scan_plane": "plane_orientation",
+    "lines_odd": "set_pnts_lines_odd",  # moved to scan_params
     # General
+    "scan_param": "scan_params",
 }
 
 default_system_info = {
@@ -126,13 +133,13 @@ default_system_info = {
 def estimate_bytes(obj) -> int:
     """Returns the estimated size in bytes."""
 
-    return len(pickle.dumps(obj))
+    return len(pickle.dumps(obj, protocol=-1))
 
 
 def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> None:
     """
      Print a cascading size description of object 'obj' up to level 'level'
-    for objects (and subobjects) requiering an estimated disk space over 'threshold_mb'.
+    for objects (and subobjects) requiring an estimated disk space over 'threshold_mb'.
     """
 
     size_mb = estimate_bytes(obj) / 1e6
@@ -145,18 +152,14 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
         print(f"{indent * ' '}{name}: {size_mb:.2f} Mb")
 
         if isinstance(obj, (list, tuple, set)):
-            [
+            for idx, elem in enumerate(obj):
                 deep_size_estimate(elem, level - 1, indent + 4, threshold_mb, f"{name}[{idx}]")
-                for idx, elem in enumerate(obj)
-            ]
         if hasattr(obj, "__dict__"):
             # convert namespaces into dicts
             obj = copy.deepcopy(vars(obj))
         if isinstance(obj, dict):
-            [
+            for key, val in obj.items():
                 deep_size_estimate(val, level - 1, indent + 4, threshold_mb, key)
-                for key, val in obj.items()
-            ]
         else:
             return
     elif name is None:
@@ -166,71 +169,104 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
         return
 
 
-def save_object_to_disk(obj, dir_path, file_name, size_limits_mb=(0, np.inf)) -> bool:
+def save_object_to_disk(
+    obj, file_path: Path, size_limits_mb=None, compression_method: str = None  # "gzip" / "blosc"
+) -> bool:
     """
-    Save object to disk, if estimated size is within the limits.
+    Save a pickle-serialized and optionally gzip/blosc-compressed object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
     """
 
-    lower_limit_mb, upper_limit_mb = size_limits_mb
-    disk_size_mb = estimate_bytes(obj) / 1e6
-    if lower_limit_mb < disk_size_mb < upper_limit_mb:
-        os.makedirs(dir_path, exist_ok=True)
-        file_path = os.path.join(dir_path, file_name)
-        with open(file_path, "wb") as f:
-            pickle.dump(obj, f)
-        return True
+    if size_limits_mb is not None:
+        lower_limit_mb, upper_limit_mb = size_limits_mb
+        disk_size_mb = estimate_bytes(obj) / 1e6
+        if not (lower_limit_mb < disk_size_mb < upper_limit_mb):
+            return False
 
-    else:
-        return False
+    dir_path = file_path.parent
+    Path.mkdir(dir_path, parents=True, exist_ok=True)
+
+    # pickle/serialize the object
+    obj = pickle.dumps(obj, protocol=-1)
+
+    if compression_method == "blosc":
+        # blosc compress the serialized object
+        blosc_args = bloscpack.BloscArgs(typesize=4, clevel=1, cname="zlib")
+        obj = bloscpack.pack_bytes_to_bytes(obj, blosc_args=blosc_args)
+
+    if compression_method == "gzip":
+        # gzip compress the serialized object
+        obj = gzip.compress(obj, compresslevel=1)
+
+    # save the object
+    with open(file_path, "wb") as f:
+        f.write(obj)
+
+    return True
 
 
-def save_processed_solution_meas(full_data, dir_path) -> None:
+def load_file(file_path: Path) -> Any:
+    """Short cut for opening (possibly 'gzip' and/or 'blosc' compressed) .pkl files"""
+
+    try:  # gzip decompression
+        with gzip.open(file_path, "rb") as f_cmprsd:
+            obj = f_cmprsd.read()
+    except gzip.BadGzipFile:  # in case gzip decompression fails
+        try:  # blosc decompression
+            obj, _ = bloscpack.unpack_bytes_from_file(file_path)
+        except ValueError:  # in case blosc decompression fails
+            with open(file_path, "rb") as f:
+                return pickle.load(f)  # deserialize only
+
+    # if decompressed, still needs deserialization
+    return pickle.loads(obj)
+
+
+def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
     """
-    Save a processed measurement, lacking any raw data.
+    Save a processed measurement, lacking any data.
     The template may then be loaded much more quickly.
     """
 
+    original_data = copy.deepcopy(tdc_obj.data)
+
     # lower size if possible
-    for p in full_data.data:
+    for p in tdc_obj.data:
         if p.runtime.max() <= np.iinfo(np.int32).max:
             p.runtime = p.runtime.astype(np.int32)
 
-    dir_path = os.path.join(dir_path, "processed")
-    file_name = re.sub("_[*]", "", full_data.template)
-    save_object_to_disk(full_data, dir_path, file_name)
+    dir_path = dir_path / "processed"
+    file_name = re.sub("_[*]", "", tdc_obj.template)
+    file_path = dir_path / file_name
+    save_object_to_disk(tdc_obj, file_path, compression_method="blosc")
 
-    # return to int64 (the actual object was changed!)
-    for p in full_data.data:
-        if p.runtime.dtype == np.int32:
-            p.runtime = p.runtime.astype(np.int64)
+    tdc_obj.data = original_data
 
 
-def load_processed_solution_measurement(file_path):
+def load_processed_solution_measurement(file_path: Path):
     """Doc."""
 
-    full_data = load_pkl(file_path)
+    tdc_obj = load_file(file_path)
     # Load runtimes as int64 if they are not already of that type
-    for p in full_data.data:
+    for p in tdc_obj.data:
         p.runtime = p.runtime.astype(np.int64, copy=False)
 
-    return full_data
+    return tdc_obj
 
 
-def load_file_dict(file_path: str):
+def load_file_dict(file_path: Path):
     """
     Load files according to extension,
     Allow backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files),
     use defaults for legacy files where 'system_info' or 'after_pulse_param' is not iterable (therefore old).
     """
 
-    ext = file_extension(file_path)
-    if ext == ".pkl":
-        file_dict = translate_dict_keys(load_pkl(file_path), legacy_python_trans_dict)
-    elif ext == ".mat":
+    if file_path.suffix == ".pkl":
+        file_dict = translate_dict_keys(load_file(file_path), legacy_python_trans_dict)
+    elif file_path.suffix == ".mat":
         file_dict = translate_dict_keys(load_mat(file_path), legacy_matlab_trans_dict)
     else:
-        raise NotImplementedError(f"Unknown file extension: '{ext}'.")
+        raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
 
     # patch for legacy Python files (almost non-existant)
     if not file_dict.get("system_info"):
@@ -238,7 +274,6 @@ def load_file_dict(file_path: str):
         file_dict["system_info"] = default_system_info
 
     # patch MATLAB files
-    # TODO: ask oleg how to convert to legacy afterpulse
     elif not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
         if file_dict.get("python_converted"):
             file_dict["system_info"]["after_pulse_param"] = (
@@ -304,7 +339,7 @@ def convert_types_to_matlab_format(obj, key_name=None):
     return {key: convert_types_to_matlab_format(val, key_name=str(key)) for key, val in obj.items()}
 
 
-def save_mat(file_dict: dict, file_path: str) -> None:
+def save_mat(file_dict: dict, file_path: Path) -> None:
     """
     Saves 'file_dict' as 'file_path', after converting all keys to legacy naming,
     takes care of converting 'AfterPulseParam' to old style (array only, no type),
@@ -317,7 +352,7 @@ def save_mat(file_dict: dict, file_path: str) -> None:
     spio.savemat(file_path, file_dict)
 
 
-def load_mat(filename):
+def load_mat(file_path):
     """
     this function should be called instead of direct spio.loadmat
     as it cures the problem of not properly recovering python dictionaries
@@ -368,24 +403,11 @@ def load_mat(filename):
                 elem_list.append(sub_elem)
         return elem_list
 
-    data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True)
+    data = spio.loadmat(file_path, struct_as_record=False, squeeze_me=True)
     return _check_keys(data)
 
 
-def load_pkl(file_path: str) -> dict:
-    """Short cut for opening .pkl files"""
-
-    with open(file_path, "rb") as f:
-        return pickle.load(f)
-
-
-def file_extension(file_path: str) -> str:
-    """Returns the file extension as a string, i.e. file_extension('Path/file.ext') -> '.ext'."""
-
-    return re.split("(\\.[a-z]{3})$", file_path, maxsplit=1)[1]
-
-
-def sort_file_paths_by_file_number(file_paths: List[str]) -> List[str]:
+def sort_file_paths_by_file_number(file_paths: List[Path]) -> List[Path]:
     """
     Returns a path list, sorted according to file number (ascending).
     Works for file paths of the following format:
@@ -395,14 +417,14 @@ def sort_file_paths_by_file_number(file_paths: List[str]) -> List[str]:
 
     return sorted(
         file_paths,
-        key=lambda file_path: int(re.split(f"(\\d+){file_extension(file_paths[0])}", file_path)[1]),
+        key=lambda file_path: int(re.split("(\\d+)$", file_path.stem)[1]),
     )
 
 
-def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
+def file_selection_str_to_list(file_selection: str) -> Tuple[List[int], str]:
     """Doc."""
 
-    def range_str_to_list(range_str: str) -> Set[int]:
+    def range_str_to_list(range_str: str) -> List[int]:
         """
         Accept a range string and returns a list of integers, lowered by 1 to match indices.
         Examples:
@@ -424,23 +446,25 @@ def file_selection_str_to_list(file_selection: str) -> (List[int], bool):
             raise ValueError(f"Bad range format: '{range_str}'.")
 
     _, choice, file_selection = re.split("(Use|Don't Use)", file_selection)
-    file_idxs = {
+    file_idxs = [
         file_num
         for range_str in file_selection.split(",")
         for file_num in range_str_to_list(range_str)
-    }
+    ]
 
     return file_idxs, choice
 
 
-def prepare_file_paths(file_path_template: str, file_selection: str) -> List[str]:
+def prepare_file_paths(file_path_template: Path, file_selection: str = None) -> List[Path]:
     """Doc."""
 
-    file_paths = sort_file_paths_by_file_number(glob.glob(file_path_template))
+    dir_path, file_template = file_path_template.parent, file_path_template.name
+    unsorted_paths = list(dir_path.glob(file_template))
+    file_paths = sort_file_paths_by_file_number(unsorted_paths)
     if not file_paths:
         raise FileNotFoundError(f"File template path ('{file_path_template}') does not exist!")
 
-    if file_selection:
+    if file_selection is not None:
         try:
             file_idxs, choice = file_selection_str_to_list(file_selection)
             if choice == "Use":
@@ -462,17 +486,20 @@ def rotate_data_to_disk(method) -> Callable:
     """
     Loads 'self.data' object from disk prior to calling the method 'method',
     and dumps (saves and deletes the attribute) 'self.data' afterwards.
-    if 'self' does not possess the method 'dump_or_load_data', does nothing.
+    if 'self' does not possess the method 'dump_or_load_data',
+    calls the method the regular way.
     """
 
     @functools.wraps(method)
     def method_wrapper(self, *args, **kwargs):
-        if hasattr(self, "dump_or_load_data"):
+        try:
             self.dump_or_load_data(should_load=True)
             value = method(self, *args, **kwargs)
             self.dump_or_load_data(should_load=False)
-        else:
+            return value
+        except AttributeError:
+            # no 'dump_or_load_data' attribute
             value = method(self, *args, **kwargs)
-        return value
+            return value
 
     return method_wrapper

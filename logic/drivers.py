@@ -1,21 +1,23 @@
 """Drivers Module."""
 
 import re
+import sys
 from contextlib import suppress
 from types import SimpleNamespace
 from typing import List
 
 import ftd2xx
+import instrumental.drivers.cameras.uc480 as uc480
 import nidaqmx as ni
 import numpy as np
 import pyvisa as visa
-from instrumental.drivers.cameras import uc480
+from instrumental import list_instruments
 from nidaqmx.stream_readers import (
     CounterReader,  # AnalogMultiChannelReader for AI, if ever
 )
 
 import utilities.helper as helper
-from utilities.errors import IOError
+from utilities.errors import IOError, err_hndlr
 
 
 class Ftd2xx:
@@ -29,6 +31,7 @@ class Ftd2xx:
     def __init__(self, param_dict):
         param_dict = helper.translate_dict_values(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
+        self.n_bytes = param_dict["n_bytes"]
 
         # auto-find UM232H serial number
         num_devs = ftd2xx.createDeviceInfoList()
@@ -37,7 +40,7 @@ class Ftd2xx:
             if info_dict["description"] == b"UM232H":
                 self.serial = info_dict["serial"]
 
-    def open(self):
+    def open_instrument(self):
         """Doc."""
 
         try:
@@ -50,6 +53,11 @@ class Ftd2xx:
         self._inst.setLatencyTimer(self.ltncy_tmr_val)
         self._inst.setFlowControl(self.flow_ctrl)
         self._inst.setUSBParameters(self.tx_size)
+
+    def close_instrument(self) -> None:
+        """Doc."""
+
+        self._inst.close()
 
     def read(self) -> bytes:
         """Doc."""
@@ -69,12 +77,6 @@ class Ftd2xx:
 
         self._inst.purge(ftd2xx.defines.PURGE_RX)
 
-    def close(self) -> None:
-        """Doc."""
-
-        self._inst.close()
-        self.state = False
-
     def get_queue_status(self) -> None:
         """Doc."""
 
@@ -90,9 +92,13 @@ class NIDAQmx:
 
     def __init__(self, param_dict, task_types, **kwargs):
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.tasks = SimpleNamespace()
         self.task_types = task_types
-        [setattr(self.tasks, type, []) for type in self.task_types]
+        self.tasks = SimpleNamespace(**{type: [] for type in task_types})
+
+        try:
+            len(ni.system.system.System().devices)
+        except FileNotFoundError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def start_tasks(self, task_type: str) -> None:
         """Doc."""
@@ -135,6 +141,7 @@ class NIDAQmx:
     def create_ai_task(
         self,
         name: str,
+        address: str,
         chan_specs: List[dict],
         samp_clk_cnfg: dict = {},
         timing_params: dict = {},
@@ -153,7 +160,7 @@ class NIDAQmx:
         except ni.errors.DaqError:
             task.close()
             raise IOError(
-                f"NI device address ({self.ai_x_addr}) is wrong, or data acquisition board is unplugged"
+                f"NI device address ({address}) is wrong, or data acquisition board is unplugged"
             )
 
         else:
@@ -229,25 +236,25 @@ class NIDAQmx:
         else:
             ao_task.write(data, timeout=self.AO_TIMEOUT)
 
-    def counter_stream_read(self) -> int:
+    def counter_stream_read(self, cont_read_buffer: np.ndarray) -> int:
         """
          Reads all available samples on board into self.cont_read_buffer
          (1D NumPy array, overwritten each read), and returns the
         number of samples read.
         """
 
-        ci_task = self.tasks.ci[0]  # only ever one task
+        ci_task, *_ = self.tasks.ci  # only ever one task
         return ci_task.sr.read_many_sample_uint32(
-            self.cont_read_buffer,
+            cont_read_buffer,
             number_of_samples_per_channel=ni.constants.READ_ALL_AVAILABLE,
         )
 
-    def digital_write(self, bool) -> None:
+    def digital_write(self, address, _bool: bool) -> None:
         """Doc."""
 
         with ni.Task() as do_task:
-            do_task.do_channels.add_do_chan(self.address)
-            do_task.write(bool)
+            do_task.do_channels.add_do_chan(address)
+            do_task.write(_bool)
 
 
 class PyVISA:
@@ -260,11 +267,12 @@ class PyVISA:
         write_termination="",
     ):
         [setattr(self, key, val) for key, val in param_dict.items()]
+        self.log_ref = param_dict["log_ref"]
         self.read_termination = read_termination
         self.write_termination = write_termination
         self._rm = visa.ResourceManager()
 
-    def autofind_address(self) -> None:
+    def autofind_address(self, model: str) -> None:
         """Doc."""
 
         # list all resource addresses
@@ -289,7 +297,7 @@ class PyVISA:
         # 'model_query' the opened devices, and whoever responds is the one
         for idx, inst in enumerate(inst_list):
             try:
-                self.model = inst.query(self.model_query)
+                self.model = inst.query(model)
             except visa.errors.VisaIOError as exc:
                 if exc.abbreviation == "VI_ERROR_RSRC_BUSY":
                     raise IOError(f"{self.log_ref} couldn't be opened - a restart might help!")
@@ -304,12 +312,12 @@ class PyVISA:
             # VisaIOError - this happens if device was disconnected during the autofind process...
             [inst.close() for inst in inst_list]
 
-    def open_inst(self) -> None:
+    def open_instrument(self, model=None) -> None:
         """Doc."""
 
         # auto-find serial connection for depletion laser
-        if hasattr(self, "model_query"):
-            self.autofind_address()
+        if model is not None:
+            self.autofind_address(model)
 
         try:
             # open
@@ -327,8 +335,10 @@ class PyVISA:
             )
         except ValueError:
             raise IOError(f"{self.log_ref} is unplugged or the address ({self.address}) is wrong.")
+        except visa.errors.VisaIOError:
+            raise IOError(f"{self.log_ref} was manually disconnected while opening the instrument.")
 
-    def close_inst(self) -> None:
+    def close_instrument(self) -> None:
         """Doc."""
 
         try:
@@ -373,39 +383,100 @@ class Instrumental:
 
     def __init__(self, param_dict):
         [setattr(self, key, val) for key, val in param_dict.items()]
+        self.log_ref = param_dict["log_ref"]
         self._inst = None
 
-    def init_cam(self):
+        if not list_instruments(module="cameras"):
+            exc = IOError("No UC480 cameras detected.")
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+
+    def open_instrument(self):
         """Doc."""
 
         try:
-            self._inst = uc480.UC480_Camera(reopen_policy="new")
-        except Exception:
-            # general 'Exception' is due to bad error handeling in instrumental-lib...
-            raise uc480.UC480Error(msg="Camera disconnected")
+            self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
+        except Exception as exc:
+            # general 'Exception' is due to bad exception handeling in instrumental-lib...
+            raise IOError(f"{self.log_ref} disconnected - {exc}")
 
-    def close_cam(self):
+    def close_instrument(self):
         """Doc."""
 
         if self._inst is not None:
             self._inst.close()
 
-    def grab_image(self):
+    def toggle_video_mode(self, should_turn_on: bool) -> None:
         """Doc."""
 
-        return self._inst.grab_image()
-
-    def toggle_vid(self, state):
-        """Doc."""
-
-        if state is True:
-            self._inst.start_live_video()
+        try:
+            if should_turn_on:
+                if self.is_auto_exposure_on:
+                    self._inst.start_live_video()
+                    self._inst.set_auto_exposure(True)
+                else:
+                    self._inst.start_live_video(exposure_time=self._inst._get_exposure())
+            else:
+                self._inst.stop_live_video()
+        except uc480.UC480Error:
+            raise IOError(f"{self.log_ref} disconnected after initialization.")
         else:
-            self._inst.stop_live_video()
+            self.is_in_video_mode = should_turn_on
 
-    def get_latest_frame(self):
+    def grab_image(self) -> np.ndarray:
         """Doc."""
 
-        frame_ready = self._inst.wait_for_frame(timeout="0 ms")
-        if frame_ready:
+        try:
+            return self._inst.grab_image(copy=False, exposure_time=self._inst._get_exposure())
+        except uc480.UC480Error:
+            raise IOError(f"{self.log_ref} disconnected after initialization.")
+
+    def get_latest_frame(self) -> np.ndarray:
+        """Doc."""
+
+        try:
             return self._inst.latest_frame(copy=False)
+        except uc480.UC480Error:
+            raise IOError(f"{self.log_ref} disconnected after initialization.")
+
+    def update_parameter_ranges(self):
+        """Doc."""
+
+        *self.pixel_clock_range, _ = tuple(
+            self._inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_GET_RANGE)
+        )
+        self.framerate_range = (1, self._inst.pixelclock._magnitude / 1.6)
+        *self.exposure_range, _ = tuple(
+            self._inst._dev.Exposure(uc480.lib.IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE)
+        )
+
+    def set_parameter(self, name, value) -> None:
+        """Doc."""
+
+        if name not in {"pixel_clock", "framerate", "exposure"}:
+            raise ValueError(f"Unknown parameter '{name}'.")
+
+        valid_value = helper.limit(value, *getattr(self, f"{name}_range"))
+
+        try:
+            if name == "pixel_clock":
+                self._inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_SET, int(valid_value))
+                self.update_parameter_ranges()
+            elif name == "framerate":
+                self._inst._dev.SetFrameRate(valid_value)
+                self.update_parameter_ranges()
+            elif name == "exposure":
+                self._inst._set_exposure(f"{valid_value}ms")
+        except uc480.UC480Error:
+            exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+
+    def set_auto_exposure(self, should_turn_on: bool) -> None:
+        """Doc."""
+
+        try:
+            self._inst.set_auto_exposure(should_turn_on)
+        except uc480.UC480Error:
+            exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.is_auto_exposure_on = should_turn_on

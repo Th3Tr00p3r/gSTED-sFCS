@@ -1,7 +1,7 @@
 """Plotting and image-showing utilities"""
 
-from collections.abc import Iterable
 from contextlib import contextmanager
+from typing import Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -10,7 +10,7 @@ from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
 
 
-class Display:
+class GuiDisplay:
     """Doc."""
 
     def __init__(self, layout, parent=None):
@@ -53,8 +53,11 @@ class Display:
         with self._show_internal_ax(show_axis=False) as ax:
             ax.plot(x, y, "k", lw=0.3)
 
-    def display_image(self, image: np.ndarray, axis=True, cursor=False, *args, **kwargs):
+    def display_image(self, image: np.ndarray, cursor=False, *args, **kwargs):
         """Doc."""
+
+        if not isinstance(image, np.ndarray):
+            raise ValueError("Image must be of type numpy.ndarray")
 
         with self._show_internal_ax(
             fix_aspect=True,
@@ -65,11 +68,11 @@ class Display:
             ax.imshow(image, *args, **kwargs)
 
     def plot_acfs(
-        self, x: (np.ndarray, str), avg_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
+        self, x: Tuple[np.ndarray, str], avg_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
     ):
         """Doc."""
 
-        x, x_type = x
+        x_arr, x_type = x
 
         with self._show_internal_ax() as ax:
             if x_type == "lag":
@@ -85,14 +88,14 @@ class Display:
                     ax.set_ylim(-1e4, 1e4)
             if x_type == "disp":
                 ax.set_yscale("log")
-                x = x ** 2
+                x_arr = x_arr ** 2
                 ax.set_xlim(0, 0.6)
                 ax.set_ylim(g0 * 1.5e-3, g0 * 1.1)
 
             if cf_cr is not None:
                 for row_acf in cf_cr:
-                    ax.plot(x, row_acf)
-            ax.plot(x, avg_cf_cr, "k")
+                    ax.plot(x_arr, row_acf)
+            ax.plot(x_arr, avg_cf_cr, "k")
 
     @contextmanager
     def _show_internal_ax(
@@ -131,6 +134,77 @@ class Display:
                 ax.axis(show_axis)
             self.ax = ax
             self.canvas.draw_idle()
+
+
+class Plotter:
+    """A generalized, hierarchical plotting tool, designed to work as a context manager."""
+
+    AX_SIZE = (3.75, 2.5)
+
+    def __init__(self, **kwargs):
+        self.parent_figure = kwargs.get(
+            "parent_figure"
+        )  # TODO: not currently used. Can possibly be used for implementing subfigures
+        self.parent_ax = kwargs.get("parent_ax")
+        self.subplots = kwargs.get("subplots", (1, 1))
+        self.figsize = kwargs.get("figsize")
+        self.super_title = kwargs.get("super_title")
+        self.should_force_aspect = kwargs.get("should_force_aspect", False)
+        self.fontsize = kwargs.get("fontsize", 14)
+        self.xlim: Tuple[float, float] = kwargs.get("xlim")
+        self.ylim: Tuple[float, float] = kwargs.get("ylim")
+        self.should_autoscale = kwargs.get("should_autoscale", False)
+
+    def __enter__(self):
+        """Prepare the 'axes' object to use in context manager"""
+
+        # dealing with a figure object
+        if self.parent_ax is None:
+            if self.parent_figure is None:  # creating a new figure
+                if self.figsize is None:  # auto-determine size
+                    n_rows, n_cols = self.subplots
+                    ax_width, ax_height = self.AX_SIZE
+                    figsize = (n_cols * ax_width, n_rows * ax_height)
+                self.fig = plt.figure(figsize=figsize, constrained_layout=True)
+                self.axes = self.fig.subplots(*self.subplots)
+                if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
+                    self.axes = np.array([self.axes])
+            else:  # using given figure
+                self.axes = np.array(self.parent_figure.get_axes())
+
+        # dealing with a axes object
+        else:
+            if not hasattr(self.parent_ax, "size"):  # if parent_ax is not an ndarray
+                self.axes = np.array([self.parent_ax])
+            else:
+                self.axes = self.parent_ax
+
+        if self.axes.size == 1:
+            return self.axes[0]  # return a single Axes object
+        else:
+            return self.axes  # return a Numpy ndarray of Axes objects
+
+    def __exit__(self, *exc):
+        """
+        Set axes attributes.
+        Set figure attirbutes and show it, if Plotter is at top of hierarchy.
+        """
+
+        for ax in self.axes.flatten().tolist():  # set ax attributes
+            if self.should_force_aspect:
+                force_aspect(ax, aspect=1)
+            if self.should_autoscale:
+                ax.autoscale()
+            ax.set_xlim(self.xlim)
+            ax.set_ylim(self.ylim)
+            [
+                text.set_fontsize(self.fontsize)
+                for text in [ax.title, ax.xaxis.label, ax.yaxis.label]
+            ]
+
+        if self.parent_ax is None:  # set figure attributes, and show it (dealing with figure)
+            self.fig.suptitle(self.super_title, fontsize=self.fontsize)
+            self.fig.show()
 
 
 class NavigationToolbar(NavigationToolbar2QT):
@@ -268,63 +342,3 @@ def force_aspect(ax, aspect=1) -> None:
     img, *_ = ax.get_images()
     extent = img.get_extent()
     ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
-
-
-@contextmanager
-def show_external_axes(
-    fig=None,
-    subplots=(1, 1),
-    super_title=None,
-    should_force_aspect=False,
-    fontsize=14,
-    xlim=None,
-    ylim=None,
-):
-    """
-    Creates or accepts a Matplotlib figure, and yields a 'matplotlib.axes.Axes' object
-    which is to be manipulated, then shows the figure.
-    """
-
-    if fig is None:
-        fig = plt.figure()
-        axes = fig.subplots(*subplots)
-        if not isinstance(axes, Iterable):
-            axes = np.array([axes])
-    else:
-        axes = np.array(fig.get_axes())
-
-    try:
-        if axes.size == 1:
-            yield axes[0]
-        else:
-            yield axes
-
-    finally:
-
-        axes = axes.flatten().tolist()
-
-        for ax in axes:  # .ravel():
-            if should_force_aspect:
-                force_aspect(ax, aspect=1)
-            if xlim is None:
-                ax.autoscale(enable=True, axis="x")
-            else:
-                ax.set_xlim(xlim)
-            if ylim is None:
-                ax.autoscale(enable=True, axis="y")
-            else:
-                ax.set_ylim(ylim)
-
-            [item.set_fontsize(fontsize) for item in [ax.title, ax.xaxis.label, ax.yaxis.label]]
-        if super_title is not None:
-            fig.suptitle(super_title, fontsize=(fontsize + 2))
-        fig.show()
-
-
-def get_fig_with_axes(subplots=(1, 1)):
-    """Doc."""
-
-    fig = plt.figure()
-    axes = fig.subplots(*subplots)
-
-    return fig, axes

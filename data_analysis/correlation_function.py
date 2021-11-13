@@ -1,28 +1,40 @@
 """Data organization and manipulation."""
 
 import logging
-import os
 import re
 from collections import deque
-from contextlib import contextmanager, suppress
+from contextlib import suppress
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
-from matplotlib import pyplot as plt
-from scipy import ndimage, stats
-from skimage import filters as skifilt
-from skimage import morphology
+import scipy
+import skimage
 
-from data_analysis.photon_data import TDCPhotonData
+from data_analysis.photon_data import (
+    CountsImageMixin,
+    TDCPhotonData,
+    TDCPhotonDataMixin,
+)
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities import display, file_utilities, fit_tools, helper
+from utilities import file_utilities, fit_tools, helper
+from utilities.display import Plotter
 
 
 class CorrFunc:
     """Doc."""
 
-    def __init__(self):
+    def __init__(self, gate_ns):
+        self.gate_ns = gate_ns
         self.lag = []
+        self.countrate_list = []
         self.fit_param = dict()
+        self.run_duration: float
+        self.skipped_duration = 0
+        self.total_duration: float
+        self.afterpulse: np.ndarray
+        self.vt_um: np.ndarray
 
     def average_correlation(
         self,
@@ -31,18 +43,10 @@ class CorrFunc:
         norm_range=(1e-3, 2e-3),
         delete_list=[],
         should_plot=False,
+        plot_kwargs={},
         **kwargs,
     ):
         """Doc."""
-
-        def calc_weighted_avg(cf_cr, weights):
-            """Doc."""
-
-            tot_weights = weights.sum(0)
-            avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
-            error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
-
-            return avg_cf_cr, error_cf_cr
 
         self.rejection = rejection
         self.norm_range = norm_range
@@ -72,7 +76,7 @@ class CorrFunc:
         self.j_bad = delete_list
         self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
-        self.avg_cf_cr, self.error_cf_cr = calc_weighted_avg(
+        self.avg_cf_cr, self.error_cf_cr = _calculate_weighted_avg(
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
@@ -84,17 +88,18 @@ class CorrFunc:
         self.error_normalized = self.error_cf_cr / self.g0
 
         if should_plot:
-            self.plot_correlation_function(**kwargs)
+            self.plot_correlation_function(plot_kwargs=plot_kwargs)
 
     def plot_correlation_function(
         self,
+        parent_ax=None,
         x_field="lag",
         y_field="avg_cf_cr",
         x_scale="log",
         y_scale="linear",
-        fig=None,
         xlim=None,
         ylim=None,
+        plot_kwargs={},
         **kwargs,
     ):
 
@@ -103,28 +108,12 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        with display.show_external_axes(fig, xlim=xlim, ylim=ylim) as ax:
-            try:
-                len(ax)
-            except TypeError:  # single axes, no len property, nothing to do
-                pass
-            else:
-                if len(ax) > 1:  # if has len it must be always above 1, so this
-                    ax = fig.gca()
-            # ax = fig.gca()
+        with Plotter(parent_ax=parent_ax, xlim=xlim, ylim=ylim, should_autoscale=True) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)
-
-            # if 'x_lim' in kwargs:
-            #     ax.set_xlim(kwargs['x_lim'])
-            #     kwargs.pop('x_lim')
-            # if 'y_lim' in kwargs:
-            #     ax.set_ylim(kwargs['x_lim'])
-            #     kwargs.pop('y_lim')
-            ax.plot(x, y, "-", **kwargs)
-            ax.legend(loc="best")
+            ax.plot(x, y, "-", **plot_kwargs)
 
     def fit_correlation_function(
         self,
@@ -164,146 +153,123 @@ class CorrFunc:
 
         self.fit_param[fit_param["func_name"]] = fit_param
 
-    def accumulate(self, sc):
+
+@dataclass
+class CorrFuncAccumulator:
+    """
+    A convecience class for accumulating the outputs of SoftwareCorrelator
+    for a CorrFunc during correlation of measurement data.
+    """
+
+    cf: CorrFunc
+    corrfunc_list: list[np.ndarray] = field(default_factory=list)
+    weights_list: list[np.ndarray] = field(default_factory=list)
+    cf_cr_list: list[np.ndarray] = field(default_factory=list)
+    n_corrfuncs: int = 0
+
+    def __enter__(self):
+        """Initiate a temporary structure for accumulating SoftwareCorrelator outputs."""
+
+        return self
+
+    def __exit__(self, *exc):
+        """Create padded 2D ndarrays from the accumulated lists and delete the accumulator."""
+
+        lag_len = len(self.cf.lag)
+        self.cf.corrfunc, self.cf.weights, self.cf.cf_cr = self.join_and_pad(lag_len)
+
+    def accumulate(self, SC: SoftwareCorrelator):
         """Doc."""
 
-        try:
-            self.corrfunc_list.append(sc.corrfunc)
-            self.weights_list.append(sc.weights)
-            self.cf_cr_list.append(
-                sc.countrate * sc.corrfunc - self.after_pulse[: sc.corrfunc.size]
-            )
-            self.countrate_list.append(sc.countrate)
-        except AttributeError:
-            raise RuntimeError(
-                "Use 'accumulate()' in the context of the 'accumulator()' context manager!"
-            )
+        self.corrfunc_list.append(SC.corrfunc)
+        self.weights_list.append(SC.weights)
+        self.cf_cr_list.append(SC.cf_cr)
+        self.n_corrfuncs += 1
 
-    @contextmanager
-    def accumulator(self):
+    def join_and_pad(self, lag_len: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Doc."""
 
-        self.corrfunc_list = []
-        self.weights_list = []
-        self.cf_cr_list = []
-        self.countrate_list = []
+        shape = (self.n_corrfuncs, lag_len)
+        corrfunc = np.empty(shape=shape, dtype=np.float64)
+        weights = np.empty(shape=shape, dtype=np.float64)
+        cf_cr = np.empty(shape=shape, dtype=np.float64)
+        for idx in range(self.n_corrfuncs):
+            pad_len = lag_len - len(self.corrfunc_list[idx])
+            corrfunc[idx] = np.pad(self.corrfunc_list[idx], (0, pad_len))
+            weights[idx] = np.pad(self.weights_list[idx], (0, pad_len))
+            cf_cr[idx] = np.pad(self.cf_cr_list[idx], (0, pad_len))
 
-        try:
-            yield
-
-        finally:
-            n_corrfuncs = len(self.corrfunc_list)
-            lag_len = len(self.lag)
-            self.corrfunc = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-            self.weights = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-            self.cf_cr = np.empty(shape=(n_corrfuncs, lag_len), dtype=np.float64)
-            for idx in range(n_corrfuncs):
-                pad_len = lag_len - len(self.corrfunc_list[idx])
-                self.corrfunc[idx] = np.pad(self.corrfunc_list[idx], (0, pad_len))
-                self.weights[idx] = np.pad(self.weights_list[idx], (0, pad_len))
-                self.cf_cr[idx] = np.pad(self.cf_cr_list[idx], (0, pad_len))
-
-            self.countrate_list = self.countrate_list
-
-            delattr(self, "corrfunc_list")
-            delattr(self, "weights_list")
-            delattr(self, "cf_cr_list")
-            delattr(self, "countrate_list")
+        return corrfunc, weights, cf_cr
 
 
-class CorrFuncTDC(TDCPhotonData):
+class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     """Doc."""
 
     NAN_PLACEBO = -100
-    DUMP_PATH = "C:/temp_sfcs_data/"
-    SIZE_LIMITS_MB = (500, 1e4)
+    DUMP_PATH = Path("C:/temp_sfcs_data/")
+    SIZE_LIMITS_MB = (100, 1e4)
 
-    def __init__(self):
+    def __init__(self, name=None):
+        self.name = name
         self.data = []  # list to hold the data of each file
         self.cf = dict()
         self.is_data_dumped = False
+        self.scan_type: str
+        self.duration_min: float = None
 
+    @file_utilities.rotate_data_to_disk
     def read_fpga_data(
         self,
-        file_path_template: str,
-        file_selection: str = "",
-        roi_selection: str = "auto",
-        should_fix_shift: bool = False,
-        should_plot: bool = True,
+        file_path_template: Union[str, Path],
+        file_selection: str = None,
+        should_plot=False,
         **kwargs,
-    ):
-        """Doc."""
+    ) -> None:
+        """Processes a complete FCS measurement (multiple files)."""
 
         print("\nLoading FPGA data from hard drive:", end=" ")
-        file_paths = file_utilities.prepare_file_paths(file_path_template, file_selection)
+
+        file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
         n_files = len(file_paths)
-        _, self.template = os.path.split(file_path_template)
+        *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("_[*]", "", self.template)
 
         for idx, file_path in enumerate(file_paths):
+            # Loading file from disk
             print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
             try:
                 file_dict = file_utilities.load_file_dict(file_path)
             except OSError:
-                print("File has not been downloaded fully from cloud! Skipping.\n")
+                print(f"File '{idx+1}' has not been fully downloaded from cloud. Skipping...\n")
                 continue
-            print("Done.")
-
-            full_data = file_dict["full_data"]
-
-            if idx == 0:
-                self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
-                self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
-                self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
-
-            # Circular sFCS
-            if full_data.get("circle_speed_um_s"):
-                self.type = "circular_scan"
-                self.v_um_ms = full_data["circle_speed_um_s"] * 1e-3  # to um/ms
-                raise NotImplementedError("Circular scan analysis not yet implemented...")
-
-            # Angular sFCS
-            elif full_data.get("angular_scan_settings"):
-                if idx == 0:
-                    self.type = "angular_scan"
-                    self.angular_scan_settings = full_data["angular_scan_settings"]
-                    self.LINE_END_ADDER = 1000
-                if (
-                    p := self.process_angular_scan_data(
-                        full_data, idx, should_fix_shift, roi_selection, should_plot
-                    )
-                ) is None:
-                    continue
-
-            # FCS
             else:
-                self.type = "static"
-                if (p := self.process_static_data(full_data, idx, verbose=True)) is None:
-                    continue
+                print("Done.")
 
-            p.file_path = file_path
-            self.data.append(p)
+            # Processing data
+            p = self.process_data(file_dict, idx, verbose=True, **kwargs)
 
-            print(f"Finished processing file No. {idx+1}\n")
+            # Appending data to self
+            if p is not None:
+                p.file_path = file_path
+                self.data.append(p)
+                print(f"Finished processing file No. {idx+1}\n")
 
-        # aggregate images and ROIs for angular sFCS
-        if full_data.get("angular_scan_settings"):
-            self.scan_images_dstack = np.dstack(tuple(p.image for p in self.data))
-            self.roi_list = [p.roi for p in self.data]
-
+        # count the files and ensure there's at least one file
         self.n_files = len(self.data)
-
         if not self.n_files:
             raise RuntimeError(
                 f"Loading FPGA data catastrophically failed ({n_files}/{n_files} files skipped)."
             )
 
+        if self.scan_type == "angular_scan":
+            # aggregate images and ROIs for angular sFCS
+            self.scan_images_dstack = np.dstack(tuple(p.image for p in self.data))
+            self.roi_list = [p.roi for p in self.data]
+
         # calculate average count rate
         self.avg_cnt_rate_khz = sum([p.avg_cnt_rate_khz for p in self.data]) / len(self.data)
 
-        if full_data.get("duration_s") is not None:
-            self.duration_min = full_data["duration_s"] / 60
-        else:
+        if self.duration_min is None:
             # calculate duration if not supplied
             self.duration_min = (
                 np.mean([np.diff(p.runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
@@ -312,17 +278,67 @@ class CorrFuncTDC(TDCPhotonData):
 
         print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
 
-    def process_static_data(self, full_data, idx, **kwargs):
+        # plotting of scan image and ROI
+        if should_plot:
+            print("Displaying scan images...", end=" ")
+            with Plotter(subplots=(1, n_files), should_force_aspect=True) as axes:
+                if not hasattr(
+                    axes, "size"
+                ):  # if axes is not an ndarray (only happens if reding just one file)
+                    axes = np.array([axes])
+                for idx, (ax, image, roi) in enumerate(
+                    zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
+                ):
+                    ax.set_title(f"file #{idx+1} of '{self.name}' measurement")
+                    ax.set_xlabel("Pixel Number")
+                    ax.set_ylabel("Line Number")
+                    ax.imshow(image)
+                    ax.plot(roi["col"], roi["row"], color="white")
+            print("Done.\n")
+
+    def process_data(self, file_dict: dict, idx: int = 0, **kwargs) -> TDCPhotonData:
         """Doc."""
 
-        print("Converting raw data to photons...", end=" ")
+        full_data = file_dict["full_data"]
+
+        if idx == 0:
+            self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
+            self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
+            self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
+            with suppress(KeyError):
+                self.duration_min = full_data["duration_s"] / 60
+
+        # Circular sFCS
+        if full_data.get("circle_speed_um_s"):
+            self.scan_type = "circular_scan"
+            self.v_um_ms = full_data["circle_speed_um_s"] * 1e-3  # to um/ms
+            raise NotImplementedError("Circular scan analysis not yet implemented...")
+
+        # Angular sFCS
+        elif full_data.get("angular_scan_settings"):
+            if idx == 0:
+                self.scan_type = "angular_scan"
+                self.angular_scan_settings = full_data["angular_scan_settings"]
+                self.LINE_END_ADDER = 1000
+            return self.process_angular_scan_data(full_data, idx, **kwargs)
+
+        # FCS
+        else:
+            self.scan_type = "static"
+            return self.process_static_data(full_data, idx, **kwargs)
+
+    def process_static_data(self, full_data, idx, **kwargs) -> TDCPhotonData:
+        """
+        Processes a single static FCS data file ('full_data').
+        Returns the processed results as a 'TDCPhotonData' object.
+        '"""
+
         p = self.convert_fpga_data_to_photons(
             full_data["byte_data"],
             version=full_data["version"],
             locate_outliers=True,
             **kwargs,
         )
-        print("Done.")
 
         p.file_num = idx + 1
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
@@ -330,15 +346,21 @@ class CorrFuncTDC(TDCPhotonData):
         return p
 
     def process_angular_scan_data(
-        self, full_data, idx, should_fix_shift, roi_selection, should_plot
-    ):
-        """Doc."""
+        self,
+        full_data,
+        idx,
+        should_fix_shift=True,
+        roi_selection="auto",
+        **kwargs,
+    ) -> TDCPhotonData:
+        """
+        Processes a single angular sFCS data file ('full_data').
+        Returns the processed results as a 'TDCPhotonData' object.
+        '"""
 
-        print("Converting raw data to photons...", end=" ")
         p = self.convert_fpga_data_to_photons(
             full_data["byte_data"], version=full_data["version"], verbose=True
         )
-        print("Done.")
 
         p.file_num = idx + 1
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
@@ -353,14 +375,14 @@ class CorrFuncTDC(TDCPhotonData):
         print("Converting angular scan to image...", end=" ")
 
         runtime = p.runtime
-        cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
+        cnt, n_pix_tot, n_pix, line_num = _convert_angular_scan_to_image(
             runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
         )
 
         if should_fix_shift:
-            pix_shift = fix_data_shift(cnt)
+            pix_shift = _fix_data_shift(cnt)
             runtime = p.runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
-            cnt, n_pix_tot, n_pix, line_num = convert_angular_scan_to_image(
+            cnt, n_pix_tot, n_pix, line_num = _convert_angular_scan_to_image(
                 runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
             )
             print(f"Shifted by {pix_shift} pixels. Done.")
@@ -375,12 +397,14 @@ class CorrFuncTDC(TDCPhotonData):
         if roi_selection == "auto":
             print("automatic. Thresholding and smoothing...", end=" ")
             try:
-                bw = threshold_and_smooth(cnt)
+                bw = _threshold_and_smooth(cnt)
             except ValueError:
                 print("Thresholding failed, skipping file.")
                 return None
         else:
-            raise NotImplementedError(f"roi_selection={roi_selection} is not implemented.")
+            raise ValueError(
+                f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
+            )
 
         # cut edges
         bw_temp = np.full(bw.shape, False, dtype=bool)
@@ -400,7 +424,7 @@ class CorrFuncTDC(TDCPhotonData):
         line_stops = []
         line_start_lables = []
         line_stop_labels = []
-        roi = {"row": deque([]), "col": deque([])}
+        roi: Dict[str, deque] = {"row": deque([]), "col": deque([])}
 
         bw_rows, _ = bw.shape
         for row_idx in range(bw_rows):
@@ -444,13 +468,12 @@ class CorrFuncTDC(TDCPhotonData):
 
         print("Done.")
 
-        runtime_line_starts = line_starts * round(self.laser_freq_hz / sample_freq_hz)
-        runtime_line_stops = line_stops * round(self.laser_freq_hz / sample_freq_hz)
+        runtime_line_starts: np.ndarray = line_starts * round(self.laser_freq_hz / sample_freq_hz)
+        runtime_line_stops: np.ndarray = line_stops * round(self.laser_freq_hz / sample_freq_hz)
 
         runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
         sorted_idxs = np.argsort(runtime)
         p.runtime = runtime[sorted_idxs]
-        p.time_stamps = np.diff(p.runtime).astype(np.int32)
         p.line_num = np.hstack(
             (
                 line_start_lables,
@@ -483,15 +506,6 @@ class CorrFuncTDC(TDCPhotonData):
         p.image = cnt
         p.roi = roi
 
-        # plotting of scan image and ROI
-        if should_plot:
-            with display.show_external_axes(should_force_aspect=True) as ax:
-                ax.set_title(f"file No. {p.file_num} of {self.template}")
-                ax.set_xlabel("Pixel Number")
-                ax.set_ylabel("Line Number")
-                ax.imshow(cnt)
-                ax.plot(roi["col"], roi["row"], color="white")
-
         # reverse rows again
         bw[1::2, :] = np.flip(bw[1::2, :], 1)
         p.bw_mask = bw
@@ -499,32 +513,41 @@ class CorrFuncTDC(TDCPhotonData):
         # get image line correlation to subtract trends
         img = p.image * p.bw_mask
 
-        p.image_line_corr = line_correlations(img, p.bw_mask, roi, sample_freq_hz)
+        p.image_line_corr = _line_correlations(img, p.bw_mask, roi, sample_freq_hz)
 
         return p
 
     def correlate_and_average(self, **kwargs):
-        """Doc."""
+        """High level function for correlating and averaging any data."""
 
-        cf = self.correlate_data(**kwargs)
-        cf.average_correlation(**kwargs)
+        CF = self.correlate_data(**kwargs)
+        CF.average_correlation(**kwargs)
 
     @file_utilities.rotate_data_to_disk
-    def correlate_data(self, **kwargs):
-        """Doc."""
+    def correlate_data(self, cf_name=None, **kwargs):
+        """
+        High level function for correlating any type of data (e.g. static, angular scan...)
+        Returns a 'CorrFunc' object.
+        Data attribute is possibly rotated from/to disk.
+        """
 
-        if hasattr(self, "angular_scan_settings"):
-            cf = self.correlate_angular_scan_data(**kwargs)
+        if self.scan_type == "angular_scan":
+            CF = self.correlate_angular_scan_data(**kwargs)
+        elif self.scan_type == "circular_scan":
+            CF = self.correlate_circular_scan_data(**kwargs)
+        elif self.scan_type == "static":
+            CF = self.correlate_static_data(**kwargs)
         else:
-            cf = self.correlate_static_data(**kwargs)
+            raise NotImplementedError(
+                f"Correlating data of type '{self.scan_type}' is not implemented."
+            )
 
-        if "cf_name" in kwargs:
-            cf_name = kwargs["cf_name"]
+        if cf_name is not None:
+            self.cf[cf_name] = CF
         else:
-            cf_name = f"gate {cf.gate_ns}"
-        self.cf[cf_name] = cf
+            self.cf[f"gate {CF.gate_ns}"] = CF
 
-        return cf
+        return CF
 
     def correlate_static_data(
         self,
@@ -532,10 +555,11 @@ class CorrFuncTDC(TDCPhotonData):
         run_duration=None,
         min_time_frac=0.5,
         n_runs_requested=60,
+        subtract_afterpulse=True,
         verbose=False,
         **kwargs,
-    ):
-        """Correlates Data for static FCS"""
+    ) -> CorrFunc:
+        """Correlates data for static FCS. Returns a CorrFunc object"""
 
         if verbose:
             print(f"Correlating {self.template}:", end=" ")
@@ -546,7 +570,8 @@ class CorrFuncTDC(TDCPhotonData):
             else:  # auto determine
                 total_duration_estimate = 0
                 for p in self.data:
-                    mu = np.median(p.time_stamps) / np.log(2)
+                    time_stamps = np.diff(p.runtime).astype(np.int32)
+                    mu = np.median(time_stamps) / np.log(2)
                     total_duration_estimate = (
                         total_duration_estimate + mu * len(p.runtime) / self.laser_freq_hz
                     )
@@ -556,13 +581,10 @@ class CorrFuncTDC(TDCPhotonData):
         duration = []
 
         SC = SoftwareCorrelator()
-
-        CF = CorrFunc()
+        CF = CorrFunc(gate_ns)
         CF.run_duration = run_duration
-        CF.skipped_duration = 0
-        CF.gate_ns = gate_ns
 
-        with CF.accumulator():
+        with CorrFuncAccumulator(CF) as Accumulator:
             for p in self.data:
 
                 if verbose:
@@ -574,7 +596,7 @@ class CorrFuncTDC(TDCPhotonData):
                     if segment_time < min_time_frac * run_duration:
                         if verbose:
                             print(
-                                f"Duration of segment No. {se_idx} of file No. {p.file_num} ({segment_time:.2f}s) is too short. Skipping segment...",
+                                f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time:.2f}s).",
                                 end=" ",
                             )
                         CF.skipped_duration += segment_time
@@ -585,11 +607,12 @@ class CorrFuncTDC(TDCPhotonData):
                     # Gating
                     if hasattr(p, "delay_time"):
                         delay_time = p.delay_time[se_start : se_end + 1]
+                        lower_gate_ns, upper_gate_ns = CF.gate_ns
                         j_gate = np.logical_and(
-                            delay_time >= CF.gate_ns[0], delay_time <= CF.gate_ns[1]
+                            delay_time >= lower_gate_ns, delay_time <= upper_gate_ns
                         )
                         runtime = runtime[j_gate]
-                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
+                    #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
                     elif gate_ns != (0, np.inf):
                         raise RuntimeError("For gating, TDC must first be calibrated!")
 
@@ -602,74 +625,81 @@ class CorrFuncTDC(TDCPhotonData):
 
                         ts_split = time_stamps[splits[k] : splits[k + 1]]
                         duration.append(ts_split.sum() / self.laser_freq_hz)
-                        SC.soft_cross_correlate(
+                        SC.correlate(
                             ts_split,
                             CorrelatorType.PH_DELAY_CORRELATOR,
                             timebase_ms=1000 / self.laser_freq_hz,
                         )  # time base of 20MHz to ms
 
-                        gate_to_laser_pulses = np.min(
-                            [1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9]
-                        )
                         if len(CF.lag) < len(SC.lag):
                             CF.lag = SC.lag
-                            if self.after_pulse_param[0] == "multi_exponent_fit":
-                                # work with any number of exponents
-                                beta = self.after_pulse_param[1]
-                                CF.after_pulse = gate_to_laser_pulses * np.dot(
-                                    beta[::2], np.exp(-np.outer(beta[1::2], CF.lag))
-                                )
+                            CF.afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
+
+                        # subtract afterpulse
+                        if subtract_afterpulse:
+                            SC.cf_cr = (
+                                SC.countrate * SC.corrfunc - CF.afterpulse[: SC.corrfunc.size]
+                            )
+                        else:
+                            SC.cf_cr = SC.countrate * SC.corrfunc
 
                         # Append new correlation functions
-                        CF.accumulate(SC)
+                        Accumulator.accumulate(SC)
 
         CF.total_duration = sum(duration)
 
         if verbose:
             if CF.skipped_duration:
-                skipped_ratio = CF.skipped_duration / CF.total_duration
-                print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
+                try:
+                    skipped_ratio = CF.skipped_duration / CF.total_duration
+                except RuntimeWarning:
+                    # CF.total_duration = 0
+                    print("Whole measurement was skipped! Something's wrong...", end=" ")
+                else:
+                    print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
             print("- Done.")
 
         return CF
 
     def correlate_angular_scan_data(
-        self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
-    ):
-        """Correlates data for angular scans"""
+        self,
+        gate_ns=(0, np.inf),
+        min_time_frac=0.5,
+        subtract_bg_corr=True,
+        subtract_afterpulse=True,
+        **kwargs,
+    ) -> CorrFunc:
+        """Correlates data for angular scans. Returns a CorrFunc object"""
 
         print(f"Correlating angular scan data '{self.template}':", end=" ")
 
-        self.min_duration_frac = min_time_frac
+        self.min_duration_frac = min_time_frac  # TODO: not used?
         duration = []
 
         SC = SoftwareCorrelator()
+        CF = CorrFunc(gate_ns)
 
-        CF = CorrFunc()
-        CF.lag = []
-        CF.skipped_duration = 0
-        CF.gate_ns = gate_ns
-
-        with CF.accumulator():
-
+        with CorrFuncAccumulator(CF) as Accumulator:
             for p in self.data:
                 print(f"({p.file_num})", end=" ")
                 line_num = p.line_num
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
-                runtm = p.runtime
                 if hasattr(p, "delay_time"):
-                    delaytm = p.delay_time
-                    Jgate = np.logical_or(
-                        np.logical_and(delaytm >= CF.gate_ns[0], delaytm <= CF.gate_ns[1]),
-                        delaytm == np.nan,
+                    lower_gate_ns, upper_gate_ns = CF.gate_ns
+                    j_gate = ((p.delay_time >= lower_gate_ns) & (p.delay_time <= upper_gate_ns)) | (
+                        p.delay_time == np.nan
                     )
-                    runtm = runtm[Jgate]
-                    delaytm = delaytm[Jgate]
-                    line_num = line_num[Jgate]
+                    runtime = p.runtime[j_gate]
+                    #                    delay_time = delay_time[j_gate] # TODO: not uesed
+                    line_num = p.line_num[j_gate]
                 elif gate_ns != (0, np.inf):
-                    raise RuntimeError("For gating you need to run TDCcalibration first")
+                    raise RuntimeError(
+                        f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
+                    )
+                else:
+                    runtime = p.runtime
 
-                time_stamps = np.diff(runtm).astype(np.int32)
+                time_stamps = np.diff(runtime).astype(np.int32)
                 for line_idx, j in enumerate(range(min_line, max_line + 1)):
                     valid = (line_num == j).astype(np.int8)
                     valid[line_num == -j] = -1
@@ -706,7 +736,7 @@ class CorrFuncTDC(TDCPhotonData):
                     duration.append(dur)
                     ts_split = np.vstack((timest, valid))
 
-                    SC.soft_cross_correlate(
+                    SC.correlate(
                         ts_split,
                         CorrelatorType.PH_DELAY_CORRELATOR_LINES,
                         # time base of 20MHz to ms
@@ -727,20 +757,30 @@ class CorrFuncTDC(TDCPhotonData):
 
                     if len(CF.lag) < len(SC.lag):
                         CF.lag = SC.lag
-                        CF.after_pulse = self.calculate_afterpulse(gate_ns, CF.lag)
+                        CF.afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
 
-                    # append new corrfunc, weights, cf_cr and countrate to inner lists
-                    CF.accumulate(SC)
+                    # subtract afterpulse
+                    if subtract_afterpulse:
+                        SC.cf_cr = SC.countrate * SC.corrfunc - CF.afterpulse[: SC.corrfunc.size]
+                    else:
+                        SC.cf_cr = SC.countrate * SC.corrfunc
+
+                    # Append new correlation functions
+                    Accumulator.accumulate(SC)
 
         CF.vt_um = self.v_um_ms * CF.lag
         CF.total_duration = sum(duration)
 
-        if CF.skipped_duration:
-            skipped_ratio = CF.skipped_duration / CF.total_duration
-            print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
         print("- Done.")
 
         return CF
+
+    def correlate_circular_scan_data(
+        self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
+    ) -> CorrFunc:
+        """Correlates data for circular scans. Returns a CorrFunc object"""
+
+        raise NotImplementedError("Correlation of circular scan data not yet implemented.")
 
     def plot_correlation_functions(
         self,
@@ -748,46 +788,59 @@ class CorrFuncTDC(TDCPhotonData):
         y_field="normalized",
         x_scale="log",
         y_scale="linear",
-        fig=None,
-        xlim=None,
-        ylim=None,
+        parent_figure=None,
+        parent_ax=None,
+        ylim=(-0.20, 1.4),
+        plot_kwargs={},
         **kwargs,
-    ):
+    ) -> List[str]:
+        """Doc."""
 
-        if fig is None:
-            fig, _ = display.get_fig_with_axes()
+        with Plotter(
+            parent_figure=parent_figure,
+            parent_ax=parent_ax,
+            super_title=f"'{self.name}' - ACFs",
+        ) as ax:
+            legend_labels = []
+            for cf_name, cf in self.cf.items():
+                cf.plot_correlation_function(
+                    parent_ax=ax,
+                    x_field=x_field,
+                    y_field=y_field,
+                    x_scale=x_scale,
+                    y_scale=y_scale,
+                    ylim=ylim,
+                    plot_kwargs=plot_kwargs,
+                    **kwargs,
+                )
+                legend_labels.append(cf_name)
+            ax.legend(legend_labels)
 
-        for cf_name, cf in self.cf.items():
-            cf.plot_correlation_function(
-                x_field,
-                y_field,
-                x_scale,
-                y_scale,
-                label=cf_name,
-                fig=fig,
-                xlim=xlim,
-                ylim=ylim,
-                **kwargs,
-            )
+        return legend_labels
 
-    def calculate_afterpulse(self, gate_ns, lag):
-        gate_to_laser_pulses = np.min([1, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
+    def calculate_afterpulse(self, gate_ns, lag) -> np.ndarray:
+        """Doc."""
+
+        gate_to_laser_pulses = min([1.0, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
         if self.after_pulse_param[0] == "multi_exponent_fit":
             # work with any number of exponents
             beta = self.after_pulse_param[1]
-            after_pulse = gate_to_laser_pulses * np.dot(
+            afterpulse = gate_to_laser_pulses * np.dot(
                 beta[::2], np.exp(-np.outer(beta[1::2], lag))
             )
         elif self.after_pulse_param[0] == "exponent_of_polynom_of_log":  # for old MATLAB files
             beta = self.after_pulse_param[1]
             if lag[0] == 0:
                 lag[0] = np.nan
-            after_pulse = gate_to_laser_pulses * np.exp(np.polyval(beta, np.log(lag)))
+            afterpulse = gate_to_laser_pulses * np.exp(np.polyval(beta, np.log(lag)))
 
-        return after_pulse
+        return afterpulse
 
     def dump_or_load_data(self, should_load: bool):
-        """Doc."""
+        """
+        Load or save the 'data' attribute.
+        (relieve RAM - important during multiple-experiment analysis)
+        """
 
         with suppress(AttributeError):
             # AttributeError - name_on_disk is not defined (happens when doing alignment, for example)
@@ -797,13 +850,14 @@ class CorrFuncTDC(TDCPhotonData):
                         f"Loading dumped data '{self.name_on_disk}' from '{self.DUMP_PATH}'."
                     )
                     with suppress(FileNotFoundError):
-                        self.data = file_utilities.load_pkl(
-                            os.path.join(self.DUMP_PATH + self.name_on_disk)
-                        )
+                        self.data = file_utilities.load_file(self.DUMP_PATH / self.name_on_disk)
                         self.is_data_dumped = False
             else:  # dumping data
                 is_saved = file_utilities.save_object_to_disk(
-                    self.data, self.DUMP_PATH, self.name_on_disk, size_limits_mb=self.SIZE_LIMITS_MB
+                    self.data,
+                    self.DUMP_PATH / self.name_on_disk,
+                    size_limits_mb=self.SIZE_LIMITS_MB,
+                    compression_method=None,
                 )
                 if is_saved:
                     self.data = []
@@ -811,67 +865,196 @@ class CorrFuncTDC(TDCPhotonData):
                     logging.debug(f"Dumped data '{self.name_on_disk}' to '{self.DUMP_PATH}'.")
 
 
-#        file_utilities.deep_size_estimate(self)  # TESTESTEST - show 'self' sizes after loading or dumping 'self.data'
+class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
+    """Doc."""
+
+    def __init__(self):
+        pass
+
+    def read_image_data(self, file_path, **kwargs) -> None:
+        """Doc."""
+
+        file_dict = file_utilities.load_file_dict(file_path)
+        self.process_data(file_dict, **kwargs)
+
+    def process_data(self, file_dict: dict, **kwargs) -> None:
+        """Doc."""
+
+        # store relevant attributes (add more as needed)
+        self.laser_mode = file_dict.get("laser_mode")
+        self.scan_params = file_dict.get("scan_params")
+
+        # Get ungated image (excitation or sted)
+        self.image_data = self.create_image_stack_data(file_dict)
+
+        # gating stuff (TDC) - not yet implemented
+        self.data = None
 
 
 class SFCSExperiment:
     """Doc."""
 
     def __init__(self, name=None, **kwargs):
-        self.confocal = CorrFuncTDC()
-        self.sted = CorrFuncTDC()
+        self.confocal = SolutionSFCSMeasurement(name="confocal")
+        self.sted = SolutionSFCSMeasurement(name="STED")
         self.name = name
+
+    def load_experiment(
+        self,
+        confocal_template: Union[str, Path] = None,
+        sted_template: Union[str, Path] = None,
+        should_plot=False,
+        **kwargs,
+    ):
+        """Doc."""
+
+        if confocal_template is None and sted_template is None:
+            raise RuntimeError("Can't load experiment with no measurements!")
+
+        if confocal_template is not None:
+            self.load_measurement(
+                meas_type="confocal",
+                file_path_template=confocal_template,
+                should_plot=should_plot,
+                **kwargs,
+            )
+        if sted_template is not None:
+            self.load_measurement(
+                meas_type="sted",
+                file_path_template=sted_template,
+                should_plot=should_plot,
+                **kwargs,
+            )
+
+        if should_plot:
+            super_title = f"Experiment '{self.name}' - All ACFs"
+            with Plotter(subplots=(1, 2), super_title=super_title) as axes:
+                self.plot_correlation_functions(
+                    parent_ax=axes[0],
+                    x_field="vt_um",
+                    y_field="avg_cf_cr",
+                    x_scale="log",
+                    y_scale="linear",
+                )
+
+                self.plot_correlation_functions(
+                    parent_ax=axes[1],
+                    x_field="vt_um",
+                    y_field="normalized",
+                    x_scale="linear",
+                    y_scale="linear",
+                    xlim=(0, 1),
+                )
 
     def load_measurement(
         self,
-        scanName: str = "confocal",  # or sted
-        file_path_template: str = "",
-        file_selection: str = "",
-        should_plot=True,
+        meas_type: str,
+        file_path_template: Union[str, Path],
+        should_plot: bool = False,
+        plot_kwargs: dict = {},
         **kwargs,
     ):
 
-        scan = getattr(self, scanName)
-        file_paths = file_path_template + file_selection
-        if "should_fix_shift" not in kwargs:
-            if file_paths[-4:] == ".mat":  # old Matlab data need a fix shift by default
-                should_fix_shift = True
-            else:
-                should_fix_shift = False
-        else:
+        measurement = getattr(self, meas_type)
+        if "should_fix_shift" in kwargs:
             should_fix_shift = kwargs["should_fix_shift"]
-        kwargs.pop("should_fix_shift")
+            kwargs.pop("should_fix_shift")
+        else:
+            should_fix_shift = True
 
         if "cf_name" not in kwargs:
-            if scanName == "confocal":
+            if meas_type == "confocal":
                 kwargs["cf_name"] = "Confocal"
             else:  # sted
                 kwargs["cf_name"] = "CW STED"
         cf_name = kwargs["cf_name"]
 
-        scan.read_fpga_data(
-            file_paths, should_fix_shift=should_fix_shift, should_plot=should_plot, **kwargs
+        file_selection = kwargs.get(f"{meas_type}_file_selection")
+
+        measurement.read_fpga_data(
+            file_path_template,
+            should_fix_shift=should_fix_shift,
+            should_plot=should_plot,
+            file_selection=file_selection,
+            **kwargs,
         )
 
-        if "x_field" not in kwargs:
-            if scan.type == "static":
-                kwargs["x_field"] = "lag"
+        if (x_field := kwargs.get("x_field")) is None:
+            if measurement.scan_type == "static":
+                x_field = "lag"
             else:  # angular or circular scan
-                kwargs["x_field"] = "vt_um"
+                x_field = "vt_um"
 
-        scan.correlate_and_average(**kwargs)
+        measurement.correlate_and_average(**kwargs)
 
         ignoresForPlot = {"cf_name"}
         for paramName in ignoresForPlot:
             kwargs.pop(paramName)
 
         if should_plot:
-            fig, _ = display.get_fig_with_axes()
-            scan.cf[cf_name].plot_correlation_function(
-                y_field="average_all_cf_cr", label="average_all_cf_cr", fig=fig, **kwargs
+            super_title = f"'{self.name}' Experiment\n'{measurement.name}' Measurement - ACFs"
+            with Plotter(super_title=super_title) as ax:
+                measurement.cf[cf_name].plot_correlation_function(
+                    parent_ax=ax,
+                    y_field="average_all_cf_cr",
+                    x_field=x_field,
+                    plot_kwargs=plot_kwargs,
+                )
+                measurement.cf[cf_name].plot_correlation_function(
+                    parent_ax=ax, y_field="avg_cf_cr", x_field=x_field, plot_kwargs=plot_kwargs
+                )
+                ax.legend(["average_all_cf_cr", "avg_cf_cr"])
+
+    def calibrate_tdc(self, should_plot=False, **kwargs):
+        """Doc."""
+
+        if hasattr(self.confocal, "scan_type"):  # if confocal maesurement quacks as if loaded
+            super_title = f"'{self.name}' Experiment\nTDC Calibration"
+            with Plotter(subplots=(2, 4), super_title=super_title) as axes:
+                self.confocal.calibrate_tdc(
+                    should_plot=should_plot, parent_axes=axes[:, :2], **kwargs
+                )
+                kwargs["sync_coarse_time_to"] = self.confocal  # sync sted to confocal
+                if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
+                    self.sted.calibrate_tdc(
+                        should_plot=should_plot, parent_axes=axes[:, 2:], **kwargs
+                    )
+
+                if should_plot:
+                    self.compare_lifetimes(**kwargs)
+
+        else:
+            raise RuntimeError(
+                "Cannot calibrate TDC if confocal measurement is not loaded to the experiment!"
             )
-            scan.cf[cf_name].plot_correlation_function(
-                y_field="avg_cf_cr", label="avg_cf_cr", fig=fig, **kwargs
+
+    def compare_lifetimes(
+        self,
+        normalization_type="Per Time",
+        **kwargs,
+    ):
+        """Doc."""
+
+        if hasattr(self.confocal, "tdc_calib"):  # if TDC calibration performed
+            super_title = f"'{self.name}' Experiment\nLifetime Comparison"
+            with Plotter(super_title=super_title) as ax:
+                self.confocal.compare_lifetimes(
+                    "confocal",
+                    compare_to=dict(STED=self.sted),
+                    normalization_type=normalization_type,
+                    parent_ax=ax,
+                )
+
+    def add_gate(self, gate_ns, should_plot=False, **kwargs):
+        """Doc."""
+
+        if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
+            self.sted.correlate_and_average(gate_ns=gate_ns, **kwargs)
+            if should_plot:
+                self.plot_correlation_functions()
+        else:
+            raise RuntimeError(
+                "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
     def plot_correlation_functions(
@@ -880,139 +1063,52 @@ class SFCSExperiment:
         y_field="normalized",
         x_scale="linear",
         y_scale="linear",
-        fig=None,
+        parent_figure=None,
+        parent_ax=None,
         xlim=None,
         ylim=None,
+        plot_kwargs={},
         **kwargs,
     ):
-        if self.confocal.type == "static":
+        if self.confocal.scan_type == "static":
             x_field = "lag"
 
         if (x_scale == "linear") and (xlim is None) and (x_field == "vt_um"):
             xlim = (0, 1)
 
-        if fig is None:
-            fig, _ = display.get_fig_with_axes()
+        if y_field in {"average_all_cf_cr", "avg_cf_cr"}:
+            ylim = None  # will autoscale y
+        elif y_field == "normalized":
+            ylim = (-0.20, 1.4)
 
-        if len(self.confocal.cf) > 0:
-            self.confocal.plot_correlation_functions(
-                x_field, y_field, x_scale, y_scale, fig=fig, xlim=xlim, ylim=ylim, **kwargs
+        super_title = f"'{self.name}' Experiment - All ACFs"
+        with Plotter(
+            parent_figure=parent_figure, parent_ax=parent_ax, super_title=super_title
+        ) as ax:
+            confocal_legend_labels = self.confocal.plot_correlation_functions(
+                parent_ax=ax,
+                x_field=x_field,
+                y_field=y_field,
+                x_scale=x_scale,
+                y_scale=y_scale,
+                xlim=xlim,
+                ylim=ylim,
+                plot_kwargs=plot_kwargs,
             )
-
-        if len(self.sted.cf) > 0:
-            self.sted.plot_correlation_functions(
-                x_field, y_field, x_scale, y_scale, fig=fig, xlim=xlim, ylim=ylim, **kwargs
+            sted_legend_labels = self.sted.plot_correlation_functions(
+                parent_ax=ax,
+                x_field=x_field,
+                y_field=y_field,
+                x_scale=x_scale,
+                y_scale=y_scale,
+                xlim=xlim,
+                ylim=ylim,
+                plot_kwargs=plot_kwargs,
             )
-
-    def load_experiment(
-        self,
-        confocal: str = "",  # file_path_template to confocal
-        sted: str = "",  # file_path_template to sted
-        should_plot=True,
-        **kwargs,
-    ):
-        if len(confocal) > 0:
-            self.load_measurement(
-                scanName="confocal", file_path_template=confocal, should_plot=should_plot, **kwargs
-            )
-        if len(sted) > 0:
-            self.load_measurement(
-                scanName="sted", file_path_template=sted, should_plot=should_plot, **kwargs
-            )
-
-        if should_plot and (len(confocal) > 0) and (len(sted) > 0):  # there is something to compare
-            fig, axs = plt.subplots(1, 2)
-            # fig, _ = display.get_fig_with_axes()
-            # with display.show_external_axes(fig = fig, subplots=(1, 2)) as axs:
-            fig.sca(axs[0])
-            self.plot_correlation_functions(
-                x_field="vt_um", y_field="avg_cf_cr", x_scale="log", y_scale="linear", fig=fig
-            )
-
-            fig.sca(axs[1])
-            self.plot_correlation_functions(
-                x_field="vt_um",
-                y_field="normalized",
-                x_scale="linear",
-                y_scale="linear",
-                xlim=(0, 1),
-                fig=fig,
-            )
-            fig.show()
-
-    def calibrate_tdc(
-        self,
-        tdc_chain_length=128,
-        pick_valid_bins_method="auto",
-        pick_calib_bins_method="auto",
-        calib_time_s=40e-9,
-        n_zeros_for_fine_bounds=10,
-        fine_shift=0,
-        time_bins_for_hist_ns=0.1,
-        exmpl_photon_data=None,
-        sync_coarse_time_to=None,
-        forced_valid_coarse_bins=np.arange(19),
-        forced_calibration_coarse_bins=np.arange(3, 12),
-        should_plot=True,
-    ):
-        if (len(self.confocal.data) > 0) or (self.confocal.is_data_dumped):
-            self.confocal.calibrate_tdc(
-                tdc_chain_length,
-                pick_valid_bins_method,
-                pick_calib_bins_method,
-                calib_time_s,
-                n_zeros_for_fine_bounds,
-                fine_shift,
-                time_bins_for_hist_ns,
-                exmpl_photon_data,
-                sync_coarse_time_to,
-                forced_valid_coarse_bins,
-                forced_calibration_coarse_bins,
-                should_plot,
-            )
-            sync_coarse_time_to = self.confocal  # sync sted to confocal
-
-        if (len(self.sted.data) > 0) or (self.sted.is_data_dumped):
-            self.sted.calibrate_tdc(
-                tdc_chain_length,
-                pick_valid_bins_method,
-                pick_calib_bins_method,
-                calib_time_s,
-                n_zeros_for_fine_bounds,
-                fine_shift,
-                time_bins_for_hist_ns,
-                exmpl_photon_data,
-                sync_coarse_time_to,
-                forced_valid_coarse_bins,
-                forced_calibration_coarse_bins,
-                should_plot,
-            )
-
-        if should_plot:
-            self.compare_lifetimes()
-
-    def compare_lifetimes(
-        self,
-        normalization_type="Per Time",
-        legend_label=None,
-        fontsize=14,
-        **kwargs,
-    ):
-        if hasattr(self.confocal, "tdc_calib"):
-            self.confocal.compare_lifetimes(
-                normalization_type, legend_label="confocal", fontsize=fontsize, STED=self.sted
-            )
-        # fig = plt.gcf()
-        # if hasattr(self.sted, 'tdc_calib'):
-        #     self.sted.compare_lifetimes(normalization_type, legend_label='STED', fontsize = fontsize)
-
-    def add_gate(self, meas_type="sted", gate_ns=(0, np.inf), **kwargs):
-        CF_TDC = getattr(self, meas_type)
-        CF_TDC.correlate_and_average(gate_ns=gate_ns, **kwargs)
-        self.plot_correlation_functions()
+            ax.legend(confocal_legend_labels + sted_legend_labels)
 
 
-def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
+def _convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
     """utility function for opening Angular Scans"""
 
     n_pix_tot = runtime * sample_freq_hz // laser_freq_hz
@@ -1030,18 +1126,19 @@ def convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_to
     return img, n_pix_tot, n_pix, line_num
 
 
-def fix_data_shift(cnt) -> int:
+def _get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
     """Doc."""
 
-    def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
-        """Doc."""
+    score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
+    pix_shifts = np.arange(min_shift, max_shift)
+    for idx, pix_shift in enumerate(range(min_shift, max_shift)):
+        rolled_img = np.roll(img, pix_shift).astype(np.uint32)
+        score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
+    return pix_shifts[score.argmin()]
 
-        score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
-        pix_shifts = np.arange(min_shift, max_shift)
-        for idx, pix_shift in enumerate(range(min_shift, max_shift)):
-            rolled_img = np.roll(img, pix_shift).astype(np.uint32)
-            score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
-        return pix_shifts[score.argmin()]
+
+def _fix_data_shift(cnt) -> int:
+    """Doc."""
 
     print("Fixing line shift...", end=" ")
 
@@ -1049,7 +1146,7 @@ def fix_data_shift(cnt) -> int:
 
     min_pix_shift = -round(width / 2)
     max_pix_shift = min_pix_shift + width + 1
-    pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+    pix_shift = _get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
     # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
     # OR if the 'return row' (the empty one) is not at the bottom for some reason
@@ -1064,36 +1161,36 @@ def fix_data_shift(cnt) -> int:
             print("Data is heavily shifted, check it out!", end=" ")
         min_pix_shift = -round(cnt.size / 2)
         max_pix_shift = min_pix_shift + cnt.size + 1
-        pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+        pix_shift = _get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
     return pix_shift
 
 
-def threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
+def _threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
     """Doc."""
 
-    thresh = skifilt.threshold_multiotsu(
-        skifilt.median(img).astype(np.float32), otsu_classes, nbins=n_bins
+    thresh = skimage.filters.threshold_multiotsu(
+        skimage.filters.median(img).astype(np.float32), otsu_classes, nbins=n_bins
     )  # minor filtering of outliers
     cnt_dig = np.digitize(img, bins=thresh)
     plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
-    std_plateau = stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
+    std_plateau = scipy.stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
     dev_cnt = img - plateau_lvl
     bw = dev_cnt > -std_plateau
-    bw = ndimage.binary_fill_holes(bw)
-    disk_open = morphology.selem.disk(radius=disk_radius)
-    bw = morphology.opening(bw, selem=disk_open)
+    bw = scipy.ndimage.binary_fill_holes(bw)
+    disk_open = skimage.morphology.selem.disk(radius=disk_radius)
+    bw = skimage.morphology.opening(bw, selem=disk_open)
     return bw
 
 
-def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
+def _line_correlations(image, bw_mask, roi, sampling_freq) -> list:
     """Returns a list of auto-correlations of the lines of an image"""
 
     image_line_corr = []
     for j in range(roi["row"].min(), roi["row"].max() + 1):
         line = image[j][bw_mask[j] > 0]
         try:
-            c, lags = auto_corr(line.astype(np.float64))
+            c, lags = _auto_corr(line.astype(np.float64))
         except ValueError:
             print(f"Auto correlation of line #{j} has failed. Skipping.", end=" ")
         else:
@@ -1108,7 +1205,7 @@ def line_correlations(image, bw_mask, roi, sampling_freq) -> list:
     return image_line_corr
 
 
-def auto_corr(a):
+def _auto_corr(a):
     """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
     c = np.correlate(a, a, mode="full")
@@ -1117,3 +1214,14 @@ def auto_corr(a):
     lags = np.arange(c.size, dtype=np.uint16)
 
     return c, lags
+
+
+def _calculate_weighted_avg(cf_cr, weights):
+    """Doc."""
+
+    tot_weights = weights.sum(0)
+    # TODO: error handeling for the row below (zero division) - can/should it be detected beforehand?
+    avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
+    error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
+
+    return avg_cf_cr, error_cf_cr

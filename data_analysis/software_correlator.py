@@ -6,8 +6,6 @@ from ctypes import CDLL, c_double, c_int, c_long
 import numpy as np
 from numpy.ctypeslib import ndpointer
 
-SOFT_CORR_DYNAMIC_LIB_PATH = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
-
 
 class CorrelatorType:
     PH_DELAY_CORRELATOR = 1
@@ -21,13 +19,13 @@ class CorrelatorType:
 class SoftwareCorrelator:
     """Doc."""
 
+    LIB_PATH = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
+
     def __init__(self):
-        if sys.platform == "win32":
-            lib_path = SOFT_CORR_DYNAMIC_LIB_PATH
-        elif sys.platform == "darwin":
-            lib_path = "/Users/oleg/Documents/Python programming/Scanning setups Lab/gSTED-sFCS/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.so"
-        self.lib_path = lib_path
-        soft_corr_dynamic_lib = CDLL(lib_path, winmode=0)
+        if sys.platform == "darwin":
+            self.LIB_PATH = "/Users/oleg/Documents/Python programming/Scanning setups Lab/gSTED-sFCS/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.so"
+
+        soft_corr_dynamic_lib = CDLL(self.LIB_PATH, winmode=0)
         get_corr_params = soft_corr_dynamic_lib.getCorrelatorParams
         get_corr_params.restype = None
         get_corr_params.argtypes = [ndpointer(c_int), ndpointer(c_int)]
@@ -53,9 +51,7 @@ class SoftwareCorrelator:
 
         self.corr_py = np.zeros((3, self.tot_corr_chan_len), dtype=float)
 
-    def soft_cross_correlate(
-        self, photon_array, c_type=CorrelatorType.PH_DELAY_CORRELATOR, timebase_ms=1
-    ):
+    def correlate(self, photon_array, c_type=CorrelatorType.PH_DELAY_CORRELATOR, timebase_ms=1):
         """Doc."""
 
         if sys.platform == "darwin":  # fix operation for Mac users

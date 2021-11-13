@@ -6,7 +6,7 @@ import logging
 import re
 from contextlib import suppress
 from types import SimpleNamespace
-from typing import List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import PyQt5.QtWidgets as QtWidgets
 
@@ -18,6 +18,8 @@ class QtWidgetAccess:
 
     def __init__(self, obj_name: str, widget_class: str, gui_parent_name: str, does_hold_obj: bool):
         self.obj_name = obj_name
+        self.getter: str
+        self.setter: str
         self.getter, self.setter, _ = _getter_setter_type_dict.get(widget_class, (None,) * 3)
         self.gui_parent_name = gui_parent_name
         self.does_hold_obj = does_hold_obj
@@ -75,6 +77,7 @@ class QtWidgetCollection:
         """
 
         if isinstance(new_vals, list):
+            # convert list to dict
             new_vals = dict(zip(vars(self).keys(), new_vals))
 
         if isinstance(new_vals, dict):
@@ -87,7 +90,7 @@ class QtWidgetCollection:
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(new_vals, parent_gui)
 
-    def read_gui(self, app_obj, out="namespace") -> SimpleNamespace:
+    def read_gui_to_obj(self, app_obj, out="namespace") -> Union[SimpleNamespace, Dict[str, Any]]:
         """
         Read values from QtWidgetAccess objects, which are the attributes of self and return a namespace.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
@@ -188,10 +191,11 @@ SETTINGS_TYPES = [
     "QComboBox",
     "QRadioButton",
     "QCheckBox",
+    "QTabWidget",
 ]
 
 # What to do with each widget class
-_getter_setter_type_dict = {
+_getter_setter_type_dict: Dict[str, Tuple[str, str, type]] = {
     "QLabel": ("text", "setText", str),
     "QComboBox": ("currentText", "setCurrentText", str),
     "QTabWidget": ("currentIndex", "setCurrentIndex", int),
@@ -220,11 +224,12 @@ LED_COLL = QtWidgetCollection(
     shutter=("ledShutter", "QIcon", "main", True),
     stage=("ledStage", "QIcon", "main", True),
     tdc=("ledTdc", "QIcon", "main", True),
-    cam=("ledCam", "QIcon", "main", True),
+    cam1=("ledCam1", "QIcon", "main", True),
+    cam2=("ledCam2", "QIcon", "main", True),
     scnrs=("ledScn", "QIcon", "main", True),
+    pxl_clk=("ledPxlClk", "QIcon", "main", True),
     cntr=("ledCounter", "QIcon", "main", True),
     um232=("ledUm232h", "QIcon", "main", True),
-    pxl_clk=("ledPxlClk", "QIcon", "main", True),
 )
 
 SWITCH_COLL = QtWidgetCollection(
@@ -232,6 +237,8 @@ SWITCH_COLL = QtWidgetCollection(
     dep=("depEmissionOn", "QIcon", "main", True),
     shutter=("depShutterOn", "QIcon", "main", True),
     stage=("stageOn", "QIcon", "main", True),
+    cam1=("videoSwitch1", "QIcon", "main", True),
+    cam2=("videoSwitch2", "QIcon", "main", True),
 )
 
 # ----------------------------------------------
@@ -251,8 +258,6 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     analysis_stacked=("analysisStacked", "QStackedWidget", "main", True),
     log_text=("dataDirLog", "QPlainTextEdit", "main", True),
     img_preview_disp=("imgScanPreviewDisp", None, "main", True),
-    sol_save_processed=("solImportSaveProcessed", "QCheckBox", "main", False),
-    sol_use_processed=("solImportLoadProcessed", "QCheckBox", "main", False),
     sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", False),
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
@@ -260,7 +265,8 @@ DATA_IMPORT_COLL = QtWidgetCollection(
 
 SOL_ANALYSIS_COLL = QtWidgetCollection(
     fix_shift=("solDataFixShift", "QCheckBox", "main", False),
-    external_plotting=("solDataExtPlot", "QCheckBox", "main", False),
+    subtract_bg_corr=("solDataSubtractBgCorr", "QCheckBox", "main", False),
+    subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
     scan_image_disp=("solScanImgDisp", None, "main", True),
     row_dicrimination=("rowDiscriminationGroup", "QButtonGroup", "main", False),
     remove_over=("solAnalysisRemoveOverSpinner", "QDoubleSpinBox", "main", False),
@@ -284,7 +290,7 @@ SOL_ANALYSIS_COLL = QtWidgetCollection(
     sted_samp=("stedSamp", "QLineEdit", "main", True),
 )
 # ----------------------------------------------
-# Measurement Widget Collections
+# MeasurementProcedure Widget Collections
 # ----------------------------------------------
 
 SOL_ANG_SCAN_COLL = QtWidgetCollection(
@@ -305,17 +311,17 @@ SOL_CIRC_SCAN_COLL = QtWidgetCollection(
 )
 
 SOL_MEAS_COLL = QtWidgetCollection(
-    scan_type=("solScanType", "QComboBox", "main", False),
     file_template=("solScanFileTemplate", "QLineEdit", "main", False),
+    save_path=("dataPath", "QLineEdit", "settings", False),
+    sub_dir_name=("solSubdirName", "QLineEdit", "settings", False),
+    prog_bar_wdgt=("solScanProgressBar", "QSlider", "main", True),
+    scan_type=("solScanType", "QComboBox", "main", False),
     regular=("regularSolMeas", "QRadioButton", "main", False),
     repeat=("repeatSolMeas", "QRadioButton", "main", False),
     final=("finalSolMeas", "QRadioButton", "main", False),
-    save_path=("dataPath", "QLineEdit", "settings", False),
-    sub_dir_name=("solSubdirName", "QLineEdit", "settings", False),
     max_file_size_mb=("solScanMaxFileSize", "QDoubleSpinBox", "main", False),
     duration=("solScanDur", "QDoubleSpinBox", "main", False),
     duration_units=("solScanDurUnits", "QComboBox", "main", False),
-    prog_bar_wdgt=("solScanProgressBar", "QSlider", "main", True),
     start_time_wdgt=("solScanStartTime", "QTimeEdit", "main", True),
     end_time_wdgt=("solScanEndTime", "QTimeEdit", "main", True),
     time_left_wdgt=("solScanTimeLeft", "QSpinBox", "main", True),
@@ -328,7 +334,7 @@ SOL_MEAS_COLL = QtWidgetCollection(
 )
 
 IMG_SCAN_COLL = QtWidgetCollection(
-    scan_plane=("imgScanType", "QComboBox", "main", False),
+    plane_orientation=("imgScanType", "QComboBox", "main", False),
     dim1_lines_um=("imgScanDim1", "QDoubleSpinBox", "main", False),
     dim2_col_um=("imgScanDim2", "QDoubleSpinBox", "main", False),
     dim3_um=("imgScanDim3", "QDoubleSpinBox", "main", False),
@@ -348,6 +354,7 @@ IMG_MEAS_COLL = QtWidgetCollection(
     save_path=("dataPath", "QLineEdit", "settings", False),
     sub_dir_name=("imgSubdirName", "QLineEdit", "settings", False),
     prog_bar_wdgt=("imgScanProgressBar", "QSlider", "main", True),
+    always_save=("alwaysSaveImg", "QCheckBox", "main", False),
     curr_plane_wdgt=("currPlane", "QSpinBox", "main", True),
     plane_shown=("numPlaneShown", "QSpinBox", "main", True),
     plane_choice=("numPlaneShownChoice", "QSlider", "main", True),

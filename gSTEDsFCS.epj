@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-10-12, 14:23:39"
+    "saved": "2021-11-01, 11:55:57"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -106,7 +106,6 @@
       "makefile": "OTHERS"
     },
     "FORMS": [
-      "gui/camerawindow.ui",
       "gui/mainwindow.ui",
       "gui/settingswindow.ui"
     ],
@@ -150,7 +149,6 @@
       "logic/measurements.py",
       "logic/scan_patterns.py",
       "logic/timeout.py",
-      "logic/windows.py",
       "main.py",
       "utilities/errors.py",
       "utilities/helper.py",
@@ -160,7 +158,6 @@
       "utilities/file_utilities.py",
       "utilities/display.py",
       "utilities/fit_tools.py",
-      "data_analysis/image.py",
       "gui/widgets.py",
       "gui/dialog.py",
       "gui/icons/icons.py",
@@ -168,7 +165,7 @@
       "tests/integration/__init__.py",
       "tests/unit/test_scan_patterns.py",
       "tests/unit/__init__.py",
-      "tests/unit/scan_patterns_test.py"
+      "logic/slot_implementations.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",
