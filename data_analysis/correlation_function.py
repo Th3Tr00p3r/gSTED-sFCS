@@ -607,8 +607,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     # Gating
                     if hasattr(p, "delay_time"):
                         delay_time = p.delay_time[se_start : se_end + 1]
+                        lower_gate_ns, upper_gate_ns = CF.gate_ns
                         j_gate = np.logical_and(
-                            delay_time >= CF.gate_ns[0], delay_time <= CF.gate_ns[1]
+                            delay_time >= lower_gate_ns, delay_time <= upper_gate_ns
                         )
                         runtime = runtime[j_gate]
                     #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
@@ -684,7 +685,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 line_num = p.line_num
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
                 if hasattr(p, "delay_time"):
-                    j_gate = ((p.delay_time >= CF.gate_ns[0]) & (p.delay_time <= CF.gate_ns[1])) | (
+                    lower_gate_ns, upper_gate_ns = CF.gate_ns
+                    j_gate = ((p.delay_time >= lower_gate_ns) & (p.delay_time <= upper_gate_ns)) | (
                         p.delay_time == np.nan
                     )
                     runtime = p.runtime[j_gate]
@@ -924,7 +926,7 @@ class SFCSExperiment:
                 **kwargs,
             )
 
-        if should_plot and (sted_template is not None) and (confocal_template is not None):
+        if should_plot:
             super_title = f"Experiment '{self.name}' - All ACFs"
             with Plotter(subplots=(1, 2), super_title=super_title) as axes:
                 self.plot_correlation_functions(
@@ -999,56 +1001,6 @@ class SFCSExperiment:
                 )
                 ax.legend(["average_all_cf_cr", "avg_cf_cr"])
 
-    def plot_correlation_functions(
-        self,
-        x_field="vt_um",
-        y_field="normalized",
-        x_scale="linear",
-        y_scale="linear",
-        parent_figure=None,
-        parent_ax=None,
-        xlim=None,
-        ylim=None,
-        plot_kwargs={},
-        **kwargs,
-    ):
-        if self.confocal.scan_type == "static":
-            x_field = "lag"
-
-        if (x_scale == "linear") and (xlim is None) and (x_field == "vt_um"):
-            xlim = (0, 1)
-
-        if y_field in {"average_all_cf_cr", "avg_cf_cr"}:
-            ylim = None  # will autoscale y
-        elif y_field == "normalized":
-            ylim = (-0.20, 1.4)
-
-        super_title = f"'{self.name}' Experiment - All ACFs"
-        with Plotter(
-            parent_figure=parent_figure, parent_ax=parent_ax, super_title=super_title
-        ) as ax:
-            confocal_legend_labels = self.confocal.plot_correlation_functions(
-                parent_ax=ax,
-                x_field=x_field,
-                y_field=y_field,
-                x_scale=x_scale,
-                y_scale=y_scale,
-                xlim=xlim,
-                ylim=ylim,
-                plot_kwargs=plot_kwargs,
-            )
-            sted_legend_labels = self.sted.plot_correlation_functions(
-                parent_ax=ax,
-                x_field=x_field,
-                y_field=y_field,
-                x_scale=x_scale,
-                y_scale=y_scale,
-                xlim=xlim,
-                ylim=ylim,
-                plot_kwargs=plot_kwargs,
-            )
-            ax.legend(confocal_legend_labels + sted_legend_labels)
-
     def calibrate_tdc(self, should_plot=False, **kwargs):
         """Doc."""
 
@@ -1100,6 +1052,56 @@ class SFCSExperiment:
             raise RuntimeError(
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
+
+    def plot_correlation_functions(
+        self,
+        x_field="vt_um",
+        y_field="normalized",
+        x_scale="linear",
+        y_scale="linear",
+        parent_figure=None,
+        parent_ax=None,
+        xlim=None,
+        ylim=None,
+        plot_kwargs={},
+        **kwargs,
+    ):
+        if self.confocal.scan_type == "static":
+            x_field = "lag"
+
+        if (x_scale == "linear") and (xlim is None) and (x_field == "vt_um"):
+            xlim = (0, 1)
+
+        if y_field in {"average_all_cf_cr", "avg_cf_cr"}:
+            ylim = None  # will autoscale y
+        elif y_field == "normalized":
+            ylim = (-0.20, 1.4)
+
+        super_title = f"'{self.name}' Experiment - All ACFs"
+        with Plotter(
+            parent_figure=parent_figure, parent_ax=parent_ax, super_title=super_title
+        ) as ax:
+            confocal_legend_labels = self.confocal.plot_correlation_functions(
+                parent_ax=ax,
+                x_field=x_field,
+                y_field=y_field,
+                x_scale=x_scale,
+                y_scale=y_scale,
+                xlim=xlim,
+                ylim=ylim,
+                plot_kwargs=plot_kwargs,
+            )
+            sted_legend_labels = self.sted.plot_correlation_functions(
+                parent_ax=ax,
+                x_field=x_field,
+                y_field=y_field,
+                x_scale=x_scale,
+                y_scale=y_scale,
+                xlim=xlim,
+                ylim=ylim,
+                plot_kwargs=plot_kwargs,
+            )
+            ax.legend(confocal_legend_labels + sted_legend_labels)
 
 
 def _convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
