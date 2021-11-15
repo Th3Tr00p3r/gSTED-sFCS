@@ -82,15 +82,91 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     return img, thresh
 
 
-def limit(val: float, min: float, max: float) -> float:
-    """Doc."""
+class LimitRange:
+    def __init__(self, lower, upper, labels: Tuple[str, str] = None):
+        self.lower = lower
+        self.upper = upper
+        #        if lower >= upper:
+        #            raise ValueError("LimitRange: lower limit must be smaller than upper limit!")
+        self.labels = labels
 
-    if min <= val <= max:
-        return val
-    elif val < max:
-        return min
-    else:
-        return max
+    def __repr__(self):
+        return f"LimitRange(lower={self.lower}, upper={self.upper})"
+
+    def __str__(self):
+        if self.labels is not None:
+            return f"LimitRange({self.labels[0]}={self.lower}, {self.labels[1]}={self.upper})"
+        else:
+            return f"LimitRange({self.lower}, {self.upper})"
+
+    def __iter__(self):
+        yield from (self.lower, self.upper)
+
+    def __getitem__(self, idx):
+        return tuple(self)[idx]
+
+    def __eq__(self, other):
+        if isinstance(other, tuple) or hasattr(other, "clamp"):
+            return tuple(self) == other
+        else:
+            raise TypeError("Can only compare LimitRange to other instances or tuples")
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __gt__(self, other):
+        if isinstance(other, (int, float)):
+            return other < self.upper
+
+    def __lt__(self, other):
+        if isinstance(other, (int, float)):
+            return other > self.lower
+
+    def __contains__(self, other):
+        """
+        Checks if 'other' is in 'LimitRange'.
+        If:
+        other is a tuple/LimitRange: checks if full range is contained and returns bool
+        other is number: checks if number is contained in range and returns bool
+        """
+        if (isinstance(other, tuple) and len(other) == 2) or hasattr(other, "clamp"):
+            return (self[0] <= other[0]) and (self[1] >= other[1])
+
+        elif isinstance(other, (int, float)):
+            return self.lower <= other <= self.upper
+
+        else:
+            raise TypeError("Can only compare LimitRange to other instances or tuples")
+
+    def idxs_in_limits(self, arr: np.ndarray):
+        """
+        Checks whether each element is contained and returns a boolean array of same shape.
+        __contains__ must return a single boolean array, otherwise would be included there.
+        """
+        if isinstance(arr, np.ndarray):
+            return (arr >= self.lower) & (arr <= self.upper)
+
+        else:
+            raise TypeError("Argument 'arr' must be a Numpy ndarray!")
+
+    def as_dict(self):
+        if self.labels is not None:
+            return {key: val for key, val in zip(self.labels, (self.lower, self.upper))}
+        else:
+            return {key: val for key, val in zip(("lower", "upper"), (self.lower, self.upper))}
+
+    def interval(self):
+        return abs(self.upper - self.lower)
+
+    def center(self):
+        """Get the center of the range"""
+
+        return sum(self) * 0.5
+
+    def clamp(self, n):
+        """Force limit range on number n"""
+
+        return max(min(self.upper, n), self.lower)
 
 
 def center_of_mass_of_dimension(arr: np.ndarray, dim: int = 0) -> float:
@@ -165,19 +241,6 @@ def div_ceil(x: int, y: int) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
     return int(x // y + (x % y > 0))
-
-
-def translate_dict_values(original_dict: dict, trans_dict: dict) -> dict:
-    """
-    Updates values of dict according to another dict:
-    val_trans_dct.keys() are the values to update,
-    and val_trans_dct.values() are the new values.
-    """
-
-    return {
-        key: (trans_dict[val] if val in trans_dict.keys() else val)
-        for key, val in original_dict.items()
-    }
 
 
 def reverse_dict(dict_: dict) -> dict:

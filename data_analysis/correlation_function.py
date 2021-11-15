@@ -6,6 +6,7 @@ from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
@@ -18,8 +19,9 @@ from data_analysis.photon_data import (
     TDCPhotonDataMixin,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities import file_utilities, fit_tools, helper
+from utilities import file_utilities, fit_tools
 from utilities.display import Plotter
+from utilities.helper import LimitRange, div_ceil
 
 
 class CorrFunc:
@@ -40,7 +42,7 @@ class CorrFunc:
         self,
         rejection=2,
         reject_n_worst=None,
-        norm_range=(1e-3, 2e-3),
+        norm_range=LimitRange(1e-3, 2e-3),
         delete_list=[],
         should_plot=False,
         plot_kwargs={},
@@ -53,11 +55,11 @@ class CorrFunc:
         self.delete_list = delete_list
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, 0)
-        JJ = (self.lag > norm_range[1]) & (self.lag < 100)  # work in the relevant part
+        jj = LimitRange(norm_range.upper, 100).idxs_in_limits(self.lag)  # work in the relevant part
         self.score = (
-            (1 / np.var(self.cf_cr[:, JJ], 0))
-            * (self.cf_cr[:, JJ] - self.median_all_cf_cr[JJ]) ** 2
-            / len(JJ)
+            (1 / np.var(self.cf_cr[:, jj], 0))
+            * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
+            / len(jj)
         ).sum(axis=1)
 
         total_n_rows, _ = self.cf_cr.shape
@@ -80,7 +82,7 @@ class CorrFunc:
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
-        j_t = (self.lag > self.norm_range[0]) & (self.lag < self.norm_range[1])
+        j_t = norm_range.idxs_in_limits(self.lag)
         self.g0 = (self.avg_cf_cr[j_t] / self.error_cf_cr[j_t] ** 2).sum() / (
             1 / self.error_cf_cr[j_t] ** 2
         ).sum()
@@ -108,6 +110,9 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
+        #        print(f"final plot {x_field} size: {x.size}") # TESTESTEST
+        #        print(f"final plot {y_field} size: {y.size}") # TESTESTEST
+
         with Plotter(parent_ax=parent_ax, xlim=xlim, ylim=ylim, should_autoscale=True) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
@@ -128,7 +133,7 @@ class CorrFunc:
         should_plot=False,
     ):
 
-        if not fit_param_estimate:
+        if fit_param_estimate is None:
             fit_param_estimate = [self.g0, 0.035, 30.0]
 
         x = getattr(self, x_field)
@@ -551,7 +556,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     def correlate_static_data(
         self,
-        gate_ns=(0, np.inf),
+        gate_ns=LimitRange(0, np.inf),
         run_duration=None,
         min_time_frac=0.5,
         n_runs_requested=60,
@@ -607,17 +612,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     # Gating
                     if hasattr(p, "delay_time"):
                         delay_time = p.delay_time[se_start : se_end + 1]
-                        lower_gate_ns, upper_gate_ns = CF.gate_ns
-                        j_gate = np.logical_and(
-                            delay_time >= lower_gate_ns, delay_time <= upper_gate_ns
-                        )
+                        j_gate = gate_ns.idxs_in_limits(delay_time)
                         runtime = runtime[j_gate]
                     #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
                     elif gate_ns != (0, np.inf):
                         raise RuntimeError("For gating, TDC must first be calibrated!")
 
                     # split into segments of approx time of run_duration
-                    n_splits = helper.div_ceil(segment_time, run_duration)
+                    n_splits = div_ceil(segment_time, run_duration)
                     splits = np.linspace(0, runtime.size, n_splits + 1, dtype=np.int32)
                     time_stamps = np.diff(runtime).astype(np.int32)
 
@@ -663,7 +665,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     def correlate_angular_scan_data(
         self,
-        gate_ns=(0, np.inf),
+        gate_ns=LimitRange(0, np.inf),
         min_time_frac=0.5,
         subtract_bg_corr=True,
         subtract_afterpulse=True,
@@ -684,14 +686,26 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 print(f"({p.file_num})", end=" ")
                 line_num = p.line_num
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
-                if hasattr(p, "delay_time"):
-                    lower_gate_ns, upper_gate_ns = CF.gate_ns
-                    j_gate = ((p.delay_time >= lower_gate_ns) & (p.delay_time <= upper_gate_ns)) | (
-                        p.delay_time == np.nan
-                    )
+                if hasattr(p, "delay_time"):  # if measurement quacks as gated
+                    j_gate = gate_ns.idxs_in_limits(p.delay_time) | (p.delay_time == np.nan)
                     runtime = p.runtime[j_gate]
-                    #                    delay_time = delay_time[j_gate] # TODO: not uesed
+                    #                    delay_time = delay_time[j_gate] # TODO: not used?
                     line_num = p.line_num[j_gate]
+
+                    # TESTESTEST -  recalculate (now gated) background correlation
+                    gated_image, *_ = _convert_angular_scan_to_image(
+                        runtime,
+                        self.laser_freq_hz,
+                        self.angular_scan_settings["sample_freq_hz"],
+                        self.angular_scan_settings["points_per_line_total"],
+                        self.angular_scan_settings["n_lines"],
+                    )
+                    gated_image[1::2, :] = np.flip(gated_image[1::2, :], 1)
+                    gated_image *= p.bw_mask
+                    p.gated_image_line_corr = _line_correlations(
+                        gated_image, p.bw_mask, p.roi, self.angular_scan_settings["sample_freq_hz"]
+                    )
+
                 elif gate_ns != (0, np.inf):
                     raise RuntimeError(
                         f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
@@ -745,10 +759,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
                     # remove background correlation
                     if subtract_bg_corr:
+                        # TESTESTEST -  recalculate (now gated) background correlation
+                        if hasattr(p, "delay_time") and kwargs.get(
+                            "should_use_gated_background", False
+                        ):  # if measurement quacks as gated
+                            image_line_corr = p.gated_image_line_corr
+                        else:
+                            image_line_corr = p.image_line_corr
                         bg_corr = np.interp(
                             SC.lag,
-                            p.image_line_corr[line_idx]["lag"],
-                            p.image_line_corr[line_idx]["corrfunc"],
+                            image_line_corr[line_idx]["lag"],
+                            image_line_corr[line_idx]["corrfunc"],
                             right=0,
                         )
                     else:
@@ -776,7 +797,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         return CF
 
     def correlate_circular_scan_data(
-        self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
+        self, gate_ns=LimitRange(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
     ) -> CorrFunc:
         """Correlates data for circular scans. Returns a CorrFunc object"""
 
@@ -818,10 +839,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return legend_labels
 
-    def calculate_afterpulse(self, gate_ns, lag) -> np.ndarray:
+    def calculate_afterpulse(self, gate_ns: LimitRange, lag: np.ndarray) -> np.ndarray:
         """Doc."""
 
-        gate_to_laser_pulses = min([1.0, (gate_ns[1] - gate_ns[0]) * self.laser_freq_hz / 1e9])
+        gate_to_laser_pulses = min([1.0, gate_ns.interval() * self.laser_freq_hz / 1e9])
         if self.after_pulse_param[0] == "multi_exponent_fit":
             # work with any number of exponents
             beta = self.after_pulse_param[1]
@@ -894,7 +915,7 @@ class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
 class SFCSExperiment:
     """Doc."""
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name=None):
         self.confocal = SolutionSFCSMeasurement(name="confocal")
         self.sted = SolutionSFCSMeasurement(name="STED")
         self.name = name
@@ -935,6 +956,7 @@ class SFCSExperiment:
                     y_field="avg_cf_cr",
                     x_scale="log",
                     y_scale="linear",
+                    xlim=None,  # autoscale x axis
                 )
 
                 self.plot_correlation_functions(
@@ -1045,13 +1067,125 @@ class SFCSExperiment:
                     parent_ax=ax,
                 )
 
-    def add_gate(self, gate_ns, should_plot=False, **kwargs):
+    def get_lifetime_parameters(
+        self,
+        sted_field="paraboloid",
+        drop_idxs=[],
+        fit_range=None,
+        param_estimates=None,
+        bg_range=LimitRange(40, 60),
+        **kwargs,
+    ):
+        """Doc."""
+        # TODO: WORK IN PROGRESS HERE
+
+        conf = self.confocal
+        sted = self.sted
+
+        conf_hist = conf.TDCcalib.allHistNorm
+        conf_t = conf.TDCcalib.t_Hist
+        conf_t = conf_t(np.isfinite(conf_hist))
+        conf_hist = conf_hist(np.isfinite(conf_hist))
+
+        sted_hist = sted.TDCcalib.allHistNorm
+        sted_t = sted.TDCcalib.t_Hist
+        sted_t = sted_t(np.isfinite(sted_hist))
+        sted_hist = sted_hist(np.isfinite(sted_hist))
+
+        h_max, j_max = max(conf_hist)
+        t_max = conf_t(j_max)
+
+        beta0 = (h_max, 4, h_max * 1e-3)
+
+        if fit_range is None:
+            fit_range = LimitRange(t_max, 40)
+
+        if param_estimates is None:
+            param_estimates = beta0
+
+        ConfParam = conf.DoFitLifeTimeHist("FitRange", fit_range, "fit param estimate", beta0)
+
+        # remove background
+
+        sted_bg = np.mean(sted_hist(bg_range.idxs_in_limits(sted_t)))
+        conf_bg = np.mean(conf_hist(bg_range.idxs_in_limits(conf_t)))
+        sted_hist = sted_hist - sted_bg
+        conf_hist = conf_hist - conf_bg
+
+        j = conf_t < 20
+        t = conf_t(j)
+        hist_ratio = conf_hist(j) / np.interp(t, sted_t, sted_hist, right=0)
+        # TODO: test this translation of MATLAB's interp1d
+        # hist_ratio = ExponentBGfit(ConfParam.beta, t)./sted_hist(J);
+        if drop_idxs:
+            j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
+            t = t(j)
+            hist_ratio = hist_ratio(j)
+
+        # TODO: select relevant data points using rectangle selector from plot: https://matplotlib.org/stable/gallery/widgets/rectangle_selector.html
+        #        h = figure;
+        #        figure(h);
+        #        plot(t, hist_ratio);
+        #        title('Zoom into linear range and hit any key');
+        #        figure(h);
+        #        pause;
+        j_selected = []
+
+        LifeTimeParam = SimpleNamespace()
+        if sted_field == "symmetric":
+            # TODO: see this :https://medium.com/swlh/robust-regression-all-you-need-to-know-an-example-in-python-878081bafc0
+            # and this: https://scikit-learn.org/stable/auto_examples/linear_model/plot_robust_fit.html
+            # for robust linear regression
+
+            pass
+
+        #            p = robustfit(t(j_selected), hist_ratio(j_selected)); # to minimize effect of outliers
+        #            p = (p(2), p(1)) # reversed order in robust fit
+        #            plot(t, hist_ratio, 'o', t(j_selected), polyval(p, t(j_selected)));
+        #
+        #
+        #            LifeTimeParam.LifeTime_ns = ConfParam.beta(2);
+        #            LifeTimeParam.SigOverTau_STED = p(1);
+        #            LifeTimeParam.Sig_STED = p(1)*LifeTimeParam.LifeTime_ns;
+        #            LifeTimeParam.LaserPulse = (1 - p(2))/p(1);
+        else:
+            fit_param = fit_tools.curve_fit_lims(
+                fit_name="ratio_of_lifetime_histograms",
+                param_estimates=(2, 1, 1),
+                xs=t(j_selected),
+                ys=hist_ratio(j_selected),
+                ys_errors=np.ones(j_selected.size),
+                should_plot=True,
+            )
+
+            LifeTimeParam.LifeTime_ns = ConfParam["beta"][2]
+            LifeTimeParam.Sig1overTau_STED = fit_param["beta"][1]
+            LifeTimeParam.Sig2overTau_STED = fit_param["beta"][2]
+            LifeTimeParam.Sig1_STED = fit_param["beta"][1] * LifeTimeParam.LifeTime_ns
+            LifeTimeParam.Sig2_STED = fit_param["beta"][2] * LifeTimeParam.LifeTime_ns
+            LifeTimeParam.LaserPulse = fit_param["beta"][3]
+
+    def add_gate(self, gate_ns: Tuple[float, float], should_plot=False, **kwargs):
         """Doc."""
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
             self.sted.correlate_and_average(gate_ns=gate_ns, **kwargs)
             if should_plot:
-                self.plot_correlation_functions()
+                self.plot_correlation_functions(**kwargs)
+        else:
+            raise RuntimeError(
+                "Cannot add a gate if there's no STED measurement loaded to the experiment!"
+            )
+
+    def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=False, **kwargs):
+        """A convecience method for adding multiple gates."""
+
+        if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
+            for gate_ns in gate_list:
+                self.add_gate(gate_ns, **kwargs)
+
+            if should_plot:
+                self.plot_correlation_functions(**kwargs)
         else:
             raise RuntimeError(
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
@@ -1065,21 +1199,16 @@ class SFCSExperiment:
         y_scale="linear",
         parent_figure=None,
         parent_ax=None,
-        xlim=None,
-        ylim=None,
+        xlim=(0, 1),
+        ylim=(-0.20, 1.4),
         plot_kwargs={},
         **kwargs,
     ):
         if self.confocal.scan_type == "static":
             x_field = "lag"
 
-        if (x_scale == "linear") and (xlim is None) and (x_field == "vt_um"):
-            xlim = (0, 1)
-
         if y_field in {"average_all_cf_cr", "avg_cf_cr"}:
             ylim = None  # will autoscale y
-        elif y_field == "normalized":
-            ylim = (-0.20, 1.4)
 
         super_title = f"'{self.name}' Experiment - All ACFs"
         with Plotter(

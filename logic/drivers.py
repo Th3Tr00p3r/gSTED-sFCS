@@ -16,8 +16,8 @@ from nidaqmx.stream_readers import (
     CounterReader,  # AnalogMultiChannelReader for AI, if ever
 )
 
-import utilities.helper as helper
 from utilities.errors import IOError, err_hndlr
+from utilities.helper import LimitRange
 
 
 class Ftd2xx:
@@ -29,7 +29,7 @@ class Ftd2xx:
     }
 
     def __init__(self, param_dict):
-        param_dict = helper.translate_dict_values(param_dict, self.ftd2xx_dict)
+        param_dict = self._translate_dict_values(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.n_bytes = param_dict["n_bytes"]
 
@@ -39,6 +39,18 @@ class Ftd2xx:
             info_dict = ftd2xx.getDeviceInfoDetail(devnum=idx)
             if info_dict["description"] == b"UM232H":
                 self.serial = info_dict["serial"]
+
+    def _translate_dict_values(self, original_dict: dict, trans_dict: dict) -> dict:
+        """
+        Updates values of dict according to another dict:
+        val_trans_dct.keys() are the values to update,
+        and val_trans_dct.values() are the new values.
+        """
+
+        return {
+            key: (trans_dict[val] if val in trans_dict.keys() else val)
+            for key, val in original_dict.items()
+        }
 
     def open_instrument(self):
         """Doc."""
@@ -455,7 +467,7 @@ class Instrumental:
         if name not in {"pixel_clock", "framerate", "exposure"}:
             raise ValueError(f"Unknown parameter '{name}'.")
 
-        valid_value = helper.limit(value, *getattr(self, f"{name}_range"))
+        valid_value = LimitRange(*getattr(self, f"{name}_range")).clamp(value)
 
         try:
             if name == "pixel_clock":
