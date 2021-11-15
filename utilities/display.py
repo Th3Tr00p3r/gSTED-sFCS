@@ -127,7 +127,7 @@ class GuiDisplay:
             if fix_aspect:
                 force_aspect(ax, aspect=1)
             if scroll_zoom:
-                ax.org_lims = (LimitRange(*ax.get_xlim()), LimitRange(*ax.get_ylim()))
+                ax.org_lims = (LimitRange(ax.get_xlim()), LimitRange(ax.get_ylim()))
                 ax.org_dims = tuple(lim.interval() for lim in ax.org_lims)
                 ax.zoom_func = zoom_factory(ax)
             if cursor:
@@ -278,8 +278,8 @@ def zoom_factory(ax, base_scale=1.5):
         # fixes homebutton operation
         ax.figure.canvas.toolbar.push_current()
         # get the current x and y limits
-        cur_xlim = LimitRange(*ax.get_xlim())
-        cur_ylim = LimitRange(*ax.get_ylim())
+        cur_xlim = LimitRange(ax.get_xlim())
+        cur_ylim = LimitRange(ax.get_ylim())
         # set the range
         cur_xrange = cur_xlim.interval() * 0.5
         cur_yrange = cur_ylim.interval() * 0.5

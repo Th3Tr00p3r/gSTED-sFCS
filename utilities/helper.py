@@ -83,21 +83,24 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
 
 
 class LimitRange:
-    def __init__(self, lower, upper, labels: Tuple[str, str] = None):
-        self.lower = lower
-        self.upper = upper
-        #        if lower >= upper:
-        #            raise ValueError("LimitRange: lower limit must be smaller than upper limit!")
-        self.labels = labels
+    def __init__(self, lower, upper=None, dict_labels: Tuple[str, str] = None):
+        if isinstance(lower, tuple):
+            tuple_ = lower
+            self.lower, self.upper = tuple_
+        elif isinstance(lower, LimitRange):
+            limit_range_ = lower
+            self.lower, self.upper = limit_range_.lower, limit_range_.upper
+        elif upper is not None:
+            self.lower, self.upper = lower, upper
+        else:
+            raise TypeError(f"Expected a tuple or 2 numbers, got '{lower}' and '{upper}'.")
+        self.dict_labels = dict_labels
 
     def __repr__(self):
         return f"LimitRange(lower={self.lower}, upper={self.upper})"
 
     def __str__(self):
-        if self.labels is not None:
-            return f"LimitRange({self.labels[0]}={self.lower}, {self.labels[1]}={self.upper})"
-        else:
-            return f"LimitRange({self.lower}, {self.upper})"
+        return f"({self.lower}, {self.upper})"
 
     def __iter__(self):
         yield from (self.lower, self.upper)
@@ -138,7 +141,7 @@ class LimitRange:
         else:
             raise TypeError("Can only compare LimitRange to other instances or tuples")
 
-    def idxs_in_limits(self, arr: np.ndarray):
+    def valid_indices(self, arr: np.ndarray):
         """
         Checks whether each element is contained and returns a boolean array of same shape.
         __contains__ must return a single boolean array, otherwise would be included there.
@@ -150,8 +153,8 @@ class LimitRange:
             raise TypeError("Argument 'arr' must be a Numpy ndarray!")
 
     def as_dict(self):
-        if self.labels is not None:
-            return {key: val for key, val in zip(self.labels, (self.lower, self.upper))}
+        if self.dict_labels is not None:
+            return {key: val for key, val in zip(self.dict_labels, (self.lower, self.upper))}
         else:
             return {key: val for key, val in zip(("lower", "upper"), (self.lower, self.upper))}
 

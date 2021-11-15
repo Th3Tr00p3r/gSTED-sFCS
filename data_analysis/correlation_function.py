@@ -28,7 +28,7 @@ class CorrFunc:
     """Doc."""
 
     def __init__(self, gate_ns):
-        self.gate_ns = gate_ns
+        self.gate_ns = LimitRange(gate_ns)
         self.lag = []
         self.countrate_list = []
         self.fit_param = dict()
@@ -42,7 +42,7 @@ class CorrFunc:
         self,
         rejection=2,
         reject_n_worst=None,
-        norm_range=LimitRange(1e-3, 2e-3),
+        norm_range=(1e-3, 2e-3),
         delete_list=[],
         should_plot=False,
         plot_kwargs={},
@@ -51,11 +51,13 @@ class CorrFunc:
         """Doc."""
 
         self.rejection = rejection
-        self.norm_range = norm_range
+        self.norm_range = LimitRange(norm_range)
         self.delete_list = delete_list
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, 0)
-        jj = LimitRange(norm_range.upper, 100).idxs_in_limits(self.lag)  # work in the relevant part
+        jj = LimitRange(self.norm_range.upper, 100).valid_indices(
+            self.lag
+        )  # work in the relevant part
         self.score = (
             (1 / np.var(self.cf_cr[:, jj], 0))
             * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
@@ -82,7 +84,7 @@ class CorrFunc:
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
-        j_t = norm_range.idxs_in_limits(self.lag)
+        j_t = self.norm_range.valid_indices(self.lag)
         self.g0 = (self.avg_cf_cr[j_t] / self.error_cf_cr[j_t] ** 2).sum() / (
             1 / self.error_cf_cr[j_t] ** 2
         ).sum()
@@ -150,7 +152,7 @@ class CorrFunc:
             x,
             y,
             error_y,
-            x_limits=fit_range,
+            x_limits=LimitRange(fit_range),
             should_plot=should_plot,
             x_scale=x_scale,
             y_scale=y_scale,
@@ -556,7 +558,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     def correlate_static_data(
         self,
-        gate_ns=LimitRange(0, np.inf),
+        gate_ns=(0, np.inf),
         run_duration=None,
         min_time_frac=0.5,
         n_runs_requested=60,
@@ -612,10 +614,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     # Gating
                     if hasattr(p, "delay_time"):
                         delay_time = p.delay_time[se_start : se_end + 1]
-                        j_gate = gate_ns.idxs_in_limits(delay_time)
+                        j_gate = CF.gate_ns.valid_indices(delay_time)
                         runtime = runtime[j_gate]
                     #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
-                    elif gate_ns != (0, np.inf):
+                    elif CF.gate_ns != (0, np.inf):
                         raise RuntimeError("For gating, TDC must first be calibrated!")
 
                     # split into segments of approx time of run_duration
@@ -635,7 +637,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
                         if len(CF.lag) < len(SC.lag):
                             CF.lag = SC.lag
-                            CF.afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
+                            CF.afterpulse = self.calculate_afterpulse(CF.gate_ns, CF.lag)
 
                         # subtract afterpulse
                         if subtract_afterpulse:
@@ -665,7 +667,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     def correlate_angular_scan_data(
         self,
-        gate_ns=LimitRange(0, np.inf),
+        gate_ns=(0, np.inf),
         min_time_frac=0.5,
         subtract_bg_corr=True,
         subtract_afterpulse=True,
@@ -687,7 +689,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 line_num = p.line_num
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
                 if hasattr(p, "delay_time"):  # if measurement quacks as gated
-                    j_gate = gate_ns.idxs_in_limits(p.delay_time) | (p.delay_time == np.nan)
+                    j_gate = CF.gate_ns.valid_indices(p.delay_time) | (p.delay_time == np.nan)
                     runtime = p.runtime[j_gate]
                     #                    delay_time = delay_time[j_gate] # TODO: not used?
                     line_num = p.line_num[j_gate]
@@ -706,9 +708,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                         gated_image, p.bw_mask, p.roi, self.angular_scan_settings["sample_freq_hz"]
                     )
 
-                elif gate_ns != (0, np.inf):
+                elif CF.gate_ns != (0, np.inf):
                     raise RuntimeError(
-                        f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
+                        f"A gate '{CF.gate_ns}' was specified for uncalibrated TDC data."
                     )
                 else:
                     runtime = p.runtime
@@ -778,7 +780,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
                     if len(CF.lag) < len(SC.lag):
                         CF.lag = SC.lag
-                        CF.afterpulse = self.calculate_afterpulse(gate_ns, CF.lag)
+                        CF.afterpulse = self.calculate_afterpulse(CF.gate_ns, CF.lag)
 
                     # subtract afterpulse
                     if subtract_afterpulse:
@@ -797,7 +799,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         return CF
 
     def correlate_circular_scan_data(
-        self, gate_ns=LimitRange(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
+        self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
     ) -> CorrFunc:
         """Correlates data for circular scans. Returns a CorrFunc object"""
 
@@ -980,9 +982,11 @@ class SFCSExperiment:
         measurement = getattr(self, meas_type)
         if "should_fix_shift" in kwargs:
             should_fix_shift = kwargs["should_fix_shift"]
-            kwargs.pop("should_fix_shift")
         else:
             should_fix_shift = True
+
+        if "norm_range" in kwargs:
+            kwargs["norm_range"] = LimitRange(kwargs["norm_range"])
 
         if "cf_name" not in kwargs:
             if meas_type == "confocal":
@@ -1107,8 +1111,8 @@ class SFCSExperiment:
 
         # remove background
 
-        sted_bg = np.mean(sted_hist(bg_range.idxs_in_limits(sted_t)))
-        conf_bg = np.mean(conf_hist(bg_range.idxs_in_limits(conf_t)))
+        sted_bg = np.mean(sted_hist(bg_range.valid_indices(sted_t)))
+        conf_bg = np.mean(conf_hist(bg_range.valid_indices(conf_t)))
         sted_hist = sted_hist - sted_bg
         conf_hist = conf_hist - conf_bg
 
@@ -1165,8 +1169,13 @@ class SFCSExperiment:
             LifeTimeParam.Sig2_STED = fit_param["beta"][2] * LifeTimeParam.LifeTime_ns
             LifeTimeParam.LaserPulse = fit_param["beta"][3]
 
-    def add_gate(self, gate_ns: Tuple[float, float], should_plot=False, **kwargs):
+    def add_gate(
+        self, gate_ns: Union[LimitRange, Tuple[float, float]], should_plot=False, **kwargs
+    ):
         """Doc."""
+
+        if not hasattr(gate_ns, "valid_indices"):
+            gate_ns = LimitRange(gate_ns)
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
             self.sted.correlate_and_average(gate_ns=gate_ns, **kwargs)
@@ -1177,7 +1186,9 @@ class SFCSExperiment:
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
-    def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=False, **kwargs):
+    def add_gates(
+        self, gate_list: List[Union[LimitRange, Tuple[float, float]]], should_plot=False, **kwargs
+    ):
         """A convecience method for adding multiple gates."""
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
