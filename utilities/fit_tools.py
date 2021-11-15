@@ -34,7 +34,7 @@ def curve_fit_lims(
 ) -> dict:
     """Doc."""
 
-    in_lims = (xs in x_limits) & (ys in y_limits)
+    in_lims = x_limits.valid_indices(xs) & y_limits.valid_indices(ys)
     is_finite_err = (ys_errors > 0) & np.isfinite(ys_errors)
     x = xs[in_lims & is_finite_err]
     y = ys[in_lims & is_finite_err]
