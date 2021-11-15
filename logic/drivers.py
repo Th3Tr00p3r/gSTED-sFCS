@@ -467,7 +467,7 @@ class Instrumental:
         if name not in {"pixel_clock", "framerate", "exposure"}:
             raise ValueError(f"Unknown parameter '{name}'.")
 
-        valid_value = LimitRange(*getattr(self, f"{name}_range")).clamp(value)
+        valid_value = LimitRange(getattr(self, f"{name}_range")).clamp(value)
 
         try:
             if name == "pixel_clock":
