@@ -9,6 +9,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationTool
 from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
 
+from utilities.helper import LimitRange
+
 
 class GuiDisplay:
     """Doc."""
@@ -125,8 +127,8 @@ class GuiDisplay:
             if fix_aspect:
                 force_aspect(ax, aspect=1)
             if scroll_zoom:
-                ax.org_lims = (ax.get_xlim(), ax.get_ylim())
-                ax.org_dims = tuple(abs(lim[1] - lim[0]) for lim in ax.org_lims)
+                ax.org_lims = (LimitRange(*ax.get_xlim()), LimitRange(*ax.get_ylim()))
+                ax.org_dims = tuple(lim.interval() for lim in ax.org_lims)
                 ax.zoom_func = zoom_factory(ax)
             if cursor:
                 ax.cursor = cursor_factory(ax, last_pos)
@@ -276,40 +278,33 @@ def zoom_factory(ax, base_scale=1.5):
         # fixes homebutton operation
         ax.figure.canvas.toolbar.push_current()
         # get the current x and y limits
-        cur_xlim = ax.get_xlim()
-        cur_ylim = ax.get_ylim()
+        cur_xlim = LimitRange(*ax.get_xlim())
+        cur_ylim = LimitRange(*ax.get_ylim())
         # set the range
-        cur_xrange = (cur_xlim[1] - cur_xlim[0]) * 0.5
-        cur_yrange = (cur_ylim[1] - cur_ylim[0]) * 0.5
+        cur_xrange = cur_xlim.interval() * 0.5
+        cur_yrange = cur_ylim.interval() * 0.5
         xmouse = event.xdata  # get event x location
         ymouse = event.ydata  # get event y location
-        cur_xcentre = (cur_xlim[1] + cur_xlim[0]) * 0.5
-        cur_ycentre = (cur_ylim[1] + cur_ylim[0]) * 0.5
+        cur_x_center = cur_xlim.center()
+        cur_y_center = cur_ylim.center()
         try:
-            xdata = cur_xcentre + 0.25 * (xmouse - cur_xcentre)
-            ydata = cur_ycentre + 0.25 * (ymouse - cur_ycentre)
+            xdata = cur_x_center + 0.25 * (xmouse - cur_x_center)
+            ydata = cur_y_center + 0.25 * (ymouse - cur_y_center)
         except TypeError:
             # scrolling outside of image results in None
             return
-        if event.button == "up":
-            # deal with zoom in
+
+        if event.button == "up":  # deal with zoom in
             scale_factor = 1 / base_scale
-        elif event.button == "down":
-            # deal with zoom out
+        else:  # deal with zoom out
             scale_factor = base_scale
-        else:
-            # deal with something that should never happen
-            scale_factor = 1
-            print(event.button)
+
         # set new limits
-        #        org_lims
-        new_xlim = [xdata - cur_xrange * scale_factor, xdata + cur_xrange * scale_factor]
-        new_ylim = [ydata - cur_yrange * scale_factor, ydata + cur_yrange * scale_factor]
+        new_xlim = LimitRange(xdata - cur_xrange * scale_factor, xdata + cur_xrange * scale_factor)
+        new_ylim = LimitRange(ydata + cur_yrange * scale_factor, ydata - cur_yrange * scale_factor)
         # limit zoom out
         org_width, org_height = ax.org_dims
-        if ((new_xlim[1] - new_xlim[0]) > org_width * 1.1) or (
-            (new_ylim[0] - new_ylim[1]) > org_height * 1.1
-        ):
+        if (new_xlim.interval() > org_width * 1.1) or (-new_ylim.interval() > org_height * 1.1):
             new_xlim, new_ylim = ax.org_lims
         ax.set_xlim(new_xlim)
         ax.set_ylim(new_ylim)

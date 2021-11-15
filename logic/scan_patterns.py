@@ -50,20 +50,20 @@ class ScanPatternAO:
         s = np.zeros(ppl)
 
         t = np.arange(ppl)
-        J = t <= t0
-        s[J] = a * np.power(t[J], 2)
+        j = t <= t0
+        s[j] = a * np.power(t[j], 2)
 
-        J = (t > t0) & (t <= (ppl / 2 - t0))
-        s[J] = v * t[J] - a * t0 ** 2 / 2
+        j = (t > t0) & (t <= (ppl / 2 - t0))
+        s[j] = v * t[j] - a * t0 ** 2 / 2
 
-        J = (t > (ppl / 2 - t0)) & (t <= (ppl / 2 + t0))
-        s[J] = A - a * np.power((t[J] - ppl / 2), 2) / 2
+        j = (t > (ppl / 2 - t0)) & (t <= (ppl / 2 + t0))
+        s[j] = A - a * np.power((t[j] - ppl / 2), 2) / 2
 
-        J = (t > (ppl / 2 + t0)) & (t <= (ppl - t0))
-        s[J] = A + a * t0 ** 2 / 2 - v * (t[J] - ppl / 2)
+        j = (t > (ppl / 2 + t0)) & (t <= (ppl - t0))
+        s[j] = A + a * t0 ** 2 / 2 - v * (t[j] - ppl / 2)
 
-        J = t > (ppl - t0)
-        s[J] = a * np.power((ppl - t[J]), 2) / 2
+        j = t > (ppl - t0)
+        s[j] = a * np.power((ppl - t[j]), 2) / 2
 
         s = s - 1 / (2 * f)
 
@@ -217,17 +217,17 @@ class ScanPatternAO:
         s = np.zeros(T)
         shift_vec = np.zeros(T)
 
-        J = t <= t0
-        s[J] = a * np.power(t[J], 2) / 2
-        shift_vec[J] = v_shift * (t[J] - t0)
+        j = t <= t0
+        s[j] = a * np.power(t[j], 2) / 2
+        shift_vec[j] = v_shift * (t[j] - t0)
 
-        J = (t > t0) & (t <= (T - t0))
-        s[J] = v * t[J] - a * t0 ** 2 / 2
-        shift_vec[J] = 0
+        j = (t > t0) & (t <= (T - t0))
+        s[j] = v * t[j] - a * t0 ** 2 / 2
+        shift_vec[j] = 0
 
-        J = t > (T - t0)
-        s[J] = A - a * np.power((t[J] - T), 2) / 2
-        shift_vec[J] = v_shift * (t[J] - T + t0)
+        j = t > (T - t0)
+        s[j] = A - a * np.power((t[j] - T), 2) / 2
+        shift_vec[j] = v_shift * (t[j] - T + t0)
         # centering
         s = s - 1 / (2 * f)
 

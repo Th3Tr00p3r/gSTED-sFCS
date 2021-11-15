@@ -8,6 +8,7 @@ import scipy.optimize as opt
 
 from utilities.display import Plotter
 from utilities.errors import err_hndlr
+from utilities.helper import LimitRange
 
 warnings.simplefilter("error", opt.OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
@@ -23,25 +24,24 @@ def curve_fit_lims(
     xs,
     ys,
     ys_errors,
-    x_limits=(np.NINF, np.Inf),
-    y_limits=(np.NINF, np.Inf),
+    x_limits=LimitRange(np.NINF, np.Inf),
+    y_limits=LimitRange(np.NINF, np.Inf),
     should_plot=True,
     x_scale="log",
     y_scale="linear",
+    plot_kwargs={},
+    **kwargs,
 ) -> dict:
     """Doc."""
 
-    x_min, x_max = x_limits
-    y_min, y_max = y_limits
-
-    in_lims = (xs >= x_min) & (xs <= x_max) & (ys >= y_min) & (ys <= y_max)
+    in_lims = (xs in x_limits) & (ys in y_limits)
     is_finite_err = (ys_errors > 0) & np.isfinite(ys_errors)
     x = xs[in_lims & is_finite_err]
     y = ys[in_lims & is_finite_err]
     y_err = ys_errors[in_lims & is_finite_err]
     fit_func = globals()[fit_name]
 
-    fit_param = fit_and_get_param_dict(
+    fit_param = _fit_and_get_param_dict(
         fit_func, x, y, param_estimates, sigma=y_err, absolute_sigma=True
     )
     fit_param["x_limits"] = x_limits
@@ -53,7 +53,9 @@ def curve_fit_lims(
         with Plotter() as ax:
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)
-            ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_param["beta"]), zorder=10)
+            ax.plot(
+                xs[in_lims], fit_func(xs[in_lims], *fit_param["beta"]), zorder=10, **plot_kwargs
+            )
             ax.errorbar(xs, ys, ys_errors, fmt=".")
 
     return fit_param
@@ -72,10 +74,10 @@ def fit_2d_gaussian_to_image(data: np.ndarray) -> dict:
     # (amplitude, xo, yo, sigma_x, sigma_y, theta, offset)
     p0 = (y.max() - y.min(), height / 2, width / 2, height / 2, width / 2, 0, y.min())
 
-    return fit_and_get_param_dict(gaussian_2d_fit, (x1, x2), y, p0)
+    return _fit_and_get_param_dict(gaussian_2d_fit, (x1, x2), y, p0)
 
 
-def fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> dict:
+def _fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> dict:
     """Doc."""
 
     try:
@@ -125,8 +127,15 @@ def diffusion_3d_fit(t, A, tau, w_sq):
     return A / (1 + t / tau) / np.sqrt(1 + t / tau / w_sq)
 
 
-def exponent_with_background_fit(t, A, tau, BG):
-    return A * np.exp(-t / tau) + BG
+def exponent_with_background_fit(t, A, tau, bg):
+    return A * np.exp(-t / tau) + bg
+
+
+def ratio_of_lifetime_histograms(t, sig_x, sig_y, t0):
+    if t >= t0:
+        return np.sqrt(1 + sig_x * (t - t0)) * np.sqrt(1 + sig_y * (t - t0))
+    else:
+        return 1
 
 
 def weighted_average(data_vectors_list, data_errors_list):

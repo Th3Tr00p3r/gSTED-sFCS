@@ -16,7 +16,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import reverse_dict
+from utilities.helper import LimitRange, reverse_dict
 
 legacy_matlab_trans_dict = {
     # Solution Scan
@@ -170,7 +170,10 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
 
 
 def save_object_to_disk(
-    obj, file_path: Path, size_limits_mb=None, compression_method: str = None  # "gzip" / "blosc"
+    obj,
+    file_path: Path,
+    size_limits_mb: LimitRange = None,
+    compression_method: str = None,  # "gzip" / "blosc"
 ) -> bool:
     """
     Save a pickle-serialized and optionally gzip/blosc-compressed object to disk, if estimated size is within the limits.
@@ -178,9 +181,8 @@ def save_object_to_disk(
     """
 
     if size_limits_mb is not None:
-        lower_limit_mb, upper_limit_mb = size_limits_mb
         disk_size_mb = estimate_bytes(obj) / 1e6
-        if not (lower_limit_mb < disk_size_mb < upper_limit_mb):
+        if disk_size_mb not in size_limits_mb:
             return False
 
     dir_path = file_path.parent

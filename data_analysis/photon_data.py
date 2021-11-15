@@ -2,14 +2,14 @@
 
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any, List, Tuple
 
 import numpy as np
 import scipy
 
 from utilities import file_utilities, fit_tools
 from utilities.display import Plotter
-from utilities.helper import div_ceil
+from utilities.helper import LimitRange, div_ceil
 
 
 @dataclass
@@ -485,7 +485,7 @@ class TDCPhotonDataMixin:
         y_field="all_hist_norm",
         y_error_field="error_all_hist_norm",
         fit_param_estimate=[0.1, 4, 0.001],
-        fit_range=(3.5, 30),
+        fit_range=LimitRange(3.5, 30),
         x_scale="linear",
         y_scale="log",
         max_iter=3,
@@ -665,7 +665,7 @@ class CountsImageMixin:
         return image_stack, norm_stack
 
 
-def _find_section_edges(byte_data, group_len):  # NOQA C901
+def _find_section_edges(byte_data: np.ndarray, group_len: int):  # NOQA C901
     """
     group_len: bytes per photon
     """
@@ -764,7 +764,7 @@ def _find_section_edges(byte_data, group_len):  # NOQA C901
     return edge_start, edge_stop, data_end, n_single_errors
 
 
-def _first_full_photon_idx(byte_data, group_len) -> int:
+def _first_full_photon_idx(byte_data: np.ndarray, group_len: int) -> int:
     """
     Return the starting index of the first intact photon - a sequence of 'group_len'
     bytes starting with 248 and ending with 254. If no intact photons are found, returns 'None'
@@ -776,7 +776,9 @@ def _first_full_photon_idx(byte_data, group_len) -> int:
     return None
 
 
-def _find_all_section_edges(byte_data, group_len):
+def _find_all_section_edges(
+    byte_data: np.ndarray, group_len: int
+) -> Tuple[List[Tuple[int, int]], int]:
     """Doc."""
 
     section_edges = []
