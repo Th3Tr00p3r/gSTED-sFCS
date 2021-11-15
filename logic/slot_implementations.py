@@ -227,11 +227,8 @@ class MainWin:
             um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
             delta_vltg = um_disp / um_V_RATIO
 
-            axis_ao_limits = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS")
-            new_vltg = helper.limit(
-                (current_vltg + delta_vltg),
-                axis_ao_limits["min_val"],
-                axis_ao_limits["max_val"],
+            new_vltg = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS").clamp(
+                (current_vltg + delta_vltg)
             )
 
             getattr(self._gui, f"{axis.lower()}AOV").setValue(new_vltg)

@@ -12,13 +12,13 @@ import nidaqmx.constants as ni_consts
 import numpy as np
 from nidaqmx.errors import DaqError
 
-import utilities.helper as helper
 from gui.dialog import Error
 from gui.icons import icons
 from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
+from utilities.helper import LimitRange, div_ceil
 
 
 class BaseDevice:
@@ -138,9 +138,9 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         "XYZ": (True, True, True),
     }
     ORIGIN = (0.0, 0.0, 5.0)
-    X_AO_LIMITS = {"min_val": -5.0, "max_val": 5.0}
-    Y_AO_LIMITS = {"min_val": -5.0, "max_val": 5.0}
-    Z_AO_LIMITS = {"min_val": 0.0, "max_val": 10.0}
+    X_AO_LIMITS = LimitRange(-5.0, 5.0, ("min_val", "max_val"))
+    Y_AO_LIMITS = LimitRange(-5.0, 5.0, ("min_val", "max_val"))
+    Z_AO_LIMITS = LimitRange(0.0, 10.0, ("min_val", "max_val"))
     AI_BUFFER_SIZE = int(1e4)
 
     def __init__(self, param_dict):
@@ -164,7 +164,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             {
                 "physical_channel": getattr(self, f"ao_int_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} internal AO",
-                **getattr(self, f"{axis.upper()}_AO_LIMITS"),
+                **getattr(self, f"{axis.upper()}_AO_LIMITS").as_dict(),
                 "terminal_config": trm_cnfg,
             }
             for axis, trm_cnfg, inst in zip("xyz", (DIFF, DIFF, RSE), ("galvo", "galvo", "piezo"))
@@ -173,7 +173,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             {
                 "physical_channel": getattr(self, f"ao_{axis}_addr"),
                 "name_to_assign_to_channel": f"{axis}-{inst} AO",
-                **getattr(self, f"{axis.upper()}_AO_LIMITS"),
+                **getattr(self, f"{axis.upper()}_AO_LIMITS").as_dict(),
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
@@ -248,7 +248,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 init_pos = self.last_int_ao[self.AXIS_INDEX[axis]]
 
             total_dist = abs(final_pos - init_pos)
-            n_steps = helper.div_ceil(total_dist, step_sz)
+            n_steps = div_ceil(total_dist, step_sz)
 
             if n_steps < 2:
                 # one small step needs no smoothing
@@ -499,7 +499,7 @@ class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         if rate is None:
             rate = self.tasks.ci[-1].timing.samp_clk_rate
 
-        n_reads = helper.div_ceil(interval_s, (1 / rate))
+        n_reads = div_ceil(interval_s, (1 / rate))
 
         if len(self.ci_buffer) > n_reads:
             self.avg_cnt_rate_khz = (
@@ -611,8 +611,8 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     update_interval_s = 0.3
     MIN_SHG_TEMP = 53  # Celsius
-    power_limits_mW = dict(low=99, high=1000)
-    current_limits_mA = dict(low=1500, high=2500)
+    power_limits_mW = LimitRange(99, 1000)
+    current_limits_mA = LimitRange(1500, 2500)
 
     def __init__(self, param_dict):
 
@@ -682,7 +682,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         # check that value is within range
-        if self.power_limits_mW["low"] <= value_mW <= self.power_limits_mW["high"]:
+        if value_mW in self.power_limits_mW:
             try:
                 # change the mode to power
                 cmnd = "powerenable 1"
@@ -693,15 +693,13 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             except Exception as exc:
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            Error(
-                custom_txt=f"Power out of range [{self.power_limits_mW['low']}, {self.power_limits_mW['high']}]"
-            ).display()
+            Error(custom_txt=f"Power out of range {self.power_limits_mW}").display()
 
     def set_current(self, value_mA):
         """Doc."""
 
         # check that value is within range
-        if self.current_limits_mA["low"] <= value_mA <= self.current_limits_mA["high"]:
+        if value_mA in self.current_limits_mA:
             try:
                 # change the mode to power
                 cmnd = "powerenable 0"
@@ -712,9 +710,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             except Exception as exc:
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            Error(
-                custom_txt=f"Current out of range [{self.current_limits_mA['low']}, {self.current_limits_mA['high']}]"
-            ).display()
+            Error(custom_txt=f"Current out of range {self.current_limits_mA}").display()
 
 
 class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
