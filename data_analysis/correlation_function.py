@@ -214,7 +214,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     DUMP_PATH = Path("C:/temp_sfcs_data/")
     SIZE_LIMITS_MB = (100, 1e4)
 
-    def __init__(self, name=None):
+    def __init__(self, name=""):
         self.name = name
         self.data = []  # list to hold the data of each file
         self.cf = dict()
@@ -916,10 +916,15 @@ class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
 class SFCSExperiment:
     """Doc."""
 
-    def __init__(self, name=None):
-        self.confocal = SolutionSFCSMeasurement(name="confocal")
-        self.sted = SolutionSFCSMeasurement(name="STED")
+    def __init__(
+        self,
+        name,
+        confocal=SolutionSFCSMeasurement(name="confocal"),
+        sted=SolutionSFCSMeasurement(name="STED"),
+    ):
         self.name = name
+        self.confocal = confocal
+        self.sted = sted
 
     def load_experiment(
         self,

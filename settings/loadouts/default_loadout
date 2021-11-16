@@ -2,6 +2,7 @@ solScanFileTemplate,
 imgScanFileTemplate,img
 newTemplate,
 solImportFileSelectionPattern,1
+lineEdit,
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -17,8 +18,8 @@ imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
-scanImgFileNum,1
 spinBox,40
+scanImgFileNum,1
 solAnalysisRemoveWorstSpinner,0
 depPow,130
 depCurr,1500
@@ -47,9 +48,13 @@ dataYear,2021
 dataDay,8
 dataTemplate,halogen_4kHz_static_exc_112742_*.pkl
 solImportUseDontUse,Use
-importedSolDataTemplates,
+importedSolDataTemplates_2,
+importedSolDataTemplates_3,
+importedSolDataTemplates_5,
 comboBox_2,
-solAnalysisLifetime,Lifetime
+importedSolDataTemplates2,
+solAnalysisLifetime_2,Lifetime
+importedSolDataTemplates1,
 avgInterval,5000
 solScanParamsStacked,2
 importStacked,1
@@ -62,6 +67,8 @@ imageDataImport,False
 solDataImport,True
 solImportUse,True
 solImportUseAll,False
+assignLoadedMeas,False
+assignRawData,True
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
@@ -79,7 +86,9 @@ pixel_clock2,99
 framerate2,99
 exposure2,99
 tabWidget,2
-tabWidget_2,1
+tabWidget_2,0
+tabWidget_4,0
+tabWidget_5,1
 autoCrosshair,True
 alwaysSaveImg,False
 solDataFixShift,True

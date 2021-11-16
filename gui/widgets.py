@@ -263,7 +263,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
 )
 
-SOL_ANALYSIS_COLL = QtWidgetCollection(
+SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
     fix_shift=("solDataFixShift", "QCheckBox", "main", False),
     subtract_bg_corr=("solDataSubtractBgCorr", "QCheckBox", "main", False),
     subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
@@ -274,7 +274,7 @@ SOL_ANALYSIS_COLL = QtWidgetCollection(
     plot_spatial=("solAveragingPlotSpatial", "QRadioButton", "main", False),
     plot_temporal=("solAveragingPlotTemporal", "QRadioButton", "main", False),
     row_acf_disp=("solScanAcfDisp", None, "main", True),
-    imported_templates=("importedSolDataTemplates", "QComboBox", "main", True),
+    imported_templates=("importedSolDataTemplates1", "QComboBox", "main", True),
     scan_img_file_num=("scanImgFileNum", "QSpinBox", "main", True),
     scan_settings=("solAnalysisScanSettings", "QPlainTextEdit", "main", True),
     scan_duration_min=("solAnalysisDur", "QDoubleSpinBox", "main", True),
@@ -284,14 +284,18 @@ SOL_ANALYSIS_COLL = QtWidgetCollection(
     mean_tau=("solAnalysisMeanTau", "QDoubleSpinBox", "main", True),
     n_good_rows=("solAnalysisGoodRows", "QSpinBox", "main", True),
     n_bad_rows=("solAnalysisBadRows", "QSpinBox", "main", True),
-    exc_cal=("excCal", "QLineEdit", "main", True),
-    sted_cal=("stedCal", "QLineEdit", "main", True),
-    exc_samp=("excSamp", "QLineEdit", "main", True),
-    sted_samp=("stedSamp", "QLineEdit", "main", True),
 )
-# ----------------------------------------------
+
+SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
+    should_assign_loaded=("assignLoadedMeas", "QRadioButton", "main", True),
+    imported_templates=("importedSolDataTemplates2", "QRadioButton", "main", True),
+    should_assign_raw=("assignRawData", "QRadioButton", "main", True),
+    assigned_conf_template=("assignedExpConfMeas", "QLineEdit", "main", True),
+    assigned_sted_template=("assignedExpStedMeas", "QLineEdit", "main", True),
+)
+# -----------------------------------------------
 # MeasurementProcedure Widget Collections
-# ----------------------------------------------
+# -----------------------------------------------
 
 SOL_ANG_SCAN_COLL = QtWidgetCollection(
     max_line_len_um=("maxLineLen", "QDoubleSpinBox", "main", False),
