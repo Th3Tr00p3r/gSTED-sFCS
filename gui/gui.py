@@ -67,7 +67,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         self.saveImg.released.connect(self.impl.save_current_image)
 
-        # Analysis GUI
+        # Analysis - Data and single measurements
         self.analysisDataTypeGroup = PyQt5.QtWidgets.QButtonGroup()
         self.analysisDataTypeGroup.addButton(self.imageDataImport)
         self.analysisDataTypeGroup.addButton(self.solDataImport)
@@ -97,6 +97,11 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         self.solAveragingPlotSpatial.released.connect(self.impl.calculate_and_show_sol_mean_acf)
         self.solAveragingPlotTemporal.released.connect(self.impl.calculate_and_show_sol_mean_acf)
+
+        # analysis - experiment
+        self.assignExpConfMeas.released.connect(lambda: self.impl.assign_measurement("confocal"))
+        self.assignExpStedMeas.released.connect(lambda: self.impl.assign_measurement("sted"))
+        self.loadExperiment.released.connect(self.impl.load_experiment)
 
         # Device LEDs
         def led_clicked(wdgt):
@@ -253,6 +258,11 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
 
         self.impl.remove_imported_template()
 
+    def on_removeLoadedExperiment_released(self) -> None:
+        """Doc."""
+
+        self.impl.remove_experiment()
+
     @PyQt5.QtCore.pyqtSlot()
     def on_dataDirLogUpdate_released(self) -> None:
         """Doc."""
@@ -290,7 +300,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.impl.populate_data_templates_from_day(day)
 
     @PyQt5.QtCore.pyqtSlot(str)
-    def on_dataTemplate_currentTextChanged(self, template: str) -> None:
+    def on_dataTemplate1_currentTextChanged(self, template: str) -> None:
         """Doc."""
 
         self.impl.show_num_files(template)
@@ -298,6 +308,7 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.impl.preview_img_scan(template)
         self.impl.toggle_save_processed_enabled()
         self.impl.toggle_load_processed_enabled(template)
+        self.dataTemplate2.setText(template)
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_importedSolDataTemplates1_currentTextChanged(self, template: str) -> None:
