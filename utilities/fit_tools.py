@@ -8,7 +8,7 @@ import scipy.optimize as opt
 
 from utilities.display import Plotter
 from utilities.errors import err_hndlr
-from utilities.helper import LimitRange
+from utilities.helper import Limits
 
 warnings.simplefilter("error", opt.OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
@@ -24,8 +24,8 @@ def curve_fit_lims(
     xs,
     ys,
     ys_errors,
-    x_limits=LimitRange(np.NINF, np.Inf),
-    y_limits=LimitRange(np.NINF, np.Inf),
+    x_limits=Limits(np.NINF, np.Inf),
+    y_limits=Limits(np.NINF, np.Inf),
     should_plot=True,
     x_scale="log",
     y_scale="linear",

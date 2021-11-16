@@ -9,7 +9,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationTool
 from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
 
-from utilities.helper import LimitRange
+from utilities.helper import Limits
 
 
 class GuiDisplay:
@@ -127,7 +127,7 @@ class GuiDisplay:
             if fix_aspect:
                 force_aspect(ax, aspect=1)
             if scroll_zoom:
-                ax.org_lims = (LimitRange(ax.get_xlim()), LimitRange(ax.get_ylim()))
+                ax.org_lims = (Limits(ax.get_xlim()), Limits(ax.get_ylim()))
                 ax.org_dims = tuple(lim.interval() for lim in ax.org_lims)
                 ax.zoom_func = zoom_factory(ax)
             if cursor:
@@ -278,8 +278,8 @@ def zoom_factory(ax, base_scale=1.5):
         # fixes homebutton operation
         ax.figure.canvas.toolbar.push_current()
         # get the current x and y limits
-        cur_xlim = LimitRange(ax.get_xlim())
-        cur_ylim = LimitRange(ax.get_ylim())
+        cur_xlim = Limits(ax.get_xlim())
+        cur_ylim = Limits(ax.get_ylim())
         # set the range
         cur_xrange = cur_xlim.interval() * 0.5
         cur_yrange = cur_ylim.interval() * 0.5
@@ -300,8 +300,8 @@ def zoom_factory(ax, base_scale=1.5):
             scale_factor = base_scale
 
         # set new limits
-        new_xlim = LimitRange(xdata - cur_xrange * scale_factor, xdata + cur_xrange * scale_factor)
-        new_ylim = LimitRange(ydata + cur_yrange * scale_factor, ydata - cur_yrange * scale_factor)
+        new_xlim = Limits(xdata - cur_xrange * scale_factor, xdata + cur_xrange * scale_factor)
+        new_ylim = Limits(ydata + cur_yrange * scale_factor, ydata - cur_yrange * scale_factor)
         # limit zoom out
         org_width, org_height = ax.org_dims
         if (new_xlim.interval() > org_width * 1.1) or (-new_ylim.interval() > org_height * 1.1):

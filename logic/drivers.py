@@ -17,7 +17,7 @@ from nidaqmx.stream_readers import (
 )
 
 from utilities.errors import IOError, err_hndlr
-from utilities.helper import LimitRange
+from utilities.helper import Limits
 
 
 class Ftd2xx:
@@ -467,7 +467,7 @@ class Instrumental:
         if name not in {"pixel_clock", "framerate", "exposure"}:
             raise ValueError(f"Unknown parameter '{name}'.")
 
-        valid_value = LimitRange(getattr(self, f"{name}_range")).clamp(value)
+        valid_value = Limits(getattr(self, f"{name}_range")).clamp(value)
 
         try:
             if name == "pixel_clock":
