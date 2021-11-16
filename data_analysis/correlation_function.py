@@ -916,20 +916,15 @@ class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
 class SFCSExperiment:
     """Doc."""
 
-    def __init__(
-        self,
-        name,
-        confocal=SolutionSFCSMeasurement(name="confocal"),
-        sted=SolutionSFCSMeasurement(name="STED"),
-    ):
+    def __init__(self, name):
         self.name = name
-        self.confocal = confocal
-        self.sted = sted
 
     def load_experiment(
         self,
         confocal_template: Union[str, Path] = None,
         sted_template: Union[str, Path] = None,
+        confocal=None,
+        sted=None,
         should_plot=False,
         **kwargs,
     ):
@@ -938,20 +933,27 @@ class SFCSExperiment:
         if confocal_template is None and sted_template is None:
             raise RuntimeError("Can't load experiment with no measurements!")
 
-        if confocal_template is not None:
-            self.load_measurement(
-                meas_type="confocal",
-                file_path_template=confocal_template,
-                should_plot=should_plot,
-                **kwargs,
-            )
-        if sted_template is not None:
-            self.load_measurement(
-                meas_type="sted",
-                file_path_template=sted_template,
-                should_plot=should_plot,
-                **kwargs,
-            )
+        if confocal is None:
+            if confocal_template is not None:
+                self.load_measurement(
+                    meas_type="confocal",
+                    file_path_template=confocal_template,
+                    should_plot=should_plot,
+                    **kwargs,
+                )
+        else:
+            self.confocal = confocal
+
+        if sted is None:
+            if sted_template is not None:
+                self.load_measurement(
+                    meas_type="sted",
+                    file_path_template=sted_template,
+                    should_plot=should_plot,
+                    **kwargs,
+                )
+        else:
+            self.sted = sted
 
         if should_plot:
             super_title = f"Experiment '{self.name}' - All ACFs"
@@ -983,7 +985,7 @@ class SFCSExperiment:
         **kwargs,
     ):
 
-        measurement = getattr(self, meas_type)
+        measurement = SolutionSFCSMeasurement(name=meas_type)
         if "should_fix_shift" in kwargs:
             should_fix_shift = kwargs["should_fix_shift"]
         else:

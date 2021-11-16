@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1685</width>
-    <height>982</height>
+    <width>1691</width>
+    <height>956</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -5058,7 +5058,7 @@ Pattern:</string>
                           </widget>
                          </item>
                          <item>
-                          <widget class="QComboBox" name="dataTemplate">
+                          <widget class="QComboBox" name="dataTemplate1">
                            <property name="minimumSize">
                             <size>
                              <width>0</width>
@@ -6447,25 +6447,49 @@ Rows</string>
                            </attribute>
                            <layout class="QGridLayout" name="gridLayout_35">
                             <item row="0" column="0">
-                             <layout class="QVBoxLayout" name="verticalLayout_119" stretch="1,10">
+                             <layout class="QVBoxLayout" name="verticalLayout_119" stretch="0,10">
                               <property name="spacing">
                                <number>0</number>
                               </property>
                               <item>
-                               <layout class="QHBoxLayout" name="horizontalLayout_54">
-                                <property name="spacing">
-                                 <number>0</number>
-                                </property>
+                               <layout class="QHBoxLayout" name="horizontalLayout_27">
                                 <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_77">
+                                 <layout class="QVBoxLayout" name="verticalLayout_35">
+                                  <property name="spacing">
+                                   <number>2</number>
+                                  </property>
                                   <item>
-                                   <layout class="QVBoxLayout" name="verticalLayout_79">
+                                   <layout class="QHBoxLayout" name="horizontalLayout_30" stretch="1,10">
+                                    <property name="spacing">
+                                     <number>2</number>
+                                    </property>
                                     <item>
-                                     <widget class="QRadioButton" name="assignLoadedMeas">
-                                      <property name="text">
-                                       <string>Assign Loaded Measurements</string>
+                                     <layout class="QHBoxLayout" name="horizontalLayout_46" stretch="1,10">
+                                      <property name="spacing">
+                                       <number>6</number>
                                       </property>
-                                     </widget>
+                                      <item>
+                                       <widget class="QRadioButton" name="assignLoadedMeas">
+                                        <property name="text">
+                                         <string/>
+                                        </property>
+                                       </widget>
+                                      </item>
+                                      <item>
+                                       <widget class="QLabel" name="label_15">
+                                        <property name="sizePolicy">
+                                         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                          <horstretch>0</horstretch>
+                                          <verstretch>0</verstretch>
+                                         </sizepolicy>
+                                        </property>
+                                        <property name="text">
+                                         <string>Assign Loaded
+Measurements</string>
+                                        </property>
+                                       </widget>
+                                      </item>
+                                     </layout>
                                     </item>
                                     <item>
                                      <widget class="QComboBox" name="importedSolDataTemplates2">
@@ -6477,14 +6501,40 @@ Rows</string>
                                    </layout>
                                   </item>
                                   <item>
-                                   <widget class="QRadioButton" name="assignRawData">
-                                    <property name="text">
-                                     <string>Assign Raw Data for Processing</string>
+                                   <layout class="QHBoxLayout" name="horizontalLayout_54" stretch="1,0">
+                                    <property name="spacing">
+                                     <number>2</number>
                                     </property>
-                                    <property name="checked">
-                                     <bool>true</bool>
-                                    </property>
-                                   </widget>
+                                    <item>
+                                     <layout class="QHBoxLayout" name="horizontalLayout_56" stretch="1,10">
+                                      <item>
+                                       <widget class="QRadioButton" name="assignRawData">
+                                        <property name="text">
+                                         <string/>
+                                        </property>
+                                        <property name="checked">
+                                         <bool>true</bool>
+                                        </property>
+                                       </widget>
+                                      </item>
+                                      <item>
+                                       <widget class="QLabel" name="label_26">
+                                        <property name="text">
+                                         <string>Assign Raw Data
+for Processing</string>
+                                        </property>
+                                       </widget>
+                                      </item>
+                                     </layout>
+                                    </item>
+                                    <item>
+                                     <widget class="QLineEdit" name="dataTemplate2">
+                                      <property name="readOnly">
+                                       <bool>true</bool>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                   </layout>
                                   </item>
                                  </layout>
                                 </item>
@@ -6576,18 +6626,42 @@ Rows</string>
                                  </layout>
                                 </item>
                                 <item>
-                                 <widget class="QPushButton" name="loadExperiment">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
+                                 <layout class="QVBoxLayout" name="verticalLayout_65">
+                                  <property name="spacing">
+                                   <number>0</number>
                                   </property>
-                                  <property name="text">
-                                   <string>Load
+                                  <item>
+                                   <layout class="QVBoxLayout" name="verticalLayout_75">
+                                    <property name="spacing">
+                                     <number>0</number>
+                                    </property>
+                                    <item>
+                                     <widget class="QLabel" name="label_27">
+                                      <property name="text">
+                                       <string>Experiment Name</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QLineEdit" name="experimentName"/>
+                                    </item>
+                                   </layout>
+                                  </item>
+                                  <item>
+                                   <widget class="QPushButton" name="loadExperiment">
+                                    <property name="sizePolicy">
+                                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                      <horstretch>0</horstretch>
+                                      <verstretch>0</verstretch>
+                                     </sizepolicy>
+                                    </property>
+                                    <property name="text">
+                                     <string>Load
 Experiment</string>
-                                  </property>
-                                 </widget>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
                                 </item>
                                </layout>
                               </item>
@@ -7379,7 +7453,7 @@ Resoultion (nm)</string>
                         <x>20</x>
                         <y>90</y>
                         <width>291</width>
-                        <height>41</height>
+                        <height>42</height>
                        </rect>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_71">
@@ -7405,7 +7479,7 @@ Resoultion (nm)</string>
                         <x>20</x>
                         <y>140</y>
                         <width>234</width>
-                        <height>36</height>
+                        <height>37</height>
                        </rect>
                       </property>
                       <layout class="QHBoxLayout" name="horizontalLayout_43">
@@ -7427,8 +7501,8 @@ Experiment</string>
                        <rect>
                         <x>20</x>
                         <y>190</y>
-                        <width>261</width>
-                        <height>36</height>
+                        <width>263</width>
+                        <height>37</height>
                        </rect>
                       </property>
                       <layout class="QHBoxLayout" name="horizontalLayout_53">

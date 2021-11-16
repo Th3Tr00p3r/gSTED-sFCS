@@ -19,6 +19,7 @@ import gui.widgets as wdgts
 import logic.measurements as meas
 from data_analysis.correlation_function import (
     ImageSFCSMeasurement,
+    SFCSExperiment,
     SolutionSFCSMeasurement,
 )
 from logic.scan_patterns import ScanPatternAO
@@ -823,8 +824,7 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
-        templates_combobox = DATA_IMPORT_COLL.data_templates.obj
+        templates_combobox = wdgts.DATA_IMPORT_COLL.data_templates.obj
 
         templates_combobox.clear()
 
@@ -1206,10 +1206,17 @@ class MainWin:
                     return
 
             # save data and populate combobox
-            imported_combobox = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
+            imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
+            imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
+
             self._app.analysis.loaded_data[current_template] = corrfunc_tdc
-            imported_combobox.obj.addItem(current_template)
-            imported_combobox.set(current_template)
+
+            imported_combobox1.obj.addItem(current_template)
+            imported_combobox2.obj.addItem(current_template)
+
+            imported_combobox1.set(current_template)
+            imported_combobox2.set(current_template)
+
             logging.info(f"Data '{current_template}' ready for analysis.")
 
             self.toggle_save_processed_enabled()  # refresh save option
@@ -1397,12 +1404,17 @@ class MainWin:
     def remove_imported_template(self) -> None:
         """Doc."""
 
-        imported_templates = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
-        template = imported_templates.get()
+        imported_templates1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
+        imported_templates2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
+
+        template = imported_templates1.get()
         self._app.analysis.loaded_data[template] = None
-        imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
+
+        imported_templates1.obj.removeItem(imported_templates1.obj.currentIndex())
+        imported_templates2.obj.removeItem(imported_templates2.obj.currentIndex())
 
         self.toggle_save_processed_enabled()  # refresh save option
+
         # TODO: clear image properties!
 
     #########################
@@ -1411,6 +1423,65 @@ class MainWin:
 
     def assign_measurement(self, meas_type: str) -> None:
         """Doc."""
+
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+
+        if wdgt_coll.should_assign_loaded:
+            template = wdgt_coll.imported_templates.get()
+            self._app.analysis.assigned_to_experiment[meas_type] = {
+                "template": template,
+                "method": "loaded",
+            }
+        elif wdgt_coll.should_assign_raw:
+            template = wdgt_coll.data_templates.get()
+            self._app.analysis.assigned_to_experiment[meas_type] = {
+                "template": template,
+                "method": "raw",
+            }
+
+        if meas_type == "confocal":
+            wdgt_to_assign_to = wdgt_coll.assigned_conf_template
+        elif meas_type == "sted":
+            wdgt_to_assign_to = wdgt_coll.assigned_sted_template
+        wdgt_to_assign_to.set(template)
+
+    def load_experiment(self) -> None:
+        """Doc."""
+
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+
+        if not (name := wdgt_coll.experiment_name.get()):
+            logging.info("Can't load unnamed experiment!")
+            return
+
+        kwargs = dict()
+        for meas_type, source in self._app.analysis.assigned_to_experiment.items():
+            if source["method"] == "loaded":
+                with self.get_corrfunc_tdc_from_template(
+                    wdgt_coll.imported_templates.get(), should_load=True
+                ) as measurement:
+                    kwargs[meas_type] = measurement
+            elif source["method"] == "raw":
+                curr_dir = self.current_date_type_dir_path()
+                kwargs[f"{meas_type}_template"] = curr_dir / wdgt_coll.data_templates.get()
+
+        experiment = SFCSExperiment(name)
+        self._app.analysis.loaded_experiments[name] = experiment.load_experiment(
+            **kwargs
+        )  # TODO: add more kwargs options in GUI
+
+        wdgt_coll.experiment_names.obj.addItem(name)
+
+        # reset the dict and clear relevant widgets
+        self._app.analysis.assigned_to_experiment = dict()
+        wdgt_coll.assigned_conf_template.obj.clear()
+        wdgt_coll.assigned_sted_template.obj.clear()
+        wdgt_coll.experiment_name.obj.clear()
+
+    def remove_experiment(self) -> None:
+        """Doc."""
+
+        pass  # TODO: implement this based on remove imported template...
 
 
 class SettWin:

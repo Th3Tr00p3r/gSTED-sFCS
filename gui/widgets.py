@@ -251,7 +251,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     data_days=("dataDay", "QComboBox", "main", True),
     data_months=("dataMonth", "QComboBox", "main", True),
     data_years=("dataYear", "QComboBox", "main", True),
-    data_templates=("dataTemplate", "QComboBox", "main", True),
+    data_templates=("dataTemplate1", "QComboBox", "main", True),
     n_files=("dataNumFiles", "QLabel", "main", True),
     new_template=("newTemplate", "QLineEdit", "main", False),
     import_stacked=("importStacked", "QStackedWidget", "main", True),
@@ -287,11 +287,14 @@ SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
 )
 
 SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
-    should_assign_loaded=("assignLoadedMeas", "QRadioButton", "main", True),
-    imported_templates=("importedSolDataTemplates2", "QRadioButton", "main", True),
-    should_assign_raw=("assignRawData", "QRadioButton", "main", True),
+    experiment_names=("loadedExperimentNames", "QComboBox", "main", True),
+    should_assign_loaded=("assignLoadedMeas", "QRadioButton", "main", False),
+    imported_templates=("importedSolDataTemplates2", "QComboBox", "main", True),
+    should_assign_raw=("assignRawData", "QRadioButton", "main", False),
+    data_templates=("dataTemplate2", "QLineEdit", "main", True),
     assigned_conf_template=("assignedExpConfMeas", "QLineEdit", "main", True),
     assigned_sted_template=("assignedExpStedMeas", "QLineEdit", "main", True),
+    experiment_name=("experimentName", "QLineEdit", "main", True),
 )
 # -----------------------------------------------
 # MeasurementProcedure Widget Collections
