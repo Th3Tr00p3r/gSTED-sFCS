@@ -9,7 +9,7 @@ import scipy
 
 from utilities import file_utilities, fit_tools
 from utilities.display import Plotter
-from utilities.helper import LimitRange, div_ceil
+from utilities.helper import Limits, div_ceil
 
 
 @dataclass
@@ -501,7 +501,7 @@ class TDCPhotonDataMixin:
             xs=self.tdc_calib[x_field][is_finite_y],
             ys=self.tdc_calib[y_field][is_finite_y],
             ys_errors=self.tdc_calib[y_error_field][is_finite_y],
-            x_limits=LimitRange(fit_range),
+            x_limits=Limits(fit_range),
             should_plot=should_plot,
             x_scale=x_scale,
             y_scale=y_scale,

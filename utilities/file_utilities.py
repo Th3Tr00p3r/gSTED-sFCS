@@ -16,7 +16,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import LimitRange, reverse_dict
+from utilities.helper import Limits, reverse_dict
 
 legacy_matlab_trans_dict = {
     # Solution Scan
@@ -172,7 +172,7 @@ def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> N
 def save_object_to_disk(
     obj,
     file_path: Path,
-    size_limits_mb: LimitRange = None,
+    size_limits_mb: Limits = None,
     compression_method: str = None,  # "gzip" / "blosc"
 ) -> bool:
     """
@@ -196,7 +196,7 @@ def save_object_to_disk(
         blosc_args = bloscpack.BloscArgs(typesize=4, clevel=1, cname="zlib")
         obj = bloscpack.pack_bytes_to_bytes(obj, blosc_args=blosc_args)
 
-    if compression_method == "gzip":
+    elif compression_method == "gzip":
         # gzip compress the serialized object
         obj = gzip.compress(obj, compresslevel=1)
 
@@ -226,7 +226,7 @@ def load_file(file_path: Path) -> Any:
 
 def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
     """
-    Save a processed measurement, lacking any data.
+    Save a processed measurement, including the '.data' attribute.
     The template may then be loaded much more quickly.
     """
 

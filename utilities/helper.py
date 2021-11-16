@@ -82,12 +82,12 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     return img, thresh
 
 
-class LimitRange:
+class Limits:
     def __init__(self, lower, upper=None, dict_labels: Tuple[str, str] = None):
         if isinstance(lower, tuple):
             tuple_ = lower
             self.lower, self.upper = tuple_
-        elif isinstance(lower, LimitRange):
+        elif isinstance(lower, Limits):
             limit_range_ = lower
             self.lower, self.upper = limit_range_.lower, limit_range_.upper
         elif upper is not None:
@@ -97,7 +97,7 @@ class LimitRange:
         self.dict_labels = dict_labels
 
     def __repr__(self):
-        return f"LimitRange(lower={self.lower}, upper={self.upper})"
+        return f"Limits(lower={self.lower}, upper={self.upper})"
 
     def __str__(self):
         return f"({self.lower}, {self.upper})"
@@ -112,7 +112,7 @@ class LimitRange:
         if isinstance(other, tuple) or hasattr(other, "clamp"):
             return tuple(self) == other
         else:
-            raise TypeError("Can only compare LimitRange to other instances or tuples")
+            raise TypeError("Can only compare Limits to other instances or tuples")
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -127,9 +127,9 @@ class LimitRange:
 
     def __contains__(self, other):
         """
-        Checks if 'other' is in 'LimitRange'.
+        Checks if 'other' is in 'Limits'.
         If:
-        other is a tuple/LimitRange: checks if full range is contained and returns bool
+        other is a tuple/Limits: checks if full range is contained and returns bool
         other is number: checks if number is contained in range and returns bool
         """
         if (isinstance(other, tuple) and len(other) == 2) or hasattr(other, "clamp"):
@@ -139,7 +139,7 @@ class LimitRange:
             return self.lower <= other <= self.upper
 
         else:
-            raise TypeError("Can only compare LimitRange to other instances or tuples")
+            raise TypeError("Can only compare Limits to other instances or tuples")
 
     def valid_indices(self, arr: np.ndarray):
         """
