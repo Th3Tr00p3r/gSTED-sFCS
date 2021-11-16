@@ -680,7 +680,7 @@ class MainWin:
                 camera.set_parameters(parameters)
 
     ####################
-    ## Analysis Tab
+    ## Analysis Tab - Raw Data
     ####################
 
     def switch_data_type(self) -> None:
@@ -1085,12 +1085,79 @@ class MainWin:
             # plot it (below)
             data_import_wdgts.img_preview_disp.obj.display_image(image, cmap="bone")
 
+    def save_processed_data(self):
+        """Doc."""
+
+        with self.get_corrfunc_tdc_from_template(should_load=True) as corrfunc_tdc:
+            curr_dir = self.current_date_type_dir_path()
+            file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
+            logging.info("Saved the processed data.")
+
+    def toggle_save_processed_enabled(self):
+        """Doc."""
+
+        with self.get_corrfunc_tdc_from_template() as corrfunc_tdc:
+            if corrfunc_tdc is None:
+                self._gui.solImportSaveProcessed.setEnabled(False)
+            else:
+                self._gui.solImportSaveProcessed.setEnabled(True)
+
+    def toggle_load_processed_enabled(self, current_template: str):
+        """Doc."""
+
+        curr_dir = self.current_date_type_dir_path()
+        file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
+        self._gui.solImportLoadProcessed.setEnabled(file_path.is_file())
+
+    def convert_files_to_matlab_format(self) -> None:
+        """
+        Convert files of current template to '.mat',
+        after translating their dictionaries to the legacy matlab format.
+        """
+
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
+        current_template = DATA_IMPORT_COLL.data_templates.get()
+        current_dir_path = self.current_date_type_dir_path()
+
+        if not current_template or current_template.endswith(".mat"):
+            return
+
+        pressed = dialog.Question(
+            txt=f"Are you sure you wish to convert '{current_template}'?",
+            title="Conversion to .mat Format",
+        ).display()
+        if pressed == dialog.NO:
+            return
+
+        unsorted_paths = list(current_dir_path.glob(current_template))
+        file_paths = file_utilities.sort_file_paths_by_file_number(unsorted_paths)
+
+        print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
+
+        for idx, file_path in enumerate(file_paths):
+            file_dict = file_utilities.load_file_dict(file_path)
+            mat_file_path_str = re.sub("\\.pkl", ".mat", str(file_path))
+            if "solution" in mat_file_path_str:
+                mat_file_path = Path(re.sub("solution", r"solution\\matlab", mat_file_path_str))
+            elif "image" in mat_file_path_str:
+                mat_file_path = Path(re.sub("image", r"image\\matlab", mat_file_path_str))
+            Path.mkdir(current_dir_path / "matlab", parents=True, exist_ok=True)
+            file_utilities.save_mat(file_dict, mat_file_path)
+            print(f"({idx+1})", end=" ")
+
+        print("Done.")
+        logging.info(f"{current_template} converted to MATLAB format")
+
+    ##########################
+    ## Analysis Tab - Single Measurement
+    ##########################
+
     def import_sol_data(self, should_load_processed=False) -> None:
         """Doc."""
 
         import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
         current_template = import_wdgts.data_templates.get()
-        sol_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        sol_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.read_gui_to_obj(self._app)
         curr_dir = self.current_date_type_dir_path()
 
         if self._app.analysis.loaded_data.get(current_template) is not None:
@@ -1139,7 +1206,7 @@ class MainWin:
                     return
 
             # save data and populate combobox
-            imported_combobox = wdgts.SOL_ANALYSIS_COLL.imported_templates
+            imported_combobox = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
             self._app.analysis.loaded_data[current_template] = corrfunc_tdc
             imported_combobox.obj.addItem(current_template)
             imported_combobox.set(current_template)
@@ -1148,30 +1215,6 @@ class MainWin:
             self.toggle_save_processed_enabled()  # refresh save option
             self.toggle_load_processed_enabled(current_template)  # refresh load option
 
-    def save_processed_data(self):
-        """Doc."""
-
-        with self.get_corrfunc_tdc_from_template(should_load=True) as corrfunc_tdc:
-            curr_dir = self.current_date_type_dir_path()
-            file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
-            logging.info("Saved the processed data.")
-
-    def toggle_save_processed_enabled(self):
-        """Doc."""
-
-        with self.get_corrfunc_tdc_from_template() as corrfunc_tdc:
-            if corrfunc_tdc is None:
-                self._gui.solImportSaveProcessed.setEnabled(False)
-            else:
-                self._gui.solImportSaveProcessed.setEnabled(True)
-
-    def toggle_load_processed_enabled(self, current_template: str):
-        """Doc."""
-
-        curr_dir = self.current_date_type_dir_path()
-        file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
-        self._gui.solImportLoadProcessed.setEnabled(file_path.is_file())
-
     @contextmanager
     def get_corrfunc_tdc_from_template(
         self, template: str = None, should_load=False
@@ -1179,7 +1222,7 @@ class MainWin:
         """Doc."""
 
         if template is None:
-            template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
+            template = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
         corrfunc_tdc = self._app.analysis.loaded_data.get(curr_data_type)
 
@@ -1209,12 +1252,12 @@ class MainWin:
     def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
         with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
             if corrfunc_tdc is None:
                 # no imported templates (deleted)
-                wdgts.SOL_ANALYSIS_COLL.clear_all_objects()
+                wdgts.SOL_MEAS_ANALYSIS_COLL.clear_all_objects()
                 sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
                 sol_data_analysis_wdgts.scan_img_file_num.set(1)
             else:
@@ -1263,7 +1306,7 @@ class MainWin:
                 img = corrfunc_tdc.scan_images_dstack[:, :, file_num - 1]
                 roi = corrfunc_tdc.roi_list[file_num - 1]
 
-                scan_image_disp = wdgts.SOL_ANALYSIS_COLL.scan_image_disp.obj
+                scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
                 scan_image_disp.plot(roi["col"], roi["row"], color="white")
                 scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
@@ -1271,7 +1314,7 @@ class MainWin:
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.SOL_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
         with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
             if corrfunc_tdc is None:
@@ -1347,39 +1390,14 @@ class MainWin:
     def assign_template(self, type) -> None:
         """Doc."""
 
-        curr_template = wdgts.SOL_ANALYSIS_COLL.imported_templates.get()
-        assigned_wdgt = getattr(wdgts.SOL_ANALYSIS_COLL, type)
+        curr_template = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.get()
+        assigned_wdgt = getattr(wdgts.SOL_MEAS_ANALYSIS_COLL, type)
         assigned_wdgt.set(curr_template)
-
-    def calibrate_tdc_all(self):
-        """Doc."""
-
-        data_types = ["exc_cal", "sted_cal", "exc_samp", "sted_samp"]
-        assigned_templates = [getattr(wdgts.SOL_ANALYSIS_COLL, type).get() for type in data_types]
-        for template in assigned_templates:
-            with self.get_corrfunc_tdc_from_template(template, should_load=True) as corrfunc_tdc:
-                with suppress(AttributeError):
-                    # AttributeError - template is empty, meaning corrfunc_tdc is None
-                    corrfunc_tdc.calibrate_tdc(should_plot=True)
-                    # TODO: add nanosecond calibration gating from widget
-                    # TODO: move plotting to GUI
-
-        for idx in range(0, len(assigned_templates), 2):
-            with self.get_corrfunc_tdc_from_template(
-                assigned_templates[idx],
-                should_load=True,
-            ) as exc_data, self.get_corrfunc_tdc_from_template(
-                assigned_templates[idx + 1],
-                should_load=True,
-            ) as sted_data:
-                with suppress(AttributeError):
-                    # AttributeError - template is empty, meaning corrfunc_tdc is None
-                    exc_data.compare_lifetimes(legend_label="exc", compare_to={"sted": sted_data})
 
     def remove_imported_template(self) -> None:
         """Doc."""
 
-        imported_templates = wdgts.SOL_ANALYSIS_COLL.imported_templates
+        imported_templates = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
         template = imported_templates.get()
         self._app.analysis.loaded_data[template] = None
         imported_templates.obj.removeItem(imported_templates.obj.currentIndex())
@@ -1387,44 +1405,12 @@ class MainWin:
         self.toggle_save_processed_enabled()  # refresh save option
         # TODO: clear image properties!
 
-    def convert_files_to_matlab_format(self) -> None:
-        """
-        Convert files of current template to '.mat',
-        after translating their dictionaries to the legacy matlab format.
-        """
+    #########################
+    ## Analysis Tab - Single Experiment
+    #########################
 
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
-        current_template = DATA_IMPORT_COLL.data_templates.get()
-        current_dir_path = self.current_date_type_dir_path()
-
-        if not current_template or current_template.endswith(".mat"):
-            return
-
-        pressed = dialog.Question(
-            txt=f"Are you sure you wish to convert '{current_template}'?",
-            title="Conversion to .mat Format",
-        ).display()
-        if pressed == dialog.NO:
-            return
-
-        unsorted_paths = list(current_dir_path.glob(current_template))
-        file_paths = file_utilities.sort_file_paths_by_file_number(unsorted_paths)
-
-        print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
-
-        for idx, file_path in enumerate(file_paths):
-            file_dict = file_utilities.load_file_dict(file_path)
-            mat_file_path_str = re.sub("\\.pkl", ".mat", str(file_path))
-            if "solution" in mat_file_path_str:
-                mat_file_path = Path(re.sub("solution", r"solution\\matlab", mat_file_path_str))
-            elif "image" in mat_file_path_str:
-                mat_file_path = Path(re.sub("image", r"image\\matlab", mat_file_path_str))
-            Path.mkdir(current_dir_path / "matlab", parents=True, exist_ok=True)
-            file_utilities.save_mat(file_dict, mat_file_path)
-            print(f"({idx+1})", end=" ")
-
-        print("Done.")
-        logging.info(f"{current_template} converted to MATLAB format")
+    def assign_measurement(self, meas_type: str) -> None:
+        """Doc."""
 
 
 class SettWin:
