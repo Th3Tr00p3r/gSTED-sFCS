@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1685</width>
-    <height>965</height>
+    <height>982</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -5540,79 +5540,79 @@ Afterpulse</string>
                 <widget class="QWidget" name="solution_5">
                  <layout class="QGridLayout" name="gridLayout_13">
                   <item row="0" column="0">
-                   <layout class="QVBoxLayout" name="verticalLayout_35" stretch="1,100">
-                    <property name="spacing">
-                     <number>0</number>
+                   <widget class="QTabWidget" name="tabWidget_2">
+                    <property name="currentIndex">
+                     <number>1</number>
                     </property>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_20">
-                      <property name="title">
-                       <string>Imported Solution Measurement Data</string>
-                      </property>
-                      <layout class="QGridLayout" name="gridLayout_11">
-                       <property name="spacing">
-                        <number>0</number>
-                       </property>
-                       <item row="0" column="0">
-                        <layout class="QHBoxLayout" name="horizontalLayout_56" stretch="100,1">
+                    <widget class="QWidget" name="tab_3">
+                     <attribute name="title">
+                      <string>Single Measurement</string>
+                     </attribute>
+                     <layout class="QVBoxLayout" name="verticalLayout_150">
+                      <item>
+                       <widget class="QGroupBox" name="groupBox_37">
+                        <property name="title">
+                         <string>Loaded Solution Measurements</string>
+                        </property>
+                        <layout class="QGridLayout" name="gridLayout_59">
                          <property name="spacing">
                           <number>0</number>
                          </property>
-                         <item>
-                          <widget class="QComboBox" name="importedSolDataTemplates">
-                           <property name="enabled">
-                            <bool>true</bool>
+                         <item row="0" column="0">
+                          <layout class="QHBoxLayout" name="horizontalLayout_69" stretch="100,1">
+                           <property name="spacing">
+                            <number>0</number>
                            </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="removeImportedSolData">
-                           <property name="text">
-                            <string>Remove</string>
-                           </property>
-                          </widget>
+                           <item>
+                            <widget class="QComboBox" name="importedSolDataTemplates1">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QPushButton" name="removeImportedSolData">
+                             <property name="text">
+                              <string>Remove</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
                          </item>
                         </layout>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_21">
-                      <property name="title">
-                       <string>Solution Measurement Analysis</string>
-                      </property>
-                      <layout class="QGridLayout" name="gridLayout_37">
-                       <property name="spacing">
-                        <number>0</number>
-                       </property>
-                       <item row="0" column="0">
-                        <layout class="QVBoxLayout" name="verticalLayout_62" stretch="1000,1">
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QGroupBox" name="groupBox_21">
+                        <property name="title">
+                         <string>Solution Measurement Analysis</string>
+                        </property>
+                        <layout class="QVBoxLayout" name="verticalLayout_62" stretch="100,1">
                          <property name="spacing">
                           <number>0</number>
                          </property>
                          <item>
-                          <widget class="QTabWidget" name="tabWidget_2">
+                          <widget class="QTabWidget" name="tabWidget_5">
                            <property name="enabled">
                             <bool>true</bool>
                            </property>
                            <property name="currentIndex">
-                            <number>2</number>
+                            <number>1</number>
                            </property>
-                           <widget class="QWidget" name="tab_4">
+                           <widget class="QWidget" name="tab_11">
                             <attribute name="title">
                              <string>Scan Image Inspection</string>
                             </attribute>
-                            <layout class="QGridLayout" name="gridLayout_39">
+                            <layout class="QGridLayout" name="gridLayout_53">
                              <item row="0" column="0">
-                              <layout class="QHBoxLayout" name="horizontalLayout_27" stretch="1,1000">
+                              <layout class="QHBoxLayout" name="horizontalLayout_66" stretch="1,1000">
                                <property name="spacing">
                                 <number>0</number>
                                </property>
                                <item>
-                                <layout class="QVBoxLayout" name="verticalLayout_65">
+                                <layout class="QVBoxLayout" name="verticalLayout_106">
                                  <item>
-                                  <spacer name="verticalSpacer_3">
+                                  <spacer name="verticalSpacer_7">
                                    <property name="orientation">
                                     <enum>Qt::Vertical</enum>
                                    </property>
@@ -5625,7 +5625,7 @@ Afterpulse</string>
                                   </spacer>
                                  </item>
                                  <item>
-                                  <layout class="QVBoxLayout" name="verticalLayout_87">
+                                  <layout class="QVBoxLayout" name="verticalLayout_114">
                                    <property name="spacing">
                                     <number>0</number>
                                    </property>
@@ -5633,7 +5633,7 @@ Afterpulse</string>
                                     <enum>QLayout::SetDefaultConstraint</enum>
                                    </property>
                                    <item>
-                                    <widget class="QLabel" name="label_85">
+                                    <widget class="QLabel" name="label_107">
                                      <property name="sizePolicy">
                                       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                                        <horstretch>0</horstretch>
@@ -5667,7 +5667,7 @@ Afterpulse</string>
                                   </layout>
                                  </item>
                                  <item>
-                                  <spacer name="verticalSpacer_5">
+                                  <spacer name="verticalSpacer_11">
                                    <property name="orientation">
                                     <enum>Qt::Vertical</enum>
                                    </property>
@@ -5692,44 +5692,44 @@ Afterpulse</string>
                              </item>
                             </layout>
                            </widget>
-                           <widget class="QWidget" name="row_averaging_2">
+                           <widget class="QWidget" name="row_averaging_3">
                             <attribute name="title">
                              <string>Row ACF Averaging</string>
                             </attribute>
-                            <layout class="QGridLayout" name="gridLayout_40">
+                            <layout class="QGridLayout" name="gridLayout_55">
                              <item row="0" column="0">
-                              <layout class="QVBoxLayout" name="verticalLayout_89" stretch="100">
+                              <layout class="QVBoxLayout" name="verticalLayout_115" stretch="100">
                                <property name="spacing">
                                 <number>0</number>
                                </property>
                                <item>
-                                <layout class="QHBoxLayout" name="horizontalLayout_30" stretch="1,100">
+                                <layout class="QHBoxLayout" name="horizontalLayout_67" stretch="1,100">
                                  <property name="spacing">
                                   <number>0</number>
                                  </property>
                                  <item>
-                                  <layout class="QVBoxLayout" name="verticalLayout_75" stretch="0,0,0">
+                                  <layout class="QVBoxLayout" name="verticalLayout_121" stretch="0,0,0">
                                    <property name="spacing">
                                     <number>0</number>
                                    </property>
                                    <item>
-                                    <widget class="QGroupBox" name="groupBox_30">
+                                    <widget class="QGroupBox" name="groupBox_32">
                                      <property name="title">
                                       <string>Row Discrimination</string>
                                      </property>
-                                     <layout class="QGridLayout" name="gridLayout_21">
+                                     <layout class="QGridLayout" name="gridLayout_37">
                                       <property name="spacing">
                                        <number>0</number>
                                       </property>
                                       <item row="0" column="0">
-                                       <layout class="QVBoxLayout" name="verticalLayout_76">
+                                       <layout class="QVBoxLayout" name="verticalLayout_140">
                                         <item>
-                                         <layout class="QVBoxLayout" name="verticalLayout_108">
+                                         <layout class="QVBoxLayout" name="verticalLayout_141">
                                           <property name="spacing">
                                            <number>0</number>
                                           </property>
                                           <item>
-                                           <layout class="QHBoxLayout" name="horizontalLayout_75" stretch="1,1,100">
+                                           <layout class="QHBoxLayout" name="horizontalLayout_77" stretch="1,1,100">
                                             <item>
                                              <widget class="QRadioButton" name="solAnalysisRemoveOver">
                                               <property name="text">
@@ -5777,7 +5777,7 @@ over:</string>
                                              </widget>
                                             </item>
                                             <item>
-                                             <spacer name="horizontalSpacer_37">
+                                             <spacer name="horizontalSpacer_40">
                                               <property name="orientation">
                                                <enum>Qt::Horizontal</enum>
                                               </property>
@@ -5792,7 +5792,7 @@ over:</string>
                                            </layout>
                                           </item>
                                           <item>
-                                           <layout class="QHBoxLayout" name="horizontalLayout_76" stretch="1,1,100">
+                                           <layout class="QHBoxLayout" name="horizontalLayout_78" stretch="0,1,100">
                                             <item>
                                              <widget class="QRadioButton" name="solAnalysisRemoveWorst">
                                               <property name="minimumSize">
@@ -5830,7 +5830,7 @@ Worst</string>
                                              </widget>
                                             </item>
                                             <item>
-                                             <spacer name="horizontalSpacer_39">
+                                             <spacer name="horizontalSpacer_41">
                                               <property name="orientation">
                                                <enum>Qt::Horizontal</enum>
                                               </property>
@@ -5866,11 +5866,11 @@ Mean ACF</string>
                                     </widget>
                                    </item>
                                    <item>
-                                    <widget class="QGroupBox" name="groupBox_14">
+                                    <widget class="QGroupBox" name="groupBox_20">
                                      <property name="title">
                                       <string>Plot Oprions</string>
                                      </property>
-                                     <layout class="QHBoxLayout" name="horizontalLayout_46">
+                                     <layout class="QHBoxLayout" name="horizontalLayout_68">
                                       <item>
                                        <widget class="QRadioButton" name="solAveragingPlotTemporal">
                                         <property name="text">
@@ -5892,7 +5892,7 @@ Mean ACF</string>
                                     </widget>
                                    </item>
                                    <item>
-                                    <spacer name="verticalSpacer_10">
+                                    <spacer name="verticalSpacer_13">
                                      <property name="orientation">
                                       <enum>Qt::Vertical</enum>
                                      </property>
@@ -5925,1271 +5925,1549 @@ Mean ACF</string>
                              </item>
                             </layout>
                            </widget>
-                           <widget class="QWidget" name="gating_2">
-                            <attribute name="title">
-                             <string>TDC Calibration</string>
-                            </attribute>
-                            <layout class="QGridLayout" name="gridLayout_46">
-                             <item row="0" column="0">
-                              <layout class="QHBoxLayout" name="horizontalLayout_43" stretch="18,34">
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QGroupBox" name="groupBox_33">
+                           <property name="title">
+                            <string>Individual Measurement Properties</string>
+                           </property>
+                           <layout class="QGridLayout" name="gridLayout_56">
+                            <property name="spacing">
+                             <number>0</number>
+                            </property>
+                            <item row="0" column="0">
+                             <widget class="QGroupBox" name="groupBox_34">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="title">
+                               <string>General</string>
+                              </property>
+                              <layout class="QVBoxLayout" name="verticalLayout_142" stretch="1,1,1,10">
                                <property name="spacing">
                                 <number>0</number>
                                </property>
                                <item>
-                                <layout class="QVBoxLayout" name="verticalLayout_77" stretch="0">
+                                <layout class="QVBoxLayout" name="verticalLayout_143">
                                  <property name="spacing">
                                   <number>0</number>
                                  </property>
+                                 <property name="sizeConstraint">
+                                  <enum>QLayout::SetDefaultConstraint</enum>
+                                 </property>
                                  <item>
-                                  <widget class="QFrame" name="frame_4">
-                                   <property name="frameShape">
-                                    <enum>QFrame::StyledPanel</enum>
+                                  <widget class="QLabel" name="label_78">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
                                    </property>
-                                   <property name="frameShadow">
-                                    <enum>QFrame::Raised</enum>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
                                    </property>
-                                   <layout class="QGridLayout" name="gridLayout_26">
-                                    <property name="leftMargin">
-                                     <number>0</number>
-                                    </property>
-                                    <property name="topMargin">
-                                     <number>0</number>
-                                    </property>
-                                    <property name="rightMargin">
-                                     <number>0</number>
-                                    </property>
-                                    <property name="bottomMargin">
-                                     <number>0</number>
-                                    </property>
-                                    <property name="spacing">
-                                     <number>0</number>
-                                    </property>
-                                    <item row="0" column="0">
-                                     <layout class="QVBoxLayout" name="verticalLayout_71" stretch="0,0">
-                                      <property name="spacing">
-                                       <number>0</number>
-                                      </property>
-                                      <item>
-                                       <widget class="QGroupBox" name="groupBox_7">
-                                        <property name="title">
-                                         <string>Data Assignment</string>
-                                        </property>
-                                        <layout class="QGridLayout" name="gridLayout_36">
-                                         <property name="spacing">
-                                          <number>0</number>
-                                         </property>
-                                         <item row="0" column="0">
-                                          <layout class="QVBoxLayout" name="verticalLayout_115">
-                                           <property name="spacing">
-                                            <number>2</number>
-                                           </property>
-                                           <item>
-                                            <layout class="QVBoxLayout" name="verticalLayout_116">
-                                             <property name="spacing">
-                                              <number>0</number>
-                                             </property>
-                                             <item>
-                                              <widget class="QPushButton" name="assignExcCal">
-                                               <property name="sizePolicy">
-                                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                                 <horstretch>0</horstretch>
-                                                 <verstretch>0</verstretch>
-                                                </sizepolicy>
-                                               </property>
-                                               <property name="font">
-                                                <font>
-                                                 <pointsize>8</pointsize>
-                                                </font>
-                                               </property>
-                                               <property name="text">
-                                                <string>Assign Excitation Calib.</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                             <item>
-                                              <widget class="QLineEdit" name="excCal">
-                                               <property name="font">
-                                                <font>
-                                                 <pointsize>8</pointsize>
-                                                </font>
-                                               </property>
-                                               <property name="readOnly">
-                                                <bool>true</bool>
-                                               </property>
-                                               <property name="placeholderText">
-                                                <string>Template</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                            </layout>
-                                           </item>
-                                           <item>
-                                            <layout class="QVBoxLayout" name="verticalLayout_117">
-                                             <property name="spacing">
-                                              <number>0</number>
-                                             </property>
-                                             <item>
-                                              <widget class="QPushButton" name="assignStedCal">
-                                               <property name="sizePolicy">
-                                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                                 <horstretch>0</horstretch>
-                                                 <verstretch>0</verstretch>
-                                                </sizepolicy>
-                                               </property>
-                                               <property name="font">
-                                                <font>
-                                                 <pointsize>8</pointsize>
-                                                </font>
-                                               </property>
-                                               <property name="text">
-                                                <string>Assign STED Calib.</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                             <item>
-                                              <widget class="QLineEdit" name="stedCal">
-                                               <property name="font">
-                                                <font>
-                                                 <pointsize>8</pointsize>
-                                                </font>
-                                               </property>
-                                               <property name="readOnly">
-                                                <bool>true</bool>
-                                               </property>
-                                               <property name="placeholderText">
-                                                <string>Template</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                            </layout>
-                                           </item>
-                                           <item>
-                                            <layout class="QVBoxLayout" name="verticalLayout_118">
-                                             <property name="spacing">
-                                              <number>0</number>
-                                             </property>
-                                             <item>
-                                              <widget class="QPushButton" name="assignExcSamp">
-                                               <property name="sizePolicy">
-                                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                                 <horstretch>0</horstretch>
-                                                 <verstretch>0</verstretch>
-                                                </sizepolicy>
-                                               </property>
-                                               <property name="font">
-                                                <font>
-                                                 <pointsize>8</pointsize>
-                                                </font>
-                                               </property>
-                                               <property name="text">
-                                                <string>Assign Excitation Sample</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                             <item>
-                                              <widget class="QLineEdit" name="excSamp">
-                                               <property name="font">
-                                                <font>
-                                                 <pointsize>8</pointsize>
-                                                </font>
-                                               </property>
-                                               <property name="readOnly">
-                                                <bool>true</bool>
-                                               </property>
-                                               <property name="placeholderText">
-                                                <string>Template</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                            </layout>
-                                           </item>
-                                           <item>
-                                            <layout class="QVBoxLayout" name="verticalLayout_119">
-                                             <property name="spacing">
-                                              <number>0</number>
-                                             </property>
-                                             <item>
-                                              <widget class="QPushButton" name="assignStedSamp">
-                                               <property name="sizePolicy">
-                                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                                 <horstretch>0</horstretch>
-                                                 <verstretch>0</verstretch>
-                                                </sizepolicy>
-                                               </property>
-                                               <property name="font">
-                                                <font>
-                                                 <pointsize>8</pointsize>
-                                                </font>
-                                               </property>
-                                               <property name="text">
-                                                <string>Assign STED Sample</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                             <item>
-                                              <widget class="QLineEdit" name="stedSamp">
-                                               <property name="font">
-                                                <font>
-                                                 <pointsize>8</pointsize>
-                                                </font>
-                                               </property>
-                                               <property name="readOnly">
-                                                <bool>true</bool>
-                                               </property>
-                                               <property name="placeholderText">
-                                                <string>Template</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                            </layout>
-                                           </item>
-                                          </layout>
-                                         </item>
-                                        </layout>
-                                       </widget>
-                                      </item>
-                                      <item>
-                                       <layout class="QHBoxLayout" name="horizontalLayout_58" stretch="10,1">
-                                        <property name="spacing">
-                                         <number>2</number>
-                                        </property>
-                                        <item>
-                                         <widget class="QPushButton" name="calTdc">
-                                          <property name="sizePolicy">
-                                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                            <horstretch>0</horstretch>
-                                            <verstretch>0</verstretch>
-                                           </sizepolicy>
-                                          </property>
-                                          <property name="text">
-                                           <string>Calibrate
-TDC</string>
-                                          </property>
-                                         </widget>
-                                        </item>
-                                        <item>
-                                         <layout class="QVBoxLayout" name="verticalLayout_127">
-                                          <property name="spacing">
-                                           <number>0</number>
-                                          </property>
-                                          <item>
-                                           <widget class="QLabel" name="label_12">
-                                            <property name="text">
-                                             <string>For Lifetimes
-Over (ns)</string>
-                                            </property>
-                                           </widget>
-                                          </item>
-                                          <item>
-                                           <widget class="QSpinBox" name="spinBox">
-                                            <property name="suffix">
-                                             <string/>
-                                            </property>
-                                            <property name="maximum">
-                                             <number>999</number>
-                                            </property>
-                                            <property name="value">
-                                             <number>40</number>
-                                            </property>
-                                           </widget>
-                                          </item>
-                                         </layout>
-                                        </item>
-                                       </layout>
-                                      </item>
-                                     </layout>
-                                    </item>
-                                    <item row="1" column="0">
-                                     <spacer name="verticalSpacer_12">
-                                      <property name="orientation">
-                                       <enum>Qt::Vertical</enum>
-                                      </property>
-                                      <property name="sizeHint" stdset="0">
-                                       <size>
-                                        <width>20</width>
-                                        <height>40</height>
-                                       </size>
-                                      </property>
-                                     </spacer>
-                                    </item>
-                                   </layout>
+                                   <property name="text">
+                                    <string>Files</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QSpinBox" name="solAnalysisNumFiles">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="readOnly">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="maximum">
+                                    <number>9999</number>
+                                   </property>
                                   </widget>
                                  </item>
                                 </layout>
                                </item>
                                <item>
-                                <layout class="QGridLayout" name="solAnalysisTDCLayout" rowstretch="0" columnstretch="0">
-                                 <property name="leftMargin">
-                                  <number>0</number>
-                                 </property>
-                                 <property name="bottomMargin">
-                                  <number>0</number>
-                                 </property>
+                                <layout class="QVBoxLayout" name="verticalLayout_144">
                                  <property name="spacing">
                                   <number>0</number>
                                  </property>
+                                 <property name="sizeConstraint">
+                                  <enum>QLayout::SetDefaultConstraint</enum>
+                                 </property>
+                                 <item>
+                                  <widget class="QLabel" name="label_108">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="text">
+                                    <string>Duration
+(min)</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QDoubleSpinBox" name="solAnalysisDur">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="frame">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="readOnly">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="decimals">
+                                    <number>1</number>
+                                   </property>
+                                   <property name="maximum">
+                                    <double>999999.000000000000000</double>
+                                   </property>
+                                  </widget>
+                                 </item>
                                 </layout>
                                </item>
+                               <item>
+                                <layout class="QVBoxLayout" name="verticalLayout_145">
+                                 <property name="spacing">
+                                  <number>0</number>
+                                 </property>
+                                 <property name="sizeConstraint">
+                                  <enum>QLayout::SetDefaultConstraint</enum>
+                                 </property>
+                                 <item>
+                                  <widget class="QLabel" name="label_82">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="text">
+                                    <string>Count Rate
+(kHz)</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QDoubleSpinBox" name="solAnalysisCountRate">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="frame">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="readOnly">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="decimals">
+                                    <number>1</number>
+                                   </property>
+                                   <property name="maximum">
+                                    <double>999999999999.000000000000000</double>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                </layout>
+                               </item>
+                               <item>
+                                <spacer name="verticalSpacer_14">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>21</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
                               </layout>
-                             </item>
-                            </layout>
-                           </widget>
-                           <widget class="QWidget" name="tab_3">
-                            <attribute name="title">
-                             <string>gSTED Gating</string>
-                            </attribute>
-                            <layout class="QGridLayout" name="gridLayout_43">
-                             <item row="0" column="0">
-                              <layout class="QHBoxLayout" name="horizontalLayout_44" stretch="18,34">
+                             </widget>
+                            </item>
+                            <item row="0" column="1">
+                             <widget class="QGroupBox" name="groupBox_35">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="title">
+                               <string>Mean ACF</string>
+                              </property>
+                              <layout class="QGridLayout" name="gridLayout_57">
                                <property name="spacing">
                                 <number>0</number>
                                </property>
-                               <item>
-                                <layout class="QVBoxLayout" name="verticalLayout_79" stretch="0">
+                               <item row="0" column="0">
+                                <layout class="QVBoxLayout" name="verticalLayout_146">
+                                 <item>
+                                  <widget class="QLabel" name="label_69">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="text">
+                                    <string>G0</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QDoubleSpinBox" name="solAnalysisMeanG0">
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="frame">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="readOnly">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="suffix">
+                                    <string> k</string>
+                                   </property>
+                                   <property name="decimals">
+                                    <number>1</number>
+                                   </property>
+                                   <property name="minimum">
+                                    <double>-999.000000000000000</double>
+                                   </property>
+                                   <property name="maximum">
+                                    <double>999.000000000000000</double>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                </layout>
+                               </item>
+                               <item row="0" column="1">
+                                <layout class="QVBoxLayout" name="verticalLayout_147">
                                  <property name="spacing">
                                   <number>0</number>
                                  </property>
                                  <item>
-                                  <widget class="QFrame" name="frame_5">
-                                   <property name="frameShape">
-                                    <enum>QFrame::StyledPanel</enum>
+                                  <widget class="QLabel" name="label_83">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
                                    </property>
-                                   <property name="frameShadow">
-                                    <enum>QFrame::Raised</enum>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
                                    </property>
-                                   <layout class="QVBoxLayout" name="verticalLayout_74" stretch="0,0">
+                                   <property name="text">
+                                    <string>Decay
+Time (us)</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QDoubleSpinBox" name="solAnalysisMeanTau">
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="frame">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="readOnly">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="decimals">
+                                    <number>1</number>
+                                   </property>
+                                   <property name="minimum">
+                                    <double>-9999.000000000000000</double>
+                                   </property>
+                                   <property name="maximum">
+                                    <double>9999.000000000000000</double>
+                                   </property>
+                                   <property name="value">
+                                    <double>0.000000000000000</double>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                </layout>
+                               </item>
+                               <item row="1" column="0">
+                                <layout class="QVBoxLayout" name="verticalLayout_148">
+                                 <property name="spacing">
+                                  <number>0</number>
+                                 </property>
+                                 <item>
+                                  <widget class="QLabel" name="label_109">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="text">
+                                    <string>&quot;Good&quot;
+Rows</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QSpinBox" name="solAnalysisGoodRows">
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="readOnly">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="maximum">
+                                    <number>9999</number>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                </layout>
+                               </item>
+                               <item row="1" column="1">
+                                <layout class="QVBoxLayout" name="verticalLayout_149">
+                                 <property name="spacing">
+                                  <number>0</number>
+                                 </property>
+                                 <item>
+                                  <widget class="QLabel" name="label_110">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="text">
+                                    <string>&quot;Bad&quot;
+Rows</string>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                 <item>
+                                  <widget class="QSpinBox" name="solAnalysisBadRows">
+                                   <property name="font">
+                                    <font>
+                                     <pointsize>8</pointsize>
+                                    </font>
+                                   </property>
+                                   <property name="readOnly">
+                                    <bool>true</bool>
+                                   </property>
+                                   <property name="buttonSymbols">
+                                    <enum>QAbstractSpinBox::NoButtons</enum>
+                                   </property>
+                                   <property name="maximum">
+                                    <number>9999</number>
+                                   </property>
+                                  </widget>
+                                 </item>
+                                </layout>
+                               </item>
+                               <item row="2" column="0" colspan="2">
+                                <spacer name="verticalSpacer_15">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>88</width>
+                                   <height>20</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                            </item>
+                            <item row="0" column="2">
+                             <widget class="QGroupBox" name="groupBox_36">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="title">
+                               <string>Scan Settings</string>
+                              </property>
+                              <layout class="QGridLayout" name="gridLayout_58">
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
+                               <item row="0" column="0">
+                                <widget class="QPlainTextEdit" name="solAnalysisScanSettings"/>
+                               </item>
+                              </layout>
+                             </widget>
+                            </item>
+                           </layout>
+                          </widget>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                    <widget class="QWidget" name="tab_4">
+                     <attribute name="title">
+                      <string>Single Experiment</string>
+                     </attribute>
+                     <layout class="QGridLayout" name="gridLayout_60">
+                      <item row="0" column="0">
+                       <layout class="QVBoxLayout" name="verticalLayout_151" stretch="1,10,1">
+                        <property name="spacing">
+                         <number>0</number>
+                        </property>
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_29">
+                          <property name="title">
+                           <string>Loaded Solution Experiments</string>
+                          </property>
+                          <layout class="QGridLayout" name="gridLayout_26">
+                           <property name="spacing">
+                            <number>0</number>
+                           </property>
+                           <item row="0" column="0">
+                            <layout class="QHBoxLayout" name="horizontalLayout_57" stretch="100,1">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QComboBox" name="loadedExperimentNames">
+                               <property name="enabled">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QPushButton" name="removeLoadedExperiment">
+                               <property name="text">
+                                <string>Remove</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QTabWidget" name="tabWidget_4">
+                          <property name="currentIndex">
+                           <number>0</number>
+                          </property>
+                          <widget class="QWidget" name="tab_7">
+                           <attribute name="title">
+                            <string>Loading</string>
+                           </attribute>
+                           <layout class="QGridLayout" name="gridLayout_35">
+                            <item row="0" column="0">
+                             <layout class="QVBoxLayout" name="verticalLayout_119" stretch="1,10">
+                              <property name="spacing">
+                               <number>0</number>
+                              </property>
+                              <item>
+                               <layout class="QHBoxLayout" name="horizontalLayout_54">
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
+                                <item>
+                                 <layout class="QVBoxLayout" name="verticalLayout_77">
+                                  <item>
+                                   <layout class="QVBoxLayout" name="verticalLayout_79">
+                                    <item>
+                                     <widget class="QRadioButton" name="assignLoadedMeas">
+                                      <property name="text">
+                                       <string>Assign Loaded Measurements</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QComboBox" name="importedSolDataTemplates2">
+                                      <property name="enabled">
+                                       <bool>true</bool>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                   </layout>
+                                  </item>
+                                  <item>
+                                   <widget class="QRadioButton" name="assignRawData">
+                                    <property name="text">
+                                     <string>Assign Raw Data for Processing</string>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </item>
+                                <item>
+                                 <layout class="QVBoxLayout" name="verticalLayout_116">
+                                  <property name="spacing">
+                                   <number>0</number>
+                                  </property>
+                                  <item>
+                                   <layout class="QVBoxLayout" name="verticalLayout_117">
                                     <property name="spacing">
                                      <number>0</number>
                                     </property>
-                                    <property name="leftMargin">
-                                     <number>0</number>
-                                    </property>
-                                    <property name="topMargin">
-                                     <number>0</number>
-                                    </property>
-                                    <property name="rightMargin">
-                                     <number>0</number>
-                                    </property>
-                                    <property name="bottomMargin">
+                                    <item>
+                                     <widget class="QPushButton" name="assignExpConfMeas">
+                                      <property name="sizePolicy">
+                                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                       </sizepolicy>
+                                      </property>
+                                      <property name="font">
+                                       <font>
+                                        <pointsize>8</pointsize>
+                                       </font>
+                                      </property>
+                                      <property name="text">
+                                       <string>Assign as 'Confocal'</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QLineEdit" name="assignedExpConfMeas">
+                                      <property name="font">
+                                       <font>
+                                        <pointsize>8</pointsize>
+                                       </font>
+                                      </property>
+                                      <property name="readOnly">
+                                       <bool>true</bool>
+                                      </property>
+                                      <property name="placeholderText">
+                                       <string>Template</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                   </layout>
+                                  </item>
+                                  <item>
+                                   <layout class="QVBoxLayout" name="verticalLayout_118">
+                                    <property name="spacing">
                                      <number>0</number>
                                     </property>
                                     <item>
-                                     <widget class="QGroupBox" name="groupBox_13">
-                                      <property name="title">
-                                       <string>Time Gating</string>
+                                     <widget class="QPushButton" name="assignExpStedMeas">
+                                      <property name="sizePolicy">
+                                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                       </sizepolicy>
                                       </property>
-                                      <layout class="QGridLayout" name="gridLayout_38">
+                                      <property name="font">
+                                       <font>
+                                        <pointsize>8</pointsize>
+                                       </font>
+                                      </property>
+                                      <property name="text">
+                                       <string>Assign as 'STED'</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QLineEdit" name="assignedExpStedMeas">
+                                      <property name="font">
+                                       <font>
+                                        <pointsize>8</pointsize>
+                                       </font>
+                                      </property>
+                                      <property name="readOnly">
+                                       <bool>true</bool>
+                                      </property>
+                                      <property name="placeholderText">
+                                       <string>Template</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                   </layout>
+                                  </item>
+                                 </layout>
+                                </item>
+                                <item>
+                                 <widget class="QPushButton" name="loadExperiment">
+                                  <property name="sizePolicy">
+                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                    <horstretch>0</horstretch>
+                                    <verstretch>0</verstretch>
+                                   </sizepolicy>
+                                  </property>
+                                  <property name="text">
+                                   <string>Load
+Experiment</string>
+                                  </property>
+                                 </widget>
+                                </item>
+                               </layout>
+                              </item>
+                              <item>
+                               <spacer name="verticalSpacer_16">
+                                <property name="orientation">
+                                 <enum>Qt::Vertical</enum>
+                                </property>
+                                <property name="sizeHint" stdset="0">
+                                 <size>
+                                  <width>20</width>
+                                  <height>40</height>
+                                 </size>
+                                </property>
+                               </spacer>
+                              </item>
+                             </layout>
+                            </item>
+                           </layout>
+                          </widget>
+                          <widget class="QWidget" name="tab_8">
+                           <attribute name="title">
+                            <string>TDC Calibration</string>
+                           </attribute>
+                           <layout class="QGridLayout" name="gridLayout_38">
+                            <item row="0" column="0">
+                             <layout class="QHBoxLayout" name="horizontalLayout_58" stretch="0,34">
+                              <property name="spacing">
+                               <number>0</number>
+                              </property>
+                              <item>
+                               <layout class="QVBoxLayout" name="verticalLayout_74" stretch="10,1,10">
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
+                                <item>
+                                 <spacer name="verticalSpacer_18">
+                                  <property name="orientation">
+                                   <enum>Qt::Vertical</enum>
+                                  </property>
+                                  <property name="sizeHint" stdset="0">
+                                   <size>
+                                    <width>20</width>
+                                    <height>40</height>
+                                   </size>
+                                  </property>
+                                 </spacer>
+                                </item>
+                                <item>
+                                 <layout class="QHBoxLayout" name="horizontalLayout_63" stretch="10,1">
+                                  <property name="spacing">
+                                   <number>2</number>
+                                  </property>
+                                  <item>
+                                   <widget class="QPushButton" name="calibrateTdc">
+                                    <property name="sizePolicy">
+                                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                      <horstretch>0</horstretch>
+                                      <verstretch>0</verstretch>
+                                     </sizepolicy>
+                                    </property>
+                                    <property name="text">
+                                     <string>Calibrate
+TDC</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item>
+                                   <layout class="QVBoxLayout" name="verticalLayout_127">
+                                    <property name="spacing">
+                                     <number>0</number>
+                                    </property>
+                                    <item>
+                                     <widget class="QLabel" name="label_25">
+                                      <property name="text">
+                                       <string>For Lifetimes
+Over (ns)</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QSpinBox" name="tdcCalibGating">
+                                      <property name="suffix">
+                                       <string/>
+                                      </property>
+                                      <property name="maximum">
+                                       <number>999</number>
+                                      </property>
+                                      <property name="value">
+                                       <number>40</number>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                   </layout>
+                                  </item>
+                                 </layout>
+                                </item>
+                                <item>
+                                 <spacer name="verticalSpacer_12">
+                                  <property name="orientation">
+                                   <enum>Qt::Vertical</enum>
+                                  </property>
+                                  <property name="sizeHint" stdset="0">
+                                   <size>
+                                    <width>20</width>
+                                    <height>40</height>
+                                   </size>
+                                  </property>
+                                 </spacer>
+                                </item>
+                               </layout>
+                              </item>
+                              <item>
+                               <layout class="QGridLayout" name="solAnalysisTDCLayout" rowstretch="0" columnstretch="0">
+                                <property name="leftMargin">
+                                 <number>0</number>
+                                </property>
+                                <property name="bottomMargin">
+                                 <number>0</number>
+                                </property>
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
+                               </layout>
+                              </item>
+                             </layout>
+                            </item>
+                           </layout>
+                          </widget>
+                          <widget class="QWidget" name="tab_9">
+                           <attribute name="title">
+                            <string>gSTED Gating</string>
+                           </attribute>
+                           <layout class="QGridLayout" name="gridLayout_46">
+                            <item row="0" column="0">
+                             <layout class="QHBoxLayout" name="horizontalLayout_64" stretch="18,34">
+                              <property name="spacing">
+                               <number>0</number>
+                              </property>
+                              <item>
+                               <layout class="QVBoxLayout" name="verticalLayout_99" stretch="1,10">
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
+                                <item>
+                                 <widget class="QGroupBox" name="groupBox_13">
+                                  <property name="title">
+                                   <string>Time Gating</string>
+                                  </property>
+                                  <layout class="QGridLayout" name="gridLayout_48">
+                                   <property name="spacing">
+                                    <number>0</number>
+                                   </property>
+                                   <item row="0" column="0">
+                                    <layout class="QVBoxLayout" name="verticalLayout_134" stretch="1,1">
+                                     <property name="spacing">
+                                      <number>0</number>
+                                     </property>
+                                     <item>
+                                      <widget class="QPushButton" name="addStandardGates">
+                                       <property name="sizePolicy">
+                                        <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                                         <horstretch>0</horstretch>
+                                         <verstretch>0</verstretch>
+                                        </sizepolicy>
+                                       </property>
+                                       <property name="text">
+                                        <string>Add Standard Gates</string>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item>
+                                      <layout class="QHBoxLayout" name="horizontalLayout_65">
                                        <property name="spacing">
                                         <number>0</number>
                                        </property>
-                                       <item row="0" column="0">
-                                        <layout class="QVBoxLayout" name="verticalLayout_134" stretch="1,1">
-                                         <property name="spacing">
-                                          <number>0</number>
+                                       <item>
+                                        <widget class="QPushButton" name="AddCustomGate">
+                                         <property name="sizePolicy">
+                                          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                                           <horstretch>0</horstretch>
+                                           <verstretch>0</verstretch>
+                                          </sizepolicy>
                                          </property>
-                                         <item>
-                                          <widget class="QPushButton" name="pushButton_10">
-                                           <property name="sizePolicy">
-                                            <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                                             <horstretch>0</horstretch>
-                                             <verstretch>0</verstretch>
-                                            </sizepolicy>
-                                           </property>
-                                           <property name="text">
-                                            <string>Add Standard Gates</string>
-                                           </property>
-                                          </widget>
-                                         </item>
-                                         <item>
-                                          <layout class="QHBoxLayout" name="horizontalLayout_63">
-                                           <property name="spacing">
-                                            <number>0</number>
-                                           </property>
-                                           <item>
-                                            <widget class="QPushButton" name="pushButton_11">
-                                             <property name="sizePolicy">
-                                              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-                                               <horstretch>0</horstretch>
-                                               <verstretch>0</verstretch>
-                                              </sizepolicy>
-                                             </property>
-                                             <property name="text">
-                                              <string>Add Custom
+                                         <property name="text">
+                                          <string>Add Custom
 Gate</string>
-                                             </property>
-                                            </widget>
-                                           </item>
-                                           <item>
-                                            <layout class="QVBoxLayout" name="verticalLayout_135">
-                                             <property name="spacing">
-                                              <number>0</number>
-                                             </property>
-                                             <item>
-                                              <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
-                                               <property name="suffix">
-                                                <string/>
-                                               </property>
-                                               <property name="decimals">
-                                                <number>1</number>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                             <item>
-                                              <widget class="QLabel" name="label_33">
-                                               <property name="text">
-                                                <string>Lifetimes</string>
-                                               </property>
-                                              </widget>
-                                             </item>
-                                            </layout>
-                                           </item>
-                                          </layout>
-                                         </item>
-                                        </layout>
+                                         </property>
+                                        </widget>
                                        </item>
-                                       <item row="2" column="0">
-                                        <layout class="QGridLayout" name="gridLayout_48">
+                                       <item>
+                                        <layout class="QVBoxLayout" name="verticalLayout_135">
                                          <property name="spacing">
                                           <number>0</number>
                                          </property>
-                                         <item row="1" column="0">
-                                          <widget class="QComboBox" name="comboBox_2">
-                                           <property name="sizePolicy">
-                                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                             <horstretch>0</horstretch>
-                                             <verstretch>0</verstretch>
-                                            </sizepolicy>
+                                         <item>
+                                          <widget class="QDoubleSpinBox" name="customGateLifetimes">
+                                           <property name="suffix">
+                                            <string/>
+                                           </property>
+                                           <property name="decimals">
+                                            <number>1</number>
                                            </property>
                                           </widget>
                                          </item>
-                                         <item row="0" column="0">
-                                          <widget class="QLabel" name="label_34">
+                                         <item>
+                                          <widget class="QLabel" name="label_33">
                                            <property name="text">
-                                            <string>Available
-Gates</string>
-                                           </property>
-                                          </widget>
-                                         </item>
-                                         <item row="1" column="1">
-                                          <widget class="QPushButton" name="pushButton_12">
-                                           <property name="sizePolicy">
-                                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                             <horstretch>0</horstretch>
-                                             <verstretch>0</verstretch>
-                                            </sizepolicy>
-                                           </property>
-                                           <property name="text">
-                                            <string>Remove Gate</string>
+                                            <string>Lifetimes</string>
                                            </property>
                                           </widget>
                                          </item>
                                         </layout>
                                        </item>
                                       </layout>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <spacer name="verticalSpacer_17">
-                                      <property name="orientation">
-                                       <enum>Qt::Vertical</enum>
-                                      </property>
-                                      <property name="sizeHint" stdset="0">
-                                       <size>
-                                        <width>20</width>
-                                        <height>208</height>
-                                       </size>
-                                      </property>
-                                     </spacer>
-                                    </item>
-                                   </layout>
-                                  </widget>
-                                 </item>
-                                </layout>
+                                     </item>
+                                    </layout>
+                                   </item>
+                                   <item row="1" column="0">
+                                    <layout class="QVBoxLayout" name="verticalLayout_152">
+                                     <item>
+                                      <widget class="QLabel" name="label_34">
+                                       <property name="text">
+                                        <string>Available Gates</string>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item>
+                                      <layout class="QHBoxLayout" name="horizontalLayout_62" stretch="10,1">
+                                       <property name="spacing">
+                                        <number>0</number>
+                                       </property>
+                                       <item>
+                                        <widget class="QComboBox" name="availableGates">
+                                         <property name="sizePolicy">
+                                          <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                           <horstretch>0</horstretch>
+                                           <verstretch>0</verstretch>
+                                          </sizepolicy>
+                                         </property>
+                                         <property name="maximumSize">
+                                          <size>
+                                           <width>16777215</width>
+                                           <height>20</height>
+                                          </size>
+                                         </property>
+                                        </widget>
+                                       </item>
+                                       <item>
+                                        <widget class="QPushButton" name="removeGate">
+                                         <property name="sizePolicy">
+                                          <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                           <horstretch>0</horstretch>
+                                           <verstretch>0</verstretch>
+                                          </sizepolicy>
+                                         </property>
+                                         <property name="maximumSize">
+                                          <size>
+                                           <width>16777215</width>
+                                           <height>20</height>
+                                          </size>
+                                         </property>
+                                         <property name="text">
+                                          <string>Remove</string>
+                                         </property>
+                                        </widget>
+                                       </item>
+                                      </layout>
+                                     </item>
+                                    </layout>
+                                   </item>
+                                  </layout>
+                                 </widget>
+                                </item>
+                                <item>
+                                 <spacer name="verticalSpacer_17">
+                                  <property name="orientation">
+                                   <enum>Qt::Vertical</enum>
+                                  </property>
+                                  <property name="sizeHint" stdset="0">
+                                   <size>
+                                    <width>20</width>
+                                    <height>208</height>
+                                   </size>
+                                  </property>
+                                 </spacer>
+                                </item>
+                               </layout>
+                              </item>
+                              <item>
+                               <layout class="QGridLayout" name="solAnalysisGSTEDLayout" rowstretch="0" columnstretch="0">
+                                <property name="leftMargin">
+                                 <number>0</number>
+                                </property>
+                                <property name="bottomMargin">
+                                 <number>0</number>
+                                </property>
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
+                               </layout>
+                              </item>
+                             </layout>
+                            </item>
+                           </layout>
+                          </widget>
+                          <widget class="QWidget" name="tab_10">
+                           <attribute name="title">
+                            <string>Plotting</string>
+                           </attribute>
+                           <layout class="QGridLayout" name="gridLayout_36">
+                            <item row="0" column="0">
+                             <layout class="QHBoxLayout" name="horizontalLayout_71" stretch="1,10">
+                              <property name="spacing">
+                               <number>0</number>
+                              </property>
+                              <item>
+                               <layout class="QVBoxLayout" name="verticalLayout_100" stretch="1,10">
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
+                                <item>
+                                 <widget class="QGroupBox" name="groupBox_27">
+                                  <property name="title">
+                                   <string>Plotting Options</string>
+                                  </property>
+                                  <layout class="QGridLayout" name="gridLayout_54">
+                                   <property name="spacing">
+                                    <number>0</number>
+                                   </property>
+                                  </layout>
+                                 </widget>
+                                </item>
+                                <item>
+                                 <spacer name="verticalSpacer_19">
+                                  <property name="orientation">
+                                   <enum>Qt::Vertical</enum>
+                                  </property>
+                                  <property name="sizeHint" stdset="0">
+                                   <size>
+                                    <width>20</width>
+                                    <height>208</height>
+                                   </size>
+                                  </property>
+                                 </spacer>
+                                </item>
+                               </layout>
+                              </item>
+                              <item>
+                               <layout class="QGridLayout" name="solAnalysisGSTEDLayout_2" rowstretch="0" columnstretch="0">
+                                <property name="leftMargin">
+                                 <number>0</number>
+                                </property>
+                                <property name="bottomMargin">
+                                 <number>0</number>
+                                </property>
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
+                               </layout>
+                              </item>
+                             </layout>
+                            </item>
+                           </layout>
+                          </widget>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_31">
+                          <property name="title">
+                           <string>Experiment Properties</string>
+                          </property>
+                          <layout class="QGridLayout" name="gridLayout_43">
+                           <property name="spacing">
+                            <number>2</number>
+                           </property>
+                           <item row="0" column="0">
+                            <layout class="QVBoxLayout" name="verticalLayout_84">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_89">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>40</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Exc/STED
+G0 Ratio</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="expPropRatio">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="frame">
+                                <bool>true</bool>
+                               </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="decimals">
+                                <number>1</number>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item row="0" column="1">
+                            <layout class="QVBoxLayout" name="verticalLayout_88">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_92">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>40</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Fluorophore
+Lifetime (ns)</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="expPropLifetime">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="frame">
+                                <bool>true</bool>
+                               </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="decimals">
+                                <number>1</number>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item row="0" column="2">
+                            <layout class="QVBoxLayout" name="verticalLayout_95">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_93">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>40</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Laser Pulse
+Delay (ns)</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="expPropLaserPulseDelay">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="frame">
+                                <bool>true</bool>
+                               </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="decimals">
+                                <number>1</number>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item row="0" column="3">
+                            <layout class="QVBoxLayout" name="verticalLayout_90">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_91">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>40</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>TDC Calibration
+Gating (ns)</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="expPropTdcCalibGating">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="frame">
+                                <bool>true</bool>
+                               </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="prefix">
+                                <string/>
+                               </property>
+                               <property name="decimals">
+                                <number>1</number>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item row="0" column="4">
+                            <layout class="QVBoxLayout" name="verticalLayout_107">
+                             <item>
+                              <widget class="QLabel" name="label_16">
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>40</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>gSTED
+Resoultion (nm)</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <layout class="QHBoxLayout" name="horizontalLayout_70">
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
+                               <item>
+                                <widget class="QComboBox" name="expPropGstedGate">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="maximumSize">
+                                  <size>
+                                   <width>16777215</width>
+                                   <height>20</height>
+                                  </size>
+                                 </property>
+                                 <property name="font">
+                                  <font>
+                                   <pointsize>8</pointsize>
+                                  </font>
+                                 </property>
+                                 <property name="placeholderText">
+                                  <string>Lifetime</string>
+                                 </property>
+                                </widget>
                                </item>
                                <item>
-                                <layout class="QGridLayout" name="solAnalysisGSTEDLayout" rowstretch="0" columnstretch="0">
-                                 <property name="leftMargin">
-                                  <number>0</number>
+                                <widget class="QDoubleSpinBox" name="expPropGstedResolution">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
                                  </property>
-                                 <property name="bottomMargin">
-                                  <number>0</number>
+                                 <property name="maximumSize">
+                                  <size>
+                                   <width>16777215</width>
+                                   <height>20</height>
+                                  </size>
                                  </property>
-                                 <property name="spacing">
-                                  <number>0</number>
+                                 <property name="font">
+                                  <font>
+                                   <pointsize>8</pointsize>
+                                  </font>
                                  </property>
-                                </layout>
+                                 <property name="frame">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="readOnly">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="buttonSymbols">
+                                  <enum>QAbstractSpinBox::NoButtons</enum>
+                                 </property>
+                                 <property name="decimals">
+                                  <number>1</number>
+                                 </property>
+                                 <property name="maximum">
+                                  <double>999.000000000000000</double>
+                                 </property>
+                                </widget>
                                </item>
                               </layout>
                              </item>
                             </layout>
-                           </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                     </layout>
+                    </widget>
+                    <widget class="QWidget" name="tab_5">
+                     <attribute name="title">
+                      <string>Multi-Experiment</string>
+                     </attribute>
+                     <widget class="QLabel" name="label_11">
+                      <property name="geometry">
+                       <rect>
+                        <x>270</x>
+                        <y>10</y>
+                        <width>221</width>
+                        <height>81</height>
+                       </rect>
+                      </property>
+                      <property name="text">
+                       <string>TODO:
+- Add calibration from loaded 'experiments'
+- Add 'sample' experiments (previously loaded)
+- Plotting multiple experiments together</string>
+                      </property>
+                     </widget>
+                     <widget class="QGroupBox" name="groupBox_7">
+                      <property name="geometry">
+                       <rect>
+                        <x>30</x>
+                        <y>250</y>
+                        <width>431</width>
+                        <height>361</height>
+                       </rect>
+                      </property>
+                      <property name="title">
+                       <string>Plotting</string>
+                      </property>
+                      <widget class="QWidget" name="layoutWidget_2">
+                       <property name="geometry">
+                        <rect>
+                         <x>50</x>
+                         <y>50</y>
+                         <width>261</width>
+                         <height>211</height>
+                        </rect>
+                       </property>
+                       <layout class="QGridLayout" name="solAnalysisAveragingLayout_2" rowstretch="0" columnstretch="0">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="spacing">
+                         <number>0</number>
+                        </property>
+                       </layout>
+                      </widget>
+                     </widget>
+                     <widget class="QWidget" name="layoutWidget">
+                      <property name="geometry">
+                       <rect>
+                        <x>20</x>
+                        <y>90</y>
+                        <width>291</width>
+                        <height>41</height>
+                       </rect>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_71">
+                       <item>
+                        <widget class="QLabel" name="label_12">
+                         <property name="text">
+                          <string>Available Experiments</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QComboBox" name="importedSolDataTemplates_2">
+                         <property name="enabled">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                     <widget class="QWidget" name="layoutWidget">
+                      <property name="geometry">
+                       <rect>
+                        <x>20</x>
+                        <y>140</y>
+                        <width>234</width>
+                        <height>36</height>
+                       </rect>
+                      </property>
+                      <layout class="QHBoxLayout" name="horizontalLayout_43">
+                       <item>
+                        <widget class="QPushButton" name="pushButton">
+                         <property name="text">
+                          <string>Assign Calibration
+Experiment</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEdit"/>
+                       </item>
+                      </layout>
+                     </widget>
+                     <widget class="QWidget" name="layoutWidget">
+                      <property name="geometry">
+                       <rect>
+                        <x>20</x>
+                        <y>190</y>
+                        <width>261</width>
+                        <height>36</height>
+                       </rect>
+                      </property>
+                      <layout class="QHBoxLayout" name="horizontalLayout_53">
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <widget class="QPushButton" name="pushButton_2">
+                         <property name="text">
+                          <string>Add Sample
+Experiment</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_44" stretch="100,1">
+                         <property name="spacing">
+                          <number>0</number>
+                         </property>
+                         <item>
+                          <widget class="QComboBox" name="importedSolDataTemplates_3">
+                           <property name="enabled">
+                            <bool>true</bool>
+                           </property>
                           </widget>
                          </item>
                          <item>
-                          <layout class="QHBoxLayout" name="horizontalLayout_53" stretch="100,1">
-                           <property name="spacing">
-                            <number>0</number>
+                          <widget class="QPushButton" name="removeImportedSolData_2">
+                           <property name="text">
+                            <string>Remove</string>
                            </property>
-                           <item>
-                            <widget class="QGroupBox" name="groupBox_23">
-                             <property name="title">
-                              <string>Individual Measurement Properties</string>
-                             </property>
-                             <layout class="QGridLayout" name="gridLayout_27">
-                              <property name="spacing">
-                               <number>0</number>
-                              </property>
-                              <item row="0" column="0">
-                               <widget class="QGroupBox" name="groupBox_24">
-                                <property name="sizePolicy">
-                                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                                  <horstretch>0</horstretch>
-                                  <verstretch>0</verstretch>
-                                 </sizepolicy>
-                                </property>
-                                <property name="title">
-                                 <string>General</string>
-                                </property>
-                                <layout class="QVBoxLayout" name="verticalLayout_91" stretch="1,1,1,10">
-                                 <property name="spacing">
-                                  <number>0</number>
-                                 </property>
-                                 <item>
-                                  <layout class="QVBoxLayout" name="verticalLayout_93">
-                                   <property name="spacing">
-                                    <number>0</number>
-                                   </property>
-                                   <property name="sizeConstraint">
-                                    <enum>QLayout::SetDefaultConstraint</enum>
-                                   </property>
-                                   <item>
-                                    <widget class="QLabel" name="label_70">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="text">
-                                      <string>Files</string>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                   <item>
-                                    <widget class="QSpinBox" name="solAnalysisNumFiles">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="readOnly">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="buttonSymbols">
-                                      <enum>QAbstractSpinBox::NoButtons</enum>
-                                     </property>
-                                     <property name="maximum">
-                                      <number>9999</number>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                  </layout>
-                                 </item>
-                                 <item>
-                                  <layout class="QVBoxLayout" name="verticalLayout_92">
-                                   <property name="spacing">
-                                    <number>0</number>
-                                   </property>
-                                   <property name="sizeConstraint">
-                                    <enum>QLayout::SetDefaultConstraint</enum>
-                                   </property>
-                                   <item>
-                                    <widget class="QLabel" name="label_86">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="text">
-                                      <string>Duration
-(min)</string>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                   <item>
-                                    <widget class="QDoubleSpinBox" name="solAnalysisDur">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="frame">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="readOnly">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="buttonSymbols">
-                                      <enum>QAbstractSpinBox::NoButtons</enum>
-                                     </property>
-                                     <property name="decimals">
-                                      <number>1</number>
-                                     </property>
-                                     <property name="maximum">
-                                      <double>999999.000000000000000</double>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                  </layout>
-                                 </item>
-                                 <item>
-                                  <layout class="QVBoxLayout" name="verticalLayout_96">
-                                   <property name="spacing">
-                                    <number>0</number>
-                                   </property>
-                                   <property name="sizeConstraint">
-                                    <enum>QLayout::SetDefaultConstraint</enum>
-                                   </property>
-                                   <item>
-                                    <widget class="QLabel" name="label_71">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="text">
-                                      <string>Count Rate
-(kHz)</string>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                   <item>
-                                    <widget class="QDoubleSpinBox" name="solAnalysisCountRate">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="frame">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="readOnly">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="buttonSymbols">
-                                      <enum>QAbstractSpinBox::NoButtons</enum>
-                                     </property>
-                                     <property name="decimals">
-                                      <number>1</number>
-                                     </property>
-                                     <property name="maximum">
-                                      <double>999999999999.000000000000000</double>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                  </layout>
-                                 </item>
-                                 <item>
-                                  <spacer name="verticalSpacer_4">
-                                   <property name="orientation">
-                                    <enum>Qt::Vertical</enum>
-                                   </property>
-                                   <property name="sizeHint" stdset="0">
-                                    <size>
-                                     <width>20</width>
-                                     <height>21</height>
-                                    </size>
-                                   </property>
-                                  </spacer>
-                                 </item>
-                                </layout>
-                               </widget>
-                              </item>
-                              <item row="0" column="1">
-                               <widget class="QGroupBox" name="groupBox_25">
-                                <property name="sizePolicy">
-                                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-                                  <horstretch>0</horstretch>
-                                  <verstretch>0</verstretch>
-                                 </sizepolicy>
-                                </property>
-                                <property name="title">
-                                 <string>Mean ACF</string>
-                                </property>
-                                <layout class="QGridLayout" name="gridLayout_32">
-                                 <property name="spacing">
-                                  <number>0</number>
-                                 </property>
-                                 <item row="0" column="0">
-                                  <layout class="QVBoxLayout" name="verticalLayout_109">
-                                   <item>
-                                    <widget class="QLabel" name="label_67">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="text">
-                                      <string>G0</string>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                   <item>
-                                    <widget class="QDoubleSpinBox" name="solAnalysisMeanG0">
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="frame">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="readOnly">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="buttonSymbols">
-                                      <enum>QAbstractSpinBox::NoButtons</enum>
-                                     </property>
-                                     <property name="suffix">
-                                      <string> k</string>
-                                     </property>
-                                     <property name="decimals">
-                                      <number>1</number>
-                                     </property>
-                                     <property name="minimum">
-                                      <double>-999.000000000000000</double>
-                                     </property>
-                                     <property name="maximum">
-                                      <double>999.000000000000000</double>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                  </layout>
-                                 </item>
-                                 <item row="0" column="1">
-                                  <layout class="QVBoxLayout" name="verticalLayout_110">
-                                   <property name="spacing">
-                                    <number>0</number>
-                                   </property>
-                                   <item>
-                                    <widget class="QLabel" name="label_77">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="text">
-                                      <string>Decay
-Time (us)</string>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                   <item>
-                                    <widget class="QDoubleSpinBox" name="solAnalysisMeanTau">
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="frame">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="readOnly">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="buttonSymbols">
-                                      <enum>QAbstractSpinBox::NoButtons</enum>
-                                     </property>
-                                     <property name="decimals">
-                                      <number>1</number>
-                                     </property>
-                                     <property name="minimum">
-                                      <double>-9999.000000000000000</double>
-                                     </property>
-                                     <property name="maximum">
-                                      <double>9999.000000000000000</double>
-                                     </property>
-                                     <property name="value">
-                                      <double>0.000000000000000</double>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                  </layout>
-                                 </item>
-                                 <item row="1" column="0">
-                                  <layout class="QVBoxLayout" name="verticalLayout_111">
-                                   <property name="spacing">
-                                    <number>0</number>
-                                   </property>
-                                   <item>
-                                    <widget class="QLabel" name="label_87">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="text">
-                                      <string>&quot;Good&quot;
-Rows</string>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                   <item>
-                                    <widget class="QSpinBox" name="solAnalysisGoodRows">
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="readOnly">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="buttonSymbols">
-                                      <enum>QAbstractSpinBox::NoButtons</enum>
-                                     </property>
-                                     <property name="maximum">
-                                      <number>9999</number>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                  </layout>
-                                 </item>
-                                 <item row="1" column="1">
-                                  <layout class="QVBoxLayout" name="verticalLayout_112">
-                                   <property name="spacing">
-                                    <number>0</number>
-                                   </property>
-                                   <item>
-                                    <widget class="QLabel" name="label_88">
-                                     <property name="sizePolicy">
-                                      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                       <horstretch>0</horstretch>
-                                       <verstretch>0</verstretch>
-                                      </sizepolicy>
-                                     </property>
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="text">
-                                      <string>&quot;Bad&quot;
-Rows</string>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                   <item>
-                                    <widget class="QSpinBox" name="solAnalysisBadRows">
-                                     <property name="font">
-                                      <font>
-                                       <pointsize>8</pointsize>
-                                      </font>
-                                     </property>
-                                     <property name="readOnly">
-                                      <bool>true</bool>
-                                     </property>
-                                     <property name="buttonSymbols">
-                                      <enum>QAbstractSpinBox::NoButtons</enum>
-                                     </property>
-                                     <property name="maximum">
-                                      <number>9999</number>
-                                     </property>
-                                    </widget>
-                                   </item>
-                                  </layout>
-                                 </item>
-                                 <item row="2" column="0" colspan="2">
-                                  <spacer name="verticalSpacer_6">
-                                   <property name="orientation">
-                                    <enum>Qt::Vertical</enum>
-                                   </property>
-                                   <property name="sizeHint" stdset="0">
-                                    <size>
-                                     <width>88</width>
-                                     <height>20</height>
-                                    </size>
-                                   </property>
-                                  </spacer>
-                                 </item>
-                                </layout>
-                               </widget>
-                              </item>
-                              <item row="0" column="2">
-                               <widget class="QGroupBox" name="groupBox_26">
-                                <property name="sizePolicy">
-                                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-                                  <horstretch>0</horstretch>
-                                  <verstretch>0</verstretch>
-                                 </sizepolicy>
-                                </property>
-                                <property name="title">
-                                 <string>Scan Settings</string>
-                                </property>
-                                <layout class="QGridLayout" name="gridLayout_41">
-                                 <property name="spacing">
-                                  <number>0</number>
-                                 </property>
-                                 <item row="0" column="0">
-                                  <widget class="QPlainTextEdit" name="solAnalysisScanSettings"/>
-                                 </item>
-                                </layout>
-                               </widget>
-                              </item>
-                             </layout>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QGroupBox" name="groupBox_27">
-                             <property name="title">
-                              <string>Combined Properties</string>
-                             </property>
-                             <layout class="QGridLayout" name="gridLayout_35" rowstretch="1,1,1,100">
-                              <property name="spacing">
-                               <number>0</number>
-                              </property>
-                              <item row="0" column="0">
-                               <layout class="QVBoxLayout" name="verticalLayout_84">
-                                <item>
-                                 <widget class="QLabel" name="label_89">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="font">
-                                   <font>
-                                    <pointsize>8</pointsize>
-                                   </font>
-                                  </property>
-                                  <property name="text">
-                                   <string>Exc/STED
-G0 Ratio</string>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item>
-                                 <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_2">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="font">
-                                   <font>
-                                    <pointsize>8</pointsize>
-                                   </font>
-                                  </property>
-                                  <property name="frame">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="readOnly">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="buttonSymbols">
-                                   <enum>QAbstractSpinBox::NoButtons</enum>
-                                  </property>
-                                  <property name="decimals">
-                                   <number>1</number>
-                                  </property>
-                                 </widget>
-                                </item>
-                               </layout>
-                              </item>
-                              <item row="0" column="1">
-                               <layout class="QVBoxLayout" name="verticalLayout_88">
-                                <item>
-                                 <widget class="QLabel" name="label_92">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="font">
-                                   <font>
-                                    <pointsize>8</pointsize>
-                                   </font>
-                                  </property>
-                                  <property name="text">
-                                   <string>Label
-Lifetime (ns)</string>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item>
-                                 <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_4">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="font">
-                                   <font>
-                                    <pointsize>8</pointsize>
-                                   </font>
-                                  </property>
-                                  <property name="frame">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="readOnly">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="buttonSymbols">
-                                   <enum>QAbstractSpinBox::NoButtons</enum>
-                                  </property>
-                                  <property name="decimals">
-                                   <number>1</number>
-                                  </property>
-                                 </widget>
-                                </item>
-                               </layout>
-                              </item>
-                              <item row="1" column="0">
-                               <layout class="QVBoxLayout" name="verticalLayout_90">
-                                <item>
-                                 <widget class="QLabel" name="label_91">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="font">
-                                   <font>
-                                    <pointsize>8</pointsize>
-                                   </font>
-                                  </property>
-                                  <property name="text">
-                                   <string>TDC Calibration
-Gating (ns)</string>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item>
-                                 <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_3">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="font">
-                                   <font>
-                                    <pointsize>8</pointsize>
-                                   </font>
-                                  </property>
-                                  <property name="frame">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="readOnly">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="buttonSymbols">
-                                   <enum>QAbstractSpinBox::NoButtons</enum>
-                                  </property>
-                                  <property name="prefix">
-                                   <string/>
-                                  </property>
-                                  <property name="decimals">
-                                   <number>1</number>
-                                  </property>
-                                 </widget>
-                                </item>
-                               </layout>
-                              </item>
-                              <item row="1" column="1">
-                               <layout class="QVBoxLayout" name="verticalLayout_95">
-                                <item>
-                                 <widget class="QLabel" name="label_93">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="font">
-                                   <font>
-                                    <pointsize>8</pointsize>
-                                   </font>
-                                  </property>
-                                  <property name="text">
-                                   <string>Laser
-Pulse (ns)</string>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item>
-                                 <widget class="QDoubleSpinBox" name="solAnalysisMeanAcf_5">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="font">
-                                   <font>
-                                    <pointsize>8</pointsize>
-                                   </font>
-                                  </property>
-                                  <property name="frame">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="readOnly">
-                                   <bool>true</bool>
-                                  </property>
-                                  <property name="buttonSymbols">
-                                   <enum>QAbstractSpinBox::NoButtons</enum>
-                                  </property>
-                                  <property name="decimals">
-                                   <number>1</number>
-                                  </property>
-                                 </widget>
-                                </item>
-                               </layout>
-                              </item>
-                              <item row="2" column="0" colspan="2">
-                               <layout class="QVBoxLayout" name="verticalLayout_107">
-                                <item>
-                                 <widget class="QLabel" name="label_15">
-                                  <property name="text">
-                                   <string>gSTED Resoultion (nm)</string>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item>
-                                 <layout class="QHBoxLayout" name="horizontalLayout_54">
-                                  <item>
-                                   <widget class="QComboBox" name="solAnalysisLifetime">
-                                    <property name="sizePolicy">
-                                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                      <horstretch>0</horstretch>
-                                      <verstretch>0</verstretch>
-                                     </sizepolicy>
-                                    </property>
-                                    <property name="font">
-                                     <font>
-                                      <pointsize>8</pointsize>
-                                     </font>
-                                    </property>
-                                    <property name="placeholderText">
-                                     <string>Lifetime</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item>
-                                   <widget class="QDoubleSpinBox" name="solAnalysisRes">
-                                    <property name="sizePolicy">
-                                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                      <horstretch>0</horstretch>
-                                      <verstretch>0</verstretch>
-                                     </sizepolicy>
-                                    </property>
-                                    <property name="font">
-                                     <font>
-                                      <pointsize>8</pointsize>
-                                     </font>
-                                    </property>
-                                    <property name="frame">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="readOnly">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="buttonSymbols">
-                                     <enum>QAbstractSpinBox::NoButtons</enum>
-                                    </property>
-                                    <property name="decimals">
-                                     <number>1</number>
-                                    </property>
-                                    <property name="maximum">
-                                     <double>999.000000000000000</double>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                 </layout>
-                                </item>
-                               </layout>
-                              </item>
-                              <item row="3" column="0" colspan="2">
-                               <spacer name="verticalSpacer_7">
-                                <property name="orientation">
-                                 <enum>Qt::Vertical</enum>
-                                </property>
-                                <property name="sizeHint" stdset="0">
-                                 <size>
-                                  <width>88</width>
-                                  <height>10</height>
-                                 </size>
-                                </property>
-                               </spacer>
-                              </item>
-                             </layout>
-                            </widget>
-                           </item>
-                          </layout>
+                          </widget>
                          </item>
                         </layout>
                        </item>
                       </layout>
                      </widget>
-                    </item>
-                   </layout>
+                    </widget>
+                   </widget>
                   </item>
                  </layout>
                 </widget>

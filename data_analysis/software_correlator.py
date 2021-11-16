@@ -108,9 +108,6 @@ class SoftwareCorrelator:
         if n_corr_channels[0] != self.tot_corr_chan_len:
             raise ValueError("Number of correlator channels inconsistent!")
 
-        [print(f"{weight:.0f}", end=", ") for weight in self.corr_py[2, :]]  # TESTESTEST
-        print("\n")  # TESTESTEST
-
         valid_corr = self.corr_py[2, :] > 0  # weights > 0
         self.lag = (self.corr_py[1, :] * timebase_ms)[valid_corr]
         self.corrfunc = self.corr_py[0, :][valid_corr]
