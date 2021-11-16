@@ -18,7 +18,7 @@ from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
-from utilities.helper import LimitRange, div_ceil
+from utilities.helper import Limits, div_ceil
 
 
 class BaseDevice:
@@ -138,9 +138,9 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         "XYZ": (True, True, True),
     }
     ORIGIN = (0.0, 0.0, 5.0)
-    X_AO_LIMITS = LimitRange(-5.0, 5.0, ("min_val", "max_val"))
-    Y_AO_LIMITS = LimitRange(-5.0, 5.0, ("min_val", "max_val"))
-    Z_AO_LIMITS = LimitRange(0.0, 10.0, ("min_val", "max_val"))
+    X_AO_LIMITS = Limits(-5.0, 5.0, ("min_val", "max_val"))
+    Y_AO_LIMITS = Limits(-5.0, 5.0, ("min_val", "max_val"))
+    Z_AO_LIMITS = Limits(0.0, 10.0, ("min_val", "max_val"))
     AI_BUFFER_SIZE = int(1e4)
 
     def __init__(self, param_dict):
@@ -611,8 +611,8 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     update_interval_s = 0.3
     MIN_SHG_TEMP = 53  # Celsius
-    power_limits_mW = LimitRange(99, 1000)
-    current_limits_mA = LimitRange(1500, 2500)
+    power_limits_mW = Limits(99, 1000)
+    current_limits_mA = Limits(1500, 2500)
 
     def __init__(self, param_dict):
 

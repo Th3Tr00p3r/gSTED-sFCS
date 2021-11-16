@@ -21,14 +21,14 @@ from data_analysis.photon_data import (
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities, fit_tools
 from utilities.display import Plotter
-from utilities.helper import LimitRange, div_ceil
+from utilities.helper import Limits, div_ceil
 
 
 class CorrFunc:
     """Doc."""
 
     def __init__(self, gate_ns):
-        self.gate_ns = LimitRange(gate_ns)
+        self.gate_ns = Limits(gate_ns)
         self.lag = []
         self.countrate_list = []
         self.fit_param = dict()
@@ -51,13 +51,11 @@ class CorrFunc:
         """Doc."""
 
         self.rejection = rejection
-        self.norm_range = LimitRange(norm_range)
+        self.norm_range = Limits(norm_range)
         self.delete_list = delete_list
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, 0)
-        jj = LimitRange(self.norm_range.upper, 100).valid_indices(
-            self.lag
-        )  # work in the relevant part
+        jj = Limits(self.norm_range.upper, 100).valid_indices(self.lag)  # work in the relevant part
         self.score = (
             (1 / np.var(self.cf_cr[:, jj], 0))
             * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
@@ -152,7 +150,7 @@ class CorrFunc:
             x,
             y,
             error_y,
-            x_limits=LimitRange(fit_range),
+            x_limits=Limits(fit_range),
             should_plot=should_plot,
             x_scale=x_scale,
             y_scale=y_scale,
@@ -675,7 +673,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ) -> CorrFunc:
         """Correlates data for angular scans. Returns a CorrFunc object"""
 
-        print(f"Correlating angular scan data '{self.template}':", end=" ")
+        print(f"{self.name} {gate_ns}: Correlating angular scan data '{self.template}':", end=" ")
 
         self.min_duration_frac = min_time_frac  # TODO: not used?
         duration = []
@@ -686,7 +684,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         with CorrFuncAccumulator(CF) as Accumulator:
             for p in self.data:
                 print(f"({p.file_num})", end=" ")
-                line_num = p.line_num
+                line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
                 if hasattr(p, "delay_time"):  # if measurement quacks as gated
                     j_gate = CF.gate_ns.valid_indices(p.delay_time) | (p.delay_time == np.nan)
@@ -731,6 +729,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                         print(f"No valid photons in line {j}. Skipping.")
                         continue
 
+                    # TODO: why do these happen?
                     # check that we start with the line beginning and not its end
                     if valid[0] != -1:
                         # remove photons till the first found beginning
@@ -739,7 +738,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                             timest = timest[j_start[0] :]
                             valid = valid[j_start[0] :]
 
-                        # check that we stop with the line ending and not its beginning
+                    # check that we stop with the line ending and not its beginning
                     if valid[-1] != -2:
                         # remove photons till the last found ending
                         j_start = np.where(valid == -1)[0]
@@ -841,7 +840,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return legend_labels
 
-    def calculate_afterpulse(self, gate_ns: LimitRange, lag: np.ndarray) -> np.ndarray:
+    def calculate_afterpulse(self, gate_ns: Limits, lag: np.ndarray) -> np.ndarray:
         """Doc."""
 
         gate_to_laser_pulses = min([1.0, gate_ns.interval() * self.laser_freq_hz / 1e9])
@@ -985,9 +984,6 @@ class SFCSExperiment:
         else:
             should_fix_shift = True
 
-        if "norm_range" in kwargs:
-            kwargs["norm_range"] = LimitRange(kwargs["norm_range"])
-
         if "cf_name" not in kwargs:
             if meas_type == "confocal":
                 kwargs["cf_name"] = "Confocal"
@@ -1077,7 +1073,7 @@ class SFCSExperiment:
         drop_idxs=[],
         fit_range=None,
         param_estimates=None,
-        bg_range=LimitRange(40, 60),
+        bg_range=Limits(40, 60),
         **kwargs,
     ):
         """Doc."""
@@ -1102,7 +1098,7 @@ class SFCSExperiment:
         beta0 = (h_max, 4, h_max * 1e-3)
 
         if fit_range is None:
-            fit_range = LimitRange(t_max, 40)
+            fit_range = Limits(t_max, 40)
 
         if param_estimates is None:
             param_estimates = beta0
@@ -1169,13 +1165,8 @@ class SFCSExperiment:
             LifeTimeParam.Sig2_STED = fit_param["beta"][2] * LifeTimeParam.LifeTime_ns
             LifeTimeParam.LaserPulse = fit_param["beta"][3]
 
-    def add_gate(
-        self, gate_ns: Union[LimitRange, Tuple[float, float]], should_plot=False, **kwargs
-    ):
+    def add_gate(self, gate_ns: Tuple[float, float], should_plot=False, **kwargs):
         """Doc."""
-
-        if not hasattr(gate_ns, "valid_indices"):
-            gate_ns = LimitRange(gate_ns)
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
             self.sted.correlate_and_average(gate_ns=gate_ns, **kwargs)
@@ -1186,9 +1177,7 @@ class SFCSExperiment:
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
-    def add_gates(
-        self, gate_list: List[Union[LimitRange, Tuple[float, float]]], should_plot=False, **kwargs
-    ):
+    def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=False, **kwargs):
         """A convecience method for adding multiple gates."""
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
