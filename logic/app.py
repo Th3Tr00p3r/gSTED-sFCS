@@ -50,7 +50,9 @@ class App:
         self.loop = loop
         self.meas = SimpleNamespace(type=None, is_running=False)
         self.analysis = SimpleNamespace(
-            loaded_data=dict(), assigned_to_experiment=dict(), loaded_experiments=dict()
+            loaded_data=dict(),
+            assigned_to_experiment=dict(confocal=dict(), sted=dict()),
+            loaded_experiments=dict(),
         )
 
         # get icons

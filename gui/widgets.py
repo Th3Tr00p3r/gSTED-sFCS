@@ -261,12 +261,12 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", False),
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
-)
-
-SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
     fix_shift=("solDataFixShift", "QCheckBox", "main", False),
     subtract_bg_corr=("solDataSubtractBgCorr", "QCheckBox", "main", False),
     subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
+)
+
+SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
     scan_image_disp=("solScanImgDisp", None, "main", True),
     row_dicrimination=("rowDiscriminationGroup", "QButtonGroup", "main", False),
     remove_over=("solAnalysisRemoveOverSpinner", "QDoubleSpinBox", "main", False),
@@ -287,12 +287,12 @@ SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
 )
 
 SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
-    experiment_names=("loadedExperimentNames", "QComboBox", "main", True),
+    loaded_experiments=("loadedExperimentNames", "QComboBox", "main", True),
     should_assign_loaded=("assignLoadedMeas", "QRadioButton", "main", False),
     imported_templates=("importedSolDataTemplates2", "QComboBox", "main", True),
     should_assign_raw=("assignRawData", "QRadioButton", "main", False),
-    data_templates=("dataTemplate2", "QLineEdit", "main", True),
-    assigned_conf_template=("assignedExpConfMeas", "QLineEdit", "main", True),
+    data_templates=("dataTemplate1", "QComboBox", "main", True),
+    assigned_confocal_template=("assignedExpConfMeas", "QLineEdit", "main", True),
     assigned_sted_template=("assignedExpStedMeas", "QLineEdit", "main", True),
     experiment_name=("experimentName", "QLineEdit", "main", True),
 )
