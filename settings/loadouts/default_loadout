@@ -3,6 +3,7 @@ imgScanFileTemplate,img
 newTemplate,
 solImportFileSelectionPattern,1
 lineEdit,
+experimentName,
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -45,8 +46,8 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,11
 dataYear,2021
-dataDay,1
-dataTemplate,bp300_yoyo_1in30bp_angular_exc_162503_*.pkl
+dataDay,8
+dataTemplate1,halogen_4kHz_static_exc_112742_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,

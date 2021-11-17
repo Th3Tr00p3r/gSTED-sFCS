@@ -926,11 +926,18 @@ class SFCSExperiment:
         confocal=None,
         sted=None,
         should_plot=False,
+        confocal_kwargs={},
+        sted_kwargs={},
         **kwargs,
     ):
         """Doc."""
 
-        if confocal_template is None and sted_template is None:
+        if (
+            (confocal_template is None)
+            and (sted_template is None)
+            and (confocal is None)
+            and (sted is None)
+        ):
             raise RuntimeError("Can't load experiment with no measurements!")
 
         if confocal is None:
@@ -939,6 +946,7 @@ class SFCSExperiment:
                     meas_type="confocal",
                     file_path_template=confocal_template,
                     should_plot=should_plot,
+                    **confocal_kwargs,
                     **kwargs,
                 )
         else:
@@ -950,6 +958,7 @@ class SFCSExperiment:
                     meas_type="sted",
                     file_path_template=sted_template,
                     should_plot=should_plot,
+                    **sted_kwargs,
                     **kwargs,
                 )
         else:
@@ -986,10 +995,6 @@ class SFCSExperiment:
     ):
 
         measurement = SolutionSFCSMeasurement(name=meas_type)
-        if "should_fix_shift" in kwargs:
-            should_fix_shift = kwargs["should_fix_shift"]
-        else:
-            should_fix_shift = True
 
         if "cf_name" not in kwargs:
             if meas_type == "confocal":
@@ -998,13 +1003,12 @@ class SFCSExperiment:
                 kwargs["cf_name"] = "CW STED"
         cf_name = kwargs["cf_name"]
 
-        file_selection = kwargs.get(f"{meas_type}_file_selection")
+        if kwargs.get(f"{meas_type}_file_selection"):
+            kwargs["file_selection"] = kwargs[f"{meas_type}_file_selection"]
 
         measurement.read_fpga_data(
             file_path_template,
-            should_fix_shift=should_fix_shift,
             should_plot=should_plot,
-            file_selection=file_selection,
             **kwargs,
         )
 
@@ -1015,10 +1019,6 @@ class SFCSExperiment:
                 x_field = "vt_um"
 
         measurement.correlate_and_average(**kwargs)
-
-        ignoresForPlot = {"cf_name"}
-        for paramName in ignoresForPlot:
-            kwargs.pop(paramName)
 
         if should_plot:
             super_title = f"'{self.name}' Experiment\n'{measurement.name}' Measurement - ACFs"
@@ -1033,6 +1033,8 @@ class SFCSExperiment:
                     parent_ax=ax, y_field="avg_cf_cr", x_field=x_field, plot_kwargs=plot_kwargs
                 )
                 ax.legend(["average_all_cf_cr", "avg_cf_cr"])
+
+        setattr(self, meas_type, measurement)
 
     def calibrate_tdc(self, should_plot=False, **kwargs):
         """Doc."""
