@@ -308,7 +308,6 @@ class MainWin(PyQt5.QtWidgets.QMainWindow):
         self.impl.preview_img_scan(template)
         self.impl.toggle_save_processed_enabled()
         self.impl.toggle_load_processed_enabled(template)
-        self.dataTemplate2.setText(template)
 
     @PyQt5.QtCore.pyqtSlot(str)
     def on_importedSolDataTemplates1_currentTextChanged(self, template: str) -> None:

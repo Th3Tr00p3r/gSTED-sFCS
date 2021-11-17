@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1691</width>
+    <width>1685</width>
     <height>956</height>
    </rect>
   </property>
@@ -6452,9 +6452,12 @@ Rows</string>
                                <number>0</number>
                               </property>
                               <item>
-                               <layout class="QHBoxLayout" name="horizontalLayout_27">
+                               <layout class="QVBoxLayout" name="verticalLayout_35">
+                                <property name="spacing">
+                                 <number>0</number>
+                                </property>
                                 <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_35">
+                                 <layout class="QVBoxLayout" name="verticalLayout_65">
                                   <property name="spacing">
                                    <number>2</number>
                                   </property>
@@ -6501,7 +6504,7 @@ Measurements</string>
                                    </layout>
                                   </item>
                                   <item>
-                                   <layout class="QHBoxLayout" name="horizontalLayout_54" stretch="1,0">
+                                   <layout class="QHBoxLayout" name="horizontalLayout_54" stretch="1,10">
                                     <property name="spacing">
                                      <number>2</number>
                                     </property>
@@ -6528,23 +6531,29 @@ for Processing</string>
                                      </layout>
                                     </item>
                                     <item>
-                                     <widget class="QLineEdit" name="dataTemplate2">
-                                      <property name="readOnly">
-                                       <bool>true</bool>
+                                     <spacer name="horizontalSpacer_24">
+                                      <property name="orientation">
+                                       <enum>Qt::Horizontal</enum>
                                       </property>
-                                     </widget>
+                                      <property name="sizeHint" stdset="0">
+                                       <size>
+                                        <width>40</width>
+                                        <height>20</height>
+                                       </size>
+                                      </property>
+                                     </spacer>
                                     </item>
                                    </layout>
                                   </item>
                                  </layout>
                                 </item>
                                 <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_116">
+                                 <layout class="QHBoxLayout" name="horizontalLayout_27">
                                   <property name="spacing">
                                    <number>0</number>
                                   </property>
                                   <item>
-                                   <layout class="QVBoxLayout" name="verticalLayout_117">
+                                   <layout class="QVBoxLayout" name="verticalLayout_75">
                                     <property name="spacing">
                                      <number>0</number>
                                     </property>
@@ -6626,12 +6635,12 @@ for Processing</string>
                                  </layout>
                                 </item>
                                 <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_65">
+                                 <layout class="QHBoxLayout" name="horizontalLayout_73">
                                   <property name="spacing">
                                    <number>0</number>
                                   </property>
                                   <item>
-                                   <layout class="QVBoxLayout" name="verticalLayout_75">
+                                   <layout class="QVBoxLayout" name="verticalLayout_76">
                                     <property name="spacing">
                                      <number>0</number>
                                     </property>
@@ -7453,7 +7462,7 @@ Resoultion (nm)</string>
                         <x>20</x>
                         <y>90</y>
                         <width>291</width>
-                        <height>42</height>
+                        <height>49</height>
                        </rect>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_71">
@@ -7479,7 +7488,7 @@ Resoultion (nm)</string>
                         <x>20</x>
                         <y>140</y>
                         <width>234</width>
-                        <height>37</height>
+                        <height>45</height>
                        </rect>
                       </property>
                       <layout class="QHBoxLayout" name="horizontalLayout_43">
@@ -7502,7 +7511,7 @@ Experiment</string>
                         <x>20</x>
                         <y>190</y>
                         <width>263</width>
-                        <height>37</height>
+                        <height>45</height>
                        </rect>
                       </property>
                       <layout class="QHBoxLayout" name="horizontalLayout_53">

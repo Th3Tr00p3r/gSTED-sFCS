@@ -1157,7 +1157,6 @@ class MainWin:
 
         import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
         current_template = import_wdgts.data_templates.get()
-        sol_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.read_gui_to_obj(self._app)
         curr_dir = self.current_date_type_dir_path()
 
         if self._app.analysis.loaded_data.get(current_template) is not None:
@@ -1173,13 +1172,7 @@ class MainWin:
                 print("Done.")
 
             else:  # process data
-                # file selection
-                if import_wdgts.sol_file_dicrimination.objectName() == "solImportUse":
-                    sol_file_selection = (
-                        f"{import_wdgts.sol_file_use_or_dont} {import_wdgts.sol_file_selection}"
-                    )
-                else:
-                    sol_file_selection = None
+                options_dict = self.get_loading_options_as_dict()
 
                 # Inferring data_dype from template
                 data_type = self.infer_data_type_from_template(current_template)
@@ -1191,14 +1184,12 @@ class MainWin:
                         corrfunc_tdc = SolutionSFCSMeasurement()
                         corrfunc_tdc.read_fpga_data(
                             curr_dir / current_template,
-                            file_selection=sol_file_selection,
-                            should_fix_shift=sol_analysis_wdgts.fix_shift,
+                            **options_dict,
                         )
                     corrfunc_tdc.correlate_data(
                         cf_name=data_type,
-                        subtract_afterpulse=sol_analysis_wdgts.subtract_afterpulse,
-                        subtract_bg_corr=sol_analysis_wdgts.subtract_bg_corr,
                         verbose=True,
+                        **options_dict,
                     )
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
@@ -1221,6 +1212,26 @@ class MainWin:
 
             self.toggle_save_processed_enabled()  # refresh save option
             self.toggle_load_processed_enabled(current_template)  # refresh load option
+
+    def get_loading_options_as_dict(self) -> dict:
+        """Doc."""
+
+        loading_options = dict()
+        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+
+        # file selection
+        if import_wdgts.sol_file_dicrimination.objectName() == "solImportUse":
+            loading_options[
+                "file_selection"
+            ] = f"{import_wdgts.sol_file_use_or_dont} {import_wdgts.sol_file_selection}"
+        else:
+            loading_options["file_selection"] = None
+
+        loading_options["should_fix_shift"] = import_wdgts.fix_shift
+        loading_options["subtract_afterpulse"] = import_wdgts.subtract_afterpulse
+        loading_options["subtract_bg_corr"] = import_wdgts.subtract_bg_corr
+
+        return loading_options
 
     @contextmanager
     def get_corrfunc_tdc_from_template(
@@ -1425,24 +1436,25 @@ class MainWin:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        measurement_source = self._app.analysis.assigned_to_experiment[meas_type]
+        loading_options = self.get_loading_options_as_dict()
 
         if wdgt_coll.should_assign_loaded:
             template = wdgt_coll.imported_templates.get()
-            self._app.analysis.assigned_to_experiment[meas_type] = {
-                "template": template,
-                "method": "loaded",
-            }
+            method = "loaded"
         elif wdgt_coll.should_assign_raw:
             template = wdgt_coll.data_templates.get()
-            self._app.analysis.assigned_to_experiment[meas_type] = {
-                "template": template,
-                "method": "raw",
-            }
+            method = "raw"
 
-        if meas_type == "confocal":
-            wdgt_to_assign_to = wdgt_coll.assigned_conf_template
-        elif meas_type == "sted":
-            wdgt_to_assign_to = wdgt_coll.assigned_sted_template
+        measurement_source.update(
+            {
+                "template": template,
+                "method": method,
+                "loading_options": loading_options,
+            }
+        )
+
+        wdgt_to_assign_to = getattr(wdgt_coll, f"assigned_{meas_type}_template")
         wdgt_to_assign_to.set(template)
 
     def load_experiment(self) -> None:
@@ -1450,38 +1462,54 @@ class MainWin:
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        if not (name := wdgt_coll.experiment_name.get()):
+        if not (experiment_name := wdgt_coll.experiment_name.get()):
             logging.info("Can't load unnamed experiment!")
             return
 
         kwargs = dict()
-        for meas_type, source in self._app.analysis.assigned_to_experiment.items():
-            if source["method"] == "loaded":
-                with self.get_corrfunc_tdc_from_template(
-                    wdgt_coll.imported_templates.get(), should_load=True
-                ) as measurement:
-                    kwargs[meas_type] = measurement
-            elif source["method"] == "raw":
-                curr_dir = self.current_date_type_dir_path()
-                kwargs[f"{meas_type}_template"] = curr_dir / wdgt_coll.data_templates.get()
+        with suppress(KeyError):
+            for meas_type, meas_source in self._app.analysis.assigned_to_experiment.items():
+                if meas_source["method"] == "loaded":
+                    with self.get_corrfunc_tdc_from_template(
+                        wdgt_coll.imported_templates.get(), should_load=True
+                    ) as measurement:
+                        kwargs[meas_type] = measurement
+                elif meas_source["method"] == "raw":
+                    curr_dir = self.current_date_type_dir_path()
+                    kwargs[f"{meas_type}_template"] = (
+                        curr_dir / getattr(wdgt_coll, f"assigned_{meas_type}_template").get()
+                    )
+                # get loading options as kwargs
+                kwargs[f"{meas_type}_kwargs"] = meas_source["loading_options"]
 
-        experiment = SFCSExperiment(name)
-        self._app.analysis.loaded_experiments[name] = experiment.load_experiment(
-            **kwargs
-        )  # TODO: add more kwargs options in GUI
+        experiment = SFCSExperiment(experiment_name)
+        with suppress(RuntimeError):
+            # RuntimeError - Can't load experiment with no measurements!
+            self._app.analysis.loaded_experiments[experiment_name] = experiment.load_experiment(
+                **kwargs
+            )
+            wdgt_coll.loaded_experiments.obj.addItem(experiment_name)
 
-        wdgt_coll.experiment_names.obj.addItem(name)
-
-        # reset the dict and clear relevant widgets
-        self._app.analysis.assigned_to_experiment = dict()
-        wdgt_coll.assigned_conf_template.obj.clear()
-        wdgt_coll.assigned_sted_template.obj.clear()
-        wdgt_coll.experiment_name.obj.clear()
+            # reset the dict and clear relevant widgets
+            self._app.analysis.assigned_to_experiment = dict(confocal=dict(), sted=dict())
+            wdgt_coll.assigned_confocal_template.obj.clear()
+            wdgt_coll.assigned_sted_template.obj.clear()
+            wdgt_coll.experiment_name.obj.clear()
+            logging.info(f"Experiment '{experiment_name}' loaded successfully.")
 
     def remove_experiment(self) -> None:
         """Doc."""
 
-        pass  # TODO: implement this based on remove imported template...
+        loaded_templates_combobox = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments
+
+        # delete from memory
+        experiment_name = loaded_templates_combobox.get()
+        self._app.analysis.loaded_experiments[experiment_name] = None
+
+        # delete from GUI
+        loaded_templates_combobox.obj.removeItem(loaded_templates_combobox.obj.currentIndex())
+
+        logging.info(f"Experiment '{experiment_name}' removed.")
 
 
 class SettWin:
