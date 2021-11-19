@@ -687,24 +687,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
                 min_line, max_line = line_num[line_num > 0].min(), line_num.max()
                 if hasattr(p, "delay_time"):  # if measurement quacks as gated
-                    j_gate = CF.gate_ns.valid_indices(p.delay_time) | (p.delay_time == np.nan)
+                    j_gate = CF.gate_ns.valid_indices(p.delay_time) | np.isnan(p.delay_time)
                     runtime = p.runtime[j_gate]
                     #                    delay_time = delay_time[j_gate] # TODO: not used?
                     line_num = p.line_num[j_gate]
-
-                    # TESTESTEST -  recalculate (now gated) background correlation
-                    gated_image, *_ = _convert_angular_scan_to_image(
-                        runtime,
-                        self.laser_freq_hz,
-                        self.angular_scan_settings["sample_freq_hz"],
-                        self.angular_scan_settings["points_per_line_total"],
-                        self.angular_scan_settings["n_lines"],
-                    )
-                    gated_image[1::2, :] = np.flip(gated_image[1::2, :], 1)
-                    gated_image *= p.bw_mask
-                    p.gated_image_line_corr = _line_correlations(
-                        gated_image, p.bw_mask, p.roi, self.angular_scan_settings["sample_freq_hz"]
-                    )
 
                 elif CF.gate_ns != (0, np.inf):
                     raise RuntimeError(
@@ -712,11 +698,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     )
                 else:
                     runtime = p.runtime
-
-                # TESTESTEST - finding out the difference between TDC-calibrated and non calibrated (0, inf) gated STED measurement runtime
-                print(f"runtime size: {runtime.size}, line_num size: {line_num.size}")
-                #                print(f"")
-                # TESTESTEST - finding out the difference between TDC-calibrated and non calibrated (0, inf) gated STED measurement runtime
 
                 time_stamps = np.diff(runtime).astype(np.int32)
                 for line_idx, j in enumerate(range(min_line, max_line + 1)):
@@ -765,17 +746,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
                     # remove background correlation
                     if subtract_bg_corr:
-                        # TESTESTEST -  recalculate (now gated) background correlation
-                        if hasattr(p, "delay_time") and kwargs.get(
-                            "should_use_gated_background", False
-                        ):  # if measurement quacks as gated
-                            image_line_corr = p.gated_image_line_corr
-                        else:
-                            image_line_corr = p.image_line_corr
                         bg_corr = np.interp(
                             SC.lag,
-                            image_line_corr[line_idx]["lag"],
-                            image_line_corr[line_idx]["corrfunc"],
+                            p.image_line_corr[line_idx]["lag"],
+                            p.image_line_corr[line_idx]["corrfunc"],
                             right=0,
                         )
                     else:
@@ -966,26 +940,25 @@ class SFCSExperiment:
             else:  # use supllied measurement
                 setattr(self, meas_type, measurement)
 
-        if should_plot:
-            super_title = f"Experiment '{self.name}' - All ACFs"
-            with Plotter(subplots=(1, 2), super_title=super_title) as axes:
-                self.plot_correlation_functions(
-                    parent_ax=axes[0],
-                    x_field="vt_um",
-                    y_field="avg_cf_cr",
-                    x_scale="log",
-                    y_scale="linear",
-                    xlim=None,  # autoscale x axis
-                )
+        super_title = f"Experiment '{self.name}' - All ACFs"
+        with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
+            self.plot_correlation_functions(
+                parent_ax=axes[0],
+                x_field="vt_um",
+                y_field="avg_cf_cr",
+                x_scale="log",
+                y_scale="linear",
+                xlim=None,  # autoscale x axis
+            )
 
-                self.plot_correlation_functions(
-                    parent_ax=axes[1],
-                    x_field="vt_um",
-                    y_field="normalized",
-                    x_scale="linear",
-                    y_scale="linear",
-                    xlim=(0, 1),
-                )
+            self.plot_correlation_functions(
+                parent_ax=axes[1],
+                x_field="vt_um",
+                y_field="normalized",
+                x_scale="linear",
+                y_scale="linear",
+                xlim=(0, 1),
+            )
 
     def load_measurement(
         self,
@@ -1038,24 +1011,16 @@ class SFCSExperiment:
 
         setattr(self, meas_type, measurement)
 
-    def calibrate_tdc(self, should_plot=False, **kwargs):
+    def calibrate_tdc(self, **kwargs):
         """Doc."""
 
         if hasattr(self.confocal, "scan_type"):  # if confocal maesurement quacks as if loaded
             super_title = f"'{self.name}' Experiment\nTDC Calibration"
-            with Plotter(subplots=(2, 4), super_title=super_title) as axes:
-                self.confocal.calibrate_tdc(
-                    should_plot=should_plot, parent_axes=axes[:, :2], **kwargs
-                )
+            with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
+                self.confocal.calibrate_tdc(should_plot=True, parent_axes=axes[:, :2], **kwargs)
                 kwargs["sync_coarse_time_to"] = self.confocal  # sync sted to confocal
                 if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
-                    self.sted.calibrate_tdc(
-                        should_plot=should_plot, parent_axes=axes[:, 2:], **kwargs
-                    )
-
-                if should_plot:
-                    self.compare_lifetimes(**kwargs)
-
+                    self.sted.calibrate_tdc(should_plot=True, parent_axes=axes[:, 2:], **kwargs)
         else:
             raise RuntimeError(
                 "Cannot calibrate TDC if confocal measurement is not loaded to the experiment!"
@@ -1070,7 +1035,7 @@ class SFCSExperiment:
 
         if hasattr(self.confocal, "tdc_calib"):  # if TDC calibration performed
             super_title = f"'{self.name}' Experiment\nLifetime Comparison"
-            with Plotter(super_title=super_title) as ax:
+            with Plotter(super_title=super_title, **kwargs) as ax:
                 self.confocal.compare_lifetimes(
                     "confocal",
                     compare_to=dict(STED=self.sted),
@@ -1176,7 +1141,7 @@ class SFCSExperiment:
             LifeTimeParam.Sig2_STED = fit_param["beta"][2] * LifeTimeParam.LifeTime_ns
             LifeTimeParam.LaserPulse = fit_param["beta"][3]
 
-    def add_gate(self, gate_ns: Tuple[float, float], should_plot=False, **kwargs):
+    def add_gate(self, gate_ns: Tuple[float, float], should_plot=True, **kwargs):
         """Doc."""
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
@@ -1188,15 +1153,13 @@ class SFCSExperiment:
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
-    def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=False, **kwargs):
+    def add_gates(self, gate_list: List[Tuple[float, float]], **kwargs):
         """A convecience method for adding multiple gates."""
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
             for gate_ns in gate_list:
-                self.add_gate(gate_ns, **kwargs)
-
-            if should_plot:
-                self.plot_correlation_functions(**kwargs)
+                self.add_gate(gate_ns, should_plot=False, **kwargs)
+            self.plot_correlation_functions(**kwargs)
         else:
             raise RuntimeError(
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
@@ -1223,7 +1186,10 @@ class SFCSExperiment:
 
         super_title = f"'{self.name}' Experiment - All ACFs"
         with Plotter(
-            parent_figure=parent_figure, parent_ax=parent_ax, super_title=super_title
+            parent_figure=parent_figure,
+            parent_ax=parent_ax,
+            super_title=super_title,
+            **kwargs,
         ) as ax:
             confocal_legend_labels = self.confocal.plot_correlation_functions(
                 parent_ax=ax,

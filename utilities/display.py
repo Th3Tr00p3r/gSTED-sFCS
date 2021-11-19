@@ -23,7 +23,7 @@ class GuiDisplay:
     """Doc."""
 
     def __init__(self, layout, gui_parent=None):
-        self.figure = plt.figure(tight_layout=True)
+        self.figure = plt.figure(constrained_layout=True)
         self.canvas = FigureCanvasQTAgg(self.figure)
         if gui_parent is not None:
             self.toolbar = NavigationToolbar(self.canvas, gui_parent)
