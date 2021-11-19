@@ -1478,6 +1478,11 @@ class MainWin:
                 # get loading options as kwargs
                 kwargs[f"{meas_type}_kwargs"] = assignment_params.options
 
+        # plotting properties
+        kwargs["gui_display"] = wdgt_coll.gui_display_loading.obj
+        kwargs["gui_options"] = display.GuiDisplayOptions(show_axis=True)
+        kwargs["fontsize"] = 10
+
         experiment = SFCSExperiment(experiment_name)
         with suppress(RuntimeError):
             # RuntimeError - Can't load experiment with no measurements!
@@ -1533,8 +1538,15 @@ class MainWin:
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
+        # plotting properties
+        kwargs = dict()
+        kwargs["gui_options"] = display.GuiDisplayOptions(show_axis=True)
+        kwargs["fontsize"] = 10
         with self.get_experiment() as experiment:
-            experiment.calibrate_tdc(should_plot=True, calib_time_ns=wdgt_coll.calibration_gating)
+            kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
+            experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **kwargs)
+            kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
+            experiment.compare_lifetimes(**kwargs)
 
 
 class SettWin:

@@ -190,6 +190,7 @@ class TDCPhotonDataMixin:
         forced_calibration_coarse_bins=np.arange(3, 12),
         should_plot=False,
         parent_axes=None,
+        **kwargs,
     ) -> None:
         """Doc."""
 
@@ -388,31 +389,29 @@ class TDCPhotonDataMixin:
         all_hist_norm[~nonzero] = np.nan
         error_all_hist_norm[~nonzero] = np.nan
 
-        if should_plot:
-            with Plotter(
-                parent_ax=parent_axes,
-                subplots=(2, 2),
-                super_title=f"TDC Calibration - '{self.template}'",
-            ) as axes:
-                # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable plotting later on?
-                axes[0, 0].semilogy(
-                    x_all,
-                    h_all,
-                    "-o",
-                    bins,
-                    h,
-                    "-o",
-                    bins[np.isin(bins, coarse_bins)],
-                    h[np.isin(bins, coarse_bins)],
-                    "-o",
-                )
-                axes[0, 0].legend(["all hist", "valid bins", "calibration bins"])
+        with Plotter(
+            parent_ax=parent_axes,
+            subplots=(2, 2),
+            super_title=f"TDC Calibration - '{self.template}'",
+        ) as axes:
+            # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable plotting later on?
+            axes[0, 0].semilogy(
+                x_all,
+                h_all,
+                "-o",
+                bins,
+                h,
+                "-o",
+                bins[np.isin(bins, coarse_bins)],
+                h[np.isin(bins, coarse_bins)],
+                "-o",
+            )
+            axes[0, 1].plot(t_calib, "-o")
+            axes[1, 0].semilogy(t_hist, all_hist_norm, "-o")
 
-                axes[0, 1].plot(t_calib, "-o")
-                axes[0, 1].legend(["TDC calibration"])
-
-                axes[1, 0].semilogy(t_hist, all_hist_norm, "-o")
-                axes[1, 0].legend(["Photon lifetime histogram"])
+            axes[0, 0].legend(["all hist", "valid bins", "calibration bins"])
+            axes[0, 1].legend(["TDC calibration"])
+            axes[1, 0].legend(["Photon lifetime histogram"])
 
         print("Done.")
 

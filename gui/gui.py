@@ -30,6 +30,9 @@ class MainWin(QtWidgets.QMainWindow):
         self.solScanAcf = GuiDisplay(self.solScanAcfLayout, self)
         self.imgScanPattern = GuiDisplay(self.imgScanPatternLayout)
         self.solScanPattern = GuiDisplay(self.solScanPatternLayout)
+        self.solExpLoading = GuiDisplay(self.solExpLoadingLayout, self)
+        self.solExpTDC1 = GuiDisplay(self.solAnalysisTDCLayout1, self)
+        self.solExpTDC2 = GuiDisplay(self.solAnalysisTDCLayout2, self)
 
         # scan patterns
         # image
@@ -87,8 +90,6 @@ class MainWin(QtWidgets.QMainWindow):
 
         self.solScanImgDisp = GuiDisplay(self.solAnalysisScanImageLayout, self)
         self.solScanAcfDisp = GuiDisplay(self.solAnalysisAveragingLayout, self)
-        self.solScanTdcDisp = GuiDisplay(self.solAnalysisTDCLayout, self)
-        self.solScanGstedDisp = GuiDisplay(self.solAnalysisGSTEDLayout, self)
 
         self.imgScanPreviewDisp = GuiDisplay(self.importImgPreviewLayout)
 

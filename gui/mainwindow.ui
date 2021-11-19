@@ -6439,7 +6439,7 @@ Rows</string>
                         <item>
                          <widget class="QTabWidget" name="tabWidget_4">
                           <property name="currentIndex">
-                           <number>1</number>
+                           <number>0</number>
                           </property>
                           <widget class="QWidget" name="tab_7">
                            <attribute name="title">
@@ -6447,7 +6447,7 @@ Rows</string>
                            </attribute>
                            <layout class="QGridLayout" name="gridLayout_35">
                             <item row="0" column="0">
-                             <layout class="QVBoxLayout" name="verticalLayout_119" stretch="0,10">
+                             <layout class="QVBoxLayout" name="verticalLayout_119" stretch="1,100">
                               <property name="spacing">
                                <number>0</number>
                               </property>
@@ -6635,10 +6635,23 @@ for Processing</string>
                                  </layout>
                                 </item>
                                 <item>
-                                 <layout class="QHBoxLayout" name="horizontalLayout_73">
+                                 <layout class="QHBoxLayout" name="horizontalLayout_73" stretch="10,1,1,10">
                                   <property name="spacing">
                                    <number>0</number>
                                   </property>
+                                  <item>
+                                   <spacer name="horizontalSpacer_25">
+                                    <property name="orientation">
+                                     <enum>Qt::Horizontal</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>40</width>
+                                      <height>20</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                   <item>
                                    <layout class="QVBoxLayout" name="verticalLayout_76">
                                     <property name="spacing">
@@ -6670,121 +6683,25 @@ Experiment</string>
                                     </property>
                                    </widget>
                                   </item>
+                                  <item>
+                                   <spacer name="horizontalSpacer_31">
+                                    <property name="orientation">
+                                     <enum>Qt::Horizontal</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>40</width>
+                                      <height>20</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                  </layout>
                                 </item>
                                </layout>
                               </item>
                               <item>
-                               <spacer name="verticalSpacer_16">
-                                <property name="orientation">
-                                 <enum>Qt::Vertical</enum>
-                                </property>
-                                <property name="sizeHint" stdset="0">
-                                 <size>
-                                  <width>20</width>
-                                  <height>40</height>
-                                 </size>
-                                </property>
-                               </spacer>
-                              </item>
-                             </layout>
-                            </item>
-                           </layout>
-                          </widget>
-                          <widget class="QWidget" name="tab_8">
-                           <attribute name="title">
-                            <string>TDC Calibration</string>
-                           </attribute>
-                           <layout class="QGridLayout" name="gridLayout_38">
-                            <item row="0" column="0">
-                             <layout class="QHBoxLayout" name="horizontalLayout_58" stretch="0,34">
-                              <property name="spacing">
-                               <number>0</number>
-                              </property>
-                              <item>
-                               <layout class="QVBoxLayout" name="verticalLayout_74" stretch="10,1,10">
-                                <property name="spacing">
-                                 <number>0</number>
-                                </property>
-                                <item>
-                                 <spacer name="verticalSpacer_18">
-                                  <property name="orientation">
-                                   <enum>Qt::Vertical</enum>
-                                  </property>
-                                  <property name="sizeHint" stdset="0">
-                                   <size>
-                                    <width>20</width>
-                                    <height>40</height>
-                                   </size>
-                                  </property>
-                                 </spacer>
-                                </item>
-                                <item>
-                                 <layout class="QHBoxLayout" name="horizontalLayout_63" stretch="10,1">
-                                  <property name="spacing">
-                                   <number>2</number>
-                                  </property>
-                                  <item>
-                                   <widget class="QPushButton" name="calibrateTdc">
-                                    <property name="sizePolicy">
-                                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                      <horstretch>0</horstretch>
-                                      <verstretch>0</verstretch>
-                                     </sizepolicy>
-                                    </property>
-                                    <property name="text">
-                                     <string>Calibrate
-TDC</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item>
-                                   <layout class="QVBoxLayout" name="verticalLayout_127">
-                                    <property name="spacing">
-                                     <number>0</number>
-                                    </property>
-                                    <item>
-                                     <widget class="QLabel" name="label_25">
-                                      <property name="text">
-                                       <string>For Lifetimes
-Over (ns)</string>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <widget class="QSpinBox" name="tdcCalibGating">
-                                      <property name="suffix">
-                                       <string/>
-                                      </property>
-                                      <property name="maximum">
-                                       <number>999</number>
-                                      </property>
-                                      <property name="value">
-                                       <number>40</number>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                   </layout>
-                                  </item>
-                                 </layout>
-                                </item>
-                                <item>
-                                 <spacer name="verticalSpacer_12">
-                                  <property name="orientation">
-                                   <enum>Qt::Vertical</enum>
-                                  </property>
-                                  <property name="sizeHint" stdset="0">
-                                   <size>
-                                    <width>20</width>
-                                    <height>40</height>
-                                   </size>
-                                  </property>
-                                 </spacer>
-                                </item>
-                               </layout>
-                              </item>
-                              <item>
-                               <layout class="QGridLayout" name="solAnalysisTDCLayout" rowstretch="0" columnstretch="0">
+                               <layout class="QGridLayout" name="solExpLoadingLayout" rowstretch="0" columnstretch="0">
                                 <property name="leftMargin">
                                  <number>0</number>
                                 </property>
@@ -6795,6 +6712,129 @@ Over (ns)</string>
                                  <number>0</number>
                                 </property>
                                </layout>
+                              </item>
+                             </layout>
+                            </item>
+                           </layout>
+                          </widget>
+                          <widget class="QWidget" name="tab_8">
+                           <attribute name="title">
+                            <string>TDC Calibration</string>
+                           </attribute>
+                           <layout class="QGridLayout" name="gridLayout_21">
+                            <item row="0" column="0">
+                             <layout class="QVBoxLayout" name="verticalLayout_74" stretch="1,100">
+                              <property name="spacing">
+                               <number>0</number>
+                              </property>
+                              <item>
+                               <layout class="QHBoxLayout" name="horizontalLayout_58" stretch="1,1,10">
+                                <property name="spacing">
+                                 <number>2</number>
+                                </property>
+                                <item>
+                                 <widget class="QPushButton" name="calibrateTdc">
+                                  <property name="sizePolicy">
+                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                    <horstretch>0</horstretch>
+                                    <verstretch>0</verstretch>
+                                   </sizepolicy>
+                                  </property>
+                                  <property name="text">
+                                   <string>Calibrate
+TDC</string>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item>
+                                 <layout class="QVBoxLayout" name="verticalLayout_127">
+                                  <property name="spacing">
+                                   <number>0</number>
+                                  </property>
+                                  <item>
+                                   <widget class="QLabel" name="label_25">
+                                    <property name="text">
+                                     <string>For Lifetimes
+Over (ns)</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item>
+                                   <widget class="QSpinBox" name="tdcCalibGating">
+                                    <property name="suffix">
+                                     <string/>
+                                    </property>
+                                    <property name="maximum">
+                                     <number>999</number>
+                                    </property>
+                                    <property name="value">
+                                     <number>40</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                 </layout>
+                                </item>
+                                <item>
+                                 <spacer name="horizontalSpacer_30">
+                                  <property name="orientation">
+                                   <enum>Qt::Horizontal</enum>
+                                  </property>
+                                  <property name="sizeHint" stdset="0">
+                                   <size>
+                                    <width>40</width>
+                                    <height>20</height>
+                                   </size>
+                                  </property>
+                                 </spacer>
+                                </item>
+                               </layout>
+                              </item>
+                              <item>
+                               <widget class="QTabWidget" name="tabWidget_3">
+                                <property name="currentIndex">
+                                 <number>0</number>
+                                </property>
+                                <widget class="QWidget" name="tab_6">
+                                 <attribute name="title">
+                                  <string>Calibration</string>
+                                 </attribute>
+                                 <layout class="QGridLayout" name="gridLayout_11">
+                                  <item row="0" column="0">
+                                   <layout class="QGridLayout" name="solAnalysisTDCLayout1" rowstretch="0" columnstretch="0">
+                                    <property name="leftMargin">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="bottomMargin">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="spacing">
+                                     <number>0</number>
+                                    </property>
+                                   </layout>
+                                  </item>
+                                 </layout>
+                                </widget>
+                                <widget class="QWidget" name="tab_12">
+                                 <attribute name="title">
+                                  <string>Lifetime Comparison</string>
+                                 </attribute>
+                                 <layout class="QGridLayout" name="gridLayout_27">
+                                  <item row="0" column="0">
+                                   <layout class="QGridLayout" name="solAnalysisTDCLayout2" rowstretch="0" columnstretch="0">
+                                    <property name="leftMargin">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="bottomMargin">
+                                     <number>0</number>
+                                    </property>
+                                    <property name="spacing">
+                                     <number>0</number>
+                                    </property>
+                                   </layout>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </widget>
                               </item>
                              </layout>
                             </item>
