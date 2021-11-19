@@ -51,7 +51,7 @@ class App:
         self.meas = SimpleNamespace(type=None, is_running=False)
         self.analysis = SimpleNamespace(
             loaded_data=dict(),
-            assigned_to_experiment=dict(confocal=dict(), sted=dict()),
+            assigned_to_experiment=dict(),
             loaded_experiments=dict(),
         )
 
