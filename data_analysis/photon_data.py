@@ -180,7 +180,7 @@ class TDCPhotonDataMixin:
         tdc_chain_length=128,
         pick_valid_bins_method="auto",
         pick_calib_bins_method="auto",
-        calib_time_s=40e-9,
+        calib_time_ns=40,
         n_zeros_for_fine_bounds=10,
         fine_shift=0,
         time_bins_for_hist_ns=0.1,
@@ -247,7 +247,7 @@ class TDCPhotonDataMixin:
 
         if pick_calib_bins_method == "auto":
             # pick data at more than 20ns delay from maximum
-            j = np.where(j >= (calib_time_s * self.fpga_freq_hz + 2))[0]
+            j = np.where(j >= ((calib_time_ns * 1e-9) * self.fpga_freq_hz + 2))[0]
             j_calib = j_shift[j]
             coarse_bins = bins[j_calib]
         elif pick_calib_bins_method == "forced":

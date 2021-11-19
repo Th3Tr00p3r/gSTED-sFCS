@@ -1,6 +1,7 @@
 """Plotting and image-showing utilities"""
 
-from contextlib import contextmanager
+from collections import namedtuple
+from contextlib import suppress
 from typing import Tuple
 
 import numpy as np
@@ -11,15 +12,21 @@ from skimage.filters import threshold_yen
 
 from utilities.helper import Limits
 
+GuiDisplayOptions = namedtuple(
+    "GuiDisplayOptions",
+    "clear fix_aspect show_axis scroll_zoom cursor",
+    defaults=(True, False, None, False, False),
+)
+
 
 class GuiDisplay:
     """Doc."""
 
-    def __init__(self, layout, parent=None):
+    def __init__(self, layout, gui_parent=None):
         self.figure = plt.figure(tight_layout=True)
         self.canvas = FigureCanvasQTAgg(self.figure)
-        if parent is not None:
-            self.toolbar = NavigationToolbar(self.canvas, parent)
+        if gui_parent is not None:
+            self.toolbar = NavigationToolbar(self.canvas, gui_parent)
             layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
 
@@ -29,30 +36,26 @@ class GuiDisplay:
         self.figure.clear()
         self.canvas.draw_idle()
 
-    def entitle_and_label(self, x_label: str = "", y_label: str = "", title: str = ""):
+    def entitle_and_label(self, x_label: str = None, y_label: str = None, title: str = None):
         """Doc"""
 
-        with self._show_internal_ax(clear=False) as ax:
-            if title:
-                ax.set_title(title)
+        options = GuiDisplayOptions(clear=False, show_axis=True)
+        with Plotter(gui_display=self, gui_options=options, super_title=title) as ax:
             ax.set_xlabel(x_label)
             ax.set_ylabel(y_label)
 
     def plot(self, x, y, *args, **kwargs):
         """Wrapper for matplotlib.pyplot.plot."""
 
-        try:
-            self.ax.plot(x, y, *args, **kwargs)
-        except AttributeError:
-            self.ax = self.figure.add_subplot(111)
-            self.ax.plot(x, y, *args, **kwargs)
-        finally:
-            self.canvas.draw_idle()
+        options = GuiDisplayOptions(clear=False)
+        with Plotter(gui_display=self, gui_options=options) as ax:
+            ax.plot(x, y, *args, **kwargs)
 
     def display_pattern(self, x, y):
         """Doc."""
 
-        with self._show_internal_ax(show_axis=False) as ax:
+        options = GuiDisplayOptions(show_axis=False)
+        with Plotter(gui_display=self, gui_options=options) as ax:
             ax.plot(x, y, "k", lw=0.3)
 
     def display_image(self, image: np.ndarray, cursor=False, *args, **kwargs):
@@ -61,12 +64,10 @@ class GuiDisplay:
         if not isinstance(image, np.ndarray):
             raise ValueError("Image must be of type numpy.ndarray")
 
-        with self._show_internal_ax(
-            fix_aspect=True,
-            show_axis=False,
-            scroll_zoom=True,
-            cursor=cursor,
-        ) as ax:
+        options = GuiDisplayOptions(
+            fix_aspect=True, show_axis=False, scroll_zoom=True, cursor=cursor
+        )
+        with Plotter(gui_display=self, gui_options=options) as ax:
             ax.imshow(image, *args, **kwargs)
 
     def plot_acfs(
@@ -76,7 +77,7 @@ class GuiDisplay:
 
         x_arr, x_type = x
 
-        with self._show_internal_ax() as ax:
+        with Plotter(gui_display=self, gui_options=GuiDisplayOptions()) as ax:
             if x_type == "lag":
                 ax.set_xscale("log")
                 ax.set_xlim(1e-4, 1e1)
@@ -99,44 +100,6 @@ class GuiDisplay:
                     ax.plot(x_arr, row_acf)
             ax.plot(x_arr, avg_cf_cr, "k")
 
-    @contextmanager
-    def _show_internal_ax(
-        self,
-        clear=True,
-        fix_aspect=False,
-        show_axis=None,
-        scroll_zoom=False,
-        cursor=False,
-    ):
-        """Doc."""
-
-        try:
-            last_pos = self.ax.cursor.pos
-        except AttributeError:
-            last_pos = (0, 0)
-
-        if clear:
-            self.figure.clear()
-            ax = self.figure.add_subplot(111)
-        else:
-            ax = self.ax
-
-        try:
-            yield ax
-        finally:
-            if fix_aspect:
-                force_aspect(ax, aspect=1)
-            if scroll_zoom:
-                ax.org_lims = (Limits(ax.get_xlim()), Limits(ax.get_ylim()))
-                ax.org_dims = tuple(lim.interval() for lim in ax.org_lims)
-                ax.zoom_func = zoom_factory(ax)
-            if cursor:
-                ax.cursor = cursor_factory(ax, last_pos)
-            if show_axis is not None:
-                ax.axis(show_axis)
-            self.ax = ax
-            self.canvas.draw_idle()
-
 
 class Plotter:
     """A generalized, hierarchical plotting tool, designed to work as a context manager."""
@@ -148,6 +111,8 @@ class Plotter:
             "parent_figure"
         )  # TODO: not currently used. Can possibly be used for implementing subfigures
         self.parent_ax = kwargs.get("parent_ax")
+        self.gui_display: GuiDisplay = kwargs.get("gui_display")
+        self.gui_options = kwargs.get("gui_options", GuiDisplayOptions())
         self.subplots = kwargs.get("subplots", (1, 1))
         self.figsize = kwargs.get("figsize")
         self.super_title = kwargs.get("super_title")
@@ -160,8 +125,26 @@ class Plotter:
     def __enter__(self):
         """Prepare the 'axes' object to use in context manager"""
 
+        # dealing with GUI plotting
+        if self.gui_display is not None:
+            try:
+                self.gui_display.last_pos = self.gui_display.axes[0].cursor.pos
+            except AttributeError:
+                self.gui_display.last_pos = (0, 0)
+            except IndexError:
+                raise RuntimeError("Attempting to set last position of a multi-axes figure.")
+
+            if self.gui_options.clear:  # clear and create new axes
+                self.gui_display.figure.clear()
+                self.axes = self.gui_display.figure.subplots(*self.subplots)
+                if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
+                    self.axes = np.array([self.axes])
+            else:  # use exising axes
+                self.axes = np.array(self.gui_display.axes)
+            self.gui_display.axes = self.axes
+
         # dealing with a figure object
-        if self.parent_ax is None:
+        elif self.parent_ax is None:
             if self.parent_figure is None:  # creating a new figure
                 if self.figsize is None:  # auto-determine size
                     n_rows, n_cols = self.subplots
@@ -192,6 +175,19 @@ class Plotter:
         Set figure attirbutes and show it, if Plotter is at top of hierarchy.
         """
 
+        if self.gui_display is not None:  # dealing with GUI plotting
+            for ax in self.axes.flatten().tolist():
+                if self.gui_options.fix_aspect:
+                    self.should_force_aspect = True
+                if self.gui_options.scroll_zoom:
+                    ax.org_lims = (Limits(ax.get_xlim()), Limits(ax.get_ylim()))
+                    ax.org_dims = tuple(lim.interval() for lim in ax.org_lims)
+                    ax.zoom_func = zoom_factory(ax)
+                if self.gui_options.cursor:
+                    ax.cursor = cursor_factory(ax, self.gui_display.last_pos)
+                with suppress(TypeError):  # TODO: test this (is type error correct?)
+                    ax.axis(self.gui_options.show_axis)
+
         for ax in self.axes.flatten().tolist():  # set ax attributes
             if self.should_force_aspect:
                 force_aspect(ax, aspect=1)
@@ -205,8 +201,12 @@ class Plotter:
             ]
 
         if self.parent_ax is None:  # set figure attributes, and show it (dealing with figure)
-            self.fig.suptitle(self.super_title, fontsize=self.fontsize)
-            self.fig.show()
+            if self.gui_display is not None:
+                self.gui_display.figure.suptitle(self.super_title, fontsize=self.fontsize)
+                self.gui_display.canvas.draw_idle()
+            else:
+                self.fig.suptitle(self.super_title, fontsize=self.fontsize)
+                self.fig.show()
 
 
 class NavigationToolbar(NavigationToolbar2QT):

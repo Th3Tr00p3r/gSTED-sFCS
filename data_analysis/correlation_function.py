@@ -713,6 +713,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 else:
                     runtime = p.runtime
 
+                # TESTESTEST - finding out the difference between TDC-calibrated and non calibrated (0, inf) gated STED measurement runtime
+                print(f"runtime size: {runtime.size}, line_num size: {line_num.size}")
+                #                print(f"")
+                # TESTESTEST - finding out the difference between TDC-calibrated and non calibrated (0, inf) gated STED measurement runtime
+
                 time_stamps = np.diff(runtime).astype(np.int32)
                 for line_idx, j in enumerate(range(min_line, max_line + 1)):
                     valid = (line_num == j).astype(np.int8)
@@ -858,7 +863,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return afterpulse
 
-    def dump_or_load_data(self, should_load: bool):
+    def dump_or_load_data(self, should_load: bool) -> None:
         """
         Load or save the 'data' attribute.
         (relieve RAM - important during multiple-experiment analysis)
@@ -918,6 +923,8 @@ class SFCSExperiment:
 
     def __init__(self, name):
         self.name = name
+        self.confocal: SolutionSFCSMeasurement
+        self.sted: SolutionSFCSMeasurement
 
     def load_experiment(
         self,
@@ -937,32 +944,27 @@ class SFCSExperiment:
             and (sted_template is None)
             and (confocal is None)
             and (sted is None)
-        ):
+        ):  # check if at least one measurement is available for laoding
             raise RuntimeError("Can't load experiment with no measurements!")
 
-        if confocal is None:
-            if confocal_template is not None:
-                self.load_measurement(
-                    meas_type="confocal",
-                    file_path_template=confocal_template,
-                    should_plot=should_plot,
-                    **confocal_kwargs,
-                    **kwargs,
-                )
-        else:
-            self.confocal = confocal
-
-        if sted is None:
-            if sted_template is not None:
-                self.load_measurement(
-                    meas_type="sted",
-                    file_path_template=sted_template,
-                    should_plot=should_plot,
-                    **sted_kwargs,
-                    **kwargs,
-                )
-        else:
-            self.sted = sted
+        # load measurements
+        for meas_type in ("confocal", "sted"):
+            measurement = locals()[meas_type]
+            meas_template = locals()[f"{meas_type}_template"]
+            meas_kwargs = locals()[f"{meas_type}_kwargs"]
+            if measurement is None:
+                if meas_template is not None:  # process measurement from template
+                    self.load_measurement(
+                        meas_type=meas_type,
+                        file_path_template=meas_template,
+                        should_plot=should_plot,
+                        **meas_kwargs,
+                        **kwargs,
+                    )
+                else:  # Use empty measuremnt by default
+                    setattr(self, meas_type, SolutionSFCSMeasurement(name=meas_type))
+            else:  # use supllied measurement
+                setattr(self, meas_type, measurement)
 
         if should_plot:
             super_title = f"Experiment '{self.name}' - All ACFs"
@@ -1244,6 +1246,15 @@ class SFCSExperiment:
                 plot_kwargs=plot_kwargs,
             )
             ax.legend(confocal_legend_labels + sted_legend_labels)
+
+    def dump_or_load_data(self, should_load: bool) -> None:
+        """
+        Dump or load the data attribute for all measurements.
+        (Currently used by GUI logic only)
+        """
+
+        for measurement in (self.confocal, self.sted):
+            measurement.dump_or_load_data(should_load)
 
 
 def _convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):

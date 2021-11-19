@@ -288,6 +288,7 @@ SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
 
 SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
     loaded_experiments=("loadedExperimentNames", "QComboBox", "main", True),
+    # loading
     should_assign_loaded=("assignLoadedMeas", "QRadioButton", "main", False),
     imported_templates=("importedSolDataTemplates2", "QComboBox", "main", True),
     should_assign_raw=("assignRawData", "QRadioButton", "main", False),
@@ -295,6 +296,8 @@ SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
     assigned_confocal_template=("assignedExpConfMeas", "QLineEdit", "main", True),
     assigned_sted_template=("assignedExpStedMeas", "QLineEdit", "main", True),
     experiment_name=("experimentName", "QLineEdit", "main", True),
+    # TDC calibration
+    calibration_gating=("tdcCalibGating", "QSpinBox", "main", False),
 )
 # -----------------------------------------------
 # MeasurementProcedure Widget Collections

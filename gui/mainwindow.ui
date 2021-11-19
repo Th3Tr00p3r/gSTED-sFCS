@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1685</width>
-    <height>956</height>
+    <width>1691</width>
+    <height>975</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -6439,7 +6439,7 @@ Rows</string>
                         <item>
                          <widget class="QTabWidget" name="tabWidget_4">
                           <property name="currentIndex">
-                           <number>0</number>
+                           <number>1</number>
                           </property>
                           <widget class="QWidget" name="tab_7">
                            <attribute name="title">

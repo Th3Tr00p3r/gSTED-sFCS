@@ -4,6 +4,7 @@ import logging
 import re
 import sys
 import webbrowser
+from collections import namedtuple
 from collections.abc import Iterable
 from contextlib import contextmanager, suppress
 from datetime import datetime as dt
@@ -986,13 +987,13 @@ class MainWin:
             # Inferring data_dype from template
             data_type = self.infer_data_type_from_template(template)
 
-            corrfunc_tdc = SolutionSFCSMeasurement()
+            measurement = SolutionSFCSMeasurement()
             try:
-                corrfunc_tdc.read_fpga_data(
+                measurement.read_fpga_data(
                     date_dir_path / template,
                     should_plot=False,
                 )
-                corrfunc_tdc.correlate_and_average(cf_name=data_type)
+                measurement.correlate_and_average(cf_name=data_type)
 
             except AttributeError:
                 # No directories found
@@ -1001,7 +1002,7 @@ class MainWin:
             except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                 err_hndlr(exc, sys._getframe(), locals())
 
-            cf = corrfunc_tdc.cf[data_type]
+            cf = measurement.cf[data_type]
 
             try:
                 cf.fit_correlation_function()
@@ -1088,16 +1089,16 @@ class MainWin:
     def save_processed_data(self):
         """Doc."""
 
-        with self.get_corrfunc_tdc_from_template(should_load=True) as corrfunc_tdc:
+        with self.get_measurement_from_template(should_load=True) as measurement:
             curr_dir = self.current_date_type_dir_path()
-            file_utilities.save_processed_solution_meas(corrfunc_tdc, curr_dir)
+            file_utilities.save_processed_solution_meas(measurement, curr_dir)
             logging.info("Saved the processed data.")
 
     def toggle_save_processed_enabled(self):
         """Doc."""
 
-        with self.get_corrfunc_tdc_from_template() as corrfunc_tdc:
-            if corrfunc_tdc is None:
+        with self.get_measurement_from_template() as measurement:
+            if measurement is None:
                 self._gui.solImportSaveProcessed.setEnabled(False)
             else:
                 self._gui.solImportSaveProcessed.setEnabled(True)
@@ -1168,7 +1169,7 @@ class MainWin:
             if should_load_processed:
                 file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
                 print(f"Loading processed data '{current_template}' from hard drive...", end=" ")
-                corrfunc_tdc = file_utilities.load_processed_solution_measurement(file_path)
+                measurement = file_utilities.load_processed_solution_measurement(file_path)
                 print("Done.")
 
             else:  # process data
@@ -1181,12 +1182,12 @@ class MainWin:
                 try:
                     with suppress(AttributeError):
                         # AttributeError - No directories found
-                        corrfunc_tdc = SolutionSFCSMeasurement()
-                        corrfunc_tdc.read_fpga_data(
+                        measurement = SolutionSFCSMeasurement()
+                        measurement.read_fpga_data(
                             curr_dir / current_template,
                             **options_dict,
                         )
-                    corrfunc_tdc.correlate_data(
+                    measurement.correlate_data(
                         cf_name=data_type,
                         verbose=True,
                         **options_dict,
@@ -1200,7 +1201,7 @@ class MainWin:
             imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
             imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
 
-            self._app.analysis.loaded_data[current_template] = corrfunc_tdc
+            self._app.analysis.loaded_data[current_template] = measurement
 
             imported_combobox1.obj.addItem(current_template)
             imported_combobox2.obj.addItem(current_template)
@@ -1234,7 +1235,7 @@ class MainWin:
         return loading_options
 
     @contextmanager
-    def get_corrfunc_tdc_from_template(
+    def get_measurement_from_template(
         self, template: str = None, should_load=False
     ) -> SolutionSFCSMeasurement:
         """Doc."""
@@ -1242,19 +1243,19 @@ class MainWin:
         if template is None:
             template = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
-        corrfunc_tdc = self._app.analysis.loaded_data.get(curr_data_type)
+        measurement = self._app.analysis.loaded_data.get(curr_data_type)
 
         if should_load:
             with suppress(AttributeError):
-                corrfunc_tdc.dump_or_load_data(should_load=True)
+                measurement.dump_or_load_data(should_load=True)
 
         try:
-            yield corrfunc_tdc
+            yield measurement
 
         finally:
             if should_load:
                 with suppress(AttributeError):
-                    corrfunc_tdc.dump_or_load_data(should_load=False)
+                    measurement.dump_or_load_data(should_load=False)
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
@@ -1272,22 +1273,22 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
-            if corrfunc_tdc is None:
+        with self.get_measurement_from_template(imported_template) as measurement:
+            if measurement is None:
                 # no imported templates (deleted)
                 wdgts.SOL_MEAS_ANALYSIS_COLL.clear_all_objects()
                 sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
                 sol_data_analysis_wdgts.scan_img_file_num.set(1)
             else:
-                num_files = corrfunc_tdc.n_files
+                num_files = measurement.n_files
                 logging.debug("Populating analysis GUI...")
 
                 # populate general measurement properties
                 sol_data_analysis_wdgts.n_files.set(num_files)
-                sol_data_analysis_wdgts.scan_duration_min.set(corrfunc_tdc.duration_min)
-                sol_data_analysis_wdgts.avg_cnt_rate_khz.set(corrfunc_tdc.avg_cnt_rate_khz)
+                sol_data_analysis_wdgts.scan_duration_min.set(measurement.duration_min)
+                sol_data_analysis_wdgts.avg_cnt_rate_khz.set(measurement.avg_cnt_rate_khz)
 
-                if corrfunc_tdc.scan_type == "angular_scan":
+                if measurement.scan_type == "angular_scan":
                     # populate scan images tab
                     logging.debug("Displaying scan images...")
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
@@ -1301,11 +1302,11 @@ class MainWin:
                     scan_settings_text = "\n\n".join(
                         [
                             f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
-                            for key, val in corrfunc_tdc.angular_scan_settings.items()
+                            for key, val in measurement.angular_scan_settings.items()
                         ]
                     )
 
-                elif corrfunc_tdc.scan_type == "static":
+                elif measurement.scan_type == "static":
                     logging.debug("Averaging, plotting and fitting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
                     scan_settings_text = "no scan."
@@ -1320,9 +1321,9 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
-                img = corrfunc_tdc.scan_images_dstack[:, :, file_num - 1]
-                roi = corrfunc_tdc.roi_list[file_num - 1]
+            with self.get_measurement_from_template(imported_template) as measurement:
+                img = measurement.scan_images_dstack[:, :, file_num - 1]
+                roi = measurement.roi_list[file_num - 1]
 
                 scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
@@ -1334,11 +1335,11 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_corrfunc_tdc_from_template(imported_template) as corrfunc_tdc:
-            if corrfunc_tdc is None:
+        with self.get_measurement_from_template(imported_template) as measurement:
+            if measurement is None:
                 return
 
-            if corrfunc_tdc.scan_type == "angular_scan":
+            if measurement.scan_type == "angular_scan":
                 row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
@@ -1351,8 +1352,8 @@ class MainWin:
 
                 with suppress(AttributeError, RuntimeError):
                     # AttributeError - no data loaded
-                    data_type = self.infer_data_type_from_template(corrfunc_tdc.template)
-                    cf = corrfunc_tdc.cf[data_type]
+                    data_type = self.infer_data_type_from_template(measurement.template)
+                    cf = measurement.cf[data_type]
                     cf.average_correlation(**avg_corr_kwargs)
 
                     if sol_data_analysis_wdgts.plot_spatial:
@@ -1377,9 +1378,9 @@ class MainWin:
                     sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(cf.j_bad))
                     sol_data_analysis_wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
 
-            elif corrfunc_tdc.scan_type == "static":
-                data_type = self.infer_data_type_from_template(corrfunc_tdc.template)
-                cf = corrfunc_tdc.cf[data_type]
+            elif measurement.scan_type == "static":
+                data_type = self.infer_data_type_from_template(measurement.template)
+                cf = measurement.cf[data_type]
                 cf.average_correlation()
                 try:
                     cf.fit_correlation_function()
@@ -1435,9 +1436,10 @@ class MainWin:
     def assign_measurement(self, meas_type: str) -> None:
         """Doc."""
 
+        MeasAssignParams = namedtuple("MeasAssignParams", "template method options")
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
-        measurement_source = self._app.analysis.assigned_to_experiment[meas_type]
-        loading_options = self.get_loading_options_as_dict()
+        assigned_dict = self._app.analysis.assigned_to_experiment
+        options = self.get_loading_options_as_dict()
 
         if wdgt_coll.should_assign_loaded:
             template = wdgt_coll.imported_templates.get()
@@ -1446,13 +1448,7 @@ class MainWin:
             template = wdgt_coll.data_templates.get()
             method = "raw"
 
-        measurement_source.update(
-            {
-                "template": template,
-                "method": method,
-                "loading_options": loading_options,
-            }
-        )
+        assigned_dict[meas_type] = MeasAssignParams(template, method, options)
 
         wdgt_to_assign_to = getattr(wdgt_coll, f"assigned_{meas_type}_template")
         wdgt_to_assign_to.set(template)
@@ -1468,30 +1464,29 @@ class MainWin:
 
         kwargs = dict()
         with suppress(KeyError):
-            for meas_type, meas_source in self._app.analysis.assigned_to_experiment.items():
-                if meas_source["method"] == "loaded":
-                    with self.get_corrfunc_tdc_from_template(
+            for meas_type, assignment_params in self._app.analysis.assigned_to_experiment.items():
+                if assignment_params.method == "loaded":
+                    with self.get_measurement_from_template(
                         wdgt_coll.imported_templates.get(), should_load=True
                     ) as measurement:
                         kwargs[meas_type] = measurement
-                elif meas_source["method"] == "raw":
+                elif assignment_params.method == "raw":
                     curr_dir = self.current_date_type_dir_path()
                     kwargs[f"{meas_type}_template"] = (
                         curr_dir / getattr(wdgt_coll, f"assigned_{meas_type}_template").get()
                     )
                 # get loading options as kwargs
-                kwargs[f"{meas_type}_kwargs"] = meas_source["loading_options"]
+                kwargs[f"{meas_type}_kwargs"] = assignment_params.options
 
         experiment = SFCSExperiment(experiment_name)
         with suppress(RuntimeError):
             # RuntimeError - Can't load experiment with no measurements!
-            self._app.analysis.loaded_experiments[experiment_name] = experiment.load_experiment(
-                **kwargs
-            )
+            experiment.load_experiment(**kwargs)
+            self._app.analysis.loaded_experiments[experiment_name] = experiment
             wdgt_coll.loaded_experiments.obj.addItem(experiment_name)
 
             # reset the dict and clear relevant widgets
-            self._app.analysis.assigned_to_experiment = dict(confocal=dict(), sted=dict())
+            self._app.analysis.assigned_to_experiment = dict()
             wdgt_coll.assigned_confocal_template.obj.clear()
             wdgt_coll.assigned_sted_template.obj.clear()
             wdgt_coll.experiment_name.obj.clear()
@@ -1510,6 +1505,36 @@ class MainWin:
         loaded_templates_combobox.obj.removeItem(loaded_templates_combobox.obj.currentIndex())
 
         logging.info(f"Experiment '{experiment_name}' removed.")
+
+    @contextmanager
+    def get_experiment(
+        self, experiment_name: str = None, should_load=False
+    ) -> SolutionSFCSMeasurement:
+        """Doc."""
+
+        if experiment_name is None:
+            experiment_name = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments.get()
+        experiment = self._app.analysis.loaded_experiments.get(experiment_name)
+
+        if should_load:
+            with suppress(AttributeError):
+                experiment.dump_or_load_data(should_load=True)
+
+        try:
+            yield experiment
+
+        finally:
+            if should_load:
+                with suppress(AttributeError):
+                    experiment.dump_or_load_data(should_load=False)
+
+    def calibrate_tdc(self) -> None:
+        """Doc."""
+
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+
+        with self.get_experiment() as experiment:
+            experiment.calibrate_tdc(should_plot=True, calib_time_ns=wdgt_coll.calibration_gating)
 
 
 class SettWin:
