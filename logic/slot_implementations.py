@@ -1548,6 +1548,41 @@ class MainWin:
             kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
             experiment.compare_lifetimes(**kwargs)
 
+    def assign_gate(self, gate_lt) -> None:
+        """Doc."""
+
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+
+        with self.get_experiment() as experiment:
+            laser_pulse_delay_ns = experiment.lifetime_params.laser_pulse_delay_ns
+            lifetime_ns = experiment.lifetime_params.lifetime_ns
+            lower_gate_ns = gate_lt * lifetime_ns + laser_pulse_delay_ns
+            upper_gate_ns = experiment.default_upper_gate
+
+        gate_ns = helper.Limits(lower_gate_ns, upper_gate_ns)
+        wdgt_coll.assigned_gates.addItem(gate_ns)  # TODO: convert to string?
+
+    def gate(self) -> None:
+        """Doc."""
+
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+
+        gates_combobox = wdgt_coll.assigned_gates.obj
+        gate_list = [
+            gates_combobox.itemText(i) for i in range(gates_combobox.count())
+        ]  # TODO: convert str to gate format (limit)
+
+        kwargs = dict()
+        kwargs["gui_display"] = wdgt_coll.gui_display_sted_gating.obj
+        kwargs["gui_options"] = display.GuiDisplayOptions(show_axis=True)
+        kwargs["fontsize"] = 10
+        with self.get_experiment() as experiment:
+            experiment.add_gates(gate_list, **kwargs)
+
+        wdgt_coll.available_gates.obj.addItems(
+            gate_list
+        )  # TODO: Convert to str (add 'to_string' in Limit?)
+
 
 class SettWin:
     """Doc."""
