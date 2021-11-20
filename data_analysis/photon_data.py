@@ -2,7 +2,6 @@
 
 from contextlib import suppress
 from dataclasses import dataclass
-from types import SimpleNamespace
 from typing import Any, List, Tuple
 
 import numpy as np
@@ -44,6 +43,15 @@ class TDCCalibration:
     all_hist_norm: Any
     error_all_hist_norm: Any
     t_weight: Any
+
+
+@dataclass
+class LifeTimeParams:
+    """Doc."""
+
+    lifetime_ns: float
+    sigma_sted: Tuple[float, float]
+    laser_pulse_delay_ns: float
 
 
 class TDCPhotonDataMixin:
@@ -452,7 +460,7 @@ class TDCPhotonDataMixin:
         h = []
         for label, measurement in compared.items():
             with suppress(AttributeError):
-                # AttributeError - assume other tdc_objects that have TDCcalib structures
+                # AttributeError - assume other tdc_objects that have tdc_calib structures
                 x = measurement.tdc_calib.t_hist
                 if normalization_type == "NO":
                     y = measurement.tdc_calib.all_hist / measurement.tdc_calib.t_weight
@@ -528,13 +536,13 @@ class TDCPhotonDataMixin:
         conf = self.confocal
         sted = self.sted
 
-        conf_hist = conf.TDCcalib.allHistNorm
-        conf_t = conf.TDCcalib.t_Hist
+        conf_hist = conf.tdc_calib.all_hist_norm
+        conf_t = conf.tdc_calib.t_hist
         conf_t = conf_t(np.isfinite(conf_hist))
         conf_hist = conf_hist(np.isfinite(conf_hist))
 
-        sted_hist = sted.TDCcalib.allHistNorm
-        sted_t = sted.TDCcalib.t_Hist
+        sted_hist = sted.tdc_calib.all_hist_norm
+        sted_t = sted.tdc_calib.t_hist
         sted_t = sted_t(np.isfinite(sted_hist))
         sted_hist = sted_hist(np.isfinite(sted_hist))
 
@@ -549,7 +557,7 @@ class TDCPhotonDataMixin:
         if param_estimates is None:
             param_estimates = beta0
 
-        ConfParam = conf.DoFitLifeTimeHist("FitRange", fit_range, "fit param estimate", beta0)
+        conf_params = conf.fit_lifetime_hist(fit_range=fit_range, fit_param_estimate=beta0)
 
         # remove background
         sted_bg = np.mean(sted_hist(bg_range.valid_indices(sted_t)))
@@ -562,7 +570,7 @@ class TDCPhotonDataMixin:
         hist_ratio = conf_hist(j) / np.interp(
             t, sted_t, sted_hist, right=0
         )  # TODO: test this translation of MATLAB's interp1d
-        # hist_ratio = ExponentBGfit(ConfParam.beta, t)./sted_hist(J);
+        # hist_ratio = ExponentBGfit(conf_params.beta, t)./sted_hist(J);
         if drop_idxs:
             j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
             t = t(j)
@@ -577,7 +585,6 @@ class TDCPhotonDataMixin:
         #        pause;
         j_selected = []
 
-        LifeTimeParam = SimpleNamespace()
         if sted_field == "symmetric":
             # TODO: see this :https://medium.com/swlh/robust-regression-all-you-need-to-know-an-example-in-python-878081bafc0
             # and this: https://scikit-learn.org/stable/auto_examples/linear_model/plot_robust_fit.html
@@ -590,7 +597,7 @@ class TDCPhotonDataMixin:
         #            plot(t, hist_ratio, 'o', t(j_selected), polyval(p, t(j_selected)));
         #
         #
-        #            LifeTimeParam.LifeTime_ns = ConfParam.beta(2);
+        #            LifeTimeParam.LifeTime_ns = conf_params.beta(2);
         #            LifeTimeParam.SigOverTau_STED = p(1);
         #            LifeTimeParam.Sig_STED = p(1)*LifeTimeParam.LifeTime_ns;
         #            LifeTimeParam.LaserPulse = (1 - p(2))/p(1);
@@ -604,14 +611,11 @@ class TDCPhotonDataMixin:
                 should_plot=True,
             )
 
-            LifeTimeParam.LifeTime_ns = ConfParam["beta"][2]
-            LifeTimeParam.Sig1overTau_STED = fit_param["beta"][1]
-            LifeTimeParam.Sig2overTau_STED = fit_param["beta"][2]
-            LifeTimeParam.Sig1_STED = fit_param["beta"][1] * LifeTimeParam.LifeTime_ns
-            LifeTimeParam.Sig2_STED = fit_param["beta"][2] * LifeTimeParam.LifeTime_ns
-            LifeTimeParam.LaserPulse = fit_param["beta"][3]
+            lifetime_ns = conf_params["beta"][2]
+            sigma_sted = (fit_param["beta"][1] * lifetime_ns, fit_param["beta"][2] * lifetime_ns)
+            laser_pulse_delay_ns = fit_param["beta"][3]
 
-        self.lifetime_params = LifeTimeParam
+        self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
 
 
 @dataclass
