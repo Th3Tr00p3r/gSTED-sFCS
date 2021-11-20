@@ -2,6 +2,7 @@
 
 from contextlib import suppress
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Any, List, Tuple
 
 import numpy as np
@@ -511,6 +512,106 @@ class TDCPhotonDataMixin:
         except KeyError:
             self.tdc_calib.fit_param = dict()
             self.tdc_calib.fit_param[fit_param["func_name"]] = fit_param
+
+    def get_lifetime_parameters(
+        self,
+        sted_field="paraboloid",
+        drop_idxs=[],
+        fit_range=None,
+        param_estimates=None,
+        bg_range=Limits(40, 60),
+        **kwargs,
+    ):
+        """Doc."""
+        # TODO: WORK IN PROGRESS HERE
+
+        conf = self.confocal
+        sted = self.sted
+
+        conf_hist = conf.TDCcalib.allHistNorm
+        conf_t = conf.TDCcalib.t_Hist
+        conf_t = conf_t(np.isfinite(conf_hist))
+        conf_hist = conf_hist(np.isfinite(conf_hist))
+
+        sted_hist = sted.TDCcalib.allHistNorm
+        sted_t = sted.TDCcalib.t_Hist
+        sted_t = sted_t(np.isfinite(sted_hist))
+        sted_hist = sted_hist(np.isfinite(sted_hist))
+
+        h_max, j_max = max(conf_hist)
+        t_max = conf_t(j_max)
+
+        beta0 = (h_max, 4, h_max * 1e-3)
+
+        if fit_range is None:
+            fit_range = Limits(t_max, 40)
+
+        if param_estimates is None:
+            param_estimates = beta0
+
+        ConfParam = conf.DoFitLifeTimeHist("FitRange", fit_range, "fit param estimate", beta0)
+
+        # remove background
+        sted_bg = np.mean(sted_hist(bg_range.valid_indices(sted_t)))
+        conf_bg = np.mean(conf_hist(bg_range.valid_indices(conf_t)))
+        sted_hist = sted_hist - sted_bg
+        conf_hist = conf_hist - conf_bg
+
+        j = conf_t < 20
+        t = conf_t(j)
+        hist_ratio = conf_hist(j) / np.interp(
+            t, sted_t, sted_hist, right=0
+        )  # TODO: test this translation of MATLAB's interp1d
+        # hist_ratio = ExponentBGfit(ConfParam.beta, t)./sted_hist(J);
+        if drop_idxs:
+            j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
+            t = t(j)
+            hist_ratio = hist_ratio(j)
+
+        # TODO: select relevant data points using rectangle selector from plot: https://matplotlib.org/stable/gallery/widgets/rectangle_selector.html
+        #        h = figure;
+        #        figure(h);
+        #        plot(t, hist_ratio);
+        #        title('Zoom into linear range and hit any key');
+        #        figure(h);
+        #        pause;
+        j_selected = []
+
+        LifeTimeParam = SimpleNamespace()
+        if sted_field == "symmetric":
+            # TODO: see this :https://medium.com/swlh/robust-regression-all-you-need-to-know-an-example-in-python-878081bafc0
+            # and this: https://scikit-learn.org/stable/auto_examples/linear_model/plot_robust_fit.html
+            # for robust linear regression
+
+            pass
+
+        #            p = robustfit(t(j_selected), hist_ratio(j_selected)); # to minimize effect of outliers
+        #            p = (p(2), p(1)) # reversed order in robust fit
+        #            plot(t, hist_ratio, 'o', t(j_selected), polyval(p, t(j_selected)));
+        #
+        #
+        #            LifeTimeParam.LifeTime_ns = ConfParam.beta(2);
+        #            LifeTimeParam.SigOverTau_STED = p(1);
+        #            LifeTimeParam.Sig_STED = p(1)*LifeTimeParam.LifeTime_ns;
+        #            LifeTimeParam.LaserPulse = (1 - p(2))/p(1);
+        else:
+            fit_param = fit_tools.curve_fit_lims(
+                fit_name="ratio_of_lifetime_histograms",
+                param_estimates=(2, 1, 1),
+                xs=t(j_selected),
+                ys=hist_ratio(j_selected),
+                ys_errors=np.ones(j_selected.size),
+                should_plot=True,
+            )
+
+            LifeTimeParam.LifeTime_ns = ConfParam["beta"][2]
+            LifeTimeParam.Sig1overTau_STED = fit_param["beta"][1]
+            LifeTimeParam.Sig2overTau_STED = fit_param["beta"][2]
+            LifeTimeParam.Sig1_STED = fit_param["beta"][1] * LifeTimeParam.LifeTime_ns
+            LifeTimeParam.Sig2_STED = fit_param["beta"][2] * LifeTimeParam.LifeTime_ns
+            LifeTimeParam.LaserPulse = fit_param["beta"][3]
+
+        self.lifetime_params = LifeTimeParam
 
 
 @dataclass

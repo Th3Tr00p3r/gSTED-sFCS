@@ -301,6 +301,11 @@ SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
     calibration_gating=("tdcCalibGating", "QSpinBox", "main", False),
     gui_display_tdc_cal=("solExpTDC1", None, "main", True),
     gui_display_comp_lifetimes=("solExpTDC2", None, "main", True),
+    # gating
+    custom_gate_to_assign_lt=("customGateLifetimes", "QDoubleSpinBox", "main", True),
+    assigned_gates=("assignedGates", "QComboBox", "main", True),
+    available_gates=("availableGates", "QComboBox", "main", True),
+    gui_display_sted_gating=("solExpGSTED", None, "main", True),
 )
 # -----------------------------------------------
 # MeasurementProcedure Widget Collections
