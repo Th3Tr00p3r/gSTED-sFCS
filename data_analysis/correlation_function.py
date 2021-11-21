@@ -18,8 +18,9 @@ from data_analysis.photon_data import (
     TDCPhotonDataMixin,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities import file_utilities, fit_tools
+from utilities import file_utilities
 from utilities.display import Plotter
+from utilities.fit_tools import FitParams, curve_fit_lims
 from utilities.helper import Limits, div_ceil
 
 
@@ -30,7 +31,7 @@ class CorrFunc:
         self.gate_ns = Limits(gate_ns)
         self.lag = []
         self.countrate_list = []
-        self.fit_param = dict()
+        self.fit_params: FitParams
         self.run_duration: float
         self.skipped_duration = 0
         self.total_duration: float
@@ -109,9 +110,6 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        #        print(f"final plot {x_field} size: {x.size}") # TESTESTEST
-        #        print(f"final plot {y_field} size: {y.size}") # TESTESTEST
-
         with Plotter(parent_ax=parent_ax, xlim=xlim, ylim=ylim, should_autoscale=True) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
@@ -143,7 +141,7 @@ class CorrFunc:
             y = y[1:]
             error_y = error_y[1:]
 
-        fit_param = fit_tools.curve_fit_lims(
+        self.fit_params[fit_name] = curve_fit_lims(
             fit_name,
             fit_param_estimate,
             x,
@@ -154,8 +152,6 @@ class CorrFunc:
             x_scale=x_scale,
             y_scale=y_scale,
         )
-
-        self.fit_param[fit_param["func_name"]] = fit_param
 
 
 @dataclass
