@@ -1540,15 +1540,13 @@ class MainWin:
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        # plotting properties
-        kwargs = dict()
-        kwargs["gui_options"] = display.GuiDisplayOptions(show_axis=True)
-        kwargs["fontsize"] = 10
+        kwargs = dict(gui_options=display.GuiDisplayOptions(show_axis=True), fontsize=10)
         with self.get_experiment() as experiment:
             kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
             experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **kwargs)
             kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
             experiment.compare_lifetimes(**kwargs)
+            experiment.get_lifetime_parameters()
 
     def assign_gate(self, gate_lt) -> None:
         """Doc."""

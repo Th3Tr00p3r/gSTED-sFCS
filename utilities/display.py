@@ -72,9 +72,7 @@ class GuiDisplay:
             scroll_zoom=kwargs.get("scroll_zoom", True),
             cursor=kwargs.get("cursor", False),
         )
-        with Plotter(
-            gui_display=self, gui_options=options, selection_limits=Limits()
-        ) as ax:  # TESTESTEST Limits
+        with Plotter(gui_display=self, gui_options=options) as ax:
             ax.imshow(image, **imshow_kwargs)
 
     def plot_acfs(
@@ -158,8 +156,8 @@ class Plotter:
                 if self.figsize is None:  # auto-determine size
                     n_rows, n_cols = self.subplots
                     ax_width, ax_height = self.AX_SIZE
-                    figsize = (n_cols * ax_width, n_rows * ax_height)
-                self.fig = plt.figure(figsize=figsize, constrained_layout=True)
+                    self.figsize = (n_cols * ax_width, n_rows * ax_height)
+                self.fig = plt.figure(figsize=self.figsize, constrained_layout=True)
                 self.axes = self.fig.subplots(*self.subplots)
                 if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
                     self.axes = np.array([self.axes])
@@ -209,24 +207,15 @@ class Plotter:
                 text.set_fontsize(self.fontsize)
                 for text in [ax.title, ax.xaxis.label, ax.yaxis.label]
             ]
-            if self.selection_limits is not None:
-                if hasattr(self.fig.canvas, "manager"):
-                    delattr(
-                        self.fig.canvas, "manager"
-                    )  # is None. needs to be removed for 'ginput' to work
+            if self.selection_limits is not None:  # manual selection
+                self.fig.suptitle(self.super_title, fontsize=self.fontsize)
+                self.fig.show()
                 selected_points_list = self.fig.ginput(n=-1, timeout=-1)
                 x_coords = [x for (x, y) in selected_points_list]
+                if len(x_coords) < 2:
+                    raise RuntimeError("Must select at least 2 points!")
                 self.selection_limits(min(x_coords), max(x_coords))
-                print(f"selected limits: {self.selection_limits}")  # TESTESTEST
-                self.fig.canvas.manager = (
-                    None  # re-instating 'None' manager (not necessarily needed)
-                )
-        #                self.rect_selector = RectangleSelector(
-        #                    ax, self.selection_callback,
-        #                    useblit=True,
-        #                    button=[1, 3],  # disable middle button
-        #                    interactive=True
-        #                )
+                return
 
         if self.parent_ax is None:  # set figure attributes, and show it (dealing with figure)
             if self.gui_display is not None:
@@ -235,13 +224,6 @@ class Plotter:
             else:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
-
-
-#    def selection_callback(self, eclick, erelease):
-#        """Doc."""
-#
-#        self.selection_limits(eclick.xdata, erelease.xdata)
-#        print(f"Selecting data in {self.selection_limits}")
 
 
 class NavigationToolbar(NavigationToolbar2QT):
