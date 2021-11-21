@@ -1,15 +1,16 @@
 """Raw data handling."""
 
 from contextlib import suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, List, Tuple, Union
 
 import numpy as np
 import scipy
 from sklearn import linear_model
 
-from utilities import file_utilities, fit_tools
+from utilities import file_utilities
 from utilities.display import Plotter
+from utilities.fit_tools import FitParams, curve_fit_lims
 from utilities.helper import Limits, div_ceil
 
 
@@ -44,7 +45,6 @@ class TDCCalibration:
     all_hist_norm: Any
     error_all_hist_norm: Any
     t_weight: Any
-    fit_param: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -502,12 +502,12 @@ class TDCPhotonDataMixin:
         y_scale="log",
         max_iter=3,
         should_plot=False,
-    ) -> dict:
+    ) -> FitParams:
         """Doc."""
 
         is_finite_y = np.isfinite(getattr(self.tdc_calib, y_field))
 
-        fit_param = fit_tools.curve_fit_lims(
+        return curve_fit_lims(
             fit_name,
             fit_param_estimate,
             xs=getattr(self.tdc_calib, x_field)[is_finite_y],
@@ -519,14 +519,6 @@ class TDCPhotonDataMixin:
             y_scale=y_scale,
         )
 
-        try:
-            self.tdc_calib.fit_param[fit_param["func_name"]] = fit_param
-        except AttributeError:
-            self.tdc_calib.fit_param = dict()
-            self.tdc_calib.fit_param[fit_param["func_name"]] = fit_param
-
-        return fit_param
-
     def get_lifetime_parameters(
         self,
         sted_field="symmetric",
@@ -537,7 +529,6 @@ class TDCPhotonDataMixin:
         **kwargs,
     ) -> LifeTimeParams:
         """Doc."""
-        # TODO: WORK IN PROGRESS HERE
 
         conf = self.confocal
         sted = self.sted
@@ -573,16 +564,12 @@ class TDCPhotonDataMixin:
 
         j = conf_t < 20
         t = conf_t[j]
-        hist_ratio = conf_hist[j] / np.interp(
-            t, sted_t, sted_hist, right=0
-        )  # TODO: test this translation of MATLAB's interp1d
-        # hist_ratio = ExponentBGfit(t, conf_params.beta) / sted_hist(j); # TODO: not using this?
+        hist_ratio = conf_hist[j] / np.interp(t, sted_t, sted_hist, right=0)
         if drop_idxs:
             j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
             t = t[j]
             hist_ratio = hist_ratio[j]
 
-        # TODO: select relevant data points using rectangle selector from plot: https://matplotlib.org/stable/gallery/widgets/rectangle_selector.html
         title = "Use the mouse to place 2 markers\nlimiting the linear range:"
         linear_range = Limits()
         with Plotter(
@@ -602,12 +589,12 @@ class TDCPhotonDataMixin:
                 ax.plot(t[j_selected], np.polyval(p, t[j_selected]))
 
             p0, p1 = p
-            lifetime_ns = conf_params["beta"][1]
+            lifetime_ns = conf_params.beta[1]
             sigma_sted = p1 * lifetime_ns
             laser_pulse_delay_ns = (1 - p0) / p1
 
         elif sted_field == "paraboloid":
-            fit_param = fit_tools.curve_fit_lims(
+            fit_params = curve_fit_lims(
                 fit_name="ratio_of_lifetime_histograms",
                 param_estimates=(2, 1, 1),
                 xs=t[j_selected],
@@ -616,9 +603,9 @@ class TDCPhotonDataMixin:
                 should_plot=True,
             )
 
-            lifetime_ns = conf_params["beta"][1]
-            sigma_sted = (fit_param["beta"][0] * lifetime_ns, fit_param["beta"][1] * lifetime_ns)
-            laser_pulse_delay_ns = fit_param["beta"][2]
+            lifetime_ns = conf_params.beta[1]
+            sigma_sted = (fit_params.beta[0] * lifetime_ns, fit_params.beta[1] * lifetime_ns)
+            laser_pulse_delay_ns = fit_params.beta[2]
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params

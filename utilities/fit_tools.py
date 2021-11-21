@@ -2,6 +2,7 @@
 
 import sys
 import warnings
+from dataclasses import dataclass, field
 
 import numpy as np
 import scipy.optimize as opt
@@ -18,6 +19,21 @@ class FitError(Exception):
     pass
 
 
+@dataclass
+class FitParams:
+    """Doc."""
+
+    func_name: str = None
+    beta: tuple = None
+    beta_error: tuple = None
+    x: np.ndarray = None
+    y: np.ndarray = None
+    sigma: np.ndarray = None
+    x_limits: Limits = field(default_factory=Limits)
+    y_limits: Limits = field(default_factory=Limits)
+    chi_sq_norm: float = None
+
+
 def curve_fit_lims(
     fit_name,
     param_estimates,
@@ -31,7 +47,7 @@ def curve_fit_lims(
     y_scale="linear",
     plot_kwargs={},
     **kwargs,
-) -> dict:
+) -> FitParams:
     """Doc."""
 
     in_lims = x_limits.valid_indices(xs) & y_limits.valid_indices(ys)
@@ -41,27 +57,21 @@ def curve_fit_lims(
     y_err = ys_errors[in_lims & is_finite_err]
     fit_func = globals()[fit_name]
 
-    fit_param = _fit_and_get_param_dict(
+    fit_params = _fit_and_get_param_dict(
         fit_func, x, y, param_estimates, sigma=y_err, absolute_sigma=True
     )
-    fit_param["x_limits"] = x_limits
-    fit_param["y_limits"] = y_limits
-    chi_sq_arr = np.square((fit_func(x, *fit_param["beta"]) - y) / y_err)
-    fit_param["chi_sq_norm"] = chi_sq_arr.sum() / x.size
 
     if should_plot:
         with Plotter() as ax:
             ax.set_xscale(x_scale)
             ax.set_yscale(y_scale)
-            ax.plot(
-                xs[in_lims], fit_func(xs[in_lims], *fit_param["beta"]), zorder=10, **plot_kwargs
-            )
+            ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_params.beta), zorder=10, **plot_kwargs)
             ax.errorbar(xs, ys, ys_errors, fmt=".")
 
-    return fit_param
+    return fit_params
 
 
-def fit_2d_gaussian_to_image(data: np.ndarray) -> dict:
+def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
     """Doc."""
 
     height, width = data.shape
@@ -77,7 +87,7 @@ def fit_2d_gaussian_to_image(data: np.ndarray) -> dict:
     return _fit_and_get_param_dict(gaussian_2d_fit, (x1, x2), y, p0)
 
 
-def _fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> dict:
+def _fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> FitParams:
     """Doc."""
 
     try:
@@ -85,16 +95,27 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> dict:
     except (RuntimeWarning, RuntimeError, opt.OptimizeWarning) as exc:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
 
-    fit_param = dict()
-    fit_param["func_name"] = fit_func.__name__
-    fit_param["beta"] = popt
+    func_name = fit_func.__name__
+    beta = popt
     try:
-        fit_param["beta_error"] = np.sqrt(np.diag(pcov))
+        beta_error = np.sqrt(np.diag(pcov))
     except Exception as exc:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
-    fit_param["x"] = x
-    fit_param["y"] = y
-    return fit_param
+    sigma = kwargs.get("sigma", 1)
+    chi_sq_arr = np.square((fit_func(x, *beta) - y) / sigma)
+    chi_sq_norm = chi_sq_arr.sum() / x.size
+
+    return FitParams(
+        func_name,
+        beta,
+        beta_error,
+        x,
+        y,
+        sigma,
+        kwargs.get("x_limits", Limits()),
+        kwargs.get("y_limits", Limits()),
+        chi_sq_norm,
+    )
 
 
 def gaussian_2d_fit(xy_tuple, amplitude, xo, yo, sigma_x, sigma_y, theta, offset):

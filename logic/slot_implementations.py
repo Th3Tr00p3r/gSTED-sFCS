@@ -464,12 +464,12 @@ class MainWin:
             """
 
             try:
-                fit_param = fit_tools.fit_2d_gaussian_to_image(image)
+                fit_params = fit_tools.fit_2d_gaussian_to_image(image)
             except fit_tools.FitError:
                 # Gaussian fit failed, using COM
                 return helper.center_of_mass(image)
             else:
-                _, x0, y0, sigma_x, sigma_y, *_ = fit_param["beta"]
+                _, x0, y0, sigma_x, sigma_y, *_ = fit_params.beta
                 height, width = image.shape
                 if (
                     (0 < x0 < width)
@@ -1010,8 +1010,8 @@ class MainWin:
                 err_hndlr(exc, sys._getframe(), locals())
                 g0, tau = (None, None)
             else:
-                fit_params = cf.fit_param["diffusion_3d_fit"]
-                g0, tau, _ = fit_params["beta"]
+                fit_params = cf.fit_params["diffusion_3d_fit"]
+                g0, tau, _ = fit_params.beta
 
         return g0, tau
 
@@ -1392,21 +1392,19 @@ class MainWin:
                     sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
                     sol_data_analysis_wdgts.mean_tau.set(0)
                 else:  # fit succeeded
-                    fit_params = cf.fit_param["diffusion_3d_fit"]
-                    g0, tau, _ = fit_params["beta"]
-                    fit_func = getattr(fit_tools, fit_params["func_name"])
+                    fit_params = cf.fit_params["diffusion_3d_fit"]
+                    g0, tau, _ = fit_params.beta
+                    fit_func = getattr(fit_tools, fit_params.func_name)
                     sol_data_analysis_wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
                     sol_data_analysis_wdgts.mean_tau.set(tau * 1e3)
-                    y_fit = fit_func(fit_params["x"], *fit_params["beta"])
+                    y_fit = fit_func(fit_params.x, *fit_params.beta)
                     sol_data_analysis_wdgts.row_acf_disp.obj.clear()
                     sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
                         (cf.lag, "lag"),
                         cf.avg_cf_cr,
                         cf.g0,
                     )
-                    sol_data_analysis_wdgts.row_acf_disp.obj.plot(
-                        fit_params["x"], y_fit, color="red"
-                    )
+                    sol_data_analysis_wdgts.row_acf_disp.obj.plot(fit_params.x, y_fit, color="red")
 
     def assign_template(self, type) -> None:
         """Doc."""
