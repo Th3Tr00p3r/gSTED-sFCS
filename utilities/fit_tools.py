@@ -132,7 +132,7 @@ def exponent_with_background_fit(t, A, tau, bg):
 
 
 def ratio_of_lifetime_histograms(t, sig_x, sig_y, t0):
-    if t >= t0:
+    if (t >= t0).all():
         return np.sqrt(1 + sig_x * (t - t0)) * np.sqrt(1 + sig_y * (t - t0))
     else:
         return 1
