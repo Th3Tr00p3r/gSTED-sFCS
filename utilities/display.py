@@ -6,6 +6,8 @@ from typing import Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
+
+# from matplotlib.widgets import RectangleSelector
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
@@ -58,17 +60,22 @@ class GuiDisplay:
         with Plotter(gui_display=self, gui_options=options) as ax:
             ax.plot(x, y, "k", lw=0.3)
 
-    def display_image(self, image: np.ndarray, cursor=False, *args, **kwargs):
+    def display_image(self, image: np.ndarray, imshow_kwargs=dict(), **kwargs):
         """Doc."""
 
         if not isinstance(image, np.ndarray):
             raise ValueError("Image must be of type numpy.ndarray")
 
         options = GuiDisplayOptions(
-            fix_aspect=True, show_axis=False, scroll_zoom=True, cursor=cursor
+            fix_aspect=True,
+            show_axis=False,
+            scroll_zoom=kwargs.get("scroll_zoom", True),
+            cursor=kwargs.get("cursor", False),
         )
-        with Plotter(gui_display=self, gui_options=options) as ax:
-            ax.imshow(image, *args, **kwargs)
+        with Plotter(
+            gui_display=self, gui_options=options, selection_limits=Limits()
+        ) as ax:  # TESTESTEST Limits
+            ax.imshow(image, **imshow_kwargs)
 
     def plot_acfs(
         self, x: Tuple[np.ndarray, str], avg_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
@@ -109,7 +116,7 @@ class Plotter:
     def __init__(self, **kwargs):
         self.parent_figure = kwargs.get(
             "parent_figure"
-        )  # TODO: not currently used. Can possibly be used for implementing subfigures
+        )  # TODO: not currently used. Can be used for implementing 'subfigures'
         self.parent_ax = kwargs.get("parent_ax")
         self.gui_display: GuiDisplay = kwargs.get("gui_display")
         self.gui_options = kwargs.get("gui_options", GuiDisplayOptions())
@@ -121,6 +128,7 @@ class Plotter:
         self.xlim: Tuple[float, float] = kwargs.get("xlim")
         self.ylim: Tuple[float, float] = kwargs.get("ylim")
         self.should_autoscale = kwargs.get("should_autoscale", False)
+        self.selection_limits: Limits = kwargs.get("selection_limits")
 
     def __enter__(self):
         """Prepare the 'axes' object to use in context manager"""
@@ -134,6 +142,7 @@ class Plotter:
             except IndexError:
                 raise RuntimeError("Attempting to set last position of a multi-axes figure.")
 
+            self.fig = self.gui_display.figure
             if self.gui_options.clear:  # clear and create new axes
                 self.gui_display.figure.clear()
                 self.axes = self.gui_display.figure.subplots(*self.subplots)
@@ -155,6 +164,7 @@ class Plotter:
                 if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
                     self.axes = np.array([self.axes])
             else:  # using given figure
+                self.fig = self.parent_figure
                 self.axes = np.array(self.parent_figure.get_axes())
 
         # dealing with a axes object
@@ -199,6 +209,24 @@ class Plotter:
                 text.set_fontsize(self.fontsize)
                 for text in [ax.title, ax.xaxis.label, ax.yaxis.label]
             ]
+            if self.selection_limits is not None:
+                if hasattr(self.fig.canvas, "manager"):
+                    delattr(
+                        self.fig.canvas, "manager"
+                    )  # is None. needs to be removed for 'ginput' to work
+                selected_points_list = self.fig.ginput(n=-1, timeout=-1)
+                x_coords = [x for (x, y) in selected_points_list]
+                self.selection_limits(min(x_coords), max(x_coords))
+                print(f"selected limits: {self.selection_limits}")  # TESTESTEST
+                self.fig.canvas.manager = (
+                    None  # re-instating 'None' manager (not necessarily needed)
+                )
+        #                self.rect_selector = RectangleSelector(
+        #                    ax, self.selection_callback,
+        #                    useblit=True,
+        #                    button=[1, 3],  # disable middle button
+        #                    interactive=True
+        #                )
 
         if self.parent_ax is None:  # set figure attributes, and show it (dealing with figure)
             if self.gui_display is not None:
@@ -207,6 +235,13 @@ class Plotter:
             else:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
+
+
+#    def selection_callback(self, eclick, erelease):
+#        """Doc."""
+#
+#        self.selection_limits(eclick.xdata, erelease.xdata)
+#        print(f"Selecting data in {self.selection_limits}")
 
 
 class NavigationToolbar(NavigationToolbar2QT):
@@ -276,7 +311,9 @@ def zoom_factory(ax, base_scale=1.5):
 
     def zoom_fun(event):
         # fixes homebutton operation
-        ax.figure.canvas.toolbar.push_current()
+        with suppress(AttributeError):
+            # AttributeError - when toolbar is not defined
+            ax.figure.canvas.toolbar.push_current()
         # get the current x and y limits
         cur_xlim = Limits(ax.get_xlim())
         cur_ylim = Limits(ax.get_ylim())
