@@ -1,11 +1,12 @@
 """Raw data handling."""
 
 from contextlib import suppress
-from dataclasses import dataclass
-from typing import Any, List, Tuple
+from dataclasses import dataclass, field
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 import scipy
+from sklearn import linear_model
 
 from utilities import file_utilities, fit_tools
 from utilities.display import Plotter
@@ -43,6 +44,7 @@ class TDCCalibration:
     all_hist_norm: Any
     error_all_hist_norm: Any
     t_weight: Any
+    fit_param: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -50,7 +52,7 @@ class LifeTimeParams:
     """Doc."""
 
     lifetime_ns: float
-    sigma_sted: Tuple[float, float]
+    sigma_sted: Union[float, Tuple[float, float]]
     laser_pulse_delay_ns: float
 
 
@@ -64,6 +66,8 @@ class TDCPhotonDataMixin:
     fpga_freq_hz: int
     template: str
     tdc_calib: TDCCalibration
+    confocal: Any
+    sted: Any
 
     def convert_fpga_data_to_photons(
         self,
@@ -498,17 +502,17 @@ class TDCPhotonDataMixin:
         y_scale="log",
         max_iter=3,
         should_plot=False,
-    ):
+    ) -> dict:
         """Doc."""
 
-        is_finite_y = np.isfinite(self.tdc_calib[y_field])
+        is_finite_y = np.isfinite(getattr(self.tdc_calib, y_field))
 
         fit_param = fit_tools.curve_fit_lims(
             fit_name,
             fit_param_estimate,
-            xs=self.tdc_calib[x_field][is_finite_y],
-            ys=self.tdc_calib[y_field][is_finite_y],
-            ys_errors=self.tdc_calib[y_error_field][is_finite_y],
+            xs=getattr(self.tdc_calib, x_field)[is_finite_y],
+            ys=getattr(self.tdc_calib, y_field)[is_finite_y],
+            ys_errors=getattr(self.tdc_calib, y_error_field)[is_finite_y],
             x_limits=Limits(fit_range),
             should_plot=should_plot,
             x_scale=x_scale,
@@ -517,19 +521,21 @@ class TDCPhotonDataMixin:
 
         try:
             self.tdc_calib.fit_param[fit_param["func_name"]] = fit_param
-        except KeyError:
+        except AttributeError:
             self.tdc_calib.fit_param = dict()
             self.tdc_calib.fit_param[fit_param["func_name"]] = fit_param
 
+        return fit_param
+
     def get_lifetime_parameters(
         self,
-        sted_field="paraboloid",
+        sted_field="symmetric",
         drop_idxs=[],
         fit_range=None,
         param_estimates=None,
         bg_range=Limits(40, 60),
         **kwargs,
-    ):
+    ) -> LifeTimeParams:
         """Doc."""
         # TODO: WORK IN PROGRESS HERE
 
@@ -538,16 +544,16 @@ class TDCPhotonDataMixin:
 
         conf_hist = conf.tdc_calib.all_hist_norm
         conf_t = conf.tdc_calib.t_hist
-        conf_t = conf_t(np.isfinite(conf_hist))
-        conf_hist = conf_hist(np.isfinite(conf_hist))
+        conf_t = conf_t[np.isfinite(conf_hist)]
+        conf_hist = conf_hist[np.isfinite(conf_hist)]
 
         sted_hist = sted.tdc_calib.all_hist_norm
         sted_t = sted.tdc_calib.t_hist
-        sted_t = sted_t(np.isfinite(sted_hist))
-        sted_hist = sted_hist(np.isfinite(sted_hist))
+        sted_t = sted_t[np.isfinite(sted_hist)]
+        sted_hist = sted_hist[np.isfinite(sted_hist)]
 
-        h_max, j_max = max(conf_hist)
-        t_max = conf_t(j_max)
+        h_max, j_max = conf_hist.max(), conf_hist.argmax()
+        t_max = conf_t[j_max]
 
         beta0 = (h_max, 4, h_max * 1e-3)
 
@@ -560,65 +566,62 @@ class TDCPhotonDataMixin:
         conf_params = conf.fit_lifetime_hist(fit_range=fit_range, fit_param_estimate=beta0)
 
         # remove background
-        sted_bg = np.mean(sted_hist(Limits(bg_range).valid_indices(sted_t)))
-        conf_bg = np.mean(conf_hist(Limits(bg_range).valid_indices(conf_t)))
+        sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
+        conf_bg = np.mean(conf_hist[Limits(bg_range).valid_indices(conf_t)])
         sted_hist = sted_hist - sted_bg
         conf_hist = conf_hist - conf_bg
 
         j = conf_t < 20
-        t = conf_t(j)
-        hist_ratio = conf_hist(j) / np.interp(
+        t = conf_t[j]
+        hist_ratio = conf_hist[j] / np.interp(
             t, sted_t, sted_hist, right=0
         )  # TODO: test this translation of MATLAB's interp1d
         # hist_ratio = ExponentBGfit(t, conf_params.beta) / sted_hist(j); # TODO: not using this?
         if drop_idxs:
             j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
-            t = t(j)
-            hist_ratio = hist_ratio(j)
+            t = t[j]
+            hist_ratio = hist_ratio[j]
 
         # TODO: select relevant data points using rectangle selector from plot: https://matplotlib.org/stable/gallery/widgets/rectangle_selector.html
+        title = "Use the mouse to place 2 markers\nlimiting the linear range:"
+        linear_range = Limits()
+        with Plotter(
+            super_title=title, selection_limits=linear_range, figsize=(7.5, 5), **kwargs
+        ) as ax:
+            ax.plot(t, hist_ratio)
 
-        #        with Plotter()
-
-        #        h = figure;
-        #        figure(h);
-        #        plot(t, hist_ratio);
-        #        title('Zoom into linear range and hit any key');
-        #        figure(h);
-        #        pause;
-        j_selected = []
+        j_selected = linear_range.valid_indices(t)
 
         if sted_field == "symmetric":
-            # TODO: see this :https://medium.com/swlh/robust-regression-all-you-need-to-know-an-example-in-python-878081bafc0
-            # and this: https://scikit-learn.org/stable/auto_examples/linear_model/plot_robust_fit.html
-            # for robust linear regression
+            # Robustly fit linear model with RANSAC algorithm
+            ransac = linear_model.RANSACRegressor()
+            ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
+            p = [ransac.estimator_.intercept_, ransac.estimator_.coef_[0]]
+            with Plotter(parent_ax=ax, figsize=(7.5, 5), **kwargs) as ax:
+                ax.plot(t, hist_ratio, "o")
+                ax.plot(t[j_selected], np.polyval(p, t[j_selected]))
 
-            pass
+            p0, p1 = p
+            lifetime_ns = conf_params["beta"][1]
+            sigma_sted = p1 * lifetime_ns
+            laser_pulse_delay_ns = (1 - p0) / p1
 
-        #            p = robustfit(t(j_selected), hist_ratio(j_selected)); # to minimize effect of outliers
-        #            p = (p(2), p(1)) # reversed order in robust fit
-        #            plot(t, hist_ratio, 'o', t(j_selected), polyval(p, t(j_selected)));
-        #
-        #
-        #            LifeTimeParam.LifeTime_ns = conf_params.beta(2);
-        #            LifeTimeParam.SigOverTau_STED = p(1);
-        #            LifeTimeParam.Sig_STED = p(1)*LifeTimeParam.LifeTime_ns;
-        #            LifeTimeParam.LaserPulse = (1 - p(2))/p(1);
-        else:
+        elif sted_field == "paraboloid":
             fit_param = fit_tools.curve_fit_lims(
                 fit_name="ratio_of_lifetime_histograms",
                 param_estimates=(2, 1, 1),
-                xs=t(j_selected),
-                ys=hist_ratio(j_selected),
-                ys_errors=np.ones(j_selected.size),
+                xs=t[j_selected],
+                ys=hist_ratio[j_selected],
+                ys_errors=np.ones(j_selected.sum()),
                 should_plot=True,
             )
 
-            lifetime_ns = conf_params["beta"][2]
-            sigma_sted = (fit_param["beta"][1] * lifetime_ns, fit_param["beta"][2] * lifetime_ns)
-            laser_pulse_delay_ns = fit_param["beta"][3]
+            lifetime_ns = conf_params["beta"][1]
+            sigma_sted = (fit_param["beta"][0] * lifetime_ns, fit_param["beta"][1] * lifetime_ns)
+            laser_pulse_delay_ns = fit_param["beta"][2]
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
+        return self.lifetime_params
 
 
 @dataclass
