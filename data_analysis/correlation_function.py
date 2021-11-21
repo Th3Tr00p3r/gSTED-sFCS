@@ -566,7 +566,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         """Correlates data for static FCS. Returns a CorrFunc object"""
 
         if verbose:
-            print(f"Correlating {self.template}:", end=" ")
+            print(
+                f"{self.name} [{gate_ns} nanosecond gating] - Correlating static data '{self.template}':",
+                end=" ",
+            )
 
         if run_duration is None:  # auto determination of run duration
             if len(self.cf) > 0:  # read run_time from the last calculated correlation function
@@ -672,7 +675,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ) -> CorrFunc:
         """Correlates data for angular scans. Returns a CorrFunc object"""
 
-        print(f"{self.name} {gate_ns}: Correlating angular scan data '{self.template}':", end=" ")
+        print(
+            f"{self.name} [{gate_ns} nanosecond gating] - Correlating angular scan data '{self.template}':",
+            end=" ",
+        )
 
         self.min_duration_frac = min_time_frac  # TODO: not used?
         duration = []

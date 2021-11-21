@@ -85,7 +85,7 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
 class Limits:
     """Doc."""
 
-    def __init__(self, lower, upper=None, dict_labels: Tuple[str, str] = None):
+    def __init__(self, lower=np.NINF, upper=np.inf, dict_labels: Tuple[str, str] = None):
         if isinstance(lower, tuple):
             tuple_ = lower
             self.lower, self.upper = tuple_
@@ -97,6 +97,9 @@ class Limits:
         else:
             raise TypeError(f"Expected a tuple or 2 numbers, got '{lower}' and '{upper}'.")
         self.dict_labels = dict_labels
+
+    def __call__(self, *args, **kwargs):
+        self.__init__(*args, **kwargs)
 
     def __repr__(self):  # TODO: isn't this the default?
         return f"Limits(lower={self.lower}, upper={self.upper})"

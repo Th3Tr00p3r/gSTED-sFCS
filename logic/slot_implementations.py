@@ -1084,7 +1084,9 @@ class MainWin:
             # get the center plane image, in "forward"
             image = image_tdc.image_data.get_image("forward")
             # plot it (below)
-            data_import_wdgts.img_preview_disp.obj.display_image(image, cmap="bone")
+            data_import_wdgts.img_preview_disp.obj.display_image(
+                image, imshow_kwargs={"cmap": "bone"}, scroll_zoom=False
+            )
 
     def save_processed_data(self):
         """Doc."""

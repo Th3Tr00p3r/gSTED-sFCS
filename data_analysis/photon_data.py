@@ -560,8 +560,8 @@ class TDCPhotonDataMixin:
         conf_params = conf.fit_lifetime_hist(fit_range=fit_range, fit_param_estimate=beta0)
 
         # remove background
-        sted_bg = np.mean(sted_hist(bg_range.valid_indices(sted_t)))
-        conf_bg = np.mean(conf_hist(bg_range.valid_indices(conf_t)))
+        sted_bg = np.mean(sted_hist(Limits(bg_range).valid_indices(sted_t)))
+        conf_bg = np.mean(conf_hist(Limits(bg_range).valid_indices(conf_t)))
         sted_hist = sted_hist - sted_bg
         conf_hist = conf_hist - conf_bg
 
@@ -570,13 +570,16 @@ class TDCPhotonDataMixin:
         hist_ratio = conf_hist(j) / np.interp(
             t, sted_t, sted_hist, right=0
         )  # TODO: test this translation of MATLAB's interp1d
-        # hist_ratio = ExponentBGfit(conf_params.beta, t)./sted_hist(J);
+        # hist_ratio = ExponentBGfit(t, conf_params.beta) / sted_hist(j); # TODO: not using this?
         if drop_idxs:
             j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
             t = t(j)
             hist_ratio = hist_ratio(j)
 
         # TODO: select relevant data points using rectangle selector from plot: https://matplotlib.org/stable/gallery/widgets/rectangle_selector.html
+
+        #        with Plotter()
+
         #        h = figure;
         #        figure(h);
         #        plot(t, hist_ratio);
