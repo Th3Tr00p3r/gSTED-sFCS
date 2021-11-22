@@ -8,8 +8,8 @@ import numpy as np
 import scipy
 from sklearn import linear_model
 
-from utilities import file_utilities
 from utilities.display import Plotter
+from utilities.file_utilities import rotate_data_to_disk
 from utilities.fit_tools import FitParams, curve_fit_lims
 from utilities.helper import Limits, div_ceil
 
@@ -187,7 +187,7 @@ class TDCPhotonDataMixin:
             all_section_edges=all_section_edges,
         )
 
-    @file_utilities.rotate_data_to_disk
+    @rotate_data_to_disk
     def calibrate_tdc(  # NO#QA C901
         self,
         tdc_chain_length=128,
@@ -570,42 +570,47 @@ class TDCPhotonDataMixin:
             t = t[j]
             hist_ratio = hist_ratio[j]
 
-        title = "Use the mouse to place 2 markers\nlimiting the linear range:"
-        linear_range = Limits()
-        with Plotter(
-            super_title=title, selection_limits=linear_range, figsize=(7.5, 5), **kwargs
-        ) as ax:
-            ax.plot(t, hist_ratio)
+        title = "Robust Linear Fit of the Linear Part of the Histogram Ratio"
+        with Plotter(figsize=(11.25, 7.5), super_title=title, **kwargs) as ax:
 
-        j_selected = linear_range.valid_indices(t)
+            # Using inner Plotter for manual selection
+            title = "Use the mouse to place 2 markers\nlimiting the linear range:"
+            linear_range = Limits()
+            with Plotter(
+                parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
+            ) as ax:
+                ax.plot(t, hist_ratio)
+                ax.legend(["hist_ratio"])
 
-        if sted_field == "symmetric":
-            # Robustly fit linear model with RANSAC algorithm
-            ransac = linear_model.RANSACRegressor()
-            ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
-            p = [ransac.estimator_.intercept_, ransac.estimator_.coef_[0]]
-            with Plotter(parent_ax=ax, figsize=(7.5, 5), **kwargs) as ax:
-                ax.plot(t, hist_ratio, "o")
-                ax.plot(t[j_selected], np.polyval(p, t[j_selected]))
+            j_selected = linear_range.valid_indices(t)
 
-            p0, p1 = p
-            lifetime_ns = conf_params.beta[1]
-            sigma_sted = p1 * lifetime_ns
-            laser_pulse_delay_ns = (1 - p0) / p1
+            if sted_field == "symmetric":
+                # Robustly fit linear model with RANSAC algorithm
+                ransac = linear_model.RANSACRegressor()
+                ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
+                p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
 
-        elif sted_field == "paraboloid":
-            fit_params = curve_fit_lims(
-                fit_name="ratio_of_lifetime_histograms",
-                param_estimates=(2, 1, 1),
-                xs=t[j_selected],
-                ys=hist_ratio[j_selected],
-                ys_errors=np.ones(j_selected.sum()),
-                should_plot=True,
-            )
+                ax.plot(t[j_selected], hist_ratio[j_selected], "oy")
+                ax.plot(t[j_selected], np.polyval([p1, p0], t[j_selected]), "r")
+                ax.legend(["hist_ratio", "linear range", "robust fit"])
 
-            lifetime_ns = conf_params.beta[1]
-            sigma_sted = (fit_params.beta[0] * lifetime_ns, fit_params.beta[1] * lifetime_ns)
-            laser_pulse_delay_ns = fit_params.beta[2]
+                lifetime_ns = conf_params.beta[1]
+                sigma_sted = p1 * lifetime_ns
+                laser_pulse_delay_ns = (1 - p0) / p1
+
+            elif sted_field == "paraboloid":
+                fit_params = curve_fit_lims(
+                    fit_name="ratio_of_lifetime_histograms",
+                    param_estimates=(2, 1, 1),
+                    xs=t[j_selected],
+                    ys=hist_ratio[j_selected],
+                    ys_errors=np.ones(j_selected.sum()),
+                    should_plot=True,
+                )
+
+                lifetime_ns = conf_params.beta[1]
+                sigma_sted = (fit_params.beta[0] * lifetime_ns, fit_params.beta[1] * lifetime_ns)
+                laser_pulse_delay_ns = fit_params.beta[2]
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params

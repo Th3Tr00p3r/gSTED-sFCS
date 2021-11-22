@@ -1262,13 +1262,14 @@ class MainWin:
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
 
-        if ((data_type := "_exc_") in template) or ((data_type := "_sted_") in template):
-            return data_type[1:-1]
+        if ((data_type_hint := "_exc_") in template) or ((data_type_hint := "_sted_") in template):
+            data_type = "Confocal" if (data_type_hint == "_exc_") else "CW STED"
+            return data_type
         else:
             print(
-                f"Data type could not be inferred from template ({template}). Treating as 'exc' data (consider changing the template)."
+                f"Data type could not be inferred from template ({template}). Consider changing the template."
             )
-            return "exc"
+            return "Unknown"
 
     def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
@@ -1467,7 +1468,7 @@ class MainWin:
             for meas_type, assignment_params in self._app.analysis.assigned_to_experiment.items():
                 if assignment_params.method == "loaded":
                     with self.get_measurement_from_template(
-                        wdgt_coll.imported_templates.get(), should_load=True
+                        getattr(wdgt_coll, f"assigned_{meas_type}_template").get(), should_load=True
                     ) as measurement:
                         kwargs[meas_type] = measurement
                 elif assignment_params.method == "raw":
@@ -1484,9 +1485,11 @@ class MainWin:
         kwargs["fontsize"] = 10
 
         experiment = SFCSExperiment(experiment_name)
-        with suppress(RuntimeError):
-            # RuntimeError - Can't load experiment with no measurements!
+        try:
             experiment.load_experiment(**kwargs)
+        except RuntimeError as exc:
+            logging.info(str(exc))
+        else:
             self._app.analysis.loaded_experiments[experiment_name] = experiment
             wdgt_coll.loaded_experiments.obj.addItem(experiment_name)
 
@@ -1495,6 +1498,12 @@ class MainWin:
             wdgt_coll.assigned_confocal_template.obj.clear()
             wdgt_coll.assigned_sted_template.obj.clear()
             wdgt_coll.experiment_name.obj.clear()
+
+            with suppress(IndexError):
+                # IndexError - either confocal or STED weren't loaded
+                conf_g0 = list(experiment.confocal.cf.values())[0].g0
+                sted_g0 = list(experiment.sted.cf.values())[0].g0
+                wdgt_coll.g0_ratio.set(conf_g0 / sted_g0)
             logging.info(f"Experiment '{experiment_name}' loaded successfully.")
 
     def remove_experiment(self) -> None:
@@ -1544,7 +1553,11 @@ class MainWin:
             experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **kwargs)
             kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
             experiment.compare_lifetimes(**kwargs)
-            experiment.get_lifetime_parameters()
+            lt_params = experiment.get_lifetime_parameters()
+
+        # display parameters in GUI
+        wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
+        wdgt_coll.laser_pulse_delay.set(lt_params.laser_pulse_delay_ns)
 
     def assign_gate(self, gate_lt) -> None:
         """Doc."""

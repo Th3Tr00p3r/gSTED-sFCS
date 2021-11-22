@@ -488,20 +488,13 @@ def rotate_data_to_disk(method) -> Callable:
     """
     Loads 'self.data' object from disk prior to calling the method 'method',
     and dumps (saves and deletes the attribute) 'self.data' afterwards.
-    if 'self' does not possess the method 'dump_or_load_data',
-    calls the method the regular way.
     """
 
     @functools.wraps(method)
     def method_wrapper(self, *args, **kwargs):
-        try:
-            self.dump_or_load_data(should_load=True)
-            value = method(self, *args, **kwargs)
-            self.dump_or_load_data(should_load=False)
-            return value
-        except AttributeError:
-            # no 'dump_or_load_data' attribute
-            value = method(self, *args, **kwargs)
-            return value
+        self.dump_or_load_data(should_load=True)
+        value = method(self, *args, **kwargs)
+        self.dump_or_load_data(should_load=False)
+        return value
 
     return method_wrapper

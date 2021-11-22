@@ -171,6 +171,10 @@ class Plotter:
                 self.axes = np.array([self.parent_ax])
             else:
                 self.axes = self.parent_ax
+            try:  # 1D array of axes
+                self.fig = self.axes[0].figure
+            except AttributeError:  # 2D array of axes
+                self.fig = self.axes[0][0].figure
 
         if self.axes.size == 1:
             return self.axes[0]  # return a single Axes object
@@ -224,6 +228,7 @@ class Plotter:
             else:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
+                self.fig.canvas.draw_idle()  # TESTESTEST - possibly needed for "external" figures
 
 
 class NavigationToolbar(NavigationToolbar2QT):

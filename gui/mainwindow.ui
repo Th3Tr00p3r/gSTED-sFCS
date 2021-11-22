@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1685</width>
-    <height>956</height>
+    <height>965</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -7143,6 +7143,156 @@ Upper Gate</string>
                            <property name="spacing">
                             <number>2</number>
                            </property>
+                           <item row="0" column="2">
+                            <layout class="QVBoxLayout" name="verticalLayout_95">
+                             <property name="spacing">
+                              <number>0</number>
+                             </property>
+                             <item>
+                              <widget class="QLabel" name="label_93">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>40</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Laser Pulse
+Delay (ns)</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="expPropLaserPulseDelay">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="frame">
+                                <bool>true</bool>
+                               </property>
+                               <property name="readOnly">
+                                <bool>true</bool>
+                               </property>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="decimals">
+                                <number>2</number>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item row="0" column="3">
+                            <layout class="QVBoxLayout" name="verticalLayout_107">
+                             <item>
+                              <widget class="QLabel" name="label_16">
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>40</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>gSTED
+Resoultion (nm)</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <layout class="QHBoxLayout" name="horizontalLayout_70">
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
+                               <item>
+                                <widget class="QComboBox" name="expPropGstedGate">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="maximumSize">
+                                  <size>
+                                   <width>16777215</width>
+                                   <height>20</height>
+                                  </size>
+                                 </property>
+                                 <property name="font">
+                                  <font>
+                                   <pointsize>8</pointsize>
+                                  </font>
+                                 </property>
+                                 <property name="placeholderText">
+                                  <string>Lifetime</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item>
+                                <widget class="QDoubleSpinBox" name="expPropGstedResolution">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="maximumSize">
+                                  <size>
+                                   <width>16777215</width>
+                                   <height>20</height>
+                                  </size>
+                                 </property>
+                                 <property name="font">
+                                  <font>
+                                   <pointsize>8</pointsize>
+                                  </font>
+                                 </property>
+                                 <property name="frame">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="readOnly">
+                                  <bool>true</bool>
+                                 </property>
+                                 <property name="buttonSymbols">
+                                  <enum>QAbstractSpinBox::NoButtons</enum>
+                                 </property>
+                                 <property name="decimals">
+                                  <number>1</number>
+                                 </property>
+                                 <property name="maximum">
+                                  <double>999.000000000000000</double>
+                                 </property>
+                                </widget>
+                               </item>
+                              </layout>
+                             </item>
+                            </layout>
+                           </item>
                            <item row="0" column="0">
                             <layout class="QVBoxLayout" name="verticalLayout_84">
                              <property name="spacing">
@@ -7267,227 +7417,9 @@ Lifetime (ns)</string>
                                 <enum>QAbstractSpinBox::NoButtons</enum>
                                </property>
                                <property name="decimals">
-                                <number>1</number>
+                                <number>2</number>
                                </property>
                               </widget>
-                             </item>
-                            </layout>
-                           </item>
-                           <item row="0" column="2">
-                            <layout class="QVBoxLayout" name="verticalLayout_95">
-                             <property name="spacing">
-                              <number>0</number>
-                             </property>
-                             <item>
-                              <widget class="QLabel" name="label_93">
-                               <property name="sizePolicy">
-                                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                 <horstretch>0</horstretch>
-                                 <verstretch>0</verstretch>
-                                </sizepolicy>
-                               </property>
-                               <property name="maximumSize">
-                                <size>
-                                 <width>16777215</width>
-                                 <height>40</height>
-                                </size>
-                               </property>
-                               <property name="font">
-                                <font>
-                                 <pointsize>8</pointsize>
-                                </font>
-                               </property>
-                               <property name="text">
-                                <string>Laser Pulse
-Delay (ns)</string>
-                               </property>
-                              </widget>
-                             </item>
-                             <item>
-                              <widget class="QDoubleSpinBox" name="expPropLaserPulseDelay">
-                               <property name="sizePolicy">
-                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                 <horstretch>0</horstretch>
-                                 <verstretch>0</verstretch>
-                                </sizepolicy>
-                               </property>
-                               <property name="maximumSize">
-                                <size>
-                                 <width>16777215</width>
-                                 <height>20</height>
-                                </size>
-                               </property>
-                               <property name="font">
-                                <font>
-                                 <pointsize>8</pointsize>
-                                </font>
-                               </property>
-                               <property name="frame">
-                                <bool>true</bool>
-                               </property>
-                               <property name="readOnly">
-                                <bool>true</bool>
-                               </property>
-                               <property name="buttonSymbols">
-                                <enum>QAbstractSpinBox::NoButtons</enum>
-                               </property>
-                               <property name="decimals">
-                                <number>1</number>
-                               </property>
-                              </widget>
-                             </item>
-                            </layout>
-                           </item>
-                           <item row="0" column="3">
-                            <layout class="QVBoxLayout" name="verticalLayout_90">
-                             <property name="spacing">
-                              <number>0</number>
-                             </property>
-                             <item>
-                              <widget class="QLabel" name="label_91">
-                               <property name="sizePolicy">
-                                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                 <horstretch>0</horstretch>
-                                 <verstretch>0</verstretch>
-                                </sizepolicy>
-                               </property>
-                               <property name="maximumSize">
-                                <size>
-                                 <width>16777215</width>
-                                 <height>40</height>
-                                </size>
-                               </property>
-                               <property name="font">
-                                <font>
-                                 <pointsize>8</pointsize>
-                                </font>
-                               </property>
-                               <property name="text">
-                                <string>TDC Calibration
-Gating (ns)</string>
-                               </property>
-                              </widget>
-                             </item>
-                             <item>
-                              <widget class="QDoubleSpinBox" name="expPropTdcCalibGating">
-                               <property name="sizePolicy">
-                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                 <horstretch>0</horstretch>
-                                 <verstretch>0</verstretch>
-                                </sizepolicy>
-                               </property>
-                               <property name="maximumSize">
-                                <size>
-                                 <width>16777215</width>
-                                 <height>20</height>
-                                </size>
-                               </property>
-                               <property name="font">
-                                <font>
-                                 <pointsize>8</pointsize>
-                                </font>
-                               </property>
-                               <property name="frame">
-                                <bool>true</bool>
-                               </property>
-                               <property name="readOnly">
-                                <bool>true</bool>
-                               </property>
-                               <property name="buttonSymbols">
-                                <enum>QAbstractSpinBox::NoButtons</enum>
-                               </property>
-                               <property name="prefix">
-                                <string/>
-                               </property>
-                               <property name="decimals">
-                                <number>1</number>
-                               </property>
-                              </widget>
-                             </item>
-                            </layout>
-                           </item>
-                           <item row="0" column="4">
-                            <layout class="QVBoxLayout" name="verticalLayout_107">
-                             <item>
-                              <widget class="QLabel" name="label_16">
-                               <property name="maximumSize">
-                                <size>
-                                 <width>16777215</width>
-                                 <height>40</height>
-                                </size>
-                               </property>
-                               <property name="text">
-                                <string>gSTED
-Resoultion (nm)</string>
-                               </property>
-                              </widget>
-                             </item>
-                             <item>
-                              <layout class="QHBoxLayout" name="horizontalLayout_70">
-                               <property name="spacing">
-                                <number>0</number>
-                               </property>
-                               <item>
-                                <widget class="QComboBox" name="expPropGstedGate">
-                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                   <horstretch>0</horstretch>
-                                   <verstretch>0</verstretch>
-                                  </sizepolicy>
-                                 </property>
-                                 <property name="maximumSize">
-                                  <size>
-                                   <width>16777215</width>
-                                   <height>20</height>
-                                  </size>
-                                 </property>
-                                 <property name="font">
-                                  <font>
-                                   <pointsize>8</pointsize>
-                                  </font>
-                                 </property>
-                                 <property name="placeholderText">
-                                  <string>Lifetime</string>
-                                 </property>
-                                </widget>
-                               </item>
-                               <item>
-                                <widget class="QDoubleSpinBox" name="expPropGstedResolution">
-                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                   <horstretch>0</horstretch>
-                                   <verstretch>0</verstretch>
-                                  </sizepolicy>
-                                 </property>
-                                 <property name="maximumSize">
-                                  <size>
-                                   <width>16777215</width>
-                                   <height>20</height>
-                                  </size>
-                                 </property>
-                                 <property name="font">
-                                  <font>
-                                   <pointsize>8</pointsize>
-                                  </font>
-                                 </property>
-                                 <property name="frame">
-                                  <bool>true</bool>
-                                 </property>
-                                 <property name="readOnly">
-                                  <bool>true</bool>
-                                 </property>
-                                 <property name="buttonSymbols">
-                                  <enum>QAbstractSpinBox::NoButtons</enum>
-                                 </property>
-                                 <property name="decimals">
-                                  <number>1</number>
-                                 </property>
-                                 <property name="maximum">
-                                  <double>999.000000000000000</double>
-                                 </property>
-                                </widget>
-                               </item>
-                              </layout>
                              </item>
                             </layout>
                            </item>
