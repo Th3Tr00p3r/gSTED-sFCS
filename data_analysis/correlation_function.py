@@ -281,7 +281,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         # plotting of scan image and ROI
         if should_plot:
             print("Displaying scan images...", end=" ")
-            with Plotter(subplots=(1, n_files), should_force_aspect=True) as axes:
+            with Plotter(subplots=(1, n_files), fontsize=8, should_force_aspect=True) as axes:
                 if not hasattr(
                     axes, "size"
                 ):  # if axes is not an ndarray (only happens if reding just one file)
@@ -289,7 +289,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 for idx, (ax, image, roi) in enumerate(
                     zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
                 ):
-                    ax.set_title(f"file #{idx+1} of '{self.name}' measurement")
+                    ax.set_title(f"file #{idx+1} of\n'{self.name}' measurement")
                     ax.set_xlabel("Pixel Number")
                     ax.set_ylabel("Line Number")
                     ax.imshow(image)
