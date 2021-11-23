@@ -228,7 +228,7 @@ class Plotter:
             else:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
-                self.fig.canvas.draw_idle()  # TESTESTEST - possibly needed for "external" figures
+                self.fig.canvas.draw_idle()
 
 
 class NavigationToolbar(NavigationToolbar2QT):

@@ -1510,17 +1510,13 @@ class MainWin:
         """Doc."""
 
         loaded_templates_combobox = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments
-
         # delete from memory
         experiment_name = loaded_templates_combobox.get()
         self._app.analysis.loaded_experiments[experiment_name] = None
-
         # delete from GUI
         loaded_templates_combobox.obj.removeItem(loaded_templates_combobox.obj.currentIndex())
-
         logging.info(f"Experiment '{experiment_name}' removed.")
 
-    @contextmanager
     def get_experiment(
         self, experiment_name: str = None, should_load=False
     ) -> SolutionSFCSMeasurement:
@@ -1528,19 +1524,7 @@ class MainWin:
 
         if experiment_name is None:
             experiment_name = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments.get()
-        experiment = self._app.analysis.loaded_experiments.get(experiment_name)
-
-        if should_load:
-            with suppress(AttributeError):
-                experiment.dump_or_load_data(should_load=True)
-
-        try:
-            yield experiment
-
-        finally:
-            if should_load:
-                with suppress(AttributeError):
-                    experiment.dump_or_load_data(should_load=False)
+        return self._app.analysis.loaded_experiments.get(experiment_name)
 
     def calibrate_tdc(self) -> None:
         """Doc."""
@@ -1548,30 +1532,41 @@ class MainWin:
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
         kwargs = dict(gui_options=display.GuiDisplayOptions(show_axis=True), fontsize=10)
-        with self.get_experiment() as experiment:
-            kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
-            experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **kwargs)
-            kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
-            experiment.compare_lifetimes(**kwargs)
-            lt_params = experiment.get_lifetime_parameters()
+        experiment = self.get_experiment()
+        kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
+        experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **kwargs)
+        kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
+        experiment.compare_lifetimes(**kwargs)
+        lt_params = experiment.get_lifetime_parameters()
 
         # display parameters in GUI
         wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
         wdgt_coll.laser_pulse_delay.set(lt_params.laser_pulse_delay_ns)
 
-    def assign_gate(self, gate_lt) -> None:
+    def assign_gate(self) -> None:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        with self.get_experiment() as experiment:
-            laser_pulse_delay_ns = experiment.lifetime_params.laser_pulse_delay_ns
-            lifetime_ns = experiment.lifetime_params.lifetime_ns
-            lower_gate_ns = gate_lt * lifetime_ns + laser_pulse_delay_ns
-            upper_gate_ns = experiment.default_upper_gate
+        gate_lt = wdgt_coll.custom_gate_to_assign_lt.get()
 
+        experiment = self.get_experiment()
+        laser_pulse_delay_ns = experiment.lifetime_params.laser_pulse_delay_ns
+        lifetime_ns = experiment.lifetime_params.lifetime_ns
+        lower_gate_ns = gate_lt * lifetime_ns + laser_pulse_delay_ns
+        upper_gate_ns = experiment.UPPERֹ_ֹGATE_NS
         gate_ns = helper.Limits(lower_gate_ns, upper_gate_ns)
-        wdgt_coll.assigned_gates.addItem(gate_ns)  # TODO: convert to string?
+        wdgt_coll.assigned_gates.obj.addItem(str(gate_ns))
+
+    def remove_assigned_gate(self) -> None:
+        """Doc."""
+
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt = wdgt_coll.assigned_gates
+        gate_to_remove = wdgt.get()
+        # delete from GUI
+        wdgt.obj.removeItem(wdgt.obj.currentIndex())
+        logging.info(f"Gate '{gate_to_remove}' was unassigned.")
 
     def gate(self) -> None:
         """Doc."""
@@ -1580,19 +1575,39 @@ class MainWin:
 
         gates_combobox = wdgt_coll.assigned_gates.obj
         gate_list = [
-            gates_combobox.itemText(i) for i in range(gates_combobox.count())
-        ]  # TODO: convert str to gate format (limit)
+            helper.Limits(gates_combobox.itemText(i), from_string=True)
+            for i in range(gates_combobox.count())
+        ]
 
-        kwargs = dict()
-        kwargs["gui_display"] = wdgt_coll.gui_display_sted_gating.obj
-        kwargs["gui_options"] = display.GuiDisplayOptions(show_axis=True)
-        kwargs["fontsize"] = 10
-        with self.get_experiment() as experiment:
-            experiment.add_gates(gate_list, **kwargs)
+        experiment = self.get_experiment()
+        kwargs = dict(
+            gui_display=wdgt_coll.gui_display_sted_gating.obj,
+            gui_options=display.GuiDisplayOptions(show_axis=True),
+            fontsize=10,
+        )
+        experiment.add_gates(gate_list, **kwargs)
 
-        wdgt_coll.available_gates.obj.addItems(
-            gate_list
-        )  # TODO: Convert to str (add 'to_string' in Limit?)
+        wdgt_coll.available_gates.obj.addItems([str(gate) for gate in gate_list])
+
+    def remove_available_gate(self) -> None:
+        """Doc."""
+
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt = wdgt_coll.available_gates
+        gate_to_remove = wdgt.get()
+        # delete from object
+        experiment = self.get_experiment()
+        experiment.sted.cf.pop(f"gSTED {gate_to_remove}")
+        # re-plot
+        kwargs = dict(
+            gui_display=wdgt_coll.gui_display_sted_gating.obj,
+            gui_options=display.GuiDisplayOptions(show_axis=True),
+            fontsize=10,
+        )
+        experiment.plot_correlation_functions(**kwargs)
+        # delete from GUI
+        wdgt.obj.removeItem(wdgt.obj.currentIndex())
+        logging.info(f"Gate '{gate_to_remove}' removed from '{experiment.name}' experiment.")
 
 
 class SettWin:

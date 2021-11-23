@@ -5,7 +5,8 @@ import functools
 import logging
 import os
 import time
-from typing import Callable, List, Tuple
+from contextlib import suppress
+from typing import Any, Callable, List, Tuple
 
 import numpy as np
 
@@ -82,11 +83,46 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     return img, thresh
 
 
+def _can_float(value: Any) -> bool:
+    "Checks if 'value' can be turned into a float"
+
+    try:
+        float(value)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def number(x):
+    try:
+        return int(x)
+    except ValueError:
+        return float(x)
+
+
+def _generate_numbers_from_string(source_str):
+    """A generator function for getting numbers out of strings."""
+
+    i = 0
+    while i < len(source_str):
+        j = i + 1
+        while (j < len(source_str) + 1) and _can_float(source_str[i:j]):
+            j += 1
+        with suppress(TypeError, ValueError):
+            yield number(source_str[i : j - 1])
+        i = j
+
+
 class Limits:
     """Doc."""
 
-    def __init__(self, lower=np.NINF, upper=np.inf, dict_labels: Tuple[str, str] = None):
-        if isinstance(lower, tuple):
+    def __init__(
+        self, lower=np.NINF, upper=np.inf, dict_labels: Tuple[str, str] = None, from_string=False
+    ):
+        if from_string:
+            source_str = lower
+            self.lower, self.upper = _generate_numbers_from_string(source_str)
+        elif isinstance(lower, tuple):
             tuple_ = lower
             self.lower, self.upper = tuple_
         elif isinstance(lower, Limits):
@@ -101,11 +137,10 @@ class Limits:
     def __call__(self, *args, **kwargs):
         self.__init__(*args, **kwargs)
 
-    def __repr__(self):  # TODO: isn't this the default?
-        return f"Limits(lower={self.lower}, upper={self.upper})"
-
     def __str__(self):
-        return f"({self.lower}, {self.upper})"
+        lower_frmt = "d" if (int(self.lower) == float(self.lower)) else ".2f"
+        upper_frmt = "d" if (int(self.upper) == float(self.upper)) else ".2f"
+        return f"({self.lower:{lower_frmt}}, {self.upper:{upper_frmt}})"
 
     def __iter__(self):
         yield from (self.lower, self.upper)

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1685</width>
-    <height>965</height>
+    <height>956</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -6439,7 +6439,7 @@ Rows</string>
                         <item>
                          <widget class="QTabWidget" name="tabWidget_4">
                           <property name="currentIndex">
-                           <number>1</number>
+                           <number>2</number>
                           </property>
                           <widget class="QWidget" name="tab_7">
                            <attribute name="title">
@@ -6892,151 +6892,138 @@ Upper Gate</string>
                                <number>0</number>
                               </property>
                               <item>
-                               <layout class="QHBoxLayout" name="horizontalLayout_59" stretch="1,1,1,1">
+                               <layout class="QHBoxLayout" name="horizontalLayout_59" stretch="0,0">
                                 <property name="spacing">
                                  <number>2</number>
                                 </property>
                                 <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_134" stretch="1,1">
+                                 <widget class="QGroupBox" name="groupBox_13">
+                                  <property name="title">
+                                   <string>Gate Assignment</string>
+                                  </property>
+                                  <layout class="QVBoxLayout" name="verticalLayout_79">
+                                   <property name="spacing">
+                                    <number>0</number>
+                                   </property>
+                                   <property name="leftMargin">
+                                    <number>2</number>
+                                   </property>
+                                   <property name="topMargin">
+                                    <number>2</number>
+                                   </property>
+                                   <property name="rightMargin">
+                                    <number>2</number>
+                                   </property>
+                                   <property name="bottomMargin">
+                                    <number>2</number>
+                                   </property>
+                                   <item>
+                                    <layout class="QHBoxLayout" name="horizontalLayout_62">
+                                     <property name="spacing">
+                                      <number>0</number>
+                                     </property>
+                                     <item>
+                                      <widget class="QDoubleSpinBox" name="customGateLifetimes">
+                                       <property name="suffix">
+                                        <string> lifetimes</string>
+                                       </property>
+                                       <property name="decimals">
+                                        <number>1</number>
+                                       </property>
+                                       <property name="singleStep">
+                                        <double>0.100000000000000</double>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item>
+                                      <widget class="QPushButton" name="AddCustomGate">
+                                       <property name="sizePolicy">
+                                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                                         <horstretch>0</horstretch>
+                                         <verstretch>0</verstretch>
+                                        </sizepolicy>
+                                       </property>
+                                       <property name="text">
+                                        <string>Assign Gate</string>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                    </layout>
+                                   </item>
+                                   <item>
+                                    <layout class="QHBoxLayout" name="horizontalLayout_63">
+                                     <property name="spacing">
+                                      <number>0</number>
+                                     </property>
+                                     <item>
+                                      <widget class="QComboBox" name="assignedGates">
+                                       <property name="sizePolicy">
+                                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                         <horstretch>0</horstretch>
+                                         <verstretch>0</verstretch>
+                                        </sizepolicy>
+                                       </property>
+                                       <property name="minimumSize">
+                                        <size>
+                                         <width>80</width>
+                                         <height>0</height>
+                                        </size>
+                                       </property>
+                                       <property name="maximumSize">
+                                        <size>
+                                         <width>16777215</width>
+                                         <height>9999</height>
+                                        </size>
+                                       </property>
+                                       <property name="placeholderText">
+                                        <string/>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                     <item>
+                                      <widget class="QPushButton" name="removeAssignedGate">
+                                       <property name="sizePolicy">
+                                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                         <horstretch>0</horstretch>
+                                         <verstretch>0</verstretch>
+                                        </sizepolicy>
+                                       </property>
+                                       <property name="maximumSize">
+                                        <size>
+                                         <width>16777215</width>
+                                         <height>999999</height>
+                                        </size>
+                                       </property>
+                                       <property name="text">
+                                        <string>Remove Gate</string>
+                                       </property>
+                                      </widget>
+                                     </item>
+                                    </layout>
+                                   </item>
+                                  </layout>
+                                 </widget>
+                                </item>
+                                <item>
+                                 <layout class="QVBoxLayout" name="verticalLayout_87">
                                   <property name="spacing">
                                    <number>0</number>
                                   </property>
                                   <item>
-                                   <widget class="QPushButton" name="assignStandardGates">
+                                   <widget class="QPushButton" name="addGates">
                                     <property name="sizePolicy">
-                                     <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                                       <horstretch>0</horstretch>
                                       <verstretch>0</verstretch>
                                      </sizepolicy>
                                     </property>
                                     <property name="text">
-                                     <string>Assign Standard Gates</string>
+                                     <string>Add Assigned Gates</string>
                                     </property>
                                    </widget>
                                   </item>
                                   <item>
-                                   <layout class="QHBoxLayout" name="horizontalLayout_65">
-                                    <property name="spacing">
-                                     <number>0</number>
-                                    </property>
-                                    <item>
-                                     <widget class="QPushButton" name="AddCustomGate">
-                                      <property name="sizePolicy">
-                                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-                                        <horstretch>0</horstretch>
-                                        <verstretch>0</verstretch>
-                                       </sizepolicy>
-                                      </property>
-                                      <property name="text">
-                                       <string>Assign Gate</string>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <layout class="QVBoxLayout" name="verticalLayout_135">
-                                      <property name="spacing">
-                                       <number>0</number>
-                                      </property>
-                                      <item>
-                                       <widget class="QDoubleSpinBox" name="customGateLifetimes">
-                                        <property name="suffix">
-                                         <string/>
-                                        </property>
-                                        <property name="decimals">
-                                         <number>1</number>
-                                        </property>
-                                       </widget>
-                                      </item>
-                                      <item>
-                                       <widget class="QLabel" name="label_33">
-                                        <property name="text">
-                                         <string>Lifetimes</string>
-                                        </property>
-                                       </widget>
-                                      </item>
-                                     </layout>
-                                    </item>
-                                   </layout>
-                                  </item>
-                                 </layout>
-                                </item>
-                                <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_152">
-                                  <item>
-                                   <widget class="QLabel" name="label_34">
-                                    <property name="text">
-                                     <string>Assigned Gates (ns)</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item>
-                                   <layout class="QHBoxLayout" name="horizontalLayout_62" stretch="10,1">
-                                    <property name="spacing">
-                                     <number>0</number>
-                                    </property>
-                                    <item>
-                                     <widget class="QComboBox" name="assignedGates">
-                                      <property name="sizePolicy">
-                                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                        <horstretch>0</horstretch>
-                                        <verstretch>0</verstretch>
-                                       </sizepolicy>
-                                      </property>
-                                      <property name="maximumSize">
-                                       <size>
-                                        <width>16777215</width>
-                                        <height>20</height>
-                                       </size>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <widget class="QPushButton" name="removeAssignedGate">
-                                      <property name="sizePolicy">
-                                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                        <horstretch>0</horstretch>
-                                        <verstretch>0</verstretch>
-                                       </sizepolicy>
-                                      </property>
-                                      <property name="maximumSize">
-                                       <size>
-                                        <width>16777215</width>
-                                        <height>20</height>
-                                       </size>
-                                      </property>
-                                      <property name="text">
-                                       <string>Remove</string>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                   </layout>
-                                  </item>
-                                 </layout>
-                                </item>
-                                <item>
-                                 <widget class="QPushButton" name="addGates">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="text">
-                                   <string>Add Gates</string>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_153">
-                                  <item>
-                                   <widget class="QLabel" name="label_39">
-                                    <property name="text">
-                                     <string>Available Gates (ns)</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item>
-                                   <layout class="QHBoxLayout" name="horizontalLayout_63" stretch="10,1">
+                                   <layout class="QHBoxLayout" name="horizontalLayout_64">
                                     <property name="spacing">
                                      <number>0</number>
                                     </property>
@@ -7048,11 +7035,20 @@ Upper Gate</string>
                                         <verstretch>0</verstretch>
                                        </sizepolicy>
                                       </property>
+                                      <property name="minimumSize">
+                                       <size>
+                                        <width>80</width>
+                                        <height>0</height>
+                                       </size>
+                                      </property>
                                       <property name="maximumSize">
                                        <size>
                                         <width>16777215</width>
-                                        <height>20</height>
+                                        <height>9999999</height>
                                        </size>
+                                      </property>
+                                      <property name="placeholderText">
+                                       <string/>
                                       </property>
                                      </widget>
                                     </item>
@@ -7067,7 +7063,7 @@ Upper Gate</string>
                                       <property name="maximumSize">
                                        <size>
                                         <width>16777215</width>
-                                        <height>20</height>
+                                        <height>999999</height>
                                        </size>
                                       </property>
                                       <property name="text">
@@ -7083,40 +7079,6 @@ Upper Gate</string>
                               </item>
                               <item>
                                <layout class="QGridLayout" name="solExpGSTEDLayout" rowstretch="0" columnstretch="0">
-                                <property name="leftMargin">
-                                 <number>0</number>
-                                </property>
-                                <property name="bottomMargin">
-                                 <number>0</number>
-                                </property>
-                                <property name="spacing">
-                                 <number>0</number>
-                                </property>
-                               </layout>
-                              </item>
-                             </layout>
-                            </item>
-                           </layout>
-                          </widget>
-                          <widget class="QWidget" name="tab_10">
-                           <attribute name="title">
-                            <string>Plotting</string>
-                           </attribute>
-                           <layout class="QGridLayout" name="gridLayout_36">
-                            <item row="0" column="0">
-                             <layout class="QVBoxLayout" name="verticalLayout_79" stretch="1,10">
-                              <property name="spacing">
-                               <number>0</number>
-                              </property>
-                              <item>
-                               <widget class="QGroupBox" name="groupBox_27">
-                                <property name="title">
-                                 <string>Plotting Options</string>
-                                </property>
-                               </widget>
-                              </item>
-                              <item>
-                               <layout class="QGridLayout" name="solExpPlottingLayout" rowstretch="0" columnstretch="0">
                                 <property name="leftMargin">
                                  <number>0</number>
                                 </property>

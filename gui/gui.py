@@ -105,6 +105,10 @@ class MainWin(QtWidgets.QMainWindow):
         self.assignExpStedMeas.released.connect(lambda: self.impl.assign_measurement("sted"))
         self.loadExperiment.released.connect(self.impl.load_experiment)
         self.calibrateTdc.released.connect(self.impl.calibrate_tdc)
+        self.AddCustomGate.released.connect(self.impl.assign_gate)
+        self.removeAssignedGate.released.connect(self.impl.remove_assigned_gate)
+        self.addGates.released.connect(self.impl.gate)
+        self.removeAvailableGate.released.connect(self.impl.remove_available_gate)
 
         # Device LEDs
         def led_clicked(wdgt):
