@@ -18,19 +18,19 @@ handlers:
         formatter: console_frmt
         stream: ext://sys.stdout
     debug_file:
-        class: logging.handlers.TimedRotatingFileHandler
+        class: logging.handlers.RotatingFileHandler
         level: DEBUG
         formatter: debug_file_frmt
         filename: ./log/debug
+        maxBytes: 999999
         backupCount: 10
-        when: D
     log_file:
-        class: logging.handlers.TimedRotatingFileHandler
+        class: logging.handlers.RotatingFileHandler
         level: INFO
         formatter: log_file_frmt
         filename: ./log/log
+        maxBytes: 999999
         backupCount: 10
-        when: D
 root:
     level: DEBUG
     handlers: [console, debug_file, log_file]

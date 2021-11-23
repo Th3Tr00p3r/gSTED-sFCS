@@ -84,7 +84,7 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
 
 
 def _can_float(value: Any) -> bool:
-    "Checks if 'value' can be turned into a float"
+    """Checks if 'value' can be turned into a float"""
 
     try:
         float(value)
@@ -94,6 +94,8 @@ def _can_float(value: Any) -> bool:
 
 
 def number(x):
+    """Attempts to convert 'x' into an integer, a float if that fails."""
+
     try:
         return int(x)
     except ValueError:
