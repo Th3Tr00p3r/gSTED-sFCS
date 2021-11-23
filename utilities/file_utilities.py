@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import functools
 import gzip
+import logging
 import pickle
 import re
 
@@ -136,10 +137,14 @@ def estimate_bytes(obj) -> int:
     return len(pickle.dumps(obj, protocol=-1))
 
 
-def deep_size_estimate(obj, level=100, indent=0, threshold_mb=0, name=None) -> None:
+def deep_size_estimate(obj, level=np.inf, indent=0, threshold_mb=0.01, name=None) -> None:
     """
      Print a cascading size description of object 'obj' up to level 'level'
     for objects (and subobjects) requiring an estimated disk space over 'threshold_mb'.
+
+    for ease of use, copy these lines to somewhere in the code:
+    from utilities.file_utilities import deep_size_estimate as dse # TESTESTEST
+    dse(obj) # TESTESTEST
     """
 
     size_mb = estimate_bytes(obj) / 1e6
@@ -183,6 +188,9 @@ def save_object_to_disk(
     if size_limits_mb is not None:
         disk_size_mb = estimate_bytes(obj) / 1e6
         if disk_size_mb not in size_limits_mb:
+            logging.debug(
+                f"Object '{obj}' was not saved (estimated size ({disk_size_mb}) is not in {size_limits_mb})"
+            )
             return False
 
     dir_path = file_path.parent
@@ -204,6 +212,7 @@ def save_object_to_disk(
     with open(file_path, "wb") as f:
         f.write(obj)
 
+    logging.debug(f"Object '{obj}' saved as: {file_path}")
     return True
 
 

@@ -22,6 +22,7 @@ currPlane,0
 scanImgFileNum,1
 solAnalysisRemoveWorstSpinner,0
 tdcCalibGating,40
+tdcCalibGating_2,20
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -33,7 +34,7 @@ imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
 solAnalysisRemoveOverSpinner,2.0
-customGateLifetimes,0.0
+customGateLifetimes,0.5
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -52,7 +53,8 @@ solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
 importedSolDataTemplates1,
-loadedExperimentNames,
+loadedExperimentNames,test
+assignedGates,
 availableGates,
 importedSolDataTemplates2,
 expPropGstedGate,Lifetime
