@@ -36,7 +36,7 @@ class Timeout:
         logging.debug("Initiating timeout function.")
         self._app.loop.create_task(self.timeout())
 
-    # MAIN
+    # MAIN LOOP
     async def timeout(self) -> None:
         """awaits all individual async loops, each with its own repeat time."""
 

@@ -189,7 +189,7 @@ def save_object_to_disk(
         disk_size_mb = estimate_bytes(obj) / 1e6
         if disk_size_mb not in size_limits_mb:
             logging.debug(
-                f"Object '{obj}' was not saved (estimated size ({disk_size_mb}) is not in {size_limits_mb})"
+                f"Object of class '{obj.__class__.__name__}' was not saved (estimated size ({disk_size_mb}) is not in {size_limits_mb})"
             )
             return False
 
@@ -212,7 +212,7 @@ def save_object_to_disk(
     with open(file_path, "wb") as f:
         f.write(obj)
 
-    logging.debug(f"Object '{obj}' saved as: {file_path}")
+    logging.debug(f"Object of class '{obj.__class__.__name__}' saved as: {file_path}")
     return True
 
 
