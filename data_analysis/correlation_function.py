@@ -207,7 +207,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     NAN_PLACEBO = -100
     DUMP_PATH = Path("C:/temp_sfcs_data/")
-    SIZE_LIMITS_MB = (100, 1e4)
+    SIZE_LIMITS_MB = Limits(10, 1e4)
 
     def __init__(self, name=""):
         self.name = name
@@ -545,7 +545,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         if cf_name is not None:
             self.cf[cf_name] = CF
         else:
-            self.cf[f"gate {CF.gate_ns}"] = CF
+            self.cf[f"gSTED {CF.gate_ns}"] = CF
 
         return CF
 
@@ -865,6 +865,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     self.data = []
                     self.is_data_dumped = True
                     logging.debug(f"Dumped data '{self.name_on_disk}' to '{self.DUMP_PATH}'.")
+                else:
+                    logging.debug("Data was too small or too large to be saved.")
 
 
 class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
@@ -895,6 +897,8 @@ class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
 
 class SFCSExperiment(TDCPhotonDataMixin):
     """Doc."""
+
+    UPPERֹ_ֹGATE_NS = 20
 
     def __init__(self, name):
         self.name = name
@@ -1126,6 +1130,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
             measurement.dump_or_load_data(should_load)
 
 
+# TODO - create an AngularScanMixin class and throw the below functions there
 def _convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
     """utility function for opening Angular Scans"""
 
