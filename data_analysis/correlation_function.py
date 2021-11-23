@@ -949,20 +949,13 @@ class SFCSExperiment(TDCPhotonDataMixin):
         with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
             self.plot_correlation_functions(
                 parent_ax=axes[0],
-                x_field="vt_um",
                 y_field="avg_cf_cr",
                 x_scale="log",
-                y_scale="linear",
                 xlim=None,  # autoscale x axis
             )
 
             self.plot_correlation_functions(
                 parent_ax=axes[1],
-                x_field="vt_um",
-                y_field="normalized",
-                x_scale="linear",
-                y_scale="linear",
-                xlim=(0, 1),
             )
 
     def load_measurement(
