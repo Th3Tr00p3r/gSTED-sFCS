@@ -11,7 +11,7 @@ import re
 
 # from contextlib import suppress
 from pathlib import Path
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Tuple, Union
 
 import bloscpack
 import numpy as np
@@ -216,8 +216,11 @@ def save_object_to_disk(
     return True
 
 
-def load_file(file_path: Path) -> Any:
-    """Short cut for opening (possibly 'gzip' and/or 'blosc' compressed) .pkl files"""
+def load_file(file_path: Union[str, Path]) -> Any:
+    """
+    Short cut for opening (possibly 'gzip' and/or 'blosc' compressed) .pkl files
+    Returns the saved object.
+    """
 
     try:  # gzip decompression
         with gzip.open(file_path, "rb") as f_cmprsd:
