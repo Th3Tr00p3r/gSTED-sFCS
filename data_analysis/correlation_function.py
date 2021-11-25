@@ -2,15 +2,17 @@
 
 import logging
 import re
-from collections import deque  # , namedtuple
+from collections import deque, namedtuple
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import scipy
 import skimage
+from sklearn import linear_model
 
 from data_analysis.photon_data import (
     CountsImageMixin,
@@ -35,6 +37,24 @@ class StructureFactor:
     vt_min_sq: float
     g_min: float
 
+    r: np.ndarray
+    fr: np.ndarray
+    fr_linear_interp: np.ndarray
+
+    q: np.ndarray
+    qz: np.ndarray
+    fq: np.ndarray
+    fq_linear_interp: np.ndarray
+    fq_cor: np.ndarray
+    fq_linear_interp_cor: np.ndarray
+    fq_error: np.ndarray
+
+    sq: np.ndarray
+    sq_linear_interp: np.ndarray
+    sq_cor: np.ndarray
+    sq_linear_interp_cor: np.ndarray
+    sq_error: np.ndarray
+
 
 class CorrFunc:
     """Doc."""
@@ -49,6 +69,8 @@ class CorrFunc:
         self.total_duration: float
         self.afterpulse: np.ndarray
         self.vt_um: np.ndarray
+        self.cf_cr: np.ndarray
+        self.g0: float
 
     def average_correlation(
         self,
@@ -66,7 +88,7 @@ class CorrFunc:
         self.norm_range = Limits(norm_range)
         self.delete_list = delete_list
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
-        self.median_all_cf_cr = np.median(self.cf_cr, 0)
+        self.median_all_cf_cr = np.median(self.cf_cr, axis=0)
         jj = Limits(self.norm_range.upper, 100).valid_indices(self.lag)  # work in the relevant part
         self.score = (
             (1 / np.var(self.cf_cr[:, jj], 0))
@@ -122,11 +144,16 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        with Plotter(parent_ax=parent_ax, xlim=xlim, ylim=ylim, should_autoscale=True) as ax:
+        with Plotter(
+            parent_ax=parent_ax,
+            xlim=xlim,
+            ylim=ylim,
+            xscale=x_scale,
+            y_scale=y_scale,
+            should_autoscale=True,
+        ) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
-            ax.set_xscale(x_scale)
-            ax.set_yscale(y_scale)
             ax.plot(x, y, "-", **plot_kwargs)
 
     def fit_correlation_function(
@@ -165,301 +192,350 @@ class CorrFunc:
             y_scale=y_scale,
         )
 
+    def calculate_structure_factor(
+        self,
+        w_xy,  # w_xy can be a horizontal vector in case several w_xy values need to be tried
+        w_sq,
+        n_interp_pnts=512,
+        r_max=10,
+        r_min=0.05,
+        g_min=1e-2,
+        baseline_range_um: Limits = None,
+        gaussian_interp_pnts=None,
+        plot_kwargs={},
+        **kwargs,
+    ) -> StructureFactor:
+        """Doc."""
 
-#    def calculate_structure_factor(self,
-#        w_xy, # w_xy can be a horizontal vector in case several w_xy values need to be tried
-#        w_sq,
-#        n_interp_pnts=512,
-#        r_max=10,
-#        r_min=0.05,
-#        g_min=1e-2,
-#        baseline_range_um: Limits=None,
-#        gaussian_interp_pnts=None,
-#        bessel_zeros_filepath: Union[str, Path]=Path("./data_analysis/bessel_zeros.pkl"),
-#        **kwargs,
-#        ):
-#        """Doc."""
-#
-#        vt_min_sq = r_min**2
-#
-#        # load Bessel function zeros from file
-#        c = file_utilities.load_file(bessel_zeros_filepath)
-#        c = c[1, 1 : n_interp_pnts + 1]
-#        radius = c[1 : n_interp_pnts].T * r_max / c[n_interp_pnts + 1] # Radius vector
-#
-#        if baseline_range_um is not None:
-#            jj = baseline_range_um.valid_indxs(self.vt_um)
-#            baseline = np.mean(self.normalized[jj])
-#            self.normalized = (self.normalized - baseline)/(1 - baseline)
-#
-#        j3= np.nonzero(self.vt_um ** 2 > vt_min_sq)
-#        temp_vt_um = self.vt_um[j3]
-#        temp_normalized = self.normalized(j3)
-#
-#        k= min(np.nonzero(temp_normalized < g_min)) - 1 #  point before the first crossing of g_min
-#        if k:
-#           k=length(temp_normalized)
-#
-#        j2= np.arange(k)
-#
-#        #  Gaussian interpolation
-#        if gaussian_interp_pnts is not None:
-#            fr = np.exp(robustinterp(radius ** 2, temp_vt_um[j2] ** 2, log(temp_normalized[j2]), gaussian_interp_pnts))
-#        else:
-#            fr = np.exp(interp1(temp_vt_um[j2] ** 2, np.log(temp_normalized[j2]), radius ** 2, 'linear', 'extrap')) # TODO: translate interp1 to Numpy
-#
-#        fr = np.real(fr) # TODO: is this needed?
-#
-#        #  linear interpolation
-#        if gaussian_interp_pnts is not None:
-#            fr_linear_interp = robustinterp(radius, temp_vt_um[j2], temp_normalized[j2], gaussian_interp_pnts)
-#        else:
-#            fr_linear_interp = interp1(temp_vt_um[j2], temp_normalized[j2], radius, 'linear', 'extrap') # TODO: translate interp1 to Numpy
-#
-#        #  zero-pad
-#        fr_linear_interp[radius > temp_vt_um[k]] = 0
-#
-#        # Fourier Transform
-#        FY = FourierTransform(S, '2D') # TODO: ask Oleg - is there really a need for our own version of a FT?
-#        q = FY.q
-#        fq = FY.fq
-#
-#        #  linear interpolated Fourier Transform
-#        Y.r = radius
-#        Y.fr = fr_linear_interp
-#        FY = FourierTransform(Y, '2D')
-#        fq_linear_interp = FY.fq
-#
-#        sq = np.exp(q ** 2 * w_xy ** 2 / 4) * repmat(fq, 1, w_xy.size) # TODO: translate repmat
-#        sq_linear_interp = exp(q ** 2 * w_xy ** 2 / 4) * repmat(fq_linear_interp, 1, w_xy.size) # TODO: translate repmat
-#
-#        # One step  correction  for finite aspect ratio
-#        w_xy_sq = w_xy ** 2
-#        dqz = median(diff(q))/np.sqrt(w_sq)
-#        qz = np.arange(0, max(q) / np.sqrt(w_sq), dqz)
-#        Q, Qz = meshgrid(q, qz) # TODO: translate meshgrid, replace Caps
-#        q_vec = np.sqrt(Q ** 2 + Qz ** 2)
-#
-#        for i, elem in enumerate(w_xy_sq):
-#           norm_fz = sum(exp(-elem * qz ** 2 * w_sq / 4 ))
-#           kern_fz = exp(-elem * Qz ** 2 * (w_sq-1) / 4) / norm_fz
-#
-#           # zero-pad fq above first zero
-#           d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq)
-#           d_gq_2d_to_3d = reshape(d_gq_2d_to_3d, size(q_vec))
-#
-#           d_gq = fq  - (d_gq_2d_to_3d * kern_fz).sum().T
-#           fq_cor[:, i] = fq + d_gq
-#           sq_cor[:, i] = np.exp(q ** 2 * elem / 4) * fq_cor[:, i]
-#
-#           d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq_linear_interp)
-#           d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape)
-#           d_gq = fq_linear_interp  - (d_gq_2d_to_3d * kern_fz).sum().T
-#           fq_linear_interp_cor[:, i] = fq_linear_interp + d_gq
-#
-#           sq_linear_interp_cor[:, i] = np.exp(q ** 2 * elem/4) * fq_linear_interp_cor[:, i]
-#
-#
-#        #  Estimating error of Fourier transform
-#        fq_allfunc =zeros(length(q), length(self.j_good))
-#        disp('Estimating structure factor errors...')
-#
-#        for idx, j in enumerate(self.j_good):
-#            if gaussian_interp_pnts is not None:
-#                Y.fr = np.exp(self.robust_interpolation(radius ** 2, self.vt_um[j2] ** 2, log(self.cf_cr[:, j]), gaussian_interp_pnts))
-#            else:
-#                 Y.fr = np.exp(np.interp(radius ** 2, self.vt_um ** 2, log(self.CF_CR(:, j)), right=0)) # np.interp(t, sted_t, sted_hist, right=0)
-#
-#            Y.fr = real(Y.fr)
-#            Y.fr(find(Y.fr< 0)) = 0
-#            FY = FourierTransform(Y, '2D')
-#            fq_allfunc(:, idx) = FY.fq
-#
-#        S.errorFq = std(fq_allfunc, 0 , 2)/sqrt(length(self.j_good))/self.G0
-#        S.errorSq = exp(q.^2*w_xy.^2/4).*repmat(S.errorFq, 1, length(w_xy))
-#        if ~isprop(obj, 'StructFactor'),
-#            self.addprop('StructFactor')
-#
-#        self.StructFactor = S
-#
-#        #  plot
-#        XLim = [q(1) pi/min(w_xy)]
-#        subplot(1, 3, 1)
-#        plot(q, sq, q, sq_linear_interp)
-#        title({'S(q): Gaussian interpolation' 'vs linear interpolation'}, 'FontSize', 16)
-#
-#        for i = 1:length(w_xy),
-#            lgnd{i} = ['Gauss. w_xy = ' num2str(w_xy(i))]
-#            lgnd{i+length(w_xy)} = ['Lin. w_xy = ' num2str(w_xy(i))]
-#
-#        legend(lgnd, 'FontSize', 14)
-#        set(gca, 'XLim', XLim, 'FontSize', 14, 'XScale', 'log')
-#        YLim = get(gca, 'YLim')
-#        set(gca, 'YScale', 'log', 'YLim', YLim)
-#
-#        subplot(1, 3, 2)
-#        plot(q, [sq sq_cor])
-#        title({'S(q): Corrected for 3D vs. uncorrected', 'Gaussian interp'}, 'FontSize', 16)
-#        for i = 1:length(w_xy),
-#            lgnd{i} = ['Uncorrected. w_xy = ' num2str(w_xy(i))]
-#            lgnd{i+length(w_xy)} = ['Corrected. w_xy = ' num2str(w_xy(i))]
-#
-#        legend(lgnd, 'FontSize', 14)
-#        set(gca, 'XLim', XLim, 'FontSize', 14, 'XScale', 'log')
-#        YLim = get(gca, 'YLim')
-#        set(gca, 'YScale', 'log', 'YLim', YLim)
-#
-#        subplot(1, 3, 3)
-#        plot(q, [sq_linear_interp sq_linear_interp_cor])
-#        title({'S(q): Corrected for 3D vs. uncorrected', 'Linear interp'}, 'FontSize', 16)
-#        for i in range(w_xy.size):
-#            lgnd{i} = ['Uncorrected. w_xy = ' num2str(w_xy(i))]
-#            lgnd{i+length(w_xy)} = ['Corrected. w_xy = ' num2str(w_xy(i))]
-#
-##        legend(lgnd, 'FontSize', 14)
-##        set(gca, 'XLim', XLim, 'FontSize', 14, 'XScale', 'log')
-##        YLim = get(gca, 'YLim')
-##        set(gca, 'YScale', 'log', 'YLim', YLim)
-##
-##        figure(gcf)
-#
-#    def robust_interpolation(
-#        x,
-#        xi,
-#        yi,
-#        n_interp_pnts: int=1,
-#    ):
-#        """Doc."""
-#
-#        xi = xi.ravel().T
-#        (h, _), bin = np.histogram(x, np.array([-np.inf, xi, inf])), np.digitize(x, np.array([-np.inf, xi, inf]))
-##        [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
-#        ch = np.cumsum(h)
-#        st = max(bin[0] - 1, n_interp_pnts)
-#        fin = min(bin[x.size] - 1, xi.size - n_interp_pnts)
-#
-#        D = SimpleNamespace(x=[], slope=[])
-#        i = st
-#        for i in range(st, min(bin[x.size]-1, xi.size - n_interp_pnts)):
-#            ji = (i - n_interp_pnts+1):(i+n_interp_pnts)
-#            p= robustfit(xi[ji], yi[ji]) # TODO: replace with RLM (RANSAC)
-#
-#            fin = min(bin[x.size]-1, xi.size - n_interp_pnts)
-#
-#            if i == st:
-#                j = np.arange(ch[i+1])
-#            elseif i==fin,
-#                j = np.arange((ch[i] +1), x.size)
-#            else:
-#                j= np.arange((ch[i] + 1), ch[i+1])
-#
-#            y[j] = p[0] + p[1] * x[j] # TODO: y shape? need to allocate first
-#            D.x.append(xi[i])
-#            D.slope.append(p[1])
-#
-#        return y, D
-#
-#    def hankel_transform(
-#        x: np.ndarray,
-#        y: np.ndarray,
-#        should_inverse: bool=False,
-#        should_do_robust_interpolation: bool=False,
-#        should_do_gaussian_interpolation: bool=False,
-#        n_interp_pnts: int=2,
-#        dr=None,
-#    ):
-#     """Doc."""
-#
-#    x = x.ravel()
-#    y = y.ravel()
-#    n = len(x)
-#
-#    c0 = scipy.special.jn_zeros(0, n)
-#    bessel_j0 = scipy.special.j0
-#    bessel_j1 = scipy.special.j1
-#
-#    if not should_inverse,
-#
-#        HankelTransformation = namedtuple(
-#            "HankelTransformation",
-#            "trans_q trans_fq interp_r interp_fr",
-#        )
-#
-#        r_max = max(x)
-#        q_max = c0[n]/(2*np.pi*r_max)    # Maximum frequency
-#
-#        r = c0.T * r_max/c0[n]   # Radius vector
-#        q = c0.T / (2*pi*r_max)   # Frequency vector
-#
-#        j_n, j_m = np.meshgrid(c0, c0)
-#
-#        C = (2 / c0[n]) * bessel_j0(j_n * j_m / c0[n]) / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
-#        #C is the transformation matrix
-#
-#        m1 = (abs(bessel_j1(c0))/r_max).T # m1 prepares input vector for transformation
-#        m2 = m1*r_max/q_max # m2 prepares output vector for display
-#
-#        #end preparations for Hankel transform
-#
-#        if should_do_robust_interpolation:
-#            if should_do_gaussian_interpolation:
-#                y_interp = np.exp(self.robustinterp(r ** 2, x ** 2, np.log(y), n_interp_pnts))
-#                y_interp(r > x[-n_interp_pnts]) = 0 #zero pad last points that do not have full interpolation
-#            else: #linear
-#                y_interp = self.robustinterp(r, x, y, n_interp_pnts)
-#
-#            y_interp = y_interp.ravel()
-#
-#        else:
-#            if should_do_gaussian_interpolation:
-#                interpolator = scipy.interpolate.interp1d(x**2, np.log(y), fill_value="extrapolate")
-#                y_interp = np.exp(interpolator(r ** 2))
-#            else: #linear
-#                interpolator = scipy.interpolate.interp1d(x, y, fill_value="extrapolate")
-#                y_interp = interpolator(r)
-#
-#        return HankelTransformation(
-#            trans_q=2 * np.pi * q
-#            trans_fq=C * (y_interp / m1) * m2
-#            interp_r=r
-#            interp_fr=y_interp
-#        )
-#
-#    else: # inverse transform
-#
-#        InverseHankelTransformation = namedtuple(
-#            "HankelTransformation",
-#            "trans_r trans_fr interp_q interp_fq",
-#        )
-#
-#        if dr is not None
-#            q_max = 1/(2*dr)
-#        else
-#            q_max = max(x)/(2*np.pi)
-#
-#        r_max = c[n]/(2*pi*q_max)    # Maximum radius
-#
-#        r = c0'*r_max/c[n]   # Radius vector
-#        q = c0'/(2*pi*r_max)   # Frequency vector
-#        q = 2*pi*q
-#
-#         [j_n,j_m] = meshgrid(c0,c0)
-#
-#        C = (2/c[n])*bessel_j0(j_n.*j_m/c[n])./(abs(bessel_j1(j_n)).*abs(bessel_j1(j_m)))
-#        #C is the transformation matrix
-#
-#        m1 = (abs(bessel_j1(c0))/r_max).T # m1 prepares input vector for transformation
-#        m2 = m1*r_max/q_max # m2 prepares output vector for display
-#        clear j_n
-#        clear j_m
-#    #end preparations for Hankel transform
-#
-#        FQ = interp1(x, y, q,  'linear', 'extrap')
-#        FY.r = r
-#
-#        FY.fr =   C*(FQ./m2).*m1
-#        Yout.q = x
-#        Yout.fq = y
+        vt_min_sq = r_min ** 2
+
+        c0 = scipy.special.jn_zeros(0, n_interp_pnts)  # Bessel function zeros
+        r = c0.T * r_max / c0[n_interp_pnts]  # Radius vector
+
+        if baseline_range_um is not None:
+            jj = baseline_range_um.valid_indxs(self.vt_um)
+            baseline = np.mean(self.normalized[jj])
+            self.normalized = (self.normalized - baseline) / (1 - baseline)
+
+        j3 = np.nonzero(self.vt_um ** 2 > vt_min_sq)
+        temp_vt_um = self.vt_um[j3]
+        temp_normalized = self.normalized(j3)
+
+        k = min(np.nonzero(temp_normalized < g_min)) - 1  # point before the first crossing of g_min
+        if k:
+            k = temp_normalized.size
+
+        j2 = np.arange(k)
+
+        #  Gaussian interpolation
+        if gaussian_interp_pnts is not None:
+            fr = np.exp(
+                self.robust_interpolation(
+                    r ** 2, temp_vt_um[j2] ** 2, np.log(temp_normalized[j2]), gaussian_interp_pnts
+                )
+            )
+        else:
+            interpolator = scipy.interpolate.interp1d(
+                temp_vt_um[j2] ** 2, np.log(temp_normalized[j2]), fill_value="extrapolate"
+            )
+            fr = np.exp(interpolator(r ** 2))
+
+        fr = np.real(fr)  # TODO: is this needed?
+
+        #  linear interpolation
+        if gaussian_interp_pnts is not None:
+            fr_linear_interp = self.robust_interpolation(
+                r, temp_vt_um[j2], temp_normalized[j2], gaussian_interp_pnts
+            )
+        else:
+            interpolator = scipy.interpolate.interp1d(
+                temp_vt_um[j2], temp_normalized[j2], fill_value="extrapolate"
+            )
+            fr_linear_interp = np.exp(interpolator(r))
+
+        #  zero-pad
+        fr_linear_interp[r > temp_vt_um[k]] = 0
+
+        # Fourier Transform
+        q, fq, *_ = self.hankel_transform(r, fr)
+
+        #  linear interpolated Fourier Transform
+        _, fq_linear_interp, *_ = self.hankel_transform(r, fr_linear_interp)
+
+        sq = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq, (1, w_xy.size))
+        sq_linear_interp = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(
+            fq_linear_interp, (1, w_xy.size)
+        )
+
+        # One step  correction  for finite aspect ratio
+        w_xy_sq = w_xy ** 2
+        dqz = np.median(np.diff(q)) / np.sqrt(w_sq)
+        qz = np.arange(0, max(q) / np.sqrt(w_sq), dqz)
+        q_mesh, qz_mesh = np.meshgrid(q, qz)
+        q_vec = np.sqrt(q_mesh ** 2 + qz_mesh ** 2)
+
+        fq_cor = np.empty(fq.shape)
+        sq_cor = np.empty(fq.shape)
+        fq_linear_interp_cor = np.empty(fq_linear_interp.shape)
+        sq_linear_interp_cor = np.empty(fq_linear_interp.shape)
+        for idx in range(w_xy_sq.size):
+            norm_fz = sum(np.exp(-w_xy_sq[idx] * qz ** 2 * w_sq / 4))
+            kern_fz = np.exp(-w_xy_sq[idx] * qz_mesh ** 2 * (w_sq - 1) / 4) / norm_fz
+
+            # zero-pad fq above first zero
+            d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq)
+            d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
+
+            d_gq = fq - (d_gq_2d_to_3d * kern_fz).sum().T
+            fq_cor[:, idx] = fq + d_gq
+            sq_cor[:, idx] = np.exp(q ** 2 * w_xy_sq[idx] / 4) * fq_cor[:, idx]
+
+            d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq_linear_interp)
+            d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
+            d_gq = fq_linear_interp - (d_gq_2d_to_3d * kern_fz).sum().T
+            fq_linear_interp_cor[:, idx] = fq_linear_interp + d_gq
+
+            sq_linear_interp_cor[:, idx] = (
+                np.exp(q ** 2 * w_xy_sq[idx] / 4) * fq_linear_interp_cor[:, idx]
+            )
+
+        #  Estimating error of Fourier transform
+        fq_allfunc = np.zeros(shape=(q.size, len(self.j_good)))
+        print("Estimating structure factor errors...", end=" ")
+
+        for idx, j in enumerate(self.j_good):
+            if gaussian_interp_pnts is not None:
+                fr = np.exp(
+                    self.robust_interpolation(
+                        r ** 2, self.vt_um[j2] ** 2, np.log(self.cf_cr[:, j]), gaussian_interp_pnts
+                    )
+                )
+            else:
+                fr = np.exp(np.interp(r ** 2, self.vt_um ** 2, np.log(self.cf_cr[:, j]), right=0))
+
+            fr = np.real(fr)
+            fr[np.nonzero(fr < 0)] = 0
+            _, fq_allfunc[:, idx], *_ = self.hankel_transform(r, fr)
+
+        fq_error = np.std(fq_allfunc, axis=1, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
+        sq_error = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq_error, (1, w_xy.size))
+
+        s = StructureFactor(
+            w_xy,
+            w_sq,
+            n_interp_pnts,
+            r_max,
+            vt_min_sq,
+            g_min,
+            r,
+            fr,
+            fr_linear_interp,
+            q,
+            qz,
+            fq,
+            fq_linear_interp,
+            fq_cor,
+            fq_linear_interp_cor,
+            fq_error,
+            sq,
+            sq_linear_interp,
+            sq_cor,
+            sq_linear_interp_cor,
+            sq_error,
+        )
+
+        #  plotting
+        with Plotter(
+            subplot=(1, 3),
+            xlim=Limits(q[1], np.pi / min(w_xy)),
+            xscale="log",
+            yscale="log",
+            super_title="Structure Factor: $S(q)$",
+        ) as axes:
+
+            axes[0].set_title("Gaussian vs. linear\ninterpolation")
+            axes[0].plot(q, [sq, sq_linear_interp], **plot_kwargs)
+            legend_labels_1, legend_labels_2 = [], []
+            for elem in w_xy:
+                legend_labels_1.append(f"Gaussian w_xy = {elem}")
+                legend_labels_2.append(f"Linear w_xy = {elem}")
+            axes[0].legend(legend_labels_1 + legend_labels_2)
+
+            axes[1].set_title("Corrected for 3D vs. uncorrected\nGaussian interpolation")
+            axes[1].plot(q, [sq, sq_cor])
+            legend_labels_1, legend_labels_2 = [], []
+            for elem in w_xy:
+                legend_labels_1.append(f"Uncorrected w_xy = {elem}")
+                legend_labels_2.append(f"Corrected w_xy = {elem}")
+            axes[1].legend(legend_labels_1 + legend_labels_2)
+
+            axes[2].set_title("Corrected for 3D vs. uncorrected\nLinear interpolation")
+            axes[2].plot(q, [sq_linear_interp, sq_linear_interp_cor])
+            legend_labels_1, legend_labels_2 = [], []
+            for elem in w_xy:
+                legend_labels_1.append(f"Uncorrected w_xy = {elem}")
+                legend_labels_2.append(f"Corrected w_xy = {elem}")
+            axes[2].legend(legend_labels_1 + legend_labels_2)
+
+        return s
+
+    def robust_interpolation(
+        self,
+        x,
+        xi,
+        yi,
+        n_interp_pnts: int = 1,
+    ):
+        """Doc."""
+
+        y = np.empty(shape=x.shape)
+
+        xi = xi.ravel().T
+        (h, _), bin = np.histogram(x, np.array([-np.inf, xi, np.inf])), np.digitize(
+            x, np.array([-np.inf, xi, np.inf])
+        )  # translated from: [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
+        ch = np.cumsum(h)
+        st = max(bin[0] - 1, n_interp_pnts)
+        fin = min(bin[x.size] - 1, xi.size - n_interp_pnts)
+
+        D = SimpleNamespace(x=[], slope=[])
+        i = st
+        for i in range(st, min(bin[x.size] - 1, xi.size - n_interp_pnts)):
+            ji = np.arange((i - n_interp_pnts + 1), (i + n_interp_pnts))
+            # Robustly fit linear model with RANSAC algorithm
+            ransac = linear_model.RANSACRegressor()
+            ransac.fit(xi[ji][:, np.newaxis], yi[ji])
+            p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
+
+            fin = min(bin[x.size] - 1, xi.size - n_interp_pnts)
+
+            if i == st:
+                j = np.arange(ch[i + 1])
+            elif i == fin:
+                j = np.arange((ch[i] + 1), x.size)
+            else:
+                j = np.arange((ch[i] + 1), ch[i + 1])
+
+            y[j] = p0 + p1 * x[j]  # TODO: y shape? need to allocate first
+            D.x.append(xi[i])
+            D.slope.append(p1)
+
+        return y  # , D
+
+    def hankel_transform(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        should_inverse: bool = False,
+        should_do_robust_interpolation: bool = False,
+        should_do_gaussian_interpolation: bool = False,
+        n_interp_pnts: int = 2,
+        dr=None,
+    ):
+        """Doc."""
+
+        x = x.ravel()
+        y = y.ravel()
+        n = len(x)
+
+        c0 = scipy.special.jn_zeros(0, n)
+        bessel_j0 = scipy.special.j0
+        bessel_j1 = scipy.special.j1
+
+        if not should_inverse:
+
+            HankelTransformation = namedtuple(
+                "HankelTransformation",
+                "trans_q trans_fq interp_r interp_fr",
+            )
+
+            r_max = max(x)
+            q_max = c0[n] / (2 * np.pi * r_max)  # Maximum frequency
+
+            r = c0.T * r_max / c0[n]  # Radius vector
+            q = c0.T / (2 * np.pi * r_max)  # Frequency vector
+
+            j_n, j_m = np.meshgrid(c0, c0)
+
+            C = (
+                (2 / c0[n])
+                * bessel_j0(j_n * j_m / c0[n])
+                / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
+            )
+            # C is the transformation matrix
+
+            m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
+            m2 = m1 * r_max / q_max  # m2 prepares output vector for display
+
+            # end preparations for Hankel transform
+
+            if should_do_robust_interpolation:
+                if should_do_gaussian_interpolation:
+                    y_interp = np.exp(
+                        self.robust_interpolation(r ** 2, x ** 2, np.log(y), n_interp_pnts)
+                    )
+                    y_interp[
+                        r > x[-n_interp_pnts]
+                    ] = 0  # zero pad last points that do not have full interpolation
+                else:  # linear
+                    y_interp = self.robust_interpolation(r, x, y, n_interp_pnts)
+
+                y_interp = y_interp.ravel()
+
+            else:
+                if should_do_gaussian_interpolation:
+                    interpolator = scipy.interpolate.interp1d(
+                        x ** 2, np.log(y), fill_value="extrapolate"
+                    )
+                    y_interp = np.exp(interpolator(r ** 2))
+                else:  # linear
+                    interpolator = scipy.interpolate.interp1d(x, y, fill_value="extrapolate")
+                    y_interp = interpolator(r)
+
+            return HankelTransformation(
+                trans_q=2 * np.pi * q,
+                trans_fq=C * (y_interp / m1) * m2,
+                interp_r=r,
+                interp_fr=y_interp,
+            )
+
+        else:  # inverse transform
+
+            InverseHankelTransformation = namedtuple(
+                "InverseHankelTransformation",
+                "trans_r trans_fr",
+            )
+
+            if dr is not None:
+                q_max = 1 / (2 * dr)
+            else:
+                q_max = max(x) / (2 * np.pi)
+
+            r_max = c0[n] / (2 * np.pi * q_max)  # Maximum radius
+
+            r = c0.T * r_max / c0[n]  # Radius vector
+            q = c0.T / (2 * np.pi * r_max)  # Frequency vector
+            q = 2 * np.pi * q
+
+            j_n, j_m = np.meshgrid(c0, c0)
+
+            C = (
+                (2 / c0[n])
+                * bessel_j0(j_n * j_m / c0[n])
+                / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
+            )
+            # C is the transformation matrix
+
+            m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
+            m2 = m1 * r_max / q_max  # m2 prepares output vector for display
+            # end preparations for Hankel transform
+
+            interpolator = scipy.interpolate.interp1d(x, y, fill_value="extrapolate")
+
+            return InverseHankelTransformation(
+                trans_r=r,
+                trans_fr=C * (interpolator(q) / m2) * m1,
+            )
 
 
 @dataclass
@@ -513,7 +589,7 @@ class CorrFuncAccumulator:
 class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     """Doc."""
 
-    NAN_PLACEBO = -100
+    NAN_PLACEBO = -100  # TODO: belongs in 'AngularScanMixin'
     DUMP_PATH = Path("C:/temp_sfcs_data/")
     SIZE_LIMITS_MB = Limits(10, 1e4)
 

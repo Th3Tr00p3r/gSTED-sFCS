@@ -125,6 +125,8 @@ class Plotter:
         self.fontsize = kwargs.get("fontsize", 14)
         self.xlim: Tuple[float, float] = kwargs.get("xlim")
         self.ylim: Tuple[float, float] = kwargs.get("ylim")
+        self.xscale: str = kwargs.get("xscale", "linear")
+        self.yscale: str = kwargs.get("yscale", "linear")
         self.should_autoscale = kwargs.get("should_autoscale", False)
         self.selection_limits: Limits = kwargs.get("selection_limits")
 
@@ -207,6 +209,8 @@ class Plotter:
                 ax.autoscale()
             ax.set_xlim(self.xlim)
             ax.set_ylim(self.ylim)
+            ax.set_xscale(self.xscale)
+            ax.set_yscale(self.yscale)
             [
                 text.set_fontsize(self.fontsize)
                 for text in [ax.title, ax.xaxis.label, ax.yaxis.label]
