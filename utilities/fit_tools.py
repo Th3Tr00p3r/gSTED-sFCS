@@ -62,9 +62,7 @@ def curve_fit_lims(
     )
 
     if should_plot:
-        with Plotter() as ax:
-            ax.set_xscale(x_scale)
-            ax.set_yscale(y_scale)
+        with Plotter(x_scale=x_scale, y_scale=y_scale) as ax:
             ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_params.beta), zorder=10, **plot_kwargs)
             ax.errorbar(xs, ys, ys_errors, fmt=".")
 
