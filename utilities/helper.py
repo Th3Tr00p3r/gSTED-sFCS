@@ -119,25 +119,28 @@ class Limits:
     """Doc."""
 
     def __init__(
-        self, lower=np.NINF, upper=np.inf, dict_labels: Tuple[str, str] = None, from_string=False
+        self,
+        limits=(np.NINF, np.inf),
+        upper=np.inf,
+        dict_labels: Tuple[str, str] = None,
+        from_string=False,
     ):
         if from_string:
-            source_str = lower
+            source_str = limits
             self.lower, self.upper = _generate_numbers_from_string(source_str)
-        elif isinstance(lower, tuple):
-            tuple_ = lower
-            self.lower, self.upper = tuple_
-        elif isinstance(lower, Limits):
-            limit_range_ = lower
-            self.lower, self.upper = limit_range_.lower, limit_range_.upper
-        elif upper is not None:
-            self.lower, self.upper = lower, upper
         else:
-            raise TypeError(f"Expected a tuple or 2 numbers, got '{lower}' and '{upper}'.")
+            try:
+                if len(limits) == 2:
+                    self.lower, self.upper = limits
+            except TypeError:  # limits is not 2-iterable
+                self.lower, self.upper = limits, upper
         self.dict_labels = dict_labels
 
     def __call__(self, *args, **kwargs):
         self.__init__(*args, **kwargs)
+
+    def __repr__(self):
+        return f"Limits(lower={self.lower}, upper={self.upper})"
 
     def __str__(self):
         lower_frmt = "d" if (int(self.lower) == float(self.lower)) else ".2f"
@@ -149,6 +152,9 @@ class Limits:
 
     def __getitem__(self, idx):
         return tuple(self)[idx]
+
+    def __len__(self):
+        return 2
 
     def __eq__(self, other):
         if isinstance(other, tuple) or hasattr(other, "clamp"):
@@ -174,14 +180,14 @@ class Limits:
         other is a tuple/Limits: checks if full range is contained and returns bool
         other is number: checks if number is contained in range and returns bool
         """
-        if (isinstance(other, tuple) and len(other) == 2) or hasattr(other, "clamp"):
-            return (self[0] <= other[0]) and (self[1] >= other[1])
-
-        elif isinstance(other, (int, float)):
-            return self.lower <= other <= self.upper
-
-        else:
-            raise TypeError("Can only compare Limits to other instances or tuples")
+        try:
+            if len(other) == 2:
+                return (self[0] <= other[0]) and (self[1] >= other[1])
+        except TypeError:  # other is not 2-iterable
+            try:
+                return self.lower <= other <= self.upper
+            except TypeError:  # other is not a number
+                raise TypeError("Can only compare Limits to other instances or 2-iterable objects.")
 
     def valid_indices(self, arr: np.ndarray):
         """
@@ -190,7 +196,6 @@ class Limits:
         """
         if isinstance(arr, np.ndarray):
             return (arr >= self.lower) & (arr <= self.upper)
-
         else:
             raise TypeError("Argument 'arr' must be a Numpy ndarray!")
 
