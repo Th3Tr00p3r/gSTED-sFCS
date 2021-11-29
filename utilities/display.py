@@ -76,13 +76,18 @@ class GuiDisplay:
             ax.imshow(image, **imshow_kwargs)
 
     def plot_acfs(
-        self, x: Tuple[np.ndarray, str], avg_cf_cr: np.ndarray, g0: float, cf_cr: np.ndarray = None
+        self,
+        x: Tuple[np.ndarray, str],
+        avg_cf_cr: np.ndarray,
+        g0: float,
+        cf_cr: np.ndarray = None,
+        **kwargs,
     ):
         """Doc."""
 
         x_arr, x_type = x
 
-        with Plotter(gui_display=self, gui_options=GuiDisplayOptions()) as ax:
+        with Plotter(gui_display=self, gui_options=GuiDisplayOptions(), **kwargs) as ax:
             if x_type == "lag":
                 ax.set_xscale("log")
                 ax.set_xlim(1e-4, 1e1)

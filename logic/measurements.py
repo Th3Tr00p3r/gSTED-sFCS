@@ -635,10 +635,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 fit_func = getattr(fit_tools, fit_params.func_name)
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(tau * 1e3)
-                self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0)
+                self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0, should_autoscale=True)
                 y_fit = fit_func(x, *fit_params.beta)
                 self.plot_wdgt.obj.plot(x, y_fit, "-.r")
-                self.plot_wdgt.obj.ax.autoscale()
                 logging.info(
                     f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
                 )
