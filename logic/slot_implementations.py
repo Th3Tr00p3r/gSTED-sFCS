@@ -1162,7 +1162,7 @@ class MainWin:
         current_template = import_wdgts.data_templates.get()
         curr_dir = self.current_date_type_dir_path()
 
-        if self._app.analysis.loaded_data.get(current_template) is not None:
+        if self._app.analysis.loaded_measurements.get(current_template) is not None:
             logging.info(f"Data '{current_template}' already loaded - ignoring.")
             return
 
@@ -1203,7 +1203,7 @@ class MainWin:
             imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
             imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
 
-            self._app.analysis.loaded_data[current_template] = measurement
+            self._app.analysis.loaded_measurements[current_template] = measurement
 
             imported_combobox1.obj.addItem(current_template)
             imported_combobox2.obj.addItem(current_template)
@@ -1245,7 +1245,7 @@ class MainWin:
         if template is None:
             template = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.get()
         curr_data_type, *_ = re.split(" -", template)
-        measurement = self._app.analysis.loaded_data.get(curr_data_type)
+        measurement = self._app.analysis.loaded_measurements.get(curr_data_type)
 
         if should_load:
             with suppress(AttributeError):
@@ -1421,7 +1421,7 @@ class MainWin:
         imported_templates2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
 
         template = imported_templates1.get()
-        self._app.analysis.loaded_data[template] = None
+        self._app.analysis.loaded_measurements[template] = None
 
         imported_templates1.obj.removeItem(imported_templates1.obj.currentIndex())
         imported_templates2.obj.removeItem(imported_templates2.obj.currentIndex())
@@ -1490,8 +1490,18 @@ class MainWin:
         except RuntimeError as exc:
             logging.info(str(exc))
         else:
+            # save experiment in memory and GUI
             self._app.analysis.loaded_experiments[experiment_name] = experiment
             wdgt_coll.loaded_experiments.obj.addItem(experiment_name)
+
+            # save measurements seperately in memory and GUI
+            for meas_type in ("confocal", "sted"):
+                with suppress(AttributeError):
+                    # AttributeError - measurement does not exist
+                    meas = getattr(experiment, meas_type)
+                    self._app.analysis.loaded_measurements[meas.template] = meas
+                    wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.obj.addItem(meas.template)
+                    wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates.obj.addItem(meas.template)
 
             # reset the dict and clear relevant widgets
             self._app.analysis.assigned_to_experiment = dict()
