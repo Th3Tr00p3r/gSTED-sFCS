@@ -56,8 +56,7 @@ class GuiDisplay:
     def display_pattern(self, x, y):
         """Doc."""
 
-        options = GuiDisplayOptions(show_axis=False)
-        with Plotter(gui_display=self, gui_options=options) as ax:
+        with Plotter(gui_display=self, gui_options=GuiDisplayOptions(show_axis=False)) as ax:
             ax.plot(x, y, "k", lw=0.3)
 
     def display_image(self, image: np.ndarray, imshow_kwargs=dict(), **kwargs):
