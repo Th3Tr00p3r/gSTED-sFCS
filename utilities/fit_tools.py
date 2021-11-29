@@ -101,7 +101,10 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> FitParams:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
     sigma = kwargs.get("sigma", 1)
     chi_sq_arr = np.square((fit_func(x, *beta) - y) / sigma)
-    chi_sq_norm = chi_sq_arr.sum() / x.size
+    try:
+        chi_sq_norm = chi_sq_arr.sum() / x.size
+    except AttributeError:  # x is a tuple (2D Gaussian)
+        chi_sq_norm = chi_sq_arr.sum() / x[0].size
 
     return FitParams(
         func_name,
