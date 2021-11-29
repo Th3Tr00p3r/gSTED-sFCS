@@ -602,7 +602,7 @@ class MainWin:
                     self.update_slider_range(cam_num=idx + 1)
                     [
                         getattr(self._gui, f"{name}{idx+1}").setValue(val * slider_const)
-                        for name, val in camera.DEFAULT_PARAMETERS
+                        for name, val in camera.DEFAULT_PARAMETERS.items()
                     ]
             self._gui.move(100, 30)
             self._gui.setFixedSize(1661, 950)
@@ -1543,15 +1543,21 @@ class MainWin:
 
         kwargs = dict(gui_options=display.GuiDisplayOptions(show_axis=True), fontsize=10)
         experiment = self.get_experiment()
-        kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
-        experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **kwargs)
-        kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
-        experiment.compare_lifetimes(**kwargs)
-        lt_params = experiment.get_lifetime_parameters()
+        try:
+            kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
+            experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **kwargs)
+        except RuntimeError:  # sted or confocal not loaded
+            logging.info(
+                "One of the measurements (confocal or STED) was not loaded - cannot calibrate TDC."
+            )
+        else:
+            kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
+            experiment.compare_lifetimes(**kwargs)
+            lt_params = experiment.get_lifetime_parameters()
 
-        # display parameters in GUI
-        wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
-        wdgt_coll.laser_pulse_delay.set(lt_params.laser_pulse_delay_ns)
+            # display parameters in GUI
+            wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
+            wdgt_coll.laser_pulse_delay.set(lt_params.laser_pulse_delay_ns)
 
     def assign_gate(self) -> None:
         """Doc."""

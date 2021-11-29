@@ -59,7 +59,6 @@ class StructureFactor:
 class CorrFunc:
     """Doc."""
 
-    fit_params: FitParams
     run_duration: float
     total_duration: float
     afterpulse: np.ndarray
@@ -72,6 +71,7 @@ class CorrFunc:
         self.lag = []
         self.countrate_list = []
         self.skipped_duration = 0
+        self.fit_params: Dict[str, FitParams] = dict()
 
     def average_correlation(
         self,
@@ -1502,16 +1502,17 @@ class SFCSExperiment(TDCPhotonDataMixin):
     def calibrate_tdc(self, **kwargs):
         """Doc."""
 
-        if hasattr(self.confocal, "scan_type"):  # if confocal maesurement quacks as if loaded
+        if hasattr(self.confocal, "scan_type") and hasattr(
+            self.sted, "scan_type"
+        ):  # if both measurements quack as if loaded
             super_title = f"'{self.name}' Experiment\nTDC Calibration"
             with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
                 self.confocal.calibrate_tdc(should_plot=True, parent_axes=axes[:, :2], **kwargs)
                 kwargs["sync_coarse_time_to"] = self.confocal  # sync sted to confocal
-                if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
-                    self.sted.calibrate_tdc(should_plot=True, parent_axes=axes[:, 2:], **kwargs)
+                self.sted.calibrate_tdc(should_plot=True, parent_axes=axes[:, 2:], **kwargs)
         else:
             raise RuntimeError(
-                "Cannot calibrate TDC if confocal measurement is not loaded to the experiment!"
+                "Can only calibrate TDC if both confocal and STED measurements are loaded to the experiment!"
             )
 
     def compare_lifetimes(
