@@ -113,9 +113,15 @@ class CorrFunc:
         self.j_bad = delete_list
         self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
-        self.avg_cf_cr, self.error_cf_cr = _calculate_weighted_avg(
-            self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
-        )
+        try:
+            self.avg_cf_cr, self.error_cf_cr = _calculate_weighted_avg(
+                self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
+            )
+        except RuntimeWarning:  # division by zero
+            raise RuntimeError(
+                # TODO: why does this happen?
+                "Division by zero encountered during weighted averaging. Ignoring."
+            )
 
         j_t = self.norm_range.valid_indices(self.lag)
         self.g0 = (self.avg_cf_cr[j_t] / self.error_cf_cr[j_t] ** 2).sum() / (
