@@ -405,7 +405,7 @@ class MainWin:
             row_ticks_v = image_data.row_ticks_v
             plane_ticks_v = image_data.plane_ticks_v
 
-            coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.ax.cursor.pos)
+            coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.axes[0].cursor.pos)
 
             dim1_vltg = line_ticks_v[coord_1]
             dim2_vltg = row_ticks_v[coord_2]
@@ -440,7 +440,7 @@ class MainWin:
             except (ZeroDivisionError, IndexError) as exc:
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
 
-            self._gui.imgScanPlot.display_image(image, cursor=True, cmap="bone")
+            self._gui.imgScanPlot.display_image(image, cursor=True, imshow_kwargs=dict(cmap="bone"))
 
     def disp_plane_img(self, img_idx=None, plane_idx=None, auto_cross=False):
         """Doc."""
@@ -503,9 +503,13 @@ class MainWin:
             image = image_data.get_image(method_dict[disp_mthd], plane_idx)
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
-            img_meas_wdgts.image_wdgt.obj.display_image(image, cursor=True, cmap="bone")
+            img_meas_wdgts.image_wdgt.obj.display_image(
+                image, cursor=True, imshow_kwargs=dict(cmap="bone")
+            )
             if auto_cross and image.any():
-                img_meas_wdgts.image_wdgt.obj.ax.cursor.move_to_pos(auto_crosshair_position(image))
+                img_meas_wdgts.image_wdgt.obj.axes[0].cursor.move_to_pos(
+                    auto_crosshair_position(image)
+                )
 
     def plane_choice_changed(self, plane_idx):
         """Doc."""
@@ -1085,7 +1089,7 @@ class MainWin:
             image = image_tdc.image_data.get_image("forward")
             # plot it (below)
             data_import_wdgts.img_preview_disp.obj.display_image(
-                image, imshow_kwargs={"cmap": "bone"}, scroll_zoom=False
+                image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
             )
 
     def save_processed_data(self):
