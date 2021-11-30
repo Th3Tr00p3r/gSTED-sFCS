@@ -212,7 +212,6 @@ class CorrFunc:
 
         c0 = scipy.special.jn_zeros(0, n_interp_pnts)  # Bessel function zeros
         r = (r_max / c0[n_interp_pnts - 1]) * c0  # Radius vector
-        #        print("r:",  r) # TESTESTEST
 
         if baseline_range_um is not None:
             jj = Limits(baseline_range_um).valid_indxs(self.vt_um)
@@ -228,57 +227,20 @@ class CorrFunc:
         )  # point before the first crossing of g_min
         if k.size == 0:
             k = temp_normalized.size
-
         j2 = np.arange(k)
 
-        #        print("r ** 2:", r ** 2) # TESTESTEST
-        #        print("temp_vt_um[j2]:", temp_vt_um[j2]) # TESTESTEST
-        #        print("temp_vt_um[j2] ** 2:", temp_vt_um[j2] ** 2) # TESTESTEST
-        #        print("np.log(temp_normalized[j2]):", np.log(temp_normalized[j2])) # TESTESTEST
-
         #  Gaussian interpolation
+        log_temp_normalized_j2 = np.log(temp_normalized[j2])
         if interp_pnts is not None:
-            print(
-                "robust_interpolation:",
-                self.robust_interpolation(
-                    r ** 2, temp_vt_um[j2] ** 2, np.log(temp_normalized[j2]), interp_pnts
-                ),
-            )  # TESTESTEST
-            print(
-                "max robust_interpolation:",
-                self.robust_interpolation(
-                    r ** 2, temp_vt_um[j2] ** 2, np.log(temp_normalized[j2]), interp_pnts
-                ).max(),
-            )  # TESTESTEST
-            print(
-                "robust_interpolation type:",
-                (
-                    self.robust_interpolation(
-                        r ** 2, temp_vt_um[j2] ** 2, np.log(temp_normalized[j2]), interp_pnts
-                    )
-                ).dtype,
-            )  # TESTESTEST
-            with np.errstate(divide="ignore", invalid="ignore"):
-                fr = np.exp(
-                    self.robust_interpolation(
-                        r ** 2, temp_vt_um[j2] ** 2, np.log(temp_normalized[j2]), interp_pnts
-                    )
-                )
+            log_fr = self.robust_interpolation(
+                r ** 2, temp_vt_um[j2] ** 2, log_temp_normalized_j2, interp_pnts
+            )
         else:
-            with np.errstate(divide="ignore", invalid="ignore"):
-                log_temp_normalized_j2 = np.log(temp_normalized[j2])
-                log_temp_normalized_j2[np.isnan(log_temp_normalized_j2)] = 0
-                print("log_temp_normalized_j2:", log_temp_normalized_j2)  # TESTESTEST
-                print("temp_vt_um[j2] ** 2:", temp_vt_um[j2] ** 2)  # TESTESTEST
-                print("r ** 2:", r ** 2)  # TESTESTEST
-                interpolator = scipy.interpolate.interp1d(
-                    temp_vt_um[j2] ** 2, log_temp_normalized_j2, fill_value="extrapolate"
-                )
-            print("interpolator(r ** 2):", interpolator(r ** 2))  # TESTESTEST
-            print("max interpolator(r ** 2):", interpolator(r ** 2).max())  # TESTESTEST
-            fr = np.exp(interpolator(r ** 2))
-
-        fr = np.real(fr)  # TODO: is this needed?
+            interpolator = scipy.interpolate.interp1d(
+                temp_vt_um[j2] ** 2, log_temp_normalized_j2, fill_value="extrapolate"
+            )
+            log_fr = interpolator(r ** 2)
+        fr = np.exp(log_fr)
 
         #  linear interpolation
         if interp_pnts is not None:
@@ -289,7 +251,7 @@ class CorrFunc:
             interpolator = scipy.interpolate.interp1d(
                 temp_vt_um[j2], temp_normalized[j2], fill_value="extrapolate"
             )
-            fr_linear_interp = np.exp(interpolator(r))
+            fr_linear_interp = interpolator(r)
 
         #  zero-pad
         fr_linear_interp[r > temp_vt_um[k]] = 0
@@ -298,11 +260,11 @@ class CorrFunc:
         q, fq, *_ = self.hankel_transform(r, fr)
 
         #  linear interpolated Fourier Transform
-        _, fq_linear_interp, *_ = self.hankel_transform(r, fr_linear_interp)
+        fq_linear_interp = self.hankel_transform(r, fr_linear_interp).trans_fq
 
-        sq = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq, (1, len(w_xy)))
-        sq_linear_interp = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(
-            fq_linear_interp, (1, len(w_xy))
+        sq = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq, (1, len(w_xy))).squeeze()
+        sq_linear_interp = (
+            np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq_linear_interp, (1, len(w_xy))).squeeze()
         )
 
         # One step  correction  for finite aspect ratio
@@ -321,9 +283,6 @@ class CorrFunc:
             kern_fz = np.exp(-w_xy_sq[idx] * qz_mesh ** 2 * (w_sq - 1) / 4) / norm_fz
 
             # zero-pad fq above first zero
-            #            print("q_vec shape:", q_vec.shape) # TESTESTEST
-            #            print("q shape:", q.shape) # TESTESTEST
-            #            print("fq shape:", fq.shape) # TESTESTEST
             d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq)
             d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
 
@@ -339,32 +298,27 @@ class CorrFunc:
             sq_linear_interp_cor[:, idx] = (
                 np.exp(q ** 2 * w_xy_sq[idx] / 4) * fq_linear_interp_cor[:, idx]
             )
+        sq_cor = sq_cor.squeeze()
+        fq_cor = fq_cor.squeeze()
+        sq_linear_interp_cor = sq_linear_interp_cor.squeeze()
+        fq_linear_interp_cor = fq_linear_interp_cor.squeeze()
 
         #  Estimating error of Fourier transform
-        fq_allfunc = np.zeros(shape=(q.size, len(self.j_good)))
         print("Estimating structure factor errors...", end=" ")
-
+        fq_allfunc = np.zeros(shape=(q.size, len(self.j_good)))
         for idx, j in enumerate(self.j_good):
+            with np.errstate(divide="ignore", invalid="ignore"):
+                log_cf_cr_j = np.log(self.cf_cr[j, :])
             if interp_pnts is not None:
-                print("cf_cr.shape:", self.cf_cr.shape)  # TESTESTEST
-                print("self.cf_cr[j, :]:", self.cf_cr[j, :])  # TESTESTEST
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    log_cf_cr_j = np.log(self.cf_cr[j, :])
-                    print("log_cf_cr_j:", log_cf_cr_j)  # TESTESTEST
-                    rbst_interp = self.robust_interpolation(
-                        r ** 2, self.vt_um[j2] ** 2, log_cf_cr_j, interp_pnts
-                    )
-                    print("rbst_interp:", rbst_interp)  # TESTESTEST
-                    fr = np.exp(rbst_interp)
+                log_fr = self.robust_interpolation(
+                    r ** 2, self.vt_um[j2] ** 2, log_cf_cr_j, interp_pnts
+                )
             else:
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    fr = np.exp(
-                        np.interp(r ** 2, self.vt_um ** 2, np.log(self.cf_cr[j, :]), right=0)
-                    )
+                log_fr = np.interp(r ** 2, self.vt_um ** 2, log_cf_cr_j, right=0)
+            fr = np.exp(log_fr)
 
-            fr = np.real(fr)
             fr[np.nonzero(fr < 0)[0]] = 0
-            _, fq_allfunc[:, idx], *_ = self.hankel_transform(r, fr)
+            fq_allfunc[:, idx] = self.hankel_transform(r, fr).trans_fq
 
         fq_error = np.std(fq_allfunc, axis=1, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
         sq_error = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq_error, (1, len(w_xy)))
@@ -395,15 +349,15 @@ class CorrFunc:
 
         #  plotting
         with Plotter(
-            subplot=(1, 3),
-            xlim=Limits(q[1], np.pi / min(w_xy)),
+            subplots=(1, 3),
+            #            xlim=Limits(q[1], np.pi / min(w_xy)),
             xscale="log",
             yscale="log",
             super_title="Structure Factor: $S(q)$",
         ) as axes:
 
             axes[0].set_title("Gaussian vs. linear\ninterpolation")
-            axes[0].plot(q, [sq, sq_linear_interp], **plot_kwargs)
+            axes[0].plot(q, np.vstack((sq, sq_linear_interp)).T, **plot_kwargs)
             legend_labels_1, legend_labels_2 = [], []
             for elem in w_xy:
                 legend_labels_1.append(f"Gaussian w_xy = {elem}")
@@ -411,7 +365,7 @@ class CorrFunc:
             axes[0].legend(legend_labels_1 + legend_labels_2)
 
             axes[1].set_title("Corrected for 3D vs. uncorrected\nGaussian interpolation")
-            axes[1].plot(q, [sq, sq_cor])
+            axes[1].plot(q, np.vstack((sq, sq_cor)).T, **plot_kwargs)
             legend_labels_1, legend_labels_2 = [], []
             for elem in w_xy:
                 legend_labels_1.append(f"Uncorrected w_xy = {elem}")
@@ -419,7 +373,7 @@ class CorrFunc:
             axes[1].legend(legend_labels_1 + legend_labels_2)
 
             axes[2].set_title("Corrected for 3D vs. uncorrected\nLinear interpolation")
-            axes[2].plot(q, [sq_linear_interp, sq_linear_interp_cor])
+            axes[2].plot(q, np.vstack((sq_linear_interp, sq_linear_interp_cor)).T, **plot_kwargs)
             legend_labels_1, legend_labels_2 = [], []
             for elem in w_xy:
                 legend_labels_1.append(f"Uncorrected w_xy = {elem}")
@@ -541,11 +495,6 @@ class CorrFunc:
                 else:  # linear
                     interpolator = scipy.interpolate.interp1d(x, y, fill_value="extrapolate")
                     y_interp = interpolator(r)
-
-            print("C shape", C.shape)  # TESTESTEST
-            print("y_interp shape", y_interp.shape)  # TESTESTEST
-            print("m1 shape", m1.shape)  # TESTESTEST
-            print("m2 shape", m2.shape)  # TESTESTEST
 
             return HankelTransformation(
                 trans_q=2 * np.pi * q,
