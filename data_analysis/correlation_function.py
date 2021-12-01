@@ -30,8 +30,6 @@ from utilities.helper import Limits, div_ceil
 class StructureFactor:
     """Holds structure factor data"""
 
-    w_xy: np.ndarray
-    w_sq: np.ndarray
     n_interp_pnts: int
     r_max: float
     vt_min_sq: float
@@ -43,11 +41,6 @@ class StructureFactor:
 
     q: np.ndarray
     qz: np.ndarray
-    fq: np.ndarray
-    fq_linear_interp: np.ndarray
-    fq_cor: np.ndarray
-    fq_linear_interp_cor: np.ndarray
-    fq_error: np.ndarray
 
     sq: np.ndarray
     sq_linear_interp: np.ndarray
@@ -108,8 +101,7 @@ class CorrFunc:
                     "All rows are in 'delete_list'! Increase the rejection limit. Ignoring."
                 )
 
-        # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list.
-        # if no delete list is supplied, use all rows.
+        # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list. If no delete list is supplied, use all rows.
         self.j_bad = delete_list
         self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
@@ -201,13 +193,10 @@ class CorrFunc:
 
     def calculate_structure_factor(
         self,
-        w_xy=np.array([0]),  # used in Gaussian field approx.
-        w_sq=1,  # used in Gaussian field approx.
         n_interp_pnts=512,
         r_max=10,
         r_min=0.05,
         g_min=1e-2,
-        baseline_range_um=None,
         interp_pnts=2,
         plot_kwargs={},
         **kwargs,
@@ -219,31 +208,19 @@ class CorrFunc:
         c0 = scipy.special.jn_zeros(0, n_interp_pnts)  # Bessel function zeros
         r = (r_max / c0[n_interp_pnts - 1]) * c0  # Radius vector
 
-        if baseline_range_um is not None:
-            jj = Limits(baseline_range_um).valid_indxs(self.vt_um)
-            baseline = np.mean(self.normalized[jj])
-            self.normalized = (self.normalized - baseline) / (1 - baseline)
-
-        j3 = np.nonzero(self.vt_um ** 2 > vt_min_sq)[0]
-        temp_vt_um = self.vt_um[j3]
-        temp_normalized = self.normalized[j3]
-
-        k = (
-            min(np.nonzero(temp_normalized < g_min)[0]) - 1
-        )  # point before the first crossing of g_min
-        if k.size == 0:
-            k = temp_normalized.size
-        j2 = np.arange(k)
+        # choose interpolation range (extrapolate the noisy parts)
+        j_vt_um_sq_over_min = np.nonzero(self.vt_um ** 2 > vt_min_sq)[0]
+        j_normalized_over_gmin = np.nonzero(self.normalized > g_min)[0][:-1]
+        j_intrp = sorted(set(j_vt_um_sq_over_min) & set(j_normalized_over_gmin))
 
         #  Gaussian interpolation
-        log_temp_normalized_j2 = np.log(temp_normalized[j2])
         if interp_pnts is not None:
             log_fr = self.robust_interpolation(
-                r ** 2, temp_vt_um[j2] ** 2, log_temp_normalized_j2, interp_pnts
+                r ** 2, self.vt_um[j_intrp] ** 2, np.log(self.normalized[j_intrp]), interp_pnts
             )
         else:
             interpolator = scipy.interpolate.interp1d(
-                temp_vt_um[j2] ** 2, log_temp_normalized_j2, fill_value="extrapolate"
+                self.vt_um[j_intrp] ** 2, np.log(self.normalized[j_intrp]), fill_value="extrapolate"
             )
             log_fr = interpolator(r ** 2)
         fr = np.exp(log_fr)
@@ -251,16 +228,16 @@ class CorrFunc:
         #  linear interpolation
         if interp_pnts is not None:
             fr_linear_interp = self.robust_interpolation(
-                r, temp_vt_um[j2], temp_normalized[j2], interp_pnts
+                r, self.vt_um[j_intrp], self.normalized[j_intrp], interp_pnts
             )
         else:
             interpolator = scipy.interpolate.interp1d(
-                temp_vt_um[j2], temp_normalized[j2], fill_value="extrapolate"
+                self.vt_um[j_intrp], self.normalized[j_intrp], fill_value="extrapolate"
             )
             fr_linear_interp = interpolator(r)
 
         #  zero-pad
-        fr_linear_interp[r > temp_vt_um[k]] = 0
+        fr_linear_interp[r > self.vt_um[j_normalized_over_gmin[-1]]] = 0
 
         # Fourier Transform
         q, fq, *_ = self.hankel_transform(r, fr)
@@ -268,70 +245,65 @@ class CorrFunc:
         #  linear interpolated Fourier Transform
         fq_linear_interp = self.hankel_transform(r, fr_linear_interp).trans_fq
 
-        sq = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq, (1, len(w_xy))).squeeze()
-        sq_linear_interp = (
-            np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq_linear_interp, (1, len(w_xy))).squeeze()
-        )
-
-        # One step  correction  for finite aspect ratio
-        w_xy_sq = w_xy ** 2
-        dqz = np.median(np.diff(q)) / np.sqrt(w_sq)
-        qz = np.arange(0, max(q) / np.sqrt(w_sq), dqz)
+        # One step correction  for finite aspect ratio
+        dqz = np.median(np.diff(q))
+        qz = np.arange(0, max(q), dqz)
         q_mesh, qz_mesh = np.meshgrid(q, qz)
         q_vec = np.sqrt(q_mesh ** 2 + qz_mesh ** 2)
 
-        fq_cor = np.empty((fq.shape[0], len(w_xy_sq)))
-        sq_cor = np.empty((fq.shape[0], len(w_xy_sq)))
-        fq_linear_interp_cor = np.empty((fq_linear_interp.shape[0], len(w_xy_sq)))
-        sq_linear_interp_cor = np.empty((fq_linear_interp.shape[0], len(w_xy_sq)))
-        for idx in range(len(w_xy_sq)):
-            norm_fz = sum(np.exp(-w_xy_sq[idx] * qz ** 2 * w_sq / 4))
-            kern_fz = np.exp(-w_xy_sq[idx] * qz_mesh ** 2 * (w_sq - 1) / 4) / norm_fz
+        # zero-pad fq above first zero
+        d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq)
+        d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
 
-            # zero-pad fq above first zero
-            d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq)
-            d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
+        d_gq = fq - d_gq_2d_to_3d.sum(axis=0).T / qz.size
+        fq_cor = fq + d_gq
 
-            d_gq = fq - (d_gq_2d_to_3d * kern_fz).sum().T
-            fq_cor[:, idx] = fq + d_gq
-            sq_cor[:, idx] = np.exp(q ** 2 * w_xy_sq[idx] / 4) * fq_cor[:, idx]
-
-            d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq_linear_interp)
-            d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
-            d_gq = fq_linear_interp - (d_gq_2d_to_3d * kern_fz).sum().T
-            fq_linear_interp_cor[:, idx] = fq_linear_interp + d_gq
-
-            sq_linear_interp_cor[:, idx] = (
-                np.exp(q ** 2 * w_xy_sq[idx] / 4) * fq_linear_interp_cor[:, idx]
-            )
-        sq_cor = sq_cor.squeeze()
-        fq_cor = fq_cor.squeeze()
-        sq_linear_interp_cor = sq_linear_interp_cor.squeeze()
-        fq_linear_interp_cor = fq_linear_interp_cor.squeeze()
+        d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq_linear_interp)
+        d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
+        d_gq = fq_linear_interp - d_gq_2d_to_3d.sum(axis=0).T / qz.size
+        fq_linear_interp_cor = fq_linear_interp + d_gq
 
         #  Estimating error of Fourier transform
         print("Estimating structure factor errors...", end=" ")
-        fq_allfunc = np.zeros(shape=(q.size, len(self.j_good)))
+        fq_allfunc = np.empty(shape=(len(self.j_good), q.size))
         for idx, j in enumerate(self.j_good):
-            with np.errstate(divide="ignore", invalid="ignore"):
-                log_cf_cr_j = np.log(self.cf_cr[j, :])
+            cf_cr = self.cf_cr[j, j_intrp]
+            cf_cr[cf_cr < 0] = 1  # TODO: is that the best way to solve this?
             if interp_pnts is not None:
                 log_fr = self.robust_interpolation(
-                    r ** 2, self.vt_um[j2] ** 2, log_cf_cr_j, interp_pnts
+                    r ** 2, self.vt_um[j_intrp] ** 2, np.log(cf_cr), interp_pnts
                 )
             else:
-                log_fr = np.interp(r ** 2, self.vt_um ** 2, log_cf_cr_j, right=0)
+                log_fr = np.interp(r ** 2, self.vt_um[j_intrp] ** 2, np.log(cf_cr))
             fr = np.exp(log_fr)
-
             fr[np.nonzero(fr < 0)[0]] = 0
-            fq_allfunc[:, idx] = self.hankel_transform(r, fr).trans_fq
 
-        fq_error = np.std(fq_allfunc, axis=1, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
-        sq_error = np.exp(q ** 2 * w_xy ** 2 / 4) * np.tile(fq_error, (1, len(w_xy)))
+            fq_allfunc[idx] = self.hankel_transform(r, fr).trans_fq
 
-        s = StructureFactor(
-            w_xy,
-            w_sq,
+        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
+
+        #  plotting
+        with Plotter(
+            subplots=(1, 3),
+            #            xlim=Limits(q[1], np.pi / min(w_xy)),
+            xscale="log",
+            yscale="log",
+            super_title="Structure Factor: $S(q)$",
+        ) as axes:
+
+            axes[0].set_title("Gaussian vs. linear\nInterpolation")
+            axes[0].plot(q, np.vstack((fq, fq_linear_interp)).T, **plot_kwargs)
+            axes[0].legend(["Gaussian", "Linear"])
+
+            axes[1].set_title("Corrected for 3D vs. uncorrected\nGaussian Interpolation")
+            axes[1].plot(q, np.vstack((fq, fq_cor)).T, **plot_kwargs)
+            axes[1].legend(["Uncorrected Gaussian", "Corrected Gaussian"])
+
+            axes[2].set_title("Corrected for 3D vs. uncorrected\nLinear Interpolation")
+            axes[2].plot(q, np.vstack((fq_linear_interp, fq_linear_interp_cor)).T, **plot_kwargs)
+            axes[2].legend(["Uncorrected Linear", "Corrected Linear"])
+
+        return StructureFactor(
             n_interp_pnts,
             r_max,
             vt_min_sq,
@@ -346,47 +318,7 @@ class CorrFunc:
             fq_cor,
             fq_linear_interp_cor,
             fq_error,
-            sq,
-            sq_linear_interp,
-            sq_cor,
-            sq_linear_interp_cor,
-            sq_error,
         )
-
-        #  plotting
-        with Plotter(
-            subplots=(1, 3),
-            #            xlim=Limits(q[1], np.pi / min(w_xy)),
-            xscale="log",
-            yscale="log",
-            super_title="Structure Factor: $S(q)$",
-        ) as axes:
-
-            axes[0].set_title("Gaussian vs. linear\ninterpolation")
-            axes[0].plot(q, np.vstack((sq, sq_linear_interp)).T, **plot_kwargs)
-            legend_labels_1, legend_labels_2 = [], []
-            for elem in w_xy:
-                legend_labels_1.append(f"Gaussian w_xy = {elem}")
-                legend_labels_2.append(f"Linear w_xy = {elem}")
-            axes[0].legend(legend_labels_1 + legend_labels_2)
-
-            axes[1].set_title("Corrected for 3D vs. uncorrected\nGaussian interpolation")
-            axes[1].plot(q, np.vstack((sq, sq_cor)).T, **plot_kwargs)
-            legend_labels_1, legend_labels_2 = [], []
-            for elem in w_xy:
-                legend_labels_1.append(f"Uncorrected w_xy = {elem}")
-                legend_labels_2.append(f"Corrected w_xy = {elem}")
-            axes[1].legend(legend_labels_1 + legend_labels_2)
-
-            axes[2].set_title("Corrected for 3D vs. uncorrected\nLinear interpolation")
-            axes[2].plot(q, np.vstack((sq_linear_interp, sq_linear_interp_cor)).T, **plot_kwargs)
-            legend_labels_1, legend_labels_2 = [], []
-            for elem in w_xy:
-                legend_labels_1.append(f"Uncorrected w_xy = {elem}")
-                legend_labels_2.append(f"Corrected w_xy = {elem}")
-            axes[2].legend(legend_labels_1 + legend_labels_2)
-
-        return s
 
     def robust_interpolation(
         self,
@@ -426,7 +358,7 @@ class CorrFunc:
             else:
                 j = np.arange((ch[i] + 1), ch[i + 1])
 
-            y[j] = p0 + p1 * x[j]  # TODO: y shape? need to allocate first
+            y[j] = p0 + p1 * x[j]
             D.x.append(xi[i])
             D.slope.append(p1)
 
@@ -678,7 +610,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             with Plotter(subplots=(1, n_files), fontsize=8, should_force_aspect=True) as axes:
                 if not hasattr(
                     axes, "size"
-                ):  # if axes is not an ndarray (only happens if reding just one file)
+                ):  # if axes is not an ndarray (only happens if reading just one file)
                     axes = np.array([axes])
                 for idx, (ax, image, roi) in enumerate(
                     zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
@@ -850,7 +782,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             roi["row"].append(roi["row"][0])
             roi["col"].append(roi["col"][0])
         except IndexError:
-            print("ROI is empty (need to figure out the cause). Skipping file.", end=" ")
+            print("ROI is empty (need to figure out the cause). Skipping file.")
             return None
 
         # convert lists/deques to numpy arrays
@@ -1214,53 +1146,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return legend_labels
 
-    def get_field_parameters(
-        self,
-        fit_range=(0.01, 0.2),
-        dynamic_range=None,
-        should_plot: bool = False,
-        param_estimates=(1, 0.1),
-        max_iter: int = 3,
-    ):
-        """Doc."""
-
-        fit_range = Limits(fit_range)
-
-        # Do first Diff3D fit
-        #        subplot(1, 1, 1)
-
-        # now to field fit
-        PlotRange = Limits(0, 2 * fit_range.upper)
-        self.field.fit_range = fit_range
-        j = (self.fast.vt_um > PlotRange(1)) & (self.fast.vt_um < PlotRange(2))
-        self.field.r = self.fast.vt_um(j)
-        self.field.G = np.real(
-            (self.fast.Normalized[j] / self.slow.Normalized(j)) ** (1.0 / self.slow.Normalized[j])
-        )
-        self.field.errorG = self.fast.errorNormalized(j)
-
-        #        Jfit = (self.field.r > fit_range(1))&(self.field.r < fit_range(2))
-        #        fitfun = @(beta, x) beta(1)*exp(-x.^2/beta(2)^2)
-        #        FitParam = nlinfitWeight2(self.field.r(Jfit), self.field.G(Jfit), fitfun, param_estimates, self.field.errorG(Jfit), [])
-        #        self.field.wXY = FitParam.beta(2)
-        #        self.field.FitParam = FitParam
-        if dynamic_range is not None:  # do dynamic range iterations
-            for iteration in range(max_iter):
-                fit_range.upper = self.field.wXY * np.sqrt(np.log(dynamic_range.upper))
-                #                Jfit = (self.field.r > fit_range(1))&(self.field.r < fit_range(2))
-                #                FitParam = nlinfitWeight2(self.field.r(Jfit), self.field.G(Jfit), fitfun, FitParam.beta, self.field.errorG(Jfit), [])
-                #                self.field.wXY = FitParam.beta(2)
-                self.field.fit_range = fit_range
-
-    #                self.field.FitParam = FitParam
-
-    #        if not should_plot:
-    #            subplot(1, 1, 1)
-    #            semilogy(self.field.r.^2, self.field.G, 'o', self.field.r(Jfit).^2, self.field.G(Jfit), '*',...
-    #                self.field.r(Jfit).^2, FitParam.beta(1)*exp(-self.field.r(Jfit).^2/self.field.wXY^2))
-
     def calculate_structure_factors(self) -> None:
         """Doc."""
+
+        pass
 
     #        for cf in self.cf.values():
     #            if not hasattr(cf, )
@@ -1558,6 +1447,11 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 plot_kwargs=plot_kwargs,
             )
             ax.legend(confocal_legend_labels + sted_legend_labels)
+
+    def calculate_structure_factors(self) -> None:
+        """Doc."""
+
+        pass
 
 
 # TODO - create an AngularScanMixin class and throw the below functions there
