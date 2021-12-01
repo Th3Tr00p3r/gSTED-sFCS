@@ -816,7 +816,7 @@ class MainWin:
             # Dealing with legacy templates which do not contain the appropriate time format
             sorted_templates = sorted(pkl_template_set.union(mat_template_set))
             logging.warning(
-                "Folder contains legacy file templates! Templates may not be properly sorted."
+                "Folder contains irregular file templates! Templates may not be properly sorted."
             )
         finally:
             return sorted_templates
