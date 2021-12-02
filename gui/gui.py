@@ -109,6 +109,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.removeAssignedGate.released.connect(self.impl.remove_assigned_gate)
         self.addGates.released.connect(self.impl.gate)
         self.removeAvailableGate.released.connect(self.impl.remove_available_gate)
+        self.calculateStructureFactors.released.connect(self.impl.calculate_structure_factors)
 
         # Device LEDs
         def led_clicked(wdgt):

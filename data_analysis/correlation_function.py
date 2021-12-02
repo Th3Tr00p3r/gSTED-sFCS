@@ -197,10 +197,9 @@ class CorrFunc:
         r_max=10,
         r_min=0.05,
         g_min=1e-2,
-        interp_pnts=2,
-        plot_kwargs={},
+        interp_pnts=None,  # default was 2 (uses robust_interpolation)
         **kwargs,
-    ) -> StructureFactor:
+    ) -> None:
         """Doc."""
 
         vt_min_sq = r_min ** 2
@@ -268,7 +267,7 @@ class CorrFunc:
         fq_allfunc = np.empty(shape=(len(self.j_good), q.size))
         for idx, j in enumerate(self.j_good):
             cf_cr = self.cf_cr[j, j_intrp]
-            cf_cr[cf_cr < 0] = 1  # TODO: is that the best way to solve this?
+            cf_cr[cf_cr <= 1] = 1  # TODO: is that the best way to solve this?
             if interp_pnts is not None:
                 log_fr = self.robust_interpolation(
                     r ** 2, self.vt_um[j_intrp] ** 2, np.log(cf_cr), interp_pnts
@@ -282,28 +281,7 @@ class CorrFunc:
 
         fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
 
-        #  plotting
-        with Plotter(
-            subplots=(1, 3),
-            #            xlim=Limits(q[1], np.pi / min(w_xy)),
-            xscale="log",
-            yscale="log",
-            super_title="Structure Factor: $S(q)$",
-        ) as axes:
-
-            axes[0].set_title("Gaussian vs. linear\nInterpolation")
-            axes[0].plot(q, np.vstack((fq, fq_linear_interp)).T, **plot_kwargs)
-            axes[0].legend(["Gaussian", "Linear"])
-
-            axes[1].set_title("Corrected for 3D vs. uncorrected\nGaussian Interpolation")
-            axes[1].plot(q, np.vstack((fq, fq_cor)).T, **plot_kwargs)
-            axes[1].legend(["Uncorrected Gaussian", "Corrected Gaussian"])
-
-            axes[2].set_title("Corrected for 3D vs. uncorrected\nLinear Interpolation")
-            axes[2].plot(q, np.vstack((fq_linear_interp, fq_linear_interp_cor)).T, **plot_kwargs)
-            axes[2].legend(["Uncorrected Linear", "Corrected Linear"])
-
-        return StructureFactor(
+        self.structure_factor = StructureFactor(
             n_interp_pnts,
             r_max,
             vt_min_sq,
@@ -1146,13 +1124,51 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return legend_labels
 
-    def calculate_structure_factors(self) -> None:
+    def calculate_structure_factors(self, plot_kwargs={}, **kwargs) -> None:
         """Doc."""
 
-        pass
+        # calculation
+        logging.info(f"Calculating all structure factors for measurement '{self.name}'.")
+        for cf in self.cf.values():
+            if not hasattr(cf, "structure_factor"):
+                cf.calculate_structure_factor(**kwargs)
 
-    #        for cf in self.cf.values():
-    #            if not hasattr(cf, )
+        #  plotting
+        with Plotter(
+            subplots=(1, 3),
+            #            xlim=Limits(q[1], np.pi / min(w_xy)),
+            xscale="log",
+            yscale="log",
+            super_title="Structure Factor: $S(q)$",
+            **kwargs,
+        ) as axes:
+
+            legend_labels_list: List[list] = [[], [], []]
+            for name, cf in self.cf.items():
+                s = cf.structure_factor
+
+                axes[0].set_title("Gaussian vs. linear\nInterpolation")
+                axes[0].plot(s.q, np.vstack((s.sq, s.sq_linear_interp)).T, **plot_kwargs)
+                legend_labels_list[0] += [f"{name}: Gaussian", f"{name}: Linear"]
+
+                axes[1].set_title("Corrected for 3D vs. uncorrected\nGaussian Interpolation")
+                axes[1].plot(s.q, np.vstack((s.sq, s.sq_cor)).T, **plot_kwargs)
+                legend_labels_list[1] += [
+                    f"{name}: Uncorrected Gaussian",
+                    f"{name}: Corrected Gaussian",
+                ]
+
+                axes[2].set_title("Corrected for 3D vs. uncorrected\nLinear Interpolation")
+                axes[2].plot(
+                    s.q, np.vstack((s.sq_linear_interp, s.sq_linear_interp_cor)).T, **plot_kwargs
+                )
+                legend_labels_list[2] += [
+                    f"{name}: Uncorrected Linear",
+                    f"{name}: Corrected Linear",
+                ]
+
+            for i in range(3):
+                axes[i].legend(legend_labels_list[i])
 
     def calculate_afterpulse(self, gate_ns: Limits, lag: np.ndarray) -> np.ndarray:
         """Doc."""
@@ -1426,32 +1442,29 @@ class SFCSExperiment(TDCPhotonDataMixin):
             super_title=super_title,
             **kwargs,
         ) as ax:
-            confocal_legend_labels = self.confocal.plot_correlation_functions(
-                parent_ax=ax,
-                x_field=x_field,
-                y_field=y_field,
-                x_scale=x_scale,
-                y_scale=y_scale,
-                xlim=xlim,
-                ylim=ylim,
-                plot_kwargs=plot_kwargs,
-            )
-            sted_legend_labels = self.sted.plot_correlation_functions(
-                parent_ax=ax,
-                x_field=x_field,
-                y_field=y_field,
-                x_scale=x_scale,
-                y_scale=y_scale,
-                xlim=xlim,
-                ylim=ylim,
-                plot_kwargs=plot_kwargs,
-            )
+            # TODO: can probably avoid specifying all kwargs twice by using kwargs and get(defualt)
+            legend_label_lists = [
+                getattr(self, meas_type).plot_correlation_functions(
+                    parent_ax=ax,
+                    x_field=x_field,
+                    y_field=y_field,
+                    x_scale=x_scale,
+                    y_scale=y_scale,
+                    xlim=xlim,
+                    ylim=ylim,
+                    plot_kwargs=plot_kwargs,
+                )
+                for meas_type in ("confocal", "sted")
+            ]
+            confocal_legend_labels, sted_legend_labels = legend_label_lists
             ax.legend(confocal_legend_labels + sted_legend_labels)
 
-    def calculate_structure_factors(self) -> None:
+    def calculate_structure_factors(self, **kwargs) -> None:
         """Doc."""
 
-        pass
+        # TODO: generalize Plotter to use subfigures - its pretty much needed at this point (also for TDC calibration)
+        for meas_type in ("confocal", "sted"):
+            getattr(self, meas_type).calculate_structure_factors(**kwargs)
 
 
 # TODO - create an AngularScanMixin class and throw the below functions there
