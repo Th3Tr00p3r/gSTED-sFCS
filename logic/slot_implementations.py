@@ -1174,7 +1174,7 @@ class MainWin:
 
             if should_load_processed:
                 file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
-                print(f"Loading processed data '{current_template}' from hard drive...", end=" ")
+                logging.info(f"Loading processed data '{current_template}' from hard drive...")
                 measurement = file_utilities.load_processed_solution_measurement(file_path)
                 print("Done.")
 
@@ -1571,12 +1571,16 @@ class MainWin:
         gate_lt = wdgt_coll.custom_gate_to_assign_lt.get()
 
         experiment = self.get_experiment()
-        laser_pulse_delay_ns = experiment.lifetime_params.laser_pulse_delay_ns
-        lifetime_ns = experiment.lifetime_params.lifetime_ns
-        lower_gate_ns = gate_lt * lifetime_ns + laser_pulse_delay_ns
-        upper_gate_ns = experiment.UPPERֹ_ֹGATE_NS
-        gate_ns = helper.Limits(lower_gate_ns, upper_gate_ns)
-        wdgt_coll.assigned_gates.obj.addItem(str(gate_ns))
+        try:
+            laser_pulse_delay_ns = experiment.lifetime_params.laser_pulse_delay_ns
+            lifetime_ns = experiment.lifetime_params.lifetime_ns
+        except AttributeError:  # TDC not calibrated!
+            logging.info("Cannot gate if TDC isn't calibrated!")
+        else:
+            lower_gate_ns = gate_lt * lifetime_ns + laser_pulse_delay_ns
+            upper_gate_ns = experiment.UPPERֹ_ֹGATE_NS
+            gate_ns = helper.Limits(lower_gate_ns, upper_gate_ns)
+            wdgt_coll.assigned_gates.obj.addItem(str(gate_ns))
 
     def remove_assigned_gate(self) -> None:
         """Doc."""
@@ -1617,6 +1621,7 @@ class MainWin:
         gate_to_remove = wdgt.get()
         # delete from object
         experiment = self.get_experiment()
+        # TODO: KeyError - clear the available_gates when removing experiment!
         experiment.sted.cf.pop(f"gSTED {gate_to_remove}")
         # re-plot
         kwargs = dict(
@@ -1628,6 +1633,12 @@ class MainWin:
         # delete from GUI
         wdgt.obj.removeItem(wdgt.obj.currentIndex())
         logging.info(f"Gate '{gate_to_remove}' removed from '{experiment.name}' experiment.")
+
+    def calculate_structure_factors(self) -> None:
+        """Doc."""
+
+        experiment = self.get_experiment()
+        experiment.calculate_structure_factors(g_min=4e-2)  # TESTESTEST
 
 
 class SettWin:
