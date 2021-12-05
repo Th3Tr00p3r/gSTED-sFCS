@@ -306,6 +306,8 @@ SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
     assigned_gates=("assignedGates", "QComboBox", "main", True),
     available_gates=("availableGates", "QComboBox", "main", True),
     gui_display_sted_gating=("solExpGSTED", None, "main", True),
+    # structure factor
+    g_min=("expStrctFctrGMin", "QDoubleSpinBox", "main", False),
     # properties
     g0_ratio=("expPropRatio", "QDoubleSpinBox", "main", True),
     fluoresence_lifetime=("expPropLifetime", "QDoubleSpinBox", "main", True),

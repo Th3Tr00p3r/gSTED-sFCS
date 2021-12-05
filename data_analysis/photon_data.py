@@ -60,6 +60,7 @@ class TDCPhotonDataMixin:
     """Methods for creating and analyzing TDCPhotonData objects"""
 
     # NOTE: These are for mypy to be silent. The proper way to do it would be using abstract base classes (ABCs)
+    name: str
     data: List
     scan_type: str
     NAN_PLACEBO: int
@@ -207,7 +208,7 @@ class TDCPhotonDataMixin:
     ) -> None:
         """Doc."""
 
-        print("\nCalibrating TDC...", end=" ")
+        print(f"\n{self.name}: Calibrating TDC...", end=" ")
 
         # keep runtime elements of each file for array size allocation
         n_elem = np.cumsum([0] + [p.runtime.size for p in self.data])

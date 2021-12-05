@@ -24,7 +24,8 @@ from data_analysis.correlation_function import (
     SolutionSFCSMeasurement,
 )
 from logic.scan_patterns import ScanPatternAO
-from utilities import display, file_utilities, fit_tools, helper
+from utilities import file_utilities, fit_tools, helper
+from utilities.display import GuiDisplay, auto_brightness_and_contrast
 from utilities.errors import DeviceError, err_hndlr
 
 
@@ -436,7 +437,7 @@ class MainWin:
             # AttributeError - no last image yet
             image = self._app.curr_img
             try:
-                image = display.auto_brightness_and_contrast(image, percent_factor)
+                image = auto_brightness_and_contrast(image, percent_factor)
             except (ZeroDivisionError, IndexError) as exc:
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
 
@@ -1095,7 +1096,9 @@ class MainWin:
     def save_processed_data(self):
         """Doc."""
 
-        with self.get_measurement_from_template(should_load=True) as measurement:
+        with self.get_measurement_from_template(
+            should_load=True, method_name="save_processed_data"
+        ) as measurement:
             curr_dir = self.current_date_type_dir_path()
             file_utilities.save_processed_solution_meas(measurement, curr_dir)
             logging.info("Saved the processed data.")
@@ -1242,7 +1245,10 @@ class MainWin:
 
     @contextmanager
     def get_measurement_from_template(
-        self, template: str = None, should_load=False
+        self,
+        template: str = None,
+        should_load=False,
+        **kwargs,
     ) -> SolutionSFCSMeasurement:
         """Doc."""
 
@@ -1253,7 +1259,7 @@ class MainWin:
 
         if should_load:
             with suppress(AttributeError):
-                measurement.dump_or_load_data(should_load=True)
+                measurement.dump_or_load_data(should_load=True, **kwargs)
 
         try:
             yield measurement
@@ -1261,7 +1267,7 @@ class MainWin:
         finally:
             if should_load:
                 with suppress(AttributeError):
-                    measurement.dump_or_load_data(should_load=False)
+                    measurement.dump_or_load_data(should_load=False, **kwargs)
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
@@ -1472,7 +1478,9 @@ class MainWin:
             for meas_type, assignment_params in self._app.analysis.assigned_to_experiment.items():
                 if assignment_params.method == "loaded":
                     with self.get_measurement_from_template(
-                        getattr(wdgt_coll, f"assigned_{meas_type}_template").get(), should_load=True
+                        getattr(wdgt_coll, f"assigned_{meas_type}_template").get(),
+                        should_load=True,
+                        method_name="load_experiment",
                     ) as measurement:
                         kwargs[meas_type] = measurement
                 elif assignment_params.method == "raw":
@@ -1485,7 +1493,7 @@ class MainWin:
 
         # plotting properties
         kwargs["gui_display"] = wdgt_coll.gui_display_loading.obj
-        kwargs["gui_options"] = display.GuiDisplayOptions(show_axis=True)
+        kwargs["gui_options"] = GuiDisplay.GuiDisplayOptions(show_axis=True)
         kwargs["fontsize"] = 10
 
         experiment = SFCSExperiment(experiment_name)
@@ -1545,7 +1553,7 @@ class MainWin:
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        kwargs = dict(gui_options=display.GuiDisplayOptions(show_axis=True), fontsize=10)
+        kwargs = dict(gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True), fontsize=10)
         experiment = self.get_experiment()
         try:
             kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
@@ -1554,6 +1562,8 @@ class MainWin:
             logging.info(
                 "One of the measurements (confocal or STED) was not loaded - cannot calibrate TDC."
             )
+        except AttributeError:
+            logging.info("Can't calibrate TDC, no experiment is loaded!")
         else:
             kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
             experiment.compare_lifetimes(**kwargs)
@@ -1606,12 +1616,15 @@ class MainWin:
         experiment = self.get_experiment()
         kwargs = dict(
             gui_display=wdgt_coll.gui_display_sted_gating.obj,
-            gui_options=display.GuiDisplayOptions(show_axis=True),
+            gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True),
             fontsize=10,
         )
-        experiment.add_gates(gate_list, **kwargs)
-
-        wdgt_coll.available_gates.obj.addItems([str(gate) for gate in gate_list])
+        try:
+            experiment.add_gates(gate_list, **kwargs)
+        except AttributeError:
+            logging.info("Can't gate, no experiment is loaded!")
+        else:
+            wdgt_coll.available_gates.obj.addItems([str(gate) for gate in gate_list])
 
     def remove_available_gate(self) -> None:
         """Doc."""
@@ -1622,23 +1635,31 @@ class MainWin:
         # delete from object
         experiment = self.get_experiment()
         # TODO: KeyError - clear the available_gates when removing experiment!
-        experiment.sted.cf.pop(f"gSTED {gate_to_remove}")
-        # re-plot
-        kwargs = dict(
-            gui_display=wdgt_coll.gui_display_sted_gating.obj,
-            gui_options=display.GuiDisplayOptions(show_axis=True),
-            fontsize=10,
-        )
-        experiment.plot_correlation_functions(**kwargs)
-        # delete from GUI
-        wdgt.obj.removeItem(wdgt.obj.currentIndex())
-        logging.info(f"Gate '{gate_to_remove}' removed from '{experiment.name}' experiment.")
+        try:
+            experiment.sted.cf.pop(f"gSTED {gate_to_remove}")
+        except AttributeError:  # no experiment loaded or no STED
+            logging.info("Can't remove gate.")
+        else:
+            # re-plot
+            kwargs = dict(
+                gui_display=wdgt_coll.gui_display_sted_gating.obj,
+                gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True),
+                fontsize=10,
+            )
+            experiment.plot_correlation_functions(**kwargs)
+            # delete from GUI
+            wdgt.obj.removeItem(wdgt.obj.currentIndex())
+            logging.info(f"Gate '{gate_to_remove}' removed from '{experiment.name}' experiment.")
 
     def calculate_structure_factors(self) -> None:
         """Doc."""
 
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
         experiment = self.get_experiment()
-        experiment.calculate_structure_factors(g_min=4e-2)  # TESTESTEST
+        try:
+            experiment.calculate_structure_factors(g_min=wdgt_coll.g_min)
+        except AttributeError:
+            logging.info("Can't calculate structure factors, no experiment is loaded!")
 
 
 class SettWin:

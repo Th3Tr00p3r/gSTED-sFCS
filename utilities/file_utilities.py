@@ -152,9 +152,13 @@ def deep_size_estimate(obj, level=np.inf, indent=0, threshold_mb=0.01, name=None
         if name is None:
             name = obj.__class__.__name__
             print(
-                f"Displaying object '{name}' size tree up to level={level} with a threshold of {threshold_mb} Mb:"
+                f"Displaying object of class '{name}' size tree up to level={level} with a threshold of {threshold_mb} Mb:"
             )
-        print(f"{indent * ' '}{name}: {size_mb:.2f} Mb")
+        try:
+            type_str = str(obj.dtype)
+        except AttributeError:
+            type_str = type(obj).__name__
+        print(f"{indent * ' '}{name} ({type_str}): {size_mb:.2f} Mb")
 
         if isinstance(obj, (list, tuple, set)):
             for idx, elem in enumerate(obj):
@@ -196,6 +200,9 @@ def save_object_to_disk(
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
+    #    print("\npre-compression size evaluation:") # TESTESTEST
+    #    deep_size_estimate(obj) # TESTESTEST
+
     # pickle/serialize the object
     obj = pickle.dumps(obj, protocol=-1)
 
@@ -211,6 +218,10 @@ def save_object_to_disk(
     # save the object
     with open(file_path, "wb") as f:
         f.write(obj)
+
+    #    if compression_method is not None: # TESTESTEST
+    #        print("\npost-compression size evaluation:") # TESTESTEST
+    #        deep_size_estimate(obj) # TESTESTEST
 
     logging.debug(f"Object of class '{obj.__class__.__name__}' saved as: {file_path}")
     return True
@@ -504,9 +515,9 @@ def rotate_data_to_disk(method) -> Callable:
 
     @functools.wraps(method)
     def method_wrapper(self, *args, **kwargs):
-        self.dump_or_load_data(should_load=True)
+        self.dump_or_load_data(should_load=True, method_name=method.__name__)
         value = method(self, *args, **kwargs)
-        self.dump_or_load_data(should_load=False)
+        self.dump_or_load_data(should_load=False, method_name=method.__name__)
         return value
 
     return method_wrapper
