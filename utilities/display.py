@@ -14,15 +14,17 @@ from skimage.filters import threshold_yen
 
 from utilities.helper import Limits
 
-GuiDisplayOptions = namedtuple(
-    "GuiDisplayOptions",
-    "clear fix_aspect show_axis scroll_zoom cursor",
-    defaults=(True, False, None, False, False),
-)
+plt.rcParams.update({"figure.max_open_warning": 100})
 
 
 class GuiDisplay:
     """Doc."""
+
+    GuiDisplayOptions = namedtuple(
+        "GuiDisplayOptions",
+        "clear fix_aspect show_axis scroll_zoom cursor",
+        defaults=(True, False, None, False, False),
+    )
 
     def __init__(self, layout, gui_parent=None):
         self.figure = plt.figure(constrained_layout=True)
@@ -41,7 +43,7 @@ class GuiDisplay:
     def entitle_and_label(self, x_label: str = None, y_label: str = None, title: str = None):
         """Doc"""
 
-        options = GuiDisplayOptions(clear=False, show_axis=True)
+        options = self.GuiDisplayOptions(clear=False, show_axis=True)
         with Plotter(gui_display=self, gui_options=options, super_title=title) as ax:
             ax.set_xlabel(x_label)
             ax.set_ylabel(y_label)
@@ -49,14 +51,14 @@ class GuiDisplay:
     def plot(self, x, y, *args, **kwargs):
         """Wrapper for matplotlib.pyplot.plot."""
 
-        options = GuiDisplayOptions(clear=False)
+        options = self.GuiDisplayOptions(clear=False)
         with Plotter(gui_display=self, gui_options=options) as ax:
             ax.plot(x, y, *args, **kwargs)
 
     def display_pattern(self, x, y):
         """Doc."""
 
-        with Plotter(gui_display=self, gui_options=GuiDisplayOptions(show_axis=False)) as ax:
+        with Plotter(gui_display=self, gui_options=self.GuiDisplayOptions(show_axis=False)) as ax:
             ax.plot(x, y, "k", lw=0.3)
 
     def display_image(self, image: np.ndarray, imshow_kwargs=dict(), **kwargs):
@@ -65,7 +67,7 @@ class GuiDisplay:
         if not isinstance(image, np.ndarray):
             raise ValueError("Image must be of type numpy.ndarray")
 
-        options = GuiDisplayOptions(
+        options = self.GuiDisplayOptions(
             fix_aspect=True,
             show_axis=False,
             scroll_zoom=kwargs.get("scroll_zoom", True),
@@ -86,7 +88,7 @@ class GuiDisplay:
 
         x_arr, x_type = x
 
-        with Plotter(gui_display=self, gui_options=GuiDisplayOptions(), **kwargs) as ax:
+        with Plotter(gui_display=self, gui_options=self.GuiDisplayOptions(), **kwargs) as ax:
             if x_type == "lag":
                 ax.set_xscale("log")
                 ax.set_xlim(1e-4, 1e1)
@@ -121,7 +123,7 @@ class Plotter:
         )  # TODO: not currently used. Can be used for implementing 'subfigures'
         self.parent_ax = kwargs.get("parent_ax")
         self.gui_display: GuiDisplay = kwargs.get("gui_display")
-        self.gui_options = kwargs.get("gui_options", GuiDisplayOptions())
+        self.gui_options = kwargs.get("gui_options", GuiDisplay.GuiDisplayOptions())
         self.subplots = kwargs.get("subplots", (1, 1))
         self.figsize = kwargs.get("figsize")
         self.super_title = kwargs.get("super_title")

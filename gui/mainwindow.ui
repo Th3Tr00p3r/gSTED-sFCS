@@ -6439,7 +6439,7 @@ Rows</string>
                         <item>
                          <widget class="QTabWidget" name="tabWidget_4">
                           <property name="currentIndex">
-                           <number>0</number>
+                           <number>3</number>
                           </property>
                           <widget class="QWidget" name="tab_7">
                            <attribute name="title">
@@ -7112,6 +7112,59 @@ Upper Gate</string>
 Structure
 Factors</string>
                             </property>
+                           </widget>
+                           <widget class="QWidget" name="">
+                            <property name="geometry">
+                             <rect>
+                              <x>190</x>
+                              <y>60</y>
+                              <width>101</width>
+                              <height>49</height>
+                             </rect>
+                            </property>
+                            <layout class="QVBoxLayout" name="verticalLayout_89">
+                             <item>
+                              <widget class="QLabel" name="label_32">
+                               <property name="text">
+                                <string>Minimal G</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="expStrctFctrGMin">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>50</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
+                               <property name="maximumSize">
+                                <size>
+                                 <width>50</width>
+                                 <height>16777215</height>
+                                </size>
+                               </property>
+                               <property name="decimals">
+                                <number>3</number>
+                               </property>
+                               <property name="maximum">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.100000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.020000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
                            </widget>
                           </widget>
                          </widget>
