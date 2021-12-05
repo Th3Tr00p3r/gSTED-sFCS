@@ -2,7 +2,7 @@
 
 import logging
 import re
-from collections import deque, namedtuple
+from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -59,7 +59,8 @@ class CorrFunc:
     cf_cr: np.ndarray
     g0: float
 
-    def __init__(self, gate_ns):
+    def __init__(self, name, gate_ns):
+        self.name = name
         self.gate_ns = Limits(gate_ns)
         self.lag = []
         self.countrate_list = []
@@ -209,40 +210,77 @@ class CorrFunc:
 
         # choose interpolation range (extrapolate the noisy parts)
         j_vt_um_sq_over_min = np.nonzero(self.vt_um ** 2 > vt_min_sq)[0]
+        #        j_vt_um_under_r_max = np.nonzero(self.vt_um < r_max)[0]
         j_normalized_over_gmin = np.nonzero(self.normalized > g_min)[0][:-1]
         j_intrp = sorted(set(j_vt_um_sq_over_min) & set(j_normalized_over_gmin))
+        #        j_intrp = sorted(set(j_vt_um_sq_over_min) & set(j_vt_um_under_r_max) & set(j_normalized_over_gmin))
+
+        sample_vt_um = self.vt_um[j_intrp]
+        sample_normalized = self.normalized[j_intrp]
 
         #  Gaussian interpolation
         if interp_pnts is not None:
             log_fr = self.robust_interpolation(
-                r ** 2, self.vt_um[j_intrp] ** 2, np.log(self.normalized[j_intrp]), interp_pnts
+                r ** 2, sample_vt_um ** 2, np.log(sample_normalized), interp_pnts
             )
         else:
             interpolator = scipy.interpolate.interp1d(
-                self.vt_um[j_intrp] ** 2, np.log(self.normalized[j_intrp]), fill_value="extrapolate"
+                sample_vt_um ** 2, np.log(sample_normalized), fill_value="extrapolate"
             )
             log_fr = interpolator(r ** 2)
         fr = np.exp(log_fr)
+        with Plotter(
+            super_title=f"{self.name} Gaussian Interpolation",
+            xlim=(0, self.vt_um[max(j_intrp) + 5] ** 2),
+            ylim=(1e-1, 1.3),
+        ) as ax:
+            ax.semilogy(
+                self.vt_um ** 2,
+                self.normalized,
+                "x",
+                sample_vt_um ** 2,
+                sample_normalized,
+                "o",
+                r ** 2,
+                fr,
+            )
+            ax.legend(["Normalized", "Interpolation Sample", "Interpolation/Extrapolation"])
 
         #  linear interpolation
         if interp_pnts is not None:
             fr_linear_interp = self.robust_interpolation(
-                r, self.vt_um[j_intrp], self.normalized[j_intrp], interp_pnts
+                r, sample_vt_um, sample_normalized, interp_pnts
             )
         else:
             interpolator = scipy.interpolate.interp1d(
-                self.vt_um[j_intrp], self.normalized[j_intrp], fill_value="extrapolate"
+                sample_vt_um, sample_normalized, fill_value="extrapolate"
             )
             fr_linear_interp = interpolator(r)
+        with Plotter(
+            super_title=f"{self.name} Linear Interpolation",
+            xlim=(0, self.vt_um[max(j_intrp) + 5] ** 2),
+            ylim=(1e-1, 1.3),
+        ) as ax:
+            ax.semilogy(
+                self.vt_um ** 2,
+                self.normalized,
+                "x",
+                sample_vt_um ** 2,
+                sample_normalized,
+                "o",
+                r ** 2,
+                fr_linear_interp,
+            )
+            ax.legend(["Normalized", "Interpolation Sample", "Interpolation/Extrapolation"])
 
         #  zero-pad
         fr_linear_interp[r > self.vt_um[j_normalized_over_gmin[-1]]] = 0
 
         # Fourier Transform
-        q, fq, *_ = self.hankel_transform(r, fr)
+        q, fq = self.hankel_transform(r, fr)
 
         #  linear interpolated Fourier Transform
-        fq_linear_interp = self.hankel_transform(r, fr_linear_interp).trans_fq
+        _, fq_linear_interp = self.hankel_transform(r, fr_linear_interp)
 
         # One step correction  for finite aspect ratio
         dqz = np.median(np.diff(q))
@@ -266,18 +304,18 @@ class CorrFunc:
         print("Estimating structure factor errors...", end=" ")
         fq_allfunc = np.empty(shape=(len(self.j_good), q.size))
         for idx, j in enumerate(self.j_good):
-            cf_cr = self.cf_cr[j, j_intrp]
-            cf_cr[cf_cr <= 1] = 1  # TODO: is that the best way to solve this?
+            sample_cf_cr = self.cf_cr[j, j_intrp]
+            sample_cf_cr[sample_cf_cr <= 1] = 1  # TODO: is that the best way to solve this?
             if interp_pnts is not None:
                 log_fr = self.robust_interpolation(
-                    r ** 2, self.vt_um[j_intrp] ** 2, np.log(cf_cr), interp_pnts
+                    r ** 2, sample_vt_um ** 2, np.log(sample_cf_cr), interp_pnts
                 )
             else:
-                log_fr = np.interp(r ** 2, self.vt_um[j_intrp] ** 2, np.log(cf_cr))
+                log_fr = np.interp(r ** 2, sample_vt_um ** 2, np.log(sample_cf_cr))
             fr = np.exp(log_fr)
             fr[np.nonzero(fr < 0)[0]] = 0
 
-            fq_allfunc[idx] = self.hankel_transform(r, fr).trans_fq
+            _, fq_allfunc[idx] = self.hankel_transform(r, fr)
 
         fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
 
@@ -358,31 +396,26 @@ class CorrFunc:
         y = y.ravel()
         n = len(x)
 
+        # prepare the Hankel transformation matrix C
         c0 = scipy.special.jn_zeros(0, n)
         bessel_j0 = scipy.special.j0
         bessel_j1 = scipy.special.j1
 
-        if not should_inverse:
+        j_n, j_m = np.meshgrid(c0, c0)
 
-            HankelTransformation = namedtuple(
-                "HankelTransformation",
-                "trans_q trans_fq interp_r interp_fr",
-            )
+        C = (
+            (2 / c0[n - 1])
+            * bessel_j0(j_n * j_m / c0[n - 1])
+            / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
+        )
+
+        if not should_inverse:
 
             r_max = max(x)
             q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
 
             r = c0.T * r_max / c0[n - 1]  # Radius vector
             q = c0.T / (2 * np.pi * r_max)  # Frequency vector
-
-            j_n, j_m = np.meshgrid(c0, c0)
-
-            C = (
-                (2 / c0[n - 1])
-                * bessel_j0(j_n * j_m / c0[n - 1])
-                / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
-            )
-            # C is the transformation matrix
 
             m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
             m2 = m1 * r_max / q_max  # m2 prepares output vector for display
@@ -412,19 +445,9 @@ class CorrFunc:
                     interpolator = scipy.interpolate.interp1d(x, y, fill_value="extrapolate")
                     y_interp = interpolator(r)
 
-            return HankelTransformation(
-                trans_q=2 * np.pi * q,
-                trans_fq=C @ (y_interp / m1) * m2,
-                interp_r=r,
-                interp_fr=y_interp,
-            )
+            return 2 * np.pi * q, C @ (y_interp / m1) * m2
 
         else:  # inverse transform
-
-            InverseHankelTransformation = namedtuple(
-                "InverseHankelTransformation",
-                "trans_r trans_fr",
-            )
 
             if dr is not None:
                 q_max = 1 / (2 * dr)
@@ -437,25 +460,13 @@ class CorrFunc:
             q = c0.T / (2 * np.pi * r_max)  # Frequency vector
             q = 2 * np.pi * q
 
-            j_n, j_m = np.meshgrid(c0, c0)
-
-            C = (
-                (2 / c0[n - 1])
-                * bessel_j0(j_n * j_m / c0[n - 1])
-                / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
-            )
-            # C is the transformation matrix
-
             m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
             m2 = m1 * r_max / q_max  # m2 prepares output vector for display
             # end preparations for Hankel transform
 
             interpolator = scipy.interpolate.interp1d(x, y, fill_value="extrapolate")
 
-            return InverseHankelTransformation(
-                trans_r=r,
-                trans_fr=C @ (interpolator(q) / m2) * m1,
-            )
+            return r, C @ (interpolator(q) / m2) * m1
 
 
 @dataclass
@@ -828,7 +839,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         CF.average_correlation(**kwargs)
 
     @file_utilities.rotate_data_to_disk
-    def correlate_data(self, cf_name=None, **kwargs):
+    def correlate_data(self, **kwargs):
         """
         High level function for correlating any type of data (e.g. static, angular scan...)
         Returns a 'CorrFunc' object.
@@ -846,7 +857,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 f"Correlating data of type '{self.scan_type}' is not implemented."
             )
 
-        if cf_name is not None:
+        if (cf_name := kwargs.get("cf_name")) is not None:
             self.cf[cf_name] = CF
         else:
             self.cf[f"gSTED {CF.gate_ns}"] = CF
@@ -855,6 +866,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     def correlate_static_data(
         self,
+        cf_name=None,
         gate_ns=(0, np.inf),
         run_duration=None,
         min_time_frac=0.5,
@@ -888,7 +900,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         duration = []
 
         SC = SoftwareCorrelator()
-        CF = CorrFunc(gate_ns)
+        CF = CorrFunc(cf_name, gate_ns)
         CF.run_duration = run_duration
 
         with CorrFuncAccumulator(CF) as Accumulator:
@@ -967,6 +979,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     def correlate_angular_scan_data(
         self,
+        cf_name=None,
         gate_ns=(0, np.inf),
         min_time_frac=0.5,
         subtract_bg_corr=True,
@@ -984,7 +997,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         duration = []
 
         SC = SoftwareCorrelator()
-        CF = CorrFunc(gate_ns)
+        CF = CorrFunc(cf_name, gate_ns)
 
         with CorrFuncAccumulator(CF) as Accumulator:
             for p in self.data:
@@ -1130,8 +1143,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         # calculation
         logging.info(f"Calculating all structure factors for measurement '{self.name}'.")
         for cf in self.cf.values():
-            if not hasattr(cf, "structure_factor"):
-                cf.calculate_structure_factor(**kwargs)
+            #            if not hasattr(cf, "structure_factor"):
+            cf.calculate_structure_factor(**kwargs)
 
         #  plotting
         with Plotter(
@@ -1139,7 +1152,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             #            xlim=Limits(q[1], np.pi / min(w_xy)),
             xscale="log",
             yscale="log",
-            super_title="Structure Factor: $S(q)$",
+            super_title=f"{self.name}: Structure Factor ($S(q)$)",
             **kwargs,
         ) as axes:
 
@@ -1188,7 +1201,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return afterpulse
 
-    def dump_or_load_data(self, should_load: bool) -> None:
+    def dump_or_load_data(self, should_load: bool, method_name=None) -> None:
         """
         Load or save the 'data' attribute.
         (relieve RAM - important during multiple-experiment analysis)
@@ -1199,7 +1212,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             if should_load:  # loading data
                 if self.is_data_dumped:
                     logging.debug(
-                        f"Loading dumped data '{self.name_on_disk}' from '{self.DUMP_PATH}'."
+                        f"{method_name}: Loading dumped data '{self.name_on_disk}' from '{self.DUMP_PATH}'."
                     )
                     with suppress(FileNotFoundError):
                         self.data = file_utilities.load_file(self.DUMP_PATH / self.name_on_disk)
@@ -1214,9 +1227,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 if is_saved:
                     self.data = []
                     self.is_data_dumped = True
-                    logging.debug(f"Dumped data '{self.name_on_disk}' to '{self.DUMP_PATH}'.")
-                else:
-                    logging.debug("Data was too small or too large to be saved.")
+                    logging.debug(
+                        f"{method_name}: Dumped data '{self.name_on_disk}' to '{self.DUMP_PATH}'."
+                    )
 
 
 class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
@@ -1294,6 +1307,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                     setattr(self, meas_type, SolutionSFCSMeasurement(name=meas_type))
             else:  # use supllied measurement
                 setattr(self, meas_type, measurement)
+                getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
         super_title = f"Experiment '{self.name}' - All ACFs"
         with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
@@ -1396,7 +1410,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
         """Doc."""
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
-            self.sted.correlate_and_average(gate_ns=gate_ns, **kwargs)
+            self.sted.correlate_and_average(cf_name=f"gSTED {gate_ns}", gate_ns=gate_ns, **kwargs)
             if should_plot:
                 self.plot_correlation_functions(**kwargs)
         else:
