@@ -6,7 +6,6 @@ from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
@@ -30,6 +29,7 @@ from utilities.helper import Limits, div_ceil
 class StructureFactor:
     """Holds structure factor data"""
 
+    # parameters
     n_interp_pnts: int
     r_max: float
     vt_min_sq: float
@@ -40,12 +40,8 @@ class StructureFactor:
     fr_linear_interp: np.ndarray
 
     q: np.ndarray
-    qz: np.ndarray
-
     sq: np.ndarray
     sq_linear_interp: np.ndarray
-    sq_cor: np.ndarray
-    sq_linear_interp_cor: np.ndarray
     sq_error: np.ndarray
 
 
@@ -198,7 +194,7 @@ class CorrFunc:
         r_max=10,
         r_min=0.05,
         g_min=1e-2,
-        interp_pnts=None,  # default was 2 (uses robust_interpolation)
+        n_robust=2,
         **kwargs,
     ) -> None:
         """Doc."""
@@ -219,59 +215,52 @@ class CorrFunc:
         sample_normalized = self.normalized[j_intrp]
 
         #  Gaussian interpolation
-        if interp_pnts is not None:
+        if n_robust:
             log_fr = self.robust_interpolation(
-                r ** 2, sample_vt_um ** 2, np.log(sample_normalized), interp_pnts
+                r ** 2, sample_vt_um ** 2, np.log(sample_normalized), n_robust
             )
         else:
             interpolator = scipy.interpolate.interp1d(
-                sample_vt_um ** 2, np.log(sample_normalized), fill_value="extrapolate"
+                sample_vt_um ** 2,
+                np.log(sample_normalized),
+                fill_value="extrapolate",
+                assume_sorted=True,
             )
             log_fr = interpolator(r ** 2)
         fr = np.exp(log_fr)
-        with Plotter(
-            super_title=f"{self.name} Gaussian Interpolation",
-            xlim=(0, self.vt_um[max(j_intrp) + 5] ** 2),
-            ylim=(1e-1, 1.3),
-        ) as ax:
-            ax.semilogy(
-                self.vt_um ** 2,
-                self.normalized,
-                "x",
-                sample_vt_um ** 2,
-                sample_normalized,
-                "o",
-                r ** 2,
-                fr,
-            )
-            ax.legend(["Normalized", "Interpolation Sample", "Interpolation/Extrapolation"])
 
         #  linear interpolation
-        if interp_pnts is not None:
+        if n_robust:
             fr_linear_interp = self.robust_interpolation(
-                r, sample_vt_um, sample_normalized, interp_pnts
+                r, sample_vt_um, sample_normalized, n_robust
             )
         else:
             interpolator = scipy.interpolate.interp1d(
-                sample_vt_um, sample_normalized, fill_value="extrapolate"
+                sample_vt_um,
+                sample_normalized,
+                fill_value="extrapolate",
+                assume_sorted=True,
             )
             fr_linear_interp = interpolator(r)
+
+        # plot interpolations for checks
         with Plotter(
-            super_title=f"{self.name} Linear Interpolation",
+            super_title=f"{self.name} Interpolation Testing",
             xlim=(0, self.vt_um[max(j_intrp) + 5] ** 2),
             ylim=(1e-1, 1.3),
         ) as ax:
-            ax.semilogy(
-                self.vt_um ** 2,
-                self.normalized,
-                "x",
-                sample_vt_um ** 2,
-                sample_normalized,
-                "o",
-                r ** 2,
-                fr_linear_interp,
+            ax.semilogy(self.vt_um ** 2, self.normalized, "x")
+            ax.semilogy(sample_vt_um ** 2, sample_normalized, "o")
+            ax.semilogy(r ** 2, fr)
+            ax.semilogy(r ** 2, fr_linear_interp)
+            ax.legend(
+                [
+                    "Normalized",
+                    "Interpolation Sample",
+                    "Gaussian Intep/Extrap",
+                    "Linear Intep/Extrap",
+                ]
             )
-            ax.legend(["Normalized", "Interpolation Sample", "Interpolation/Extrapolation"])
 
         #  zero-pad
         fr_linear_interp[r > self.vt_um[j_normalized_over_gmin[-1]]] = 0
@@ -282,42 +271,26 @@ class CorrFunc:
         #  linear interpolated Fourier Transform
         _, fq_linear_interp = self.hankel_transform(r, fr_linear_interp)
 
-        # One step correction  for finite aspect ratio
-        dqz = np.median(np.diff(q))
-        qz = np.arange(0, max(q), dqz)
-        q_mesh, qz_mesh = np.meshgrid(q, qz)
-        q_vec = np.sqrt(q_mesh ** 2 + qz_mesh ** 2)
-
-        # zero-pad fq above first zero
-        d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq)
-        d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
-
-        d_gq = fq - d_gq_2d_to_3d.sum(axis=0).T / qz.size
-        fq_cor = fq + d_gq
-
-        d_gq_2d_to_3d = np.interp(q_vec.ravel(), q, fq_linear_interp)
-        d_gq_2d_to_3d = np.reshape(d_gq_2d_to_3d, q_vec.shape, order="F")
-        d_gq = fq_linear_interp - d_gq_2d_to_3d.sum(axis=0).T / qz.size
-        fq_linear_interp_cor = fq_linear_interp + d_gq
-
-        #  Estimating error of Fourier transform
-        print("Estimating structure factor errors...", end=" ")
-        fq_allfunc = np.empty(shape=(len(self.j_good), q.size))
-        for idx, j in enumerate(self.j_good):
-            sample_cf_cr = self.cf_cr[j, j_intrp]
-            sample_cf_cr[sample_cf_cr <= 1] = 1  # TODO: is that the best way to solve this?
-            if interp_pnts is not None:
-                log_fr = self.robust_interpolation(
-                    r ** 2, sample_vt_um ** 2, np.log(sample_cf_cr), interp_pnts
-                )
-            else:
-                log_fr = np.interp(r ** 2, sample_vt_um ** 2, np.log(sample_cf_cr))
-            fr = np.exp(log_fr)
-            fr[np.nonzero(fr < 0)[0]] = 0
-
-            _, fq_allfunc[idx] = self.hankel_transform(r, fr)
-
-        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
+        # TODO: show this to Oleg - can't figure out what's wrong
+        #        #  Estimating error of transform
+        #        print("Estimating error of transform...") # TESTESTEST
+        #        fq_allfunc = np.empty(shape=(len(self.j_good), q.size))
+        #        for idx, j in enumerate(self.j_good):
+        #            sample_cf_cr = self.cf_cr[j, j_intrp]
+        #            sample_cf_cr[sample_cf_cr <= 0] = 1e-3  # TODO: is that the best way to solve this?
+        #            if n_robust and False: # TESTESTEST - CANELLED FOR NOW
+        #                log_fr = self.robust_interpolation(
+        #                    r ** 2, sample_vt_um ** 2, np.log(sample_cf_cr), n_robust
+        #                )
+        #            else:
+        #                log_fr = np.interp(r ** 2, sample_vt_um ** 2, np.log(sample_cf_cr))
+        #            fr = np.exp(log_fr)
+        #            fr[np.nonzero(fr < 0)[0]] = 0
+        #
+        #            _, fq_allfunc[idx] = self.hankel_transform(r, fr)
+        #
+        #        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
+        fq_error = None
 
         self.structure_factor = StructureFactor(
             n_interp_pnts,
@@ -328,11 +301,8 @@ class CorrFunc:
             fr,
             fr_linear_interp,
             q,
-            qz,
             fq,
             fq_linear_interp,
-            fq_cor,
-            fq_linear_interp_cor,
             fq_error,
         )
 
@@ -341,60 +311,49 @@ class CorrFunc:
         x,
         xi,
         yi,
-        n_interp_pnts,
+        n_pnts,
     ):
         """Doc."""
 
-        y = np.empty(shape=x.shape)
-
-        xi = xi.ravel().T
-        change_my_name = [-np.inf] + xi.tolist() + [np.inf]
-        (h, _), bin = np.histogram(x, np.array(change_my_name)), np.digitize(
-            x, np.array(change_my_name)
-        )  # translated from: [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
+        # translated from: [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
+        xi_inf = np.concatenate(([-np.inf], xi, [np.inf]))
+        (h, _), bin = np.histogram(x, xi_inf), np.digitize(x, xi_inf)
         ch = np.cumsum(h)
-        st = max(bin[0] - 1, n_interp_pnts)
-        fin = min(bin[x.size - 1] - 1, xi.size - n_interp_pnts)
+        start = max(bin[0] - 1, n_pnts)
+        finish = min(bin[x.size - 1] - 1, xi.size - n_pnts - 1)
 
-        D = SimpleNamespace(x=[], slope=[])
-        i = st
-        for i in range(st, min(bin[x.size - 1] - 1, xi.size - n_interp_pnts)):
-            ji = np.arange((i - n_interp_pnts + 1), (i + n_interp_pnts))
+        y = np.empty(shape=x.shape)
+        ransac = linear_model.RANSACRegressor()
+        for i in range(start, finish + 1):
+            ji = range(i - n_pnts, i + n_pnts + 1)
+
             # Robustly fit linear model with RANSAC algorithm
-            ransac = linear_model.RANSACRegressor()
             ransac.fit(xi[ji][:, np.newaxis], yi[ji])
             p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
 
-            fin = min(bin[x.size - 1] - 1, xi.size - n_interp_pnts)
-
-            if i == st:
-                j = np.arange(ch[i + 1])
-            elif i == fin:
-                j = np.arange((ch[i] + 1), x.size)
+            if i == start:
+                j = range(ch[i + 1] + 1)
+            elif i == finish:
+                j = range((ch[i] + 1), x.size)
             else:
-                j = np.arange((ch[i] + 1), ch[i + 1])
+                j = range((ch[i] + 1), ch[i + 1] + 1)
 
             y[j] = p0 + p1 * x[j]
-            D.x.append(xi[i])
-            D.slope.append(p1)
 
-        return y  # , D
+        return y
 
     def hankel_transform(
         self,
         x: np.ndarray,
         y: np.ndarray,
         should_inverse: bool = False,
-        should_do_robust_interpolation: bool = False,
+        n_robust: int = 2,
         should_do_gaussian_interpolation: bool = False,
-        n_interp_pnts: int = 2,
         dr=None,
     ):
         """Doc."""
 
-        x = x.ravel()
-        y = y.ravel()
-        n = len(x)
+        n = x.size
 
         # prepare the Hankel transformation matrix C
         c0 = scipy.special.jn_zeros(0, n)
@@ -422,27 +381,35 @@ class CorrFunc:
 
             # end preparations for Hankel transform
 
-            if should_do_robust_interpolation:
-                if should_do_gaussian_interpolation:
+            if n_robust:  # use robust interpolation
+                if should_do_gaussian_interpolation:  # Gaussian
                     y_interp = np.exp(
-                        self.robust_interpolation(r ** 2, x ** 2, np.log(y), n_interp_pnts)
+                        self.robust_interpolation(r ** 2, x ** 2, np.log(y), n_robust)
                     )
                     y_interp[
-                        r > x[-n_interp_pnts]
+                        r > x[-n_robust]
                     ] = 0  # zero pad last points that do not have full interpolation
                 else:  # linear
-                    y_interp = self.robust_interpolation(r, x, y, n_interp_pnts)
+                    y_interp = self.robust_interpolation(r, x, y, n_robust)
 
                 y_interp = y_interp.ravel()
 
             else:
                 if should_do_gaussian_interpolation:
                     interpolator = scipy.interpolate.interp1d(
-                        x ** 2, np.log(y), fill_value="extrapolate"
+                        x ** 2,
+                        np.log(y),
+                        fill_value="extrapolate",
+                        assume_sorted=True,
                     )
                     y_interp = np.exp(interpolator(r ** 2))
                 else:  # linear
-                    interpolator = scipy.interpolate.interp1d(x, y, fill_value="extrapolate")
+                    interpolator = scipy.interpolate.interp1d(
+                        x,
+                        y,
+                        fill_value="extrapolate",
+                        assume_sorted=True,
+                    )
                     y_interp = interpolator(r)
 
             return 2 * np.pi * q, C @ (y_interp / m1) * m2
@@ -464,7 +431,12 @@ class CorrFunc:
             m2 = m1 * r_max / q_max  # m2 prepares output vector for display
             # end preparations for Hankel transform
 
-            interpolator = scipy.interpolate.interp1d(x, y, fill_value="extrapolate")
+            interpolator = scipy.interpolate.interp1d(
+                x,
+                y,
+                fill_value="extrapolate",
+                assume_sorted=True,
+            )
 
             return r, C @ (interpolator(q) / m2) * m1
 
@@ -635,14 +607,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 self.scan_type = "angular_scan"
                 self.angular_scan_settings = full_data["angular_scan_settings"]
                 self.LINE_END_ADDER = 1000
-            return self.process_angular_scan_data(full_data, idx, **kwargs)
+            return self._process_angular_scan_data(full_data, idx, **kwargs)
 
         # FCS
         else:
             self.scan_type = "static"
-            return self.process_static_data(full_data, idx, **kwargs)
+            return self._process_static_data(full_data, idx, **kwargs)
 
-    def process_static_data(self, full_data, idx, **kwargs) -> TDCPhotonData:
+    def _process_static_data(self, full_data, idx, **kwargs) -> TDCPhotonData:
         """
         Processes a single static FCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
@@ -660,7 +632,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return p
 
-    def process_angular_scan_data(
+    def _process_angular_scan_data(
         self,
         full_data,
         idx,
@@ -847,11 +819,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         """
 
         if self.scan_type == "angular_scan":
-            CF = self.correlate_angular_scan_data(**kwargs)
+            CF = self._correlate_angular_scan_data(**kwargs)
         elif self.scan_type == "circular_scan":
-            CF = self.correlate_circular_scan_data(**kwargs)
+            CF = self._correlate_circular_scan_data(**kwargs)
         elif self.scan_type == "static":
-            CF = self.correlate_static_data(**kwargs)
+            CF = self._correlate_static_data(**kwargs)
         else:
             raise NotImplementedError(
                 f"Correlating data of type '{self.scan_type}' is not implemented."
@@ -864,7 +836,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return CF
 
-    def correlate_static_data(
+    def _correlate_static_data(
         self,
         cf_name=None,
         gate_ns=(0, np.inf),
@@ -977,7 +949,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return CF
 
-    def correlate_angular_scan_data(
+    def _correlate_angular_scan_data(
         self,
         cf_name=None,
         gate_ns=(0, np.inf),
@@ -1094,7 +1066,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return CF
 
-    def correlate_circular_scan_data(
+    def _correlate_circular_scan_data(
         self, gate_ns=(0, np.inf), min_time_frac=0.5, subtract_bg_corr=True, **kwargs
     ) -> CorrFunc:
         """Correlates data for circular scans. Returns a CorrFunc object"""
@@ -1141,47 +1113,27 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         """Doc."""
 
         # calculation
-        logging.info(f"Calculating all structure factors for measurement '{self.name}'.")
+        print(f"Calculating all structure factors for '{self.name}' measurement...")
         for cf in self.cf.values():
             #            if not hasattr(cf, "structure_factor"):
             cf.calculate_structure_factor(**kwargs)
 
         #  plotting
         with Plotter(
-            subplots=(1, 3),
             #            xlim=Limits(q[1], np.pi / min(w_xy)),
-            xscale="log",
-            yscale="log",
             super_title=f"{self.name}: Structure Factor ($S(q)$)",
             **kwargs,
-        ) as axes:
-
-            legend_labels_list: List[list] = [[], [], []]
+        ) as ax:
+            legend_labels = []
             for name, cf in self.cf.items():
                 s = cf.structure_factor
-
-                axes[0].set_title("Gaussian vs. linear\nInterpolation")
-                axes[0].plot(s.q, np.vstack((s.sq, s.sq_linear_interp)).T, **plot_kwargs)
-                legend_labels_list[0] += [f"{name}: Gaussian", f"{name}: Linear"]
-
-                axes[1].set_title("Corrected for 3D vs. uncorrected\nGaussian Interpolation")
-                axes[1].plot(s.q, np.vstack((s.sq, s.sq_cor)).T, **plot_kwargs)
-                legend_labels_list[1] += [
-                    f"{name}: Uncorrected Gaussian",
-                    f"{name}: Corrected Gaussian",
+                ax.set_title("Gaussian vs. linear\nInterpolation")
+                ax.loglog(s.q, np.vstack((s.sq, s.sq_linear_interp)).T, **plot_kwargs)
+                legend_labels += [
+                    f"{name}: Gaussian Interpolation",
+                    f"{name}: Linear Interpolation",
                 ]
-
-                axes[2].set_title("Corrected for 3D vs. uncorrected\nLinear Interpolation")
-                axes[2].plot(
-                    s.q, np.vstack((s.sq_linear_interp, s.sq_linear_interp_cor)).T, **plot_kwargs
-                )
-                legend_labels_list[2] += [
-                    f"{name}: Uncorrected Linear",
-                    f"{name}: Corrected Linear",
-                ]
-
-            for i in range(3):
-                axes[i].legend(legend_labels_list[i])
+            ax.legend(legend_labels)
 
     def calculate_afterpulse(self, gate_ns: Limits, lag: np.ndarray) -> np.ndarray:
         """Doc."""
@@ -1476,9 +1428,28 @@ class SFCSExperiment(TDCPhotonDataMixin):
     def calculate_structure_factors(self, **kwargs) -> None:
         """Doc."""
 
-        # TODO: generalize Plotter to use subfigures - its pretty much needed at this point (also for TDC calibration)
+        # calculate all structure factors
         for meas_type in ("confocal", "sted"):
             getattr(self, meas_type).calculate_structure_factors(**kwargs)
+
+        # plot them
+        with Plotter(
+            subplots=(1, 2), super_title=f"Experiment '{self.name}':\nStructure Factors"
+        ) as axes:
+            axes[0].set_title("Gaussian Interpolation")
+            axes[1].set_title("Linear Interpolation")
+            legend_labels = []
+
+            for meas_type in ("confocal", "sted"):
+                meas = getattr(self, meas_type)
+                for cf_name, cf in meas.cf.items():
+                    s = cf.structure_factor
+                    axes[0].loglog(s.q, s.sq, **kwargs.get("plot_kwargs", {}))
+                    axes[1].loglog(s.q, s.sq_linear_interp, **kwargs.get("plot_kwargs", {}))
+                    legend_labels.append(cf_name)
+
+            axes[0].legend(legend_labels)
+            axes[1].legend(legend_labels)
 
 
 # TODO - create an AngularScanMixin class and throw the below functions there

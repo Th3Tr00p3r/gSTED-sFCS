@@ -1634,11 +1634,13 @@ class MainWin:
         gate_to_remove = wdgt.get()
         # delete from object
         experiment = self.get_experiment()
-        # TODO: KeyError - clear the available_gates when removing experiment!
         try:
             experiment.sted.cf.pop(f"gSTED {gate_to_remove}")
         except AttributeError:  # no experiment loaded or no STED
             logging.info("Can't remove gate.")
+        except KeyError:  # no assigned gate
+            # TODO: clear the available_gates when removing experiment!
+            pass
         else:
             # re-plot
             kwargs = dict(
@@ -1657,9 +1659,13 @@ class MainWin:
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
         experiment = self.get_experiment()
         try:
-            experiment.calculate_structure_factors(g_min=wdgt_coll.g_min)
+            experiment.calculate_structure_factors(
+                g_min=wdgt_coll.g_min, n_rbst_intrp_points=wdgt_coll.n_rbst_intrp_points
+            )
         except AttributeError:
             logging.info("Can't calculate structure factors, no experiment is loaded!")
+        else:
+            logging.info(f"Calculated all structure factors for '{experiment.name}' experiment.")
 
 
 class SettWin:
