@@ -23,6 +23,7 @@ scanImgFileNum,1
 solAnalysisRemoveWorstSpinner,0
 tdcCalibGating,40
 tdcCalibGating_2,20
+expStrctFctrRbstIntrpPnts,2
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -35,6 +36,7 @@ imgScanDim3,10.0
 imgScanLinFrac,0.9
 solAnalysisRemoveOverSpinner,2.0
 customGateLifetimes,0.5
+expStrctFctrGMin,0.175
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -47,16 +49,16 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,11
 dataYear,2021
-dataDay,30
-dataTemplate1,sol_angular_exc_141345_*.pkl
+dataDay,1
+dataTemplate1,bp300_yoyo_1in15bp_angular_sted_165347_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
-importedSolDataTemplates1,
+importedSolDataTemplates1,bp300_yoyo_1in15bp_angular_sted_165347_*.pkl
 loadedExperimentNames,
 assignedGates,
 availableGates,
-importedSolDataTemplates2,
+importedSolDataTemplates2,bp300_yoyo_1in15bp_angular_exc_164024_*.pkl
 expPropGstedGate,Lifetime
 avgInterval,5000
 solScanParamsStacked,2
@@ -74,8 +76,8 @@ solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
 solAveragingPlotSpatial,False
-assignLoadedMeas,False
-assignRawData,True
+assignLoadedMeas,True
+assignRawData,False
 currMode,True
 powMode,False
 posAxisZ,False
@@ -98,7 +100,6 @@ alwaysSaveImg,False
 solDataFixShift,True
 solDataSubtractBgCorr,True
 solDataSubtractAfterpulse,True
-assignPreProcessed,True
 autoExp1,False
 autoExp2,False
 scaleImgScan,299
