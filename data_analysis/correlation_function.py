@@ -166,7 +166,7 @@ class CorrFunc:
     ):
 
         if fit_param_estimate is None:
-            fit_param_estimate = [self.g0, 0.035, 30.0]
+            fit_param_estimate = (self.g0, 0.035, 30.0)
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
