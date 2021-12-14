@@ -124,14 +124,10 @@ class CorrFunc:
 
     def plot_correlation_function(
         self,
-        parent_ax=None,
         x_field="lag",
         y_field="avg_cf_cr",
         x_scale="log",
         y_scale="linear",
-        xlim=None,
-        ylim=None,
-        plot_kwargs={},
         **kwargs,
     ):
 
@@ -141,16 +137,14 @@ class CorrFunc:
             x, y = x[1:], y[1:]
 
         with Plotter(
-            parent_ax=parent_ax,
-            xlim=xlim,
-            ylim=ylim,
             xscale=x_scale,
             y_scale=y_scale,
             should_autoscale=True,
+            **kwargs,
         ) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
-            ax.plot(x, y, "-", **plot_kwargs)
+            ax.plot(x, y, "-", **kwargs.get("plot_kwargs", {}))
 
     def fit_correlation_function(
         self,
@@ -1079,23 +1073,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         y_field="normalized",
         x_scale="log",
         y_scale="linear",
-        parent_figure=None,
-        parent_ax=None,
         ylim=(-0.20, 1.4),
         plot_kwargs={},
         **kwargs,
     ) -> List[str]:
         """Doc."""
 
-        with Plotter(
-            parent_figure=parent_figure,
-            parent_ax=parent_ax,
-            super_title=f"'{self.name}' - ACFs",
-        ) as ax:
+        with Plotter(super_title=f"'{self.name}' - ACFs", **kwargs) as ax:
             legend_labels = []
+            kwargs["parent_ax"] = ax
             for cf_name, cf in self.cf.items():
                 cf.plot_correlation_function(
-                    parent_ax=ax,
                     x_field=x_field,
                     y_field=y_field,
                     x_scale=x_scale,
@@ -1382,43 +1370,27 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
-    def plot_correlation_functions(
-        self,
-        x_field="vt_um",
-        y_field="normalized",
-        x_scale="linear",
-        y_scale="linear",
-        parent_figure=None,
-        parent_ax=None,
-        xlim=(0, 1),
-        ylim=(-0.20, 1.4),
-        plot_kwargs={},
-        **kwargs,
-    ):
+    def plot_correlation_functions(self, **kwargs):
         if self.confocal.scan_type == "static":
-            x_field = "lag"
+            kwargs["x_field"] = "lag"
 
-        if y_field in {"average_all_cf_cr", "avg_cf_cr"}:
-            ylim = None  # will autoscale y
+        if kwargs.get("y_field") in {"average_all_cf_cr", "avg_cf_cr"}:
+            kwargs["ylim"] = None  # will autoscale y
 
-        super_title = f"'{self.name}' Experiment - All ACFs"
         with Plotter(
-            parent_figure=parent_figure,
-            parent_ax=parent_ax,
-            super_title=super_title,
+            super_title=f"'{self.name}' Experiment - All ACFs",
             **kwargs,
         ) as ax:
-            # TODO: can probably avoid specifying all kwargs twice by using kwargs and get(defualt)
             legend_label_lists = [
                 getattr(self, meas_type).plot_correlation_functions(
                     parent_ax=ax,
-                    x_field=x_field,
-                    y_field=y_field,
-                    x_scale=x_scale,
-                    y_scale=y_scale,
-                    xlim=xlim,
-                    ylim=ylim,
-                    plot_kwargs=plot_kwargs,
+                    x_field=kwargs.get("x_field", "vt_um"),
+                    y_field=kwargs.get("y_field", "normalized"),
+                    x_scale=kwargs.get("x_scale", "linear"),
+                    y_scale=kwargs.get("y_scale", "linear"),
+                    xlim=kwargs.get("xlim", (0, 1)),
+                    ylim=kwargs.get("ylim", (-0.20, 1.4)),
+                    plot_kwargs=kwargs.get("plot_kwargs", {}),
                 )
                 for meas_type in ("confocal", "sted")
             ]

@@ -88,7 +88,7 @@ class GuiDisplay:
 
         x_arr, x_type = x
 
-        with Plotter(gui_display=self, gui_options=self.GuiDisplayOptions(), **kwargs) as ax:
+        with Plotter(gui_display=self, **kwargs) as ax:
             if x_type == "lag":
                 ax.set_xscale("log")
                 ax.set_xlim(1e-4, 1e1)
