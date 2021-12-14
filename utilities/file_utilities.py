@@ -242,6 +242,10 @@ def load_file(file_path: Union[str, Path]) -> Any:
         except ValueError:  # in case blosc decompression fails
             with open(file_path, "rb") as f:
                 return pickle.load(f)  # deserialize only
+    except OSError:  # not fully downloaded from cloud
+        raise OSError(
+            "File was not fully downloaded from cloud! Check that cloud is synchronizing."
+        )
 
     # if decompressed, still needs deserialization
     return pickle.loads(obj)
