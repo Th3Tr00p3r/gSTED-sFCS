@@ -600,7 +600,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             """Doc."""
 
             s = SolutionSFCSMeasurement()
-            p = s.process_data(self.prep_data_dict(), ignore_coarse_fine=True)
+            p = s.process_data_file(file_dict=self.prep_data_dict(), ignore_coarse_fine=True)
             s.data.append(p)
             s.correlate_and_average(cf_name=self.laser_mode)
             return s

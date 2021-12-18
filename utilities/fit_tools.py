@@ -58,7 +58,7 @@ def curve_fit_lims(
     fit_func = globals()[fit_name]
 
     fit_params = _fit_and_get_param_dict(
-        fit_func, x, y, param_estimates, sigma=y_err, absolute_sigma=True
+        fit_func, x, y, param_estimates, sigma=y_err, absolute_sigma=True, **kwargs
     )
 
     if should_plot:
@@ -151,6 +151,17 @@ def diffusion_3d_fit(t, A, tau, w_sq):
 
 def exponent_with_background_fit(t, A, tau, bg):
     return A * np.exp(-t / tau) + bg
+
+
+def multi_exponent_fit(t, *beta):
+    """
+    Work with any number of exponents, e.g.:
+    y = beta[0]*exp(-beta[1]*t) + beta[2]*exp(-beta[3]*t) + beta[4]*exp(-beta[5]*t)
+    """
+
+    amplitude_row_vec = np.array(beta[::2])[:, np.newaxis].T
+    decay_column_vec = np.array(beta[1::2])[:, np.newaxis]
+    return (amplitude_row_vec @ np.exp(-decay_column_vec * t)).squeeze()
 
 
 def ratio_of_lifetime_histograms(t, sig_x, sig_y, t0):
