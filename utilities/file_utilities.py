@@ -134,7 +134,10 @@ default_system_info = {
 def estimate_bytes(obj) -> int:
     """Returns the estimated size in bytes."""
 
-    return len(pickle.dumps(obj, protocol=-1))
+    try:
+        return len(pickle.dumps(obj, protocol=-1))
+    except MemoryError:
+        raise MemoryError("Object is too big!")
 
 
 def deep_size_estimate(obj, level=np.inf, indent=0, threshold_mb=0.01, name=None) -> None:
@@ -493,7 +496,7 @@ def prepare_file_paths(file_path_template: Path, file_selection: str = None) -> 
     if not file_paths:
         raise FileNotFoundError(f"File template path ('{file_path_template}') does not exist!")
 
-    if file_selection is not None:
+    if file_selection:
         try:
             file_idxs, choice = file_selection_str_to_list(file_selection)
             if choice == "Use":
