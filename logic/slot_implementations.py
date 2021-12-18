@@ -400,7 +400,9 @@ class MainWin:
         with suppress(AttributeError):
             # IndexError - 'App' object has no attribute 'curr_img_idx'
             image_tdc = ImageSFCSMeasurement()
-            image_tdc.process_data(file_dict=self._app.last_image_scans[self._app.curr_img_idx])
+            image_tdc.process_data_file(
+                file_dict=self._app.last_image_scans[self._app.curr_img_idx]
+            )
             image_data = image_tdc.image_data
             line_ticks_v = image_data.line_ticks_v
             row_ticks_v = image_data.row_ticks_v
@@ -496,7 +498,7 @@ class MainWin:
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
             image_tdc = ImageSFCSMeasurement()
-            image_tdc.process_data(file_dict=self._app.last_image_scans[img_idx])
+            image_tdc.process_data_file(file_dict=self._app.last_image_scans[img_idx])
             image_data = image_tdc.image_data
             if plane_idx is None:
                 # use center plane if not supplied

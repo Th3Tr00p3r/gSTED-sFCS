@@ -1,10 +1,12 @@
 """Data organization and manipulation."""
 
 import logging
+import multiprocessing as mp
 import re
 from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
@@ -22,7 +24,7 @@ from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
 from utilities.display import Plotter
 from utilities.fit_tools import FitParams, curve_fit_lims
-from utilities.helper import Limits, div_ceil
+from utilities.helper import Limits, div_ceil, timer
 
 
 @dataclass
@@ -157,6 +159,7 @@ class CorrFunc:
         x_scale="log",
         y_scale="linear",
         should_plot=False,
+        **kwargs,
     ):
 
         if fit_param_estimate is None:
@@ -180,6 +183,7 @@ class CorrFunc:
             should_plot=should_plot,
             x_scale=x_scale,
             y_scale=y_scale,
+            **kwargs,
         )
 
     def calculate_structure_factor(
@@ -511,35 +515,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         print("\nLoading FPGA data from hard drive:", end=" ")
 
         file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
-        n_files = len(file_paths)
+        self.n_paths = len(file_paths)
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
 
-        for idx, file_path in enumerate(file_paths):
-            # Loading file from disk
-            print(f"Loading file No. {idx+1}/{n_files}: '{file_path}'...", end=" ")
-            try:
-                file_dict = file_utilities.load_file_dict(file_path)
-            except OSError:
-                print(f"File '{idx+1}' has not been fully downloaded from cloud. Skipping...\n")
-                continue
-            else:
-                print("Done.")
-
-            # Processing data
-            p = self.process_data(file_dict, idx, verbose=True, **kwargs)
-
-            # Appending data to self
-            if p is not None:
-                p.file_path = file_path
-                self.data.append(p)
-                print(f"Finished processing file No. {idx+1}\n")
+        self.data = self.process_all_data(file_paths, **kwargs)
 
         # count the files and ensure there's at least one file
         self.n_files = len(self.data)
         if not self.n_files:
             raise RuntimeError(
-                f"Loading FPGA data catastrophically failed ({n_files}/{n_files} files skipped)."
+                f"Loading FPGA data catastrophically failed ({self.n_paths}/{self.n_paths} files skipped)."
             )
 
         if self.scan_type == "angular_scan":
@@ -557,37 +543,67 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             )
             print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
 
-        print(f"Finished loading FPGA data ({len(self.data)}/{n_files} files used).\n")
+        print(f"Finished loading FPGA data ({self.n_files}/{self.n_paths} files used).\n")
 
         # plotting of scan image and ROI
         if should_plot:
             print("Displaying scan images...", end=" ")
-            with Plotter(subplots=(1, n_files), fontsize=8, should_force_aspect=True) as axes:
+            with Plotter(subplots=(1, self.n_files), fontsize=8, should_force_aspect=True) as axes:
                 if not hasattr(
                     axes, "size"
                 ):  # if axes is not an ndarray (only happens if reading just one file)
                     axes = np.array([axes])
-                for idx, (ax, image, roi) in enumerate(
+                for file_idx, (ax, image, roi) in enumerate(
                     zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
                 ):
-                    ax.set_title(f"file #{idx+1} of\n'{self.name}' measurement")
+                    ax.set_title(f"file #{file_idx+1} of\n'{self.name}' measurement")
                     ax.set_xlabel("Pixel Number")
                     ax.set_ylabel("Line Number")
                     ax.imshow(image)
                     ax.plot(roi["col"], roi["row"], color="white")
             print("Done.\n")
 
-    def process_data(self, file_dict: dict, idx: int = 0, **kwargs) -> TDCPhotonData:
+    @timer()
+    def process_all_data(
+        self, file_paths: List[Path], should_parallel_process: bool = False, **kwargs
+    ) -> List[TDCPhotonData]:
         """Doc."""
+
+        self.get_general_properties(file_paths[0])
+
+        if (
+            should_parallel_process and len(file_paths) > 1
+        ):  # parellel processing # TODO: when working, add condition for number of files > say 3
+            N_PROCESSES = mp.cpu_count() - 1
+            print(f"Parallel processing using {N_PROCESSES} CPUs/processes.")
+            with mp.get_context("spawn").Pool(N_PROCESSES) as pool:  # TODO: was 4
+                func = partial(self.process_data_file, verbose=True, **kwargs)
+                data = list(pool.imap(func, file_paths))
+
+        else:  # serial processing
+            data = []
+            for file_path in file_paths:
+                # Processing data
+                p = self.process_data_file(file_path, verbose=True, **kwargs)
+                # Appending data to self
+                if p is not None:
+                    data.append(p)
+
+        return data
+
+    def get_general_properties(self, file_path: Path = None, file_dict: dict = None) -> None:
+        """Get general measurement properties from the first data file"""
+
+        if file_path is not None:  # Loading file from disk
+            file_dict = file_utilities.load_file_dict(file_path)
 
         full_data = file_dict["full_data"]
 
-        if idx == 0:
-            self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
-            self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
-            self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
-            with suppress(KeyError):
-                self.duration_min = full_data["duration_s"] / 60
+        self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
+        self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
+        self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
+        with suppress(KeyError):
+            self.duration_min = full_data["duration_s"] / 60
 
         # Circular sFCS
         if full_data.get("circle_speed_um_s"):
@@ -597,18 +613,50 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         # Angular sFCS
         elif full_data.get("angular_scan_settings"):
-            if idx == 0:
-                self.scan_type = "angular_scan"
-                self.angular_scan_settings = full_data["angular_scan_settings"]
-                self.LINE_END_ADDER = 1000
-            return self._process_angular_scan_data(full_data, idx, **kwargs)
+            self.scan_type = "angular_scan"
+            self.angular_scan_settings = full_data["angular_scan_settings"]
+            self.v_um_ms = self.angular_scan_settings["actual_speed_um_s"] * 1e-3
+            self.LINE_END_ADDER = 1000
 
         # FCS
         else:
             self.scan_type = "static"
-            return self._process_static_data(full_data, idx, **kwargs)
 
-    def _process_static_data(self, full_data, idx, **kwargs) -> TDCPhotonData:
+    def process_data_file(
+        self, file_path: Path = None, file_dict: dict = None, **kwargs
+    ) -> TDCPhotonData:
+        """Doc."""
+
+        if file_path is not None:  # Loading file from disk
+            *_, template = file_path.parts
+            file_idx = int(re.split("_(\\d+)\\.", template)[1])
+            print(
+                f"Loading and processing file {file_idx}/{self.n_paths}: '{file_path}'...", end=" "
+            )
+            file_dict = file_utilities.load_file_dict(file_path)
+        else:  # using supplied file_dict
+            file_idx = 1
+
+        full_data = file_dict["full_data"]
+
+        # Circular sFCS
+        if full_data.get("circle_speed_um_s"):
+            raise NotImplementedError("Circular scan analysis not yet implemented...")
+
+        # Angular sFCS
+        elif full_data.get("angular_scan_settings"):
+            p = self._process_angular_scan_data(full_data, file_idx, **kwargs)
+
+        # FCS
+        else:
+            self.scan_type = "static"
+            p = self._process_static_data(full_data, file_idx, **kwargs)
+
+        p.file_path = file_path
+        print(f"Finished processing file No. {file_idx}\n")
+        return p
+
+    def _process_static_data(self, full_data, file_idx, **kwargs) -> TDCPhotonData:
         """
         Processes a single static FCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
@@ -621,7 +669,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             **kwargs,
         )
 
-        p.file_num = idx + 1
+        p.file_num = file_idx
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         return p
@@ -629,7 +677,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     def _process_angular_scan_data(
         self,
         full_data,
-        idx,
+        file_idx,
         should_fix_shift=True,
         roi_selection="auto",
         **kwargs,
@@ -643,12 +691,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             full_data["byte_data"], version=full_data["version"], verbose=True
         )
 
-        p.file_num = idx + 1
+        p.file_num = file_idx
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         angular_scan_settings = full_data["angular_scan_settings"]
         linear_part = angular_scan_settings["linear_part"].round().astype(np.uint16)
-        self.v_um_ms = angular_scan_settings["actual_speed_um_s"] * 1e-3
         sample_freq_hz = int(angular_scan_settings["sample_freq_hz"])
         ppl_tot = int(angular_scan_settings["points_per_line_total"])
         n_lines = int(angular_scan_settings["n_lines"])
@@ -812,6 +859,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         Data attribute is possibly rotated from/to disk.
         """
 
+        self.min_duration_frac = kwargs.get("min_time_frac", 0.5)  # TODO: only used for static?
+
         if self.scan_type == "angular_scan":
             CF = self._correlate_angular_scan_data(**kwargs)
         elif self.scan_type == "circular_scan":
@@ -835,8 +884,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         cf_name=None,
         gate_ns=(0, np.inf),
         run_duration=None,
-        min_time_frac=0.5,
         n_runs_requested=60,
+        min_time_frac=0.5,
         subtract_afterpulse=True,
         verbose=False,
         **kwargs,
@@ -862,7 +911,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     )
                 run_duration = total_duration_estimate / n_runs_requested
 
-        self.min_duration_frac = min_time_frac
         duration = []
 
         SC = SoftwareCorrelator()
@@ -947,7 +995,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self,
         cf_name=None,
         gate_ns=(0, np.inf),
-        min_time_frac=0.5,
         subtract_bg_corr=True,
         subtract_afterpulse=True,
         **kwargs,
@@ -959,13 +1006,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             end=" ",
         )
 
-        self.min_duration_frac = min_time_frac  # TODO: not used?
         duration = []
 
         SC = SoftwareCorrelator()
         CF = CorrFunc(cf_name, gate_ns)
 
         with CorrFuncAccumulator(CF) as Accumulator:
+            # TODO: TRY TO INCORPORATE MULTIPROCESSING HERE!
             for p in self.data:
                 print(f"({p.file_num})", end=" ")
                 line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
@@ -1162,7 +1209,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     self.data,
                     self.DUMP_PATH / self.name_on_disk,
                     size_limits_mb=self.SIZE_LIMITS_MB,
-                    compression_method=None,
+                    compression_method="blosc",
                 )
                 if is_saved:
                     self.data = []
@@ -1182,9 +1229,9 @@ class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
         """Doc."""
 
         file_dict = file_utilities.load_file_dict(file_path)
-        self.process_data(file_dict, **kwargs)
+        self.process_data_file(file_dict, **kwargs)
 
-    def process_data(self, file_dict: dict, **kwargs) -> None:
+    def process_data_file(self, file_dict: dict, **kwargs) -> None:
         """Doc."""
 
         # store relevant attributes (add more as needed)
