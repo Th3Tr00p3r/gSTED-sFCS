@@ -611,6 +611,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ) -> TDCPhotonData:
         """Doc."""
 
+        if file_dict is not None:
+            self.get_general_properties(file_dict=file_dict)
+
         if file_path is not None:  # Loading file from disk
             *_, template = file_path.parts
             file_idx = int(re.split("_(\\d+)\\.", template)[1])
@@ -636,8 +639,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.scan_type = "static"
             p = self._process_static_data(full_data, file_idx, **kwargs)
 
-        p.file_path = file_path
-        print(f"Finished processing file No. {file_idx}\n")
+        if file_path is not None:
+            p.file_path = file_path
+            print(f"Finished processing file No. {file_idx}\n")
+
         return p
 
     def _process_static_data(self, full_data, file_idx, **kwargs) -> TDCPhotonData:
