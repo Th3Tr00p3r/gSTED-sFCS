@@ -188,7 +188,7 @@ class TDCPhotonDataMixin:
             all_section_edges=all_section_edges,
         )
 
-    @rotate_data_to_disk
+    @rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(  # NO#QA C901
         self,
         tdc_chain_length=128,

@@ -1250,6 +1250,7 @@ class MainWin:
         self,
         template: str = None,
         should_load=False,
+        does_modify_data: bool = False,
         **kwargs,
     ) -> SolutionSFCSMeasurement:
         """Doc."""
@@ -1268,8 +1269,11 @@ class MainWin:
 
         finally:
             if should_load:
-                with suppress(AttributeError):
-                    measurement.dump_or_load_data(should_load=False, **kwargs)
+                if does_modify_data:
+                    with suppress(AttributeError):
+                        measurement.dump_or_load_data(should_load=False, **kwargs)
+                else:
+                    delattr(measurement, "data")
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
