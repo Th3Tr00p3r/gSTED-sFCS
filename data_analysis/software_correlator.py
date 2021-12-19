@@ -2,6 +2,7 @@
 
 import sys
 from ctypes import CDLL, c_double, c_int, c_long
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -14,6 +15,16 @@ class CorrelatorType:
     PH_COUNT_CROSS_CORRELATOR = 4  # does not seem to be implemented check! 1st column is photon arrival times, 2nd column boolean vector with 1s for photons arriving on the A channel and  0s otherwise, and the 3rd column is 1s for photons arriving on B channel and 0s otherwise
     PH_DELAY_CORRELATOR_LINES = 5  # additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
     PH_DELAY_CROSS_CORRELATOR_LINES = 6  # as PH_COUNT_CROSS_CORRELATOR with an additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
+
+
+@dataclass
+class SoftwareCorrelatorOutput:
+
+    lag: np.ndarray
+    corrfunc: np.ndarray
+    weights: np.ndarray
+    countrate: float
+    duration: float = 0
 
 
 class SoftwareCorrelator:
@@ -53,6 +64,8 @@ class SoftwareCorrelator:
 
     def correlate(self, photon_array, c_type=CorrelatorType.PH_DELAY_CORRELATOR, timebase_ms=1):
         """Doc."""
+
+        self.c_type = c_type
 
         if sys.platform == "darwin":  # fix operation for Mac users
             photon_array = photon_array.astype(np.int64)
@@ -112,3 +125,15 @@ class SoftwareCorrelator:
         self.lag = (self.corr_py[1, :] * timebase_ms)[valid_corr]
         self.corrfunc = self.corr_py[0, :][valid_corr]
         self.weights = self.corr_py[2, :][valid_corr]
+
+    def output(self) -> SoftwareCorrelatorOutput:
+        """Doc."""
+
+        if self.c_type in {
+            CorrelatorType.PH_DELAY_CORRELATOR,
+            CorrelatorType.PH_DELAY_CORRELATOR_LINES,
+        }:
+            output = SoftwareCorrelatorOutput(self.lag, self.corrfunc, self.weights, self.countrate)
+        else:
+            raise NotImplementedError("Only implemented for 'PH_DELAY_CORRELATOR'!")
+        return output
