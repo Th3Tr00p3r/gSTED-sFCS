@@ -996,9 +996,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
         # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
         if should_parallel_process and len(self.data) > 1:  # parallel correlation
-            N_PROCESSES = mp.cpu_count() - 1
-            print(f"Parallel correlating using {N_PROCESSES} CPUs/processes.")
-            with mp.get_context("spawn").Pool(N_PROCESSES) as pool:
+            TOTAL_CORES = 6  # on my laptop!
+            print(f"Parallel correlating using {TOTAL_CORES-1} processes.")
+            with mp.get_context("spawn").Pool(TOTAL_CORES - 1) as pool:
                 func = partial(self._correlate_angular_scan_file, CF=CF, SC=SC, **kwargs)
                 correlator_output_list = list(pool.imap(func, self.data))
             correlator_output_list = [
