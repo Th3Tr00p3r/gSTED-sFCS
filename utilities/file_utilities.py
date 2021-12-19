@@ -17,7 +17,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import Limits, reverse_dict
+from utilities.helper import Limits, reverse_dict, timer
 
 legacy_matlab_trans_dict = {
     # Solution Scan
@@ -181,6 +181,7 @@ def deep_size_estimate(obj, level=np.inf, indent=0, threshold_mb=0.01, name=None
         return
 
 
+@timer()
 def save_object_to_disk(
     obj,
     file_path: Path,
@@ -198,10 +199,15 @@ def save_object_to_disk(
     #    print("\npre-compression size evaluation:") # TESTESTEST
     #    deep_size_estimate(obj) # TESTESTEST
 
+    import time  # TESTING
+
+    tic = time.perf_counter()  # TESTING
+
     # pickle/serialize the object
     obj = pickle.dumps(obj, protocol=-1)
 
-    print("DONE WITH PICKLING!")  # TESTESTEST
+    print(f"Pickling took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
+    tic = time.perf_counter()  # TESTING
 
     if compression_method == "blosc":
         # blosc compress the serialized object
@@ -212,7 +218,10 @@ def save_object_to_disk(
         # gzip compress the serialized object
         obj = gzip.compress(obj, compresslevel=1)
 
-    print(f"DONE WITH COMPRESSION! ({compression_method})")  # TESTESTEST
+    print(
+        f"Compression ({compression_method}) took: {(time.perf_counter() - tic):0.4f} s"
+    )  # TESTING
+    tic = time.perf_counter()  # TESTING
 
     if size_limits_mb is not None:
         disk_size_mb = estimate_bytes(obj) / 1e6
@@ -222,11 +231,14 @@ def save_object_to_disk(
             )
             return False
 
+    print(f"Size estimate took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
+    tic = time.perf_counter()  # TESTING
+
     # save the object
     with open(file_path, "wb") as f:
         f.write(obj)
 
-    print("DONE WITH SAVING!")  # TESTESTEST
+    print(f"Saving took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
 
     #    if compression_method is not None: # TESTESTEST
     #        print("\npost-compression size evaluation:") # TESTESTEST
@@ -535,6 +547,7 @@ def rotate_data_to_disk(does_modify_data: bool = False) -> Callable:
                 self.dump_or_load_data(should_load=False, method_name=method.__name__)
             else:
                 delattr(self, "data")
+                self.is_data_dumped = True
             return value
 
         return method_wrapper
