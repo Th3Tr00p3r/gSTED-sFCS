@@ -1240,7 +1240,7 @@ class MainWin:
             loading_options["file_selection"] = None
 
         loading_options["should_fix_shift"] = import_wdgts.fix_shift
-        loading_options["subtract_afterpulse"] = import_wdgts.subtract_afterpulse
+        loading_options["should_subtract_afterpulse"] = import_wdgts.should_subtract_afterpulse
         loading_options["subtract_bg_corr"] = import_wdgts.subtract_bg_corr
 
         return loading_options
