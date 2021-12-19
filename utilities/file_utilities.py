@@ -17,7 +17,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import Limits, reverse_dict
+from utilities.helper import Limits, reverse_dict, timer
 
 legacy_matlab_trans_dict = {
     # Solution Scan
@@ -181,6 +181,7 @@ def deep_size_estimate(obj, level=np.inf, indent=0, threshold_mb=0.01, name=None
         return
 
 
+@timer()
 def save_object_to_disk(
     obj,
     file_path: Path,
@@ -192,22 +193,21 @@ def save_object_to_disk(
     Returns 'True' if saved, 'False' otherwise.
     """
 
-    if size_limits_mb is not None:
-        disk_size_mb = estimate_bytes(obj) / 1e6
-        if disk_size_mb not in size_limits_mb:
-            logging.debug(
-                f"Object of class '{obj.__class__.__name__}' was not saved (estimated size ({disk_size_mb}) is not in {size_limits_mb})"
-            )
-            return False
-
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
     #    print("\npre-compression size evaluation:") # TESTESTEST
     #    deep_size_estimate(obj) # TESTESTEST
 
+    import time  # TESTING
+
+    tic = time.perf_counter()  # TESTING
+
     # pickle/serialize the object
     obj = pickle.dumps(obj, protocol=-1)
+
+    print(f"Pickling took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
+    tic = time.perf_counter()  # TESTING
 
     if compression_method == "blosc":
         # blosc compress the serialized object
@@ -218,9 +218,27 @@ def save_object_to_disk(
         # gzip compress the serialized object
         obj = gzip.compress(obj, compresslevel=1)
 
+    print(
+        f"Compression ({compression_method}) took: {(time.perf_counter() - tic):0.4f} s"
+    )  # TESTING
+    tic = time.perf_counter()  # TESTING
+
+    if size_limits_mb is not None:
+        disk_size_mb = estimate_bytes(obj) / 1e6
+        if disk_size_mb not in size_limits_mb:
+            logging.debug(
+                f"Object of class '{obj.__class__.__name__}' was not saved (estimated size ({disk_size_mb}) is not in {size_limits_mb})"
+            )
+            return False
+
+    print(f"Size estimate took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
+    tic = time.perf_counter()  # TESTING
+
     # save the object
     with open(file_path, "wb") as f:
         f.write(obj)
+
+    print(f"Saving took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
 
     #    if compression_method is not None: # TESTESTEST
     #        print("\npost-compression size evaluation:") # TESTESTEST
@@ -514,17 +532,24 @@ def prepare_file_paths(file_path_template: Path, file_selection: str = None) -> 
     return file_paths
 
 
-def rotate_data_to_disk(method) -> Callable:
+def rotate_data_to_disk(does_modify_data: bool = False) -> Callable:
     """
     Loads 'self.data' object from disk prior to calling the method 'method',
     and dumps (saves and deletes the attribute) 'self.data' afterwards.
     """
 
-    @functools.wraps(method)
-    def method_wrapper(self, *args, **kwargs):
-        self.dump_or_load_data(should_load=True, method_name=method.__name__)
-        value = method(self, *args, **kwargs)
-        self.dump_or_load_data(should_load=False, method_name=method.__name__)
-        return value
+    def outer_wrapper(method) -> Callable:
+        @functools.wraps(method)
+        def method_wrapper(self, *args, **kwargs):
+            self.dump_or_load_data(should_load=True, method_name=method.__name__)
+            value = method(self, *args, **kwargs)
+            if does_modify_data:
+                self.dump_or_load_data(should_load=False, method_name=method.__name__)
+            else:
+                delattr(self, "data")
+                self.is_data_dumped = True
+            return value
 
-    return method_wrapper
+        return method_wrapper
+
+    return outer_wrapper
