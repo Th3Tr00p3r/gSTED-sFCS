@@ -492,7 +492,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     NAN_PLACEBO = -100  # TODO: belongs in 'AngularScanMixin'
     DUMP_PATH = Path("C:/temp_sfcs_data/")
-    SIZE_LIMITS_MB = Limits(10, 1e4)
+    SIZE_LIMITS_MB = Limits(10, 5e4)
 
     def __init__(self, name=""):
         self.name = name
@@ -502,7 +502,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self.scan_type: str
         self.duration_min: float = None
 
-    @file_utilities.rotate_data_to_disk
+    @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def read_fpga_data(
         self,
         file_path_template: Union[str, Path],
@@ -574,9 +574,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         if (
             should_parallel_process and len(file_paths) > 1
         ):  # parellel processing # TODO: when working, add condition for number of files > say 3
-            N_PROCESSES = mp.cpu_count() - 1
-            print(f"Parallel processing using {N_PROCESSES} CPUs/processes.")
-            with mp.get_context("spawn").Pool(N_PROCESSES) as pool:  # TODO: was 4
+            N_CORES = mp.cpu_count() // 2 - 1
+            print(f"Parallel processing using {N_CORES} CPUs/processes.")
+            with mp.get_context("spawn").Pool(N_CORES) as pool:
                 func = partial(self.process_data_file, verbose=True, **kwargs)
                 data = list(pool.imap(func, file_paths))
 
@@ -851,7 +851,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         CF = self.correlate_data(**kwargs)
         CF.average_correlation(**kwargs)
 
-    @file_utilities.rotate_data_to_disk
+    @file_utilities.rotate_data_to_disk()
     def correlate_data(self, **kwargs):
         """
         High level function for correlating any type of data (e.g. static, angular scan...)
@@ -1204,12 +1204,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     with suppress(FileNotFoundError):
                         self.data = file_utilities.load_file(self.DUMP_PATH / self.name_on_disk)
                         self.is_data_dumped = False
-            else:  # dumping data
+            else:  # saving data
                 is_saved = file_utilities.save_object_to_disk(
                     self.data,
                     self.DUMP_PATH / self.name_on_disk,
                     size_limits_mb=self.SIZE_LIMITS_MB,
-                    compression_method="blosc",
                 )
                 if is_saved:
                     self.data = []

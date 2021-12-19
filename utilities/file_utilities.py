@@ -192,14 +192,6 @@ def save_object_to_disk(
     Returns 'True' if saved, 'False' otherwise.
     """
 
-    if size_limits_mb is not None:
-        disk_size_mb = estimate_bytes(obj) / 1e6
-        if disk_size_mb not in size_limits_mb:
-            logging.debug(
-                f"Object of class '{obj.__class__.__name__}' was not saved (estimated size ({disk_size_mb}) is not in {size_limits_mb})"
-            )
-            return False
-
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
@@ -208,6 +200,8 @@ def save_object_to_disk(
 
     # pickle/serialize the object
     obj = pickle.dumps(obj, protocol=-1)
+
+    print("DONE WITH PICKLING!")  # TESTESTEST
 
     if compression_method == "blosc":
         # blosc compress the serialized object
@@ -218,9 +212,21 @@ def save_object_to_disk(
         # gzip compress the serialized object
         obj = gzip.compress(obj, compresslevel=1)
 
+    print(f"DONE WITH COMPRESSION! ({compression_method})")  # TESTESTEST
+
+    if size_limits_mb is not None:
+        disk_size_mb = estimate_bytes(obj) / 1e6
+        if disk_size_mb not in size_limits_mb:
+            logging.debug(
+                f"Object of class '{obj.__class__.__name__}' was not saved (estimated size ({disk_size_mb}) is not in {size_limits_mb})"
+            )
+            return False
+
     # save the object
     with open(file_path, "wb") as f:
         f.write(obj)
+
+    print("DONE WITH SAVING!")  # TESTESTEST
 
     #    if compression_method is not None: # TESTESTEST
     #        print("\npost-compression size evaluation:") # TESTESTEST
@@ -514,17 +520,23 @@ def prepare_file_paths(file_path_template: Path, file_selection: str = None) -> 
     return file_paths
 
 
-def rotate_data_to_disk(method) -> Callable:
+def rotate_data_to_disk(does_modify_data: bool = False) -> Callable:
     """
     Loads 'self.data' object from disk prior to calling the method 'method',
     and dumps (saves and deletes the attribute) 'self.data' afterwards.
     """
 
-    @functools.wraps(method)
-    def method_wrapper(self, *args, **kwargs):
-        self.dump_or_load_data(should_load=True, method_name=method.__name__)
-        value = method(self, *args, **kwargs)
-        self.dump_or_load_data(should_load=False, method_name=method.__name__)
-        return value
+    def outer_wrapper(method) -> Callable:
+        @functools.wraps(method)
+        def method_wrapper(self, *args, **kwargs):
+            self.dump_or_load_data(should_load=True, method_name=method.__name__)
+            value = method(self, *args, **kwargs)
+            if does_modify_data:
+                self.dump_or_load_data(should_load=False, method_name=method.__name__)
+            else:
+                delattr(self, "data")
+            return value
 
-    return method_wrapper
+        return method_wrapper
+
+    return outer_wrapper
