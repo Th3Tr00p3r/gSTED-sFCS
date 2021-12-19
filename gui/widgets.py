@@ -263,7 +263,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
     fix_shift=("solDataFixShift", "QCheckBox", "main", False),
     subtract_bg_corr=("solDataSubtractBgCorr", "QCheckBox", "main", False),
-    subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
+    should_subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
 )
 
 SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
