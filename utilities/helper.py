@@ -143,8 +143,16 @@ class Limits:
         return f"Limits(lower={self.lower}, upper={self.upper})"
 
     def __str__(self):
-        lower_frmt = "d" if (int(self.lower) == float(self.lower)) else ".2f"
-        upper_frmt = "d" if (int(self.upper) == float(self.upper)) else ".2f"
+        if int(self.lower) == float(self.lower):
+            lower_frmt = "d"
+            self.lower = int(self.lower)  # ensure for stuff like 1e3 (round floats)
+        else:
+            lower_frmt = ".2f"
+        if int(self.upper) == float(self.upper):
+            upper_frmt = "d"
+            self.upper = int(self.upper)  # ensure for stuff like 1e3 (round floats)
+        else:
+            upper_frmt = ".2f"
         return f"({self.lower:{lower_frmt}}, {self.upper:{upper_frmt}})"
 
     def __iter__(self):
