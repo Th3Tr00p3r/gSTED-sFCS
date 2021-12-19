@@ -1274,6 +1274,7 @@ class MainWin:
                         measurement.dump_or_load_data(should_load=False, **kwargs)
                 else:
                     delattr(measurement, "data")
+                    measurement.is_data_dumped = True
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
