@@ -17,7 +17,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import Limits, reverse_dict, timer
+from utilities.helper import reverse_dict, timer
 
 legacy_matlab_trans_dict = {
     # Solution Scan
@@ -185,7 +185,6 @@ def deep_size_estimate(obj, level=np.inf, indent=0, threshold_mb=0.01, name=None
 def save_object_to_disk(
     obj,
     file_path: Path,
-    size_limits_mb: Limits = None,
     compression_method: str = None,  # "gzip" / "blosc"
 ) -> bool:
     """
@@ -199,52 +198,43 @@ def save_object_to_disk(
     #    print("\npre-compression size evaluation:") # TESTESTEST
     #    deep_size_estimate(obj) # TESTESTEST
 
-    import time  # TESTING
+    # TODO: BIGGER CHUNKS FOR SPEED!
+    if compression_method == "gzip":
+        with gzip.open(file_path, "wb", compresslevel=1) as f_gzip:
+            try:  # pickle in chunks if obj is iterable
+                for item in obj:
+                    pickle.dump(item, f_gzip, protocol=-1)  # type: ignore
+            except TypeError:  # pickle whole object
+                pickle.dump(obj, f_gzip, protocol=-1)  # type: ignore
 
-    tic = time.perf_counter()  # TESTING
-
-    # pickle/serialize the object
-    obj = pickle.dumps(obj, protocol=-1)
-
-    print(f"Pickling took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
-    tic = time.perf_counter()  # TESTING
-
-    if compression_method == "blosc":
-        # blosc compress the serialized object
+    elif compression_method == "blosc":
         blosc_args = bloscpack.BloscArgs(typesize=4, clevel=1, cname="zlib")
-        obj = bloscpack.pack_bytes_to_bytes(obj, blosc_args=blosc_args)
+        with open(file_path, "wb") as f_blosc:
+            try:  # pickle and compress object in chunks if iterable
+                for item in obj:
+                    p_item = pickle.dumps(item, protocol=-1)
+                    cmprsd_item = bloscpack.pack_bytes_to_bytes(p_item, blosc_args=blosc_args)
+                    pickle.dump(cmprsd_item, f_blosc, protocol=-1)
+            except TypeError:  # pickle and compress whole object
+                p_obj = pickle.dumps(obj, protocol=-1)
+                cmprsd_obj = bloscpack.pack_bytes_to_bytes(p_obj, blosc_args=blosc_args)
+                pickle.dump(cmprsd_obj, f_blosc, protocol=-1)
 
-    elif compression_method == "gzip":
-        # gzip compress the serialized object
-        obj = gzip.compress(obj, compresslevel=1)
-
-    print(
-        f"Compression ({compression_method}) took: {(time.perf_counter() - tic):0.4f} s"
-    )  # TESTING
-    tic = time.perf_counter()  # TESTING
-
-    if size_limits_mb is not None:
-        disk_size_mb = estimate_bytes(obj) / 1e6
-        if disk_size_mb not in size_limits_mb:
-            logging.debug(
-                f"Object of class '{obj.__class__.__name__}' was not saved (estimated size ({disk_size_mb}) is not in {size_limits_mb})"
-            )
-            return False
-
-    print(f"Size estimate took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
-    tic = time.perf_counter()  # TESTING
-
-    # save the object
-    with open(file_path, "wb") as f:
-        f.write(obj)
-
-    print(f"Saving took: {(time.perf_counter() - tic):0.4f} s")  # TESTING
+    else:  # save uncompressed
+        with open(file_path, "wb") as f:
+            try:  # pickle in chunks if obj is iterable
+                for item in obj:
+                    pickle.dump(item, f, protocol=-1)
+            except TypeError:  # obj isn't iterable
+                pickle.dump(obj, f, protocol=-1)
 
     #    if compression_method is not None: # TESTESTEST
     #        print("\npost-compression size evaluation:") # TESTESTEST
     #        deep_size_estimate(obj) # TESTESTEST
 
-    logging.debug(f"Object of class '{obj.__class__.__name__}' saved as: {file_path}")
+    logging.debug(
+        f"Object of class '{obj.__class__.__name__}' ({compression_method}-compressed) saved as: {file_path}"
+    )
     return True
 
 
@@ -255,21 +245,38 @@ def load_file(file_path: Union[str, Path]) -> Any:
     """
 
     try:  # gzip decompression
-        with gzip.open(file_path, "rb") as f_cmprsd:
-            obj = f_cmprsd.read()
-    except gzip.BadGzipFile:  # in case gzip decompression fails
-        try:  # blosc decompression
-            obj, _ = bloscpack.unpack_bytes_from_file(file_path)
-        except ValueError:  # in case blosc decompression fails
-            with open(file_path, "rb") as f:
-                return pickle.load(f)  # deserialize only
+        with gzip.open(file_path, "rb") as f_gzip_cmprsd:
+            loaded_data = []
+            try:
+                while True:
+                    loaded_data.append(pickle.load(f_gzip_cmprsd))  # type: ignore
+            except EOFError:
+                return loaded_data if (len(loaded_data) > 1) else loaded_data[0]
+
+    except gzip.BadGzipFile:  # blosc decompression
+        with open(file_path, "rb") as f_blosc_cmprsd:
+            loaded_data = []
+            try:
+                while True:
+                    cmprsd_bytes = pickle.load(f_blosc_cmprsd)
+                    p_bytes, _ = bloscpack.unpack_bytes_from_bytes(cmprsd_bytes)
+                    loaded_data.append(pickle.loads(p_bytes))
+            except EOFError:
+                return loaded_data if (len(loaded_data) > 1) else loaded_data[0]
+
+            except (ValueError, TypeError):  # uncompressed file
+                with open(file_path, "rb") as f_uncompressed:
+                    loaded_data = []
+                    try:
+                        while True:
+                            loaded_data.append(pickle.load(f_uncompressed))
+                    except EOFError:
+                        return loaded_data if (len(loaded_data) > 1) else loaded_data[0]
+
     except OSError:  # not fully downloaded from cloud
         raise OSError(
             "File was not fully downloaded from cloud! Check that cloud is synchronizing."
         )
-
-    # if decompressed, still needs deserialization
-    return pickle.loads(obj)
 
 
 def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
