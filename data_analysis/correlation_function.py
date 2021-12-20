@@ -478,7 +478,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     NAN_PLACEBO = -100  # TODO: belongs in 'AngularScanMixin'
     DUMP_PATH = Path("C:/temp_sfcs_data/")
-    SIZE_LIMITS_MB = Limits(10, 5e4)
 
     def __init__(self, name=""):
         self.name = name
@@ -971,7 +970,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     # CF.total_duration = 0
                     print("Whole measurement was skipped! Something's wrong...", end=" ")
                 else:
-                    print(f"Skipped/total duration: {skipped_ratio:.1#}", end=" ")
+                    print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
             print("- Done.")
 
         return CF
@@ -1214,7 +1213,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 is_saved = file_utilities.save_object_to_disk(
                     self.data,
                     self.DUMP_PATH / self.name_on_disk,
-                    size_limits_mb=self.SIZE_LIMITS_MB,
+                    compression_method=None,
                 )
                 if is_saved:
                     self.data = []
