@@ -57,8 +57,6 @@ def curve_fit_lims(
     y_err = ys_errors[in_lims & is_finite_err]
     fit_func = globals()[fit_name]
 
-    print(f"curve_fit_lims:\fit_name={fit_name}]\ny={y[:10]}\nys={ys[:10]}")  # TESTESTEST
-
     fit_params = _fit_and_get_param_dict(
         fit_func, x, y, param_estimates, sigma=y_err, absolute_sigma=True, **kwargs
     )

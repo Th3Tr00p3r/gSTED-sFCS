@@ -92,13 +92,7 @@ class CorrFunc:
             weights[idx] = np.pad(weights_list[idx], (0, pad_len))
             cf_cr[idx] = countrate_list[idx] * corrfunc[idx]
             if should_subtract_afterpulse:
-                print("SUBTRACTING AFTERPULSE!")  # TESTESTEST
                 cf_cr[idx] -= afterpulse
-
-        print("corrfunc[0]: ", corrfunc[0])  # TESTESTEST
-        print("corrfunc size: ", corrfunc.size)  # TESTESTEST
-        print("cf_cr[0]: ", cf_cr[0])  # TESTESTEST
-        print("cf_cr size: ", cf_cr.size)  # TESTESTEST
 
         self.countrate_list = countrate_list
         self.lag = lag
@@ -215,10 +209,6 @@ class CorrFunc:
             x = x[1:]  # remove zero point data
             y = y[1:]
             error_y = error_y[1:]
-
-        print(
-            f"fit_correlation_function:\fit_name={fit_name}]\ny_field={y_field}\ny[:10]={y[:10]}"
-        )  # TESTESTEST
 
         self.fit_params[fit_name] = curve_fit_lims(
             fit_name,
