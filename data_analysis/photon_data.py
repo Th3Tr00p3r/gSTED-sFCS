@@ -2,6 +2,7 @@
 
 from contextlib import suppress
 from dataclasses import dataclass
+from itertools import count as infinite_range
 from typing import Any, List, Tuple, Union
 
 import numpy as np
@@ -24,6 +25,7 @@ class TDCPhotonData:
     fine: np.ndarray
     runtime: np.ndarray
     all_section_edges: np.ndarray
+    size_estimate_mb: float
 
 
 @dataclass
@@ -186,6 +188,7 @@ class TDCPhotonDataMixin:
             fine=fine,
             runtime=runtime,
             all_section_edges=all_section_edges,
+            size_estimate_mb=max(section_lengths) / 1e6,
         )
 
     @rotate_data_to_disk(does_modify_data=True)
@@ -642,27 +645,21 @@ class CountsImageStackData:
 
         if method == "forward":
             img = self.image_stack_forward[:, :, plane_idx]
-
         elif method == "forward normalization":
             img = self.norm_stack_forward[:, :, plane_idx]
-
         elif method == "forward normalized":
             img = (
                 self.image_stack_forward[:, :, plane_idx] / self.norm_stack_forward[:, :, plane_idx]
             )
-
         elif method == "backward":
             img = self.image_stack_backward[:, :, plane_idx]
-
         elif method == "backward normalization":
             img = self.norm_stack_backward[:, :, plane_idx]
-
         elif method == "backward normalized":
             img = (
                 self.image_stack_backward[:, :, plane_idx]
                 / self.norm_stack_backward[:, :, plane_idx]
             )
-
         elif method == "interlaced":
             p1_norm = (
                 self.image_stack_forward[:, :, plane_idx] / self.norm_stack_forward[:, :, plane_idx]
@@ -675,7 +672,6 @@ class CountsImageStackData:
             img = np.zeros(p1_norm.shape)
             img[:n_lines:2, :] = p1_norm[:n_lines:2, :]
             img[1:n_lines:2, :] = p2_norm[1:n_lines:2, :]
-
         elif method == "averaged":
             p1 = self.image_stack_forward[:, :, plane_idx]
             p2 = self.image_stack_backward[:, :, plane_idx]
@@ -873,9 +869,12 @@ def _first_full_photon_idx(byte_data: np.ndarray, group_len: int) -> int:
     bytes starting with 248 and ending with 254. If no intact photons are found, returns 'None'
     """
 
-    for idx in range(byte_data.size):
-        if (byte_data[idx] == 248) and (byte_data[idx + (group_len - 1)] == 254):
-            return idx
+    for idx in infinite_range():
+        try:
+            if (byte_data[idx] == 248) and (byte_data[idx + (group_len - 1)] == 254):
+                return idx
+        except IndexError:
+            break
     return None
 
 

@@ -167,7 +167,9 @@ class MeasurementProcedure:
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
         file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
-        file_utilities.save_object_to_disk(data_dict, file_path, compression_method="gzip")
+        file_utilities.save_object_to_disk(
+            data_dict, file_path, compression_method="gzip", obj_name="raw data"
+        )
         logging.debug(f"Saved measurement file: '{file_path}'.")
 
     async def toggle_lasers(self, finish=False) -> None:
