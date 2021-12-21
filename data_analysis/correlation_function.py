@@ -20,10 +20,9 @@ from data_analysis.photon_data import (
     TDCPhotonData,
     TDCPhotonDataMixin,
 )
-from data_analysis.software_correlator import (
+from data_analysis.software_correlator import (  # SoftwareCorrelatorOutput,
     CorrelatorType,
     SoftwareCorrelator,
-    SoftwareCorrelatorOutput,
 )
 from utilities import file_utilities
 from utilities.display import Plotter
@@ -68,7 +67,11 @@ class CorrFunc:
         self.fit_params: Dict[str, FitParams] = dict()
 
     def join_and_pad_correlation_functions(
-        self, sc_output_list, afterpulse, should_subtract_afterpulse: bool
+        self,
+        sc_output_list,
+        afterpulse,
+        should_subtract_afterpulse: bool = True,
+        **kwargs,
     ) -> None:
         """Doc."""
 
@@ -89,7 +92,13 @@ class CorrFunc:
             weights[idx] = np.pad(weights_list[idx], (0, pad_len))
             cf_cr[idx] = countrate_list[idx] * corrfunc[idx]
             if should_subtract_afterpulse:
+                print("SUBTRACTING AFTERPULSE!")  # TESTESTEST
                 cf_cr[idx] -= afterpulse
+
+        print("corrfunc[0]: ", corrfunc[0])  # TESTESTEST
+        print("corrfunc size: ", corrfunc.size)  # TESTESTEST
+        print("cf_cr[0]: ", cf_cr[0])  # TESTESTEST
+        print("cf_cr size: ", cf_cr.size)  # TESTESTEST
 
         self.countrate_list = countrate_list
         self.lag = lag
@@ -206,6 +215,10 @@ class CorrFunc:
             x = x[1:]  # remove zero point data
             y = y[1:]
             error_y = error_y[1:]
+
+        print(
+            f"fit_correlation_function:\fit_name={fit_name}]\ny_field={y_field}\ny[:10]={y[:10]}"
+        )  # TESTESTEST
 
         self.fit_params[fit_name] = curve_fit_lims(
             fit_name,
@@ -556,10 +569,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         self.get_general_properties(file_paths[0])
 
-        if (
-            should_parallel_process and len(file_paths) > 1
-        ):  # parellel processing # TODO: when working, add condition for number of files > say 3
-            N_CORES = mp.cpu_count() // 2 - 1
+        if should_parallel_process and len(file_paths) > 20:  # parellel processing
+            N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
             print(f"Parallel processing using {N_CORES} CPUs/processes.")
             with mp.get_context("spawn").Pool(N_CORES) as pool:
                 func = partial(self.process_data_file, verbose=True, **kwargs)
@@ -633,12 +644,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         # Angular sFCS
         elif full_data.get("angular_scan_settings"):
-            p = self._process_angular_scan_data(full_data, file_idx, **kwargs)
+            p = self._process_angular_scan_data_file(full_data, file_idx, **kwargs)
 
         # FCS
         else:
             self.scan_type = "static"
-            p = self._process_static_data(full_data, file_idx, **kwargs)
+            p = self._process_static_data_file(full_data, file_idx, **kwargs)
 
         if file_path is not None:
             p.file_path = file_path
@@ -646,7 +657,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return p
 
-    def _process_static_data(self, full_data, file_idx, **kwargs) -> TDCPhotonData:
+    def _process_static_data_file(self, full_data, file_idx, **kwargs) -> TDCPhotonData:
         """
         Processes a single static FCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
@@ -664,7 +675,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return p
 
-    def _process_angular_scan_data(
+    def _process_angular_scan_data_file(
         self,
         full_data,
         file_idx,
@@ -876,7 +887,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         run_duration=None,
         n_runs_requested=60,
         min_time_frac=0.5,
-        should_subtract_afterpulse=True,
         verbose=False,
         **kwargs,
     ) -> CorrFunc:
@@ -957,7 +967,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         lag = max([output.lag for output in sc_output_list], key=len)
         afterpulse = self.calculate_afterpulse(CF.gate_ns, lag)
         CF.join_and_pad_correlation_functions(
-            sc_output_list, afterpulse, should_subtract_afterpulse
+            sc_output_list,
+            afterpulse,
+            **kwargs,
         )
 
         CF.total_duration = sum(duration)
@@ -980,8 +992,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self,
         cf_name=None,
         gate_ns=(0, np.inf),
-        should_subtract_afterpulse=True,
-        should_parallel_process: bool = False,  # TODO: not operational
+        subtract_bg_corr=True,
         **kwargs,
     ) -> CorrFunc:
         """Correlates data for angular scans. Returns a CorrFunc object"""
@@ -994,27 +1005,105 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         SC = SoftwareCorrelator()
         CF = CorrFunc(cf_name, gate_ns)
 
-        # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
-        # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
-        if should_parallel_process and len(self.data) > 1:  # parallel correlation
-            TOTAL_CORES = 6  # on my laptop!
-            print(f"Parallel correlating using {TOTAL_CORES-1} processes.")
-            with mp.get_context("spawn").Pool(TOTAL_CORES - 1) as pool:
-                func = partial(self._correlate_angular_scan_file, CF=CF, SC=SC, **kwargs)
-                correlator_output_list = list(pool.imap(func, self.data))
-            correlator_output_list = [
-                output for output_list in correlator_output_list for output in output_list
-            ]
+        #        # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
+        #        # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
+        #        if should_parallel_process and len(self.data) > 1:  # parallel correlation
+        #            TOTAL_CORES = 6  # on my laptop!
+        #            print(f"Parallel correlating using {TOTAL_CORES-1} processes.")
+        #            with mp.get_context("spawn").Pool(TOTAL_CORES - 1) as pool:
+        #                func = partial(self._correlate_angular_scan_file, CF=CF, SC=SC, **kwargs)
+        #                correlator_output_list = list(pool.imap(func, self.data))
+        #            correlator_output_list = [
+        #                output for output_list in correlator_output_list for output in output_list
+        #            ]
 
-        else:  # correlate in series
-            correlator_output_list = []
-            for p in self.data:
-                correlator_output_list += self._correlate_angular_scan_file(p, CF, SC, **kwargs)
+        correlator_output_list = []
+        for p in self.data:
+            print(f"({p.file_num})", end=" ")
+            line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
+            min_line, max_line = line_num[line_num > 0].min(), line_num.max()
+            if hasattr(p, "delay_time"):  # if measurement quacks as gated
+                j_gate = CF.gate_ns.valid_indices(p.delay_time) | np.isnan(p.delay_time)
+                runtime = p.runtime[j_gate]
+                #                    delay_time = delay_time[j_gate] # TODO: not used?
+                line_num = p.line_num[j_gate]
+
+            elif CF.gate_ns != (0, np.inf):
+                raise RuntimeError(
+                    f"A gate '{CF.gate_ns}' was specified for uncalibrated TDC data."
+                )
+            else:
+                runtime = p.runtime
+
+            file_correlator_output_list = []
+            time_stamps = np.diff(runtime).astype(np.int32)
+            for line_idx, j in enumerate(range(min_line, max_line + 1)):
+                valid = (line_num == j).astype(np.int8)
+                valid[line_num == -j] = -1
+                valid[line_num == -j - self.LINE_END_ADDER] = -2
+                # both photons separated by time-stamp should belong to the line
+                valid = valid[1:]
+
+                # remove photons from wrong lines
+                timest = time_stamps[valid != 0]
+                valid = valid[valid != 0]
+
+                if not valid.size:
+                    print(f"No valid photons in line {j}. Skipping.")
+                    continue
+
+                # check that we start with the line beginning and not its end
+                if valid[0] != -1:
+                    # remove photons till the first found beginning
+                    j_start = np.where(valid == -1)[0]
+                    if len(j_start) > 0:
+                        timest = timest[j_start[0] :]
+                        valid = valid[j_start[0] :]
+
+                # check that we stop with the line ending and not its beginning
+                if valid[-1] != -2:
+                    # remove photons till the last found ending
+                    j_start = np.where(valid == -1)[0]
+                    if len(j_start) > 0:
+                        timest = timest[j_start[0] :]
+                        valid = valid[j_start[0] :]
+
+                # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
+                line_duration = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
+                ts_split = np.vstack((timest, valid))
+
+                SC.correlate(
+                    ts_split,
+                    CorrelatorType.PH_DELAY_CORRELATOR_LINES,
+                    # time base of 20MHz to ms
+                    timebase_ms=1000 / self.laser_freq_hz,
+                )
+
+                # remove background correlation
+                if subtract_bg_corr:
+                    bg_corr = np.interp(
+                        SC.lag,
+                        p.image_line_corr[line_idx]["lag"],
+                        p.image_line_corr[line_idx]["corrfunc"],
+                        right=0,
+                    )
+                else:
+                    bg_corr = 0
+                SC.corrfunc -= bg_corr
+
+                line_output = SC.output()
+                line_output.duration = line_duration
+
+                file_correlator_output_list.append(SC.output())
+
+            correlator_output_list += file_correlator_output_list
 
         lag = max([output.lag for output in correlator_output_list], key=len)  # type: ignore
         afterpulse = self.calculate_afterpulse(CF.gate_ns, lag)
         CF.join_and_pad_correlation_functions(
-            correlator_output_list, afterpulse, should_subtract_afterpulse
+            correlator_output_list,
+            afterpulse,
+            **kwargs,
         )
 
         CF.vt_um = self.v_um_ms * CF.lag
@@ -1031,93 +1120,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         """Correlates data for circular scans. Returns a CorrFunc object"""
 
         raise NotImplementedError("Correlation of circular scan data not yet implemented.")
-
-    def _correlate_angular_scan_file(
-        self,
-        p: TDCPhotonData,
-        CF: CorrFunc = None,
-        SC: SoftwareCorrelator = None,
-        subtract_bg_corr=True,
-        **kwargs,
-    ) -> List[SoftwareCorrelatorOutput]:
-        """Doc."""
-
-        print(f"({p.file_num})", end=" ")
-        line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
-        min_line, max_line = line_num[line_num > 0].min(), line_num.max()
-        if hasattr(p, "delay_time"):  # if measurement quacks as gated
-            j_gate = CF.gate_ns.valid_indices(p.delay_time) | np.isnan(p.delay_time)
-            runtime = p.runtime[j_gate]
-            #                    delay_time = delay_time[j_gate] # TODO: not used?
-            line_num = p.line_num[j_gate]
-
-        elif CF.gate_ns != (0, np.inf):
-            raise RuntimeError(f"A gate '{CF.gate_ns}' was specified for uncalibrated TDC data.")
-        else:
-            runtime = p.runtime
-
-        line_correlator_output_list = []
-        time_stamps = np.diff(runtime).astype(np.int32)
-        for line_idx, j in enumerate(range(min_line, max_line + 1)):
-            valid = (line_num == j).astype(np.int8)
-            valid[line_num == -j] = -1
-            valid[line_num == -j - self.LINE_END_ADDER] = -2
-            # both photons separated by time-stamp should belong to the line
-            valid = valid[1:]
-
-            # remove photons from wrong lines
-            timest = time_stamps[valid != 0]
-            valid = valid[valid != 0]
-
-            if not valid.size:
-                print(f"No valid photons in line {j}. Skipping.")
-                continue
-
-            # check that we start with the line beginning and not its end
-            if valid[0] != -1:
-                # remove photons till the first found beginning
-                j_start = np.where(valid == -1)[0]
-                if len(j_start) > 0:
-                    timest = timest[j_start[0] :]
-                    valid = valid[j_start[0] :]
-
-            # check that we stop with the line ending and not its beginning
-            if valid[-1] != -2:
-                # remove photons till the last found ending
-                j_start = np.where(valid == -1)[0]
-                if len(j_start) > 0:
-                    timest = timest[j_start[0] :]
-                    valid = valid[j_start[0] :]
-
-            # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
-            line_duration = timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
-            ts_split = np.vstack((timest, valid))
-
-            SC.correlate(
-                ts_split,
-                CorrelatorType.PH_DELAY_CORRELATOR_LINES,
-                # time base of 20MHz to ms
-                timebase_ms=1000 / self.laser_freq_hz,
-            )
-
-            # remove background correlation
-            if subtract_bg_corr:
-                bg_corr = np.interp(
-                    SC.lag,
-                    p.image_line_corr[line_idx]["lag"],
-                    p.image_line_corr[line_idx]["corrfunc"],
-                    right=0,
-                )
-            else:
-                bg_corr = 0
-            SC.corrfunc -= bg_corr
-
-            line_output = SC.output()
-            line_output.duration = line_duration
-
-            line_correlator_output_list.append(SC.output())
-
-        return line_correlator_output_list
 
     def plot_correlation_functions(
         self,
@@ -1213,7 +1215,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 is_saved = file_utilities.save_object_to_disk(
                     self.data,
                     self.DUMP_PATH / self.name_on_disk,
-                    compression_method=None,
+                    obj_name="dumped data array",
+                    compression_method="gzip",
+                    element_size_estimate_mb=self.data[0].size_estimate_mb,
                 )
                 if is_saved:
                     self.data = []

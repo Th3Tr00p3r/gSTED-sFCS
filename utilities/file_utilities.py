@@ -17,7 +17,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import reverse_dict, timer
+from utilities.helper import chunks, reverse_dict, timer
 
 legacy_matlab_trans_dict = {
     # Solution Scan
@@ -181,123 +181,124 @@ def deep_size_estimate(obj, level=np.inf, indent=0, threshold_mb=0.01, name=None
         return
 
 
-@timer()
+@timer(threshold_ms=10000)
 def save_object_to_disk(
     obj,
     file_path: Path,
     compression_method: str = None,  # "gzip" / "blosc"
+    obj_name: str = None,
+    element_size_estimate_mb: float = None,
 ) -> bool:
     """
     Save a pickle-serialized and optionally gzip/blosc-compressed object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
     """
 
+    # create parent directory if needed
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
     #    print("\npre-compression size evaluation:") # TESTESTEST
     #    deep_size_estimate(obj) # TESTESTEST
 
-    # TODO: BIGGER CHUNKS FOR SPEED!
+    # split iterables to chunks if possible
+    if element_size_estimate_mb is not None:
+        MAX_CHUNK_MB = 2000  # should be about optimized
+        chunk_size = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
+        chunked_obj = list(chunks(obj, chunk_size))
+    else:  # obj isn't iterable - treat as a single chunk
+        chunked_obj = [[obj]]
+
     if compression_method == "gzip":
         with gzip.open(file_path, "wb", compresslevel=1) as f_gzip:
-            try:  # pickle in chunks if obj is iterable
-                for item in obj:
-                    pickle.dump(item, f_gzip, protocol=-1)  # type: ignore
-            except TypeError:  # pickle whole object
-                pickle.dump(obj, f_gzip, protocol=-1)  # type: ignore
+            for chunk_ in chunked_obj:
+                pickle.dump(chunk_, f_gzip, protocol=-1)  # type: ignore
 
     elif compression_method == "blosc":
         blosc_args = bloscpack.BloscArgs(typesize=4, clevel=1, cname="zlib")
         with open(file_path, "wb") as f_blosc:
-            try:  # pickle and compress object in chunks if iterable
-                for item in obj:
-                    p_item = pickle.dumps(item, protocol=-1)
-                    cmprsd_item = bloscpack.pack_bytes_to_bytes(p_item, blosc_args=blosc_args)
-                    pickle.dump(cmprsd_item, f_blosc, protocol=-1)
-            except TypeError:  # pickle and compress whole object
-                p_obj = pickle.dumps(obj, protocol=-1)
-                cmprsd_obj = bloscpack.pack_bytes_to_bytes(p_obj, blosc_args=blosc_args)
-                pickle.dump(cmprsd_obj, f_blosc, protocol=-1)
+            for chunk_ in chunked_obj:
+                p_chunk = pickle.dumps(chunk_, protocol=-1)
+                cmprsd_chunk = bloscpack.pack_bytes_to_bytes(p_chunk, blosc_args=blosc_args)
+                pickle.dump(cmprsd_chunk, f_blosc, protocol=-1)
 
     else:  # save uncompressed
         with open(file_path, "wb") as f:
-            try:  # pickle in chunks if obj is iterable
-                for item in obj:
-                    pickle.dump(item, f, protocol=-1)
-            except TypeError:  # obj isn't iterable
-                pickle.dump(obj, f, protocol=-1)
+            for chunk_ in chunked_obj:
+                pickle.dump(chunk_, f, protocol=-1)
 
     #    if compression_method is not None: # TESTESTEST
     #        print("\npost-compression size evaluation:") # TESTESTEST
     #        deep_size_estimate(obj) # TESTESTEST
 
     logging.debug(
-        f"Object of class '{obj.__class__.__name__}' ({compression_method}-compressed) saved as: {file_path}"
+        f"Object '{obj_name}' of class '{obj.__class__.__name__}' ({compression_method}-compressed) saved as: {file_path}"
     )
     return True
 
 
+@timer(threshold_ms=1000)
 def load_file(file_path: Union[str, Path]) -> Any:
     """
     Short cut for opening (possibly 'gzip' and/or 'blosc' compressed) .pkl files
     Returns the saved object.
     """
 
-    try:  # gzip decompression
-        with gzip.open(file_path, "rb") as f_gzip_cmprsd:
-            loaded_data = []
-            try:
+    try:
+        try:  # gzip decompression
+            with gzip.open(file_path, "rb") as f_gzip_cmprsd:
+                loaded_data = []
                 while True:
                     loaded_data.append(pickle.load(f_gzip_cmprsd))  # type: ignore
-            except EOFError:
-                return loaded_data if (len(loaded_data) > 1) else loaded_data[0]
 
-    except gzip.BadGzipFile:  # blosc decompression
-        with open(file_path, "rb") as f_blosc_cmprsd:
-            loaded_data = []
-            try:
-                while True:
-                    cmprsd_bytes = pickle.load(f_blosc_cmprsd)
-                    p_bytes, _ = bloscpack.unpack_bytes_from_bytes(cmprsd_bytes)
-                    loaded_data.append(pickle.loads(p_bytes))
-            except EOFError:
-                return loaded_data if (len(loaded_data) > 1) else loaded_data[0]
+        except gzip.BadGzipFile:  # blosc decompression
+            with open(file_path, "rb") as f_blosc_cmprsd:
+                loaded_data = []
+                try:
+                    while True:
+                        cmprsd_bytes = pickle.load(f_blosc_cmprsd)
+                        p_bytes, _ = bloscpack.unpack_bytes_from_bytes(cmprsd_bytes)
+                        loaded_data.append(pickle.loads(p_bytes))
 
-            except (ValueError, TypeError):  # uncompressed file
-                with open(file_path, "rb") as f_uncompressed:
-                    loaded_data = []
-                    try:
+                except (ValueError, TypeError):  # uncompressed file
+                    with open(file_path, "rb") as f_uncompressed:
+                        loaded_data = []
                         while True:
                             loaded_data.append(pickle.load(f_uncompressed))
-                    except EOFError:
-                        return loaded_data if (len(loaded_data) > 1) else loaded_data[0]
 
-    except OSError:  # not fully downloaded from cloud
-        raise OSError(
-            "File was not fully downloaded from cloud! Check that cloud is synchronizing."
-        )
+        except OSError:  # not fully downloaded from cloud
+            raise OSError(
+                "File was not fully downloaded from cloud! Check that cloud is synchronizing."
+            )
+
+    except EOFError:
+        if len(loaded_data) == 1:  # extract non-iterable loaded data
+            return loaded_data[0]
+        else:  # flatten iterable chunked data
+            return [item for chunk_ in loaded_data for item in chunk_]
 
 
-def save_processed_solution_meas(tdc_obj, dir_path: Path) -> None:
+def save_processed_solution_meas(meas, dir_path: Path) -> None:
     """
     Save a processed measurement, including the '.data' attribute.
     The template may then be loaded much more quickly.
     """
 
-    original_data = copy.deepcopy(tdc_obj.data)
+    original_data = copy.deepcopy(meas.data)
 
     # lower size if possible
-    for p in tdc_obj.data:
+    for p in meas.data:
         if p.runtime.max() <= np.iinfo(np.int32).max:
             p.runtime = p.runtime.astype(np.int32)
 
     dir_path = dir_path / "processed"
-    file_name = re.sub("_[*]", "", tdc_obj.template)
+    file_name = re.sub("_[*]", "", meas.template)
     file_path = dir_path / file_name
-    save_object_to_disk(tdc_obj, file_path, compression_method="blosc")
+    save_object_to_disk(
+        meas, file_path, compression_method="blosc", obj_name="processed measurement"
+    )
 
-    tdc_obj.data = original_data
+    meas.data = original_data
 
 
 def load_processed_solution_measurement(file_path: Path):
