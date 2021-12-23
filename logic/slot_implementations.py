@@ -1202,7 +1202,7 @@ class MainWin:
                         )
                     measurement.correlate_data(
                         cf_name=data_type,
-                        verbose=True,
+                        is_verbose=True,
                         **options_dict,
                     )
 

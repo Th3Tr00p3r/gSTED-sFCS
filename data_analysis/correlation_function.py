@@ -75,11 +75,13 @@ class CorrFunc:
         bg_line_corr_list=None,
         should_subtract_afterpulse: bool = True,
         shoud_subtract_bg_corr: bool = False,
+        is_verbose: bool = False,
         **kwargs,
     ):
         """Doc."""
 
-        print(f"Correlating {len(time_stamp_split_lists)} splits -", end=" ")
+        if is_verbose:
+            print(f"Correlating {len(time_stamp_split_lists)} splits -", end=" ")
 
         SC = SoftwareCorrelator()
         correlator_output_list = []
@@ -91,7 +93,8 @@ class CorrFunc:
                 timebase_ms=1000 / laser_freq_hz,
             )
             correlator_output_list.append(SC.output())
-            print(idx + 1, end=", ")
+            if is_verbose:
+                print(idx + 1, end=", ")
 
         # accumulate all software correlator outputs in lists
         countrate_list = [output.countrate for output in correlator_output_list]
@@ -100,7 +103,8 @@ class CorrFunc:
         lag_list = [output.lag for output in correlator_output_list]
         self.lag = max(lag_list, key=len)
 
-        print("Done.")
+        if is_verbose:
+            print("Done.")
 
         # remove background correlation
         if shoud_subtract_bg_corr:
@@ -604,14 +608,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
             print(f"Parallel processing using {N_CORES} CPUs/processes.")
             with mp.get_context("spawn").Pool(N_CORES) as pool:
-                func = partial(self.process_data_file, verbose=True, **kwargs)
+                func = partial(self.process_data_file, is_verbose=True, **kwargs)
                 data = list(pool.map(func, file_paths))
 
         else:  # serial processing
             data = []
             for file_path in file_paths:
                 # Processing data
-                p = self.process_data_file(file_path, verbose=True, **kwargs)
+                p = self.process_data_file(file_path, is_verbose=True, **kwargs)
                 # Appending data to self
                 if p is not None:
                     data.append(p)
@@ -720,7 +724,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         '"""
 
         p = self.convert_fpga_data_to_photons(
-            full_data["byte_data"], version=full_data["version"], verbose=True
+            full_data["byte_data"], version=full_data["version"], is_verbose=True
         )
 
         p.file_num = file_idx
@@ -919,12 +923,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         run_duration=None,
         n_runs_requested=60,
         min_time_frac=0.5,
-        verbose=False,
+        is_verbose=False,
         **kwargs,
     ) -> CorrFunc:
         """Correlates data for static FCS. Returns a CorrFunc object"""
 
-        if verbose:
+        if is_verbose:
             print(
                 f"{self.name} [{gate_ns} gating] - Correlating static data '{self.template}':",
                 end=" ",
@@ -953,7 +957,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
                 segment_time = (p.runtime[se_end] - p.runtime[se_start]) / self.laser_freq_hz
                 if segment_time < min_time_frac * run_duration:
-                    if verbose:
+                    if is_verbose:
                         print(
                             f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time:.2f}s).",
                             end=" ",
@@ -992,7 +996,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             ts_split_list, self.after_pulse_param, self.laser_freq_hz, **kwargs
         )
 
-        if verbose:
+        if is_verbose:
             if CF.skipped_duration:
                 try:
                     skipped_ratio = CF.skipped_duration / CF.total_duration
