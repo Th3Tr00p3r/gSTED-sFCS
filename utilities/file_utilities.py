@@ -112,17 +112,16 @@ default_system_info = {
     "setup": "STED with galvos",
     "after_pulse_param": (
         "multi_exponent_fit",
-        1e5
-        * np.array(
+        np.array(
             [
-                0.183161051158731,
-                0.021980256326163,
-                6.882763042785681,
-                0.154790280034295,
-                0.026417532300439,
-                0.004282749744374,
-                0.001418363840077,
-                0.000221275818533,
+                114424.39560026,
+                10895.53707084,
+                12817.86449556,
+                1766.32335809,
+                119012.66649389,
+                10895.66339894,
+                1518.68623068,
+                315.70074808,
             ]
         ),
     ),
@@ -198,8 +197,8 @@ def save_object_to_disk(
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
-    #    print("\npre-compression size evaluation:") # TESTESTEST
-    #    deep_size_estimate(obj) # TESTESTEST
+    #    print("\npre-compression size evaluation:")  # TESTESTEST
+    #    deep_size_estimate(obj)  # TESTESTEST
 
     # split iterables to chunks if possible
     if element_size_estimate_mb is not None:
