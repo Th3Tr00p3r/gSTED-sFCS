@@ -79,12 +79,12 @@ class TDCPhotonDataMixin:
         version=3,
         locate_outliers=False,
         max_outlier_prob=1e-5,
-        verbose=False,
+        is_verbose=False,
         **kwargs,
     ) -> TDCPhotonData:
         """Doc."""
 
-        if verbose:
+        if is_verbose:
             print("Converting raw data to photons...", end=" ")
 
         if version >= 2:
@@ -96,7 +96,7 @@ class TDCPhotonDataMixin:
         section_edges, tot_single_errors = _find_all_section_edges(byte_data, group_len)
 
         section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
-        if verbose:
+        if is_verbose:
             if len(section_edges) > 1:
                 print(
                     f"Found {len(section_edges)} sections of lengths: {', '.join(map(str, section_lengths))}. Using largest.",
@@ -124,7 +124,7 @@ class TDCPhotonDataMixin:
         # decrease in runtime on data j+1, yet the next runtime data (j+2) is higher than j.
         inv_idxs = np.where((time_stamps[:-1] < 0) & ((time_stamps[:-1] + time_stamps[1:]) > 0))[0]
         if (inv_idxs.size) != 0:
-            if verbose:
+            if is_verbose:
                 print(
                     f"Found {inv_idxs.size} instances of missing byte data, ad hoc fixing...",
                     end=" ",
@@ -178,7 +178,7 @@ class TDCPhotonDataMixin:
         else:
             all_section_edges = None
 
-        if verbose:
+        if is_verbose:
             print("Done.")
 
         return TDCPhotonData(
