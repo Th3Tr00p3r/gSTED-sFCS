@@ -24,7 +24,6 @@ class SoftwareCorrelatorOutput:
     corrfunc: np.ndarray
     weights: np.ndarray
     countrate: float
-    duration: float = 0
 
 
 class SoftwareCorrelator:
