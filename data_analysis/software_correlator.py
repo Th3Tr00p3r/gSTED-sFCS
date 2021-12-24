@@ -128,11 +128,12 @@ class SoftwareCorrelator:
     def output(self) -> SoftwareCorrelatorOutput:
         """Doc."""
 
-        if self.c_type in {
-            CorrelatorType.PH_DELAY_CORRELATOR,
-            CorrelatorType.PH_DELAY_CORRELATOR_LINES,
-        }:
-            output = SoftwareCorrelatorOutput(self.lag, self.corrfunc, self.weights, self.countrate)
+        if self.c_type in (
+            valid_types := {
+                CorrelatorType.PH_DELAY_CORRELATOR,
+                CorrelatorType.PH_DELAY_CORRELATOR_LINES,
+            }
+        ):
+            return SoftwareCorrelatorOutput(self.lag, self.corrfunc, self.weights, self.countrate)
         else:
-            raise NotImplementedError("Only implemented for 'PH_DELAY_CORRELATOR'!")
-        return output
+            raise NotImplementedError(f"Only implemented for '{valid_types}'!")

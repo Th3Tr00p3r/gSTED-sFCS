@@ -311,7 +311,7 @@ def load_processed_solution_measurement(file_path: Path):
     return tdc_obj
 
 
-def load_file_dict(file_path: Path):
+def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
     """
     Load files according to extension,
     Allow backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files),
@@ -326,8 +326,7 @@ def load_file_dict(file_path: Path):
         raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
 
     # patch for legacy Python files (almost non-existant)
-    if not file_dict.get("system_info"):
-        print("'system_info' is missing, using defaults...", end=" ")
+    if not file_dict.get("system_info") or override_system_info:
         file_dict["system_info"] = default_system_info
 
     # patch MATLAB files
