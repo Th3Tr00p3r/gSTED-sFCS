@@ -1417,14 +1417,14 @@ class MainWin:
                     fit_func = getattr(fit_tools, fit_params.func_name)
                     sol_data_analysis_wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
                     sol_data_analysis_wdgts.mean_tau.set(tau * 1e3)
-                    y_fit = fit_func(fit_params.x, *fit_params.beta)
+                    y_fit = fit_func(cf.lag, *fit_params.beta)
                     sol_data_analysis_wdgts.row_acf_disp.obj.clear()
                     sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
                         (cf.lag, "lag"),
                         cf.avg_cf_cr,
                         cf.g0,
                     )
-                    sol_data_analysis_wdgts.row_acf_disp.obj.plot(fit_params.x, y_fit, color="red")
+                    sol_data_analysis_wdgts.row_acf_disp.obj.plot(cf.lag, y_fit, color="red")
 
     def assign_template(self, type) -> None:
         """Doc."""
