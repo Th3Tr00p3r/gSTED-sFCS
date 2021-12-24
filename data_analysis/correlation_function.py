@@ -20,10 +20,7 @@ from data_analysis.photon_data import (
     TDCPhotonData,
     TDCPhotonDataMixin,
 )
-from data_analysis.software_correlator import (  # SoftwareCorrelatorOutput,
-    CorrelatorType,
-    SoftwareCorrelator,
-)
+from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
 from utilities.display import Plotter
 from utilities.fit_tools import FitParams, curve_fit_lims
@@ -74,8 +71,8 @@ class CorrFunc:
         laser_freq_hz: float,
         bg_line_corr_list=None,
         should_subtract_afterpulse: bool = True,
-        shoud_subtract_bg_corr: bool = False,
         is_verbose: bool = False,
+        should_parallel_process=False,
         **kwargs,
     ):
         """Doc."""
@@ -84,17 +81,30 @@ class CorrFunc:
             print(f"Correlating {len(time_stamp_split_lists)} splits -", end=" ")
 
         SC = SoftwareCorrelator()
-        correlator_output_list = []
-        for idx, ts_split in enumerate(time_stamp_split_lists):
-            SC.correlate(
-                ts_split,
-                self.correlator_type,
-                # time base of 20MHz to ms
-                timebase_ms=1000 / laser_freq_hz,
+
+        # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
+        # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
+        if should_parallel_process and len(time_stamp_split_lists) > 1:  # parallel-correlate
+            N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
+            func = partial(
+                SC.correlate, c_type=self.correlator_type, timebase_ms=1000 / laser_freq_hz
             )
-            correlator_output_list.append(SC.output())
-            if is_verbose:
-                print(idx + 1, end=", ")
+            print(f"Parallel processing using {N_CORES} CPUs/processes.")
+            with mp.get_context("spawn").Pool(N_CORES) as pool:
+                correlator_output_list = list(pool.imap(func, time_stamp_split_lists))
+
+        else:  # serial-correlate
+            correlator_output_list = []
+            for idx, ts_split in enumerate(time_stamp_split_lists):
+                SC.correlate(
+                    ts_split,
+                    self.correlator_type,
+                    # time base of 20MHz to ms
+                    timebase_ms=1000 / laser_freq_hz,
+                )
+                correlator_output_list.append(SC.output())
+                if is_verbose:
+                    print(idx + 1, end=", ")
 
         # accumulate all software correlator outputs in lists
         countrate_list = [output.countrate for output in correlator_output_list]
@@ -107,7 +117,7 @@ class CorrFunc:
             print("Done.")
 
         # remove background correlation
-        if shoud_subtract_bg_corr:
+        with suppress(TypeError):
             for idx, bg_corr_dict in enumerate(bg_line_corr_list):
                 bg_corr = np.interp(
                     lag_list[idx],
@@ -558,12 +568,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         if self.scan_type == "angular_scan":
             # aggregate images and ROIs for angular sFCS
             self.scan_images_dstack = np.dstack(tuple(p.image for p in self.data))
-            self.roi_list = [p.roi for p in self.data]  # bg_line_corr
+            self.roi_list = [p.roi for p in self.data]
             self.bg_line_corr_list = [
-                p.image_line_corr for p in self.data
-            ]  # TODO: fix this line and next
-            self.bg_line_corr_list = [
-                bg_line_corr for file in self.bg_line_corr_list for bg_line_corr in file
+                bg_line_corr
+                for bg_file_corr in [p.image_line_corr for p in self.data]
+                for bg_line_corr in bg_file_corr
             ]
 
         # calculate average count rate
@@ -602,13 +611,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ) -> List[TDCPhotonData]:
         """Doc."""
 
-        self.get_general_properties(file_paths[0])
+        self.get_general_properties(file_paths[0], **kwargs)
 
         if should_parallel_process and len(file_paths) > 20:  # parellel processing
             N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
+            func = partial(self.process_data_file, is_verbose=True, **kwargs)
             print(f"Parallel processing using {N_CORES} CPUs/processes.")
             with mp.get_context("spawn").Pool(N_CORES) as pool:
-                func = partial(self.process_data_file, is_verbose=True, **kwargs)
                 data = list(pool.map(func, file_paths))
 
         else:  # serial processing
@@ -622,11 +631,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return data
 
-    def get_general_properties(self, file_path: Path = None, file_dict: dict = None) -> None:
+    def get_general_properties(
+        self, file_path: Path = None, file_dict: dict = None, **kwargs
+    ) -> None:
         """Get general measurement properties from the first data file"""
 
         if file_path is not None:  # Loading file from disk
-            file_dict = file_utilities.load_file_dict(file_path)
+            file_dict = file_utilities.load_file_dict(file_path, **kwargs)
 
         full_data = file_dict["full_data"]
 
@@ -659,7 +670,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         """Doc."""
 
         if file_dict is not None:
-            self.get_general_properties(file_dict=file_dict)
+            self.get_general_properties(file_dict=file_dict, **kwargs)
 
         if file_path is not None:  # Loading file from disk
             *_, template = file_path.parts
@@ -990,10 +1001,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         print("Done.")
 
-        with suppress(KeyError):
-            kwargs["shoud_subtract_bg_corr"] = False
         CF.correlate_measurement(
-            ts_split_list, self.after_pulse_param, self.laser_freq_hz, **kwargs
+            ts_split_list,
+            self.after_pulse_param,
+            self.laser_freq_hz,
+            is_verbose=is_verbose,
+            **kwargs,
         )
 
         if is_verbose:
@@ -1021,18 +1034,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         print(f"{self.name} [{gate_ns} gating] - Correlating angular scan data '{self.template}':")
 
         CF = CorrFunc(cf_name, gate_ns, CorrelatorType.PH_DELAY_CORRELATOR_LINES)
-
-        #        # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
-        #        # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
-        #        if should_parallel_process and len(self.data) > 1:  # parallel correlation
-        #            TOTAL_CORES = 6  # on my laptop!
-        #            print(f"Parallel correlating using {TOTAL_CORES-1} processes.")
-        #            with mp.get_context("spawn").Pool(TOTAL_CORES - 1) as pool:
-        #                func = partial(self._correlate_angular_scan_file, CF=CF, SC=SC, **kwargs)
-        #                correlator_output_list = list(pool.imap(func, self.data))
-        #            correlator_output_list = [
-        #                output for output_list in correlator_output_list for output in output_list
-        #            ]
 
         print("Preparing files for software correlator:", end=" ")
         ts_split_list = []
