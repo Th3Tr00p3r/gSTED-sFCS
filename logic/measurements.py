@@ -632,15 +632,14 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             else:
                 # fit succeeded
                 self.fit_led.set(self.icon_dict["led_off"])
-                fit_params = cf.fit_params["diffusion_3d_fit"]
-                g0, tau, _ = fit_params.beta
-                x, y = fit_params.x, fit_params.y
-                fit_func = getattr(fit_tools, fit_params.func_name)
+                fp = cf.fit_params["diffusion_3d_fit"]
+                g0, tau, _ = fp.beta
+                fit_func = getattr(fit_tools, fp.func_name)
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(tau * 1e3)
-                self.plot_wdgt.obj.plot_acfs((x, "lag"), y, g0, should_autoscale=True)
-                y_fit = fit_func(x, *fit_params.beta)
-                self.plot_wdgt.obj.plot(x, y_fit, "-.r")
+                self.plot_wdgt.obj.plot_acfs((fp.x, "lag"), fp.y, g0, should_autoscale=True)
+                y_fit = fit_func(cf.lag, *fp.beta)
+                self.plot_wdgt.obj.plot(cf.lag, y_fit, "-.r")
                 logging.info(
                     f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
                 )
