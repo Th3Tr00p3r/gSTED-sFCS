@@ -697,7 +697,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.scan_type = "static"
             p = self._process_static_data_file(full_data, file_idx, **kwargs)
 
-        if file_path is not None:
+        if file_path is not None and p is not None:
             p.file_path = file_path
             print(f"Finished processing file No. {file_idx}\n")
 
@@ -999,7 +999,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
                     CF.total_duration += ts_split.sum() / self.laser_freq_hz
 
-        print("Done.")
+        if is_verbose:
+            print("Done.")
 
         CF.correlate_measurement(
             ts_split_list,
