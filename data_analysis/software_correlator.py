@@ -69,10 +69,11 @@ class SoftwareCorrelator:
         if sys.platform == "darwin":  # fix operation for Mac users
             photon_array = photon_array.astype(np.int64)
 
-        if len(photon_array.shape) == 1:
+        try:
+            _, n_entries = photon_array.shape
+        except ValueError:  # TODO: when would this happen (1D array?)
             n_entries = photon_array.size
-        else:
-            n_entries = photon_array.shape[1]
+
         ph_hist = photon_array.reshape(-1)  # convert to 1D array
         n_corr_channels = np.zeros(1, dtype=np.int32)
 
