@@ -1326,7 +1326,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
             else:  # angular or circular scan
                 x_field = "vt_um"
 
-        measurement.correlate_and_average(**kwargs)
+        measurement.correlate_and_average(is_verbose=True, **kwargs)
 
         if should_plot:
             super_title = f"'{self.name}' Experiment\n'{measurement.name}' Measurement - ACFs"
