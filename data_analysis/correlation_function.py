@@ -73,7 +73,6 @@ class CorrFunc:
         should_subtract_afterpulse: bool = True,
         is_verbose: bool = False,
         should_parallel_process=False,
-        **kwargs,
     ):
         """Doc."""
 
@@ -1007,7 +1006,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.after_pulse_param,
             self.laser_freq_hz,
             is_verbose=is_verbose,
-            **kwargs,
         )
 
         if is_verbose:
@@ -1099,7 +1097,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.after_pulse_param,
             self.laser_freq_hz,
             self.bg_line_corr_list,
-            **kwargs,
+            is_verbose=True,
         )
 
         CF.vt_um = self.v_um_ms * CF.lag
@@ -1326,7 +1324,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
             else:  # angular or circular scan
                 x_field = "vt_um"
 
-        measurement.correlate_and_average(is_verbose=True, **kwargs)
+        measurement.correlate_and_average(**kwargs)
 
         if should_plot:
             super_title = f"'{self.name}' Experiment\n'{measurement.name}' Measurement - ACFs"
