@@ -197,16 +197,13 @@ def save_object_to_disk(
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
-    #    print("\npre-compression size evaluation:")  # TESTESTEST
-    #    deep_size_estimate(obj)  # TESTESTEST
-
     # split iterables to chunks if possible
     if element_size_estimate_mb is not None:
         MAX_CHUNK_MB = 2000  # should be about optimized
         chunk_size = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
         chunked_obj = list(chunks(obj, chunk_size))
     else:  # obj isn't iterable - treat as a single chunk
-        chunked_obj = [[obj]]
+        chunked_obj = [obj]
 
     if compression_method == "gzip":
         with gzip.open(file_path, "wb", compresslevel=1) as f_gzip:
@@ -225,10 +222,6 @@ def save_object_to_disk(
         with open(file_path, "wb") as f:
             for chunk_ in chunked_obj:
                 pickle.dump(chunk_, f, protocol=-1)
-
-    #    if compression_method is not None: # TESTESTEST
-    #        print("\npost-compression size evaluation:") # TESTESTEST
-    #        deep_size_estimate(obj) # TESTESTEST
 
     logging.debug(
         f"Object '{obj_name}' of class '{obj.__class__.__name__}' ({compression_method}-compressed) saved as: {file_path}"
@@ -271,7 +264,7 @@ def load_file(file_path: Union[str, Path]) -> Any:
             )
 
     except EOFError:
-        if len(loaded_data) == 1:  # extract non-iterable loaded data
+        if len(loaded_data) == 1:  # extract non-chunked loaded data
             return loaded_data[0]
         else:  # flatten iterable chunked data
             return [item for chunk_ in loaded_data for item in chunk_]
@@ -304,6 +297,7 @@ def load_processed_solution_measurement(file_path: Path):
     """Doc."""
 
     tdc_obj = load_file(file_path)
+
     # Load runtimes as int64 if they are not already of that type
     for p in tdc_obj.data:
         p.runtime = p.runtime.astype(np.int64, copy=False)

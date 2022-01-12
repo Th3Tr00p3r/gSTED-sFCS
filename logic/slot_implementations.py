@@ -686,7 +686,7 @@ class MainWin:
                 getattr(self._gui, f"{param_name}_val{cam_num}").value()
                 for param_name in parameter_names
             )
-            parameters = ((name, value) for name, value in zip(parameter_names, parameter_values))
+            parameters = {name: value for name, value in zip(parameter_names, parameter_values)}
             with suppress(DeviceError):
                 camera.set_parameters(parameters)
 
