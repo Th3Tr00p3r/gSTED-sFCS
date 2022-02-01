@@ -611,7 +611,7 @@ class MainWin:
                     self.update_slider_range(cam_num=idx + 1)
                     [
                         getattr(self._gui, f"{name}{idx+1}").setValue(val * slider_const)
-                        for name, val in camera.DEFAULT_PARAMETERS.items()
+                        for name, val in camera.DEFAULT_PARAM_DICT.items()
                     ]
             self._gui.move(100, 30)
             self._gui.setFixedSize(1661, 950)
@@ -686,9 +686,9 @@ class MainWin:
                 getattr(self._gui, f"{param_name}_val{cam_num}").value()
                 for param_name in parameter_names
             )
-            parameters = {name: value for name, value in zip(parameter_names, parameter_values)}
+            param_dict = {name: value for name, value in zip(parameter_names, parameter_values)}
             with suppress(DeviceError):
-                camera.set_parameters(parameters)
+                camera.set_parameters(param_dict)
 
     ####################
     ## Analysis Tab - Raw Data
