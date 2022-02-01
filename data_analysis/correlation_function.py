@@ -189,15 +189,9 @@ class CorrFunc:
         self.j_bad = delete_list
         self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
-        try:
-            self.avg_cf_cr, self.error_cf_cr = _calculate_weighted_avg(
-                self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
-            )
-        except RuntimeWarning:  # division by zero
-            raise RuntimeError(
-                # TODO: why does this happen?
-                "Division by zero encountered during weighted averaging. Ignoring."
-            )
+        self.avg_cf_cr, self.error_cf_cr = _calculate_weighted_avg(
+            self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
+        )
 
         j_t = self.norm_range.valid_indices(self.lag)
         self.g0 = (self.avg_cf_cr[j_t] / self.error_cf_cr[j_t] ** 2).sum() / (
@@ -577,12 +571,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         # calculate average count rate
         self.avg_cnt_rate_khz = sum([p.avg_cnt_rate_khz for p in self.data]) / len(self.data)
 
-        if self.duration_min is None:
-            # calculate duration if not supplied
-            self.duration_min = (
-                np.mean([np.diff(p.runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
-            )
-            print(f"Calculating duration (not supplied): {self.duration_min:.1f} min\n")
+        calc_duration_mins = (
+            sum([np.diff(p.runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
+        )
+        if self.duration_min is not None:
+            if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
+                print(
+                    f"Attention! calculated duration ({calc_duration_mins:.1f} mins) is significantly different then set duration {self.duration_min:.1f} min). Using calculated.\n"
+                )
+        else:
+            print(f"Calculating duration (not supplied): {calc_duration_mins:.1f} mins\n")
+        self.duration_min = calc_duration_mins
 
         print(f"Finished loading FPGA data ({self.n_files}/{self.n_paths} files used).\n")
 
@@ -613,7 +612,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self.get_general_properties(file_paths[0], **kwargs)
 
         if should_parallel_process and len(file_paths) > 20:  # parellel processing
-            N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
+            N_CORES = mp.cpu_count() // 2 - 1  # /2 due to hyperthreading, -1 to leave one free
             func = partial(self.process_data_file, is_verbose=True, **kwargs)
             print(f"Parallel processing using {N_CORES} CPUs/processes.")
             with mp.get_context("spawn").Pool(N_CORES) as pool:
@@ -1557,7 +1556,7 @@ def _line_correlations(image, bw_mask, roi, line_limits: Limits, sampling_freq) 
         try:
             c, lags = _auto_corr(line.astype(np.float64))
         except ValueError:
-            print(f"Auto correlation of line #{j} has failed. Skipping.", end=" ")
+            print(f"Auto correlation of line No.{j} has failed. Skipping.", end=" ")
         else:
             c = c / line.mean() ** 2 - 1
             c[0] -= 1 / line.mean()  # subtracting shot noise, small stuff really
@@ -1585,8 +1584,16 @@ def _calculate_weighted_avg(cf_cr, weights):
     """Doc."""
 
     tot_weights = weights.sum(0)
-    # TODO: error handeling for the row below (zero division) - can/should it be detected beforehand?
-    avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
-    error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
+    try:
+        avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
+    except RuntimeWarning:  # division by zero - caused by zero total weights element/s
+        # TODO: why does this happen?
+        tot_weights += 1
+        avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
+        print(
+            "Division by zero avoided by adding epsilon=1. Why does this happen (zero total weight)?"
+        )
+    finally:
+        error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
 
     return avg_cf_cr, error_cf_cr

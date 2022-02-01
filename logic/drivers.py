@@ -408,7 +408,7 @@ class Instrumental:
         try:
             self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
         except Exception as exc:
-            # general 'Exception' is due to bad exception handeling in instrumental-lib...
+            # general 'Exception' is unavoidable due to bad exception handeling in instrumental-lib...
             raise IOError(f"{self.log_ref} disconnected - {exc}")
 
     def close_instrument(self):
@@ -453,13 +453,14 @@ class Instrumental:
     def update_parameter_ranges(self):
         """Doc."""
 
-        *self.pixel_clock_range, _ = tuple(
-            self._inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_GET_RANGE)
-        )
-        self.framerate_range = (1, self._inst.pixelclock._magnitude / 1.6)
-        *self.exposure_range, _ = tuple(
-            self._inst._dev.Exposure(uc480.lib.IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE)
-        )
+        with suppress(AttributeError):  # camera no connected
+            *self.pixel_clock_range, _ = tuple(
+                self._inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_GET_RANGE)
+            )
+            self.framerate_range = (1, self._inst.pixelclock._magnitude / 1.6)
+            *self.exposure_range, _ = tuple(
+                self._inst._dev.Exposure(uc480.lib.IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE)
+            )
 
     def set_parameter(self, name, value) -> None:
         """Doc."""
