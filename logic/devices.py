@@ -757,7 +757,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
-    DEFAULT_PARAMETERS = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
+    DEFAULT_PARAM_DICT = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
 
     def __init__(self, param_dict):
         super().__init__(
@@ -813,10 +813,10 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
             return not should_turn_on
 
-    def set_parameters(self, parameters: dict = DEFAULT_PARAMETERS) -> None:
+    def set_parameters(self, param_dict: dict = DEFAULT_PARAM_DICT) -> None:
         """Set pixel_clock, framerate and exposure"""
 
-        [self.set_parameter(name, value) for name, value in parameters.items()]
+        [self.set_parameter(name, value) for name, value in param_dict.items()]
 
 
 @dataclass
