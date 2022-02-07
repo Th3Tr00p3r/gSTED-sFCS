@@ -1,6 +1,15 @@
+dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
+solSubdirName,solution
+imgSubdirName,image
+camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
+logDataPath,./log/
+tempDataPath,C:/temp_sfcs_folder/
+cam1Serial,4102737458
+cam2Serial,4102835063
 arduinoAddr,COM3
-um232FlowControl,RTS-CTS
 um232BitMode,Single Channel Synchronous 245 FIFO
+um232FlowControl,RTS-CTS
+um232Description,UM232H
 counterPixelClockAddress,Dev1/Ctr0
 pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
 counterTriggerAddress,Dev3/port1/line0
@@ -31,18 +40,11 @@ excTriggerIntAddr,Dev3/port0/
 excAddr,Dev1/port0/line6
 depShutterAddr,Dev3/port0/line11
 depModelQuery,getmodel
-cam1Serial,4102737458
-cam2Serial,4102835063
-dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
-solSubdirName,solution
-imgSubdirName,image
-camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
-logDataPath,./log/
-tempDataPath,C:/temp_sfcs_folder/
-um232LatencyTimerVal,2
+psdModelQuery,RSN
 um232Timeout,2
-um232NumBytes,256000
 um232TxSize,256000
+um232NumBytes,256000
+um232LatencyTimerVal,2
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCversion,3
@@ -50,6 +52,7 @@ pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
 AIclkDiv,100
+psdBaudRate,115200
 xConv,70.81
 yConv,82.74
 zConv,10.0
@@ -58,4 +61,5 @@ AOtriggerEdge,Rising
 AOwfType,Sine
 excTriggerSrc,External (TDC)
 counterCIdupCountPrevention,True
-tabWidget,0
+tabWidget,1
+tabWidget_2,6

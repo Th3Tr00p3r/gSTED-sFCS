@@ -140,12 +140,17 @@ class MainWin(QtWidgets.QMainWindow):
             lambda: self.impl.move_stage(dir="RIGHT", steps=self.stageSteps.value())
         )
 
+        # Delayer
+        self.psdSetParams.released.connect(self.impl.set_delayer_parameters)
+
         # Device Toggling
         self.excOnButton.released.connect(lambda: self.impl.device_toggle("exc_laser"))
         self.depEmissionOn.released.connect(
             lambda: self.impl.device_toggle("dep_laser", "laser_toggle", "emission_state")
         )
         self.depShutterOn.released.connect(lambda: self.impl.device_toggle("dep_shutter"))
+        self.stageOn.released.connect(lambda: self.impl.device_toggle("stage"))
+        self.psdSwitch.released.connect(lambda: self.impl.device_toggle("delayer"))
 
         # Image Scan
         self.startImgScanExc.released.connect(
@@ -214,6 +219,8 @@ class MainWin(QtWidgets.QMainWindow):
         # intialize gui
         self.actionLaser_Control.setChecked(True)
         self.actionStepper_Stage_Control.setChecked(True)
+        self.actionDelayer_Control.setChecked(False)
+        self.delayerDock.setVisible(False)
         self.actionCamera_Control.setChecked(False)
         self.cameraDock.setVisible(False)
         self.stageButtonsGroup.setEnabled(False)
@@ -438,9 +445,21 @@ class MainWin(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(bool)
     def on_actionStepper_Stage_Control_toggled(self, is_toggled_on: bool) -> None:
-        """Show/hide stepper stage control dock"""
+        """Show/hide stepper stage control dock (switches with delayer, no more room)"""
 
         self.stepperDock.setVisible(is_toggled_on)
+        if is_toggled_on:
+            self.delayerDock.setVisible(False)
+            self.actionDelayer_Control.setChecked(False)
+
+    @QtCore.pyqtSlot(bool)
+    def on_actionDelayer_Control_toggled(self, is_toggled_on: bool) -> None:
+        """Show/hide delayer control dock (switches with stage, no more room)"""
+
+        self.delayerDock.setVisible(is_toggled_on)
+        if is_toggled_on:
+            self.stepperDock.setVisible(False)
+            self.actionStepper_Stage_Control.setChecked(False)
 
     @QtCore.pyqtSlot(bool)
     def on_actionCamera_Control_toggled(self, is_toggled_on: bool) -> None:
@@ -464,16 +483,6 @@ class MainWin(QtWidgets.QMainWindow):
 
         self.impl.move_scanners()
 
-    # -----------------------------------------------------------------------
-    # Stepper Stage Dock
-    # -----------------------------------------------------------------------
-
-    @QtCore.pyqtSlot()
-    def on_stageOn_released(self) -> None:
-        """Doc."""
-
-        self.impl.device_toggle("stage")
-
 
 class SettWin(QtWidgets.QDialog):
     """Documentation."""
@@ -486,6 +495,8 @@ class SettWin(QtWidgets.QDialog):
         super(SettWin, self).__init__()
         PyQt5.uic.loadUi(self.UI_PATH, self)
         self.impl = impl.SettWin(self, app)
+
+        self.getDeviceDetails.released.connect(self.impl.get_all_device_details)
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
         """Doc."""

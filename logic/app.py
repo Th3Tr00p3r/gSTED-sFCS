@@ -37,6 +37,7 @@ class App:
         "UM232H",
         "scanners",
         "photon_detector",
+        "delayer",
         "pixel_clock",
         "camera_1",
         "camera_2",
