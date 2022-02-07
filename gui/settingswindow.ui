@@ -94,21 +94,10 @@
       </property>
       <item>
        <widget class="QTabWidget" name="tabWidget">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>7</pointsize>
-         </font>
-        </property>
         <property name="currentIndex">
-         <number>6</number>
+         <number>1</number>
         </property>
-        <widget class="QWidget" name="data">
+        <widget class="QWidget" name="tab">
          <attribute name="title">
           <string>Data</string>
          </attribute>
@@ -289,8 +278,8 @@
             </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
-              <height>20</height>
+              <width>319</width>
+              <height>249</height>
              </size>
             </property>
            </spacer>
@@ -302,761 +291,1913 @@
             </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>20</width>
-              <height>40</height>
+              <width>319</width>
+              <height>253</height>
              </size>
             </property>
            </spacer>
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="lasers">
+        <widget class="QWidget" name="tab_2">
          <attribute name="title">
-          <string>Lasers</string>
+          <string>Devices</string>
          </attribute>
-         <layout class="QGridLayout" name="gridLayout_10">
+         <layout class="QGridLayout" name="gridLayout_23">
           <item row="0" column="0">
-           <layout class="QVBoxLayout" name="verticalLayout_12">
+           <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,10">
             <property name="spacing">
-             <number>0</number>
+             <number>2</number>
             </property>
             <item>
-             <widget class="QGroupBox" name="groupBox">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
+             <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,10">
+              <property name="spacing">
+               <number>2</number>
               </property>
-              <property name="title">
-               <string>Excitation Laser</string>
+              <item>
+               <widget class="QPushButton" name="getDeviceDetails">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="text">
+                 <string>Get Device
+Details</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QTextEdit" name="deviceDetails"/>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QTabWidget" name="tabWidget_2">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
               </property>
-              <layout class="QGridLayout" name="gridLayout_12">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <item row="0" column="0">
-                <layout class="QVBoxLayout" name="verticalLayout_19">
-                 <item>
-                  <widget class="QLabel" name="label_25">
-                   <property name="maximumSize">
-                    <size>
-                     <width>60</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Model</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="excMod">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="font">
-                    <font>
-                     <pointsize>8</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>PicoQuant</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="0" column="1" rowspan="2">
-                <widget class="QGroupBox" name="groupBox_8">
-                 <property name="title">
-                  <string>Trigger</string>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_7">
+              <property name="font">
+               <font>
+                <pointsize>7</pointsize>
+               </font>
+              </property>
+              <property name="currentIndex">
+               <number>6</number>
+              </property>
+              <widget class="QWidget" name="lasers">
+               <attribute name="title">
+                <string>Lasers</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_10">
+                <item row="0" column="0">
+                 <layout class="QVBoxLayout" name="verticalLayout_12">
                   <property name="spacing">
                    <number>0</number>
                   </property>
+                  <item>
+                   <widget class="QGroupBox" name="groupBox">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="title">
+                     <string>Excitation Laser</string>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_12">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
+                     <item row="0" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_19">
+                       <item>
+                        <widget class="QLabel" name="label_25">
+                         <property name="maximumSize">
+                          <size>
+                           <width>60</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Model</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="excMod">
+                         <property name="enabled">
+                          <bool>false</bool>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>PicoQuant</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item row="0" column="1" rowspan="2">
+                      <widget class="QGroupBox" name="groupBox_8">
+                       <property name="title">
+                        <string>Trigger</string>
+                       </property>
+                       <layout class="QGridLayout" name="gridLayout_7">
+                        <property name="spacing">
+                         <number>0</number>
+                        </property>
+                        <item row="0" column="0">
+                         <layout class="QVBoxLayout" name="verticalLayout_6">
+                          <item>
+                           <layout class="QVBoxLayout" name="verticalLayout_36">
+                            <item>
+                             <widget class="QLabel" name="label_32">
+                              <property name="maximumSize">
+                               <size>
+                                <width>16777215</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                              <property name="text">
+                               <string>Source</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QComboBox" name="excTriggerSrc">
+                              <property name="enabled">
+                               <bool>false</bool>
+                              </property>
+                              <property name="font">
+                               <font>
+                                <pointsize>8</pointsize>
+                               </font>
+                              </property>
+                              <item>
+                               <property name="text">
+                                <string>External (TDC)</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>Internal</string>
+                               </property>
+                              </item>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <widget class="QStackedWidget" name="stackedWidget">
+                            <property name="currentIndex">
+                             <number>1</number>
+                            </property>
+                            <widget class="QWidget" name="ext">
+                             <layout class="QGridLayout" name="gridLayout_5">
+                              <item row="0" column="0">
+                               <layout class="QVBoxLayout" name="verticalLayout_20">
+                                <item>
+                                 <widget class="QLabel" name="label_17">
+                                  <property name="maximumSize">
+                                   <size>
+                                    <width>16777215</width>
+                                    <height>20</height>
+                                   </size>
+                                  </property>
+                                  <property name="text">
+                                   <string>Physical Channel</string>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item>
+                                 <widget class="QLineEdit" name="excTriggerExtAddr">
+                                  <property name="text">
+                                   <string>Dev1/port0/line6</string>
+                                  </property>
+                                 </widget>
+                                </item>
+                               </layout>
+                              </item>
+                             </layout>
+                            </widget>
+                            <widget class="QWidget" name="int_2">
+                             <layout class="QGridLayout" name="gridLayout_6">
+                              <item row="1" column="0">
+                               <layout class="QVBoxLayout" name="verticalLayout_21">
+                                <item>
+                                 <widget class="QLabel" name="label_18">
+                                  <property name="maximumSize">
+                                   <size>
+                                    <width>16777215</width>
+                                    <height>20</height>
+                                   </size>
+                                  </property>
+                                  <property name="text">
+                                   <string>Physical Channel</string>
+                                  </property>
+                                 </widget>
+                                </item>
+                                <item>
+                                 <widget class="QLineEdit" name="excTriggerIntAddr">
+                                  <property name="enabled">
+                                   <bool>false</bool>
+                                  </property>
+                                  <property name="font">
+                                   <font>
+                                    <pointsize>8</pointsize>
+                                   </font>
+                                  </property>
+                                  <property name="text">
+                                   <string>Dev3/port0/</string>
+                                  </property>
+                                 </widget>
+                                </item>
+                               </layout>
+                              </item>
+                             </layout>
+                            </widget>
+                           </widget>
+                          </item>
+                         </layout>
+                        </item>
+                       </layout>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_18">
+                       <item>
+                        <widget class="QLabel" name="label_5">
+                         <property name="maximumSize">
+                          <size>
+                           <width>16777215</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Physical Channel</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="excAddr">
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>Dev3/port0/line21</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_3">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="title">
+                     <string>Depletion Laser</string>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_8">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
+                     <item row="1" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_68">
+                       <item>
+                        <widget class="QLabel" name="label_16">
+                         <property name="maximumSize">
+                          <size>
+                           <width>16777215</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Shutter Physical Channel</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="depShutterAddr">
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>Dev3/port0/line11</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item row="0" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_34">
+                       <item>
+                        <widget class="QLabel" name="label_30">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>999999</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Model Query</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="depModelQuery">
+                         <property name="enabled">
+                          <bool>true</bool>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>999</width>
+                           <height>24</height>
+                          </size>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>getmodel</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <spacer name="horizontalSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>376</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="0">
+                 <spacer name="verticalSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>175</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="ao_ai">
+               <attribute name="title">
+                <string>Scanners</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_21">
+                <item row="0" column="0">
+                 <layout class="QGridLayout" name="gridLayout_18" rowstretch="1,100" columnstretch="1,100">
+                  <item row="0" column="1">
+                   <spacer name="horizontalSpacer_7">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item row="1" column="0">
+                   <spacer name="verticalSpacer_5">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>20</width>
+                      <height>40</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
                   <item row="0" column="0">
-                   <layout class="QVBoxLayout" name="verticalLayout_6">
+                   <layout class="QHBoxLayout" name="horizontalLayout_3">
                     <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_36">
+                     <widget class="QGroupBox" name="groupBox_15">
+                      <property name="title">
+                       <string>AO Constants</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_60">
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_9">
+                         <property name="spacing">
+                          <number>0</number>
+                         </property>
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_51">
+                           <item>
+                            <widget class="QLabel" name="label_54">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>AOX Physical Address</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_5">
+                             <item>
+                              <widget class="QLineEdit" name="AOXaddr">
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Dev3/ao2, Dev3/ao3</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_84">
+                           <item>
+                            <widget class="QLabel" name="label_74">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>AOY Physical Address</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_6">
+                             <item>
+                              <widget class="QLineEdit" name="AOYaddr">
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Dev3/ao0, Dev3/ao1</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_86">
+                           <item>
+                            <widget class="QLabel" name="label_76">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>AOZ Physical Address</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_7">
+                             <item>
+                              <widget class="QLineEdit" name="AOZaddr">
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Dev1/ao1</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_10">
+                         <property name="spacing">
+                          <number>0</number>
+                         </property>
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_87">
+                           <item>
+                            <widget class="QLabel" name="label_77">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>AOX Internal Address</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_8">
+                             <item>
+                              <widget class="QLineEdit" name="AOXintAddr">
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_88">
+                           <item>
+                            <widget class="QLabel" name="label_78">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>AOY Internal Address</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_12">
+                             <item>
+                              <widget class="QLineEdit" name="AOYintAddr">
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_89">
+                           <item>
+                            <widget class="QLabel" name="label_79">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>AOZ Internal Address</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLineEdit" name="AOZintAddr">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="text">
+                              <string>Dev3/ai0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_90">
+                         <item>
+                          <widget class="QLabel" name="label_80">
+                           <property name="maximumSize">
+                            <size>
+                             <width>16777215</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                           <property name="text">
+                            <string>Digital Trigger Source</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLineEdit" name="AOdigTrigSrc">
+                           <property name="font">
+                            <font>
+                             <pointsize>8</pointsize>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>/Dev3/PFI0</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_91">
+                         <item>
+                          <widget class="QLabel" name="label_41">
+                           <property name="maximumSize">
+                            <size>
+                             <width>16777215</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                           <property name="text">
+                            <string>Trigger Edge</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QComboBox" name="AOtriggerEdge">
+                           <property name="font">
+                            <font>
+                             <pointsize>8</pointsize>
+                            </font>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>Rising</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Falling</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_92">
+                         <item>
+                          <widget class="QLabel" name="label_81">
+                           <property name="maximumSize">
+                            <size>
+                             <width>16777215</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                           <property name="text">
+                            <string>Waveform Type</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QComboBox" name="AOwfType">
+                           <property name="font">
+                            <font>
+                             <pointsize>8</pointsize>
+                            </font>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>Sine</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Triangle</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Square</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Sawtooth</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QVBoxLayout" name="verticalLayout_8">
                       <item>
-                       <widget class="QLabel" name="label_32">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
+                       <widget class="QGroupBox" name="groupBox_17">
+                        <property name="title">
+                         <string>AI Constants</string>
                         </property>
-                        <property name="text">
-                         <string>Source</string>
-                        </property>
+                        <layout class="QVBoxLayout" name="verticalLayout_93">
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_94">
+                           <item>
+                            <widget class="QLabel" name="label_82">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>Trigger Source</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLineEdit" name="AItrigSrc">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="text">
+                              <string>/Dev3/PFI0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_95">
+                           <item>
+                            <widget class="QLabel" name="label_83">
+                             <property name="text">
+                              <string>AI clock divider</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSpinBox" name="AIclkDiv">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="wrapping">
+                              <bool>false</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>false</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="maximum">
+                              <number>99999</number>
+                             </property>
+                             <property name="value">
+                              <number>100</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_11">
+                           <property name="spacing">
+                            <number>0</number>
+                           </property>
+                           <item>
+                            <layout class="QVBoxLayout" name="verticalLayout_96">
+                             <item>
+                              <widget class="QLabel" name="label_84">
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>AIX Address</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QLineEdit" name="AIXaddr">
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Dev3/ai23</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <layout class="QVBoxLayout" name="verticalLayout_97">
+                             <item>
+                              <widget class="QLabel" name="label_85">
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>AIY Address</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QLineEdit" name="AIYaddr">
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Dev3/ai7</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <layout class="QVBoxLayout" name="verticalLayout_98">
+                             <item>
+                              <widget class="QLabel" name="label_86">
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>AIZ Address</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QLineEdit" name="AIZaddr">
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>Dev3/ai9</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QVBoxLayout" name="verticalLayout_99">
+                           <item>
+                            <widget class="QLabel" name="label_87">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>Laser Monitor</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLineEdit" name="AIlaserMonAddr">
+                             <property name="enabled">
+                              <bool>false</bool>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="text">
+                              <string>Dev3/ai3</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
                        </widget>
                       </item>
                       <item>
-                       <widget class="QComboBox" name="excTriggerSrc">
-                        <property name="enabled">
-                         <bool>false</bool>
+                       <widget class="QGroupBox" name="groupBox_2">
+                        <property name="title">
+                         <string>Micrometer-Volt Conversion</string>
                         </property>
-                        <property name="font">
-                         <font>
-                          <pointsize>8</pointsize>
-                         </font>
-                        </property>
-                        <item>
-                         <property name="text">
-                          <string>External (TDC)</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>Internal</string>
-                         </property>
-                        </item>
+                        <layout class="QGridLayout" name="gridLayout_11">
+                         <item row="0" column="0">
+                          <layout class="QHBoxLayout" name="horizontalLayout_4">
+                           <property name="spacing">
+                            <number>0</number>
+                           </property>
+                           <item>
+                            <layout class="QVBoxLayout" name="verticalLayout_63">
+                             <item>
+                              <widget class="QLabel" name="label_57">
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>X</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="xConv">
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="maximum">
+                                <double>99999.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>68.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <layout class="QVBoxLayout" name="verticalLayout_64">
+                             <item>
+                              <widget class="QLabel" name="label_58">
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>Y</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="yConv">
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="maximum">
+                                <double>99999.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>78.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <layout class="QVBoxLayout" name="verticalLayout_65">
+                             <item>
+                              <widget class="QLabel" name="label_59">
+                               <property name="maximumSize">
+                                <size>
+                                 <width>16777215</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string>Z</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QDoubleSpinBox" name="zConv">
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="maximum">
+                                <double>99999.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>10.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
                        </widget>
                       </item>
                      </layout>
                     </item>
-                    <item>
-                     <widget class="QStackedWidget" name="stackedWidget">
-                      <property name="currentIndex">
-                       <number>1</number>
-                      </property>
-                      <widget class="QWidget" name="ext">
-                       <layout class="QGridLayout" name="gridLayout_5">
-                        <item row="0" column="0">
-                         <layout class="QVBoxLayout" name="verticalLayout_20">
-                          <item>
-                           <widget class="QLabel" name="label_17">
-                            <property name="maximumSize">
-                             <size>
-                              <width>16777215</width>
-                              <height>20</height>
-                             </size>
-                            </property>
-                            <property name="text">
-                             <string>Physical Channel</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item>
-                           <widget class="QLineEdit" name="excTriggerExtAddr">
-                            <property name="text">
-                             <string>Dev1/port0/line6</string>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
-                        </item>
-                       </layout>
-                      </widget>
-                      <widget class="QWidget" name="int">
-                       <layout class="QGridLayout" name="gridLayout_6">
-                        <item row="1" column="0">
-                         <layout class="QVBoxLayout" name="verticalLayout_21">
-                          <item>
-                           <widget class="QLabel" name="label_18">
-                            <property name="maximumSize">
-                             <size>
-                              <width>16777215</width>
-                              <height>20</height>
-                             </size>
-                            </property>
-                            <property name="text">
-                             <string>Physical Channel</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item>
-                           <widget class="QLineEdit" name="excTriggerIntAddr">
-                            <property name="enabled">
-                             <bool>false</bool>
-                            </property>
-                            <property name="font">
-                             <font>
-                              <pointsize>8</pointsize>
-                             </font>
-                            </property>
-                            <property name="text">
-                             <string>Dev3/port0/</string>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
-                        </item>
-                       </layout>
-                      </widget>
-                     </widget>
-                    </item>
                    </layout>
                   </item>
                  </layout>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <layout class="QVBoxLayout" name="verticalLayout_18">
-                 <item>
-                  <widget class="QLabel" name="label_5">
-                   <property name="maximumSize">
-                    <size>
-                     <width>16777215</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Physical Channel</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="excAddr">
-                   <property name="font">
-                    <font>
-                     <pointsize>8</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>Dev3/port0/line21</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QGroupBox" name="groupBox_3">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="title">
-               <string>Depletion Laser</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_8">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <item row="1" column="0">
-                <layout class="QVBoxLayout" name="verticalLayout_68">
-                 <item>
-                  <widget class="QLabel" name="label_16">
-                   <property name="maximumSize">
-                    <size>
-                     <width>16777215</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Shutter Physical Channel</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="depShutterAddr">
-                   <property name="font">
-                    <font>
-                     <pointsize>8</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>Dev3/port0/line11</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="0" column="0">
-                <layout class="QVBoxLayout" name="verticalLayout_34">
-                 <item>
-                  <widget class="QLabel" name="label_30">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>999999</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>model query</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="depModelQuery">
-                   <property name="enabled">
-                    <bool>true</bool>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>999</width>
-                     <height>24</height>
-                    </size>
-                   </property>
-                   <property name="font">
-                    <font>
-                     <pointsize>8</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>getmodel</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item row="0" column="1">
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>376</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="1" column="0">
-           <spacer name="verticalSpacer">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>175</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="ao_ai">
-         <attribute name="title">
-          <string>Scanners</string>
-         </attribute>
-         <layout class="QGridLayout" name="gridLayout_21">
-          <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_18" rowstretch="1,100" columnstretch="1,100">
-            <item row="0" column="1">
-             <spacer name="horizontalSpacer_7">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item row="1" column="0">
-             <spacer name="verticalSpacer_5">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item row="0" column="0">
-             <layout class="QHBoxLayout" name="horizontalLayout_2">
-              <item>
-               <widget class="QGroupBox" name="groupBox_15">
-                <property name="title">
-                 <string>AO Constants</string>
-                </property>
-                <layout class="QVBoxLayout" name="verticalLayout_60">
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_9">
-                   <property name="spacing">
-                    <number>0</number>
-                   </property>
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_51">
-                     <item>
-                      <widget class="QLabel" name="label_54">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>AOX Physical Address</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_5">
-                       <item>
-                        <widget class="QLineEdit" name="AOXaddr">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/ao2, Dev3/ao3</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_84">
-                     <item>
-                      <widget class="QLabel" name="label_74">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>AOY Physical Address</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_6">
-                       <item>
-                        <widget class="QLineEdit" name="AOYaddr">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/ao0, Dev3/ao1</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_86">
-                     <item>
-                      <widget class="QLabel" name="label_76">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>AOZ Physical Address</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_7">
-                       <item>
-                        <widget class="QLineEdit" name="AOZaddr">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev1/ao1</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_10">
-                   <property name="spacing">
-                    <number>0</number>
-                   </property>
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_87">
-                     <item>
-                      <widget class="QLabel" name="label_77">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>AOX Internal Address</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_8">
-                       <item>
-                        <widget class="QLineEdit" name="AOXintAddr">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_88">
-                     <item>
-                      <widget class="QLabel" name="label_78">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>AOY Internal Address</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_12">
-                       <item>
-                        <widget class="QLineEdit" name="AOYintAddr">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_89">
-                     <item>
-                      <widget class="QLabel" name="label_79">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>AOZ Internal Address</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="AOZintAddr">
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Dev3/ai0</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_90">
-                   <item>
-                    <widget class="QLabel" name="label_80">
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>Digital Trigger Source</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="AOdigTrigSrc">
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <property name="text">
-                      <string>/Dev3/PFI0</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_91">
-                   <item>
-                    <widget class="QLabel" name="label_41">
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>Trigger Edge</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QComboBox" name="AOtriggerEdge">
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <item>
-                      <property name="text">
-                       <string>Rising</string>
-                      </property>
-                     </item>
-                     <item>
-                      <property name="text">
-                       <string>Falling</string>
-                      </property>
-                     </item>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_92">
-                   <item>
-                    <widget class="QLabel" name="label_81">
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>Waveform Type</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QComboBox" name="AOwfType">
-                     <property name="font">
-                      <font>
-                       <pointsize>8</pointsize>
-                      </font>
-                     </property>
-                     <item>
-                      <property name="text">
-                       <string>Sine</string>
-                      </property>
-                     </item>
-                     <item>
-                      <property name="text">
-                       <string>Triangle</string>
-                      </property>
-                     </item>
-                     <item>
-                      <property name="text">
-                       <string>Square</string>
-                      </property>
-                     </item>
-                     <item>
-                      <property name="text">
-                       <string>Sawtooth</string>
-                      </property>
-                     </item>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <layout class="QVBoxLayout" name="verticalLayout_8">
-                <item>
-                 <widget class="QGroupBox" name="groupBox_17">
-                  <property name="title">
-                   <string>AI Constants</string>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tdc_counter_pixelclock">
+               <attribute name="title">
+                <string>TDC/Counter/Pixel Clock</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_20">
+                <item row="0" column="0">
+                 <layout class="QGridLayout" name="gridLayout_17" rowstretch="1,1000" columnstretch="1,1000">
+                  <property name="spacing">
+                   <number>0</number>
                   </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_93">
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_94">
+                  <item row="0" column="0">
+                   <layout class="QHBoxLayout" name="horizontalLayout_13" stretch="1,100000">
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_5">
+                      <property name="title">
+                       <string>Counter</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_13">
+                       <item row="0" column="0">
+                        <widget class="QGroupBox" name="groupBox_9">
+                         <property name="title">
+                          <string>Pixel Clock Config</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="verticalLayout_27">
+                          <property name="spacing">
+                           <number>0</number>
+                          </property>
+                          <item>
+                           <layout class="QVBoxLayout" name="verticalLayout_48">
+                            <item>
+                             <widget class="QLabel" name="label_45">
+                              <property name="maximumSize">
+                               <size>
+                                <width>16777215</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                              <property name="text">
+                               <string>Pixel Clock Counter</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QLineEdit" name="counterPixelClockAddress">
+                              <property name="font">
+                               <font>
+                                <pointsize>8</pointsize>
+                               </font>
+                              </property>
+                              <property name="text">
+                               <string>Dev1/Ctr0</string>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <layout class="QVBoxLayout" name="verticalLayout_52">
+                            <item>
+                             <widget class="QLabel" name="label_46">
+                              <property name="maximumSize">
+                               <size>
+                                <width>16777215</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                              <property name="text">
+                               <string>Pixel Clock Output</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QLineEdit" name="pixelClockCounterIntOutputAddress">
+                              <property name="font">
+                               <font>
+                                <pointsize>8</pointsize>
+                               </font>
+                              </property>
+                              <property name="text">
+                               <string>/Dev3/Ctr0InternalOutput</string>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item row="0" column="1" rowspan="2">
+                        <widget class="QGroupBox" name="groupBox_10">
+                         <property name="title">
+                          <string>Trigger</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="verticalLayout_28">
+                          <property name="spacing">
+                           <number>0</number>
+                          </property>
+                          <item>
+                           <layout class="QVBoxLayout" name="verticalLayout_38">
+                            <item>
+                             <widget class="QLabel" name="label_33">
+                              <property name="maximumSize">
+                               <size>
+                                <width>16777215</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                              <property name="text">
+                               <string>Physical Channel</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QLineEdit" name="counterTriggerAddress">
+                              <property name="font">
+                               <font>
+                                <pointsize>8</pointsize>
+                               </font>
+                              </property>
+                              <property name="text">
+                               <string>Dev3/port1/line0</string>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <layout class="QVBoxLayout" name="verticalLayout_53">
+                            <item>
+                             <widget class="QLabel" name="label_34">
+                              <property name="maximumSize">
+                               <size>
+                                <width>16777215</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                              <property name="text">
+                               <string>ArmStart.DigEdge.Src</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QLineEdit" name="counterTriggerArmStartDigEdgeSrc">
+                              <property name="font">
+                               <font>
+                                <pointsize>8</pointsize>
+                               </font>
+                              </property>
+                              <property name="text">
+                               <string>/Dev3/PFI0</string>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <layout class="QVBoxLayout" name="verticalLayout_54">
+                            <item>
+                             <widget class="QLabel" name="label_37">
+                              <property name="maximumSize">
+                               <size>
+                                <width>16777215</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                              <property name="text">
+                               <string>Trigger Edge</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QComboBox" name="counterTriggerEdge">
+                              <property name="font">
+                               <font>
+                                <pointsize>8</pointsize>
+                               </font>
+                              </property>
+                              <property name="editable">
+                               <bool>false</bool>
+                              </property>
+                              <item>
+                               <property name="text">
+                                <string>Rising</string>
+                               </property>
+                              </item>
+                              <item>
+                               <property name="text">
+                                <string>Falling</string>
+                               </property>
+                              </item>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QGroupBox" name="groupBox_11">
+                         <property name="title">
+                          <string>Count Edges</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="verticalLayout_55">
+                          <property name="spacing">
+                           <number>0</number>
+                          </property>
+                          <item>
+                           <layout class="QVBoxLayout" name="verticalLayout_56">
+                            <item>
+                             <widget class="QLabel" name="label_47">
+                              <property name="maximumSize">
+                               <size>
+                                <width>16777215</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                              <property name="text">
+                               <string>Photon counter</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QLineEdit" name="counterAddress">
+                              <property name="font">
+                               <font>
+                                <pointsize>8</pointsize>
+                               </font>
+                              </property>
+                              <property name="text">
+                               <string>Dev3/ctr1</string>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <layout class="QVBoxLayout" name="verticalLayout_57">
+                            <item>
+                             <widget class="QLabel" name="label_48">
+                              <property name="maximumSize">
+                               <size>
+                                <width>16777215</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                              <property name="text">
+                               <string>CI.CountEdges.Term</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <widget class="QLineEdit" name="counterCIcountEdgesTerm">
+                              <property name="font">
+                               <font>
+                                <pointsize>8</pointsize>
+                               </font>
+                              </property>
+                              <property name="text">
+                               <string>/Dev3/PFI8</string>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <widget class="QCheckBox" name="counterCIdupCountPrevention">
+                            <property name="text">
+                             <string>CI.DupCountPrevention</string>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QVBoxLayout" name="verticalLayout_83">
+                      <item>
+                       <widget class="QGroupBox" name="groupBox_12">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="title">
+                         <string>TDC</string>
+                        </property>
+                        <layout class="QGridLayout" name="gridLayout_15">
+                         <property name="spacing">
+                          <number>0</number>
+                         </property>
+                         <item row="0" column="0" colspan="2">
+                          <layout class="QVBoxLayout" name="verticalLayout_43">
+                           <item>
+                            <widget class="QLabel" name="Address">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>TDC Start</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLineEdit" name="TDCaddress">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="text">
+                              <string>Dev3/port0/line12</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="0" column="2" colspan="2">
+                          <layout class="QVBoxLayout" name="verticalLayout_45">
+                           <item>
+                            <widget class="QLabel" name="label_43">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>Data Version</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLineEdit" name="TDCdataVersion">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="text">
+                              <string>7bytes noreset</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="1" column="0">
+                          <layout class="QVBoxLayout" name="verticalLayout_32">
+                           <item>
+                            <widget class="QLabel" name="label_23">
+                             <property name="text">
+                              <string>Laser Freq. (MHz)</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSpinBox" name="TDClaserFreq">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="wrapping">
+                              <bool>false</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>false</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="value">
+                              <number>10</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="1" column="1" colspan="2">
+                          <layout class="QVBoxLayout" name="verticalLayout_33">
+                           <item>
+                            <widget class="QLabel" name="label_24">
+                             <property name="text">
+                              <string>FPGA Freq. (MHz)</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSpinBox" name="TDCFPGAFreq">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
+                             <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                               <horstretch>0</horstretch>
+                               <verstretch>0</verstretch>
+                              </sizepolicy>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="wrapping">
+                              <bool>false</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>false</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="maximum">
+                              <number>9999999</number>
+                             </property>
+                             <property name="value">
+                              <number>400</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="1" column="3">
+                          <layout class="QVBoxLayout" name="verticalLayout_40">
+                           <item>
+                            <widget class="QLabel" name="label_28">
+                             <property name="text">
+                              <string>Version</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSpinBox" name="TDCversion">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
+                             <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                               <horstretch>0</horstretch>
+                               <verstretch>0</verstretch>
+                              </sizepolicy>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="wrapping">
+                              <bool>false</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>false</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="value">
+                              <number>3</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QGroupBox" name="groupBox_14">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="title">
+                         <string>Pixel Clock Parameters</string>
+                        </property>
+                        <layout class="QGridLayout" name="gridLayout_14">
+                         <item row="4" column="0" colspan="2">
+                          <layout class="QVBoxLayout" name="verticalLayout_62">
+                           <item>
+                            <widget class="QLabel" name="label_42">
+                             <property name="text">
+                              <string>Pixel Clock Freq. (MHz)</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSpinBox" name="pixelClockFreq">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
+                             <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                               <horstretch>0</horstretch>
+                               <verstretch>0</verstretch>
+                              </sizepolicy>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="wrapping">
+                              <bool>false</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>false</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="maximum">
+                              <number>99999</number>
+                             </property>
+                             <property name="value">
+                              <number>4</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="0" column="1">
+                          <layout class="QVBoxLayout" name="verticalLayout_42">
+                           <item>
+                            <widget class="QLabel" name="label_31">
+                             <property name="text">
+                              <string>High Ticks</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSpinBox" name="pixelClockHighTicks">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="wrapping">
+                              <bool>false</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>false</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="value">
+                              <number>2</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="1" column="0" colspan="2">
+                          <layout class="QVBoxLayout" name="verticalLayout_59">
+                           <item>
+                            <widget class="QLabel" name="pixelClockCounterChannel_2">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>Counter Physical Channel</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLineEdit" name="pixelClockCounterAddress">
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="text">
+                              <string>Dev3/ctr0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="0" column="0">
+                          <layout class="QVBoxLayout" name="verticalLayout_58">
+                           <item>
+                            <widget class="QLabel" name="label_40">
+                             <property name="text">
+                              <string>Low Ticks</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSpinBox" name="pixelClockLowTicks">
+                             <property name="enabled">
+                              <bool>true</bool>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="wrapping">
+                              <bool>false</bool>
+                             </property>
+                             <property name="readOnly">
+                              <bool>false</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
+                             <property name="value">
+                              <number>10</number>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="2" column="0" colspan="2">
+                          <layout class="QVBoxLayout" name="verticalLayout_61">
+                           <item>
+                            <widget class="QLabel" name="label_49">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>Source of Ticks</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLineEdit" name="pixelClockSrcOfTicks">
+                             <property name="sizePolicy">
+                              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                               <horstretch>0</horstretch>
+                               <verstretch>0</verstretch>
+                              </sizepolicy>
+                             </property>
+                             <property name="font">
+                              <font>
+                               <pointsize>8</pointsize>
+                              </font>
+                             </property>
+                             <property name="text">
+                              <string>/Dev3/PFI3</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item row="3" column="0" colspan="2">
+                          <layout class="QVBoxLayout" name="verticalLayout_11">
+                           <item>
+                            <widget class="QLabel" name="label_50">
+                             <property name="maximumSize">
+                              <size>
+                               <width>16777215</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                             <property name="text">
+                              <string>Output Terminals</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_14">
+                             <item>
+                              <widget class="QLineEdit" name="pixelClockOutput">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>/Dev3/PFI12</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QLineEdit" name="pixelClockOutputExt">
+                               <property name="sizePolicy">
+                                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                 <horstretch>0</horstretch>
+                                 <verstretch>0</verstretch>
+                                </sizepolicy>
+                               </property>
+                               <property name="font">
+                                <font>
+                                 <pointsize>8</pointsize>
+                                </font>
+                               </property>
+                               <property name="text">
+                                <string>/Dev1/PFI5</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
+                  </item>
+                  <item row="0" column="1">
+                   <spacer name="horizontalSpacer_6">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item row="1" column="0">
+                   <spacer name="verticalSpacer_4">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                    <property name="sizeType">
+                     <enum>QSizePolicy::Expanding</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>20</width>
+                      <height>100</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="um232h">
+               <attribute name="title">
+                <string>UM232H</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_9">
+                <item row="0" column="0">
+                 <widget class="QGroupBox" name="groupBox_7">
+                  <property name="title">
+                   <string>Settings</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,1">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item row="1" column="1">
+                    <layout class="QVBoxLayout" name="verticalLayout_80">
                      <item>
-                      <widget class="QLabel" name="label_82">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
+                      <widget class="QLabel" name="label_71">
                        <property name="text">
-                        <string>Trigger Source</string>
+                        <string>Bit Mode</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="AItrigSrc">
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
+                      <widget class="QLineEdit" name="um232BitMode">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>170</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777215</height>
+                        </size>
                        </property>
                        <property name="text">
-                        <string>/Dev3/PFI0</string>
+                        <string>Single Channel Synchronous 245 FIFO</string>
                        </property>
                       </widget>
                      </item>
                     </layout>
                    </item>
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_95">
+                   <item row="2" column="1">
+                    <layout class="QVBoxLayout" name="verticalLayout_82">
                      <item>
-                      <widget class="QLabel" name="label_83">
+                      <widget class="QLabel" name="label_73">
                        <property name="text">
-                        <string>AI clock divider</string>
+                        <string>Timeouts (ms)</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="AIclkDiv">
+                      <widget class="QSpinBox" name="um232Timeout">
                        <property name="enabled">
                         <bool>true</bool>
                        </property>
@@ -1075,664 +2216,84 @@
                         <enum>QAbstractSpinBox::NoButtons</enum>
                        </property>
                        <property name="maximum">
-                        <number>99999</number>
+                        <number>999999999</number>
                        </property>
                        <property name="value">
-                        <number>100</number>
+                        <number>10</number>
                        </property>
                       </widget>
                      </item>
                     </layout>
                    </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_11">
-                     <property name="spacing">
-                      <number>0</number>
-                     </property>
+                   <item row="3" column="1">
+                    <layout class="QVBoxLayout" name="verticalLayout_102">
                      <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_96">
-                       <item>
-                        <widget class="QLabel" name="label_84">
-                         <property name="maximumSize">
-                          <size>
-                           <width>16777215</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>AIX Address</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="AIXaddr">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/ai23</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_97">
-                       <item>
-                        <widget class="QLabel" name="label_85">
-                         <property name="maximumSize">
-                          <size>
-                           <width>16777215</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>AIY Address</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="AIYaddr">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/ai7</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_98">
-                       <item>
-                        <widget class="QLabel" name="label_86">
-                         <property name="maximumSize">
-                          <size>
-                           <width>16777215</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>AIZ Address</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="AIZaddr">
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Dev3/ai9</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout_99">
-                     <item>
-                      <widget class="QLabel" name="label_87">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
+                      <widget class="QLabel" name="label_89">
                        <property name="text">
-                        <string>Laser Monitor</string>
+                        <string>Transfer Size (b)</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="AIlaserMonAddr">
+                      <widget class="QSpinBox" name="um232TxSize">
                        <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <pointsize>8</pointsize>
+                        </font>
+                       </property>
+                       <property name="wrapping">
                         <bool>false</bool>
                        </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
+                       <property name="readOnly">
+                        <bool>false</bool>
                        </property>
-                       <property name="text">
-                        <string>Dev3/ai3</string>
+                       <property name="buttonSymbols">
+                        <enum>QAbstractSpinBox::NoButtons</enum>
                        </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QGroupBox" name="groupBox_2">
-                  <property name="title">
-                   <string>Micrometer-Volt Conversion</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_11">
-                   <item row="0" column="0">
-                    <layout class="QHBoxLayout" name="horizontalLayout_3">
-                     <property name="spacing">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_63">
-                       <item>
-                        <widget class="QLabel" name="label_57">
-                         <property name="maximumSize">
-                          <size>
-                           <width>16777215</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>X</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QDoubleSpinBox" name="xConv">
-                         <property name="buttonSymbols">
-                          <enum>QAbstractSpinBox::NoButtons</enum>
-                         </property>
-                         <property name="maximum">
-                          <double>99999.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>68.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_64">
-                       <item>
-                        <widget class="QLabel" name="label_58">
-                         <property name="maximumSize">
-                          <size>
-                           <width>16777215</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>Y</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QDoubleSpinBox" name="yConv">
-                         <property name="buttonSymbols">
-                          <enum>QAbstractSpinBox::NoButtons</enum>
-                         </property>
-                         <property name="maximum">
-                          <double>99999.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>78.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_65">
-                       <item>
-                        <widget class="QLabel" name="label_59">
-                         <property name="maximumSize">
-                          <size>
-                           <width>16777215</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>Z</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QDoubleSpinBox" name="zConv">
-                         <property name="buttonSymbols">
-                          <enum>QAbstractSpinBox::NoButtons</enum>
-                         </property>
-                         <property name="maximum">
-                          <double>99999.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>10.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="tdc_counter_pixelclock">
-         <attribute name="title">
-          <string>TDC/Counter/Pixel Clock</string>
-         </attribute>
-         <layout class="QGridLayout" name="gridLayout_20">
-          <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_17" rowstretch="1,1000" columnstretch="1,1000">
-            <property name="spacing">
-             <number>0</number>
-            </property>
-            <item row="0" column="0">
-             <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,100000">
-              <item>
-               <widget class="QGroupBox" name="groupBox_5">
-                <property name="title">
-                 <string>Counter</string>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_13">
-                 <item row="0" column="0">
-                  <widget class="QGroupBox" name="groupBox_9">
-                   <property name="title">
-                    <string>Pixel Clock Config</string>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_27">
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_48">
-                      <item>
-                       <widget class="QLabel" name="label_45">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>Pixel Clock Counter</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLineEdit" name="counterPixelClockAddress">
-                        <property name="font">
-                         <font>
-                          <pointsize>8</pointsize>
-                         </font>
-                        </property>
-                        <property name="text">
-                         <string>Dev1/Ctr0</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_52">
-                      <item>
-                       <widget class="QLabel" name="label_46">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>Pixel Clock Output</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLineEdit" name="pixelClockCounterIntOutputAddress">
-                        <property name="font">
-                         <font>
-                          <pointsize>8</pointsize>
-                         </font>
-                        </property>
-                        <property name="text">
-                         <string>/Dev3/Ctr0InternalOutput</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item row="0" column="1" rowspan="2">
-                  <widget class="QGroupBox" name="groupBox_10">
-                   <property name="title">
-                    <string>Trigger</string>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_28">
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_38">
-                      <item>
-                       <widget class="QLabel" name="label_33">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>Physical Channel</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLineEdit" name="counterTriggerAddress">
-                        <property name="font">
-                         <font>
-                          <pointsize>8</pointsize>
-                         </font>
-                        </property>
-                        <property name="text">
-                         <string>Dev3/port1/line0</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_53">
-                      <item>
-                       <widget class="QLabel" name="label_34">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>ArmStart.DigEdge.Src</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLineEdit" name="counterTriggerArmStartDigEdgeSrc">
-                        <property name="font">
-                         <font>
-                          <pointsize>8</pointsize>
-                         </font>
-                        </property>
-                        <property name="text">
-                         <string>/Dev3/PFI0</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_54">
-                      <item>
-                       <widget class="QLabel" name="label_37">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>Trigger Edge</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QComboBox" name="counterTriggerEdge">
-                        <property name="font">
-                         <font>
-                          <pointsize>8</pointsize>
-                         </font>
-                        </property>
-                        <property name="editable">
-                         <bool>false</bool>
-                        </property>
-                        <item>
-                         <property name="text">
-                          <string>Rising</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>Falling</string>
-                         </property>
-                        </item>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QGroupBox" name="groupBox_11">
-                   <property name="title">
-                    <string>Count Edges</string>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_55">
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_56">
-                      <item>
-                       <widget class="QLabel" name="label_47">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>Photon counter</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLineEdit" name="counterAddress">
-                        <property name="font">
-                         <font>
-                          <pointsize>8</pointsize>
-                         </font>
-                        </property>
-                        <property name="text">
-                         <string>Dev3/ctr1</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_57">
-                      <item>
-                       <widget class="QLabel" name="label_48">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>CI.CountEdges.Term</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLineEdit" name="counterCIcountEdgesTerm">
-                        <property name="font">
-                         <font>
-                          <pointsize>8</pointsize>
-                         </font>
-                        </property>
-                        <property name="text">
-                         <string>/Dev3/PFI8</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <widget class="QCheckBox" name="counterCIdupCountPrevention">
-                      <property name="text">
-                       <string>CI.DupCountPrevention</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <layout class="QVBoxLayout" name="verticalLayout_83">
-                <item>
-                 <widget class="QGroupBox" name="groupBox_12">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="title">
-                   <string>TDC</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_15">
-                   <property name="spacing">
-                    <number>0</number>
-                   </property>
-                   <item row="0" column="0" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_43">
-                     <item>
-                      <widget class="QLabel" name="Address">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
+                       <property name="maximum">
+                        <number>999999999</number>
                        </property>
-                       <property name="text">
-                        <string>TDC Start</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="TDCaddress">
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Dev3/port0/line12</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="0" column="2" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_45">
-                     <item>
-                      <widget class="QLabel" name="label_43">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>Data Version</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="TDCdataVersion">
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>7bytes noreset</string>
+                       <property name="value">
+                        <number>10</number>
                        </property>
                       </widget>
                      </item>
                     </layout>
                    </item>
                    <item row="1" column="0">
-                    <layout class="QVBoxLayout" name="verticalLayout_32">
+                    <layout class="QVBoxLayout" name="verticalLayout_79">
                      <item>
-                      <widget class="QLabel" name="label_23">
+                      <widget class="QLabel" name="label_70">
                        <property name="text">
-                        <string>Laser Freq. (MHz)</string>
+                        <string>Flow Control</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="TDClaserFreq">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="wrapping">
-                        <bool>false</bool>
-                       </property>
-                       <property name="readOnly">
-                        <bool>false</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="value">
-                        <number>10</number>
+                      <widget class="QLineEdit" name="um232FlowControl">
+                       <property name="text">
+                        <string>RTS-CTS</string>
                        </property>
                       </widget>
                      </item>
                     </layout>
                    </item>
-                   <item row="1" column="1" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_33">
+                   <item row="3" column="0">
+                    <layout class="QVBoxLayout" name="verticalLayout_85">
                      <item>
-                      <widget class="QLabel" name="label_24">
+                      <widget class="QLabel" name="label_75">
                        <property name="text">
-                        <string>FPGA Freq. (MHz)</string>
+                        <string>Bytes to Read (b)</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="TDCFPGAFreq">
+                      <widget class="QSpinBox" name="um232NumBytes">
                        <property name="enabled">
                         <bool>true</bool>
-                       </property>
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
                        </property>
                        <property name="font">
                         <font>
@@ -1749,90 +2310,28 @@
                         <enum>QAbstractSpinBox::NoButtons</enum>
                        </property>
                        <property name="maximum">
-                        <number>9999999</number>
+                        <number>999999999</number>
                        </property>
                        <property name="value">
-                        <number>400</number>
+                        <number>64000</number>
                        </property>
                       </widget>
                      </item>
                     </layout>
                    </item>
-                   <item row="1" column="3">
-                    <layout class="QVBoxLayout" name="verticalLayout_40">
+                   <item row="2" column="0">
+                    <layout class="QVBoxLayout" name="verticalLayout_76">
                      <item>
-                      <widget class="QLabel" name="label_28">
+                      <widget class="QLabel" name="label_67">
                        <property name="text">
-                        <string>Version</string>
+                        <string>Latency Timer (ms)</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="TDCversion">
+                      <widget class="QSpinBox" name="um232LatencyTimerVal">
                        <property name="enabled">
                         <bool>true</bool>
-                       </property>
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="wrapping">
-                        <bool>false</bool>
-                       </property>
-                       <property name="readOnly">
-                        <bool>false</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="value">
-                        <number>3</number>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QGroupBox" name="groupBox_14">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="title">
-                   <string>Pixel Clock Parameters</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_14">
-                   <item row="4" column="0" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_62">
-                     <item>
-                      <widget class="QLabel" name="label_42">
-                       <property name="text">
-                        <string>Pixel Clock Freq. (MHz)</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="pixelClockFreq">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
                        </property>
                        <property name="font">
                         <font>
@@ -1849,656 +2348,325 @@
                         <enum>QAbstractSpinBox::NoButtons</enum>
                        </property>
                        <property name="maximum">
-                        <number>99999</number>
+                        <number>300</number>
                        </property>
                        <property name="value">
-                        <number>4</number>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="0" column="1">
-                    <layout class="QVBoxLayout" name="verticalLayout_42">
-                     <item>
-                      <widget class="QLabel" name="label_31">
-                       <property name="text">
-                        <string>High Ticks</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="pixelClockHighTicks">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="wrapping">
-                        <bool>false</bool>
-                       </property>
-                       <property name="readOnly">
-                        <bool>false</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="value">
-                        <number>2</number>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="1" column="0" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_59">
-                     <item>
-                      <widget class="QLabel" name="pixelClockCounterChannel_2">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>Counter Physical Channel</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="pixelClockCounterAddress">
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>Dev3/ctr0</string>
+                        <number>6</number>
                        </property>
                       </widget>
                      </item>
                     </layout>
                    </item>
                    <item row="0" column="0">
-                    <layout class="QVBoxLayout" name="verticalLayout_58">
+                    <layout class="QVBoxLayout" name="verticalLayout_101">
                      <item>
-                      <widget class="QLabel" name="label_40">
+                      <widget class="QLabel" name="label_90">
                        <property name="text">
-                        <string>Low Ticks</string>
+                        <string>Description</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QSpinBox" name="pixelClockLowTicks">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="wrapping">
-                        <bool>false</bool>
-                       </property>
-                       <property name="readOnly">
-                        <bool>false</bool>
-                       </property>
-                       <property name="buttonSymbols">
-                        <enum>QAbstractSpinBox::NoButtons</enum>
-                       </property>
-                       <property name="value">
-                        <number>10</number>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="2" column="0" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_61">
-                     <item>
-                      <widget class="QLabel" name="label_49">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
+                      <widget class="QLineEdit" name="um232Description">
                        <property name="text">
-                        <string>Source of Ticks</string>
+                        <string>UM232H</string>
                        </property>
                       </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="pixelClockSrcOfTicks">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <pointsize>8</pointsize>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>/Dev3/PFI3</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="3" column="0" colspan="2">
-                    <layout class="QVBoxLayout" name="verticalLayout_11">
-                     <item>
-                      <widget class="QLabel" name="label_50">
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>Output Terminals</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_13">
-                       <item>
-                        <widget class="QLineEdit" name="pixelClockOutput">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>/Dev3/PFI12</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="pixelClockOutputExt">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>/Dev1/PFI5</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
                      </item>
                     </layout>
                    </item>
                   </layout>
                  </widget>
                 </item>
+                <item row="0" column="1">
+                 <spacer name="horizontalSpacer_4">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="0">
+                 <spacer name="verticalSpacer_2">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
                </layout>
-              </item>
-             </layout>
-            </item>
-            <item row="0" column="1">
-             <spacer name="horizontalSpacer_6">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item row="1" column="0">
-             <spacer name="verticalSpacer_4">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeType">
-               <enum>QSizePolicy::Expanding</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>100</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="um232h">
-         <attribute name="title">
-          <string>UM232H</string>
-         </attribute>
-         <layout class="QGridLayout" name="gridLayout_9">
-          <item row="0" column="0">
-           <widget class="QGroupBox" name="groupBox_7">
-            <property name="title">
-             <string>Settings</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,1">
-             <property name="leftMargin">
-              <number>0</number>
-             </property>
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <property name="rightMargin">
-              <number>0</number>
-             </property>
-             <property name="bottomMargin">
-              <number>0</number>
-             </property>
-             <item row="0" column="0">
-              <layout class="QVBoxLayout" name="verticalLayout_79">
-               <item>
-                <widget class="QLabel" name="label_70">
-                 <property name="text">
-                  <string>Flow Control</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="um232FlowControl">
-                 <property name="text">
-                  <string>RTS-CTS</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="0" column="1">
-              <layout class="QVBoxLayout" name="verticalLayout_80">
-               <item>
-                <widget class="QLabel" name="label_71">
-                 <property name="text">
-                  <string>Bit Mode</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="um232BitMode">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>170</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>16777215</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Single Channel Synchronous 245 FIFO</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="1" column="0">
-              <layout class="QVBoxLayout" name="verticalLayout_76">
-               <item>
-                <widget class="QLabel" name="label_67">
-                 <property name="text">
-                  <string>Latency Timer (ms)</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QSpinBox" name="um232LatencyTimerVal">
-                 <property name="enabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>8</pointsize>
-                  </font>
-                 </property>
-                 <property name="wrapping">
-                  <bool>false</bool>
-                 </property>
-                 <property name="readOnly">
-                  <bool>false</bool>
-                 </property>
-                 <property name="buttonSymbols">
-                  <enum>QAbstractSpinBox::NoButtons</enum>
-                 </property>
-                 <property name="maximum">
-                  <number>300</number>
-                 </property>
-                 <property name="value">
-                  <number>6</number>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="1" column="1">
-              <layout class="QVBoxLayout" name="verticalLayout_82">
-               <item>
-                <widget class="QLabel" name="label_73">
-                 <property name="text">
-                  <string>Timeouts (ms)</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QSpinBox" name="um232Timeout">
-                 <property name="enabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>8</pointsize>
-                  </font>
-                 </property>
-                 <property name="wrapping">
-                  <bool>false</bool>
-                 </property>
-                 <property name="readOnly">
-                  <bool>false</bool>
-                 </property>
-                 <property name="buttonSymbols">
-                  <enum>QAbstractSpinBox::NoButtons</enum>
-                 </property>
-                 <property name="maximum">
-                  <number>999999999</number>
-                 </property>
-                 <property name="value">
-                  <number>10</number>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="2" column="0">
-              <layout class="QVBoxLayout" name="verticalLayout_85">
-               <item>
-                <widget class="QLabel" name="label_75">
-                 <property name="text">
-                  <string>Bytes to Read (b)</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QSpinBox" name="um232NumBytes">
-                 <property name="enabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>8</pointsize>
-                  </font>
-                 </property>
-                 <property name="wrapping">
-                  <bool>false</bool>
-                 </property>
-                 <property name="readOnly">
-                  <bool>false</bool>
-                 </property>
-                 <property name="buttonSymbols">
-                  <enum>QAbstractSpinBox::NoButtons</enum>
-                 </property>
-                 <property name="maximum">
-                  <number>999999999</number>
-                 </property>
-                 <property name="value">
-                  <number>64000</number>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="2" column="1">
-              <layout class="QVBoxLayout" name="verticalLayout_102">
-               <item>
-                <widget class="QLabel" name="label_89">
-                 <property name="text">
-                  <string>Transfer Size (b)</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QSpinBox" name="um232TxSize">
-                 <property name="enabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>8</pointsize>
-                  </font>
-                 </property>
-                 <property name="wrapping">
-                  <bool>false</bool>
-                 </property>
-                 <property name="readOnly">
-                  <bool>false</bool>
-                 </property>
-                 <property name="buttonSymbols">
-                  <enum>QAbstractSpinBox::NoButtons</enum>
-                 </property>
-                 <property name="maximum">
-                  <number>999999999</number>
-                 </property>
-                 <property name="value">
-                  <number>10</number>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <spacer name="horizontalSpacer_4">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="1" column="0">
-           <spacer name="verticalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="stepper_stage">
-         <attribute name="title">
-          <string>Stepper Stage</string>
-         </attribute>
-         <layout class="QGridLayout" name="gridLayout_3">
-          <item row="0" column="0">
-           <layout class="QVBoxLayout" name="verticalLayout_69">
-            <item>
-             <widget class="QLabel" name="label_36">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>20</height>
-               </size>
-              </property>
-              <property name="text">
-               <string>Arduino Physical Channel</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="arduinoAddr">
-              <property name="font">
-               <font>
-                <pointsize>8</pointsize>
-               </font>
-              </property>
-              <property name="text">
-               <string>COM3</string>
-              </property>
+              </widget>
+              <widget class="QWidget" name="stepper_stage">
+               <attribute name="title">
+                <string>Stepper Stage</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_3">
+                <item row="0" column="0">
+                 <layout class="QVBoxLayout" name="verticalLayout_69">
+                  <item>
+                   <widget class="QLabel" name="label_36">
+                    <property name="maximumSize">
+                     <size>
+                      <width>16777215</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Arduino Physical Channel</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="arduinoAddr">
+                    <property name="font">
+                     <font>
+                      <pointsize>8</pointsize>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>COM3</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <spacer name="horizontalSpacer_8">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>319</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="0">
+                 <spacer name="verticalSpacer_6">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>360</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="cameras">
+               <attribute name="title">
+                <string>Cameras</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_22">
+                <item row="0" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_16">
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_6">
+                    <property name="title">
+                     <string>Camera 1 (Vortex)</string>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_16">
+                     <item row="0" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_9">
+                       <item>
+                        <widget class="QLabel" name="label">
+                         <property name="text">
+                          <string>Serial Number</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="cam1Serial">
+                         <property name="text">
+                          <string>4102835063</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_16">
+                    <property name="title">
+                     <string>Camera 2 (BFP)</string>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_19">
+                     <item row="0" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_10">
+                       <item>
+                        <widget class="QLabel" name="label_2">
+                         <property name="text">
+                          <string>Serial Number</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="cam2Serial">
+                         <property name="text">
+                          <string>4102737458</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <spacer name="horizontalSpacer_9">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>579</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="0">
+                 <spacer name="verticalSpacer_7">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>360</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tab_3">
+               <attribute name="title">
+                <string>Pico-Second Delayer</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_24">
+                <item row="0" column="0">
+                 <layout class="QVBoxLayout" name="verticalLayout_17">
+                  <item>
+                   <layout class="QVBoxLayout" name="verticalLayout_35">
+                    <item>
+                     <widget class="QLabel" name="label_35">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>999999</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>Model Query</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="psdModelQuery">
+                      <property name="enabled">
+                       <bool>true</bool>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>999</width>
+                        <height>24</height>
+                       </size>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>8</pointsize>
+                       </font>
+                      </property>
+                      <property name="text">
+                       <string>RSN</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <layout class="QVBoxLayout" name="verticalLayout_103" stretch="1,10">
+                    <item>
+                     <widget class="QLabel" name="label_91">
+                      <property name="text">
+                       <string>Baud Rate</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QSpinBox" name="psdBaudRate">
+                      <property name="buttonSymbols">
+                       <enum>QAbstractSpinBox::NoButtons</enum>
+                      </property>
+                      <property name="maximum">
+                       <number>999999999</number>
+                      </property>
+                      <property name="value">
+                       <number>115200</number>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <spacer name="horizontalSpacer_10">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>306</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="0">
+                 <spacer name="verticalSpacer_8">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>197</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
              </widget>
             </item>
            </layout>
-          </item>
-          <item row="0" column="1">
-           <spacer name="horizontalSpacer_8">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>319</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="1" column="0">
-           <spacer name="verticalSpacer_6">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>360</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="cameras">
-         <attribute name="title">
-          <string>Cameras</string>
-         </attribute>
-         <layout class="QGridLayout" name="gridLayout_22">
-          <item row="0" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_14">
-            <item>
-             <widget class="QGroupBox" name="groupBox_6">
-              <property name="title">
-               <string>Camera 1 (Vortex)</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_16">
-               <item row="0" column="0">
-                <layout class="QVBoxLayout" name="verticalLayout_5">
-                 <item>
-                  <widget class="QLabel" name="label">
-                   <property name="text">
-                    <string>Serial Number</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="cam1Serial">
-                   <property name="text">
-                    <string>4102835063</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <widget class="QGroupBox" name="groupBox_16">
-              <property name="title">
-               <string>Camera 2 (BFP)</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_19">
-               <item row="0" column="0">
-                <layout class="QVBoxLayout" name="verticalLayout_9">
-                 <item>
-                  <widget class="QLabel" name="label_2">
-                   <property name="text">
-                    <string>Serial Number</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="cam2Serial">
-                   <property name="text">
-                    <string>4102737458</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item row="0" column="1">
-           <spacer name="horizontalSpacer_9">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>579</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="1" column="0">
-           <spacer name="verticalSpacer_7">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>360</height>
-             </size>
-            </property>
-           </spacer>
           </item>
          </layout>
         </widget>

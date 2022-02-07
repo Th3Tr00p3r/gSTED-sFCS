@@ -12,7 +12,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import List, Tuple
 
+import ftd2xx
+import nidaqmx.system as nisys
 import numpy as np
+import pyvisa
 from PyQt5.QtWidgets import QFileDialog, QWidget
 
 import gui.dialog as dialog
@@ -129,9 +132,11 @@ class MainWin:
                         logging.debug(f"{dvc.log_ref} toggled OFF")
 
                         if nick == "stage":
+                            # TODO: try to move this inside device (add widgets to device)
                             self._gui.stageButtonsGroup.setEnabled(False)
 
                         if nick == "dep_laser":
+                            # TODO: try to move this inside device (add widgets to device)
                             # set curr/pow values to zero when depletion is turned OFF
                             self._gui.depActualCurr.setValue(0)
                             self._gui.depActualPow.setValue(0)
@@ -246,6 +251,20 @@ class MainWin:
 
         self._app.loop.create_task(self._app.devices.stage.move(dir=dir, steps=steps))
         logging.info(f"{self._app.devices.stage.log_ref} moved {str(steps)} steps {str(dir)}")
+
+    def set_delayer_parameters(self):
+        """Doc."""
+
+        wdgt_name_list = ["psdDelay_ps", "psdThreshold_mV", "psdPulsewidth_ns", "psdFreqDiv"]
+        param_name_list = ["delay", "threshold", "pulsewith", "divider"]
+        param_dict = {
+            param_name: getattr(self._gui, wdgt_name).value()
+            for param_name, wdgt_name in zip(param_name_list, wdgt_name_list)
+        }
+
+        response_list = self._app.devices.delayer.set_parameters(param_dict)
+        for response, wdgt_name in zip(response_list, wdgt_name_list):
+            getattr(self._gui, wdgt_name).setValue(response)
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -1749,3 +1768,39 @@ class SettWin:
             self._gui.frame.findChild(QWidget, "settingsFileName").setText(str(file_path))
             wdgts.read_file_to_gui(file_path, self._gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
+
+    def get_all_device_details(self):
+        """Doc."""
+
+        dvc_list = []
+
+        # pyvisa
+        dvc_list.append("VISA:")
+        visa_rm = pyvisa.ResourceManager()
+        for resource_name in visa_rm.list_resources():
+            with suppress(pyvisa.errors.VisaIOError):
+                # VisaIOError - failed to open instrument, skip
+                inst = visa_rm.open_resource(resource_name)
+                dvc_list.append(f"{inst.resource_info.alias}: {inst.resource_name}")
+                inst.close()
+
+        # nidaqmx
+        dvc_list.append("NI:")
+        system = nisys.System.local()
+        dvc_list.extend(system.devices.device_names)
+
+        # ftd2xx
+        dvc_list.append("FTDI:")
+        # auto-find UM232H serial number
+        num_devs = ftd2xx.createDeviceInfoList()
+        for idx in range(num_devs):
+            info_dict = ftd2xx.getDeviceInfoDetail(devnum=idx)
+            dvc_list.append(info_dict["description"].decode("utf-8"))
+
+        self._gui.deviceDetails.setText("\n".join(dvc_list))
+
+    def psd_get_id(self):  # TESTESTEST
+        """Doc."""
+
+        response = self._app.devices.delayer.command("RMD")
+        self._gui.psdID.setText(response)

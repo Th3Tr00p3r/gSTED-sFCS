@@ -1,6 +1,5 @@
 """Drivers Module."""
 
-import re
 import sys
 from contextlib import suppress
 from types import SimpleNamespace
@@ -27,18 +26,19 @@ class Ftd2xx:
         "Single Channel Synchronous 245 FIFO": 0x40,
         "RTS-CTS": ftd2xx.defines.FLOW_RTS_CTS,
     }
+    n_bytes: int
 
     def __init__(self, param_dict):
         param_dict = self._translate_dict_values(param_dict, self.ftd2xx_dict)
         [setattr(self, key, val) for key, val in param_dict.items()]
-        self.n_bytes = param_dict["n_bytes"]
 
-        # auto-find UM232H serial number
+        # auto-find serial number from description
         num_devs = ftd2xx.createDeviceInfoList()
         for idx in range(num_devs):
             info_dict = ftd2xx.getDeviceInfoDetail(devnum=idx)
-            if info_dict["description"] == b"UM232H":
+            if info_dict["description"].decode("utf-8") == param_dict["description"]:
                 self.serial = info_dict["serial"]
+                print(f"(SN: {self.serial.decode('utf-8')})...", end=" ")
 
     def _translate_dict_values(self, original_dict: dict, trans_dict: dict) -> dict:
         """
@@ -60,11 +60,12 @@ class Ftd2xx:
         #            self._inst = ftd2xx.aio.openEx(self.serial)
         except AttributeError:
             raise IOError(f"{self.log_ref} is not plugged in.")
-        self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
-        self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
-        self._inst.setLatencyTimer(self.ltncy_tmr_val)
-        self._inst.setFlowControl(self.flow_ctrl)
-        self._inst.setUSBParameters(self.tx_size)
+        with suppress(AttributeError):  # set params if they are defined
+            self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
+            self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
+            self._inst.setLatencyTimer(self.ltncy_tmr_val)
+            self._inst.setFlowControl(self.flow_ctrl)
+            self._inst.setUSBParameters(self.tx_size)
 
     def close_instrument(self) -> None:
         """Doc."""
@@ -284,7 +285,7 @@ class PyVISA:
         self.write_termination = write_termination
         self._rm = visa.ResourceManager()
 
-    def autofind_address(self, model: str) -> None:
+    def autofind_address(self, model_query: str, **kwargs) -> None:
         """Doc."""
 
         # list all resource addresses
@@ -302,6 +303,7 @@ class PyVISA:
                     write_termination=self.write_termination,
                     timeout=50,  # ms
                     open_timeout=50,  # ms
+                    **kwargs,
                 )
                 # managed to open instrument, add to list.
                 inst_list.append(inst)
@@ -309,7 +311,7 @@ class PyVISA:
         # 'model_query' the opened devices, and whoever responds is the one
         for idx, inst in enumerate(inst_list):
             try:
-                self.model = inst.query(model)
+                self.model = inst.query(model_query)
             except visa.errors.VisaIOError as exc:
                 if exc.abbreviation == "VI_ERROR_RSRC_BUSY":
                     raise IOError(f"{self.log_ref} couldn't be opened - a restart might help!")
@@ -324,12 +326,12 @@ class PyVISA:
             # VisaIOError - this happens if device was disconnected during the autofind process...
             [inst.close() for inst in inst_list]
 
-    def open_instrument(self, model=None) -> None:
+    def open_instrument(self, model_query=None, **kwargs) -> None:
         """Doc."""
 
         # auto-find serial connection for depletion laser
-        if model is not None:
-            self.autofind_address(model)
+        if model_query is not None and self.address is None:
+            self.autofind_address(model_query, **kwargs)
 
         try:
             # open
@@ -339,7 +341,9 @@ class PyVISA:
                 write_termination=self.write_termination,
                 timeout=50,  # ms
                 open_timeout=50,  # ms
+                **kwargs,
             )
+            print(f"({self._rsrc.resource_info.alias})...", end=" ")
         except AttributeError:
             # failed to auto-find address for depletion laser
             raise IOError(
@@ -360,25 +364,26 @@ class PyVISA:
         except visa.errors.VisaIOError:
             raise IOError(f"{self.log_ref} disconnected during operation.")
 
+    def read(self) -> str:
+        """Doc."""
+
+        return self._rsrc.read()
+
     def write(self, cmnd: str) -> None:
         """Sends a command to the VISA instrument."""
 
         self._rsrc.write(cmnd)
 
-    def query(self, cmnd: str) -> float:
+    def query(self, cmnd: str, should_read_ascii: bool = False) -> str:
         """Doc."""
 
         try:
-            response = self._rsrc.query(cmnd)
+            if should_read_ascii:
+                return self._rsrc.query_ascii_values(cmnd)
+            else:
+                return self._rsrc.query(cmnd)
         except visa.errors.VisaIOError:
             raise IOError(f"{self.log_ref} disconnected! Reconnect and restart.")
-        else:
-            try:
-                extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
-            except IndexError:
-                # rarely happens
-                return 0
-            return float(extracted_float_string)
 
     def flush(self) -> None:
         """Doc."""
@@ -407,6 +412,7 @@ class Instrumental:
 
         try:
             self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
+            print(f"(SN: {self._inst._paramset['serial'].decode('utf-8')})...", end=" ")
         except Exception as exc:
             # general 'Exception' is unavoidable due to bad exception handeling in instrumental-lib...
             raise IOError(f"{self.log_ref} disconnected - {exc}")
