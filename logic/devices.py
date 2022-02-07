@@ -1,6 +1,7 @@
 """Devices Module."""
 
 import asyncio
+import re
 import sys
 import time
 from collections import deque
@@ -18,7 +19,7 @@ from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
-from utilities.helper import Limits, div_ceil
+from utilities.helper import Limits, div_ceil, number
 
 
 class BaseDevice:
@@ -62,6 +63,81 @@ class BaseDevice:
 
         if not self.error_dict and should_change_icons:
             self.change_icons("on" if is_being_switched_on else "off")
+
+
+class PicoSecondDelayer(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
+    """Doc."""
+
+    update_interval_s = 3
+
+    delay_limits = Limits(0, 49090)
+    pulsewith_limits = Limits(1, 250)
+    threshold_limits = Limits(-2000, 2000)
+    divider_limits = Limits(1, 999)
+
+    def __init__(self, param_dict):
+
+        super().__init__(
+            param_dict,
+            read_termination="#",
+            write_termination="#",
+        )
+        self.address = None  # found automatically
+        self.state = False
+
+        with suppress(DeviceError):
+            try:
+                self.open_instrument(model_query=self.model_query, baud_rate=self.baud_rate)
+                self.command("EM0")  # cancel echo mode
+            except IOError as exc:
+                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+
+    def toggle(self, is_being_switched_on: bool):
+        """Doc."""
+
+        try:
+            self.command(f"EO{int(is_being_switched_on)}")  # enable/disable output
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.toggle_led_and_switch(is_being_switched_on)
+            self.state = is_being_switched_on
+
+    def close(self):
+        """Doc."""
+
+        self.toggle(False)
+        self.command("EM1")  # return to echo mode (for accompanying software)
+        self.close_instrument()
+
+    def command(self, command: str) -> List[Union[int, float]]:
+        """Doc."""
+
+        self.write(command)
+        n_commands = len(command.split(";"))
+        return [number(self.read()) for response_idx in range(n_commands)]
+
+    def set_parameters(self, param_dict: dict):
+        """Doc."""
+
+        command_dict = {
+            "delay": "SD",
+            "threshold": "SH",
+            "pulsewith": "SP",
+            "divider": "SV",
+        }
+        command_chain = []
+        for param_name, val in param_dict.items():
+
+            # check that value is within range
+            val_limits = getattr(self, f"{param_name}_limits")
+            if val not in val_limits:
+                Error(custom_txt=f"{param_name.capitalize()} out of range {val_limits}").display()
+            else:
+                with suppress(KeyError):
+                    command_chain.append(f"{command_dict[param_name]}{val}")
+
+        return self.command(";".join(command_chain))
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -109,7 +185,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
         try:
             self.purge()
-        except Exception as exc:
+        except Exception as exc:  # TODO: is this needed?
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def get_status(self):
@@ -621,13 +697,12 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             read_termination="\r",
             write_termination="\r",
         )
-
+        self.address = None  # found automatically
         self.state = None
         self.emission_state = None
 
         with suppress(DeviceError):
             self.toggle(True, should_change_icons=False)
-
             if self.state:
                 self.set_current(1500)
 
@@ -636,7 +711,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
         try:
             if is_being_switched_on:
-                self.open_instrument(model=self.model_query)
+                self.open_instrument(model_query=self.model_query)
                 self.laser_toggle(False)
             else:
                 if self.state is True:
@@ -673,25 +748,26 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         try:
             self.flush()  # get fresh response
             response = self.query(cmnd)
+            try:
+                extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
+            except IndexError:  # rarely happens
+                return 0
+            else:
+                return float(extracted_float_string)
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-        else:
-            return response
 
     def set_power(self, value_mW):
         """Doc."""
 
         # check that value is within range
         if value_mW in self.power_limits_mW:
-            try:
-                # change the mode to power
-                cmnd = "powerenable 1"
-                self.write(cmnd)
-                # then set the power
-                cmnd = f"setpower 0 {value_mW}"
-                self.write(cmnd)
-            except Exception as exc:
-                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+            # change the mode to power
+            cmnd = "powerenable 1"
+            self.write(cmnd)
+            # then set the power
+            cmnd = f"setpower 0 {value_mW}"
+            self.write(cmnd)
         else:
             Error(custom_txt=f"Power out of range {self.power_limits_mW}").display()
 
@@ -700,15 +776,12 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
         # check that value is within range
         if value_mA in self.current_limits_mA:
-            try:
-                # change the mode to power
-                cmnd = "powerenable 0"
-                self.write(cmnd)
-                # then set the power
-                cmnd = f"setLDcur 1 {value_mA}"
-                self.write(cmnd)
-            except Exception as exc:
-                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+            # change the mode to current
+            cmnd = "powerenable 0"
+            self.write(cmnd)
+            # then set the current
+            cmnd = f"setLDcur 1 {value_mA}"
+            self.write(cmnd)
         else:
             Error(custom_txt=f"Current out of range {self.current_limits_mA}").display()
 
@@ -726,7 +799,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             self.toggle(True)
             self.toggle(False)
 
-    def toggle(self, is_being_switched_on):
+    def toggle(self, is_being_switched_on: bool):
         """Doc."""
 
         try:
@@ -746,12 +819,9 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             "LEFT": f"mx {steps}",
             "RIGHT": f"mx {-steps}",
         }
-        try:
-            self.write(cmd_dict[dir])
-            await asyncio.sleep(500 * 1e-3)
-            self.write("ryx ")  # release
-        except Exception as exc:
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        self.write(cmd_dict[dir])
+        await asyncio.sleep(500 * 1e-3)
+        self.write("ryx ")  # release
 
 
 class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
@@ -888,6 +958,7 @@ DEVICE_ATTR_DICT = {
         log_ref="UM232H",
         param_widgets=QtWidgetCollection(
             led_widget=("ledUm232h", "QIcon", "main", True),
+            description=("um232Description", "QLineEdit", "settings", False),
             bit_mode=("um232BitMode", "QLineEdit", "settings", False),
             timeout_ms=("um232Timeout", "QSpinBox", "settings", False),
             ltncy_tmr_val=("um232LatencyTimerVal", "QSpinBox", "settings", False),
@@ -977,6 +1048,16 @@ DEVICE_ATTR_DICT = {
             out_term=("pixelClockOutput", "QLineEdit", "settings", False),
             out_ext_term=("pixelClockOutputExt", "QLineEdit", "settings", False),
             freq_MHz=("pixelClockFreq", "QSpinBox", "settings", False),
+        ),
+    ),
+    "delayer": DeviceAttrs(
+        class_name="PicoSecondDelayer",
+        log_ref="Pico-Second Delayer",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledPSD", "QIcon", "main", True),
+            switch_widget=("psdSwitch", "QIcon", "main", True),
+            model_query=("psdModelQuery", "QLineEdit", "settings", False),
+            baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
         ),
     ),
 }

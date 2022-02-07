@@ -30,6 +30,7 @@ class Timeout:
         self.cntr_dvc = self._app.devices.photon_detector
         self.scan_dvc = self._app.devices.scanners
         self.dep_dvc = self._app.devices.dep_laser
+        self.delayer_dvc = self._app.devices.delayer
 
         # start
         self.not_finished = True
@@ -44,6 +45,7 @@ class Timeout:
             await asyncio.gather(
                 self._read_ci_and_ai(),
                 self._update_dep(),
+                self._update_delayer(),
                 self._update_main_gui(),
                 self._update_video(),
             )
@@ -204,19 +206,34 @@ class Timeout:
         while self.not_finished:
 
             if not self.dep_dvc.error_dict:
-                temp, pow, curr = (
-                    self.dep_dvc.get_prop("temp"),
-                    self.dep_dvc.get_prop("pow"),
-                    self.dep_dvc.get_prop("curr"),
-                )
+                if self.dep_dvc.emission_state:
+                    temp, pow, curr = (
+                        self.dep_dvc.get_prop("temp"),
+                        self.dep_dvc.get_prop("pow"),
+                        self.dep_dvc.get_prop("curr"),
+                    )
 
-                self.main_gui.depTemp.setValue(temp)
-                self.main_gui.depActualPow.setValue(pow)
-                self.main_gui.depActualCurr.setValue(curr)
+                    self.main_gui.depTemp.setValue(temp)
+                    self.main_gui.depActualPow.setValue(pow)
+                    self.main_gui.depActualCurr.setValue(curr)
 
-                if temp < self.dep_dvc.MIN_SHG_TEMP:
-                    self.main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
-                else:
-                    self.main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
+                    if temp < self.dep_dvc.MIN_SHG_TEMP:
+                        self.main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
+                    else:
+                        self.main_gui.depTemp.setStyleSheet(
+                            "background-color: white; color: black;"
+                        )
 
             await asyncio.sleep(self.dep_dvc.update_interval_s)
+
+    async def _update_delayer(self) -> None:
+        """Update delayer temperature"""
+
+        while self.not_finished:
+
+            if not self.delayer_dvc.error_dict:
+                if self.delayer_dvc.state:
+                    temp, *_ = self.delayer_dvc.command("RT")
+                    self.main_gui.psdTemp.setValue(temp)
+
+            await asyncio.sleep(self.delayer_dvc.update_interval_s)
