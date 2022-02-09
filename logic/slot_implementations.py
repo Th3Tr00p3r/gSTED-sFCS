@@ -158,6 +158,7 @@ class MainWin:
             "ledScn": "scanners",
             "ledCounter": "photon_detector",
             "ledPxlClk": "pixel_clock",
+            "ledPSD": "delayer",
             "ledCam1": "camera_1",
             "ledCam2": "camera_2",
         }
@@ -1798,9 +1799,3 @@ class SettWin:
             dvc_list.append(info_dict["description"].decode("utf-8"))
 
         self._gui.deviceDetails.setText("\n".join(dvc_list))
-
-    def psd_get_id(self):  # TESTESTEST
-        """Doc."""
-
-        response = self._app.devices.delayer.command("RMD")
-        self._gui.psdID.setText(response)
