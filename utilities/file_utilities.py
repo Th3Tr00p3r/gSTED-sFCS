@@ -546,7 +546,7 @@ def rotate_data_to_disk(does_modify_data: bool = False) -> Callable:
             if does_modify_data:
                 self.dump_or_load_data(should_load=False, method_name=method.__name__)
             else:
-                delattr(self, "data")
+                self.data = []
                 self.is_data_dumped = True
             return value
 

@@ -577,7 +577,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
                 print(
-                    f"Attention! calculated duration ({calc_duration_mins:.1f} mins) is significantly different then set duration {self.duration_min:.1f} min). Using calculated.\n"
+                    f"Attention! calculated duration ({calc_duration_mins} mins) is significantly different than the set duration ({self.duration_min} min). Using calculated.\n"
                 )
         else:
             print(f"Calculating duration (not supplied): {calc_duration_mins:.1f} mins\n")
@@ -586,7 +586,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         print(f"Finished loading FPGA data ({self.n_files}/{self.n_paths} files used).\n")
 
         # plotting of scan image and ROI
-        if should_plot:
+        if should_plot and self.scan_type == "angular_scan":
             print("Displaying scan images...", end=" ")
             with Plotter(subplots=(1, self.n_files), fontsize=8, should_force_aspect=True) as axes:
                 if not hasattr(
