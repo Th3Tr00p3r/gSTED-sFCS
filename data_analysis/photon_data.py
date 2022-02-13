@@ -94,8 +94,8 @@ class TDCPhotonDataMixin:
             raise ValueError(f"Version ({version}) must be greater than 2")
 
         # option to use only certain parts of data (for testing)
-        with suppress(TypeError):
-            byte_data = byte_data[kwargs.get("byte_data_slice")]
+        if (data_slice := kwargs.get("byte_data_slice")) is not None:
+            byte_data = byte_data[data_slice]
 
         section_edges, tot_single_errors = _find_all_section_edges(byte_data, group_len)
 
