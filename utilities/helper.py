@@ -102,6 +102,8 @@ def _can_float(value: Any) -> bool:
         float(value)
         return True
     except (ValueError, TypeError):
+        if value == "-":  # consider hyphens part of float
+            return True
         return False
 
 
@@ -114,7 +116,7 @@ def number(x):
         return float(x)
 
 
-def _generate_numbers_from_string(source_str):
+def generate_numbers_from_string(source_str):
     """A generator function for getting numbers out of strings."""
 
     i = 0
@@ -139,7 +141,7 @@ class Limits:
     ):
         if from_string:
             source_str = limits
-            self.lower, self.upper = _generate_numbers_from_string(source_str)
+            self.lower, self.upper = generate_numbers_from_string(source_str)
         else:
             try:
                 if len(limits) == 2:

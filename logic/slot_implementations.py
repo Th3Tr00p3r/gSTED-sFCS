@@ -253,19 +253,17 @@ class MainWin:
         self._app.loop.create_task(self._app.devices.stage.move(dir=dir, steps=steps))
         logging.info(f"{self._app.devices.stage.log_ref} moved {str(steps)} steps {str(dir)}")
 
-    def set_delayer_parameters(self):
+    def set_delay(self):
         """Doc."""
 
-        wdgt_name_list = ["psdDelay_ps", "psdThreshold_mV", "psdPulsewidth_ns", "psdFreqDiv"]
-        param_name_list = ["delay", "threshold", "pulsewith", "divider"]
-        param_dict = {
-            param_name: getattr(self._gui, wdgt_name).value()
-            for param_name, wdgt_name in zip(param_name_list, wdgt_name_list)
-        }
-
-        response_list = self._app.devices.delayer.set_parameters(param_dict)
-        for response, wdgt_name in zip(response_list, wdgt_name_list):
-            getattr(self._gui, wdgt_name).setValue(response)
+        delayer_dvc = self._app.devices.delayer
+        set_delay_wdgt = self._gui.psdDelay_ps
+        eff_delay_wdgt = self._gui.psdEffDelay_ps
+        with suppress(TypeError):  # writing/reading PSD too fast!
+            response, *_ = delayer_dvc.command(
+                (f"SD{set_delay_wdgt.value()}", delayer_dvc.delay_limits)
+            )
+            eff_delay_wdgt.setValue(response)
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""

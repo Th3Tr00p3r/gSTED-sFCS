@@ -233,7 +233,7 @@ class Timeout:
 
             if not self.delayer_dvc.error_dict:
                 if self.delayer_dvc.state:
-                    temp, *_ = self.delayer_dvc.command("RT")
+                    temp, *_ = self.delayer_dvc.command(("RT", None))
                     self.main_gui.psdTemp.setValue(temp)
 
             await asyncio.sleep(self.delayer_dvc.update_interval_s)
