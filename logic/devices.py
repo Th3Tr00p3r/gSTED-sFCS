@@ -7,7 +7,7 @@ import time
 from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -19,7 +19,7 @@ from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
-from utilities.helper import Limits, div_ceil, number
+from utilities.helper import Limits, div_ceil, generate_numbers_from_string, number
 
 
 class BaseDevice:
@@ -70,10 +70,7 @@ class PicoSecondDelayer(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     update_interval_s = 3
 
-    delay_limits = Limits(0, 49090)
-    pulsewith_limits = Limits(1, 250)
-    threshold_limits = Limits(-2000, 2000)
-    divider_limits = Limits(1, 999)
+    delay_limits = Limits(1, 49090)
 
     def __init__(self, param_dict):
 
@@ -88,15 +85,23 @@ class PicoSecondDelayer(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         with suppress(DeviceError):
             try:
                 self.open_instrument(model_query=self.model_query, baud_rate=self.baud_rate)
-                self.command("EM0")  # cancel echo mode
             except IOError as exc:
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+            else:
+                self.command(
+                    [
+                        ("EM0", Limits(0, 1)),  # cancel echo mode
+                        (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
+                        (f"SP{self.pulsewidth_ns}", Limits(1, 250)),  # set output NIM pulse width
+                        (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
+                    ]
+                )
 
     def toggle(self, is_being_switched_on: bool):
         """Doc."""
 
         try:
-            self.command(f"EO{int(is_being_switched_on)}")  # enable/disable output
+            self.command((f"EO{int(is_being_switched_on)}", Limits(0, 1)))  # enable/disable output
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
@@ -107,37 +112,29 @@ class PicoSecondDelayer(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         self.toggle(False)
-        self.command("EM1")  # return to echo mode (for accompanying software)
+        self.command(("EM1", Limits(0, 1)))  # return to echo mode (for accompanying software)
         self.close_instrument()
 
-    def command(self, command: str) -> List[Union[int, float]]:
+    def command(
+        self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
+    ) -> List[Union[int, float]]:
         """Doc."""
 
-        self.write(command)
-        n_commands = len(command.split(";"))
-        return [number(self.read()) for response_idx in range(n_commands)]
+        self.flush()
+        if isinstance(command_list, tuple):  # single command
+            command_list = [command_list]
+        n_commands = len(command_list)
 
-    def set_parameters(self, param_dict: dict):
-        """Doc."""
-
-        command_dict = {
-            "delay": "SD",
-            "threshold": "SH",
-            "pulsewith": "SP",
-            "divider": "SV",
-        }
         command_chain = []
-        for param_name, val in param_dict.items():
-
-            # check that value is within range
-            val_limits = getattr(self, f"{param_name}_limits")
-            if val not in val_limits:
-                Error(custom_txt=f"{param_name.capitalize()} out of range {val_limits}").display()
+        for idx, (command, limits) in zip(range(n_commands), command_list):
+            if limits is not None:
+                value, *_ = generate_numbers_from_string(command)
+                command_chain.append(f"{command[:2]}{limits.clamp(value)}")
             else:
-                with suppress(KeyError):
-                    command_chain.append(f"{command_dict[param_name]}{val}")
+                command_chain.append(command)
 
-        return self.command(";".join(command_chain))
+        self.write(";".join(command_chain))
+        return [number(self.read()) for _ in range(n_commands)]
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -1058,6 +1055,9 @@ DEVICE_ATTR_DICT = {
             switch_widget=("psdSwitch", "QIcon", "main", True),
             model_query=("psdModelQuery", "QLineEdit", "settings", False),
             baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
+            threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
+            pulsewidth_ns=("psdPulsewidth_ns", "QSpinBox", "settings", False),
+            freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
         ),
     ),
 }

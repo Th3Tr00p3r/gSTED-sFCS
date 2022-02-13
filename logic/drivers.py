@@ -367,21 +367,19 @@ class PyVISA:
     def read(self) -> str:
         """Doc."""
 
-        return self._rsrc.read()
+        with suppress(visa.errors.VisaIOError):
+            return self._rsrc.read()
 
     def write(self, cmnd: str) -> None:
         """Sends a command to the VISA instrument."""
 
         self._rsrc.write(cmnd)
 
-    def query(self, cmnd: str, should_read_ascii: bool = False) -> str:
+    def query(self, cmnd: str) -> str:
         """Doc."""
 
         try:
-            if should_read_ascii:
-                return self._rsrc.query_ascii_values(cmnd)
-            else:
-                return self._rsrc.query(cmnd)
+            return self._rsrc.query(cmnd)
         except visa.errors.VisaIOError:
             raise IOError(f"{self.log_ref} disconnected! Reconnect and restart.")
 
