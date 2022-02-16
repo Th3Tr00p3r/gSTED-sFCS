@@ -50,7 +50,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5448,6 +5448,14 @@ Shift</string>
                               </property>
                              </widget>
                             </item>
+                            <item row="1" column="1">
+                             <widget class="QCheckBox" name="solDataSubtractAfterpulse">
+                              <property name="text">
+                               <string>Subtract
+Afterpulse</string>
+                              </property>
+                             </widget>
+                            </item>
                             <item row="1" column="0">
                              <widget class="QCheckBox" name="solDataSubtractBgCorr">
                               <property name="text">
@@ -5457,11 +5465,14 @@ Correlation</string>
                               </property>
                              </widget>
                             </item>
-                            <item row="1" column="1">
-                             <widget class="QCheckBox" name="solDataSubtractAfterpulse">
+                            <item row="0" column="1">
+                             <widget class="QCheckBox" name="solDataUseDefaultSysInfo">
+                              <property name="toolTip">
+                               <string>Use default system info instead of that saved in the file</string>
+                              </property>
                               <property name="text">
-                               <string>Subtract
-Afterpulse</string>
+                               <string>Override
+System Info</string>
                               </property>
                              </widget>
                             </item>

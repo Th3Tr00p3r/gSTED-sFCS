@@ -1262,6 +1262,7 @@ class MainWin:
         loading_options["should_fix_shift"] = import_wdgts.fix_shift
         loading_options["should_subtract_afterpulse"] = import_wdgts.should_subtract_afterpulse
         loading_options["shoud_subtract_bg_corr"] = import_wdgts.shoud_subtract_bg_corr
+        loading_options["override_system_info"] = import_wdgts.override_system_info
 
         return loading_options
 
@@ -1429,6 +1430,12 @@ class MainWin:
                     err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
                     sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
                     sol_data_analysis_wdgts.mean_tau.set(0)
+                    sol_data_analysis_wdgts.row_acf_disp.obj.clear()
+                    sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
+                        (cf.lag, "lag"),
+                        cf.avg_cf_cr,
+                        cf.g0,
+                    )
                 else:  # fit succeeded
                     fit_params = cf.fit_params["diffusion_3d_fit"]
                     g0, tau, _ = fit_params.beta
