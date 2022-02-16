@@ -264,6 +264,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     fix_shift=("solDataFixShift", "QCheckBox", "main", False),
     shoud_subtract_bg_corr=("solDataSubtractBgCorr", "QCheckBox", "main", False),
     should_subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
+    override_system_info=("solDataUseDefaultSysInfo", "QCheckBox", "main", False),
 )
 
 SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
