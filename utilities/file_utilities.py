@@ -521,7 +521,7 @@ def prepare_file_paths(file_path_template: Path, file_selection: str = None) -> 
                 file_paths = [file_paths[i] for i in file_idxs]
             else:
                 file_paths = [file_paths[i] for i in range(len(file_paths)) if i not in file_idxs]
-            print(f'(files: "{file_selection}")')
+            print(f"(file selection: '{file_selection}')")
         except IndexError:
             raise ValueError(
                 f"Bad file selection string: '{file_selection}'. Try file numbers between 1 and {len(file_paths)}."

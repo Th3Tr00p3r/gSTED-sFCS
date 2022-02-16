@@ -182,9 +182,6 @@ class TDCPhotonDataMixin:
         else:
             all_section_edges = None
 
-        if is_verbose:
-            print("Done.")
-
         return TDCPhotonData(
             version=version,
             coarse=coarse,
