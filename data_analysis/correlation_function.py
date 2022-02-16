@@ -73,6 +73,7 @@ class CorrFunc:
         should_subtract_afterpulse: bool = True,
         is_verbose: bool = False,
         should_parallel_process=False,
+        **kwargs,
     ):
         """Doc."""
 
@@ -542,12 +543,15 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
 
-        print(f"\nLoading FPGA data from hard drive ('{file_path_template}'):", end=" ")
-
         file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
         self.n_paths = len(file_paths)
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
+
+        print(
+            f"\nLoading FPGA data from hard drive ('{file_path_template}', {self.n_paths} files):",
+            end=" ",
+        )
 
         # data processing
         self.data = self.process_all_data(file_paths, **kwargs)
