@@ -542,13 +542,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
 
-        print("\nLoading FPGA data from hard drive:", end=" ")
+        print(f"\nLoading FPGA data from hard drive ('{file_path_template}'):", end=" ")
 
         file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
         self.n_paths = len(file_paths)
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
 
+        # data processing
         self.data = self.process_all_data(file_paths, **kwargs)
 
         # count the files and ensure there's at least one file
@@ -611,14 +612,16 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         self.get_general_properties(file_paths[0], **kwargs)
 
-        if should_parallel_process and len(file_paths) > 20:  # parellel processing
+        # parellel processing
+        if should_parallel_process and len(file_paths) > 20:
             N_CORES = mp.cpu_count() // 2 - 1  # /2 due to hyperthreading, -1 to leave one free
             func = partial(self.process_data_file, is_verbose=True, **kwargs)
             print(f"Parallel processing using {N_CORES} CPUs/processes.")
             with mp.get_context("spawn").Pool(N_CORES) as pool:
                 data = list(pool.map(func, file_paths))
 
-        else:  # serial processing
+        # serial processing (defualt)
+        else:
             data = []
             for file_path in file_paths:
                 # Processing data
@@ -674,7 +677,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             *_, template = file_path.parts
             file_idx = int(re.split("_(\\d+)\\.", template)[1])
             print(
-                f"Loading and processing file {file_idx}/{self.n_paths}: '{file_path}'...", end=" "
+                f"Loading and processing file {file_idx}/{self.n_paths}: '{template}'...", end=" "
             )
             file_dict = file_utilities.load_file_dict(file_path)
         else:  # using supplied file_dict
@@ -697,7 +700,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         if file_path is not None and p is not None:
             p.file_path = file_path
-            print(f"Finished processing file No. {file_idx}\n")
+            print("Done.\n")
 
         return p
 
@@ -753,14 +756,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         )
 
         if should_fix_shift:
+            print("Fixing line shift...", end=" ")
             pix_shift = _fix_data_shift(cnt)
             runtime = p.runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
             cnt, n_pix_tot, n_pix, line_num = _convert_angular_scan_to_image(
                 runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
             )
-            print(f"Shifted by {pix_shift} pixels. Done.")
-        else:
-            print("Done.")
+            print(f"({pix_shift} pixels).", end=" ")
 
         # invert every second line
         cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
@@ -838,8 +840,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         line_stop_labels = np.array(line_stop_labels, dtype=np.int16)
         line_starts = np.array(line_starts, dtype=np.int64)
         line_stops = np.array(line_stops, dtype=np.int64)
-
-        print("Done.")
 
         runtime_line_starts: np.ndarray = line_starts * round(self.laser_freq_hz / sample_freq_hz)
         runtime_line_stops: np.ndarray = line_stops * round(self.laser_freq_hz / sample_freq_hz)
@@ -1503,8 +1503,6 @@ def _get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
 
 def _fix_data_shift(cnt) -> int:
     """Doc."""
-
-    print("Fixing line shift...", end=" ")
 
     height, width = cnt.shape
 
