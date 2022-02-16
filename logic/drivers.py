@@ -344,15 +344,11 @@ class PyVISA:
                 **kwargs,
             )
             print(f"({self._rsrc.resource_info.alias})...", end=" ")
-        except AttributeError:
-            # failed to auto-find address for depletion laser
+        except (AttributeError, visa.errors.VisaIOError, ValueError):
+            # failed to auto-find address for VISA device
             raise IOError(
                 f"{self.log_ref} couldn't be opened - it is either turned off, unplugged or the address is used by another process"
             )
-        except ValueError:
-            raise IOError(f"{self.log_ref} is unplugged or the address ({self.address}) is wrong.")
-        except visa.errors.VisaIOError:
-            raise IOError(f"{self.log_ref} was manually disconnected while opening the instrument.")
 
     def close_instrument(self) -> None:
         """Doc."""
