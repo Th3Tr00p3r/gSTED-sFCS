@@ -548,10 +548,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
 
-        print(
-            f"\nLoading FPGA data from hard drive ('{file_path_template}', {self.n_paths} files):",
-            end=" ",
-        )
+        print(f"\nLoading FPGA data from disk ('{file_path_template}', {self.n_paths} files):\n")
 
         # data processing
         self.data = self.process_all_data(file_paths, **kwargs)
@@ -1009,6 +1006,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.after_pulse_param,
             self.laser_freq_hz,
             is_verbose=is_verbose,
+            **kwargs,
         )
 
         if is_verbose:
@@ -1101,6 +1099,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.laser_freq_hz,
             self.bg_line_corr_list,
             is_verbose=True,
+            **kwargs,
         )
 
         CF.vt_um = self.v_um_ms * CF.lag
