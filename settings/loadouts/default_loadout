@@ -1,9 +1,14 @@
-solScanFileTemplate,
 imgScanFileTemplate,img
+solScanFileTemplate,
 newTemplate,
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
@@ -14,11 +19,6 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 scanImgFileNum,1
 solAnalysisRemoveWorstSpinner,0
 tdcCalibGating,40
@@ -27,13 +27,15 @@ expStrctFctrRbstIntrpPnts,2
 depPow,130
 depCurr,1500
 stageSteps,250
-solScanMaxFileSize,20.0
-solLinFrac,0.9
-solScanDur,25.0
+psdDelay_ps,0
+psdEffDelay_ps,1
 imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
+solScanMaxFileSize,20.0
+solLinFrac,0.9
+solScanDur,25.0
 solAnalysisRemoveOverSpinner,2.0
 customGateLifetimes,0.5
 expStrctFctrGMin,0.175
@@ -41,24 +43,24 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,5.0
-solMeasPreset,Standard Alignment
-solScanType,static
-solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,11
-dataYear,2021
-dataDay,1
-dataTemplate1,bp300_yoyo_1in15bp_angular_sted_165347_*.pkl
+solMeasPreset,Standard Alignment
+solScanType,static
+solScanDurUnits,seconds
+dataMonth,2
+dataYear,2022
+dataDay,14
+dataTemplate1,Halogen_4kHz_static_exc_131424_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
-importedSolDataTemplates1,bp300_yoyo_1in15bp_angular_sted_165347_*.pkl
+importedSolDataTemplates1,
 loadedExperimentNames,
 assignedGates,
 availableGates,
-importedSolDataTemplates2,bp300_yoyo_1in15bp_angular_exc_164024_*.pkl
+importedSolDataTemplates2,
 expPropGstedGate,Lifetime
 avgInterval,5000
 solScanParamsStacked,2
@@ -98,8 +100,9 @@ tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
 solDataFixShift,True
-solDataSubtractBgCorr,True
 solDataSubtractAfterpulse,True
+solDataSubtractBgCorr,True
+solDataUseDefaultSysInfo,False
 autoExp1,False
 autoExp2,False
 scaleImgScan,299
