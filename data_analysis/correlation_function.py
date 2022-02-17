@@ -537,18 +537,22 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     def read_fpga_data(
         self,
         file_path_template: Union[str, Path],
-        file_selection: str = None,
+        file_selection: str = "Use All",
         should_plot=False,
         **kwargs,
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
 
+        if not file_selection:
+            file_selection = "Use All"
         file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
         self.n_paths = len(file_paths)
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
 
-        print(f"\nLoading FPGA data from disk ('{file_path_template}', {self.n_paths} files):\n")
+        print("\nLoading FPGA data from disk -")
+        print(f"Template path: '{file_path_template}'")
+        print(f"Files: {self.n_paths}, Selection: '{file_selection}'\n")
 
         # data processing
         self.data = self.process_all_data(file_paths, **kwargs)
@@ -940,7 +944,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         if is_verbose:
             print(
-                f"{self.name} [{gate_ns} gating] - Correlating static data '{self.template}':",
+                f"Correlating static data ({self.name} [{gate_ns} gating]):",
                 end=" ",
             )
             print("Preparing files for software correlator...", end=" ")
