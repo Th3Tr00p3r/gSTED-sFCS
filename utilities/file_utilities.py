@@ -125,14 +125,14 @@ default_system_info = {
         #            ]
         np.array(  # NEW DETECTOR
             [
-                6.98995445e02,
-                1.08604535e01,
-                6.87013945e03,
-                1.60982136e02,
-                6.07076242e04,
-                1.54444526e03,
-                2.77174469e06,
-                1.18228952e04,
+                2.84811464e05,
+                4.98963334e03,
+                6.35795751e06,
+                1.77442973e04,
+                4.19407892e03,
+                7.06973857e01,
+                2.72100299e04,
+                8.04618046e02,
             ]
         ),
     ),
@@ -516,7 +516,7 @@ def file_selection_str_to_list(file_selection: str) -> Tuple[List[int], str]:
     return file_idxs, choice
 
 
-def prepare_file_paths(file_path_template: Path, file_selection: str = None) -> List[Path]:
+def prepare_file_paths(file_path_template: Path, file_selection: str = "Use All") -> List[Path]:
     """Doc."""
 
     dir_path, file_template = file_path_template.parent, file_path_template.name
@@ -525,20 +525,17 @@ def prepare_file_paths(file_path_template: Path, file_selection: str = None) -> 
     if not file_paths:
         raise FileNotFoundError(f"File template path ('{file_path_template}') does not exist!")
 
-    if file_selection:
+    if file_selection != "Use All":
         try:
             file_idxs, choice = file_selection_str_to_list(file_selection)
             if choice == "Use":
                 file_paths = [file_paths[i] for i in file_idxs]
             else:
                 file_paths = [file_paths[i] for i in range(len(file_paths)) if i not in file_idxs]
-            print(f"(file selection: '{file_selection}')")
         except IndexError:
             raise ValueError(
                 f"Bad file selection string: '{file_selection}'. Try file numbers between 1 and {len(file_paths)}."
             )
-    else:
-        print("(all files)")
 
     return file_paths
 

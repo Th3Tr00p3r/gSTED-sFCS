@@ -85,7 +85,7 @@ def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
     return _fit_and_get_param_dict(gaussian_2d_fit, (x1, x2), y, p0)
 
 
-def _fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> FitParams:
+def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
     """Doc."""
 
     try:
@@ -99,7 +99,6 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, **kwargs) -> FitParams:
         beta_error = np.sqrt(np.diag(pcov))
     except Exception as exc:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
-    sigma = kwargs.get("sigma", 1)
     chi_sq_arr = np.square((fit_func(x, *beta) - y) / sigma)
     try:
         chi_sq_norm = chi_sq_arr.sum() / x.size
