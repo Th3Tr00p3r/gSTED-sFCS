@@ -102,7 +102,7 @@ def _can_float(value: Any) -> bool:
         float(value)
         return True
     except (ValueError, TypeError):
-        if value == "-":  # consider hyphens part of float
+        if value == "-":  # consider hyphens part of float (minus sign)
             return True
         return False
 

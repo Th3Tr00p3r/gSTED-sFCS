@@ -7,6 +7,7 @@ import time
 from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
+from string import ascii_letters, digits
 from typing import List, Tuple, Union
 
 import nidaqmx.constants as ni_consts
@@ -31,13 +32,15 @@ class BaseDevice:
         self.led_widget: QtWidgetAccess
         self.switch_widget: QtWidgetAccess
 
-    def change_icons(self, command):
+    def change_icons(self, command, **kwargs):
         """Doc."""
 
-        def set_icon_wdgts(led_icon, has_switch: bool, switch_icon=None):
+        def set_icon_wdgts(
+            led_icon, has_switch: bool, switch_icon=None, led_widget_name="led_widget"
+        ):
             """Doc."""
 
-            self.led_widget.set(led_icon)
+            getattr(self, led_widget_name).set(led_icon)
             if has_switch:
                 self.switch_widget.set(switch_icon)
 
@@ -47,22 +50,120 @@ class BaseDevice:
 
         has_switch = hasattr(self, "switch_widget")
         if command == "on":
-            set_icon_wdgts(self.led_icon, has_switch, self.icon_dict["switch_on"])
+            set_icon_wdgts(self.led_icon, has_switch, self.icon_dict["switch_on"], **kwargs)
         elif command == "off":
-            set_icon_wdgts(self.icon_dict["led_off"], has_switch, self.icon_dict["switch_off"])
+            set_icon_wdgts(
+                self.icon_dict["led_off"], has_switch, self.icon_dict["switch_off"], **kwargs
+            )
         elif command == "error":
-            set_icon_wdgts(self.icon_dict["led_red"], False)
+            set_icon_wdgts(self.icon_dict["led_red"], False, **kwargs)
 
     def close(self):
         """Defualt device close(). Some classes override this."""
 
         self.toggle(False)
 
-    def toggle_led_and_switch(self, is_being_switched_on, should_change_icons=True):
+    def toggle_led_and_switch(self, is_being_switched_on: bool, should_change_icons=True):
         """Toggle the device's LED widget ON/OFF"""
 
         if not self.error_dict and should_change_icons:
             self.change_icons("on" if is_being_switched_on else "off")
+
+
+class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
+    """Doc."""
+
+    # TODO: better unite this with PicoSecondDelayer and call it MPDDevice
+
+    update_interval_s = 3
+
+    def __init__(self, param_dict):
+
+        super().__init__(
+            param_dict,
+            read_termination="#",
+            write_termination="#",
+        )
+        self.address = None  # found automatically
+        self.is_on = None  # found by querying the device (in timeout.py)
+        self.mode = None  # found by querying the device (in timeout.py)
+        self.is_gated = None
+
+        with suppress(DeviceError):
+            try:
+                self.open_instrument(model_query=self.model_query, baud_rate=self.baud_rate)
+            except IOError as exc:
+                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+            else:
+                # Set mode to 'free running'
+                self.toggle_mode("free running")
+
+    def close(self):
+        """Doc."""
+
+        self.close_instrument()
+
+    def command(
+        self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
+    ) -> List[str]:
+        """Doc."""
+
+        with suppress(DeviceError):
+            self.flush()
+            if isinstance(command_list, tuple):  # single command
+                command_list = [command_list]
+            n_commands = len(command_list)
+
+            command_chain = []
+            for idx, (command, limits) in zip(range(n_commands), command_list):
+                if limits is not None:
+                    value, *_ = generate_numbers_from_string(command)
+                    command_chain.append(f"{command[:2]}{limits.clamp(value)}")
+                else:
+                    command_chain.append(command)
+
+            self.write(";".join(command_chain))
+
+            # The below mess is to combat the fact that MPD devices' responses are not terminated with # sometimes (FGS)
+            with suppress(IOError):
+                response_bytes = []
+                while True:
+                    response_bytes.append(self.read(n_bytes=1).decode("utf-8"))
+
+            response = "".join(response_bytes).split(sep="#")
+            if response[-1] == "":
+                response.pop()
+
+            return response
+
+    def get_stats(self) -> dict:
+        """Doc."""
+
+        _, *responses = self.command([("AQ", None), ("DC", None)])
+        relevant_codes = ("VPOL", "FR", "ERR")
+        stats_dict = {
+            str_.rstrip(digits + "-"): number(str_.lstrip(ascii_letters))
+            for str_ in responses
+            if str_.startswith(relevant_codes)
+        }
+
+        self.is_on = bool(stats_dict["VPOL"])
+        self.mode = "Free Running" if stats_dict["FR"] == 1 else "External"
+
+        # in case of error
+        with suppress(KeyError):
+            raise DeviceError(f"{self.log_ref} error number {stats_dict['ERR']}.")
+            self.change_icons("error")
+
+    def toggle_mode(self, mode: str) -> None:
+        """Doc."""
+
+        if mode == "free running":
+            cmnd = "FR"
+        if mode == "external gating":
+            cmnd = "GM"
+
+        self.command([("TS0", Limits(0, 1)), (cmnd, None), ("AD", None)])
 
 
 class PicoSecondDelayer(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
@@ -120,21 +221,33 @@ class PicoSecondDelayer(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     ) -> List[Union[int, float]]:
         """Doc."""
 
-        self.flush()
-        if isinstance(command_list, tuple):  # single command
-            command_list = [command_list]
-        n_commands = len(command_list)
+        with suppress(DeviceError):
+            self.flush()
+            if isinstance(command_list, tuple):  # single command
+                command_list = [command_list]
+            n_commands = len(command_list)
 
-        command_chain = []
-        for idx, (command, limits) in zip(range(n_commands), command_list):
-            if limits is not None:
-                value, *_ = generate_numbers_from_string(command)
-                command_chain.append(f"{command[:2]}{limits.clamp(value)}")
-            else:
-                command_chain.append(command)
+            command_chain = []
+            for idx, (command, limits) in zip(range(n_commands), command_list):
+                if limits is not None:
+                    value, *_ = generate_numbers_from_string(command)
+                    command_chain.append(f"{command[:2]}{limits.clamp(value)}")
+                else:
+                    command_chain.append(command)
 
-        self.write(";".join(command_chain))
-        return [number(self.read()) for _ in range(n_commands)]
+            self.write(";".join(command_chain))
+
+            # The below mess is to combat the fact that MPD devices' responses are not terminated with # sometimes (FGS)
+            with suppress(IOError):
+                response_bytes = []
+                while True:
+                    response_bytes.append(self.read(n_bytes=1).decode("utf-8"))
+
+            response = "".join(response_bytes).split(sep="#")
+            if response[-1] == "":
+                response.pop()
+
+            return response
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -1045,6 +1158,16 @@ DEVICE_ATTR_DICT = {
             out_term=("pixelClockOutput", "QLineEdit", "settings", False),
             out_ext_term=("pixelClockOutputExt", "QLineEdit", "settings", False),
             freq_MHz=("pixelClockFreq", "QSpinBox", "settings", False),
+        ),
+    ),
+    "spad": DeviceAttrs(
+        class_name="FastGatedSPAD",
+        log_ref="Fast-Gated SPAD",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledSPAD", "QIcon", "main", True),
+            gate_led_widget=("ledGate", "QIcon", "main", True),
+            model_query=("spadModelQuery", "QLineEdit", "settings", False),
+            baud_rate=("spadBaudRate", "QSpinBox", "settings", False),
         ),
     ),
     "delayer": DeviceAttrs(
