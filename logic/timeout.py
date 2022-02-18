@@ -27,10 +27,12 @@ class Timeout:
 
         self.log_buffer_deque = deque([""], maxlen=50)
 
+        self.exc_laser_dvc = self._app.devices.exc_laser
         self.cntr_dvc = self._app.devices.photon_detector
         self.scan_dvc = self._app.devices.scanners
         self.dep_dvc = self._app.devices.dep_laser
         self.delayer_dvc = self._app.devices.delayer
+        self.spad_dvc = self._app.devices.spad
 
         # start
         self.not_finished = True
@@ -45,7 +47,9 @@ class Timeout:
             await asyncio.gather(
                 self._read_ci_and_ai(),
                 self._update_dep(),
-                self._update_delayer(),
+                self._update_delayer_temperature(),
+                self._update_spad_stats(),
+                self._update_spad_gate_status(),
                 self._update_main_gui(),
                 self._update_video(),
             )
@@ -226,7 +230,7 @@ class Timeout:
 
             await asyncio.sleep(self.dep_dvc.update_interval_s)
 
-    async def _update_delayer(self) -> None:
+    async def _update_delayer_temperature(self) -> None:
         """Update delayer temperature"""
 
         while self.not_finished:
@@ -234,6 +238,38 @@ class Timeout:
             if not self.delayer_dvc.error_dict:
                 if self.delayer_dvc.state:
                     temp, *_ = self.delayer_dvc.command(("RT", None))
-                    self.main_gui.psdTemp.setValue(temp)
+                    self.main_gui.psdTemp.setValue(float(temp))
 
             await asyncio.sleep(self.delayer_dvc.update_interval_s)
+
+    async def _update_spad_stats(self) -> None:
+        """Doc."""
+
+        while self.not_finished:
+
+            if not self.spad_dvc.error_dict:
+                self.spad_dvc.get_stats()
+                self.main_gui.spadMode.setText(self.spad_dvc.mode)
+                self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
+
+            await asyncio.sleep(self.spad_dvc.update_interval_s)
+
+    async def _update_spad_gate_status(self) -> None:
+        """Doc."""
+
+        while self.not_finished:
+
+            if not self.spad_dvc.error_dict:
+
+                is_gated = self.delayer_dvc.state and self.exc_laser_dvc.state
+                if self.spad_dvc.is_gated != is_gated:
+                    if is_gated:
+                        self.spad_dvc.toggle_mode("external gating")
+                        icon_name = "on"
+                    else:
+                        self.spad_dvc.toggle_mode("free running")
+                        icon_name = "off"
+                    self.spad_dvc.change_icons(icon_name, led_widget_name="gate_led_widget")
+                    self.spad_dvc.is_gated = is_gated
+
+            await asyncio.sleep(GUI_UPDATE_INTERVAL)

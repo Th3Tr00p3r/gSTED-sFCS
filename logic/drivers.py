@@ -339,7 +339,7 @@ class PyVISA:
                 self.address,
                 read_termination=self.read_termination,
                 write_termination=self.write_termination,
-                timeout=50,  # ms
+                timeout=100,  # ms
                 open_timeout=50,  # ms
                 **kwargs,
             )
@@ -360,11 +360,19 @@ class PyVISA:
         except visa.errors.VisaIOError:
             raise IOError(f"{self.log_ref} disconnected during operation.")
 
-    def read(self) -> str:
+    def read(self, n_bytes=None) -> str:
         """Doc."""
 
-        with suppress(visa.errors.VisaIOError):
-            return self._rsrc.read()
+        try:
+            if n_bytes is not None:
+                return self._rsrc.read_bytes(n_bytes)
+            else:
+                return self._rsrc.read()
+        except visa.errors.VisaIOError as exc:
+            if exc.abbreviation == "VI_ERROR_TMO":
+                raise IOError("Resource timed-out during read.")
+            else:
+                raise exc
 
     def write(self, cmnd: str) -> None:
         """Sends a command to the VISA instrument."""

@@ -231,7 +231,7 @@ class MainWin:
 
         if um_disp != 0.0:
             scanners_dvc = self._app.devices.scanners
-            axis = self._gui.axesGroup.checkedButton().text()
+            axis = self._gui.posAxis.currentText()
             current_vltg = scanners_dvc.ai_buffer[-1][3:][scanners_dvc.AXIS_INDEX[axis]]
             um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
             delta_vltg = um_disp / um_V_RATIO
@@ -259,11 +259,12 @@ class MainWin:
         delayer_dvc = self._app.devices.delayer
         set_delay_wdgt = self._gui.psdDelay_ps
         eff_delay_wdgt = self._gui.psdEffDelay_ps
-        with suppress(TypeError):  # writing/reading PSD too fast!
+        with suppress(TypeError, DeviceError):
+            # TypeError:  writing/reading PSD too fast!
             response, *_ = delayer_dvc.command(
                 (f"SD{set_delay_wdgt.value()}", delayer_dvc.delay_limits)
             )
-            eff_delay_wdgt.setValue(response)
+            eff_delay_wdgt.setValue(int(response))
 
     def show_laser_dock(self):
         """Make the laser dock visible (convenience)."""
