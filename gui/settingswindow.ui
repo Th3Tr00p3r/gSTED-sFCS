@@ -453,7 +453,7 @@ Details</string>
                </font>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="lasers">
                <attribute name="title">
@@ -2931,6 +2931,129 @@ Details</string>
                 </item>
                 <item row="1" column="0">
                  <spacer name="verticalSpacer_8">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>197</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tab_5">
+               <attribute name="title">
+                <string>FastGatedSPAD</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_28">
+                <item row="0" column="0">
+                 <layout class="QVBoxLayout" name="verticalLayout_30">
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_20">
+                    <property name="title">
+                     <string>Serial Connection Properties</string>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_27">
+                     <item row="0" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_105" stretch="1,10">
+                       <item>
+                        <widget class="QLabel" name="label_94">
+                         <property name="text">
+                          <string>Baud Rate</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QSpinBox" name="spadBaudRate">
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="maximum">
+                          <number>999999999</number>
+                         </property>
+                         <property name="value">
+                          <number>115200</number>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_21">
+                    <property name="title">
+                     <string>Device Properties</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_31">
+                     <item>
+                      <layout class="QVBoxLayout" name="verticalLayout_37">
+                       <item>
+                        <widget class="QLabel" name="label_38">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>999999</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Autofind Command</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="spadModelQuery">
+                         <property name="enabled">
+                          <bool>true</bool>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>999</width>
+                           <height>24</height>
+                          </size>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>AQ</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <spacer name="horizontalSpacer_11">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>306</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="0">
+                 <spacer name="verticalSpacer_9">
                   <property name="orientation">
                    <enum>Qt::Vertical</enum>
                   </property>

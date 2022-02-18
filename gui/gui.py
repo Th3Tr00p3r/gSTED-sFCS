@@ -54,10 +54,6 @@ class MainWin(QtWidgets.QMainWindow):
         self.circAoSampFreq.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
 
         # Positioning/Scanners
-        self.axesGroup = QtWidgets.QButtonGroup()
-        self.axesGroup.addButton(self.posAxisX)
-        self.axesGroup.addButton(self.posAxisY)
-        self.axesGroup.addButton(self.posAxisZ)
         self.axisMoveUp.released.connect(lambda: self.impl.displace_scanner_axis(1))
         self.axisMoveDown.released.connect(lambda: self.impl.displace_scanner_axis(-1))
         self.goToOrg.released.connect(lambda: self.impl.go_to_origin("XYZ"))
@@ -218,16 +214,12 @@ class MainWin(QtWidgets.QMainWindow):
         )
 
         # intialize gui
-        self.actionLaser_Control.setChecked(True)
-        self.actionStepper_Stage_Control.setChecked(True)
-        self.actionDelayer_Control.setChecked(False)
-        self.delayerDock.setVisible(False)
         self.actionCamera_Control.setChecked(False)
         self.cameraDock.setVisible(False)
         self.stageButtonsGroup.setEnabled(False)
 
         self.move(300, 30)
-        self.setFixedSize(1211, 950)
+        self.setFixedSize(1251, 950)
         self.setMaximumSize(int(1e5), int(1e5))
 
     @QtCore.pyqtSlot(bool)

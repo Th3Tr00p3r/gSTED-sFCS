@@ -38,6 +38,7 @@ class App:
         "scanners",
         "photon_detector",
         "delayer",
+        "spad",
         "pixel_clock",
         "camera_1",
         "camera_2",
