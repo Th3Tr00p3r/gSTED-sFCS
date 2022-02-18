@@ -120,6 +120,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.ledTdc.clicked.connect(lambda: led_clicked(self))
         self.ledScn.clicked.connect(lambda: led_clicked(self))
         self.ledPSD.clicked.connect(lambda: led_clicked(self))
+        self.ledSPAD.clicked.connect(lambda: led_clicked(self))
         self.ledCam1.clicked.connect(lambda: led_clicked(self))
         self.ledCam2.clicked.connect(lambda: led_clicked(self))
 
