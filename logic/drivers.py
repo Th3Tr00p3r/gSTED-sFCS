@@ -26,7 +26,7 @@ class Ftd2xx:
         "Single Channel Synchronous 245 FIFO": 0x40,
         "RTS-CTS": ftd2xx.defines.FLOW_RTS_CTS,
     }
-    n_bytes: int
+    n_bytes: int = 200
 
     def __init__(self, param_dict):
         param_dict = self._translate_dict_values(param_dict, self.ftd2xx_dict)
@@ -54,6 +54,7 @@ class Ftd2xx:
 
     def open_instrument(self):
         """Doc."""
+        # TODO: FIX THIS! IT LOOKS TERRIBLE
 
         try:
             self._inst = ftd2xx.ftd2xx.openEx(self.serial)
@@ -62,10 +63,16 @@ class Ftd2xx:
             raise IOError(f"{self.log_ref} is not plugged in.")
         with suppress(AttributeError):  # set params if they are defined
             self._inst.setBitMode(255, self.bit_mode)  # TODO: try setting to 0
+        with suppress(AttributeError):  # set params if they are defined
             self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
+        with suppress(AttributeError):  # set params if they are defined
             self._inst.setLatencyTimer(self.ltncy_tmr_val)
+        with suppress(AttributeError):  # set params if they are defined
             self._inst.setFlowControl(self.flow_ctrl)
+        with suppress(AttributeError):  # set params if they are defined
             self._inst.setUSBParameters(self.tx_size)
+        with suppress(AttributeError):  # set params if they are defined
+            self._inst.setBaudRate(self.baud_rate)
 
     def close_instrument(self) -> None:
         """Doc."""
@@ -79,6 +86,11 @@ class Ftd2xx:
             return self._inst.read(self.n_bytes)
         except ftd2xx.DeviceError:
             raise IOError("disconnected during measurement.")
+
+    def write(self, byte_data: bytes) -> None:
+        """Doc."""
+
+        return self._inst.write(byte_data)
 
     # NOT USED, CURRENTLY (using regular read())
     async def async_read(self) -> bytes:

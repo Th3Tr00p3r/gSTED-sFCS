@@ -12280,6 +12280,9 @@ Disp. (um)</string>
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
+              <property name="toolTip">
+               <string>Open MPD interface (press again after closing to re-connect to SPAD)</string>
+              </property>
               <property name="text">
                <string>...</string>
               </property>
