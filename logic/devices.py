@@ -70,33 +70,30 @@ class BaseDevice:
             self.change_icons("on" if is_being_switched_on else "off")
 
 
-class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
+class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
-    # TODO: better unite this with PicoSecondDelayer and call it MPDDevice
+    # TODO: do the same for PSD
 
     update_interval_s = 1
 
     def __init__(self, param_dict):
-
         super().__init__(
-            param_dict,
-            read_termination="#",
-            write_termination="#",
+            param_dict=param_dict,
         )
-        self.address = None  # found automatically
+        try:
+            self.open_instrument()
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.purge()
+
         self.is_on = None  # found by querying the device (in timeout.py)
         self.mode = None  # found by querying the device (in timeout.py)
         self.is_gated = None
         self.is_paused = False  # used when ceding control to MPD interface
 
-        with suppress(DeviceError):
-            try:
-                self.open_instrument(model_query=self.model_query, baud_rate=self.baud_rate)
-            except IOError as exc:
-                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-            else:
-                self.toggle_mode("free running")
+        self.toggle_mode("free running")
 
     def close(self):
         """Doc."""
@@ -109,11 +106,9 @@ class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         try:
             self.is_paused = should_pause
             if should_pause:
-                #                self.toggle_mode("free running")
                 self.close_instrument()
             else:
                 self.open_instrument()
-        #                self.toggle_mode("free running")
         except IOError as exc:
             self.is_paused = not should_pause
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
@@ -123,50 +118,28 @@ class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     ) -> List[str]:
         """Doc."""
 
-        with suppress(DeviceError):
-            self.flush()
-            if isinstance(command_list, tuple):  # single command
-                command_list = [command_list]
-            n_commands = len(command_list)
+        self.purge()
+        if isinstance(command_list, tuple):  # single command
+            command_list = [command_list]
+        n_commands = len(command_list)
 
-            command_chain = []
-            for idx, (command, limits) in zip(range(n_commands), command_list):
-                if limits is not None:
-                    value, *_ = generate_numbers_from_string(command)
-                    command_chain.append(f"{command[:2]}{limits.clamp(value)}")
-                else:
-                    command_chain.append(command)
+        command_chain = []
+        for idx, (command, limits) in zip(range(n_commands), command_list):
+            if limits is not None:
+                value, *_ = generate_numbers_from_string(command)
+                command_chain.append(f"{command[:2]}{limits.clamp(value)}")
+            else:
+                command_chain.append(command)
 
-            self.write((cmnd := ";".join(command_chain)))
-
-            command_response_min_bytes_dict = {"AQ;DC": 160, "TS0;FR;AD": 10, "TS0;GM;AD": 10}
-            try:
-                min_bytes = command_response_min_bytes_dict[cmnd]
-            except KeyError:
-                min_bytes = 1
-
-            # The below mess is to combat the fact that MPD devices' responses are not terminated with # sometimes (FGS)
-            with suppress(IOError):
-                response_bytes = []
-                response_bytes.append(
-                    self.read(n_bytes=min_bytes).decode("utf-8")
-                )  # first read most bytes
-                while True:
-                    response_bytes.append(self.read(n_bytes=1).decode("utf-8"))  # then one by one
-
-            response = "".join(response_bytes).split(sep="#")
-            if response[-1] == "":
-                response.pop()
-
-            print(response)  # TESTESTEST
-
-            return response
+        cmnd = (";".join(command_chain) + "#").encode("utf-8")
+        self.write(cmnd)
+        return self.read().decode("utf-8").split(sep="#")
 
     def get_stats(self) -> None:
         """Doc."""
 
         try:
-            _, *responses = self.command([("AQ", None), ("DC", None)])
+            responses = self.command([("AQ", None), ("DC", None)])
         except ValueError:
             print(f"{self.log_ref} did not respond to stats query")
         else:
@@ -177,11 +150,9 @@ class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                 if str_.startswith(relevant_codes)
             }
 
-            self.is_on = bool(stats_dict["VPOL"])
-            self.mode = "Free Running" if stats_dict["FR"] == 1 else "External"
-
-            # in case of error (untested)
             with suppress(KeyError):
+                self.is_on = bool(stats_dict["VPOL"])
+                self.mode = "Free Running" if stats_dict["FR"] == 1 else "External"
                 raise DeviceError(f"{self.log_ref} error number {stats_dict['ERR']}.")
                 self.change_icons("error")
 
@@ -1192,8 +1163,10 @@ DEVICE_ATTR_DICT = {
         param_widgets=QtWidgetCollection(
             led_widget=("ledSPAD", "QIcon", "main", True),
             gate_led_widget=("ledGate", "QIcon", "main", True),
-            model_query=("spadModelQuery", "QLineEdit", "settings", False),
+            #            model_query=("spadModelQuery", "QLineEdit", "settings", False),
+            description=("spadDescription", "QLineEdit", "settings", False),
             baud_rate=("spadBaudRate", "QSpinBox", "settings", False),
+            timeout_ms=("spadTimeout", "QSpinBox", "settings", False),
         ),
     ),
     "delayer": DeviceAttrs(

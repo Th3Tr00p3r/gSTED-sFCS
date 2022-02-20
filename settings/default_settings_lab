@@ -1,9 +1,13 @@
+sysScanSetup,STED with galvos
+afterpulsingFitType,multi_exponent_fit
+afterpulsingFitParams,114424.39560026, 10895.53707084, 12817.86449556, 1766.32335809, 119012.66649389, 10895.66339894, 1518.68623068, 315.70074808
 dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
 solSubdirName,solution
 imgSubdirName,image
 camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
 logDataPath,./log/
 tempDataPath,C:/temp_sfcs_folder/
+psdModelQuery,RSN
 cam1Serial,4102737458
 cam2Serial,4102835063
 arduinoAddr,COM3
@@ -40,7 +44,12 @@ excTriggerIntAddr,Dev3/port0/
 excAddr,Dev1/port0/line6
 depShutterAddr,Dev3/port0/line11
 depModelQuery,getmodel
-psdModelQuery,RSN
+spadDescription,FT232R USB UART
+spadModelQuery,AQ
+psdBaudRate,115200
+psdThreshold_mV,-500
+psdPulsewidth_ns,5
+psdFreqDiv,1
 um232Timeout,2
 um232TxSize,256000
 um232NumBytes,256000
@@ -52,7 +61,8 @@ pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
 AIclkDiv,100
-psdBaudRate,115200
+spadBaudRate,115200
+spadTimeout,100
 xConv,70.81
 yConv,82.74
 zConv,10.0
@@ -61,5 +71,5 @@ AOtriggerEdge,Rising
 AOwfType,Sine
 excTriggerSrc,External (TDC)
 counterCIdupCountPrevention,True
-tabWidget,1
-tabWidget_2,6
+tabWidget,2
+tabWidget_2,7

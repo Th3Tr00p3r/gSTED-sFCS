@@ -95,7 +95,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>0</number>
+         <number>2</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -453,7 +453,7 @@ Details</string>
                </font>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>7</number>
               </property>
               <widget class="QWidget" name="lasers">
                <attribute name="title">
@@ -2957,7 +2957,7 @@ Details</string>
                      <string>Serial Connection Properties</string>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_27">
-                     <item row="0" column="0">
+                     <item row="1" column="0">
                       <layout class="QVBoxLayout" name="verticalLayout_105" stretch="1,10">
                        <item>
                         <widget class="QLabel" name="label_94">
@@ -2976,6 +2976,62 @@ Details</string>
                          </property>
                          <property name="value">
                           <number>115200</number>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item row="0" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_106">
+                       <item>
+                        <widget class="QLabel" name="label_95">
+                         <property name="text">
+                          <string>Description</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="spadDescription">
+                         <property name="text">
+                          <string>FT232R USB UART</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item row="2" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_107">
+                       <item>
+                        <widget class="QLabel" name="label_96">
+                         <property name="text">
+                          <string>Timeouts (ms)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QSpinBox" name="spadTimeout">
+                         <property name="enabled">
+                          <bool>true</bool>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="wrapping">
+                          <bool>false</bool>
+                         </property>
+                         <property name="readOnly">
+                          <bool>false</bool>
+                         </property>
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="maximum">
+                          <number>999999999</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
                          </property>
                         </widget>
                        </item>
