@@ -1102,7 +1102,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.after_pulse_param,
             self.laser_freq_hz,
             self.bg_line_corr_list,
-            is_verbose=True,
+            #            is_verbose=True,
             **kwargs,
         )
 
