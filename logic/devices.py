@@ -20,7 +20,7 @@ from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
-from utilities.helper import Limits, div_ceil, generate_numbers_from_string, number
+from utilities.helper import Limits, div_ceil, number
 
 
 class BaseDevice:
@@ -149,29 +149,24 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     delay_limits = Limits(1, 49090)
 
     def __init__(self, param_dict):
-
         super().__init__(
-            param_dict,
-            read_termination="#",
-            write_termination="#",
+            param_dict=param_dict,
         )
-        self.address = None  # found automatically
-        self.state = False
+        try:
+            self.open_instrument()
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.command(
+                [
+                    ("EM0", Limits(0, 1)),  # cancel echo mode
+                    (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
+                    (f"SP{self.pulsewidth_ns}", Limits(1, 250)),  # set output NIM pulse width
+                    (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
+                ]
+            )
 
-        with suppress(DeviceError):
-            try:
-                self.open_instrument(model_query=self.model_query, baud_rate=self.baud_rate)
-            except IOError as exc:
-                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-            else:
-                self.command(
-                    [
-                        ("EM0", Limits(0, 1)),  # cancel echo mode
-                        (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
-                        (f"SP{self.pulsewidth_ns}", Limits(1, 250)),  # set output NIM pulse width
-                        (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
-                    ]
-                )
+        self.state = False
 
     def toggle(self, is_being_switched_on: bool):
         """Doc."""
@@ -190,39 +185,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.toggle(False)
         self.command(("EM1", Limits(0, 1)))  # return to echo mode (for accompanying software)
         self.close_instrument()
-
-    def command(
-        self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
-    ) -> List[Union[int, float]]:
-        """Doc."""
-
-        with suppress(DeviceError):
-            self.flush()
-            if isinstance(command_list, tuple):  # single command
-                command_list = [command_list]
-            n_commands = len(command_list)
-
-            command_chain = []
-            for idx, (command, limits) in zip(range(n_commands), command_list):
-                if limits is not None:
-                    value, *_ = generate_numbers_from_string(command)
-                    command_chain.append(f"{command[:2]}{limits.clamp(value)}")
-                else:
-                    command_chain.append(command)
-
-            self.write(";".join(command_chain))
-
-            # The below mess is to combat the fact that MPD devices' responses are not terminated with # sometimes (FGS)
-            with suppress(IOError):
-                response_bytes = []
-                while True:
-                    response_bytes.append(self.read(n_bytes=1).decode("utf-8"))
-
-            response = "".join(response_bytes).split(sep="#")
-            if response[-1] == "":
-                response.pop()
-
-            return response
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -1141,7 +1103,6 @@ DEVICE_ATTR_DICT = {
         param_widgets=QtWidgetCollection(
             led_widget=("ledSPAD", "QIcon", "main", True),
             gate_led_widget=("ledGate", "QIcon", "main", True),
-            #            model_query=("spadModelQuery", "QLineEdit", "settings", False),
             description=("spadDescription", "QLineEdit", "settings", False),
             baud_rate=("spadBaudRate", "QSpinBox", "settings", False),
             timeout_ms=("spadTimeout", "QSpinBox", "settings", False),
@@ -1153,8 +1114,9 @@ DEVICE_ATTR_DICT = {
         param_widgets=QtWidgetCollection(
             led_widget=("ledPSD", "QIcon", "main", True),
             switch_widget=("psdSwitch", "QIcon", "main", True),
-            model_query=("psdModelQuery", "QLineEdit", "settings", False),
+            description=("psdDescription", "QLineEdit", "settings", False),
             baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
+            timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             pulsewidth_ns=("psdPulsewidth_ns", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
