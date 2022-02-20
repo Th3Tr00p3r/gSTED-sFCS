@@ -75,7 +75,7 @@ class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     # TODO: better unite this with PicoSecondDelayer and call it MPDDevice
 
-    update_interval_s = 3
+    update_interval_s = 1
 
     def __init__(self, param_dict):
 
@@ -139,37 +139,34 @@ class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     def get_stats(self) -> dict:
         """Doc."""
 
-        _, *responses = self.command([("AQ", None), ("DC", None)])
-        relevant_codes = ("VPOL", "FR", "ERR")
-        stats_dict = {
-            str_.rstrip(digits + "-"): number(str_.lstrip(ascii_letters))
-            for str_ in responses
-            if str_.startswith(relevant_codes)
-        }
+        with suppress(ValueError):  # VISA connection closed (on app close)
+            _, *responses = self.command([("AQ", None), ("DC", None)])
+            relevant_codes = ("VPOL", "FR", "ERR")
+            stats_dict = {
+                str_.rstrip(digits + "-"): number(str_.lstrip(ascii_letters))
+                for str_ in responses
+                if str_.startswith(relevant_codes)
+            }
 
-        self.is_on = bool(stats_dict["VPOL"])
-        self.mode = "Free Running" if stats_dict["FR"] == 1 else "External"
+            self.is_on = bool(stats_dict["VPOL"])
+            self.mode = "Free Running" if stats_dict["FR"] == 1 else "External"
 
-        # in case of error
-        with suppress(KeyError):
-            raise DeviceError(f"{self.log_ref} error number {stats_dict['ERR']}.")
-            self.change_icons("error")
+            # in case of error (untested)
+            with suppress(KeyError):
+                raise DeviceError(f"{self.log_ref} error number {stats_dict['ERR']}.")
+                self.change_icons("error")
 
     def toggle_mode(self, mode: str) -> None:
         """Doc."""
 
-        if mode == "free running":
-            cmnd = "FR"
-        if mode == "external gating":
-            cmnd = "GM"
-
-        self.command([("TS0", Limits(0, 1)), (cmnd, None), ("AD", None)])
+        mode_cmnd_dict = {"free running": "FR", "external gating": "GM"}
+        self.command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
 
 
 class PicoSecondDelayer(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
-    update_interval_s = 3
+    update_interval_s = 1
 
     delay_limits = Limits(1, 49090)
 
