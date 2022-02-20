@@ -113,28 +113,6 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.is_paused = not should_pause
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
-    def command(
-        self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
-    ) -> List[str]:
-        """Doc."""
-
-        self.purge()
-        if isinstance(command_list, tuple):  # single command
-            command_list = [command_list]
-        n_commands = len(command_list)
-
-        command_chain = []
-        for idx, (command, limits) in zip(range(n_commands), command_list):
-            if limits is not None:
-                value, *_ = generate_numbers_from_string(command)
-                command_chain.append(f"{command[:2]}{limits.clamp(value)}")
-            else:
-                command_chain.append(command)
-
-        cmnd = (";".join(command_chain) + "#").encode("utf-8")
-        self.write(cmnd)
-        return self.read().decode("utf-8").split(sep="#")
-
     def get_stats(self) -> None:
         """Doc."""
 
@@ -163,7 +141,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
 
 
-class PicoSecondDelayer(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
+class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
     update_interval_s = 1
