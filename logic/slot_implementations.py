@@ -1,6 +1,7 @@
 """ GUI windows implementations module. """
 
 import logging
+import os
 import re
 import sys
 import webbrowser
@@ -253,6 +254,25 @@ class MainWin:
 
         self._app.loop.create_task(self._app.devices.stage.move(dir=dir, steps=steps))
         logging.info(f"{self._app.devices.stage.log_ref} moved {str(steps)} steps {str(dir)}")
+
+    def open_spad_interface(self) -> None:
+        """Doc."""
+
+        spad_dvc = self._app.devices.spad
+
+        if spad_dvc.is_paused:
+            spad_dvc.pause(False)
+        else:
+            spad_dvc.pause(True)  # temporarily close to let MPD software control serial port
+            try:
+                os.startfile(
+                    Path(
+                        "C:/Program Files (x86)/MPD/FastGATED SPAD Module/FastGatedSPAD_Module.exe"
+                    )
+                )
+            except Exception as exc:
+                print(exc)  # TODO: make unique
+                spad_dvc.pause(False)  # take back control
 
     def set_delay(self):
         """Doc."""

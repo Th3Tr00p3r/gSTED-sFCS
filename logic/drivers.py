@@ -3,7 +3,7 @@
 import sys
 from contextlib import suppress
 from types import SimpleNamespace
-from typing import List
+from typing import List, Union
 
 import ftd2xx
 import instrumental.drivers.cameras.uc480 as uc480
@@ -61,7 +61,7 @@ class Ftd2xx:
         except AttributeError:
             raise IOError(f"{self.log_ref} is not plugged in.")
         with suppress(AttributeError):  # set params if they are defined
-            self._inst.setBitMode(255, self.bit_mode)  # unsure about 255/0
+            self._inst.setBitMode(255, self.bit_mode)  # TODO: try setting to 0
             self._inst.setTimeouts(self.timeout_ms, self.timeout_ms)
             self._inst.setLatencyTimer(self.ltncy_tmr_val)
             self._inst.setFlowControl(self.flow_ctrl)
@@ -75,7 +75,10 @@ class Ftd2xx:
     def read(self) -> bytes:
         """Doc."""
 
-        return self._inst.read(self.n_bytes)
+        try:
+            return self._inst.read(self.n_bytes)
+        except ftd2xx.DeviceError:
+            raise IOError("disconnected during measurement.")
 
     # NOT USED, CURRENTLY (using regular read())
     async def async_read(self) -> bytes:
@@ -360,7 +363,7 @@ class PyVISA:
         except visa.errors.VisaIOError:
             raise IOError(f"{self.log_ref} disconnected during operation.")
 
-    def read(self, n_bytes=None) -> str:
+    def read(self, n_bytes=None) -> Union[str, bytes]:
         """Doc."""
 
         try:
