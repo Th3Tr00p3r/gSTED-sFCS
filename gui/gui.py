@@ -149,6 +149,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.depShutterOn.released.connect(lambda: self.impl.device_toggle("dep_shutter"))
         self.stageOn.released.connect(lambda: self.impl.device_toggle("stage"))
         self.psdSwitch.released.connect(lambda: self.impl.device_toggle("delayer"))
+        self.openSpadInterface.released.connect(self.impl.open_spad_interface)
 
         # Image Scan
         self.startImgScanExc.released.connect(

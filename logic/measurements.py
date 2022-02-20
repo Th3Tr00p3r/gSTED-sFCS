@@ -781,6 +781,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
                 file_num += 1
 
+        except errors.IOError as exc:
+            errors.err_hndlr(exc, sys._getframe(), locals())
+
         except Exception as exc:  # TESTESTEST
             print("SolutionMeasurementProcedure: THIS SHOULD NOT HAPPEN!")
             errors.err_hndlr(exc, sys._getframe(), locals())

@@ -88,6 +88,7 @@ class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         self.is_on = None  # found by querying the device (in timeout.py)
         self.mode = None  # found by querying the device (in timeout.py)
         self.is_gated = None
+        self.is_paused = False  # used when ceding control to MPD interface
 
         with suppress(DeviceError):
             try:
@@ -95,13 +96,27 @@ class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             except IOError as exc:
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
             else:
-                # Set mode to 'free running'
                 self.toggle_mode("free running")
 
     def close(self):
         """Doc."""
 
         self.close_instrument()
+
+    def pause(self, should_pause: bool) -> None:
+        """Doc."""
+
+        try:
+            self.is_paused = should_pause
+            if should_pause:
+                #                self.toggle_mode("free running")
+                self.close_instrument()
+            else:
+                self.open_instrument()
+        #                self.toggle_mode("free running")
+        except IOError as exc:
+            self.is_paused = not should_pause
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def command(
         self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
@@ -122,25 +137,39 @@ class FastGatedSPAD(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                 else:
                     command_chain.append(command)
 
-            self.write(";".join(command_chain))
+            self.write((cmnd := ";".join(command_chain)))
+
+            command_response_min_bytes_dict = {"AQ;DC": 160, "TS0;FR;AD": 10, "TS0;GM;AD": 10}
+            try:
+                min_bytes = command_response_min_bytes_dict[cmnd]
+            except KeyError:
+                min_bytes = 1
 
             # The below mess is to combat the fact that MPD devices' responses are not terminated with # sometimes (FGS)
             with suppress(IOError):
                 response_bytes = []
+                response_bytes.append(
+                    self.read(n_bytes=min_bytes).decode("utf-8")
+                )  # first read most bytes
                 while True:
-                    response_bytes.append(self.read(n_bytes=1).decode("utf-8"))
+                    response_bytes.append(self.read(n_bytes=1).decode("utf-8"))  # then one by one
 
             response = "".join(response_bytes).split(sep="#")
             if response[-1] == "":
                 response.pop()
 
+            print(response)  # TESTESTEST
+
             return response
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> None:
         """Doc."""
 
-        with suppress(ValueError):  # VISA connection closed (on app close)
+        try:
             _, *responses = self.command([("AQ", None), ("DC", None)])
+        except ValueError:
+            print(f"{self.log_ref} did not respond to stats query")
+        else:
             relevant_codes = ("VPOL", "FR", "ERR")
             stats_dict = {
                 str_.rstrip(digits + "-"): number(str_.lstrip(ascii_letters))

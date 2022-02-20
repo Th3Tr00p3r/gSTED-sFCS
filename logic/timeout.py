@@ -247,7 +247,7 @@ class Timeout:
 
         while self.not_finished:
 
-            if not self.spad_dvc.error_dict:
+            if not self.spad_dvc.error_dict and not self.spad_dvc.is_paused:
                 self.spad_dvc.get_stats()
                 self.main_gui.spadMode.setText(self.spad_dvc.mode)
                 self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
@@ -259,7 +259,7 @@ class Timeout:
 
         while self.not_finished:
 
-            if not self.spad_dvc.error_dict:
+            if not self.spad_dvc.error_dict and not self.spad_dvc.is_paused:
 
                 is_gated = self.delayer_dvc.state and self.exc_laser_dvc.state
                 if self.spad_dvc.is_gated != is_gated:
