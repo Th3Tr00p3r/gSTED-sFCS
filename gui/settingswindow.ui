@@ -309,7 +309,7 @@
             <x>20</x>
             <y>30</y>
             <width>135</width>
-            <height>41</height>
+            <height>46</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_25">
@@ -453,7 +453,7 @@ Details</string>
                </font>
               </property>
               <property name="currentIndex">
-               <number>7</number>
+               <number>6</number>
               </property>
               <widget class="QWidget" name="lasers">
                <attribute name="title">
@@ -2671,14 +2671,14 @@ Details</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_25">
                 <item row="0" column="0">
-                 <layout class="QVBoxLayout" name="verticalLayout_22">
+                 <layout class="QHBoxLayout" name="horizontalLayout_17">
                   <item>
                    <widget class="QGroupBox" name="groupBox_13">
                     <property name="title">
                      <string>Serial Connection Properties</string>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_24">
-                     <item row="0" column="0">
+                     <item row="1" column="0">
                       <layout class="QVBoxLayout" name="verticalLayout_103" stretch="1,10">
                        <item>
                         <widget class="QLabel" name="label_91">
@@ -2697,6 +2697,62 @@ Details</string>
                          </property>
                          <property name="value">
                           <number>115200</number>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item row="2" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_109">
+                       <item>
+                        <widget class="QLabel" name="label_97">
+                         <property name="text">
+                          <string>Timeouts (ms)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QSpinBox" name="psdTimeout">
+                         <property name="enabled">
+                          <bool>true</bool>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <pointsize>8</pointsize>
+                          </font>
+                         </property>
+                         <property name="wrapping">
+                          <bool>false</bool>
+                         </property>
+                         <property name="readOnly">
+                          <bool>false</bool>
+                         </property>
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="maximum">
+                          <number>999999999</number>
+                         </property>
+                         <property name="value">
+                          <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item row="0" column="0">
+                      <layout class="QVBoxLayout" name="verticalLayout_110">
+                       <item>
+                        <widget class="QLabel" name="label_98">
+                         <property name="text">
+                          <string>Description</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="psdDescription">
+                         <property name="text">
+                          <string>FILL ME IN</string>
                          </property>
                         </widget>
                        </item>
