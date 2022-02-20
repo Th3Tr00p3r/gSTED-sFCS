@@ -3,7 +3,7 @@
 import sys
 from contextlib import suppress
 from types import SimpleNamespace
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import ftd2xx
 import instrumental.drivers.cameras.uc480 as uc480
@@ -16,7 +16,7 @@ from nidaqmx.stream_readers import (
 )
 
 from utilities.errors import IOError, err_hndlr
-from utilities.helper import Limits
+from utilities.helper import Limits, generate_numbers_from_string
 
 
 class Ftd2xx:
@@ -91,6 +91,28 @@ class Ftd2xx:
         """Doc."""
 
         return self._inst.write(byte_data)
+
+    def mpd_command(
+        self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
+    ) -> List[str]:
+        """Doc."""
+
+        self.purge()
+        if isinstance(command_list, tuple):  # single command
+            command_list = [command_list]
+        n_commands = len(command_list)
+
+        command_chain = []
+        for idx, (command, limits) in zip(range(n_commands), command_list):
+            if limits is not None:
+                value, *_ = generate_numbers_from_string(command)
+                command_chain.append(f"{command[:2]}{limits.clamp(value)}")
+            else:
+                command_chain.append(command)
+
+        cmnd = (";".join(command_chain) + "#").encode("utf-8")
+        self.write(cmnd)
+        return self.read().decode("utf-8").split(sep="#")
 
     # NOT USED, CURRENTLY (using regular read())
     async def async_read(self) -> bytes:
