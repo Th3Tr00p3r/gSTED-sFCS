@@ -159,6 +159,7 @@ class MainWin:
             "ledCounter": "photon_detector",
             "ledPxlClk": "pixel_clock",
             "ledPSD": "delayer",
+            "ledSPAD": "spad",
             "ledCam1": "camera_1",
             "ledCam2": "camera_2",
         }
