@@ -12207,7 +12207,7 @@ Disp. (um)</string>
                </font>
               </property>
               <property name="toolTip">
-               <string>Should be green when delayer is ON</string>
+               <string>Should be green when both delayer and excitation laser are ON</string>
               </property>
               <property name="styleSheet">
                <string notr="true"/>
