@@ -8,7 +8,7 @@ from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
 from string import ascii_letters, digits
-from typing import List, Tuple, Union
+from typing import List, Union
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -87,13 +87,11 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.purge()
+            self.toggle_mode("free running")
 
-        self.is_on = None  # found by querying the device (in timeout.py)
-        self.mode = None  # found by querying the device (in timeout.py)
-        self.is_gated = None
-        self.is_paused = False  # used when ceding control to MPD interface
-
-        self.toggle_mode("free running")
+            self.is_on = None  # found by querying the device (in timeout.py)
+            self.is_gated = None
+            self.is_paused = False  # used when ceding control to MPD interface
 
     def close(self):
         """Doc."""

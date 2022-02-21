@@ -23,7 +23,7 @@ from data_analysis.photon_data import (
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
 from utilities.display import Plotter
-from utilities.fit_tools import FitParams, curve_fit_lims
+from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
 from utilities.helper import Limits, div_ceil, timer
 
 
@@ -609,7 +609,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     ax.plot(roi["col"], roi["row"], color="white")
             print("Done.\n")
 
-    @timer()
+    @timer(int(1e4))
     def process_all_data(
         self, file_paths: List[Path], should_parallel_process: bool = False, **kwargs
     ) -> List[TDCPhotonData]:
@@ -1464,16 +1464,17 @@ def calculate_afterpulse(
 ) -> np.ndarray:
     """Doc."""
 
-    gate_to_laser_pulses = min([1.0, gate_ns.interval() * laser_freq_hz / 1e9])
+    gate_pulse_period_ratio = min([1.0, gate_ns.interval() * laser_freq_hz / 1e9])
     if after_pulse_params[0] == "multi_exponent_fit":
         # work with any number of exponents
         beta = after_pulse_params[1]
-        afterpulse = gate_to_laser_pulses * np.dot(beta[::2], np.exp(-np.outer(beta[1::2], lag)))
+        afterpulse = gate_pulse_period_ratio * multi_exponent_fit(lag, *beta)
+    #        afterpulse = gate_pulse_period_ratio * np.dot(beta[::2], np.exp(-np.outer(beta[1::2], lag)))
     elif after_pulse_params[0] == "exponent_of_polynom_of_log":  # for old MATLAB files
         beta = after_pulse_params[1]
         if lag[0] == 0:
             lag[0] = np.nan
-        afterpulse = gate_to_laser_pulses * np.exp(np.polyval(beta, np.log(lag)))
+        afterpulse = gate_pulse_period_ratio * np.exp(np.polyval(beta, np.log(lag)))
 
     return afterpulse
 
