@@ -7,7 +7,6 @@ imgSubdirName,image
 camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
 logDataPath,./log/
 tempDataPath,C:/temp_sfcs_folder/
-psdModelQuery,RSN
 cam1Serial,4102737458
 cam2Serial,4102835063
 arduinoAddr,COM3
@@ -46,10 +45,8 @@ depShutterAddr,Dev3/port0/line11
 depModelQuery,getmodel
 spadDescription,FT232R USB UART
 spadModelQuery,AQ
-psdBaudRate,115200
-psdThreshold_mV,-500
-psdPulsewidth_ns,5
-psdFreqDiv,1
+psdDescription,FT230X Basic UART
+psdModelQuery,RSN
 um232Timeout,2
 um232TxSize,256000
 um232NumBytes,256000
@@ -63,6 +60,11 @@ pixelClockLowTicks,10
 AIclkDiv,100
 spadBaudRate,115200
 spadTimeout,100
+psdBaudRate,115200
+psdTimeout,10
+psdThreshold_mV,-500
+psdPulsewidth_ns,5
+psdFreqDiv,1
 xConv,70.81
 yConv,82.74
 zConv,10.0
@@ -72,4 +74,4 @@ AOwfType,Sine
 excTriggerSrc,External (TDC)
 counterCIdupCountPrevention,True
 tabWidget,2
-tabWidget_2,7
+tabWidget_2,6
