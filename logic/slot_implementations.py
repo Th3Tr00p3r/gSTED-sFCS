@@ -280,9 +280,9 @@ class MainWin:
         delayer_dvc = self._app.devices.delayer
         set_delay_wdgt = self._gui.psdDelay_ps
         eff_delay_wdgt = self._gui.psdEffDelay_ps
-        with suppress(TypeError, DeviceError):
-            # TypeError:  writing/reading PSD too fast!
-            response, *_ = delayer_dvc.command(
+        with suppress(ValueError, DeviceError):
+            # ValueError:  writing/reading PSD too fast!
+            response, *_ = delayer_dvc.mpd_command(
                 (f"SD{set_delay_wdgt.value()}", delayer_dvc.delay_limits)
             )
             eff_delay_wdgt.setValue(int(response))
