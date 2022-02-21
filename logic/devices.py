@@ -115,7 +115,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         try:
-            responses = self.command([("AQ", None), ("DC", None)])
+            responses = self.mpd_command([("AQ", None), ("DC", None)])
         except ValueError:
             print(f"{self.log_ref} did not respond to stats query")
         else:
@@ -136,7 +136,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         mode_cmnd_dict = {"free running": "FR", "external gating": "GM"}
-        self.command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
+        self.mpd_command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
 
 
 class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -155,7 +155,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.command(
+            self.mpd_command(
                 [
                     ("EM0", Limits(0, 1)),  # cancel echo mode
                     (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
@@ -170,7 +170,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         try:
-            self.command((f"EO{int(is_being_switched_on)}", Limits(0, 1)))  # enable/disable output
+            self.mpd_command(
+                (f"EO{int(is_being_switched_on)}", Limits(0, 1))
+            )  # enable/disable output
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
@@ -181,7 +183,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         self.toggle(False)
-        self.command(("EM1", Limits(0, 1)))  # return to echo mode (for accompanying software)
+        self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for accompanying software)
         self.close_instrument()
 
 
