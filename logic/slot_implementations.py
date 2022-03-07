@@ -260,19 +260,20 @@ class MainWin:
 
         spad_dvc = self._app.devices.spad
 
-        if spad_dvc.is_paused:
-            spad_dvc.pause(False)
-        else:
-            spad_dvc.pause(True)  # temporarily close to let MPD software control serial port
-            try:
-                os.startfile(
-                    Path(
-                        "C:/Program Files (x86)/MPD/FastGATED SPAD Module/FastGatedSPAD_Module.exe"
+        with suppress(AttributeError):
+            if spad_dvc.is_paused:
+                spad_dvc.pause(False)
+            else:
+                spad_dvc.pause(True)  # temporarily close to let MPD software control serial port
+                try:
+                    os.startfile(
+                        Path(
+                            "C:/Program Files (x86)/MPD/FastGATED SPAD Module/FastGatedSPAD_Module.exe"
+                        )
                     )
-                )
-            except Exception as exc:
-                print(exc)  # TODO: make unique
-                spad_dvc.pause(False)  # take back control
+                except Exception as exc:
+                    print(exc)  # TODO: make unique
+                    spad_dvc.pause(False)  # take back control
 
     def set_delay(self):
         """Doc."""
@@ -409,9 +410,11 @@ class MainWin:
                 # AttributeError - devices not yet initialized
                 # ZeroDivisionError - loadout has bad values
                 um_v_ratio = self._app.devices.scanners.um_v_ratio
-                ao, *_ = ScanPatternAO(pattern, scan_params, um_v_ratio).calculate_pattern()
+                ao, params = ScanPatternAO(pattern, scan_params, um_v_ratio).calculate_pattern()
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.display_pattern(x_data, y_data)
+                # display the calculated parameters
+                scan_params_coll.write_obj_to_gui(self._app, params)
 
         else:
             # no scan
@@ -574,7 +577,7 @@ class MainWin:
             "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
         }
 
-        wdgts.IMG_SCAN_COLL.write_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
+        wdgts.IMG_SCAN_COLL.write_obj_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
 
     def cycle_through_image_scans(self, dir: str) -> None:
@@ -632,7 +635,7 @@ class MainWin:
             },
         }
 
-        wdgts.SOL_MEAS_COLL.write_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
+        wdgts.SOL_MEAS_COLL.write_obj_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
 
     ####################
