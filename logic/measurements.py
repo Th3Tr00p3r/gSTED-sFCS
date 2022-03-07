@@ -610,9 +610,10 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         try:
             s = compute_acf(self.data_dvc.data)
-        except RuntimeWarning as exc:
+        except (RuntimeError, RuntimeWarning) as exc:
             # RuntimeWarning - some sort of zero-division in _calculate_weighted_avg
             # (due to invalid data during beam obstruction)
+            # RuntimeError - detector disconected
             errors.err_hndlr(exc, sys._getframe(), locals())
         except Exception as exc:
             print("THIS SHOULD NOT HAPPEN, HANDLE THE EXCEPTION PROPERLY!")

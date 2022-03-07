@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -2680,7 +2680,7 @@ File</string>
                       </sizepolicy>
                      </property>
                      <property name="currentIndex">
-                      <number>2</number>
+                      <number>0</number>
                      </property>
                      <widget class="QWidget" name="angularParams">
                       <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -3122,7 +3122,7 @@ File</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QLineEdit" name="solPointsPerLine">
+                              <widget class="QSpinBox" name="solPointsPerLine">
                                <property name="enabled">
                                 <bool>false</bool>
                                </property>
@@ -3132,14 +3132,26 @@ File</string>
                                  <verstretch>0</verstretch>
                                 </sizepolicy>
                                </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>50</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
                                </property>
-                               <property name="readOnly">
-                                <bool>true</bool>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>99999</number>
                                </property>
                               </widget>
                              </item>
@@ -3169,7 +3181,7 @@ File</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QLineEdit" name="solTotPointsPerLine">
+                              <widget class="QSpinBox" name="solTotPointsPerLine">
                                <property name="enabled">
                                 <bool>false</bool>
                                </property>
@@ -3179,14 +3191,26 @@ File</string>
                                  <verstretch>0</verstretch>
                                 </sizepolicy>
                                </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>50</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
                                </property>
-                               <property name="readOnly">
-                                <bool>true</bool>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>99999</number>
                                </property>
                               </widget>
                              </item>
@@ -3216,7 +3240,7 @@ File</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QLineEdit" name="solAngActualSpeed">
+                              <widget class="QSpinBox" name="solAngActualSpeed">
                                <property name="enabled">
                                 <bool>false</bool>
                                </property>
@@ -3226,14 +3250,26 @@ File</string>
                                  <verstretch>0</verstretch>
                                 </sizepolicy>
                                </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>50</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
                                </property>
-                               <property name="readOnly">
-                                <bool>true</bool>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>99999</number>
                                </property>
                               </widget>
                              </item>
@@ -3263,7 +3299,7 @@ File</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QLineEdit" name="solNumLines">
+                              <widget class="QSpinBox" name="solNumLines">
                                <property name="enabled">
                                 <bool>false</bool>
                                </property>
@@ -3273,14 +3309,26 @@ File</string>
                                  <verstretch>0</verstretch>
                                 </sizepolicy>
                                </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>50</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
                                </property>
-                               <property name="readOnly">
-                                <bool>true</bool>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>99999</number>
                                </property>
                               </widget>
                              </item>
@@ -3310,7 +3358,7 @@ File</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QLineEdit" name="solActualScanFreq">
+                              <widget class="QSpinBox" name="solActualScanFreq">
                                <property name="enabled">
                                 <bool>false</bool>
                                </property>
@@ -3320,14 +3368,26 @@ File</string>
                                  <verstretch>0</verstretch>
                                 </sizepolicy>
                                </property>
+                               <property name="minimumSize">
+                                <size>
+                                 <width>50</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
                                <property name="maximumSize">
                                 <size>
                                  <width>60</width>
                                  <height>30</height>
                                 </size>
                                </property>
-                               <property name="readOnly">
-                                <bool>true</bool>
+                               <property name="buttonSymbols">
+                                <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>99999</number>
                                </property>
                               </widget>
                              </item>

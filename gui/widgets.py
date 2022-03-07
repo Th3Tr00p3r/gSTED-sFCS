@@ -70,25 +70,28 @@ class QtWidgetCollection:
                 with suppress(AttributeError):
                     wdgt_access.obj.clear()
 
-    def write_to_gui(self, app, new_vals) -> None:
+    def write_obj_to_gui(self, app, obj) -> None:
         """
-        Fill widget collection with values from dict/list, or a single value for all.
-        if new_vals is a list, the values will be inserted in the order of vars(self).keys().
+        Fill widget collection with values from namespace/dict/list, or a single value for all.
+        if obj is a list, the values will be inserted in the order of vars(self).keys().
         """
 
-        if isinstance(new_vals, list):
+        with suppress(TypeError):
+            obj = vars(obj)
+
+        if isinstance(obj, list):
             # convert list to dict
-            new_vals = dict(zip(vars(self).keys(), new_vals))
+            obj = dict(zip(vars(self).keys(), obj))
 
-        if isinstance(new_vals, dict):
-            for attr_name, val in new_vals.items():
+        if isinstance(obj, dict):
+            for attr_name, val in obj.items():
                 wdgt = getattr(self, attr_name)
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(val, parent_gui)
         else:
             for wdgt in vars(self).values():
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                wdgt.set(new_vals, parent_gui)
+                wdgt.set(obj, parent_gui)
 
     def read_gui_to_obj(self, app_obj, out="namespace") -> Union[SimpleNamespace, Dict[str, Any]]:
         """
@@ -331,6 +334,11 @@ SOL_ANG_SCAN_COLL = QtWidgetCollection(
     speed_um_s=("solAngScanSpeed", "QSpinBox", "main", False),
     min_lines=("minNumLines", "QSpinBox", "main", False),
     max_scan_freq_Hz=("maxScanFreq", "QSpinBox", "main", False),
+    ppl=("solPointsPerLine", "QSpinBox", "main", True),
+    tot_ppl=("solTotPointsPerLine", "QSpinBox", "main", True),
+    eff_speed_um_s=("solAngActualSpeed", "QSpinBox", "main", True),
+    n_lines=("solNumLines", "QSpinBox", "main", True),
+    scan_freq_Hz=("solActualScanFreq", "QSpinBox", "main", True),
 )
 
 SOL_CIRC_SCAN_COLL = QtWidgetCollection(
