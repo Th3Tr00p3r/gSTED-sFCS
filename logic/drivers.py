@@ -148,7 +148,7 @@ class NIDAQmx:
 
         try:
             len(ni.system.system.System().devices)
-        except FileNotFoundError as exc:
+        except FileNotFoundError:
             exc = IOError("National Instruments drivers not installed!")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
