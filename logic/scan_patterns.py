@@ -2,6 +2,8 @@
 
 import logging
 from math import cos, pi, sin, sqrt
+from types import SimpleNamespace
+from typing import Tuple
 
 import numpy as np
 
@@ -24,8 +26,11 @@ class ScanPatternAO:
         if self.pattern == "circle":
             return self.calc_circle_pattern(self.scan_params, self.um_v_ratio)
 
-    def calc_image_pattern(self, params, um_v_ratio):
+    def calc_image_pattern(
+        self, params: SimpleNamespace, um_v_ratio: Tuple[float, float, float]
+    ) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
+        # TODO: have it so that this function returns the same types - ao and params (in a tuple).
 
         params.dt = 1 / (self.scan_params.line_freq_Hz * self.scan_params.ppl)
 
@@ -75,33 +80,28 @@ class ScanPatternAO:
             vect = np.array([(val / (params.n_lines - 1)) - 0.5 for val in range(params.n_lines)])
         else:
             vect = 0
-        set_pnts_lines_odd = curr_ao[1] + ampl * vect
+        params.set_pnts_lines_odd = curr_ao[1] + ampl * vect
 
         ampl = params.dim3_um / dim_conv[2]
         if params.n_planes > 1:
             vect = np.array([(val / (params.n_planes - 1)) - 0.5 for val in range(params.n_planes)])
         else:
             vect = 0
-        set_pnts_planes = curr_ao[2] + ampl * vect
+        params.set_pnts_planes = np.atleast_1d(curr_ao[2] + ampl * vect)
 
-        set_pnts_lines_even = set_pnts_lines_odd[::-1]
+        params.set_pnts_lines_even = params.set_pnts_lines_odd[::-1]
 
         # at this point we have the AO (1D) for a single row,
         # and the voltages corresponding to each row and plane.
         # now we build the full AO (2D):
 
-        set_pnts_planes = np.atleast_1d(set_pnts_planes)
+        ao_buffer = calc_ao(params.set_pnts_lines_odd, single_line_ao)
 
-        ao_buffer = calc_ao(set_pnts_lines_odd, single_line_ao)
+        return ao_buffer, params
 
-        return (
-            ao_buffer,
-            set_pnts_lines_odd,
-            set_pnts_lines_even,
-            set_pnts_planes,
-        )
-
-    def calc_angular_pattern(self, params, um_v_ratio):
+    def calc_angular_pattern(
+        self, params: SimpleNamespace, um_v_ratio: Tuple[float, float, float]
+    ) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
 
         # argument definitions (for better readability
@@ -279,7 +279,9 @@ class ScanPatternAO:
 
         return ao_buffer, params
 
-    def calc_circle_pattern(self, params, um_v_ratio):
+    def calc_circle_pattern(
+        self, params: SimpleNamespace, um_v_ratio: Tuple[float, float, float]
+    ) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
 
         # argument definitions (for better readability
