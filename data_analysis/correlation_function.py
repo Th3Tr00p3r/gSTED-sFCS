@@ -684,7 +684,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             print(
                 f"Loading and processing file {file_idx}/{self.n_paths}: '{template}'...", end=" "
             )
-            file_dict = file_utilities.load_file_dict(file_path)
+            try:
+                file_dict = file_utilities.load_file_dict(file_path)
+            except FileNotFoundError:
+                print(f"File '{file_path}' not found. Ignoring.")
         else:  # using supplied file_dict
             file_idx = 1
 
@@ -781,6 +784,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             except ValueError:
                 print("Thresholding failed, skipping file.")
                 return None
+        elif roi_selection == "all":
+            bw = np.full(cnt.shape, True)
         else:
             raise ValueError(
                 f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
@@ -1410,7 +1415,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
             kwargs["x_field"] = "lag"
 
         if kwargs.get("y_field") in {"average_all_cf_cr", "avg_cf_cr"}:
-            kwargs["ylim"] = None  # will autoscale y
+            kwargs["ylim"] = Limits(-1e3, self.confocal.cf["Confocal"].g0 * 1.5)
 
         with Plotter(
             super_title=f"'{self.name}' Experiment - All ACFs",
