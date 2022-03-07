@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1725</width>
+    <width>1731</width>
     <height>956</height>
    </rect>
   </property>
@@ -5295,200 +5295,6 @@ Measurement</string>
                    </widget>
                    <widget class="QWidget" name="solution">
                     <layout class="QGridLayout" name="gridLayout_31">
-                     <item row="0" column="0">
-                      <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="0,0">
-                       <property name="spacing">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <layout class="QVBoxLayout" name="verticalLayout_51" stretch="100">
-                         <item>
-                          <widget class="QPushButton" name="importSolData">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="minimumSize">
-                            <size>
-                             <width>100</width>
-                             <height>50</height>
-                            </size>
-                           </property>
-                           <property name="text">
-                            <string>Process Solution
-Measurement</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item>
-                        <widget class="QGroupBox" name="groupBox_2">
-                         <property name="title">
-                          <string>Options</string>
-                         </property>
-                         <layout class="QGridLayout" name="gridLayout_10">
-                          <item row="1" column="0">
-                           <widget class="QGroupBox" name="groupBox_9">
-                            <property name="sizePolicy">
-                             <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                              <horstretch>0</horstretch>
-                              <verstretch>0</verstretch>
-                             </sizepolicy>
-                            </property>
-                            <property name="maximumSize">
-                             <size>
-                              <width>16777215</width>
-                              <height>999999</height>
-                             </size>
-                            </property>
-                            <property name="title">
-                             <string>File Selection</string>
-                            </property>
-                            <layout class="QGridLayout" name="gridLayout_20">
-                             <item row="1" column="0">
-                              <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="1,10">
-                               <property name="spacing">
-                                <number>0</number>
-                               </property>
-                               <item>
-                                <layout class="QHBoxLayout" name="horizontalLayout_34" stretch="1,10">
-                                 <property name="spacing">
-                                  <number>0</number>
-                                 </property>
-                                 <item>
-                                  <widget class="QRadioButton" name="solImportUse">
-                                   <property name="text">
-                                    <string/>
-                                   </property>
-                                   <property name="checked">
-                                    <bool>false</bool>
-                                   </property>
-                                  </widget>
-                                 </item>
-                                 <item>
-                                  <widget class="QComboBox" name="solImportUseDontUse">
-                                   <property name="sizePolicy">
-                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                     <horstretch>0</horstretch>
-                                     <verstretch>0</verstretch>
-                                    </sizepolicy>
-                                   </property>
-                                   <property name="maximumSize">
-                                    <size>
-                                     <width>70</width>
-                                     <height>20</height>
-                                    </size>
-                                   </property>
-                                   <property name="currentIndex">
-                                    <number>0</number>
-                                   </property>
-                                   <item>
-                                    <property name="text">
-                                     <string>Use</string>
-                                    </property>
-                                   </item>
-                                   <item>
-                                    <property name="text">
-                                     <string>Don't Use</string>
-                                    </property>
-                                   </item>
-                                  </widget>
-                                 </item>
-                                </layout>
-                               </item>
-                               <item>
-                                <widget class="QLineEdit" name="solImportFileSelectionPattern">
-                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                                   <horstretch>0</horstretch>
-                                   <verstretch>0</verstretch>
-                                  </sizepolicy>
-                                 </property>
-                                 <property name="maximumSize">
-                                  <size>
-                                   <width>80</width>
-                                   <height>16777215</height>
-                                  </size>
-                                 </property>
-                                 <property name="placeholderText">
-                                  <string>e.g. 1,3-5,8</string>
-                                 </property>
-                                </widget>
-                               </item>
-                              </layout>
-                             </item>
-                             <item row="0" column="0">
-                              <widget class="QRadioButton" name="solImportUseAll">
-                               <property name="text">
-                                <string>Use All</string>
-                               </property>
-                               <property name="checked">
-                                <bool>true</bool>
-                               </property>
-                              </widget>
-                             </item>
-                            </layout>
-                           </widget>
-                          </item>
-                          <item row="2" column="0">
-                           <layout class="QGridLayout" name="gridLayout_52">
-                            <property name="spacing">
-                             <number>0</number>
-                            </property>
-                            <item row="0" column="0">
-                             <widget class="QCheckBox" name="solDataFixShift">
-                              <property name="font">
-                               <font>
-                                <pointsize>8</pointsize>
-                               </font>
-                              </property>
-                              <property name="text">
-                               <string>Fix
-Shift</string>
-                              </property>
-                              <property name="tristate">
-                               <bool>false</bool>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="1" column="1">
-                             <widget class="QCheckBox" name="solDataSubtractAfterpulse">
-                              <property name="text">
-                               <string>Subtract
-Afterpulse</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="1" column="0">
-                             <widget class="QCheckBox" name="solDataSubtractBgCorr">
-                              <property name="text">
-                               <string>Subtract
-Background
-Correlation</string>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="0" column="1">
-                             <widget class="QCheckBox" name="solDataUseDefaultSysInfo">
-                              <property name="toolTip">
-                               <string>Use default system info instead of that saved in the file</string>
-                              </property>
-                              <property name="text">
-                               <string>Override
-System Info</string>
-                              </property>
-                             </widget>
-                            </item>
-                           </layout>
-                          </item>
-                         </layout>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
                      <item row="1" column="0">
                       <widget class="QGroupBox" name="groupBox_12">
                        <property name="title">
@@ -5520,6 +5326,210 @@ System Info</string>
                         </item>
                        </layout>
                       </widget>
+                     </item>
+                     <item row="0" column="0">
+                      <layout class="QGridLayout" name="gridLayout_10" rowstretch="1,0" columnstretch="10,0">
+                       <property name="spacing">
+                        <number>2</number>
+                       </property>
+                       <item row="0" column="1" rowspan="2">
+                        <widget class="QPushButton" name="importSolData">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="minimumSize">
+                          <size>
+                           <width>100</width>
+                           <height>50</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Process Solution
+Measurement</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QGroupBox" name="groupBox_2">
+                         <property name="title">
+                          <string>Processing Options</string>
+                         </property>
+                         <layout class="QGridLayout" name="gridLayout_38">
+                          <item row="0" column="0">
+                           <widget class="QCheckBox" name="solDataFixShift">
+                            <property name="font">
+                             <font>
+                              <pointsize>8</pointsize>
+                             </font>
+                            </property>
+                            <property name="text">
+                             <string>Fix Shift</string>
+                            </property>
+                            <property name="tristate">
+                             <bool>false</bool>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="0" column="1">
+                           <widget class="QCheckBox" name="solDataUseDefaultSysInfo">
+                            <property name="toolTip">
+                             <string>Use default system info instead of that saved in the file</string>
+                            </property>
+                            <property name="text">
+                             <string>Override Info</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="1">
+                           <widget class="QCheckBox" name="solDataSubtractAfterpulse">
+                            <property name="text">
+                             <string>Subtract Afterpulse</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="2" column="1">
+                           <widget class="QCheckBox" name="solDataSubtractBgCorr">
+                            <property name="text">
+                             <string>Subtract Background</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="0">
+                           <widget class="QCheckBox" name="solDataAutoRoi">
+                            <property name="text">
+                             <string>Auto ROI</string>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QGroupBox" name="groupBox_9">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>16777215</width>
+                           <height>999999</height>
+                          </size>
+                         </property>
+                         <property name="title">
+                          <string>File Selection</string>
+                         </property>
+                         <layout class="QGridLayout" name="gridLayout_20">
+                          <item row="0" column="0">
+                           <widget class="QRadioButton" name="solImportUseAll">
+                            <property name="text">
+                             <string>Use All</string>
+                            </property>
+                            <property name="checked">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="0">
+                           <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="10,1,0">
+                            <property name="spacing">
+                             <number>0</number>
+                            </property>
+                            <item>
+                             <layout class="QHBoxLayout" name="horizontalLayout_34" stretch="1,1000">
+                              <property name="spacing">
+                               <number>4</number>
+                              </property>
+                              <item>
+                               <widget class="QRadioButton" name="solImportUse">
+                                <property name="sizePolicy">
+                                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                  <horstretch>0</horstretch>
+                                  <verstretch>0</verstretch>
+                                 </sizepolicy>
+                                </property>
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>false</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item>
+                               <widget class="QComboBox" name="solImportUseDontUse">
+                                <property name="sizePolicy">
+                                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                  <horstretch>0</horstretch>
+                                  <verstretch>0</verstretch>
+                                 </sizepolicy>
+                                </property>
+                                <property name="maximumSize">
+                                 <size>
+                                  <width>70</width>
+                                  <height>20</height>
+                                 </size>
+                                </property>
+                                <property name="currentIndex">
+                                 <number>0</number>
+                                </property>
+                                <item>
+                                 <property name="text">
+                                  <string>Use</string>
+                                 </property>
+                                </item>
+                                <item>
+                                 <property name="text">
+                                  <string>Don't Use</string>
+                                 </property>
+                                </item>
+                               </widget>
+                              </item>
+                             </layout>
+                            </item>
+                            <item>
+                             <widget class="QLineEdit" name="solImportFileSelectionPattern">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="maximumSize">
+                               <size>
+                                <width>80</width>
+                                <height>16777215</height>
+                               </size>
+                              </property>
+                              <property name="placeholderText">
+                               <string>e.g. 1,3-5,8</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item>
+                             <spacer name="horizontalSpacer_39">
+                              <property name="orientation">
+                               <enum>Qt::Horizontal</enum>
+                              </property>
+                              <property name="sizeHint" stdset="0">
+                               <size>
+                                <width>40</width>
+                                <height>20</height>
+                               </size>
+                              </property>
+                             </spacer>
+                            </item>
+                           </layout>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                      </layout>
                      </item>
                     </layout>
                    </widget>
@@ -6456,7 +6466,7 @@ Rows</string>
                         <item>
                          <widget class="QTabWidget" name="tabWidget_4">
                           <property name="currentIndex">
-                           <number>3</number>
+                           <number>1</number>
                           </property>
                           <widget class="QWidget" name="tab_7">
                            <attribute name="title">
