@@ -1282,6 +1282,7 @@ class MainWin:
             loading_options["file_selection"] = None
 
         loading_options["should_fix_shift"] = import_wdgts.fix_shift
+        loading_options["roi_selection"] = "auto" if import_wdgts.should_auto_roi else "all"
         loading_options["should_subtract_afterpulse"] = import_wdgts.should_subtract_afterpulse
         loading_options["shoud_subtract_bg_corr"] = import_wdgts.shoud_subtract_bg_corr
         loading_options["override_system_info"] = import_wdgts.override_system_info
