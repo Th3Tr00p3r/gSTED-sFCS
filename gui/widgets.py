@@ -262,6 +262,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
     fix_shift=("solDataFixShift", "QCheckBox", "main", False),
+    should_auto_roi=("solDataAutoRoi", "QCheckBox", "main", False),
     shoud_subtract_bg_corr=("solDataSubtractBgCorr", "QCheckBox", "main", False),
     should_subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
     override_system_info=("solDataUseDefaultSysInfo", "QCheckBox", "main", False),
