@@ -149,6 +149,7 @@ class NIDAQmx:
         try:
             len(ni.system.system.System().devices)
         except FileNotFoundError as exc:
+            exc = IOError("National Instruments drivers not installed!")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def start_tasks(self, task_type: str) -> None:
