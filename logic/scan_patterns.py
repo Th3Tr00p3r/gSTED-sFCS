@@ -200,7 +200,7 @@ class ScanPatternAO:
         # NOTE: ask Oleg about this (max y freq?)
         if scan_freq_Hz > max_scan_freq_Hz:
             logging.warning(
-                f"scan frequency ({scan_freq_Hz:.2f} Hz) is over {max_scan_freq_Hz} Hz. "
+                f"scan frequency ({scan_freq_Hz:.2f} Hz) is over {max_scan_freq_Hz} Hz."
             )
             raise ValueError
 
