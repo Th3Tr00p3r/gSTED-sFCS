@@ -119,6 +119,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.ledCounter.clicked.connect(lambda: led_clicked(self))
         self.ledUm232h.clicked.connect(lambda: led_clicked(self))
         self.ledTdc.clicked.connect(lambda: led_clicked(self))
+        self.ledPxlClk.clicked.connect(lambda: led_clicked(self))
         self.ledScn.clicked.connect(lambda: led_clicked(self))
         self.ledPSD.clicked.connect(lambda: led_clicked(self))
         self.ledSPAD.clicked.connect(lambda: led_clicked(self))
