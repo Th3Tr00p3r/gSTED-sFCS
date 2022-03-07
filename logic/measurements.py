@@ -364,12 +364,9 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             self.scan_params.ppl,
         )
         # create ao_buffer
-        (
-            self.ao_buffer,
-            self.scan_params.set_pnts_lines_odd,
-            self.scan_params.set_pnts_lines_even,
-            self.scan_params.set_pnts_planes,
-        ) = ScanPatternAO("image", self.scan_params, self.um_v_ratio).calculate_pattern()
+        self.ao_buffer, _ = ScanPatternAO(
+            "image", self.scan_params, self.um_v_ratio
+        ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
@@ -589,7 +586,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_Hz) - 2
             )
         # create ao_buffer
-        self.ao_buffer, self.scan_params = ScanPatternAO(
+        self.ao_buffer, _ = ScanPatternAO(
             self.scan_params.pattern, self.scan_params, self.um_v_ratio
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]

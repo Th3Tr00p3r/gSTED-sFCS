@@ -410,11 +410,13 @@ class MainWin:
                 # AttributeError - devices not yet initialized
                 # ZeroDivisionError - loadout has bad values
                 um_v_ratio = self._app.devices.scanners.um_v_ratio
-                ao, params = ScanPatternAO(pattern, scan_params, um_v_ratio).calculate_pattern()
+                ao, scan_params = ScanPatternAO(
+                    pattern, scan_params, um_v_ratio
+                ).calculate_pattern()
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.display_pattern(x_data, y_data)
                 # display the calculated parameters
-                scan_params_coll.write_obj_to_gui(self._app, params)
+                scan_params_coll.write_obj_to_gui(self._app, scan_params)
 
         else:
             # no scan
