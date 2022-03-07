@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -3240,7 +3240,7 @@ File</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="solAngActualSpeed">
+                              <widget class="QDoubleSpinBox" name="solAngActualSpeed">
                                <property name="enabled">
                                 <bool>false</bool>
                                </property>
@@ -3264,12 +3264,6 @@ File</string>
                                </property>
                                <property name="buttonSymbols">
                                 <enum>QAbstractSpinBox::NoButtons</enum>
-                               </property>
-                               <property name="minimum">
-                                <number>1</number>
-                               </property>
-                               <property name="maximum">
-                                <number>99999</number>
                                </property>
                               </widget>
                              </item>
@@ -3358,7 +3352,7 @@ File</string>
                               </widget>
                              </item>
                              <item>
-                              <widget class="QSpinBox" name="solActualScanFreq">
+                              <widget class="QDoubleSpinBox" name="solActualScanFreq">
                                <property name="enabled">
                                 <bool>false</bool>
                                </property>
@@ -3382,12 +3376,6 @@ File</string>
                                </property>
                                <property name="buttonSymbols">
                                 <enum>QAbstractSpinBox::NoButtons</enum>
-                               </property>
-                               <property name="minimum">
-                                <number>1</number>
-                               </property>
-                               <property name="maximum">
-                                <number>99999</number>
                                </property>
                               </widget>
                              </item>
@@ -5496,7 +5484,7 @@ Measurement</string>
                            </widget>
                           </item>
                           <item row="1" column="0">
-                           <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="10,1,0">
+                           <layout class="QHBoxLayout" name="horizontalLayout_33" stretch="1,1,100">
                             <property name="spacing">
                              <number>0</number>
                             </property>

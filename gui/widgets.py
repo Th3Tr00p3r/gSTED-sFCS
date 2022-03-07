@@ -336,9 +336,9 @@ SOL_ANG_SCAN_COLL = QtWidgetCollection(
     max_scan_freq_Hz=("maxScanFreq", "QSpinBox", "main", False),
     ppl=("solPointsPerLine", "QSpinBox", "main", True),
     tot_ppl=("solTotPointsPerLine", "QSpinBox", "main", True),
-    eff_speed_um_s=("solAngActualSpeed", "QSpinBox", "main", True),
+    eff_speed_um_s=("solAngActualSpeed", "QDoubleSpinBox", "main", True),
     n_lines=("solNumLines", "QSpinBox", "main", True),
-    scan_freq_Hz=("solActualScanFreq", "QSpinBox", "main", True),
+    scan_freq_Hz=("solActualScanFreq", "QDoubleSpinBox", "main", True),
 )
 
 SOL_CIRC_SCAN_COLL = QtWidgetCollection(
