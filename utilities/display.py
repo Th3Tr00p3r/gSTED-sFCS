@@ -88,24 +88,21 @@ class GuiDisplay:
 
         x_arr, x_type = x
 
-        with Plotter(gui_display=self, **kwargs) as ax:
-            if x_type == "lag":
-                ax.set_xscale("log")
-                ax.set_xlim(1e-4, 1e1)
-                if g0 > 0:
-                    try:
-                        ax.set_ylim(-g0 / 2, g0 * 2)
-                    except ValueError:
-                        # g0 is not a finite number
-                        ax.set_ylim(-1e4, 1e4)
-                else:
-                    ax.set_ylim(-1e4, 1e4)
-            if x_type == "disp":
-                ax.set_yscale("log")
-                x_arr = x_arr ** 2
-                ax.set_xlim(0, 0.6)
-                ax.set_ylim(g0 * 1.5e-3, g0 * 1.1)
+        if x_type == "lag":
+            kwargs["x_scale"] = "log"
+            kwargs["xlim"] = (1e-3, 1e1)
+            if 0 < g0 < np.inf:
+                kwargs["ylim"] = (-g0 / 2, g0 * 2)
+            else:
+                kwargs["ylim"] = (-1e4, 1e4)
 
+        if x_type == "disp":
+            kwargs["y_scale"] = "log"
+            x_arr = x_arr ** 2
+            kwargs["xlim"] = (0, 0.6)
+            kwargs["ylim"] = (g0 * 1.5e-3, g0 * 1.1)
+
+        with Plotter(gui_display=self, **kwargs) as ax:
             if cf_cr is not None:
                 for row_acf in cf_cr:
                     ax.plot(x_arr, row_acf)
