@@ -657,7 +657,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         if full_data.get("circle_speed_um_s"):
             self.scan_type = "circular_scan"
             self.v_um_ms = full_data["circle_speed_um_s"] * 1e-3  # to um/ms
-            raise NotImplementedError("Circular scan analysis not yet implemented...")
+            # TODO: implement circular scan processing
+            logging.warning(
+                "Circular scan analysis not yet implemented. Processing as static data file."
+            )
+            self.scan_type = "static"
 
         # Angular sFCS
         elif full_data.get("angular_scan_settings"):
@@ -695,7 +699,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         # Circular sFCS
         if full_data.get("circle_speed_um_s"):
-            raise NotImplementedError("Circular scan analysis not yet implemented...")
+            p = self._process_static_data_file(full_data, file_idx, **kwargs)
 
         # Angular sFCS
         elif full_data.get("angular_scan_settings"):
