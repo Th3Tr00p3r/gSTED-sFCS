@@ -38,7 +38,7 @@ class Ftd2xx:
             info_dict = ftd2xx.getDeviceInfoDetail(devnum=idx)
             if info_dict["description"].decode("utf-8") == param_dict["description"]:
                 self.serial = info_dict["serial"]
-                print(f"(SN: {self.serial.decode('utf-8')})...", end=" ")
+                print(f"(FTDI SN: {self.serial.decode('utf-8')})...", end=" ")
 
     def _translate_dict_values(self, original_dict: dict, trans_dict: dict) -> dict:
         """
@@ -61,6 +61,8 @@ class Ftd2xx:
         #            self._inst = ftd2xx.aio.openEx(self.serial)
         except AttributeError:
             raise IOError(f"{self.log_ref} is not plugged in.")
+        except ftd2xx.ftd2xx.DeviceError:
+            raise IOError(f"{self.log_ref} MPD interface not closed!")
         with suppress(AttributeError):  # set params if they are defined
             self._inst.setBitMode(255, self.bit_mode)  # TODO: try setting to 0
         with suppress(AttributeError):  # set params if they are defined
@@ -151,6 +153,8 @@ class NIDAQmx:
         except FileNotFoundError:
             exc = IOError("National Instruments drivers not installed!")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            print("(NIDAQmx)...", end=" ")
 
     def start_tasks(self, task_type: str) -> None:
         """Doc."""
@@ -382,7 +386,7 @@ class PyVISA:
                 open_timeout=50,  # ms
                 **kwargs,
             )
-            print(f"({self._rsrc.resource_info.alias})...", end=" ")
+            print(f"(VISA: {self._rsrc.resource_info.alias})...", end=" ")
         except (AttributeError, visa.errors.VisaIOError, ValueError):
             # failed to auto-find address for VISA device
             raise IOError(
@@ -453,7 +457,9 @@ class Instrumental:
 
         try:
             self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
-            print(f"(SN: {self._inst._paramset['serial'].decode('utf-8')})...", end=" ")
+            print(
+                f"(Instrumental SN: {self._inst._paramset['serial'].decode('utf-8')})...", end=" "
+            )
         except Exception as exc:
             # general 'Exception' is unavoidable due to bad exception handeling in instrumental-lib...
             raise IOError(f"{self.log_ref} disconnected - {exc}")

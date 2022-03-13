@@ -275,25 +275,25 @@ class MainWin:
                     print(exc)  # TODO: make unique
                     spad_dvc.pause(False)  # take back control
 
-    def set_delay(self):
+    def set_delayer_property(self, property: str):
         """Doc."""
 
-        delayer_dvc = self._app.devices.delayer
-        set_delay_wdgt = self._gui.psdDelay_ps
-        eff_delay_wdgt = self._gui.psdEffDelay_ps
-        with suppress(ValueError, DeviceError):
-            # ValueError:  writing/reading PSD too fast!
-            response, *_ = delayer_dvc.mpd_command(
-                (f"SD{set_delay_wdgt.value()}", delayer_dvc.delay_limits)
-            )
-            eff_delay_wdgt.setValue(int(response))
+        property_cmnd_dict = {
+            "delay": "SD",
+            "pulsewidth": "SP",
+        }
 
-    def show_laser_dock(self):
-        """Make the laser dock visible (convenience)."""
-
-        if not self._gui.laserDock.isVisible():
-            self._gui.laserDock.setVisible(True)
-            self._gui.actionLaser_Control.setChecked(True)
+        with suppress(AttributeError):
+            delayer_dvc = self._app.devices.delayer
+            new_value = getattr(delayer_dvc, f"set_{property}_wdgt").get()
+            effective_value_wdgt = getattr(delayer_dvc, f"eff_{property}_wdgt")
+            with suppress(ValueError, DeviceError):
+                # ValueError:  writing/reading PSD too fast!
+                cmnd = property_cmnd_dict[property]
+                response, *_ = delayer_dvc.mpd_command(
+                    (f"{cmnd}{new_value}", delayer_dvc.delay_limits)
+                )
+                effective_value_wdgt.set(int(response))
 
     def show_stage_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -1819,12 +1819,12 @@ class SettWin:
                 inst.close()
 
         # nidaqmx
-        dvc_list.append("NI:")
+        dvc_list.append("\nNI:")
         system = nisys.System.local()
         dvc_list.extend(system.devices.device_names)
 
         # ftd2xx
-        dvc_list.append("FTDI:")
+        dvc_list.append("\nFTDI:")
         # auto-find UM232H serial number
         num_devs = ftd2xx.createDeviceInfoList()
         for idx in range(num_devs):
