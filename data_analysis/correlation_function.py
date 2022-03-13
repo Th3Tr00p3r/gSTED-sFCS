@@ -943,6 +943,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         n_runs_requested=60,
         min_time_frac=0.5,
         is_verbose=False,
+        afterpulse_params=None,
         **kwargs,
     ) -> CorrFunc:
         """Correlates data for static FCS. Returns a CorrFunc object"""
@@ -1012,7 +1013,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         CF.correlate_measurement(
             ts_split_list,
-            self.after_pulse_param,
+            afterpulse_params if afterpulse_params is not None else self.after_pulse_param,
             self.laser_freq_hz,
             is_verbose=is_verbose,
             **kwargs,
