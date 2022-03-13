@@ -141,7 +141,10 @@ class MainWin(QtWidgets.QMainWindow):
         )
 
         # Delayer
-        self.psdDelay_ps.valueChanged.connect(self.impl.set_delay)
+        self.psdDelay_ps.valueChanged.connect(lambda: self.impl.set_delayer_property("delay"))
+        self.psdPulseWidth_ns.valueChanged.connect(
+            lambda: self.impl.set_delayer_property("pulsewidth")
+        )
 
         # Device Toggling
         self.excOnButton.released.connect(lambda: self.impl.device_toggle("exc_laser"))

@@ -109,7 +109,8 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 self.open_instrument()
         except IOError as exc:
             self.is_paused = not should_pause
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+            if not exc.__str__() == f"{self.log_ref} MPD interface not closed!":
+                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
     def get_stats(self) -> None:
         """Doc."""
@@ -145,6 +146,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     update_interval_s = 1
 
     delay_limits = Limits(1, 49090)
+    pulsewidth_limits = Limits(1, 250)
 
     def __init__(self, param_dict):
         super().__init__(
@@ -159,7 +161,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 [
                     ("EM0", Limits(0, 1)),  # cancel echo mode
                     (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
-                    (f"SP{self.pulsewidth_ns}", Limits(1, 250)),  # set output NIM pulse width
                     (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
                 ]
             )
@@ -1114,11 +1115,14 @@ DEVICE_ATTR_DICT = {
         param_widgets=QtWidgetCollection(
             led_widget=("ledPSD", "QIcon", "main", True),
             switch_widget=("psdSwitch", "QIcon", "main", True),
+            set_delay_wdgt=("psdDelay_ps", "QSpinBox", "main", True),
+            eff_delay_wdgt=("psdEffDelay_ps", "QSpinBox", "main", True),
+            set_pulsewidth_wdgt=("psdPulseWidth_ns", "QSpinBox", "main", True),
+            eff_pulsewidth_wdgt=("psdEffPulseWidth_ns", "QSpinBox", "main", True),
             description=("psdDescription", "QLineEdit", "settings", False),
             baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
-            pulsewidth_ns=("psdPulsewidth_ns", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
         ),
     ),

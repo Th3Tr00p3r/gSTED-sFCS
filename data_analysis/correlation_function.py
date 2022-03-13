@@ -1361,18 +1361,15 @@ class SFCSExperiment(TDCPhotonDataMixin):
     def calibrate_tdc(self, **kwargs):
         """Doc."""
 
-        if hasattr(self.confocal, "scan_type") and hasattr(
-            self.sted, "scan_type"
-        ):  # if both measurements quack as if loaded
+        if hasattr(self.confocal, "scan_type"):
             super_title = f"'{self.name}' Experiment\nTDC Calibration"
             with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
                 self.confocal.calibrate_tdc(should_plot=True, parent_axes=axes[:, :2], **kwargs)
-                kwargs["sync_coarse_time_to"] = self.confocal  # sync sted to confocal
-                self.sted.calibrate_tdc(should_plot=True, parent_axes=axes[:, 2:], **kwargs)
+                if hasattr(self.sted, "scan_type"):  # if both measurements quack as if loaded
+                    kwargs["sync_coarse_time_to"] = self.confocal  # sync sted to confocal
+                    self.sted.calibrate_tdc(should_plot=True, parent_axes=axes[:, 2:], **kwargs)
         else:
-            raise RuntimeError(
-                "Can only calibrate TDC if both confocal and STED measurements are loaded to the experiment!"
-            )
+            raise RuntimeError("Can't calibrate TDC with no confocal measurements loaded!")
 
     def compare_lifetimes(
         self,
