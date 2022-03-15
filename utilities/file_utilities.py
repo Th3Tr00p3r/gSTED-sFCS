@@ -296,7 +296,7 @@ def save_object_to_disk(
     return True
 
 
-@timer(threshold_ms=1000)
+@timer(threshold_ms=3000)
 def load_file(file_path: Union[str, Path]) -> Any:
     """
     Short cut for opening (possibly 'gzip' and/or 'blosc' compressed) .pkl files
@@ -325,9 +325,9 @@ def load_file(file_path: Union[str, Path]) -> Any:
                         while True:
                             loaded_data.append(pickle.load(f_uncompressed))
 
-        except OSError:  # not fully downloaded from cloud
+        except OSError as exc:  # not fully downloaded from cloud
             raise OSError(
-                "File was not fully downloaded from cloud! Check that cloud is synchronizing."
+                f"File was not fully downloaded from cloud (check that cloud is synchronizing), or is missing. [{exc}]"
             )
 
     except EOFError:

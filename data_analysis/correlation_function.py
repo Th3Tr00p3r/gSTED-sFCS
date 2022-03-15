@@ -1313,10 +1313,9 @@ class SFCSExperiment(TDCPhotonDataMixin):
         file_path_template: Union[str, Path],
         should_plot: bool = False,
         plot_kwargs: dict = {},
+        should_use_preprocessed=False,
         **kwargs,
     ):
-
-        measurement = SolutionSFCSMeasurement(name=meas_type)
 
         if "cf_name" not in kwargs:
             if meas_type == "confocal":
@@ -1328,21 +1327,37 @@ class SFCSExperiment(TDCPhotonDataMixin):
         if kwargs.get(f"{meas_type}_file_selection"):
             kwargs["file_selection"] = kwargs[f"{meas_type}_file_selection"]
 
-        measurement.read_fpga_data(
-            file_path_template,
-            should_plot=should_plot,
-            **kwargs,
-        )
+        if should_use_preprocessed:
+            try:
+                file_path_template = Path(file_path_template)  # str-> Path if needed
+                dir_path, file_template = file_path_template.parent, file_path_template.name
+                # load pre-processed
+                file_path = dir_path / "processed" / re.sub("_[*]", "", file_template)
+                measurement = file_utilities.load_processed_solution_measurement(file_path)
+                print(f"Loaded pre-processed {meas_type} measurement: '{file_path}'")
+            except OSError:
+                print(
+                    f"Pre-processed {meas_type} measurement not found at: '{file_path}'. Processing data regularly."
+                )
+        else:
+            measurement = SolutionSFCSMeasurement(name=meas_type)
 
-        if (x_field := kwargs.get("x_field")) is None:
-            if measurement.scan_type == "static":
-                x_field = "lag"
-            else:  # angular or circular scan
-                x_field = "vt_um"
-
-        measurement.correlate_and_average(**kwargs)
+        if not measurement.cf:  # Process data
+            measurement.read_fpga_data(
+                file_path_template,
+                should_plot=should_plot,
+                **kwargs,
+            )
+            measurement.correlate_and_average(**kwargs)
 
         if should_plot:
+
+            if (x_field := kwargs.get("x_field")) is None:
+                if measurement.scan_type == "static":
+                    x_field = "lag"
+                else:  # angular or circular scan
+                    x_field = "vt_um"
+
             super_title = f"'{self.name}' Experiment\n'{measurement.name}' Measurement - ACFs"
             with Plotter(super_title=super_title) as ax:
                 measurement.cf[cf_name].plot_correlation_function(
