@@ -84,7 +84,7 @@ class MainWin:
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     def device_toggle(
-        self, nick, toggle_mthd="toggle", state_attr="state", leave_on=False, leave_off=False
+        self, nick, toggle_mthd="toggle", state_attr="is_on", leave_on=False, leave_off=False
     ) -> bool:
         """Returns False in case operation fails"""
 
@@ -279,8 +279,8 @@ class MainWin:
         """Doc."""
 
         property_cmnd_dict = {
-            "delay": "SD",
-            "pulsewidth": "SP",
+            "delay_ps": "SD",
+            "pulsewidth_ns": "SP",
         }
 
         with suppress(AttributeError):
@@ -293,6 +293,7 @@ class MainWin:
                 response, *_ = delayer_dvc.mpd_command(
                     (f"{cmnd}{new_value}", delayer_dvc.delay_limits)
                 )
+                setattr(delayer_dvc, property, response)
                 effective_value_wdgt.set(int(response))
 
     def show_stage_dock(self):

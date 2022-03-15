@@ -589,6 +589,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             print(f"Calculating duration (not supplied): {calc_duration_mins:.1f} mins\n")
         self.duration_min = calc_duration_mins
 
+        # done with loading
         print(f"Finished loading FPGA data ({self.n_files}/{self.n_paths} files used).\n")
 
         # plotting of scan image and ROI
@@ -650,6 +651,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
+        self.detector_gate_ns = full_data["detector_gate_ns"]
         with suppress(KeyError):
             self.duration_min = full_data["duration_s"] / 60
 
