@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5348,16 +5348,7 @@ Measurement</string>
                        <property name="title">
                         <string>Processed Data</string>
                        </property>
-                       <layout class="QVBoxLayout" name="verticalLayout_113">
-                        <property name="spacing">
-                         <number>2</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>2</number>
-                        </property>
-                        <property name="bottomMargin">
-                         <number>2</number>
-                        </property>
+                       <layout class="QVBoxLayout" name="verticalLayout_109">
                         <item>
                          <widget class="QPushButton" name="solImportSaveProcessed">
                           <property name="text">
@@ -5366,11 +5357,25 @@ Measurement</string>
                          </widget>
                         </item>
                         <item>
-                         <widget class="QPushButton" name="solImportLoadProcessed">
-                          <property name="text">
-                           <string>Load</string>
+                         <layout class="QHBoxLayout" name="horizontalLayout_65" stretch="10,1">
+                          <property name="spacing">
+                           <number>2</number>
                           </property>
-                         </widget>
+                          <item>
+                           <widget class="QPushButton" name="solImportLoadProcessed">
+                            <property name="text">
+                             <string>Load</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QCheckBox" name="solImportAutoLoadProcessed">
+                            <property name="text">
+                             <string>Auto-Load</string>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
                         </item>
                        </layout>
                       </widget>
@@ -6514,7 +6519,7 @@ Rows</string>
                         <item>
                          <widget class="QTabWidget" name="tabWidget_4">
                           <property name="currentIndex">
-                           <number>1</number>
+                           <number>0</number>
                           </property>
                           <widget class="QWidget" name="tab_7">
                            <attribute name="title">
