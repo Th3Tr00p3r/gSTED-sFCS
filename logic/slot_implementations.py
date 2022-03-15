@@ -1224,7 +1224,7 @@ class MainWin:
 
         with self._app.pause_ai_ci():
 
-            if should_load_processed:
+            if should_load_processed or import_wdgts.auto_load_processed:
                 file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
                 logging.info(f"Loading processed data '{current_template}' from hard drive...")
                 measurement = file_utilities.load_processed_solution_measurement(file_path)
@@ -1449,7 +1449,9 @@ class MainWin:
 
             elif measurement.scan_type == "static":
                 data_type = self.infer_data_type_from_template(measurement.template)
-                cf = measurement.cf[data_type]
+                cf = measurement.cf[
+                    data_type
+                ]  # TODO: keyerror might result from testing (using confocal as STED)
                 cf.average_correlation()
                 try:
                     cf.fit_correlation_function()
@@ -1509,9 +1511,7 @@ class MainWin:
     def assign_measurement(self, meas_type: str) -> None:
         """Doc."""
 
-        MeasAssignParams = namedtuple("MeasAssignParams", "template method options")
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
-        assigned_dict = self._app.analysis.assigned_to_experiment
         options = self.get_loading_options_as_dict()
 
         if wdgt_coll.should_assign_loaded:
@@ -1521,7 +1521,10 @@ class MainWin:
             template = wdgt_coll.data_templates.get()
             method = "raw"
 
-        assigned_dict[meas_type] = MeasAssignParams(template, method, options)
+        MeasAssignParams = namedtuple("MeasAssignParams", "template method options")
+        self._app.analysis.assigned_to_experiment[meas_type] = MeasAssignParams(
+            template, method, options
+        )
 
         wdgt_to_assign_to = getattr(wdgt_coll, f"assigned_{meas_type}_template")
         wdgt_to_assign_to.set(template)
@@ -1530,6 +1533,7 @@ class MainWin:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        data_import_wdgt_coll = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
 
         if not (experiment_name := wdgt_coll.experiment_name.get()):
             logging.info("Can't load unnamed experiment!")
@@ -1550,6 +1554,7 @@ class MainWin:
                     kwargs[f"{meas_type}_template"] = (
                         curr_dir / getattr(wdgt_coll, f"assigned_{meas_type}_template").get()
                     )
+                    kwargs["should_use_preprocessed"] = data_import_wdgt_coll.auto_load_processed
                 # get loading options as kwargs
                 kwargs[f"{meas_type}_kwargs"] = assignment_params.options
 
