@@ -41,6 +41,7 @@ class MeasurementProcedure:
         self.pxl_clk_dvc = app.devices.pixel_clock
         self.scanners_dvc = app.devices.scanners
         self.tdc_dvc = app.devices.TDC
+        self.spad_dvc = app.devices.spad
         self.data_dvc = app.devices.UM232H
         self.laser_dvcs = SimpleNamespace(
             exc=app.devices.exc_laser,
@@ -178,11 +179,11 @@ class MeasurementProcedure:
         def current_emission_state() -> str:
             """Doc."""
 
-            exc_state = self._app.devices.exc_laser.state
+            exc_state = self._app.devices.exc_laser.is_on
             try:
                 dep_state = (
-                    self._app.devices.dep_laser.emission_state
-                    and self._app.devices.dep_shutter.state
+                    self._app.devices.dep_laser.is_emission_on
+                    and self._app.devices.dep_shutter.is_on
                 )
             except AttributeError:
                 # dep error on startup, emission should be off
@@ -213,12 +214,12 @@ class MeasurementProcedure:
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "dep":
-                await self.prep_dep() if not self.laser_dvcs.dep.emission_state else None
+                await self.prep_dep() if not self.laser_dvcs.dep.is_emission_on else None
                 # turn depletion shutter ON and excitation OFF
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "sted":
-                await self.prep_dep() if not self.laser_dvcs.dep.emission_state else None
+                await self.prep_dep() if not self.laser_dvcs.dep.is_emission_on else None
                 # turn both depletion shutter and excitation ON
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
@@ -233,7 +234,7 @@ class MeasurementProcedure:
         """Doc."""
 
         toggle_succeeded = self._app.gui.main.impl.device_toggle(
-            "dep_laser", toggle_mthd="laser_toggle", state_attr="emission_state"
+            "dep_laser", toggle_mthd="laser_toggle", state_attr="is_emission_on"
         )
         if toggle_succeeded:
             logging.info(
@@ -393,7 +394,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         self._app.last_image_scans.appendleft(data_dict)
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
-    def prep_data_dict(self) -> dict:
+    def prep_meas_dict(self) -> dict:
         """Doc."""
 
         return {
@@ -498,7 +499,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         # finished measurement
         if self.is_running:  # if not manually stopped
             # prepare data
-            data_dict = self.prep_data_dict()
+            data_dict = self.prep_meas_dict()
             if self.always_save:  # save data
                 self.save_data(data_dict, self.build_filename())
             self.keep_last_meas(data_dict)
@@ -562,10 +563,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{self.start_time_str}_{file_no}"
 
     def set_current_and_end_times(self) -> None:
-        """
-        Given a duration in seconds, returns a tuple (current_time, end_time)
-        in datetime.time format, where end_time is current_time + duration_in_seconds.
-        """
+        """Doc."""
 
         curr_datetime = dt.now()
         self.start_time_str = curr_datetime.strftime("%H%M%S")
@@ -600,7 +598,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             """Doc."""
 
             s = SolutionSFCSMeasurement()
-            p = s.process_data_file(file_dict=self.prep_data_dict(), ignore_coarse_fine=True)
+            p = s.process_data_file(file_dict=self.prep_meas_dict(), ignore_coarse_fine=True)
             s.data.append(p)
             s.correlate_and_average(cf_name=self.laser_mode)
             return s
@@ -643,7 +641,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 )
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
-    def prep_data_dict(self) -> dict:
+    def prep_meas_dict(self) -> dict:
         """Doc."""
 
         full_data = {
@@ -655,6 +653,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
             "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
             "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
+            "detector_gate_ns": self.spad_dvc.gate_ns if self.spad_dvc.is_gated else None,
         }
 
         if self.scanning:
@@ -767,11 +766,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 # case final alignment and not manually stopped
                 elif self.final and self.is_running:
                     self.disp_ACF()
-                    self.save_data(self.prep_data_dict(), self.build_filename(0))
+                    self.save_data(self.prep_meas_dict(), self.build_filename(0))
 
                 # case regular measurement and finished file or measurement
                 elif not self.repeat:
-                    self.save_data(self.prep_data_dict(), self.build_filename(file_num))
+                    self.save_data(self.prep_meas_dict(), self.build_filename(file_num))
                     if self.scanning:
                         self.scanners_dvc.init_ai_buffer(
                             type="circular", size=self.ao_buffer.shape[1]

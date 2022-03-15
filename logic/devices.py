@@ -73,8 +73,6 @@ class BaseDevice:
 class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
-    # TODO: do the same for PSD
-
     update_interval_s = 1
 
     def __init__(self, param_dict):
@@ -91,6 +89,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
             self.is_on = None  # found by querying the device (in timeout.py)
             self.is_gated = None
+            self.gate_ns = None
             self.is_paused = False  # used when ceding control to MPD interface
 
     def close(self):
@@ -157,15 +156,19 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.mpd_command(
+            *_, delay_str, pulsewidth_str = self.mpd_command(
                 [
                     ("EM0", Limits(0, 1)),  # cancel echo mode
                     (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
                     (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
+                    ("RD", None),  # request initial delay
+                    ("RP", None),  # request initial pulsewidth
                 ]
             )
+            self.delay_ps = int(delay_str)
+            self.pulsewidth_ns = int(pulsewidth_str)
 
-        self.state = False
+        self.is_on = False
 
     def toggle(self, is_being_switched_on: bool):
         """Doc."""
@@ -178,7 +181,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led_and_switch(is_being_switched_on)
-            self.state = is_being_switched_on
+            self.is_on = is_being_switched_on
 
     def close(self):
         """Doc."""
@@ -682,7 +685,7 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led_and_switch(is_being_switched_on)
-            self.state = is_being_switched_on
+            self.is_on = is_being_switched_on
 
     def _start_co_clock_sync(self) -> None:
         """Doc."""
@@ -727,7 +730,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led_and_switch(is_being_switched_on)
-            self.state = is_being_switched_on
+            self.is_on = is_being_switched_on
 
 
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
@@ -746,12 +749,12 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             write_termination="\r",
         )
         self.address = None  # found automatically
-        self.state = None
-        self.emission_state = None
+        self.is_on = None
+        self.is_emission_on = None
 
         with suppress(DeviceError):
             self.toggle(True, should_change_icons=False)
-            if self.state:
+            if self.is_on:
                 self.set_current(1500)
 
     def toggle(self, is_being_switched_on, **kwargs):
@@ -762,14 +765,14 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                 self.open_instrument(model_query=self.model_query)
                 self.laser_toggle(False)
             else:
-                if self.state is True:
+                if self.is_on is True:
                     self.laser_toggle(False)
                 self.close_instrument()
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led_and_switch(is_being_switched_on, **kwargs)
-            self.state = is_being_switched_on
+            self.is_on = is_being_switched_on
 
     def laser_toggle(self, is_being_switched_on):
         """Doc."""
@@ -780,7 +783,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         except Exception as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.emission_state = is_being_switched_on
+            self.is_emission_on = is_being_switched_on
             self.change_icons("on" if is_being_switched_on else "off")
 
     def get_prop(self, prop):
@@ -856,7 +859,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.toggle_led_and_switch(is_being_switched_on)
-            self.state = is_being_switched_on
+            self.is_on = is_being_switched_on
 
     async def move(self, dir, steps):
         """Doc."""

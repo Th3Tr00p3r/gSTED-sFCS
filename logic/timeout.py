@@ -210,7 +210,7 @@ class Timeout:
         while self.not_finished:
 
             if not self.dep_dvc.error_dict:
-                if self.dep_dvc.emission_state:
+                if self.dep_dvc.is_emission_on:
                     temp, pow, curr = (
                         self.dep_dvc.get_prop("temp"),
                         self.dep_dvc.get_prop("pow"),
@@ -236,7 +236,7 @@ class Timeout:
         while self.not_finished:
 
             if not self.delayer_dvc.error_dict:
-                if self.delayer_dvc.state:
+                if self.delayer_dvc.is_on:
                     with suppress(ValueError):
                         temp, *_ = self.delayer_dvc.mpd_command(("RT", None))
                         self.main_gui.psdTemp.setValue(float(temp))
@@ -250,6 +250,11 @@ class Timeout:
 
             if not self.spad_dvc.error_dict and not self.spad_dvc.is_paused:
                 self.spad_dvc.get_stats()
+                self.spad_dvc.gate_ns = (
+                    helper.Limits(
+                        self.delayer_dvc.delay_ps / 1e3 + self.delayer_dvc.pulsewidth_ns, 20.0
+                    ),
+                )
                 self.main_gui.spadMode.setText(self.spad_dvc.mode)
                 self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
 
@@ -262,7 +267,7 @@ class Timeout:
 
             if not self.spad_dvc.error_dict and not self.spad_dvc.is_paused:
 
-                is_gated = self.delayer_dvc.state and self.exc_laser_dvc.state
+                is_gated = self.delayer_dvc.is_on and self.exc_laser_dvc.is_on
                 if self.spad_dvc.is_gated != is_gated:
                     if is_gated:
                         self.spad_dvc.toggle_mode("external gating")

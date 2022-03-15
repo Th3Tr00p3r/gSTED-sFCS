@@ -1,6 +1,6 @@
 sysScanSetup,STED with galvos
 afterpulsingFitType,multi_exponent_fit
-afterpulsingFitParams,114424.39560026, 10895.53707084, 12817.86449556, 1766.32335809, 119012.66649389, 10895.66339894, 1518.68623068, 315.70074808
+afterpulsingFitParams, 2.26707493e01, 2.10619289e-01, 1.95406751e06,
 spadDescription,FT232R USB UART
 spadModelQuery,AQ
 cam1Serial,4102737458
@@ -9,18 +9,6 @@ arduinoAddr,COM3
 um232BitMode,Single Channel Synchronous 245 FIFO
 um232FlowControl,RTS-CTS
 um232Description,UM232H
-counterPixelClockAddress,Dev1/Ctr0
-pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
-counterTriggerAddress,Dev3/port1/line0
-counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
-counterAddress,Dev3/ctr1
-counterCIcountEdgesTerm,/Dev3/PFI8
-TDCaddress,Dev3/port0/line12
-TDCdataVersion,7bytes noreset
-pixelClockCounterAddress,Dev3/ctr0
-pixelClockSrcOfTicks,/Dev3/PFI3
-pixelClockOutput,/Dev3/PFI12
-pixelClockOutputExt,/Dev1/PFI5
 AOXaddr,Dev3/ao2, Dev3/ao3
 AOYaddr,Dev3/ao0, Dev3/ao1
 AOZaddr,Dev1/ao1
@@ -33,14 +21,26 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-psdDescription,FT230X Basic UART
-psdModelQuery,RSN
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
 excAddr,Dev1/port0/line6
 depShutterAddr,Dev3/port0/line11
 depModelQuery,getmodel
+psdDescription,FT230X Basic UART
+psdModelQuery,RSN
+counterPixelClockAddress,Dev1/Ctr0
+pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
+counterTriggerAddress,Dev3/port1/line0
+counterTriggerArmStartDigEdgeSrc,/Dev3/PFI0
+counterAddress,Dev3/ctr1
+counterCIcountEdgesTerm,/Dev3/PFI8
+TDCaddress,Dev3/port0/line12
+TDCdataVersion,7bytes noreset
+pixelClockCounterAddress,Dev3/ctr0
+pixelClockSrcOfTicks,/Dev3/PFI3
+pixelClockOutput,/Dev3/PFI12
+pixelClockOutputExt,/Dev1/PFI5
 dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
 solSubdirName,solution
 imgSubdirName,image
@@ -53,24 +53,24 @@ um232Timeout,2
 um232TxSize,256000
 um232NumBytes,256000
 um232LatencyTimerVal,2
+AIclkDiv,100
+psdBaudRate,115200
+psdTimeout,10
+psdThreshold_mV,-500
+psdFreqDiv,1
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCversion,3
 pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
-AIclkDiv,100
-psdBaudRate,115200
-psdTimeout,10
-psdThreshold_mV,-500
-psdFreqDiv,1
 xConv,70.81
 yConv,82.74
 zConv,10.0
-counterTriggerEdge,Rising
 AOtriggerEdge,Rising
 AOwfType,Sine
 excTriggerSrc,External (TDC)
+counterTriggerEdge,Rising
 counterCIdupCountPrevention,True
 tabWidget,0
-tabWidget_2,0
+tabWidget_2,2
