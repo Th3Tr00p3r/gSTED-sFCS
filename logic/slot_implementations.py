@@ -285,8 +285,8 @@ class MainWin:
 
         with suppress(AttributeError):
             delayer_dvc = self._app.devices.delayer
-            new_value = getattr(delayer_dvc, f"set_{property}_wdgt").get()
-            effective_value_wdgt = getattr(delayer_dvc, f"eff_{property}_wdgt")
+            new_value = getattr(delayer_dvc, f"set_{property.split('_')[0]}_wdgt").get()
+            effective_value_wdgt = getattr(delayer_dvc, f"eff_{property.split('_')[0]}_wdgt")
             with suppress(ValueError, DeviceError):
                 # ValueError:  writing/reading PSD too fast!
                 cmnd = property_cmnd_dict[property]
@@ -1225,13 +1225,20 @@ class MainWin:
 
         with self._app.pause_ai_ci():
 
-            if should_load_processed or import_wdgts.auto_load_processed:
-                file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
-                logging.info(f"Loading processed data '{current_template}' from hard drive...")
-                measurement = file_utilities.load_processed_solution_measurement(file_path)
-                print("Done.")
+            measurement = None
 
-            else:  # process data
+            if should_load_processed or import_wdgts.auto_load_processed:
+                try:
+                    file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
+                    logging.info(f"Loading processed data '{current_template}' from hard drive...")
+                    measurement = file_utilities.load_processed_solution_measurement(file_path)
+                    print("Done.")
+                except OSError:
+                    print(
+                        f"Pre-processed measurement not found at: '{file_path}'. Processing data regularly."
+                    )
+
+            if measurement is None:  # process data
                 options_dict = self.get_loading_options_as_dict()
 
                 # Inferring data_dype from template
