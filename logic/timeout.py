@@ -250,11 +250,12 @@ class Timeout:
 
             if not self.spad_dvc.error_dict and not self.spad_dvc.is_paused:
                 self.spad_dvc.get_stats()
-                self.spad_dvc.gate_ns = (
-                    helper.Limits(
-                        self.delayer_dvc.delay_ps / 1e3 + self.delayer_dvc.pulsewidth_ns, 20.0
-                    ),
-                )
+                with suppress(TypeError):
+                    self.spad_dvc.gate_ns = (
+                        helper.Limits(
+                            self.delayer_dvc.delay_ps / 1e3 + self.delayer_dvc.pulsewidth_ns, 20.0
+                        ),
+                    )
                 self.main_gui.spadMode.setText(self.spad_dvc.mode)
                 self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
 
