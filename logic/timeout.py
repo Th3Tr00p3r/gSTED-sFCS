@@ -48,8 +48,7 @@ class Timeout:
                 self._read_ci_and_ai(),
                 self._update_dep(),
                 self._update_delayer_temperature(),
-                self._update_spad_stats(),
-                self._update_spad_gate_status(),
+                self._update_spad_status(),
                 self._update_main_gui(),
                 self._update_video(),
             )
@@ -169,22 +168,23 @@ class Timeout:
 
         while self.not_finished:
 
-            # scanners
-            if not self.scan_dvc.error_dict:
-                updt_scn_pos()
-
             meas = self._app.meas
+
+            if not meas.is_running:
+                # scanners
+                if not self.scan_dvc.error_dict:
+                    updt_scn_pos()
+
+                # log file widget
+                update_log_wdgt()
+
+            else:
+                # MeasurementProcedure progress bar and time left
+                updt_meas_progress(meas)
 
             # photon_detector count rate
             if not self.cntr_dvc.error_dict:
                 update_avg_counts(meas)
-
-            # MeasurementProcedure progress bar and time left
-            if self._app.meas.is_running:
-                updt_meas_progress(meas)
-
-            # log file widget
-            update_log_wdgt()
 
             await asyncio.sleep(GUI_UPDATE_INTERVAL)
 
@@ -193,14 +193,15 @@ class Timeout:
 
         while self.not_finished:
 
-            with suppress(DeviceError, TypeError):
-                # DeviceError - camera error
-                # TypeError - .cameras not yet initialized
-                [
-                    self.main_gui.impl.display_image(idx + 1)
-                    for idx, camera in enumerate(self.main_gui.impl.cameras)
-                    if camera.is_in_video_mode
-                ]
+            if not self._app.meas.is_running:
+                with suppress(DeviceError, TypeError):
+                    # DeviceError - camera error
+                    # TypeError - .cameras not yet initialized
+                    [
+                        self.main_gui.impl.display_image(idx + 1)
+                        for idx, camera in enumerate(self.main_gui.impl.cameras)
+                        if camera.is_in_video_mode
+                    ]
 
             await asyncio.sleep(0.3)
 
@@ -209,7 +210,7 @@ class Timeout:
 
         while self.not_finished:
 
-            if not self.dep_dvc.error_dict:
+            if (not self.dep_dvc.error_dict) and (not self._app.meas.is_running):
                 if self.dep_dvc.is_emission_on:
                     temp, pow, curr = (
                         self.dep_dvc.get_prop("temp"),
@@ -235,7 +236,7 @@ class Timeout:
 
         while self.not_finished:
 
-            if not self.delayer_dvc.error_dict:
+            if (not self.delayer_dvc.error_dict) and (not self._app.meas.is_running):
                 if self.delayer_dvc.is_on:
                     with suppress(ValueError):
                         temp, *_ = self.delayer_dvc.mpd_command(("RT", None))
@@ -243,40 +244,40 @@ class Timeout:
 
             await asyncio.sleep(self.delayer_dvc.update_interval_s)
 
-    async def _update_spad_stats(self) -> None:
+    async def _update_spad_status(self) -> None:
         """Doc."""
 
         while self.not_finished:
 
-            if not self.spad_dvc.error_dict and not self.spad_dvc.is_paused:
+            if (
+                not self.spad_dvc.error_dict
+                and not self.spad_dvc.is_paused
+                and not self._app.meas.is_running
+            ):
+
+                # display status and mode
                 self.spad_dvc.get_stats()
-                with suppress(TypeError):
-                    self.spad_dvc.gate_ns = (
-                        helper.Limits(
-                            self.delayer_dvc.delay_ps / 1e3 + self.delayer_dvc.pulsewidth_ns, 20.0
-                        ),
-                    )
                 self.main_gui.spadMode.setText(self.spad_dvc.mode)
                 self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
 
-            await asyncio.sleep(self.spad_dvc.update_interval_s)
-
-    async def _update_spad_gate_status(self) -> None:
-        """Doc."""
-
-        while self.not_finished:
-
-            if not self.spad_dvc.error_dict and not self.spad_dvc.is_paused:
-
-                is_gated = self.delayer_dvc.is_on and self.exc_laser_dvc.is_on
-                if self.spad_dvc.is_gated != is_gated:
-                    if is_gated:
+                # gating
+                should_be_gated = self.delayer_dvc.is_on and self.exc_laser_dvc.is_on
+                if self.spad_dvc.is_gated != should_be_gated:
+                    if should_be_gated:
                         self.spad_dvc.toggle_mode("external gating")
                         icon_name = "on"
                     else:
                         self.spad_dvc.toggle_mode("free running")
                         icon_name = "off"
                     self.spad_dvc.change_icons(icon_name, led_widget_name="gate_led_widget")
-                    self.spad_dvc.is_gated = is_gated
+                    self.spad_dvc.is_gated = should_be_gated
 
-            await asyncio.sleep(GUI_UPDATE_INTERVAL)
+                # calculate gate
+                with suppress(TypeError):
+                    self.spad_dvc.gate_ns = (
+                        helper.Limits(
+                            self.delayer_dvc.delay_ps / 1e3 + self.delayer_dvc.pulsewidth_ns, 20.0
+                        ),
+                    )
+
+            await asyncio.sleep(self.spad_dvc.update_interval_s)
