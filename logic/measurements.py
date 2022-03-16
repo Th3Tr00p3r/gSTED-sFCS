@@ -208,6 +208,7 @@ class MeasurementProcedure:
             elif self.laser_mode == "sted":
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
+            self.spad_dvc.toggle_mode("free running")
         else:
             # measurement begins
             if self.delayer_dvc.is_on and not self.spad_dvc.is_gated:
