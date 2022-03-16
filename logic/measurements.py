@@ -41,6 +41,7 @@ class MeasurementProcedure:
         self.pxl_clk_dvc = app.devices.pixel_clock
         self.scanners_dvc = app.devices.scanners
         self.tdc_dvc = app.devices.TDC
+        self.delayer_dvc = app.devices.delayer
         self.spad_dvc = app.devices.spad
         self.data_dvc = app.devices.UM232H
         self.laser_dvcs = SimpleNamespace(
@@ -209,6 +210,10 @@ class MeasurementProcedure:
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
         else:
             # measurement begins
+            if self.delayer_dvc.is_on and not self.spad_dvc.is_gated:
+                self.spad_dvc.toggle_mode("external gating")
+                logging.info(f"Changing {self.spad_dvc.log_ref} mode to 'external gating'...")
+                await asyncio.sleep(2)
             if self.laser_mode == "exc":
                 # turn excitation ON and depletion shutter OFF
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)

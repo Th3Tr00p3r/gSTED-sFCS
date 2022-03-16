@@ -651,7 +651,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
-        self.detector_gate_ns = full_data["detector_gate_ns"]
+        self.detector_gate_ns = full_data.get("detector_gate_ns")
         with suppress(KeyError):
             self.duration_min = full_data["duration_s"] / 60
 
@@ -1329,6 +1329,8 @@ class SFCSExperiment(TDCPhotonDataMixin):
         if kwargs.get(f"{meas_type}_file_selection"):
             kwargs["file_selection"] = kwargs[f"{meas_type}_file_selection"]
 
+        measurement = SolutionSFCSMeasurement(name=meas_type)
+
         if should_use_preprocessed:
             try:
                 file_path_template = Path(file_path_template)  # str-> Path if needed
@@ -1341,8 +1343,6 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 print(
                     f"Pre-processed {meas_type} measurement not found at: '{file_path}'. Processing data regularly."
                 )
-        else:
-            measurement = SolutionSFCSMeasurement(name=meas_type)
 
         if not measurement.cf:  # Process data
             measurement.read_fpga_data(
