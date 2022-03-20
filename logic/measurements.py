@@ -374,7 +374,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             self.scan_params.ppl,
         )
         # create ao_buffer
-        self.ao_buffer, _ = ScanPatternAO(
+        self.ao_buffer, self.scan_params = ScanPatternAO(
             "image", self.scan_params, self.um_v_ratio
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
@@ -593,7 +593,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_Hz) - 2
             )
         # create ao_buffer
-        self.ao_buffer, _ = ScanPatternAO(
+        self.ao_buffer, self.scan_params = ScanPatternAO(
             self.scan_params.pattern, self.scan_params, self.um_v_ratio
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
