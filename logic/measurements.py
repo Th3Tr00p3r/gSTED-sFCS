@@ -50,6 +50,9 @@ class MeasurementProcedure:
             dep_shutter=app.devices.dep_shutter,
         )
 
+        # calculate gate
+        self.spad_dvc.calculate_gate(self.delayer_dvc.effective_delay_ns)
+
         self._app = app
         self.type = type
         self.laser_mode = laser_mode
@@ -180,21 +183,21 @@ class MeasurementProcedure:
         def current_emission_state() -> str:
             """Doc."""
 
-            exc_state = self._app.devices.exc_laser.is_on
+            is_exc_on = self._app.devices.exc_laser.is_on
             try:
-                dep_state = (
+                is_dep_on = (
                     self._app.devices.dep_laser.is_emission_on
                     and self._app.devices.dep_shutter.is_on
                 )
             except AttributeError:
                 # dep error on startup, emission should be off
-                dep_state = False
+                is_dep_on = False
 
-            if exc_state and dep_state:
+            if is_exc_on and is_dep_on:
                 return "sted"
-            elif exc_state:
+            elif is_exc_on:
                 return "exc"
-            elif dep_state:
+            elif is_dep_on:
                 return "dep"
             else:
                 return "nolaser"

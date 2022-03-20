@@ -255,11 +255,11 @@ class TDCPhotonDataMixin:
             max_j = np.argmax(h)
         elif isinstance(sync_coarse_time_to, int):
             max_j = sync_coarse_time_to
-        elif hasattr(sync_coarse_time_to, "tdc_calib"):
-            max_j = sync_coarse_time_to.tdc_calib.max_j
+        elif isinstance(sync_coarse_time_to, TDCCalibration):
+            max_j = sync_coarse_time_to.max_j
         else:
             raise ValueError(
-                "Syncing coarse time is possible to either a number or to an object that has the attribute 'tdc_calib'!"
+                "Syncing coarse time is possible to either a number or a 'TDCCalibration' object!"
             )
 
         j_shift = np.roll(np.arange(len(h)), -max_j + 2)

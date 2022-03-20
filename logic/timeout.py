@@ -272,12 +272,4 @@ class Timeout:
                     self.spad_dvc.change_icons(icon_name, led_widget_name="gate_led_widget")
                     self.spad_dvc.is_gated = should_be_gated
 
-                # calculate gate
-                with suppress(TypeError):
-                    self.spad_dvc.gate_ns = (
-                        helper.Limits(
-                            self.delayer_dvc.delay_ps / 1e3 + self.delayer_dvc.pulsewidth_ns, 20.0
-                        ),
-                    )
-
             await asyncio.sleep(self.spad_dvc.update_interval_s)
