@@ -1304,9 +1304,6 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
-        # set reference measurement
-        ref_meas = self.confocal if getattr(self.confocal, "scan_type", None) else self.sted
-
         super_title = f"Experiment '{self.name}' - All ACFs"
         with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
             self.plot_correlation_functions(
@@ -1314,12 +1311,10 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 y_field="avg_cf_cr",
                 x_scale="log",
                 xlim=None,  # autoscale x axis
-                ref_meas=ref_meas,
             )
 
             self.plot_correlation_functions(
                 parent_ax=axes[1],
-                ref_meas=ref_meas,
             )
 
     def load_measurement(
@@ -1443,8 +1438,13 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
-    def plot_correlation_functions(self, ref_meas, **kwargs):
+    def plot_correlation_functions(self, **kwargs):
         """Doc."""
+
+        if hasattr(self.confocal, "scan_type"):
+            ref_meas = self.confocal
+        else:
+            ref_meas = self.sted
 
         if ref_meas.scan_type == "static":
             kwargs["x_field"] = "lag"
