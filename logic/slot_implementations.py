@@ -612,7 +612,7 @@ class MainWin:
         """Doc."""
 
         sol_meas_wdgt_fillout_dict = {
-            "Standard Alignment": {
+            "Standard Static": {
                 "scan_type": "static",
                 "repeat": True,
             },

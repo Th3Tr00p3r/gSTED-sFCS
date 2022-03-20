@@ -1,20 +1,20 @@
-imgScanFileTemplate,gb
 newTemplate,
 solImportFileSelectionPattern,19
 lineEdit,
 experimentName,test
+imgScanFileTemplate,gb
 solScanFileTemplate,
 spadMode,Free Running
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 scanImgFileNum,19
 solAnalysisRemoveWorstSpinner,0
 expStrctFctrRbstIntrpPnts,2
 tdcCalibGating,40
 tdcCalibGating_2,20
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 maxLineLen,100
 angAoSampFreq,10000
 angle,120
@@ -35,13 +35,13 @@ psdDelay_ps,0
 psdEffDelay_ps,1
 psdPulseWidth_ns,73
 psdEffPulseWidth_ns,73
+solAnalysisRemoveOverSpinner,2.0
+expStrctFctrGMin,0.175
+customGateLifetimes,0.5
 imgScanDim1,1.0
 imgScanDim2,1.0
 imgScanDim3,0.0
 imgScanLinFrac,0.9
-solAnalysisRemoveOverSpinner,2.0
-expStrctFctrGMin,0.175
-customGateLifetimes,0.5
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,99.99
@@ -51,9 +51,6 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,5.0
-imgScanPreset,GB - XY single bead
-imgScanType,XY
-imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,3
 dataYear,2022
 dataDay,20
@@ -67,7 +64,10 @@ assignedGates,
 availableGates,
 importedSolDataTemplates2,
 expPropGstedGate,Lifetime
-solMeasPreset,Standard Alignment
+imgScanPreset,GB - XY single bead
+imgScanType,XY
+imgShowMethod,Forward scan - actual counts per pixel
+solMeasPreset,Standard Static
 solScanType,static
 solScanDurUnits,minutes
 avgInterval,5000
@@ -103,14 +103,14 @@ tabWidget_2,1
 tabWidget_5,1
 tabWidget_4,0
 tabWidget_3,0
-autoCrosshair,True
-alwaysSaveImg,False
 solImportAutoLoadProcessed,True
 solDataFixShift,True
 solDataUseDefaultSysInfo,False
 solDataSubtractAfterpulse,True
 solDataSubtractBgCorr,True
 solDataAutoRoi,True
+autoCrosshair,True
+alwaysSaveImg,False
 autoExp1,False
 autoExp2,False
 scaleImgScan,292
