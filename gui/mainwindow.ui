@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -2095,7 +2095,7 @@ Save</string>
                   </property>
                   <item>
                    <property name="text">
-                    <string>Standard Alignment</string>
+                    <string>Standard Static</string>
                    </property>
                   </item>
                   <item>
