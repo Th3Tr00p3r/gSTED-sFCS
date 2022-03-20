@@ -115,7 +115,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         # TODO: add command to get the gate width for 'calculate_gate()'
-        self.gate_width_ns = 20
+        self.gate_width_ns = 50
 
         try:
             responses = self.mpd_command([("AQ", None), ("DC", None)])
@@ -175,8 +175,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                         ("RP", None),  # request initial pulsewidth
                     ]
                 )
-            except ValueError:
-                raise DeviceError(f"{self.log_ref} did not respond to initialization commands!")
+            except ValueError as exc:
+                exc = IOError(f"{self.log_ref} did not respond to initialization commands!")
+                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
             else:
                 self.delay_ps = int(delay_str)
                 self.pulsewidth_ns = int(pulsewidth_str)
@@ -225,8 +226,8 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             (f"{cmnd}{new_value}", getattr(self, f"{delay_component.split('_')[0]}_limits"))
         )
 
-        setattr(self, delay_component, response)
-        self.update_total_delay()
+        setattr(self, delay_component, int(response))
+        self.update_effective_delay()
 
         effective_value_wdgt = getattr(self, f"eff_{delay_component.split('_')[0]}_wdgt")
         effective_value_wdgt.set(int(response))

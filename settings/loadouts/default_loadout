@@ -1,10 +1,18 @@
-solScanFileTemplate,
 imgScanFileTemplate,gb
+solScanFileTemplate,mirror_no_emission_filter
 newTemplate,
 solImportFileSelectionPattern,19
 lineEdit,
 experimentName,test
 spadMode,Free Running
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
+circAoSampFreq,10000
+circDiameter,50
+circSpeed,6000
 maxLineLen,100
 angAoSampFreq,10000
 angle,120
@@ -12,17 +20,9 @@ lineShift,2
 solAngScanSpeed,6000
 minNumLines,6
 maxScanFreq,40
-solPointsPerLine,1
-solTotPointsPerLine,1
-solNumLines,1
-circAoSampFreq,10000
-circDiameter,50
-circSpeed,6000
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
+solPointsPerLine,149
+solTotPointsPerLine,183
+solNumLines,14
 scanImgFileNum,19
 solAnalysisRemoveWorstSpinner,0
 expStrctFctrRbstIntrpPnts,2
@@ -33,17 +33,17 @@ depPow,130
 stageSteps,250
 psdDelay_ps,0
 psdEffDelay_ps,1
-psdPulseWidth_ns,48
-psdEffPulseWidth_ns,48
-solScanMaxFileSize,20.0
-solLinFrac,0.9
-solAngActualSpeed,0.0
-solActualScanFreq,0.0
-solScanDur,3.0
+psdPulseWidth_ns,73
+psdEffPulseWidth_ns,73
 imgScanDim1,1.0
 imgScanDim2,1.0
 imgScanDim3,0.0
 imgScanLinFrac,0.9
+solScanMaxFileSize,20.0
+solLinFrac,0.9
+solAngActualSpeed,99.99
+solActualScanFreq,27.32
+solScanDur,1.0
 solAnalysisRemoveOverSpinner,2.0
 expStrctFctrGMin,0.175
 customGateLifetimes,0.5
@@ -51,16 +51,16 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,5.0
-solMeasPreset,Standard Alignment
-solScanType,static
-solScanDurUnits,minutes
 imgScanPreset,GB - XY single bead
 imgScanType,XY
 imgShowMethod,Forward scan - actual counts per pixel
+solMeasPreset,Standard Alignment
+solScanType,static
+solScanDurUnits,minutes
 dataMonth,3
 dataYear,2022
-dataDay,15
-dataTemplate1,concentrated_high_delay_angular_exc_203836_*.pkl
+dataDay,20
+dataTemplate1,mirror_no_emission_filter_static_exc_141436_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -76,13 +76,13 @@ solScanParamsStacked,2
 importStacked,1
 analysisStacked,1
 depModeStacked,1
-regularSolMeas,False
-repeatSolMeas,True
+regularSolMeas,True
+repeatSolMeas,False
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
