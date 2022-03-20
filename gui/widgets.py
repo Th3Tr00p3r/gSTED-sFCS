@@ -149,13 +149,13 @@ def wdgt_items_to_text_lines(parent_wdgt, widget_types: list) -> List[str]:
 def write_gui_to_file(parent_wdgt, widget_types, file_path):
     """Doc."""
 
-    helper.write_list_to_file(file_path, wdgt_items_to_text_lines(parent_wdgt, widget_types))
+    helper.list_to_file(file_path, wdgt_items_to_text_lines(parent_wdgt, widget_types))
 
 
 def read_file_to_gui(file_path, gui_parent):
     """Doc."""
 
-    lines = helper.read_file_to_list(file_path)
+    lines = helper.file_to_list(file_path)
 
     for line in lines:
         wdgt_name, val = re.split(",", line, maxsplit=1)

@@ -916,13 +916,18 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     @file_utilities.rotate_data_to_disk()
     def correlate_data(self, **kwargs):
         """
-        High level function for correlating any type of data (e.g. static, angular scan...)
+        High level function for correlating any type of data (e.g. static, angular scan, circular scan...)
         Returns a 'CorrFunc' object.
         Data attribute is possibly rotated from/to disk.
         """
 
         self.min_duration_frac = kwargs.get("min_time_frac", 0.5)  # TODO: only used for static?
 
+        # Unite TDC gate and detector gate
+        tdc_gate_ns = kwargs.get("gate_ns", Limits(0, np.inf))
+        kwargs["gate_ns"] = tdc_gate_ns & self.detector_gate_ns
+
+        # correlate data
         if self.scan_type == "angular_scan":
             CF = self._correlate_angular_scan_data(**kwargs)
         elif self.scan_type == "circular_scan":
@@ -934,6 +939,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 f"Correlating data of type '{self.scan_type}' is not implemented."
             )
 
+        # name the Corrfunc object
         if (cf_name := kwargs.get("cf_name")) is not None:
             self.cf[cf_name] = CF
         else:
@@ -1062,7 +1068,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 #                    delay_time = delay_time[j_gate] # TODO: not used?
                 line_num = p.line_num[j_gate]
 
-            elif CF.gate_ns != (0, np.inf):
+            elif (self.detector_gate_ns is None) and (CF.gate_ns != (0, np.inf)):
                 raise RuntimeError(
                     f"A gate '{CF.gate_ns}' was specified for uncalibrated TDC data."
                 )
@@ -1296,6 +1302,9 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
+        # set reference measurement
+        ref_meas = self.confocal if getattr(self.confocal, "scan_type", None) else self.sted
+
         super_title = f"Experiment '{self.name}' - All ACFs"
         with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
             self.plot_correlation_functions(
@@ -1303,10 +1312,12 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 y_field="avg_cf_cr",
                 x_scale="log",
                 xlim=None,  # autoscale x axis
+                ref_meas=ref_meas,
             )
 
             self.plot_correlation_functions(
                 parent_ax=axes[1],
+                ref_meas=ref_meas,
             )
 
     def load_measurement(
@@ -1321,9 +1332,9 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
         if "cf_name" not in kwargs:
             if meas_type == "confocal":
-                kwargs["cf_name"] = "Confocal"
+                kwargs["cf_name"] = "confocal"
             else:  # sted
-                kwargs["cf_name"] = "CW STED"
+                kwargs["cf_name"] = "sted"
         cf_name = kwargs["cf_name"]
 
         if kwargs.get(f"{meas_type}_file_selection"):
@@ -1338,6 +1349,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 # load pre-processed
                 file_path = dir_path / "processed" / re.sub("_[*]", "", file_template)
                 measurement = file_utilities.load_processed_solution_measurement(file_path)
+                measurement.name = meas_type
                 print(f"Loaded pre-processed {meas_type} measurement: '{file_path}'")
             except OSError:
                 print(
@@ -1383,7 +1395,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
             with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
                 self.confocal.calibrate_tdc(should_plot=True, parent_axes=axes[:, :2], **kwargs)
                 if hasattr(self.sted, "scan_type"):  # if both measurements quack as if loaded
-                    kwargs["sync_coarse_time_to"] = self.confocal  # sync sted to confocal
+                    kwargs["sync_coarse_time_to"] = self.confocal.tdc_calib  # sync sted to confocal
                     self.sted.calibrate_tdc(should_plot=True, parent_axes=axes[:, 2:], **kwargs)
         else:
             raise RuntimeError("Can't calibrate TDC with no confocal measurements loaded!")
@@ -1429,12 +1441,14 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
-    def plot_correlation_functions(self, **kwargs):
-        if self.confocal.scan_type == "static":
+    def plot_correlation_functions(self, ref_meas, **kwargs):
+        """Doc."""
+
+        if ref_meas.scan_type == "static":
             kwargs["x_field"] = "lag"
 
         if kwargs.get("y_field") in {"average_all_cf_cr", "avg_cf_cr"}:
-            kwargs["ylim"] = Limits(-1e3, self.confocal.cf["Confocal"].g0 * 1.5)
+            kwargs["ylim"] = Limits(-1e3, ref_meas.cf[ref_meas.name].g0 * 1.5)
 
         with Plotter(
             super_title=f"'{self.name}' Experiment - All ACFs",

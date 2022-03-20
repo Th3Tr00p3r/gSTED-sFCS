@@ -275,26 +275,14 @@ class MainWin:
                     print(exc)  # TODO: make unique
                     spad_dvc.pause(False)  # take back control
 
-    def set_delayer_property(self, property: str):
+    def set_delayer_property(self, component: str):
         """Doc."""
 
-        property_cmnd_dict = {
-            "delay_ps": "SD",
-            "pulsewidth_ns": "SP",
-        }
-
-        with suppress(AttributeError):
+        with suppress(AttributeError, ValueError, DeviceError):
+            # AttributeError - device not yet defined
+            # ValueError:  writing/reading PSD too fast!
             delayer_dvc = self._app.devices.delayer
-            new_value = getattr(delayer_dvc, f"set_{property.split('_')[0]}_wdgt").get()
-            effective_value_wdgt = getattr(delayer_dvc, f"eff_{property.split('_')[0]}_wdgt")
-            with suppress(ValueError, DeviceError):
-                # ValueError:  writing/reading PSD too fast!
-                cmnd = property_cmnd_dict[property]
-                response, *_ = delayer_dvc.mpd_command(
-                    (f"{cmnd}{new_value}", delayer_dvc.delay_limits)
-                )
-                setattr(delayer_dvc, property, response)
-                effective_value_wdgt.set(int(response))
+            delayer_dvc.set_delay_component(component)
 
     def show_stage_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -1022,7 +1010,7 @@ class MainWin:
         with suppress(AttributeError, TypeError, FileNotFoundError):
             # no directories found
             file_path = self.current_date_type_dir_path() / log_filename
-            helper.write_list_to_file(file_path, text_lines)
+            helper.list_to_file(file_path, text_lines)
             self.update_dir_log_wdgt(curr_template)
 
     def get_daily_alignment(self):
@@ -1092,7 +1080,7 @@ class MainWin:
             basic_header.append("-" * 40)
             basic_header.append("EDIT_HERE")
 
-            helper.write_list_to_file(file_path, basic_header)
+            helper.list_to_file(file_path, basic_header)
 
         if not template:
             return
@@ -1108,13 +1096,13 @@ class MainWin:
         file_path = self.current_date_type_dir_path() / log_filename
 
         try:  # load the log file in path
-            text_lines = helper.read_file_to_list(file_path)
+            text_lines = helper.file_to_list(file_path)
         except (FileNotFoundError, OSError):  # initialize a new log file if no existing file
             with suppress(OSError, IndexError):
                 # OSError - missing file/folder (deleted during operation)
                 # IndexError - alignment file does not exist
                 initialize_dir_log_file(file_path, *self.get_daily_alignment())
-                text_lines = helper.read_file_to_list(file_path)
+                text_lines = helper.file_to_list(file_path)
         finally:  # write file to widget
             with suppress(UnboundLocalError):
                 # UnboundLocalError
@@ -1337,7 +1325,7 @@ class MainWin:
         """Doc."""
 
         if ((data_type_hint := "_exc_") in template) or ((data_type_hint := "_sted_") in template):
-            data_type = "Confocal" if (data_type_hint == "_exc_") else "CW STED"
+            data_type = "confocal" if (data_type_hint == "_exc_") else "sted"
             return data_type
         else:
             print(
@@ -1608,11 +1596,11 @@ class MainWin:
 
         loaded_templates_combobox = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments
         # delete from memory
-        experiment_name = loaded_templates_combobox.get()
-        self._app.analysis.loaded_experiments[experiment_name] = None
-        # delete from GUI
-        loaded_templates_combobox.obj.removeItem(loaded_templates_combobox.obj.currentIndex())
-        logging.info(f"Experiment '{experiment_name}' removed.")
+        if experiment_name := loaded_templates_combobox.get():
+            self._app.analysis.loaded_experiments[experiment_name] = None
+            # delete from GUI
+            loaded_templates_combobox.obj.removeItem(loaded_templates_combobox.obj.currentIndex())
+            logging.info(f"Experiment '{experiment_name}' removed.")
 
     def get_experiment(
         self, experiment_name: str = None, should_load=False
@@ -1628,11 +1616,11 @@ class MainWin:
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
 
-        kwargs = dict(gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True), fontsize=10)
+        display_kwargs = dict(gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True), fontsize=10)
         experiment = self.get_experiment()
         try:
-            kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
-            experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **kwargs)
+            display_kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
+            experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **display_kwargs)
         except RuntimeError:  # sted or confocal not loaded
             logging.info(
                 "One of the measurements (confocal or STED) was not loaded - cannot calibrate TDC."
@@ -1640,8 +1628,8 @@ class MainWin:
         except AttributeError:
             logging.info("Can't calibrate TDC, no experiment is loaded!")
         else:
-            kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
-            experiment.compare_lifetimes(**kwargs)
+            display_kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
+            experiment.compare_lifetimes(**display_kwargs)
             lt_params = experiment.get_lifetime_parameters()
 
             # display parameters in GUI
@@ -1760,7 +1748,7 @@ class SettWin:
             curr_file_path = self._gui.settingsFileName.text()
 
             current_state = set(wdgts.wdgt_items_to_text_lines(self._gui, wdgts.SETTINGS_TYPES))
-            last_loaded_state = set(helper.read_file_to_list(curr_file_path))
+            last_loaded_state = set(helper.file_to_list(curr_file_path))
 
             if not len(current_state) == len(last_loaded_state):
                 err_hndlr(

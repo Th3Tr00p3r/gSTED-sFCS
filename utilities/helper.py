@@ -112,7 +112,7 @@ def number(x):
 
     try:
         return int(x)
-    except ValueError:
+    except (ValueError, OverflowError):
         return float(x)
 
 
@@ -139,16 +139,26 @@ class Limits:
         dict_labels: Tuple[str, str] = None,
         from_string=False,
     ):
+
+        self.dict_labels = dict_labels
+
         if from_string:
             source_str = limits
             self.lower, self.upper = generate_numbers_from_string(source_str)
         else:
             try:
-                if len(limits) == 2:
-                    self.lower, self.upper = limits
-            except TypeError:  # limits is not 2-iterable
+                self.lower, self.upper = limits
+            except ValueError:  # limits is not 2-iterable
+                raise TypeError(
+                    "Arguments must either be a single value (lower limit) or a 2-iterable"
+                )
+            except TypeError:  # limits is not iterable
                 self.lower, self.upper = limits, upper
-        self.dict_labels = dict_labels
+                if limits is None:
+                    raise TypeError("Arguments cannot be 'None'!")
+            else:
+                if None in limits:
+                    raise TypeError("Arguments cannot be 'None'!")
 
     def __call__(self, *args, **kwargs):
         self.__init__(*args, **kwargs)
@@ -157,16 +167,18 @@ class Limits:
         return f"Limits(lower={self.lower}, upper={self.upper})"
 
     def __str__(self):
-        if int(self.lower) == float(self.lower):
-            lower_frmt = "d"
-            self.lower = int(self.lower)  # ensure for stuff like 1e3 (round floats)
-        else:
-            lower_frmt = ".2f"
-        if int(self.upper) == float(self.upper):
-            upper_frmt = "d"
-            self.upper = int(self.upper)  # ensure for stuff like 1e3 (round floats)
-        else:
-            upper_frmt = ".2f"
+        lower_frmt = ".2f"
+        with suppress(OverflowError):
+            if int(self.lower) == float(self.lower):
+                lower_frmt = "d"
+                self.lower = int(self.lower)  # ensure for stuff like 1e3 (round floats)
+
+        upper_frmt = ".2f"
+        with suppress(OverflowError):
+            if int(self.upper) == float(self.upper):
+                upper_frmt = "d"
+                self.upper = int(self.upper)  # ensure for stuff like 1e3 (round floats)
+
         return f"({self.lower:{lower_frmt}}, {self.upper:{upper_frmt}})"
 
     def __iter__(self):
@@ -178,10 +190,17 @@ class Limits:
     def __len__(self):
         return 2
 
+    def __and__(self, other):
+        self = self if self is not None else Limits()
+        other = other if other is not None else Limits()
+        lower = max(self[0], other[0])
+        upper = min(self[1], other[1])
+        return Limits(lower, upper)
+
     def __eq__(self, other):
-        if isinstance(other, tuple) or hasattr(other, "clamp"):
+        try:
             return tuple(self) == other
-        else:
+        except TypeError:
             raise TypeError("Can only compare Limits to other instances or tuples")
 
     def __ne__(self, other):
@@ -209,7 +228,12 @@ class Limits:
             try:
                 return self.lower <= other <= self.upper
             except TypeError:  # other is not a number
-                raise TypeError("Can only compare Limits to other instances or 2-iterable objects.")
+                if other is None:
+                    return False
+                else:
+                    raise TypeError(
+                        "Can only compare Limits to other instances or 2-iterable objects."
+                    )
 
     def valid_indices(self, arr: np.ndarray):
         """
@@ -261,14 +285,14 @@ def center_of_mass(arr: np.ndarray) -> Tuple:
     return tuple(center_of_mass_of_dimension(arr, dim) for dim in range(len(arr.shape)))
 
 
-def write_list_to_file(file_path, lines: List[str]) -> None:
+def list_to_file(file_path, lines: List[str]) -> None:
     """Accepts a list of strings 'lines' and writes them to 'file_path'."""
 
     with open(file_path, "w") as f:
         f.write("\n".join(lines))
 
 
-def read_file_to_list(file_path) -> List[str]:
+def file_to_list(file_path) -> List[str]:
     """Doc."""
 
     with open(file_path, "r") as f:
@@ -286,7 +310,7 @@ def bool_str(str_: str):
         raise ValueError(f"'{str_}' is neither 'True' nor 'False'.")
 
 
-def deep_getattr(obj, deep_attr_name: str, recursion=False):
+def deep_getattr(obj, deep_attr_name: str, default=None, recursion=False):
     """
     Get deep attribute of obj. Useful for dynamically-set deep attributes.
     Example usage: a = deep_getattr(obj, "sobj.ssobj.a")
@@ -297,15 +321,15 @@ def deep_getattr(obj, deep_attr_name: str, recursion=False):
             next_attr_name, deep_attr_name = deep_attr_name.split(".", maxsplit=1)
         except ValueError:
             # end condition - only one level of attributes left
-            return getattr(obj, deep_attr_name)
+            return getattr(obj, deep_attr_name, default)
         else:
             # recursion
-            return deep_getattr(getattr(obj, next_attr_name), deep_attr_name)
+            return deep_getattr(getattr(obj, next_attr_name), deep_attr_name, default)
 
     else:
         # loop version, faster
         for attr_name in deep_attr_name.split("."):
-            obj = getattr(obj, attr_name)
+            obj = getattr(obj, attr_name, default)
         return obj
 
 
