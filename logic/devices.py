@@ -113,6 +113,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     def get_stats(self) -> None:
         """Doc."""
+
         # TODO: add command to get the gate width for 'calculate_gate()'
         self.gate_width_ns = 20
 
@@ -164,17 +165,22 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            *_, delay_str, pulsewidth_str = self.mpd_command(
-                [
-                    ("EM0", Limits(0, 1)),  # cancel echo mode
-                    (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
-                    (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
-                    ("RD", None),  # request initial delay
-                    ("RP", None),  # request initial pulsewidth
-                ]
-            )
-            self.delay_ps = int(delay_str)
-            self.pulsewidth_ns = int(pulsewidth_str)
+            try:
+                *_, delay_str, pulsewidth_str = self.mpd_command(
+                    [
+                        ("EM0", Limits(0, 1)),  # cancel echo mode
+                        (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
+                        (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
+                        ("RD", None),  # request initial delay
+                        ("RP", None),  # request initial pulsewidth
+                    ]
+                )
+            except ValueError:
+                raise DeviceError(f"{self.log_ref} did not respond to initialization commands!")
+            else:
+                self.delay_ps = int(delay_str)
+                self.pulsewidth_ns = int(pulsewidth_str)
+                self.update_effective_delay()
 
         self.is_on = False
 
@@ -198,6 +204,12 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for accompanying software)
         self.close_instrument()
 
+    def update_effective_delay(self):
+        """Doc."""
+
+        self.total_delay_ns = self.delay_ps / 1e3 + self.pulsewidth_ns
+        self.effective_delay_ns = self.total_delay_ns - self.laser_propagation_time_ns
+
     def set_delay_component(self, delay_component: str):
         """Doc."""
 
@@ -214,8 +226,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         )
 
         setattr(self, delay_component, response)
-        self.total_delay_ns = self.delay_ps / 1e3 + self.pulsewidth_ns
-        self.effective_delay_ns = self.total_delay_ns - self.laser_propagation_time_ns
+        self.update_total_delay()
 
         effective_value_wdgt = getattr(self, f"eff_{delay_component.split('_')[0]}_wdgt")
         effective_value_wdgt.set(int(response))
