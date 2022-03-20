@@ -3,7 +3,7 @@
 import subprocess
 from pathlib import Path
 
-from utilities.helper import write_list_to_file
+from utilities.helper import list_to_file
 
 ICON_DIR_PATH = Path("./gui/icons/")
 
@@ -18,7 +18,7 @@ def generate_icons_resource_file(icon_dir_path: Path = ICON_DIR_PATH):
     ]
     body.insert(0, header)
     body.append(footer)
-    write_list_to_file(icon_dir_path / "icons.qrc", body)
+    list_to_file(icon_dir_path / "icons.qrc", body)
 
     # call pyrcc5 to compile Qt .qrc files (icons) before loading anything
     binary_path = icon_dir_path / "pyrcc5"

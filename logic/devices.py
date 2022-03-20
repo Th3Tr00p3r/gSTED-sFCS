@@ -113,6 +113,8 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     def get_stats(self) -> None:
         """Doc."""
+        # TODO: add command to get the gate width for 'calculate_gate()'
+        self.gate_width_ns = 20
 
         try:
             responses = self.mpd_command([("AQ", None), ("DC", None)])
@@ -137,6 +139,12 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
         mode_cmnd_dict = {"free running": "FR", "external gating": "GM"}
         self.mpd_command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
+
+    def calculate_gate(self, effective_delay_ns: float):
+        """Doc."""
+
+        # TODO: a calibrated time from laser pulse trigger to fluorescent pulse reaching detector (measure laser without notch/excitation filter) needs to be subtracted from the total delay
+        self.gate_ns = Limits(effective_delay_ns, effective_delay_ns + self.gate_width_ns)
 
 
 class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -189,6 +197,28 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.toggle(False)
         self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for accompanying software)
         self.close_instrument()
+
+    def set_delay_component(self, delay_component: str):
+        """Doc."""
+
+        component_cmnd_dict = {
+            "delay_ps": "SD",
+            "pulsewidth_ns": "SP",
+        }
+
+        new_value = getattr(self, f"set_{delay_component.split('_')[0]}_wdgt").get()
+        cmnd = component_cmnd_dict[delay_component]
+
+        response, *_ = self.mpd_command(
+            (f"{cmnd}{new_value}", getattr(self, f"{delay_component.split('_')[0]}_limits"))
+        )
+
+        setattr(self, delay_component, response)
+        self.total_delay_ns = self.delay_ps / 1e3 + self.pulsewidth_ns
+        self.effective_delay_ns = self.total_delay_ns - self.laser_propagation_time_ns
+
+        effective_value_wdgt = getattr(self, f"eff_{delay_component.split('_')[0]}_wdgt")
+        effective_value_wdgt.set(int(response))
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -1127,6 +1157,7 @@ DEVICE_ATTR_DICT = {
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
+            laser_propagation_time_ns=("laserPropTime", "QDoubleSpinBox", "settings", False),
         ),
     ),
 }

@@ -1,6 +1,3 @@
-sysScanSetup,STED with galvos
-afterpulsingFitType,multi_exponent_fit
-afterpulsingFitParams, 2.26707493e01, 2.10619289e-01, 1.95406751e06,
 spadDescription,FT232R USB UART
 spadModelQuery,AQ
 cam1Serial,4102737458
@@ -47,6 +44,9 @@ imgSubdirName,image
 camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
 logDataPath,./log/
 tempDataPath,C:/temp_sfcs_folder/
+sysScanSetup,STED with galvos
+afterpulsingFitType,multi_exponent_fit
+afterpulsingFitParams, 2.26707493e01, 2.10619289e-01, 1.95406751e06,
 spadBaudRate,115200
 spadTimeout,100
 um232Timeout,2
@@ -67,10 +67,11 @@ pixelClockLowTicks,10
 xConv,70.81
 yConv,82.74
 zConv,10.0
+laserPropTime,50.0
 AOtriggerEdge,Rising
 AOwfType,Sine
 excTriggerSrc,External (TDC)
 counterTriggerEdge,Rising
 counterCIdupCountPrevention,True
-tabWidget,0
+tabWidget,1
 tabWidget_2,2
