@@ -1005,8 +1005,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     j_gate = CF.gate_ns.valid_indices(delay_time)
                     runtime = runtime[j_gate]
                 #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
-                elif CF.gate_ns != (0, np.inf):
-                    raise RuntimeError("For gating, TDC must first be calibrated!")
+                elif (self.detector_gate_ns is None) and (CF.gate_ns != (0, np.inf)):
+                    raise RuntimeError(
+                        f"A gate '{CF.gate_ns}' was specified for uncalibrated TDC data."
+                    )
 
                 # split into segments of approx time of run_duration
                 n_splits = div_ceil(segment_time, run_duration)
