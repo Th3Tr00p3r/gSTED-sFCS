@@ -74,7 +74,7 @@ class GuiDisplay:
             cursor=kwargs.get("cursor", False),
         )
         with Plotter(gui_display=self, gui_options=options) as ax:
-            ax.imshow(image, **imshow_kwargs)
+            ax.imshow(image, interpolation="none", **imshow_kwargs)
 
     def plot_acfs(
         self,

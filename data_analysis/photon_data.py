@@ -23,7 +23,7 @@ class TDCPhotonData:
     coarse: np.ndarray
     coarse2: np.ndarray
     fine: np.ndarray
-    runtime: np.ndarray
+    pulse_runtime: np.ndarray
     all_section_edges: np.ndarray
     size_estimate_mb: float
 
@@ -117,15 +117,16 @@ class TDCPhotonDataMixin:
         ]
         idxs = np.arange(largest_section_start_idx, largest_section_end_idx, group_len)
 
-        # calculate the runtime in terms of the number of laser pulses since the beginning of the file
-        runtime = (
+        # calculate the global pulse_runtime (the number of laser pulses at each photon arrival since the beginning of the file)
+        # each index in pulse_runtime represents a photon arrival into the TDC
+        pulse_runtime = (
             byte_data[idxs + 1] * 256 ** 2 + byte_data[idxs + 2] * 256 + byte_data[idxs + 3]
         ).astype(np.int64)
 
-        time_stamps = np.diff(runtime)
+        time_stamps = np.diff(pulse_runtime)
 
         # find simple "inversions": the data with a missing byte
-        # decrease in runtime on data j+1, yet the next runtime data (j+2) is higher than j.
+        # decrease in pulse_runtime on data j+1, yet the next pulse_runtime data (j+2) is higher than j.
         inv_idxs = np.where((time_stamps[:-1] < 0) & ((time_stamps[:-1] + time_stamps[1:]) > 0))[0]
         if (inv_idxs.size) != 0:
             if is_verbose:
@@ -136,12 +137,12 @@ class TDCPhotonDataMixin:
             temp = (time_stamps[inv_idxs] + time_stamps[inv_idxs + 1]) / 2
             time_stamps[inv_idxs] = np.floor(temp).astype(np.int64)
             time_stamps[inv_idxs + 1] = np.ceil(temp).astype(np.int64)
-            runtime[inv_idxs + 1] = runtime[inv_idxs + 2] - time_stamps[inv_idxs + 1]
+            pulse_runtime[inv_idxs + 1] = pulse_runtime[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
-        # repairing drops in runtime (happens when number of laser pulses passes 'maxval')
+        # repairing drops in pulse_runtime (happens when number of laser pulses passes 'maxval')
         neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
         for i in neg_time_stamp_idxs + 1:
-            runtime[i:] += maxval
+            pulse_runtime[i:] += maxval
 
         # handling coarse and fine times (for gating)
         if not ignore_coarse_fine:
@@ -161,7 +162,7 @@ class TDCPhotonDataMixin:
             coarse2 = None
             fine = None
 
-        time_stamps = np.diff(runtime).astype(np.int32)
+        time_stamps = np.diff(pulse_runtime).astype(np.int32)
 
         # find additional outliers (improbably large time_stamps) and break into
         # additional segments if they exist.
@@ -187,7 +188,7 @@ class TDCPhotonDataMixin:
             coarse=coarse,
             coarse2=coarse2,
             fine=fine,
-            runtime=runtime,
+            pulse_runtime=pulse_runtime,
             all_section_edges=all_section_edges,
             size_estimate_mb=max(section_lengths) / 1e6,
         )
@@ -214,8 +215,8 @@ class TDCPhotonDataMixin:
 
         print(f"\n{self.name}: Calibrating TDC...", end=" ")
 
-        # keep runtime elements of each file for array size allocation
-        n_elem = np.cumsum([0] + [p.runtime.size for p in self.data])
+        # keep pulse_runtime elements of each file for array size allocation
+        n_elem = np.cumsum([0] + [p.pulse_runtime.size for p in self.data])
 
         # unite coarse and fine times from all files
         coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
@@ -375,7 +376,7 @@ class TDCPhotonDataMixin:
                 t_calib[p.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
             )
-            total_laser_pulses += p.runtime[-1]
+            total_laser_pulses += p.pulse_runtime[-1]
             p.delay_time[~photon_idxs] = np.nan  # line ends/starts
 
             delay_time = np.append(delay_time, p.delay_time[photon_idxs])
@@ -792,7 +793,7 @@ def _find_section_edges(byte_data: np.ndarray, group_len: int):  # NOQA C901
         # hold byte_data idx of current missing photon starting bracket
         data_idx_of_missed_248 = edge_start + missed_248_idx * group_len
 
-        # condition for ignoring single photon error (just test the most significant bytes of the runtime are close)
+        # condition for ignoring single photon error (just test the most significant bytes of the pulse_runtime are close)
         curr_runtime_msb = int(byte_data[data_idx_of_missed_248 + 1])
         prev_runtime_msb = int(byte_data[data_idx_of_missed_248 - (group_len - 1)])
         ignore_single_error_cond = abs(curr_runtime_msb - prev_runtime_msb) < 3

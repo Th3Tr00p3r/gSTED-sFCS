@@ -69,7 +69,7 @@ class CorrFunc:
         time_stamp_split_lists: List[np.ndarray],
         after_pulse_params,
         laser_freq_hz: float,
-        bg_line_corr_list=None,
+        bg_corr_list=None,
         should_subtract_afterpulse: bool = True,
         is_verbose: bool = False,
         should_parallel_process=False,
@@ -118,7 +118,13 @@ class CorrFunc:
 
         # remove background correlation
         with suppress(TypeError):
-            for idx, bg_corr_dict in enumerate(bg_line_corr_list):
+            if len(bg_corr_list) < len(corrfunc_list):
+                print(
+                    f"TESTESTEST: bg_corr_list ({len(bg_corr_list)}) is shorter than corrfunc_list ({len(corrfunc_list)})"
+                )
+                bg_corr_list = bg_corr_list * len(corrfunc_list)
+
+            for idx, bg_corr_dict in enumerate(bg_corr_list):
                 bg_corr = np.interp(
                     lag_list[idx],
                     bg_corr_dict["lag"],
@@ -564,11 +570,22 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 f"Loading FPGA data catastrophically failed ({self.n_paths}/{self.n_paths} files skipped)."
             )
 
+        if self.scan_type == "circular_scan":
+            self.scan_image = np.vstack(tuple(p.image for p in self.data))
+            bg_corr_array = np.empty(
+                (len(self.data), self.circular_scan_settings["samples_per_circle"])
+            )
+            for idx, p in enumerate(self.data):
+                bg_corr_array[idx] = p.image_line_corr["corrfunc"]
+            avg_bg_corr = bg_corr_array.mean(axis=0)
+            self.bg_corr_list = [dict(lag=p.image_line_corr["lag"], corrfunc=avg_bg_corr)]
+        #            self.bg_corr_list = [p.image_line_corr for p in self.data]
+
         if self.scan_type == "angular_scan":
             # aggregate images and ROIs for angular sFCS
             self.scan_images_dstack = np.dstack(tuple(p.image for p in self.data))
             self.roi_list = [p.roi for p in self.data]
-            self.bg_line_corr_list = [
+            self.bg_corr_list = [
                 bg_line_corr
                 for bg_file_corr in [p.image_line_corr for p in self.data]
                 for bg_line_corr in bg_file_corr
@@ -578,7 +595,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self.avg_cnt_rate_khz = sum([p.avg_cnt_rate_khz for p in self.data]) / len(self.data)
 
         calc_duration_mins = (
-            sum([np.diff(p.runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
+            sum([np.diff(p.pulse_runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
         )
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
@@ -606,7 +623,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     ax.set_title(f"file #{file_idx+1} of\n'{self.name}' measurement")
                     ax.set_xlabel("Pixel Number")
                     ax.set_ylabel("Line Number")
-                    ax.imshow(image)
+                    ax.imshow(image, interpolation="none")
                     ax.plot(roi["col"], roi["row"], color="white")
             print("Done.\n")
 
@@ -656,14 +673,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.duration_min = full_data["duration_s"] / 60
 
         # Circular sFCS
-        if full_data.get("circle_speed_um_s"):
+        if full_data.get("circular_scan_settings"):
             self.scan_type = "circular_scan"
-            self.v_um_ms = full_data["circle_speed_um_s"] * 1e-3  # to um/ms
-            # TODO: implement circular scan processing
-            logging.warning(
-                "Circular scan analysis not yet implemented. Processing as static data file."
-            )
-            self.scan_type = "static"
+            self.circular_scan_settings = full_data["circular_scan_settings"]
+            self.v_um_ms = self.circular_scan_settings["speed_um_s"] * 1e-3
+            self.sample_freq_hz = self.circular_scan_settings.get("sample_freq_hz", int(1e4))
+            self.diameter_um = self.circular_scan_settings.get("diameter_um", 50)
 
         # Angular sFCS
         elif full_data.get("angular_scan_settings"):
@@ -700,8 +715,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         full_data = file_dict["full_data"]
 
         # Circular sFCS
-        if full_data.get("circle_speed_um_s"):
-            p = self._process_static_data_file(full_data, file_idx, **kwargs)
+        if full_data.get("circular_scan_settings"):
+            p = self._process_circular_scan_data_file(full_data, file_idx, **kwargs)
 
         # Angular sFCS
         elif full_data.get("angular_scan_settings"):
@@ -736,6 +751,51 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return p
 
+    def _process_circular_scan_data_file(self, full_data, file_idx, **kwargs) -> TDCPhotonData:
+        """
+        Processes a single circular sFCS data file ('full_data').
+        Returns the processed results as a 'TDCPhotonData' object.
+        '"""
+
+        p = self.convert_fpga_data_to_photons(
+            full_data["byte_data"],
+            version=full_data["version"],
+            locate_outliers=True,
+            **kwargs,
+        )
+
+        p.file_num = file_idx
+        p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
+
+        circular_scan_settings = full_data["circular_scan_settings"]
+        sample_freq_hz = int(circular_scan_settings["sample_freq_hz"])
+        diameter_um = circular_scan_settings["diameter_um"]
+        circumference = np.pi * diameter_um
+        speed_um_s = circular_scan_settings["speed_um_s"]
+        scan_freq_Hz = speed_um_s / circumference
+
+        print("Converting circular scan to image...", end=" ")
+        pulse_runtime = p.pulse_runtime
+        cnt, self.circular_scan_settings["samples_per_circle"] = _sum_scan_circles(
+            pulse_runtime,
+            self.laser_freq_hz,
+            sample_freq_hz,
+            scan_freq_Hz,
+        )
+
+        p.image = cnt
+
+        # get background correlation
+        c, lags = _auto_corr(cnt.astype(np.float64))
+        c = c / cnt.mean() ** 2 - 1
+        c[0] -= 1 / cnt.mean()  # subtracting shot noise, small stuff really
+        p.image_line_corr = {
+            "lag": lags * 1e3 / sample_freq_hz,  # in ms
+            "corrfunc": c,
+        }
+
+        return p
+
     def _process_angular_scan_data_file(
         self,
         full_data,
@@ -764,17 +824,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         print("Converting angular scan to image...", end=" ")
 
-        runtime = p.runtime
-        cnt, n_pix_tot, n_pix, line_num = _convert_angular_scan_to_image(
-            runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
+        pulse_runtime = p.pulse_runtime
+        cnt, sample_runtime, pixel_num, line_num = _convert_angular_scan_to_image(
+            pulse_runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
         )
 
         if should_fix_shift:
             print("Fixing line shift...", end=" ")
             pix_shift = _fix_data_shift(cnt)
-            runtime = p.runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
-            cnt, n_pix_tot, n_pix, line_num = _convert_angular_scan_to_image(
-                runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
+            pulse_runtime = p.pulse_runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
+            cnt, sample_runtime, pixel_num, line_num = _convert_angular_scan_to_image(
+                pulse_runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
             )
             print(f"({pix_shift} pixels).", end=" ")
 
@@ -831,9 +891,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 roi["col"].append(right_edge)
 
                 line_starts_new_idx = np.ravel_multi_index((row_idx, left_edge), bw.shape)
-                line_starts_new = list(range(line_starts_new_idx, n_pix_tot[-1], bw.size))
+                line_starts_new = list(range(line_starts_new_idx, sample_runtime[-1], bw.size))
                 line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw.shape)
-                line_stops_new = list(range(line_stops_new_idx, n_pix_tot[-1], bw.size))
+                line_stops_new = list(range(line_stops_new_idx, sample_runtime[-1], bw.size))
 
                 line_start_lables.extend([-row_idx for elem in range(len(line_starts_new))])
                 line_stop_labels.extend(
@@ -857,37 +917,37 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         line_starts = np.array(line_starts, dtype=np.int64)
         line_stops = np.array(line_stops, dtype=np.int64)
 
-        runtime_line_starts: np.ndarray = line_starts * round(self.laser_freq_hz / sample_freq_hz)
-        runtime_line_stops: np.ndarray = line_stops * round(self.laser_freq_hz / sample_freq_hz)
+        line_starts_runtime: np.ndarray = line_starts * round(self.laser_freq_hz / sample_freq_hz)
+        line_stops_runtime: np.ndarray = line_stops * round(self.laser_freq_hz / sample_freq_hz)
 
-        runtime = np.hstack((runtime_line_starts, runtime_line_stops, runtime))
-        sorted_idxs = np.argsort(runtime)
-        p.runtime = runtime[sorted_idxs]
+        pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
+        sorted_idxs = np.argsort(pulse_runtime)
+        p.pulse_runtime = pulse_runtime[sorted_idxs]
         p.line_num = np.hstack(
             (
                 line_start_lables,
                 line_stop_labels,
-                line_num * bw[line_num, n_pix].flatten(),
+                line_num * bw[line_num, pixel_num].flatten(),
             )
         )[sorted_idxs]
         p.coarse = np.hstack(
             (
-                np.full(runtime_line_starts.size, self.NAN_PLACEBO, dtype=np.int16),
-                np.full(runtime_line_stops.size, self.NAN_PLACEBO, dtype=np.int16),
+                np.full(line_starts_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
+                np.full(line_stops_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
                 p.coarse,
             )
         )[sorted_idxs]
         p.coarse2 = np.hstack(
             (
-                np.full(runtime_line_starts.size, self.NAN_PLACEBO, dtype=np.int16),
-                np.full(runtime_line_stops.size, self.NAN_PLACEBO, dtype=np.int16),
+                np.full(line_starts_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
+                np.full(line_stops_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
                 p.coarse2,
             )
         )[sorted_idxs]
         p.fine = np.hstack(
             (
-                np.full(runtime_line_starts.size, self.NAN_PLACEBO, dtype=np.int16),
-                np.full(runtime_line_stops.size, self.NAN_PLACEBO, dtype=np.int16),
+                np.full(line_starts_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
+                np.full(line_stops_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
                 p.fine,
             )
         )[sorted_idxs]
@@ -903,7 +963,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         img = p.image * p.bw_mask
 
         p.line_limits = Limits(line_num[line_num > 0].min(), line_num.max())
-        p.image_line_corr = _line_correlations(img, p.bw_mask, roi, p.line_limits, sample_freq_hz)
+        p.image_line_corr = _bg_line_correlations(img, bw, roi, p.line_limits, sample_freq_hz)
 
         return p
 
@@ -928,12 +988,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         kwargs["gate_ns"] = tdc_gate_ns & self.detector_gate_ns
 
         # correlate data
-        if self.scan_type == "angular_scan":
+        if self.scan_type in {"static", "circular_scan"}:
+            CF = self._correlate_continuous_data(**kwargs)
+        elif self.scan_type == "angular_scan":
             CF = self._correlate_angular_scan_data(**kwargs)
-        elif self.scan_type == "circular_scan":
-            CF = self._correlate_circular_scan_data(**kwargs)
-        elif self.scan_type == "static":
-            CF = self._correlate_static_data(**kwargs)
         else:
             raise NotImplementedError(
                 f"Correlating data of type '{self.scan_type}' is not implemented."
@@ -947,7 +1005,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return CF
 
-    def _correlate_static_data(
+    def _correlate_continuous_data(
         self,
         cf_name=None,
         gate_ns=(0, np.inf),
@@ -956,9 +1014,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         min_time_frac=0.5,
         is_verbose=False,
         afterpulse_params=None,
+        should_subtract_bg_corr=True,
         **kwargs,
     ) -> CorrFunc:
-        """Correlates data for static FCS. Returns a CorrFunc object"""
+        """Correlates data for static FCS and circular sFCS. Returns a CorrFunc object"""
 
         if is_verbose:
             print(
@@ -973,10 +1032,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             else:  # auto determine
                 total_duration_estimate = 0
                 for p in self.data:
-                    time_stamps = np.diff(p.runtime).astype(np.int32)
+                    time_stamps = np.diff(p.pulse_runtime).astype(np.int32)
                     mu = np.median(time_stamps) / np.log(2)
                     total_duration_estimate = (
-                        total_duration_estimate + mu * len(p.runtime) / self.laser_freq_hz
+                        total_duration_estimate + mu * len(p.pulse_runtime) / self.laser_freq_hz
                     )
                 run_duration = total_duration_estimate / n_runs_requested
 
@@ -987,7 +1046,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         for p in self.data:
             # Ignore short segments (default is below half the run_duration)
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
-                segment_time = (p.runtime[se_end] - p.runtime[se_start]) / self.laser_freq_hz
+                segment_time = (
+                    p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
+                ) / self.laser_freq_hz
                 if segment_time < min_time_frac * run_duration:
                     if is_verbose:
                         print(
@@ -997,13 +1058,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     CF.skipped_duration += segment_time
                     continue
 
-                runtime = p.runtime[se_start : se_end + 1]
+                pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
 
                 # Gating
                 if hasattr(p, "delay_time"):
                     delay_time = p.delay_time[se_start : se_end + 1]
                     j_gate = CF.gate_ns.valid_indices(delay_time)
-                    runtime = runtime[j_gate]
+                    pulse_runtime = pulse_runtime[j_gate]
                 #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
                 elif (self.detector_gate_ns is None) and (CF.gate_ns != (0, np.inf)):
                     raise RuntimeError(
@@ -1012,8 +1073,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
                 # split into segments of approx time of run_duration
                 n_splits = div_ceil(segment_time, run_duration)
-                splits = np.linspace(0, runtime.size, n_splits + 1, dtype=np.int32)
-                time_stamps = np.diff(runtime).astype(np.int32)
+                splits = np.linspace(0, pulse_runtime.size, n_splits + 1, dtype=np.int32)
+                time_stamps = np.diff(pulse_runtime).astype(np.int32)
 
                 for k in range(n_splits):
 
@@ -1029,6 +1090,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             ts_split_list,
             afterpulse_params if afterpulse_params is not None else self.after_pulse_param,
             self.laser_freq_hz,
+            getattr(self, "bg_corr_list", None) if should_subtract_bg_corr else None,
             is_verbose=is_verbose,
             **kwargs,
         )
@@ -1044,6 +1106,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
             print("- Done.")
 
+        # temporal to spatial conversion, if scanning (circular)
+        with suppress(AttributeError):
+            CF.vt_um = self.v_um_ms * CF.lag
+
         return CF
 
     @timer()
@@ -1051,6 +1117,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self,
         cf_name=None,
         gate_ns=(0, np.inf),
+        should_subtract_bg_corr=True,
         **kwargs,
     ) -> CorrFunc:
         """Correlates data for angular scans. Returns a CorrFunc object"""
@@ -1066,7 +1133,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
             if hasattr(p, "delay_time"):  # if measurement quacks as gated
                 j_gate = CF.gate_ns.valid_indices(p.delay_time) | np.isnan(p.delay_time)
-                runtime = p.runtime[j_gate]
+                pulse_runtime = p.pulse_runtime[j_gate]
                 #                    delay_time = delay_time[j_gate] # TODO: not used?
                 line_num = p.line_num[j_gate]
 
@@ -1075,9 +1142,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     f"A gate '{CF.gate_ns}' was specified for uncalibrated TDC data."
                 )
             else:
-                runtime = p.runtime
+                pulse_runtime = p.pulse_runtime
 
-            time_stamps = np.diff(runtime).astype(np.int32)
+            time_stamps = np.diff(pulse_runtime).astype(np.int32)
             for line_idx, j in enumerate(range(*p.line_limits)):
                 valid = (line_num == j).astype(np.int8)
                 valid[line_num == -j] = -1
@@ -1121,24 +1188,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             ts_split_list,
             self.after_pulse_param,
             self.laser_freq_hz,
-            self.bg_line_corr_list,
-            #            is_verbose=True,
+            self.bg_corr_list if should_subtract_bg_corr else None,
             **kwargs,
         )
 
         CF.vt_um = self.v_um_ms * CF.lag
 
         return CF
-
-    def _correlate_circular_scan_data(
-        self,
-        cf_name=None,
-        gate_ns=(0, np.inf),
-        **kwargs,
-    ) -> CorrFunc:
-        """Correlates data for circular scans. Returns a CorrFunc object"""
-
-        raise NotImplementedError("Correlation of circular scan data not yet implemented.")
 
     def plot_correlation_functions(
         self,
@@ -1519,23 +1575,45 @@ def calculate_afterpulse(
     return afterpulse
 
 
+def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_Hz):
+    """Doc."""
+
+    # calculate the number of samples obtained at each photon arrival, since beginning of file
+    sample_runtime = pulse_runtime * sample_freq_hz // laser_freq_hz
+    # calculate to which pixel each photon belongs (possibly many samples per pixel)
+    samples_per_circle = round(sample_freq_hz / scan_freq_Hz)
+    pixel_num = sample_runtime % samples_per_circle
+
+    # build the line image
+    bins = np.arange(-0.5, samples_per_circle)
+    img, _ = np.histogram(pixel_num, bins=bins)
+
+    return img, samples_per_circle
+    # TODO - possibly, only 'img' is needed here - check later
+
+
 # TODO - create an AngularScanMixin class and throw the below functions there
-def _convert_angular_scan_to_image(runtime, laser_freq_hz, sample_freq_hz, ppl_tot, n_lines):
+def _convert_angular_scan_to_image(
+    pulse_runtime, laser_freq_hz, sample_freq_hz, samples_per_line, n_lines
+):
     """utility function for opening Angular Scans"""
 
-    n_pix_tot = runtime * sample_freq_hz // laser_freq_hz
-    # to which pixel photon belongs
-    n_pix = np.mod(n_pix_tot, ppl_tot)
-    line_num_tot = np.floor_divide(n_pix_tot, ppl_tot)
-    # one more line is for return to starting positon
-    line_num = np.mod(line_num_tot, n_lines + 1).astype(np.int16)
+    # calculate the number of samples obtained at each photon arrival, since beginning of file
+    sample_runtime = pulse_runtime * sample_freq_hz // laser_freq_hz
+    # calculate to which pixel each photon belongs (possibly many samples per pixel)
+    pixel_num = sample_runtime % samples_per_line
+    # calculate to which line each photon belongs (global, not considering going back to the first line)
+    line_num_tot = sample_runtime // samples_per_line
+    # calculate to which line each photon belongs (extra line is for returning to starting position)
+    line_num = (line_num_tot % (n_lines + 1)).astype(np.int16)
 
-    img = np.empty((n_lines + 1, ppl_tot), dtype=np.uint16)
-    bins = np.arange(-0.5, ppl_tot)
+    # build the image
+    img = np.empty((n_lines + 1, samples_per_line), dtype=np.uint16)
+    bins = np.arange(-0.5, samples_per_line)
     for j in range(n_lines + 1):
-        img[j, :], _ = np.histogram(n_pix[line_num == j], bins=bins)
+        img[j, :], _ = np.histogram(pixel_num[line_num == j], bins=bins)
 
-    return img, n_pix_tot, n_pix, line_num
+    return img, sample_runtime, pixel_num, line_num
 
 
 def _get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
@@ -1593,7 +1671,7 @@ def _threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.
     return bw
 
 
-def _line_correlations(image, bw_mask, roi, line_limits: Limits, sampling_freq) -> list:
+def _bg_line_correlations(image, bw_mask, roi, line_limits: Limits, sampling_freq_Hz) -> list:
     """Returns a list of auto-correlations of the lines of an image"""
 
     image_line_corr = []
@@ -1608,7 +1686,7 @@ def _line_correlations(image, bw_mask, roi, line_limits: Limits, sampling_freq) 
             c[0] -= 1 / line.mean()  # subtracting shot noise, small stuff really
             image_line_corr.append(
                 {
-                    "lag": lags * 1e3 / sampling_freq,  # in ms
+                    "lag": lags * 1e3 / sampling_freq_Hz,  # in ms
                     "corrfunc": c,
                 }
             )

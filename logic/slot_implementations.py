@@ -1285,7 +1285,7 @@ class MainWin:
         loading_options["should_fix_shift"] = import_wdgts.fix_shift
         loading_options["roi_selection"] = "auto" if import_wdgts.should_auto_roi else "all"
         loading_options["should_subtract_afterpulse"] = import_wdgts.should_subtract_afterpulse
-        loading_options["shoud_subtract_bg_corr"] = import_wdgts.shoud_subtract_bg_corr
+        loading_options["should_subtract_bg_corr"] = import_wdgts.should_subtract_bg_corr
         loading_options["override_system_info"] = import_wdgts.override_system_info
 
         return loading_options
@@ -1353,12 +1353,31 @@ class MainWin:
                 sol_data_analysis_wdgts.scan_duration_min.set(measurement.duration_min)
                 sol_data_analysis_wdgts.avg_cnt_rate_khz.set(measurement.avg_cnt_rate_khz)
 
+                if measurement.scan_type == "circular_scan":
+                    # populate scan image tab
+                    logging.debug("Displaying scan images...")
+                    sol_data_analysis_wdgts.scan_img_file_num.obj.setEnabled(False)
+                    sol_data_analysis_wdgts.scan_img_file_num.set(0)
+                    self.display_circular_scan_image(imported_template)
+
+                    # calculate average and display
+                    logging.debug("Averaging and plotting...")
+                    self.calculate_and_show_sol_mean_acf(imported_template)
+
+                    scan_settings_text = "\n\n".join(
+                        [
+                            f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
+                            for key, val in measurement.circular_scan_settings.items()
+                        ]
+                    )
+
                 if measurement.scan_type == "angular_scan":
                     # populate scan images tab
                     logging.debug("Displaying scan images...")
+                    sol_data_analysis_wdgts.scan_img_file_num.obj.setEnabled(True)
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
                     sol_data_analysis_wdgts.scan_img_file_num.set(1)
-                    self.display_scan_image(1, imported_template)
+                    self.display_angular_scan_image(1, imported_template)
 
                     # calculate average and display
                     logging.debug("Averaging and plotting...")
@@ -1380,7 +1399,20 @@ class MainWin:
 
                 logging.debug("Done.")
 
-    def display_scan_image(self, file_num, imported_template: str = None):
+    def display_circular_scan_image(self, imported_template: str = None):
+        """Doc."""
+
+        with suppress(IndexError, KeyError, AttributeError):
+            # IndexError - data import failed
+            # KeyError, AttributeError - data deleted
+            with self.get_measurement_from_template(imported_template) as measurement:
+                img = measurement.scan_image
+
+                scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
+                scan_image_disp.display_image(img)
+                scan_image_disp.entitle_and_label("Pixel Index", "File Index")
+
+    def display_angular_scan_image(self, file_num, imported_template: str = None):
         """Doc."""
 
         with suppress(IndexError, KeyError, AttributeError):
@@ -1403,6 +1435,29 @@ class MainWin:
         with self.get_measurement_from_template(imported_template) as measurement:
             if measurement is None:
                 return
+
+            if measurement.scan_type == "circular_scan":
+                data_type = self.infer_data_type_from_template(measurement.template)
+                cf = measurement.cf[data_type]
+                cf.average_correlation()
+
+                # setting values and plotting
+                if sol_data_analysis_wdgts.plot_spatial:
+                    x = (cf.vt_um, "disp")
+                    x_label = r"disp. ($um^2$)"
+                else:
+                    x = (cf.lag, "lag")
+                    x_label = "lag (ms)"
+
+                sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
+                sol_data_analysis_wdgts.mean_tau.set(0)
+                sol_data_analysis_wdgts.row_acf_disp.obj.clear()
+                sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
+                    x,
+                    cf.avg_cf_cr,
+                    cf.g0,
+                )
+                sol_data_analysis_wdgts.row_acf_disp.obj.entitle_and_label(x_label, "G0")
 
             if measurement.scan_type == "angular_scan":
                 row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
