@@ -671,7 +671,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             full_data["ao"] = self.ao_buffer
 
             if self.scan_params.pattern == "circle":
-                full_data["circle_speed_um_s"] = self.scan_params.speed_um_s
+                full_data["circular_scan_settings"] = {
+                    "speed_um_s": self.scan_params.speed_um_s,
+                    "sample_freq_hz": self.scan_params.ao_samp_freq_Hz,
+                    "diameter_um": self.scan_params.diameter_um,
+                }
             elif self.scan_params.pattern == "angular":
                 full_data["angular_scan_settings"] = {
                     "x": self.ao_buffer[0, :],

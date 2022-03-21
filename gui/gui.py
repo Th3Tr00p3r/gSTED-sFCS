@@ -260,7 +260,7 @@ class MainWin(QtWidgets.QMainWindow):
     def on_scanImgFileNum_valueChanged(self, val: int) -> None:
         """Doc."""
 
-        self.impl.display_scan_image(val)
+        self.impl.display_angular_scan_image(val)
 
     @QtCore.pyqtSlot()
     def on_removeImportedSolData_released(self) -> None:

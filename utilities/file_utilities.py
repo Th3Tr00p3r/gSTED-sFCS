@@ -315,8 +315,8 @@ def save_processed_solution_meas(meas, dir_path: Path) -> None:
 
     # lower size if possible
     for p in meas.data:
-        if p.runtime.max() <= np.iinfo(np.int32).max:
-            p.runtime = p.runtime.astype(np.int32)
+        if p.pulse_runtime.max() <= np.iinfo(np.int32).max:
+            p.pulse_runtime = p.pulse_runtime.astype(np.int32)
 
     dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", meas.template)
@@ -335,7 +335,7 @@ def load_processed_solution_measurement(file_path: Path):
 
     # Load runtimes as int64 if they are not already of that type
     for p in tdc_obj.data:
-        p.runtime = p.runtime.astype(np.int64, copy=False)
+        p.pulse_runtime = p.pulse_runtime.astype(np.int64, copy=False)
 
     return tdc_obj
 
@@ -354,9 +354,17 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
     else:
         raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
 
-    # patch for legacy Python files (almost non-existant)
-    if not file_dict.get("system_info") or override_system_info:
+    # patches for legacy Python files (almost non-existant)
+    if not file_dict.get("system_info") or override_system_info:  # missing/overriden system_info
         file_dict["system_info"] = default_system_info
+    if full_data := file_dict.get("full_data"):  # legacy circular scans
+        if full_data.get("circle_speed_um_s"):
+            full_data.pop("circle_speed_um_s")
+            full_data["circular_scan_settings"] = {
+                "speed_um_s": 6000,
+                "sample_freq_hz": int(1e4),
+                "diameter_um": 50,
+            }
 
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
