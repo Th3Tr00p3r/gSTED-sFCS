@@ -170,10 +170,13 @@ class Timeout:
 
             meas = self._app.meas
 
+            if not self.scan_dvc.error_dict:  # TESTESTEST
+                updt_scn_pos()  # TESTESTEST
+
             if not meas.is_running:
                 # scanners
-                if not self.scan_dvc.error_dict:
-                    updt_scn_pos()
+                #                if not self.scan_dvc.error_dict: # TESTESTEST
+                #                    updt_scn_pos() # TESTESTEST
 
                 # log file widget
                 update_log_wdgt()
