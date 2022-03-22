@@ -62,7 +62,7 @@ class MeasurementProcedure:
         self.prog_bar_wdgt = prog_bar_wdgt
         self.icon_dict = icons.get_icon_paths()  # get icons
         self.scan_params = scan_params
-        self.um_v_ratio = tuple(getattr(self.scanners_dvc, f"{ax}_um2v_const") for ax in "xyz")
+        self.um_v_ratio = self.scanners_dvc.um_v_ratio
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
         self.sys_info = file_utilities.default_system_info
         self.sys_info["xyz_um_to_v"] = self.um_v_ratio
@@ -671,7 +671,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 pattern=self.scan_params.pattern,
                 ai=np.array(self.scanners_dvc.ai_buffer, dtype=np.float32),
                 ao=self.ao_buffer.T,
-                speed_um_s=self.scan_params.speed_um_s,
+                speed_um_s=self.scan_params.eff_speed_um_s,
                 sample_freq_hz=self.scan_params.ao_samp_freq_hz,
             )
             if self.scan_params.pattern == "circle":

@@ -2680,7 +2680,7 @@ File</string>
                       </sizepolicy>
                      </property>
                      <property name="currentIndex">
-                      <number>1</number>
+                      <number>0</number>
                      </property>
                      <widget class="QWidget" name="angularParams">
                       <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -3264,6 +3264,9 @@ File</string>
                                </property>
                                <property name="buttonSymbols">
                                 <enum>QAbstractSpinBox::NoButtons</enum>
+                               </property>
+                               <property name="maximum">
+                                <double>99999999.000000000000000</double>
                                </property>
                               </widget>
                              </item>
