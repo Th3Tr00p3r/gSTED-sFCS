@@ -266,7 +266,8 @@ class ScanPatternAO:
         ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
 
         params.dt = 1 / samp_freq_Hz
-        params.speed_um_s = v * lin_len * samp_freq_Hz
+        params.speed_um_s = params.speed_um_s
+        params.eff_speed_um_s = v * lin_len * samp_freq_Hz
         params.scan_freq_hz = scan_freq_hz
         params.samples_per_line = samples_per_line
         params.ppl = ppl
