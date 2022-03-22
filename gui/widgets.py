@@ -328,7 +328,7 @@ SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
 
 SOL_ANG_SCAN_COLL = QtWidgetCollection(
     max_line_len_um=("maxLineLen", "QDoubleSpinBox", "main", False),
-    ao_samp_freq_Hz=("angAoSampFreq", "QDoubleSpinBox", "main", False),
+    ao_samp_freq_hz=("angAoSampFreq", "QDoubleSpinBox", "main", False),
     angle_deg=("angle", "QSpinBox", "main", False),
     lin_frac=("solLinFrac", "QDoubleSpinBox", "main", False),
     line_shift_um=("lineShift", "QSpinBox", "main", False),
@@ -336,14 +336,14 @@ SOL_ANG_SCAN_COLL = QtWidgetCollection(
     min_lines=("minNumLines", "QSpinBox", "main", False),
     max_scan_freq_Hz=("maxScanFreq", "QSpinBox", "main", False),
     ppl=("solPointsPerLine", "QSpinBox", "main", True),
-    tot_ppl=("solTotPointsPerLine", "QSpinBox", "main", True),
+    samples_per_line=("solTotPointsPerLine", "QSpinBox", "main", True),
     eff_speed_um_s=("solAngActualSpeed", "QDoubleSpinBox", "main", True),
     n_lines=("solNumLines", "QSpinBox", "main", True),
-    scan_freq_Hz=("solActualScanFreq", "QDoubleSpinBox", "main", True),
+    scan_freq_hz=("solActualScanFreq", "QDoubleSpinBox", "main", True),
 )
 
 SOL_CIRC_SCAN_COLL = QtWidgetCollection(
-    ao_samp_freq_Hz=("circAoSampFreq", "QSpinBox", "main", False),
+    ao_samp_freq_hz=("circAoSampFreq", "QSpinBox", "main", False),
     diameter_um=("circDiameter", "QDoubleSpinBox", "main", False),
     speed_um_s=("circSpeed", "QSpinBox", "main", False),
 )
@@ -378,7 +378,7 @@ IMG_SCAN_COLL = QtWidgetCollection(
     dim3_um=("imgScanDim3", "QDoubleSpinBox", "main", False),
     n_lines=("imgScanNumLines", "QSpinBox", "main", False),
     ppl=("imgScanPPL", "QSpinBox", "main", False),
-    line_freq_Hz=("imgScanLineFreq", "QSpinBox", "main", False),
+    line_freq_hz=("imgScanLineFreq", "QSpinBox", "main", False),
     lin_frac=("imgScanLinFrac", "QDoubleSpinBox", "main", False),
     n_planes=("imgScanNumPlanes", "QSpinBox", "main", False),
     curr_ao_x=("xAOVint", "QDoubleSpinBox", "main", False),

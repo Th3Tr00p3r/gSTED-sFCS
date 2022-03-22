@@ -32,7 +32,7 @@ legacy_matlab_trans_dict = {
     "ActualSpeed": "actual_speed_um_s",
     "ScanFreq": "scan_freq_hz",
     "SampleFreq": "sample_freq_hz",
-    "PointsPerLineTotal": "points_per_line_total",
+    "PointsPerLineTotal": "samples_per_line",
     "PointsPerLine": "points_per_line",
     "NofLines": "n_lines",
     "LineLength": "line_length",
@@ -90,12 +90,14 @@ legacy_python_trans_dict = {
     "pix_clk_freq": "pix_clk_freq_mhz",
     "laser_freq": "laser_freq_mhz",
     "circle_speed_um_sec": "circle_speed_um_s",
-    "actual_speed": "actual_speed_um_s",
+    "actual_speed": "speed_um_s",
+    "actual_speed_um_s": "speed_um_s",
     "scan_freq": "scan_freq_hz",
     "sample_freq": "sample_freq_hz",
     "max_line_length": "max_line_length_um",
     "line_shift": "line_shift_um",
     "data": "byte_data",
+    "points_per_line_total": "samples_per_line",
     # Image
     "cnt": "ci",
     "lines": "n_lines",
@@ -357,14 +359,31 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
     # patches for legacy Python files (almost non-existant)
     if not file_dict.get("system_info") or override_system_info:  # missing/overriden system_info
         file_dict["system_info"] = default_system_info
-    if full_data := file_dict.get("full_data"):  # legacy circular scans
+    if full_data := file_dict.get("full_data"):  # legacy full_data object structures
         if full_data.get("circle_speed_um_s"):
             full_data.pop("circle_speed_um_s")
-            full_data["circular_scan_settings"] = {
+            full_data["scan_settings"] = {
+                "pattern": "circle",
                 "speed_um_s": 6000,
                 "sample_freq_hz": int(1e4),
                 "diameter_um": 50,
             }
+        scan_pattern = None
+        if scan_settings := full_data.get("circular_scan_settings"):
+            scan_pattern = "circle"
+            full_data["scan_settings"] = {"pattern": scan_pattern, **scan_settings}
+        elif scan_settings := full_data.get("angular_scan_settings"):
+            scan_pattern = "angular"
+            full_data["scan_settings"] = {"pattern": scan_pattern, **scan_settings}
+        if full_data.get("ao") is not None:
+            full_data["scan_settings"].update(
+                ao=full_data["ao"].T,
+                ai=full_data["ai"],
+            )
+            full_data["scan_settings"].pop("x", None)
+            full_data["scan_settings"].pop("y", None)
+            full_data.pop("ao")
+            full_data.pop("ai")
 
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
