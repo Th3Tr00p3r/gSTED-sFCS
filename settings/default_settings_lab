@@ -6,18 +6,6 @@ arduinoAddr,COM3
 um232BitMode,Single Channel Synchronous 245 FIFO
 um232FlowControl,RTS-CTS
 um232Description,UM232H
-AOXaddr,Dev3/ao2, Dev3/ao3
-AOYaddr,Dev3/ao0, Dev3/ao1
-AOZaddr,Dev1/ao1
-AOXintAddr,Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd
-AOYintAddr,Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd
-AOZintAddr,Dev3/ai0
-AOdigTrigSrc,/Dev3/PFI0
-AItrigSrc,/Dev3/PFI0
-AIXaddr,Dev3/ai23
-AIYaddr,Dev3/ai7
-AIZaddr,Dev3/ai9
-AIlaserMonAddr,Dev3/ai3
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
@@ -38,22 +26,33 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
+AOXaddr,Dev3/ao2, Dev3/ao3
+AOYaddr,Dev3/ao0, Dev3/ao1
+AOZaddr,Dev1/ao1
+AOXintAddr,Dev3/_ao2_vs_aognd, Dev3/_ao3_vs_aognd
+AOYintAddr,Dev3/_ao0_vs_aognd, Dev3/_ao1_vs_aognd
+AOZintAddr,Dev3/ai0
+AOdigTrigSrc,/Dev3/PFI0
+AItrigSrc,/Dev3/PFI0
+AIXaddr,Dev3/ai23
+AIYaddr,Dev3/ai7
+AIZaddr,Dev3/ai9
+AIlaserMonAddr,Dev3/ai3
+sysScanSetup,STED with galvos
+afterpulsingFitType,multi_exponent_fit
+afterpulsingFitParams, 2.26707493e01, 2.10619289e-01, 1.95406751e06,
 dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
 solSubdirName,solution
 imgSubdirName,image
 camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
 logDataPath,./log/
 tempDataPath,C:/temp_sfcs_folder/
-sysScanSetup,STED with galvos
-afterpulsingFitType,multi_exponent_fit
-afterpulsingFitParams, 2.26707493e01, 2.10619289e-01, 1.95406751e06,
 spadBaudRate,115200
 spadTimeout,100
 um232Timeout,2
 um232TxSize,256000
 um232NumBytes,256000
 um232LatencyTimerVal,2
-AIclkDiv,100
 psdBaudRate,115200
 psdTimeout,10
 psdThreshold_mV,-500
@@ -64,14 +63,15 @@ TDCversion,3
 pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
+AIclkDiv,100
 xConv,70.81
 yConv,82.74
 zConv,10.0
-laserPropTime,50.0
-AOtriggerEdge,Rising
-AOwfType,Sine
+laserPropTime,15.5
 excTriggerSrc,External (TDC)
 counterTriggerEdge,Rising
+AOtriggerEdge,Rising
+AOwfType,Sine
 counterCIdupCountPrevention,True
-tabWidget,1
-tabWidget_2,2
+tabWidget,0
+tabWidget_2,1

@@ -362,15 +362,15 @@ class ImageMeasurementProcedure(MeasurementProcedure):
                 return helper.div_ceil(ppl, 2) * 2
 
         # fix line freq, pxl clk low ticks, and ppl
-        self.scan_params.line_freq_Hz, clk_div = sync_line_freq(
-            self.scan_params.line_freq_Hz,
+        self.scan_params.line_freq_hz, clk_div = sync_line_freq(
+            self.scan_params.line_freq_hz,
             self.scan_params.ppl,
             self.pxl_clk_dvc.freq_MHz * 1e6,
         )
         self.pxl_clk_dvc.low_ticks = clk_div - 2
         self.ppl = fix_ppl(
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
-            self.scan_params.line_freq_Hz,
+            self.scan_params.line_freq_hz,
             self.scan_params.ppl,
         )
         # create ao_buffer
@@ -433,7 +433,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
                 "dim3_um": self.scan_params.dim3_um,
                 "n_lines": self.scan_params.n_lines,
                 "n_planes": self.scan_params.n_planes,
-                "line_freq_hz": self.scan_params.line_freq_Hz,
+                "line_freq_hz": self.scan_params.line_freq_hz,
                 "ppl": self.scan_params.ppl,
                 "plane_orientation": self.scan_params.plane_orientation,
                 "initial_ao": self.scan_params.initial_ao,
@@ -584,13 +584,13 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         """Doc."""
 
         # make sure divisablility, then sync pixel clock with ao sample clock
-        if (self.pxl_clk_dvc.freq_MHz * 1e6) % self.scan_params.ao_samp_freq_Hz != 0:
+        if (self.pxl_clk_dvc.freq_MHz * 1e6) % self.scan_params.ao_samp_freq_hz != 0:
             raise ValueError(
-                f"Pixel clock ({self.pxl_clk_dvc.freq_MHz} Hz) and ao samplng ({self.scan_params.ao_samp_freq_Hz} Hz) frequencies aren't divisible."
+                f"Pixel clock ({self.pxl_clk_dvc.freq_MHz} Hz) and ao samplng ({self.scan_params.ao_samp_freq_hz} Hz) frequencies aren't divisible."
             )
         else:
             self.pxl_clk_dvc.low_ticks = (
-                int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_Hz) - 2
+                int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_hz) - 2
             )
         # create ao_buffer
         self.ao_buffer, self.scan_params = ScanPatternAO(
@@ -667,35 +667,33 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         if self.scanning:
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
-            full_data["ai"] = np.array(self.scanners_dvc.ai_buffer, dtype=np.float32)
-            full_data["ao"] = self.ao_buffer
-
+            full_data["scan_settings"] = dict(
+                pattern=self.scan_params.pattern,
+                ai=np.array(self.scanners_dvc.ai_buffer, dtype=np.float32),
+                ao=self.ao_buffer.T,
+                speed_um_s=self.scan_params.speed_um_s,
+                sample_freq_hz=self.scan_params.ao_samp_freq_hz,
+            )
             if self.scan_params.pattern == "circle":
-                full_data["circular_scan_settings"] = {
-                    "speed_um_s": self.scan_params.speed_um_s,
-                    "sample_freq_hz": self.scan_params.ao_samp_freq_Hz,
-                    "diameter_um": self.scan_params.diameter_um,
-                }
+                full_data["scan_settings"].update(
+                    diameter_um=self.scan_params.diameter_um,
+                )
             elif self.scan_params.pattern == "angular":
-                full_data["angular_scan_settings"] = {
-                    "x": self.ao_buffer[0, :],
-                    "y": self.ao_buffer[1, :],
-                    "actual_speed_um_s": self.scan_params.eff_speed_um_s,
-                    "scan_freq_hz": self.scan_params.scan_freq_Hz,
-                    "sample_freq_hz": self.scan_params.ao_samp_freq_Hz,
-                    "points_per_line_total": self.scan_params.tot_ppl,
-                    "ppl": self.scan_params.ppl,
-                    "n_lines": self.scan_params.n_lines,
-                    "line_length": self.scan_params.lin_len,
-                    "total_length": self.scan_params.tot_len,
-                    "max_line_length_um": self.scan_params.max_line_len_um,
-                    "line_shift_um": self.scan_params.line_shift_um,
-                    "angle_degrees": self.scan_params.angle_deg,
-                    "linear_frac": self.scan_params.lin_frac,
-                    "linear_part": self.scan_params.lin_part,
-                    "x_lim": self.scan_params.x_lim,
-                    "y_lim": self.scan_params.y_lim,
-                }
+                full_data["scan_settings"].update(
+                    scan_freq_hz=self.scan_params.scan_freq_hz,
+                    samples_per_line=self.scan_params.samples_per_line,
+                    ppl=self.scan_params.ppl,
+                    n_lines=self.scan_params.n_lines,
+                    line_length=self.scan_params.lin_len,
+                    total_length=self.scan_params.tot_len,
+                    max_line_length_um=self.scan_params.max_line_len_um,
+                    line_shift_um=self.scan_params.line_shift_um,
+                    angle_degrees=self.scan_params.angle_deg,
+                    linear_frac=self.scan_params.lin_frac,
+                    linear_part=self.scan_params.lin_part,
+                    x_lim=self.scan_params.x_lim,
+                    y_lim=self.scan_params.y_lim,
+                )
 
         return {"full_data": full_data, "system_info": self.sys_info}
 

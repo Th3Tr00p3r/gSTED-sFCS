@@ -6,7 +6,6 @@ import re
 import sys
 import webbrowser
 from collections import namedtuple
-from collections.abc import Iterable
 from contextlib import contextmanager, suppress
 from datetime import datetime as dt
 from pathlib import Path
@@ -1353,7 +1352,7 @@ class MainWin:
                 sol_data_analysis_wdgts.scan_duration_min.set(measurement.duration_min)
                 sol_data_analysis_wdgts.avg_cnt_rate_khz.set(measurement.avg_cnt_rate_khz)
 
-                if measurement.scan_type == "circular_scan":
+                if measurement.scan_type == "circle":
                     # populate scan image tab
                     logging.debug("Displaying scan images...")
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setEnabled(False)
@@ -1364,14 +1363,15 @@ class MainWin:
                     logging.debug("Averaging and plotting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
 
+                    # TODO: make this into a function which generates the string from the scan_settings (handle non-Numpy Iterables)
                     scan_settings_text = "\n\n".join(
                         [
-                            f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
-                            for key, val in measurement.circular_scan_settings.items()
+                            f"{key}: {np.array_str(val[:5], precision=2) if isinstance(val, np.ndarray) else (f'{val:.2f}' if helper.can_float(val) else val)}"
+                            for key, val in measurement.scan_settings.items()
                         ]
                     )
 
-                if measurement.scan_type == "angular_scan":
+                if measurement.scan_type == "angular":
                     # populate scan images tab
                     logging.debug("Displaying scan images...")
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setEnabled(True)
@@ -1383,10 +1383,11 @@ class MainWin:
                     logging.debug("Averaging and plotting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
 
+                    # TODO: make this into a function which generates the string from the scan_settings (handle non-Numpy Iterables)
                     scan_settings_text = "\n\n".join(
                         [
-                            f"{key}: {(', '.join([f'{ele:.2f}' for ele in val[:5]]) if isinstance(val, Iterable) else f'{val:.2f}')}"
-                            for key, val in measurement.angular_scan_settings.items()
+                            f"{key}: {np.array_str(val[:5], precision=2) if isinstance(val, np.ndarray) else (f'{val:.2f}' if helper.can_float(val) else val)}"
+                            for key, val in measurement.scan_settings.items()
                         ]
                     )
 
@@ -1436,7 +1437,7 @@ class MainWin:
             if measurement is None:
                 return
 
-            if measurement.scan_type == "circular_scan":
+            if measurement.scan_type == "circle":
                 data_type = self.infer_data_type_from_template(measurement.template)
                 cf = measurement.cf[data_type]
                 cf.average_correlation()
@@ -1459,7 +1460,7 @@ class MainWin:
                 )
                 sol_data_analysis_wdgts.row_acf_disp.obj.entitle_and_label(x_label, "G0")
 
-            if measurement.scan_type == "angular_scan":
+            if measurement.scan_type == "angular":
                 row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)

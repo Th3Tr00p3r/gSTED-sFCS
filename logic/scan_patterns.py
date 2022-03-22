@@ -32,7 +32,7 @@ class ScanPatternAO:
         """Doc."""
         # TODO: have it so that this function returns the same types - ao and params (in a tuple).
 
-        params.dt = 1 / (self.scan_params.line_freq_Hz * self.scan_params.ppl)
+        params.dt = 1 / (self.scan_params.line_freq_hz * self.scan_params.ppl)
 
         # order according to relevant plane dimensions
         if params.plane_orientation == "XY":
@@ -111,7 +111,7 @@ class ScanPatternAO:
         max_line_len = params.max_line_len_um
         line_shift_um = params.line_shift_um
         min_n_lines = params.min_lines
-        samp_freq_Hz = params.ao_samp_freq_Hz
+        samp_freq_Hz = params.ao_samp_freq_hz
         max_scan_freq_Hz = params.max_scan_freq_Hz
 
         if not (0 <= ang_deg <= 180):
@@ -192,19 +192,19 @@ class ScanPatternAO:
                 )
 
         lin_len = f * tot_len
-        scan_freq_Hz = params.speed_um_s / (2 * tot_len * (2 - f))
+        scan_freq_hz = params.speed_um_s / (2 * tot_len * (2 - f))
 
-        tot_ppl = round((samp_freq_Hz / scan_freq_Hz) / 2)
-        scan_freq_Hz = samp_freq_Hz / tot_ppl / 2
+        samples_per_line = round((samp_freq_Hz / scan_freq_hz) / 2)
+        scan_freq_hz = samp_freq_Hz / samples_per_line / 2
 
         # NOTE: ask Oleg about this (max y freq?)
-        if scan_freq_Hz > max_scan_freq_Hz:
+        if scan_freq_hz > max_scan_freq_Hz:
             logging.warning(
-                f"scan frequency ({scan_freq_Hz:.2f} Hz) is over {max_scan_freq_Hz} Hz."
+                f"scan frequency ({scan_freq_hz:.2f} Hz) is over {max_scan_freq_Hz} Hz."
             )
             raise ValueError
 
-        T = tot_ppl
+        T = samples_per_line
         ppl = T * f / (2 - f)  # make ppl in linear part
 
         t0 = T * (1 - f) / (2 - f)
@@ -266,9 +266,9 @@ class ScanPatternAO:
         ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
 
         params.dt = 1 / samp_freq_Hz
-        params.eff_speed_um_s = v * lin_len * samp_freq_Hz
-        params.scan_freq_Hz = scan_freq_Hz
-        params.tot_ppl = tot_ppl
+        params.speed_um_s = v * lin_len * samp_freq_Hz
+        params.scan_freq_hz = scan_freq_hz
+        params.samples_per_line = samples_per_line
         params.ppl = ppl
         params.n_lines = n_lines
         params.lin_len = lin_len
@@ -285,13 +285,13 @@ class ScanPatternAO:
         """Doc."""
 
         # argument definitions (for better readability
-        samp_freq_Hz = params.ao_samp_freq_Hz
+        samp_freq_Hz = params.ao_samp_freq_hz
         R_um = params.diameter_um / 2
         speed = params.speed_um_s
 
         tot_len = 2 * pi * R_um
-        scan_freq_Hz = speed / tot_len
-        n_samps = int(samp_freq_Hz / scan_freq_Hz)
+        scan_freq_hz = speed / tot_len
+        n_samps = int(samp_freq_Hz / scan_freq_hz)
 
         x_um_v_ratio, y_um_v_ratio, _ = um_v_ratio
         R_Vx = R_um / x_um_v_ratio
@@ -305,8 +305,8 @@ class ScanPatternAO:
             dtype=np.float,
         )
 
-        params.dt = 1 / scan_freq_Hz
-        params.scan_freq_Hz = scan_freq_Hz
+        params.dt = 1 / scan_freq_hz
+        params.scan_freq_hz = scan_freq_hz
 
         return ao_buffer, params
 
