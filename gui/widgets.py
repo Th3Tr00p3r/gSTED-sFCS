@@ -85,9 +85,10 @@ class QtWidgetCollection:
 
         if isinstance(obj, dict):
             for attr_name, val in obj.items():
-                wdgt = getattr(self, attr_name)
-                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                wdgt.set(val, parent_gui)
+                with suppress(AttributeError):  # obj contains key with no matching wdgt in coll
+                    wdgt = getattr(self, attr_name)
+                    parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                    wdgt.set(val, parent_gui)
         else:
             for wdgt in vars(self).values():
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
