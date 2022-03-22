@@ -95,7 +95,7 @@ def chunks(list_: list, n: int):
         yield list_[i : i + n]
 
 
-def _can_float(value: Any) -> bool:
+def can_float(value: Any) -> bool:
     """Checks if 'value' can be turned into a float"""
 
     try:
@@ -122,7 +122,7 @@ def generate_numbers_from_string(source_str):
     i = 0
     while i < len(source_str):
         j = i + 1
-        while (j < len(source_str) + 1) and _can_float(source_str[i:j]):
+        while (j < len(source_str) + 1) and can_float(source_str[i:j]):
             j += 1
         with suppress(TypeError, ValueError):
             yield number(source_str[i : j - 1])

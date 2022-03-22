@@ -226,7 +226,7 @@ class TDCPhotonDataMixin:
             fine[n_elem[i] : n_elem[i + 1]] = p.fine
 
         # remove line starts/ends from angular scan data
-        if self.scan_type == "angular_scan":
+        if self.scan_type == "angular":
             photon_idxs = fine > self.NAN_PLACEBO
             coarse = coarse[photon_idxs]
             fine = fine[photon_idxs]

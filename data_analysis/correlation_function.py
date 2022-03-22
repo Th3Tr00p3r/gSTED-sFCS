@@ -570,18 +570,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 f"Loading FPGA data catastrophically failed ({self.n_paths}/{self.n_paths} files skipped)."
             )
 
-        if self.scan_type == "circular_scan":
+        # aggregate images and ROIs for sFCS
+        if self.scan_type == "circle":
             self.scan_image = np.vstack(tuple(p.image for p in self.data))
-            bg_corr_array = np.empty(
-                (len(self.data), self.circular_scan_settings["samples_per_circle"])
-            )
+            bg_corr_array = np.empty((len(self.data), self.scan_settings["samples_per_circle"]))
             for idx, p in enumerate(self.data):
                 bg_corr_array[idx] = p.image_line_corr["corrfunc"]
             avg_bg_corr = bg_corr_array.mean(axis=0)
             self.bg_corr_list = [dict(lag=p.image_line_corr["lag"], corrfunc=avg_bg_corr)]
         #            self.bg_corr_list = [p.image_line_corr for p in self.data]
 
-        if self.scan_type == "angular_scan":
+        if self.scan_type == "angular":
             # aggregate images and ROIs for angular sFCS
             self.scan_images_dstack = np.dstack(tuple(p.image for p in self.data))
             self.roi_list = [p.roi for p in self.data]
@@ -610,21 +609,27 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         print(f"Finished loading FPGA data ({self.n_files}/{self.n_paths} files used).\n")
 
         # plotting of scan image and ROI
-        if should_plot and self.scan_type == "angular_scan":
+        if should_plot:
             print("Displaying scan images...", end=" ")
-            with Plotter(subplots=(1, self.n_files), fontsize=8, should_force_aspect=True) as axes:
-                if not hasattr(
-                    axes, "size"
-                ):  # if axes is not an ndarray (only happens if reading just one file)
-                    axes = np.array([axes])
-                for file_idx, (ax, image, roi) in enumerate(
-                    zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
-                ):
-                    ax.set_title(f"file #{file_idx+1} of\n'{self.name}' measurement")
-                    ax.set_xlabel("Pixel Number")
-                    ax.set_ylabel("Line Number")
-                    ax.imshow(image, interpolation="none")
-                    ax.plot(roi["col"], roi["row"], color="white")
+            if self.scan_type == "angular":
+                with Plotter(
+                    subplots=(1, self.n_files), fontsize=8, should_force_aspect=True
+                ) as axes:
+                    if not hasattr(
+                        axes, "size"
+                    ):  # if axes is not an ndarray (only happens if reading just one file)
+                        axes = np.array([axes])
+                    for file_idx, (ax, image, roi) in enumerate(
+                        zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
+                    ):
+                        ax.set_title(f"file #{file_idx+1} of\n'{self.name}' measurement")
+                        ax.set_xlabel("Pixel Number")
+                        ax.set_ylabel("Line Number")
+                        ax.imshow(image, interpolation="none")
+                        ax.plot(roi["col"], roi["row"], color="white")
+            elif self.scan_type == "circle":
+                # TODO: FILL ME IN
+                pass
             print("Done.\n")
 
     @timer(int(1e4))
@@ -672,20 +677,16 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         with suppress(KeyError):
             self.duration_min = full_data["duration_s"] / 60
 
-        # Circular sFCS
-        if full_data.get("circular_scan_settings"):
-            self.scan_type = "circular_scan"
-            self.circular_scan_settings = full_data["circular_scan_settings"]
-            self.v_um_ms = self.circular_scan_settings["speed_um_s"] * 1e-3
-            self.sample_freq_hz = self.circular_scan_settings.get("sample_freq_hz", int(1e4))
-            self.diameter_um = self.circular_scan_settings.get("diameter_um", 50)
-
-        # Angular sFCS
-        elif full_data.get("angular_scan_settings"):
-            self.scan_type = "angular_scan"
-            self.angular_scan_settings = full_data["angular_scan_settings"]
-            self.v_um_ms = self.angular_scan_settings["actual_speed_um_s"] * 1e-3
-            self.LINE_END_ADDER = 1000
+        # sFCS
+        if scan_settings := full_data.get("scan_settings"):
+            self.scan_type = scan_settings["pattern"]
+            self.scan_settings = scan_settings
+            self.v_um_ms = self.scan_settings["speed_um_s"] * 1e-3
+            if self.scan_type == "circle":  # Circular sFCS
+                self.sample_freq_hz = self.scan_settings.get("sample_freq_hz", int(1e4))
+                self.diameter_um = self.scan_settings.get("diameter_um", 50)
+            elif self.scan_type == "angular":  # Angular sFCS
+                self.LINE_END_ADDER = 1000
 
         # FCS
         else:
@@ -714,13 +715,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         full_data = file_dict["full_data"]
 
-        # Circular sFCS
-        if full_data.get("circular_scan_settings"):
-            p = self._process_circular_scan_data_file(full_data, file_idx, **kwargs)
-
-        # Angular sFCS
-        elif full_data.get("angular_scan_settings"):
-            p = self._process_angular_scan_data_file(full_data, file_idx, **kwargs)
+        # sFCS
+        if scan_settings := full_data.get("scan_settings"):
+            if scan_settings["pattern"] == "circle":  # Circular sFCS
+                p = self._process_circular_scan_data_file(full_data, file_idx, **kwargs)
+            elif scan_settings["pattern"] == "angular":  # Angular sFCS
+                p = self._process_angular_scan_data_file(full_data, file_idx, **kwargs)
 
         # FCS
         else:
@@ -767,20 +767,20 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         p.file_num = file_idx
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
-        circular_scan_settings = full_data["circular_scan_settings"]
-        sample_freq_hz = int(circular_scan_settings["sample_freq_hz"])
-        diameter_um = circular_scan_settings["diameter_um"]
+        scan_settings = full_data["scan_settings"]
+        sample_freq_hz = int(scan_settings["sample_freq_hz"])
+        diameter_um = scan_settings["diameter_um"]
         circumference = np.pi * diameter_um
-        speed_um_s = circular_scan_settings["speed_um_s"]
-        scan_freq_Hz = speed_um_s / circumference
+        speed_um_s = scan_settings["speed_um_s"]
+        scan_freq_hz = speed_um_s / circumference
 
         print("Converting circular scan to image...", end=" ")
         pulse_runtime = p.pulse_runtime
-        cnt, self.circular_scan_settings["samples_per_circle"] = _sum_scan_circles(
+        cnt, self.scan_settings["samples_per_circle"] = _sum_scan_circles(
             pulse_runtime,
             self.laser_freq_hz,
             sample_freq_hz,
-            scan_freq_Hz,
+            scan_freq_hz,
         )
 
         p.image = cnt
@@ -816,17 +816,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         p.file_num = file_idx
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
-        angular_scan_settings = full_data["angular_scan_settings"]
-        linear_part = angular_scan_settings["linear_part"].round().astype(np.uint16)
-        sample_freq_hz = int(angular_scan_settings["sample_freq_hz"])
-        ppl_tot = int(angular_scan_settings["points_per_line_total"])
-        n_lines = int(angular_scan_settings["n_lines"])
+        scan_settings = full_data["scan_settings"]
+        linear_part = scan_settings["linear_part"].round().astype(np.uint16)
+        sample_freq_hz = int(scan_settings["sample_freq_hz"])
+        samples_per_line = int(scan_settings["samples_per_line"])
+        n_lines = int(scan_settings["n_lines"])
 
         print("Converting angular scan to image...", end=" ")
 
         pulse_runtime = p.pulse_runtime
         cnt, sample_runtime, pixel_num, line_num = _convert_angular_scan_to_image(
-            pulse_runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
+            pulse_runtime, self.laser_freq_hz, sample_freq_hz, samples_per_line, n_lines
         )
 
         if should_fix_shift:
@@ -834,7 +834,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             pix_shift = _fix_data_shift(cnt)
             pulse_runtime = p.pulse_runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
             cnt, sample_runtime, pixel_num, line_num = _convert_angular_scan_to_image(
-                pulse_runtime, self.laser_freq_hz, sample_freq_hz, ppl_tot, n_lines
+                pulse_runtime, self.laser_freq_hz, sample_freq_hz, samples_per_line, n_lines
             )
             print(f"({pix_shift} pixels).", end=" ")
 
@@ -988,9 +988,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         kwargs["gate_ns"] = tdc_gate_ns & self.detector_gate_ns
 
         # correlate data
-        if self.scan_type in {"static", "circular_scan"}:
+        if self.scan_type in {"static", "circle"}:
             CF = self._correlate_continuous_data(**kwargs)
-        elif self.scan_type == "angular_scan":
+        elif self.scan_type == "angular":
             CF = self._correlate_angular_scan_data(**kwargs)
         else:
             raise NotImplementedError(
@@ -1575,13 +1575,13 @@ def calculate_afterpulse(
     return afterpulse
 
 
-def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_Hz):
+def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_hz):
     """Doc."""
 
     # calculate the number of samples obtained at each photon arrival, since beginning of file
     sample_runtime = pulse_runtime * sample_freq_hz // laser_freq_hz
     # calculate to which pixel each photon belongs (possibly many samples per pixel)
-    samples_per_circle = round(sample_freq_hz / scan_freq_Hz)
+    samples_per_circle = round(sample_freq_hz / scan_freq_hz)
     pixel_num = sample_runtime % samples_per_circle
 
     # build the line image
