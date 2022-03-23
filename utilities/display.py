@@ -2,7 +2,7 @@
 
 from collections import namedtuple
 from contextlib import suppress
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -55,11 +55,15 @@ class GuiDisplay:
         with Plotter(gui_display=self, gui_options=options) as ax:
             ax.plot(x, y, *args, **kwargs)
 
-    def display_pattern(self, x, y):
-        """Doc."""
+    def display_patterns(self, xy_pairs_list: List[tuple], *args):
+        """ "Doc."""
 
         with Plotter(gui_display=self, gui_options=self.GuiDisplayOptions(show_axis=False)) as ax:
-            ax.plot(x, y, "k", lw=0.3)
+            try:
+                for x, y in xy_pairs_list:
+                    ax.plot(x, y, lw=0.3)
+            except TypeError:  # xy_pairs_list is a really 'x', 'y' is in args
+                ax.plot(xy_pairs_list, *args, "k", lw=0.3)
 
     def display_image(self, image: np.ndarray, imshow_kwargs=dict(), **kwargs):
         """Doc."""

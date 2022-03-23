@@ -275,6 +275,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
 
 SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
     scan_image_disp=("solScanImgDisp", None, "main", True),
+    pattern_wdgt=("solScanAnalysisPattern", None, "main", True),
     row_dicrimination=("rowDiscriminationGroup", "QButtonGroup", "main", False),
     remove_over=("solAnalysisRemoveOverSpinner", "QDoubleSpinBox", "main", False),
     remove_worst=("solAnalysisRemoveWorstSpinner", "QDoubleSpinBox", "main", True),

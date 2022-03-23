@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5625,7 +5625,7 @@ Measurement</string>
                   <item row="0" column="0">
                    <widget class="QTabWidget" name="tabWidget_2">
                     <property name="currentIndex">
-                     <number>1</number>
+                     <number>0</number>
                     </property>
                     <widget class="QWidget" name="tab_3">
                      <attribute name="title">
@@ -5680,7 +5680,7 @@ Measurement</string>
                             <bool>true</bool>
                            </property>
                            <property name="currentIndex">
-                            <number>1</number>
+                            <number>0</number>
                            </property>
                            <widget class="QWidget" name="tab_11">
                             <attribute name="title">
@@ -5688,7 +5688,7 @@ Measurement</string>
                             </attribute>
                             <layout class="QGridLayout" name="gridLayout_53">
                              <item row="0" column="0">
-                              <layout class="QHBoxLayout" name="horizontalLayout_66" stretch="1,1000">
+                              <layout class="QHBoxLayout" name="horizontalLayout_66" stretch="1,10,4">
                                <property name="spacing">
                                 <number>0</number>
                                </property>
@@ -5766,6 +5766,13 @@ Measurement</string>
                                </item>
                                <item>
                                 <layout class="QGridLayout" name="solAnalysisScanImageLayout" rowstretch="0" columnstretch="0">
+                                 <property name="spacing">
+                                  <number>0</number>
+                                 </property>
+                                </layout>
+                               </item>
+                               <item>
+                                <layout class="QGridLayout" name="solAnalysisScanTestLayout" rowstretch="0" columnstretch="0">
                                  <property name="spacing">
                                   <number>0</number>
                                  </property>

@@ -288,10 +288,9 @@ class ScanPatternAO:
         # argument definitions (for better readability
         samp_freq_Hz = params.ao_samp_freq_hz
         R_um = params.diameter_um / 2
-        speed = params.speed_um_s
 
         tot_len = 2 * pi * R_um
-        scan_freq_hz = speed / tot_len
+        scan_freq_hz = params.speed_um_s / tot_len
         n_samps = int(samp_freq_Hz / scan_freq_hz)
 
         x_um_v_ratio, y_um_v_ratio, _ = um_v_ratio
@@ -308,6 +307,7 @@ class ScanPatternAO:
 
         params.dt = 1 / scan_freq_hz
         params.scan_freq_hz = scan_freq_hz
+        params.eff_speed_um_s = params.speed_um_s
 
         return ao_buffer, params
 
