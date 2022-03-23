@@ -666,6 +666,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         }
 
         if self.scanning:
+            # TODO: why not use the whole, ready-made scan_settings object in 'full_data["scan_settings"]'?
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
             full_data["scan_settings"] = dict(
                 pattern=self.scan_params.pattern,
@@ -677,6 +678,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             if self.scan_params.pattern == "circle":
                 full_data["scan_settings"].update(
                     diameter_um=self.scan_params.diameter_um,
+                    n_circles=self.scan_params.n_circles,
                 )
             elif self.scan_params.pattern == "angular":
                 full_data["scan_settings"].update(

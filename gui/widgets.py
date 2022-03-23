@@ -348,6 +348,7 @@ SOL_CIRC_SCAN_COLL = QtWidgetCollection(
     ao_samp_freq_hz=("circAoSampFreq", "QSpinBox", "main", False),
     diameter_um=("circDiameter", "QDoubleSpinBox", "main", False),
     speed_um_s=("circSpeed", "QSpinBox", "main", False),
+    n_circles=("numOfCricles", "QSpinBox", "main", False),
 )
 
 SOL_MEAS_COLL = QtWidgetCollection(

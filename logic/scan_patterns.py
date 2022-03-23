@@ -285,13 +285,13 @@ class ScanPatternAO:
     ) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
 
-        # argument definitions (for better readability
+        # argument definitions (for better readability)
         samp_freq_Hz = params.ao_samp_freq_hz
         R_um = params.diameter_um / 2
 
         tot_len = 2 * pi * R_um
         scan_freq_hz = params.speed_um_s / tot_len
-        n_samps = int(samp_freq_Hz / scan_freq_hz)
+        samples_per_circle = int(samp_freq_Hz / scan_freq_hz) * params.n_circles
 
         x_um_v_ratio, y_um_v_ratio, _ = um_v_ratio
         R_Vx = R_um / x_um_v_ratio
@@ -299,8 +299,14 @@ class ScanPatternAO:
 
         ao_buffer = np.array(
             [
-                [R_Vx * sin(2 * pi * (i / n_samps)) for i in range(n_samps)],
-                [R_Vy * cos(2 * pi * (i / n_samps)) for i in range(n_samps)],
+                [
+                    R_Vx * sin(2 * pi * (idx / samples_per_circle))
+                    for idx in range(samples_per_circle)
+                ],
+                [
+                    R_Vy * cos(2 * pi * (idx / samples_per_circle))
+                    for idx in range(samples_per_circle)
+                ],
             ],
             dtype=np.float,
         )

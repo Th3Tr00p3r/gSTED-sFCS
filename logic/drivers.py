@@ -286,6 +286,7 @@ class NIDAQmx:
     def analog_write(self, task_name: str, data: np.ndarray, auto_start=None) -> None:
         """Doc."""
 
+        # TODO: change tasks to dict/namespace instead of list?
         ao_task = [task for task in self.tasks.ao if (task.name == task_name)][0]
         if auto_start is not None:
             ao_task.write(data, auto_start=auto_start, timeout=self.AO_TIMEOUT)
