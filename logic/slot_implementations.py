@@ -402,13 +402,13 @@ class MainWin:
                     pattern, scan_params, um_v_ratio
                 ).calculate_pattern()
                 x_data, y_data = ao[0, :], ao[1, :]
-                plt_wdgt.display_pattern(x_data, y_data)
+                plt_wdgt.display_patterns(x_data, y_data)
                 # display the calculated parameters
                 scan_params_coll.write_obj_to_gui(self._app, scan_params)
 
         else:
             # no scan
-            plt_wdgt.display_pattern([], [])
+            plt_wdgt.display_patterns([], [])
 
     def open_settwin(self):
         """Doc."""
@@ -1358,6 +1358,7 @@ class MainWin:
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setEnabled(False)
                     sol_data_analysis_wdgts.scan_img_file_num.set(0)
                     self.display_circular_scan_image(imported_template)
+                    self.display_patterns(imported_template)
 
                     # calculate average and display
                     logging.debug("Averaging and plotting...")
@@ -1378,6 +1379,7 @@ class MainWin:
                     sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
                     sol_data_analysis_wdgts.scan_img_file_num.set(1)
                     self.display_angular_scan_image(1, imported_template)
+                    self.display_patterns(imported_template)
 
                     # calculate average and display
                     logging.debug("Averaging and plotting...")
@@ -1395,6 +1397,8 @@ class MainWin:
                     logging.debug("Averaging, plotting and fitting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
                     scan_settings_text = "no scan."
+                    wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj.clear()
+                    wdgts.SOL_MEAS_ANALYSIS_COLL.pattern_wdgt.obj.clear()
 
                 sol_data_analysis_wdgts.scan_settings.set(scan_settings_text)
 
@@ -1427,6 +1431,18 @@ class MainWin:
                 scan_image_disp.display_image(img)
                 scan_image_disp.plot(roi["col"], roi["row"], color="white")
                 scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
+
+    def display_patterns(self, imported_template: str = None):
+        """Doc."""
+
+        with suppress(IndexError, KeyError, AttributeError):
+            # IndexError - data import failed
+            # KeyError, AttributeError - data deleted
+            with self.get_measurement_from_template(imported_template) as measurement:
+                display = wdgts.SOL_MEAS_ANALYSIS_COLL.pattern_wdgt.obj
+                aox, aoy = measurement.scan_settings["ao"].T
+                aix, aiy, _, aox_int, aoy_int, _ = measurement.scan_settings["ai"].T
+                display.display_patterns([(aox, aoy), (aox_int, aoy_int), (aix, aiy)])
 
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""

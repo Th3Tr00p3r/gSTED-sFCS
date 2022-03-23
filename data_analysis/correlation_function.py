@@ -175,11 +175,22 @@ class CorrFunc:
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, axis=0)
         jj = Limits(self.norm_range.upper, 100).valid_indices(self.lag)  # work in the relevant part
-        self.score = (
-            (1 / np.var(self.cf_cr[:, jj], 0))
-            * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
-            / len(jj)
-        ).sum(axis=1)
+        try:
+            self.score = (
+                (1 / np.var(self.cf_cr[:, jj], 0))
+                * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
+                / len(jj)
+            ).sum(axis=1)
+        except RuntimeWarning:  # division by zero
+            # TODO: why does this happen?
+            self.score = (
+                (1 / (np.var(self.cf_cr[:, jj], 0) + 1))
+                * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
+                / len(jj)
+            ).sum(axis=1)
+            print(
+                "Division by zero avoided by adding epsilon=1. Why does this happen (zero in variance)?"
+            )
 
         total_n_rows, _ = self.cf_cr.shape
 

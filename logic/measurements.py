@@ -502,7 +502,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             return
 
         except Exception as exc:  # TESTESTEST
-            print("ImageMeasurementProcedure: THIS SHOULD NOT HAPPEN!")
+            print(f"ImageMeasurementProcedure: THIS SHOULD NOT HAPPEN! [{exc}]")
             errors.err_hndlr(exc, sys._getframe(), locals())
 
         # finished measurement
@@ -793,7 +793,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             errors.err_hndlr(exc, sys._getframe(), locals())
 
         except Exception as exc:  # TESTESTEST
-            print("SolutionMeasurementProcedure: THIS SHOULD NOT HAPPEN!")
+            print(f"SolutionMeasurementProcedure: THIS SHOULD NOT HAPPEN! [{exc}]")
             errors.err_hndlr(exc, sys._getframe(), locals())
 
         if self.is_running:  # if not manually stopped
