@@ -54,6 +54,7 @@ class MainWin(QtWidgets.QMainWindow):
         # solution (circle)
         self.circDiameter.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
         self.circAoSampFreq.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
+        self.numOfCricles.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
 
         # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.impl.displace_scanner_axis(1))

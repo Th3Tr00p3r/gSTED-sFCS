@@ -419,8 +419,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             total_dist = abs(final_pos - init_pos)
             n_steps = div_ceil(total_dist, step_sz)
 
-            if n_steps < 2:
-                # one small step needs no smoothing
+            if n_steps < 2:  # one small step needs no smoothing
                 return
 
             else:
@@ -557,14 +556,16 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         if len(ao_data.shape) == 2:
             # 2D array
-            diff_ao_data = np.empty(shape=(ao_data.shape[0] * 2, ao_data.shape[1]), dtype=np.float)
+            diff_ao_data = np.empty(
+                shape=(ao_data.shape[0] * 2, ao_data.shape[1]), dtype=np.float64
+            )
             n_rows = ao_data.shape[0]
             for row_idx in range(n_rows):
                 diff_ao_data[row_idx * 2] = ao_data[row_idx]
                 diff_ao_data[row_idx * 2 + 1] = -ao_data[row_idx]
         else:
             # 1D array
-            diff_ao_data = np.empty(shape=(2, ao_data.size), dtype=np.float)
+            diff_ao_data = np.empty(shape=(2, ao_data.size), dtype=np.float64)
             diff_ao_data[0, :] = ao_data
             diff_ao_data[1, :] = -ao_data
         return diff_ao_data

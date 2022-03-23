@@ -779,19 +779,18 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         scan_settings = full_data["scan_settings"]
+        circumference = np.pi * scan_settings["diameter_um"]
+        scan_freq_hz = scan_settings["speed_um_s"] / circumference
         sample_freq_hz = int(scan_settings["sample_freq_hz"])
-        diameter_um = scan_settings["diameter_um"]
-        circumference = np.pi * diameter_um
-        speed_um_s = scan_settings["speed_um_s"]
-        scan_freq_hz = speed_um_s / circumference
 
         print("Converting circular scan to image...", end=" ")
         pulse_runtime = p.pulse_runtime
         cnt, self.scan_settings["samples_per_circle"] = _sum_scan_circles(
             pulse_runtime,
             self.laser_freq_hz,
-            sample_freq_hz,
+            int(scan_settings["sample_freq_hz"]),
             scan_freq_hz,
+            scan_settings.get("n_circles", 10),
         )
 
         p.image = cnt
@@ -1586,13 +1585,13 @@ def calculate_afterpulse(
     return afterpulse
 
 
-def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_hz):
+def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_hz, n_circles):
     """Doc."""
 
     # calculate the number of samples obtained at each photon arrival, since beginning of file
     sample_runtime = pulse_runtime * sample_freq_hz // laser_freq_hz
     # calculate to which pixel each photon belongs (possibly many samples per pixel)
-    samples_per_circle = round(sample_freq_hz / scan_freq_hz)
+    samples_per_circle = int(sample_freq_hz / scan_freq_hz) * n_circles
     pixel_num = sample_runtime % samples_per_circle
 
     # build the line image
@@ -1600,7 +1599,6 @@ def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_hz
     img, _ = np.histogram(pixel_num, bins=bins)
 
     return img, samples_per_circle
-    # TODO - possibly, only 'img' is needed here - check later
 
 
 # TODO - create an AngularScanMixin class and throw the below functions there
