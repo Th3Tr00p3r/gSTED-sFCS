@@ -620,7 +620,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             # RuntimeError - detector disconected
             errors.err_hndlr(exc, sys._getframe(), locals())
         except Exception as exc:
-            print("THIS SHOULD NOT HAPPEN, HANDLE THE EXCEPTION PROPERLY!")
+            print(f"THIS SHOULD NOT HAPPEN, HANDLE THE EXCEPTION PROPERLY! [{exc}]")
             errors.err_hndlr(exc, sys._getframe(), locals())
         else:
             cf = s.cf[self.laser_mode]
