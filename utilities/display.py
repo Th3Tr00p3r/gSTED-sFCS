@@ -55,13 +55,14 @@ class GuiDisplay:
         with Plotter(gui_display=self, gui_options=options) as ax:
             ax.plot(x, y, *args, **kwargs)
 
-    def display_patterns(self, xy_pairs_list: List[tuple], *args):
+    def display_patterns(self, xy_pairs_list: List[tuple], *args, labels=None):
         """ "Doc."""
 
         with Plotter(gui_display=self, gui_options=self.GuiDisplayOptions(show_axis=False)) as ax:
             try:
                 for x, y in xy_pairs_list:
-                    ax.plot(x, y, lw=0.3)
+                    ax.plot(x, y, lw=0.4)
+                    ax.legend(labels)
             except TypeError:  # xy_pairs_list is a really 'x', 'y' is in args
                 ax.plot(xy_pairs_list, *args, "k", lw=0.3)
 

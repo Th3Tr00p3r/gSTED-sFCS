@@ -1442,7 +1442,9 @@ class MainWin:
                 display = wdgts.SOL_MEAS_ANALYSIS_COLL.pattern_wdgt.obj
                 aox, aoy = measurement.scan_settings["ao"].T
                 aix, aiy, _, aox_int, aoy_int, _ = measurement.scan_settings["ai"].T
-                display.display_patterns([(aox, aoy), (aox_int, aoy_int), (aix, aiy)])
+                display.display_patterns(
+                    [(aox, aoy), (aox_int, aoy_int), (aix, aiy)], labels=["AO", "AO_int", "AI"]
+                )
 
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
