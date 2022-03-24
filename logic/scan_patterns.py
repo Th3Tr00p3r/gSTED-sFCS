@@ -291,7 +291,8 @@ class ScanPatternAO:
 
         tot_len = 2 * pi * R_um
         scan_freq_hz = params.speed_um_s / tot_len
-        samples_per_circle = int(samp_freq_Hz / scan_freq_hz) * params.n_circles
+        samples_per_circle = int(samp_freq_Hz / scan_freq_hz)
+        tot_samples = samples_per_circle * params.n_circles
 
         x_um_v_ratio, y_um_v_ratio, _ = um_v_ratio
         R_Vx = R_um / x_um_v_ratio
@@ -299,14 +300,8 @@ class ScanPatternAO:
 
         ao_buffer = np.array(
             [
-                [
-                    R_Vx * sin(2 * pi * (idx / samples_per_circle))
-                    for idx in range(samples_per_circle)
-                ],
-                [
-                    R_Vy * cos(2 * pi * (idx / samples_per_circle))
-                    for idx in range(samples_per_circle)
-                ],
+                [R_Vx * sin(2 * pi * (idx / tot_samples)) for idx in range(tot_samples)],
+                [R_Vy * cos(2 * pi * (idx / tot_samples)) for idx in range(tot_samples)],
             ],
             dtype=np.float,
         )
