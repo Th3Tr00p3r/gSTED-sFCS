@@ -790,7 +790,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.laser_freq_hz,
             int(scan_settings["sample_freq_hz"]),
             scan_freq_hz,
-            scan_settings.get("n_circles", 10),
         )
 
         p.image = cnt
@@ -1585,13 +1584,13 @@ def calculate_afterpulse(
     return afterpulse
 
 
-def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_hz, n_circles):
+def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_hz):
     """Doc."""
 
     # calculate the number of samples obtained at each photon arrival, since beginning of file
     sample_runtime = pulse_runtime * sample_freq_hz // laser_freq_hz
     # calculate to which pixel each photon belongs (possibly many samples per pixel)
-    samples_per_circle = int(sample_freq_hz / scan_freq_hz) * n_circles
+    samples_per_circle = int(sample_freq_hz / scan_freq_hz)
     pixel_num = sample_runtime % samples_per_circle
 
     # build the line image
