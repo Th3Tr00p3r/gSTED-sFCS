@@ -98,7 +98,7 @@ class App:
 
         # init scan patterns
         self.gui.main.impl.disp_scn_pttrn("image")
-        sol_pattern = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self).scan_type
+        sol_pattern = wdgts.SOL_MEAS_COLL.gui_to_obj(self).scan_type
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
 
         # init last images deque
@@ -165,9 +165,7 @@ class App:
             dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
             print(f"        Initializing {dvc_attrs.log_ref}...", end=" ")
             dvc_class = getattr(dvcs, dvc_attrs.class_name)
-            param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).read_gui_to_obj(
-                self, "dict"
-            )
+            param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).gui_to_obj(self, "dict")
             param_dict["nick"] = nick
             param_dict["log_ref"] = dvc_attrs.log_ref
             param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
