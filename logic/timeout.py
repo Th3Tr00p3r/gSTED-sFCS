@@ -170,20 +170,19 @@ class Timeout:
 
             meas = self._app.meas
 
-            if not self.scan_dvc.error_dict:  # TESTESTEST
-                updt_scn_pos()  # TESTESTEST
-
+            # TODO: add GUI switch to override this condition (for testing)
             if not meas.is_running:
                 # scanners
-                #                if not self.scan_dvc.error_dict: # TESTESTEST
-                #                    updt_scn_pos() # TESTESTEST
-
-                # log file widget
-                update_log_wdgt()
+                if not self.scan_dvc.error_dict:
+                    updt_scn_pos()
 
             else:
                 # MeasurementProcedure progress bar and time left
                 updt_meas_progress(meas)
+
+                if meas.scan_type == "static":
+                    # log file widget
+                    update_log_wdgt()
 
             # photon_detector count rate
             if not self.cntr_dvc.error_dict:
