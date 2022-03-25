@@ -94,7 +94,7 @@ class QtWidgetCollection:
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
                 wdgt.set(obj, parent_gui)
 
-    def read_gui_to_obj(self, app_obj, out="namespace") -> Union[SimpleNamespace, Dict[str, Any]]:
+    def gui_to_obj(self, app_obj, out="namespace") -> Union[SimpleNamespace, Dict[str, Any]]:
         """
         Read values from QtWidgetAccess objects, which are the attributes of self and return a namespace.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the

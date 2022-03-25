@@ -300,15 +300,15 @@ class MainWin:
                 if meas_type == "SFCSSolution":
                     pattern = self._gui.solScanType.currentText()
                     if pattern == "angular":
-                        scan_params = wdgts.SOL_ANG_SCAN_COLL.read_gui_to_obj(self._app)
+                        scan_params = wdgts.SOL_ANG_SCAN_COLL.gui_to_obj(self._app)
                     elif pattern == "circle":
-                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.read_gui_to_obj(self._app)
+                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.gui_to_obj(self._app)
                     elif pattern == "static":
                         scan_params = SimpleNamespace()
 
                     scan_params.pattern = pattern
 
-                    kwargs = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app, "dict")
+                    kwargs = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app, "dict")
 
                     self._app.meas = meas.SolutionMeasurementProcedure(
                         app=self._app,
@@ -330,11 +330,11 @@ class MainWin:
 
                 elif meas_type == "SFCSImage":
 
-                    kwargs = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app, "dict")
+                    kwargs = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app, "dict")
 
                     self._app.meas = meas.ImageMeasurementProcedure(
                         app=self._app,
-                        scan_params=wdgts.IMG_SCAN_COLL.read_gui_to_obj(self._app),
+                        scan_params=wdgts.IMG_SCAN_COLL.gui_to_obj(self._app),
                         laser_mode=laser_mode.lower(),
                         **kwargs,
                     )
@@ -392,7 +392,7 @@ class MainWin:
             plt_wdgt = self._gui.solScanPattern
 
         if scan_params_coll:
-            scan_params = scan_params_coll.read_gui_to_obj(self._app)
+            scan_params = scan_params_coll.gui_to_obj(self._app)
 
             with suppress(AttributeError, ZeroDivisionError, ValueError):
                 # AttributeError - devices not yet initialized
@@ -526,7 +526,7 @@ class MainWin:
                 # .curr_img_idx not yet set
                 img_idx = 0
 
-        img_meas_wdgts = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
+        img_meas_wdgts = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
         disp_mthd = img_meas_wdgts.image_method
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
@@ -585,7 +585,7 @@ class MainWin:
     def save_current_image(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
 
         with suppress(AttributeError):
             file_dict = self._app.last_image_scans[self._app.curr_img_idx]
@@ -731,7 +731,7 @@ class MainWin:
         """Doc."""
 
         # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
 
         if DATA_IMPORT_COLL.is_image_type:
             DATA_IMPORT_COLL.import_stacked.set(0)
@@ -748,12 +748,12 @@ class MainWin:
         """Doc."""
 
         # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
 
         if type_ == "image":
-            save_path = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app).save_path
+            save_path = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app).save_path
         elif type_ == "solution":
-            save_path = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app).save_path
+            save_path = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app).save_path
         else:
             raise ValueError(
                 f"Data type '{type_}'' is not supported; use either 'image' or 'solution'."
@@ -775,12 +775,12 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
 
         if DATA_IMPORT_COLL.is_image_type:
-            meas_sett = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
+            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
         elif DATA_IMPORT_COLL.is_solution_type:
-            meas_sett = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app)
+            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -799,14 +799,14 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
         year = DATA_IMPORT_COLL.data_years.get()
         days_combobox = DATA_IMPORT_COLL.data_days.obj
 
         if DATA_IMPORT_COLL.is_image_type:
-            meas_sett = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
+            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
         elif DATA_IMPORT_COLL.is_solution_type:
-            meas_sett = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app)
+            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -907,7 +907,7 @@ class MainWin:
         """Doc."""
 
         dir_path = self.current_date_type_dir_path()
-        data_import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
         curr_template = data_import_wdgts.data_templates.get()
         new_template_prefix = data_import_wdgts.new_template
 
@@ -976,16 +976,16 @@ class MainWin:
     def current_date_type_dir_path(self) -> Path:
         """Returns path to directory of currently selected date and measurement type"""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
 
         day = import_wdgts.data_days.get()
         year = import_wdgts.data_years.get()
         month = import_wdgts.data_months.get()
 
         if import_wdgts.is_image_type:
-            meas_settings = wdgts.IMG_MEAS_COLL.read_gui_to_obj(self._app)
+            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
         elif import_wdgts.is_solution_type:
-            meas_settings = wdgts.SOL_MEAS_COLL.read_gui_to_obj(self._app)
+            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
         save_path = Path(meas_settings.save_path)
         sub_dir = meas_settings.sub_dir_name
         return save_path / f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}" / sub_dir
@@ -1084,7 +1084,7 @@ class MainWin:
         if not template:
             return
 
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
         DATA_IMPORT_COLL.log_text.set("")  # clear first
 
         # get the log file path
@@ -1113,7 +1113,7 @@ class MainWin:
         if not template:
             return
 
-        data_import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
 
         if data_import_wdgts.is_image_type:
             # import the data
@@ -1202,7 +1202,7 @@ class MainWin:
     def import_sol_data(self, should_load_processed=False) -> None:
         """Doc."""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
         current_template = import_wdgts.data_templates.get()
         curr_dir = self.current_date_type_dir_path()
 
@@ -1271,7 +1271,7 @@ class MainWin:
         """Doc."""
 
         loading_options = dict()
-        import_wdgts = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
 
         # file selection
         if import_wdgts.sol_file_dicrimination.objectName() == "solImportUse":
@@ -1335,7 +1335,7 @@ class MainWin:
     def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_obj(self._app)
 
         with self.get_measurement_from_template(imported_template) as measurement:
             if measurement is None:
@@ -1443,13 +1443,15 @@ class MainWin:
                 aox, aoy = measurement.scan_settings["ao"].T
                 aix, aiy, _, aox_int, aoy_int, _ = measurement.scan_settings["ai"].T
                 display.display_patterns(
-                    [(aox, aoy), (aox_int, aoy_int), (aix, aiy)], labels=["AO", "AO_int", "AI"]
+                    [(aox, aoy), (aox_int, aoy_int), (aix, aiy)],
+                    labels=["AO", "AO_int", "AI"],
+                    scroll_zoom=True,
                 )
 
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_obj(self._app)
 
         with self.get_measurement_from_template(imported_template) as measurement:
             if measurement is None:
@@ -1581,7 +1583,7 @@ class MainWin:
     def assign_measurement(self, meas_type: str) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
         options = self.get_loading_options_as_dict()
 
         if wdgt_coll.should_assign_loaded:
@@ -1602,8 +1604,8 @@ class MainWin:
     def load_experiment(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
-        data_import_wdgt_coll = wdgts.DATA_IMPORT_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
+        data_import_wdgt_coll = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
 
         if not (experiment_name := wdgt_coll.experiment_name.get()):
             logging.info("Can't load unnamed experiment!")
@@ -1688,7 +1690,7 @@ class MainWin:
     def calibrate_tdc(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
 
         display_kwargs = dict(gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True), fontsize=10)
         experiment = self.get_experiment()
@@ -1713,7 +1715,7 @@ class MainWin:
     def assign_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
 
         gate_lt = wdgt_coll.custom_gate_to_assign_lt.get()
 
@@ -1732,7 +1734,7 @@ class MainWin:
     def remove_assigned_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
         wdgt = wdgt_coll.assigned_gates
         gate_to_remove = wdgt.get()
         # delete from GUI
@@ -1742,7 +1744,7 @@ class MainWin:
     def gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
 
         gates_combobox = wdgt_coll.assigned_gates.obj
         gate_list = [
@@ -1766,7 +1768,7 @@ class MainWin:
     def remove_available_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
         wdgt = wdgt_coll.available_gates
         gate_to_remove = wdgt.get()
         # delete from object
@@ -1793,7 +1795,7 @@ class MainWin:
     def calculate_structure_factors(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.read_gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
         experiment = self.get_experiment()
         try:
             experiment.calculate_structure_factors(
