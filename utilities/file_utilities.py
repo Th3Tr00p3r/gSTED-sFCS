@@ -40,7 +40,6 @@ legacy_matlab_trans_dict = {
     "LineLengthMax": "max_line_length_um",
     "LineShift": "line_shift_um",
     "AngleDegrees": "angle_degrees",
-    "LinFrac": "linear_frac",
     "LinearPart": "linear_part",
     "Xlim": "x_lim",
     "Ylim": "y_lim",
@@ -57,8 +56,8 @@ legacy_matlab_trans_dict = {
     "TdcScanData": "tdc_scan_data",
     "Plane": "plane",
     "ScanParam": "scan_params",
-    "Dimension1_lines_um": "dim1_lines_um",
-    "Dimension2_col_um": "dim2_col_um",
+    "Dimension1_lines_um": "dim1_um",
+    "Dimension2_col_um": "dim2_um",
     "Dimension3_um": "dim3_um",
     "Line": "lines",
     "Planes": "planes",
@@ -72,8 +71,8 @@ legacy_matlab_trans_dict = {
     "Offset_AIY": "offset_aiy",
     "Offset_AIZ": "offset_aiz",
     "whatStage": "what_stage",
-    "LinFrac": "linear_frac",
     # General
+    "LinFrac": "linear_fraction",
     "Version": "version",
     "AI": "ai",
     "AO": "ao",
@@ -106,6 +105,9 @@ legacy_python_trans_dict = {
     "scan_type": "plane_orientation",
     "scan_plane": "plane_orientation",
     "lines_odd": "set_pnts_lines_odd",  # moved to scan_params
+    "dim1_lines_um": "dim1_um",
+    "dim2_col_um": "dim2_um",
+    "linear_frac": "linear_fraction",
     # General
     "scan_param": "scan_params",
 }

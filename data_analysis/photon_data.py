@@ -638,6 +638,7 @@ class CountsImageStackData:
     plane_ticks_v: np.ndarray
     n_planes: int
     plane_orientation: str
+    dim_order: Tuple[int, int, int]
 
     def get_image(self, method: str, plane_idx: int = None) -> np.ndarray:
         """Doc."""
@@ -697,26 +698,22 @@ class CountsImageMixin:
 
         n_planes = scan_params["n_planes"]
         n_lines = scan_params["n_lines"]
-        pxl_size_um = scan_params["dim2_col_um"] / n_lines
-        pxls_per_line = div_ceil(scan_params["dim1_lines_um"], pxl_size_um)
-        plane_orientation = scan_params["plane_orientation"]
+        pxl_size_um = scan_params["dim2_um"] / n_lines
+        pxls_per_line = div_ceil(scan_params["dim1_um"], pxl_size_um)
+        dim_order = scan_params["dim_order"]
         ppl = scan_params["ppl"]
         ppp = n_lines * ppl
         turn_idx = ppl // 2
 
-        if plane_orientation in {"XY", "XZ"}:
-            dim1_center = scan_params["initial_ao"][0]
-            um_per_v = um_v_ratio[0]
+        first_dim = dim_order[0]
+        dim1_center = scan_params["initial_ao"][first_dim]
+        um_per_v = um_v_ratio[first_dim]
 
-        elif plane_orientation == "YZ":
-            dim1_center = scan_params["initial_ao"][1]
-            um_per_v = um_v_ratio[1]
-
-        line_len_v = scan_params["dim1_lines_um"] / um_per_v
+        line_len_v = scan_params["dim1_um"] / um_per_v
         dim1_min = dim1_center - line_len_v / 2
 
         pxl_size_v = pxl_size_um / um_per_v
-        pxls_per_line = div_ceil(scan_params["dim1_lines_um"], pxl_size_um)
+        pxls_per_line = div_ceil(scan_params["dim1_um"], pxl_size_um)
 
         # prepare to remove counts from outside limits
         dim1_ao_single = ao[0][:ppl]
@@ -749,7 +746,8 @@ class CountsImageMixin:
             row_ticks_v=scan_params["set_pnts_lines_odd"],
             plane_ticks_v=scan_params.get("set_pnts_planes"),  # doesn't exist in older versions
             n_planes=n_planes,
-            plane_orientation=plane_orientation,
+            plane_orientation=scan_params["plane_orientation"],
+            dim_order=dim_order,
         )
 
     def _calculate_plane_image_stack(self, counts_stack, eff_idxs, pxls_per_line):
