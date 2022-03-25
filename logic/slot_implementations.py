@@ -399,7 +399,9 @@ class MainWin:
                 # ZeroDivisionError - loadout has bad values
                 um_v_ratio = self._app.devices.scanners.um_v_ratio
                 ao, scan_params = ScanPatternAO(
-                    pattern, scan_params, um_v_ratio
+                    pattern,
+                    um_v_ratio,
+                    scan_params,
                 ).calculate_pattern()
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.display_patterns(x_data, y_data)
@@ -443,25 +445,16 @@ class MainWin:
 
             coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.axes[0].cursor.pos)
 
-            dim1_vltg = line_ticks_v[coord_1]
-            dim2_vltg = row_ticks_v[coord_2]
-            dim3_vltg = plane_ticks_v[plane_idx]
+            dim_vltg = (line_ticks_v[coord_1], row_ticks_v[coord_2], plane_ticks_v[plane_idx])
 
-            plane_orientation = image_data.plane_orientation
-
-            if plane_orientation == "XY":
-                vltgs = (dim1_vltg, dim2_vltg, dim3_vltg)
-            elif plane_orientation == "XZ":
-                vltgs = (dim1_vltg, dim3_vltg, dim2_vltg)
-            elif plane_orientation == "YZ":
-                vltgs = (dim3_vltg, dim1_vltg, dim2_vltg)
+            vltgs = tuple(dim_vltg[i] for i in image_data.dim_order)
 
             [
                 getattr(self._gui, f"{axis.lower()}AOV").setValue(vltg)
                 for axis, vltg in zip("XYZ", vltgs)
             ]
 
-            self.move_scanners(plane_orientation)
+            self.move_scanners(image_data.plane_orientation)
 
             logging.debug(f"{self._app.devices.scanners.log_ref} moved to ROI ({vltgs})")
 
