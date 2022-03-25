@@ -11,42 +11,48 @@ import numpy as np
 class ScanPatternAO:
     """Doc."""
 
-    def __init__(self, pattern: str, scan_params, um_v_ratio):
+    def __init__(self, pattern: str, um_v_ratio: Tuple[float, float, float], scan_params):
         self.pattern = pattern
-        self.scan_params = scan_params
         self.um_v_ratio = um_v_ratio
+        self.scan_params = scan_params
 
     def calculate_pattern(self):
         """Doc."""
 
         if self.pattern == "image":
-            return self.calc_image_pattern(self.scan_params, self.um_v_ratio)
+            return self.calc_image_pattern()
         if self.pattern == "angular":
-            return self.calc_angular_pattern(self.scan_params, self.um_v_ratio)
+            return self.calc_angular_pattern()
         if self.pattern == "circle":
-            return self.calc_circle_pattern(self.scan_params, self.um_v_ratio)
+            return self.calc_circle_pattern()
 
     def calc_image_pattern(
-        self, params: SimpleNamespace, um_v_ratio: Tuple[float, float, float]
+        self,
     ) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
         # TODO: have it so that this function returns the same types - ao and params (in a tuple).
 
-        params.dt = 1 / (self.scan_params.line_freq_hz * self.scan_params.ppl)
+        line_freq_hz = self.scan_params.line_freq_hz
+        ppl = self.scan_params.ppl
+        f = self.scan_params.linear_fraction
+        plane_orientation = self.scan_params.plane_orientation
+        current_ao = tuple(getattr(self.scan_params, f"curr_ao_{ax}") for ax in "xyz")
+        dim_um = tuple(getattr(self.scan_params, f"dim{i}_um") for i in (1, 2, 3))
+        n_lines = self.scan_params.n_lines
+        n_planes = self.scan_params.n_planes
+        set_pnts_lines_odd = self.scan_params.set_pnts_lines_odd
+        set_pnts_lines_even = self.scan_params.set_pnts_lines_even
 
         # order according to relevant plane dimensions
-        if params.plane_orientation == "XY":
-            dim_conv = tuple(self.um_v_ratio[i] for i in (0, 1, 2))
-            curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "xyz")
-        if params.plane_orientation == "YZ":
-            dim_conv = tuple(self.um_v_ratio[i] for i in (1, 2, 0))
-            curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "yzx")
-        if params.plane_orientation == "XZ":
-            dim_conv = tuple(self.um_v_ratio[i] for i in (0, 2, 1))
-            curr_ao = tuple(getattr(params, f"curr_ao_{ax}") for ax in "xzy")
+        if plane_orientation == "XY":
+            dim_order = (0, 1, 2)
+        elif plane_orientation == "YZ":
+            dim_order = (1, 2, 0)
+        elif plane_orientation == "XZ":
+            dim_order = (0, 2, 1)
+        dim_conv = tuple(self.um_v_ratio[i] for i in dim_order)
+        current_ao = tuple(current_ao[i] for i in dim_order)
 
-        ppl = params.ppl
-        f = params.lin_frac
         t0 = ppl / 2 * (1 - f) / (2 - f)
         v = 1 / (ppl / 2 - 2 * t0)
         a = v / t0
@@ -72,47 +78,52 @@ class ScanPatternAO:
 
         s = s - 1 / (2 * f)
 
-        ampl = params.dim1_lines_um / dim_conv[0]
-        single_line_ao = curr_ao[0] + ampl * s
+        ampl = dim_um[0] / dim_conv[0]
+        single_line_ao = current_ao[0] + ampl * s
 
-        ampl = params.dim2_col_um / dim_conv[1]
-        if params.n_lines > 1:
-            vect = np.array([(val / (params.n_lines - 1)) - 0.5 for val in range(params.n_lines)])
+        ampl = dim_um[1] / dim_conv[1]
+        if n_lines > 1:
+            vect = np.array([(val / (n_lines - 1)) - 0.5 for val in range(n_lines)])
         else:
             vect = 0
-        params.set_pnts_lines_odd = curr_ao[1] + ampl * vect
+        set_pnts_lines_odd = current_ao[1] + ampl * vect
 
-        ampl = params.dim3_um / dim_conv[2]
-        if params.n_planes > 1:
-            vect = np.array([(val / (params.n_planes - 1)) - 0.5 for val in range(params.n_planes)])
+        ampl = dim_um[2] / dim_conv[2]
+        if n_planes > 1:
+            vect = np.array([(val / (n_planes - 1)) - 0.5 for val in range(n_planes)])
         else:
             vect = 0
-        params.set_pnts_planes = np.atleast_1d(curr_ao[2] + ampl * vect)
+        set_pnts_planes = np.atleast_1d(current_ao[2] + ampl * vect)
 
-        params.set_pnts_lines_even = params.set_pnts_lines_odd[::-1]
+        set_pnts_lines_even = set_pnts_lines_odd[::-1]
 
         # at this point we have the AO (1D) for a single row,
         # and the voltages corresponding to each row and plane.
         # now we build the full AO (2D):
+        ao_buffer = calculate_image_ao(set_pnts_lines_odd, single_line_ao)
 
-        ao_buffer = calc_ao(params.set_pnts_lines_odd, single_line_ao)
+        self.scan_params.dt = 1 / (line_freq_hz * ppl)
+        self.scan_params.dim_order = dim_order
+        self.scan_params.set_pnts_lines_even = set_pnts_lines_even
+        self.scan_params.set_pnts_planes = set_pnts_planes
 
-        return ao_buffer, params
+        return ao_buffer, self.scan_params
 
     def calc_angular_pattern(
-        self, params: SimpleNamespace, um_v_ratio: Tuple[float, float, float]
+        self,
     ) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
 
         # argument definitions (for better readability
-        ang_deg = params.angle_deg
+        ang_deg = self.scan_params.angle_deg
         ang_rad = ang_deg * (pi / 180)
-        f = params.lin_frac
-        max_line_len = params.max_line_len_um
-        line_shift_um = params.line_shift_um
-        min_n_lines = params.min_lines
-        samp_freq_Hz = params.ao_samp_freq_hz
-        max_scan_freq_Hz = params.max_scan_freq_Hz
+        f = self.scan_params.linear_fraction
+        max_line_len = self.scan_params.max_line_len_um
+        line_shift_um = self.scan_params.line_shift_um
+        min_n_lines = self.scan_params.min_lines
+        ao_sampling_freq_hz = self.scan_params.ao_samp_freq_hz
+        max_scan_freq_Hz = self.scan_params.max_scan_freq_Hz
+        speed_um_s = self.scan_params.speed_um_s
 
         if not (0 <= ang_deg <= 180):
             ang_deg = ang_deg % 180
@@ -192,15 +203,15 @@ class ScanPatternAO:
                 )
 
         lin_len = f * tot_len
-        scan_freq_hz = params.speed_um_s / (2 * tot_len * (2 - f))
+        line_freq_hz = speed_um_s / (2 * tot_len * (2 - f))
 
-        samples_per_line = round((samp_freq_Hz / scan_freq_hz) / 2)
-        scan_freq_hz = samp_freq_Hz / samples_per_line / 2
+        samples_per_line = round((ao_sampling_freq_hz / line_freq_hz) / 2)
+        line_freq_hz = ao_sampling_freq_hz / samples_per_line / 2
 
         # NOTE: ask Oleg about this (max y freq?)
-        if scan_freq_hz > max_scan_freq_Hz:
+        if line_freq_hz > max_scan_freq_Hz:
             logging.warning(
-                f"scan frequency ({scan_freq_hz:.2f} Hz) is over {max_scan_freq_Hz} Hz."
+                f"scan frequency ({line_freq_hz:.2f} Hz) is over {max_scan_freq_Hz} Hz."
             )
             raise ValueError
 
@@ -259,61 +270,63 @@ class ScanPatternAO:
         y_ao[:, line_idx + 1] = Yend + np.arange(T) * (y_ao[0, 0] - Yend) / T
 
         # convert to voltages
-        x_um_v_ratio, y_um_v_ratio, _ = um_v_ratio
+        x_um_v_ratio, y_um_v_ratio, _ = self.um_v_ratio
         x_ao = x_ao / x_um_v_ratio
         y_ao = y_ao / y_um_v_ratio
 
         ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
 
-        params.dt = 1 / samp_freq_Hz
-        params.speed_um_s = params.speed_um_s
-        params.eff_speed_um_s = v * lin_len * samp_freq_Hz
-        params.scan_freq_hz = scan_freq_hz
-        params.samples_per_line = samples_per_line
-        params.ppl = ppl
-        params.n_lines = n_lines
-        params.lin_len = lin_len
-        params.tot_len = tot_len
-        params.lin_part = np.arange(t0, (T - t0) + 1, dtype=np.int32)
-        params.x_lim = [np.min(x_ao), np.max(x_ao)]
-        params.y_lim = [np.min(y_ao), np.max(y_ao)]
+        self.scan_params.dt = 1 / ao_sampling_freq_hz
+        self.scan_params.ppl = ppl
+        self.scan_params.eff_speed_um_s = (v * lin_len * ao_sampling_freq_hz,)
+        self.scan_params.linear_part = np.arange(t0, (T - t0) + 1, dtype=np.int32)
+        self.scan_params.x_lim = [np.min(x_ao), np.max(x_ao)]
+        self.scan_params.y_lim = [np.min(y_ao), np.max(y_ao)]
 
-        return ao_buffer, params
+        return ao_buffer, self.scan_params
 
-    def calc_circle_pattern(
-        self, params: SimpleNamespace, um_v_ratio: Tuple[float, float, float]
-    ) -> Tuple[np.ndarray, SimpleNamespace]:
+    def calc_circle_pattern(self) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
 
-        # argument definitions (for better readability)
-        samp_freq_Hz = params.ao_samp_freq_hz
-        R_um = params.diameter_um / 2
+        ao_sampling_freq_hz = self.scan_params.ao_sampling_freq_hz
+        diameter_um = self.scan_params.diameter_um
+        speed_um_s = self.scan_params.speed_um_s
 
-        tot_len = 2 * pi * R_um
-        scan_freq_hz = params.speed_um_s / tot_len
-        samples_per_circle = int(samp_freq_Hz / scan_freq_hz)
-        tot_samples = samples_per_circle * params.n_circles
+        circumference = pi * diameter_um
+        circle_freq_hz = speed_um_s / circumference
+        samples_per_circle = int(ao_sampling_freq_hz / circle_freq_hz)
+        n_circles = int(ao_sampling_freq_hz / samples_per_circle)
 
-        x_um_v_ratio, y_um_v_ratio, _ = um_v_ratio
-        R_Vx = R_um / x_um_v_ratio
-        R_Vy = R_um / y_um_v_ratio
+        x_um_v_ratio, y_um_v_ratio, _ = self.um_v_ratio
+        R_Vx = diameter_um / 2 / x_um_v_ratio
+        R_Vy = diameter_um / 2 / y_um_v_ratio
 
         ao_buffer = np.array(
             [
-                [R_Vx * sin(2 * pi * (idx / tot_samples)) for idx in range(tot_samples)],
-                [R_Vy * cos(2 * pi * (idx / tot_samples)) for idx in range(tot_samples)],
+                [
+                    R_Vx * sin(2 * pi * (idx / samples_per_circle))
+                    for idx in range(samples_per_circle)
+                ]
+                * n_circles,
+                [
+                    R_Vy * cos(2 * pi * (idx / samples_per_circle))
+                    for idx in range(samples_per_circle)
+                ]
+                * n_circles,
             ],
-            dtype=np.float,
         )
 
-        params.dt = 1 / scan_freq_hz
-        params.scan_freq_hz = scan_freq_hz
-        params.eff_speed_um_s = params.speed_um_s
+        self.scan_params.dt = 1 / (circle_freq_hz * samples_per_circle)
+        self.scan_params.eff_speed_um_s = (
+            (1 / samples_per_circle) * circumference * ao_sampling_freq_hz
+        )
+        self.scan_params.n_circles = n_circles
+        self.scan_params.circle_freq_hz = circle_freq_hz
 
-        return ao_buffer, params
+        return ao_buffer, self.scan_params
 
 
-def calc_ao(set_pnts_lines_odd, single_line_ao):
+def calculate_image_ao(set_pnts_lines_odd, single_line_ao):
     """Doc."""
 
     ppl = single_line_ao.size

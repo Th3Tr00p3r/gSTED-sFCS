@@ -3533,7 +3533,7 @@ File</string>
                             </widget>
                            </item>
                            <item>
-                            <widget class="QSpinBox" name="numOfCricles">
+                            <widget class="QSpinBox" name="numOfCircles">
                              <property name="maximumSize">
                               <size>
                                <width>9999</width>
