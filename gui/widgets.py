@@ -332,7 +332,7 @@ SOL_ANG_SCAN_COLL = QtWidgetCollection(
     max_line_len_um=("maxLineLen", "QDoubleSpinBox", "main", False),
     ao_samp_freq_hz=("angAoSampFreq", "QDoubleSpinBox", "main", False),
     angle_deg=("angle", "QSpinBox", "main", False),
-    lin_frac=("solLinFrac", "QDoubleSpinBox", "main", False),
+    linear_fraction=("solLinFrac", "QDoubleSpinBox", "main", False),
     line_shift_um=("lineShift", "QSpinBox", "main", False),
     speed_um_s=("solAngScanSpeed", "QSpinBox", "main", False),
     min_lines=("minNumLines", "QSpinBox", "main", False),
@@ -348,7 +348,7 @@ SOL_CIRC_SCAN_COLL = QtWidgetCollection(
     ao_samp_freq_hz=("circAoSampFreq", "QSpinBox", "main", False),
     diameter_um=("circDiameter", "QDoubleSpinBox", "main", False),
     speed_um_s=("circSpeed", "QSpinBox", "main", False),
-    n_circles=("numOfCricles", "QSpinBox", "main", False),
+    n_circles=("numOfCircles", "QSpinBox", "main", True),
 )
 
 SOL_MEAS_COLL = QtWidgetCollection(
@@ -376,13 +376,13 @@ SOL_MEAS_COLL = QtWidgetCollection(
 
 IMG_SCAN_COLL = QtWidgetCollection(
     plane_orientation=("imgScanType", "QComboBox", "main", False),
-    dim1_lines_um=("imgScanDim1", "QDoubleSpinBox", "main", False),
-    dim2_col_um=("imgScanDim2", "QDoubleSpinBox", "main", False),
+    dim1_um=("imgScanDim1", "QDoubleSpinBox", "main", False),
+    dim2_um=("imgScanDim2", "QDoubleSpinBox", "main", False),
     dim3_um=("imgScanDim3", "QDoubleSpinBox", "main", False),
     n_lines=("imgScanNumLines", "QSpinBox", "main", False),
     ppl=("imgScanPPL", "QSpinBox", "main", False),
     line_freq_hz=("imgScanLineFreq", "QSpinBox", "main", False),
-    lin_frac=("imgScanLinFrac", "QDoubleSpinBox", "main", False),
+    linear_fraction=("imgScanLinFrac", "QDoubleSpinBox", "main", False),
     n_planes=("imgScanNumPlanes", "QSpinBox", "main", False),
     curr_ao_x=("xAOVint", "QDoubleSpinBox", "main", False),
     curr_ao_y=("yAOVint", "QDoubleSpinBox", "main", False),

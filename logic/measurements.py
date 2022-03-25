@@ -375,7 +375,9 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         )
         # create ao_buffer
         self.ao_buffer, self.scan_params = ScanPatternAO(
-            "image", self.scan_params, self.um_v_ratio
+            "image",
+            self.um_v_ratio,
+            self.scan_params,
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
@@ -428,8 +430,8 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             "scan_params": {
                 "set_pnts_lines_odd": self.scan_params.set_pnts_lines_odd,
                 "set_pnts_planes": self.scan_params.set_pnts_planes,
-                "dim1_lines_um": self.scan_params.dim1_lines_um,
-                "dim2_col_um": self.scan_params.dim2_col_um,
+                "dim1_um": self.scan_params.dim1_um,
+                "dim2_um": self.scan_params.dim2_um,
                 "dim3_um": self.scan_params.dim3_um,
                 "n_lines": self.scan_params.n_lines,
                 "n_planes": self.scan_params.n_planes,
@@ -438,7 +440,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
                 "plane_orientation": self.scan_params.plane_orientation,
                 "initial_ao": self.scan_params.initial_ao,
                 "what_stage": "Galvanometers",
-                "linear_frac": self.scan_params.lin_frac,
+                "linear_frac": self.scan_params.linear_fraction,
             },
         }
 
@@ -594,7 +596,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             )
         # create ao_buffer
         self.ao_buffer, self.scan_params = ScanPatternAO(
-            self.scan_params.pattern, self.scan_params, self.um_v_ratio
+            self.scan_params.pattern,
+            self.um_v_ratio,
+            self.scan_params,
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
@@ -666,7 +670,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         }
 
         if self.scanning:
-            # TODO: why not use the whole, ready-made scan_settings object in 'full_data["scan_settings"]'?
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
             full_data["scan_settings"] = dict(
                 pattern=self.scan_params.pattern,
@@ -691,8 +694,8 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     max_line_length_um=self.scan_params.max_line_len_um,
                     line_shift_um=self.scan_params.line_shift_um,
                     angle_degrees=self.scan_params.angle_deg,
-                    linear_frac=self.scan_params.lin_frac,
-                    linear_part=self.scan_params.lin_part,
+                    linear_frac=self.scan_params.linear_fraction,
+                    linear_part=self.scan_params.linear_part,
                     x_lim=self.scan_params.x_lim,
                     y_lim=self.scan_params.y_lim,
                 )
