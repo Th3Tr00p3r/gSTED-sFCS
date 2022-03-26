@@ -586,13 +586,13 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         """Doc."""
 
         # make sure divisablility, then sync pixel clock with ao sample clock
-        if (self.pxl_clk_dvc.freq_MHz * 1e6) % self.scan_params.ao_samp_freq_hz != 0:
+        if (self.pxl_clk_dvc.freq_MHz * 1e6) % self.scan_params.ao_sampling_freq_hz != 0:
             raise ValueError(
-                f"Pixel clock ({self.pxl_clk_dvc.freq_MHz} Hz) and ao samplng ({self.scan_params.ao_samp_freq_hz} Hz) frequencies aren't divisible."
+                f"Pixel clock ({self.pxl_clk_dvc.freq_MHz} Hz) and ao samplng ({self.scan_params.ao_sampling_freq_hz} Hz) frequencies aren't divisible."
             )
         else:
             self.pxl_clk_dvc.low_ticks = (
-                int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_samp_freq_hz) - 2
+                int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_sampling_freq_hz) - 2
             )
         # create ao_buffer
         self.ao_buffer, self.scan_params = ScanPatternAO(
@@ -676,7 +676,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 ai=np.array(self.scanners_dvc.ai_buffer, dtype=np.float32),
                 ao=self.ao_buffer.T,
                 speed_um_s=self.scan_params.eff_speed_um_s,
-                sample_freq_hz=self.scan_params.ao_samp_freq_hz,
+                ao_sampling_freq_hz=self.scan_params.ao_sampling_freq_hz,
             )
             if self.scan_params.pattern == "circle":
                 full_data["scan_settings"].update(
@@ -685,12 +685,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 )
             elif self.scan_params.pattern == "angular":
                 full_data["scan_settings"].update(
-                    scan_freq_hz=self.scan_params.scan_freq_hz,
+                    line_freq_hz=self.scan_params.line_freq_hz,
                     samples_per_line=self.scan_params.samples_per_line,
                     ppl=self.scan_params.ppl,
                     n_lines=self.scan_params.n_lines,
-                    line_length=self.scan_params.lin_len,
-                    total_length=self.scan_params.tot_len,
+                    linear_len=self.scan_params.linear_len,
                     max_line_length_um=self.scan_params.max_line_len_um,
                     line_shift_um=self.scan_params.line_shift_um,
                     angle_degrees=self.scan_params.angle_deg,

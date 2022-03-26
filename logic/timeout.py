@@ -121,7 +121,7 @@ class Timeout:
             if not self.cntr_dvc.error_dict:
                 if meas.is_running and meas.scanning:
                     if meas.type == "SFCSSolution":
-                        rate = meas.scan_params.ao_samp_freq_hz
+                        rate = meas.scan_params.ao_sampling_freq_hz
                     elif meas.type == "SFCSImage":
                         rate = meas.scan_params.line_freq_hz * meas.scan_params.ppl
                 else:
@@ -258,9 +258,11 @@ class Timeout:
             ):
 
                 # display status and mode
+                was_on = self.spad_dvc.is_on
                 self.spad_dvc.get_stats()
                 self.main_gui.spadMode.setText(self.spad_dvc.mode)
-                self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
+                if was_on != self.spad_dvc.is_on:
+                    self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
 
                 # gating
                 should_be_gated = self.delayer_dvc.is_on and self.exc_laser_dvc.is_on
@@ -272,6 +274,5 @@ class Timeout:
                         self.spad_dvc.toggle_mode("free running")
                         icon_name = "off"
                     self.spad_dvc.change_icons(icon_name, led_widget_name="gate_led_widget")
-                    self.spad_dvc.is_gated = should_be_gated
 
             await asyncio.sleep(self.spad_dvc.update_interval_s)

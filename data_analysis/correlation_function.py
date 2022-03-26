@@ -694,7 +694,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.scan_settings = scan_settings
             self.v_um_ms = self.scan_settings["speed_um_s"] * 1e-3
             if self.scan_type == "circle":  # Circular sFCS
-                self.sample_freq_hz = self.scan_settings.get("sample_freq_hz", int(1e4))
+                self.ao_sampling_freq_hz = self.scan_settings.get("ao_sampling_freq_hz", int(1e4))
                 self.diameter_um = self.scan_settings.get("diameter_um", 50)
             elif self.scan_type == "angular":  # Angular sFCS
                 self.LINE_END_ADDER = 1000
@@ -780,16 +780,16 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         scan_settings = full_data["scan_settings"]
         circumference = np.pi * scan_settings["diameter_um"]
-        scan_freq_hz = scan_settings["speed_um_s"] / circumference
-        sample_freq_hz = int(scan_settings["sample_freq_hz"])
+        line_freq_hz = scan_settings["speed_um_s"] / circumference
+        ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
 
         print("Converting circular scan to image...", end=" ")
         pulse_runtime = p.pulse_runtime
         cnt, self.scan_settings["samples_per_circle"] = _sum_scan_circles(
             pulse_runtime,
             self.laser_freq_hz,
-            int(scan_settings["sample_freq_hz"]),
-            scan_freq_hz,
+            int(scan_settings["ao_sampling_freq_hz"]),
+            line_freq_hz,
         )
 
         p.image = cnt
@@ -799,7 +799,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         c = c / cnt.mean() ** 2 - 1
         c[0] -= 1 / cnt.mean()  # subtracting shot noise, small stuff really
         p.image_line_corr = {
-            "lag": lags * 1e3 / sample_freq_hz,  # in ms
+            "lag": lags * 1e3 / ao_sampling_freq_hz,  # in ms
             "corrfunc": c,
         }
 
@@ -827,7 +827,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         scan_settings = full_data["scan_settings"]
         linear_part = scan_settings["linear_part"].round().astype(np.uint16)
-        sample_freq_hz = int(scan_settings["sample_freq_hz"])
+        ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
         samples_per_line = int(scan_settings["samples_per_line"])
         n_lines = int(scan_settings["n_lines"])
 
@@ -835,15 +835,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         pulse_runtime = p.pulse_runtime
         cnt, sample_runtime, pixel_num, line_num = _convert_angular_scan_to_image(
-            pulse_runtime, self.laser_freq_hz, sample_freq_hz, samples_per_line, n_lines
+            pulse_runtime, self.laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
         )
 
         if should_fix_shift:
             print("Fixing line shift...", end=" ")
             pix_shift = _fix_data_shift(cnt)
-            pulse_runtime = p.pulse_runtime + pix_shift * round(self.laser_freq_hz / sample_freq_hz)
+            pulse_runtime = p.pulse_runtime + pix_shift * round(
+                self.laser_freq_hz / ao_sampling_freq_hz
+            )
             cnt, sample_runtime, pixel_num, line_num = _convert_angular_scan_to_image(
-                pulse_runtime, self.laser_freq_hz, sample_freq_hz, samples_per_line, n_lines
+                pulse_runtime, self.laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
             )
             print(f"({pix_shift} pixels).", end=" ")
 
@@ -926,8 +928,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         line_starts = np.array(line_starts, dtype=np.int64)
         line_stops = np.array(line_stops, dtype=np.int64)
 
-        line_starts_runtime: np.ndarray = line_starts * round(self.laser_freq_hz / sample_freq_hz)
-        line_stops_runtime: np.ndarray = line_stops * round(self.laser_freq_hz / sample_freq_hz)
+        line_starts_runtime: np.ndarray = line_starts * round(
+            self.laser_freq_hz / ao_sampling_freq_hz
+        )
+        line_stops_runtime: np.ndarray = line_stops * round(
+            self.laser_freq_hz / ao_sampling_freq_hz
+        )
 
         pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
         sorted_idxs = np.argsort(pulse_runtime)
@@ -972,7 +978,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         img = p.image * p.bw_mask
 
         p.line_limits = Limits(line_num[line_num > 0].min(), line_num.max())
-        p.image_line_corr = _bg_line_correlations(img, bw, roi, p.line_limits, sample_freq_hz)
+        p.image_line_corr = _bg_line_correlations(img, bw, roi, p.line_limits, ao_sampling_freq_hz)
 
         return p
 
@@ -1584,13 +1590,13 @@ def calculate_afterpulse(
     return afterpulse
 
 
-def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_hz):
+def _sum_scan_circles(pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, line_freq_hz):
     """Doc."""
 
     # calculate the number of samples obtained at each photon arrival, since beginning of file
-    sample_runtime = pulse_runtime * sample_freq_hz // laser_freq_hz
+    sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
     # calculate to which pixel each photon belongs (possibly many samples per pixel)
-    samples_per_circle = int(sample_freq_hz / scan_freq_hz)
+    samples_per_circle = int(ao_sampling_freq_hz / line_freq_hz)
     pixel_num = sample_runtime % samples_per_circle
 
     # build the line image
@@ -1602,12 +1608,12 @@ def _sum_scan_circles(pulse_runtime, laser_freq_hz, sample_freq_hz, scan_freq_hz
 
 # TODO - create an AngularScanMixin class and throw the below functions there
 def _convert_angular_scan_to_image(
-    pulse_runtime, laser_freq_hz, sample_freq_hz, samples_per_line, n_lines
+    pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
 ):
     """utility function for opening Angular Scans"""
 
     # calculate the number of samples obtained at each photon arrival, since beginning of file
-    sample_runtime = pulse_runtime * sample_freq_hz // laser_freq_hz
+    sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
     # calculate to which pixel each photon belongs (possibly many samples per pixel)
     pixel_num = sample_runtime % samples_per_line
     # calculate to which line each photon belongs (global, not considering going back to the first line)

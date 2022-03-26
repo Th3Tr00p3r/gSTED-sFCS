@@ -3534,17 +3534,26 @@ File</string>
                            </item>
                            <item>
                             <widget class="QSpinBox" name="numOfCircles">
+                             <property name="enabled">
+                              <bool>false</bool>
+                             </property>
                              <property name="maximumSize">
                               <size>
                                <width>9999</width>
                                <height>30</height>
                               </size>
                              </property>
+                             <property name="readOnly">
+                              <bool>false</bool>
+                             </property>
+                             <property name="buttonSymbols">
+                              <enum>QAbstractSpinBox::NoButtons</enum>
+                             </property>
                              <property name="minimum">
                               <number>1</number>
                              </property>
                              <property name="maximum">
-                              <number>100</number>
+                              <number>99999999</number>
                              </property>
                             </widget>
                            </item>
