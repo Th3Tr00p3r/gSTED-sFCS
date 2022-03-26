@@ -43,8 +43,13 @@ class QtWidgetAccess:
     def set(self, arg, parent_gui=None) -> None:
         """Set widget property"""
 
-        wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
-        getattr(wdgt, self.setter)(arg)
+        wdgt = self.obj if self.does_hold_obj else getattr(parent_gui, self.obj_name)
+        try:
+            getattr(wdgt, self.setter)(arg)
+        except TypeError:
+            raise TypeError(
+                f"widget '{self.obj_name}' was attempted to be set for bad value '{arg}'"
+            )
 
 
 class QtWidgetCollection:
@@ -70,7 +75,7 @@ class QtWidgetCollection:
                 with suppress(AttributeError):
                     wdgt_access.obj.clear()
 
-    def write_obj_to_gui(self, app, obj) -> None:
+    def obj_to_gui(self, app, obj) -> None:
         """
         Fill widget collection with values from namespace/dict/list, or a single value for all.
         if obj is a list, the values will be inserted in the order of vars(self).keys().
@@ -85,10 +90,13 @@ class QtWidgetCollection:
 
         if isinstance(obj, dict):
             for attr_name, val in obj.items():
-                with suppress(AttributeError):  # obj contains key with no matching wdgt in coll
+                with suppress(
+                    AttributeError
+                ):  # obj contains key with no matching wdgt in coll (should this pass silently?)
                     wdgt = getattr(self, attr_name)
                     parent_gui = getattr(app.gui, wdgt.gui_parent_name)
-                    wdgt.set(val, parent_gui)
+                    if not isinstance(val, QtWidgetAccess):
+                        wdgt.set(val, parent_gui)
         else:
             for wdgt in vars(self).values():
                 parent_gui = getattr(app.gui, wdgt.gui_parent_name)
@@ -330,7 +338,7 @@ SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
 
 SOL_ANG_SCAN_COLL = QtWidgetCollection(
     max_line_len_um=("maxLineLen", "QDoubleSpinBox", "main", False),
-    ao_samp_freq_hz=("angAoSampFreq", "QDoubleSpinBox", "main", False),
+    ao_sampling_freq_hz=("angAoSampFreq", "QDoubleSpinBox", "main", False),
     angle_deg=("angle", "QSpinBox", "main", False),
     linear_fraction=("solLinFrac", "QDoubleSpinBox", "main", False),
     line_shift_um=("lineShift", "QSpinBox", "main", False),
@@ -341,11 +349,11 @@ SOL_ANG_SCAN_COLL = QtWidgetCollection(
     samples_per_line=("solTotPointsPerLine", "QSpinBox", "main", True),
     eff_speed_um_s=("solAngActualSpeed", "QDoubleSpinBox", "main", True),
     n_lines=("solNumLines", "QSpinBox", "main", True),
-    scan_freq_hz=("solActualScanFreq", "QDoubleSpinBox", "main", True),
+    line_freq_hz=("solActualScanFreq", "QDoubleSpinBox", "main", True),
 )
 
 SOL_CIRC_SCAN_COLL = QtWidgetCollection(
-    ao_samp_freq_hz=("circAoSampFreq", "QSpinBox", "main", False),
+    ao_sampling_freq_hz=("circAoSampFreq", "QSpinBox", "main", False),
     diameter_um=("circDiameter", "QDoubleSpinBox", "main", False),
     speed_um_s=("circSpeed", "QSpinBox", "main", False),
     n_circles=("numOfCircles", "QSpinBox", "main", True),

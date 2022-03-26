@@ -88,7 +88,6 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.toggle_mode("free running")
 
             self.is_on = None  # found by querying the device (in timeout.py)
-            self.is_gated = None
             self.gate_ns = None
             self.is_paused = False  # used when ceding control to MPD interface
 
@@ -140,6 +139,10 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
         mode_cmnd_dict = {"free running": "FR", "external gating": "GM"}
         self.mpd_command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
+        if mode == "external gating":
+            self.spad_dvc.is_gated = True
+        else:
+            self.is_gated = False
 
     def calculate_gate(self, effective_delay_ns: float):
         """Doc."""

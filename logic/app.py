@@ -234,8 +234,8 @@ class App:
             """turn OFF all device switch/LED icons"""
 
             led_list = [self.icon_dict["led_off"]] * 9 + [self.icon_dict["led_green"]] * 2
-            wdgts.LED_COLL.write_obj_to_gui(self, led_list)
-            wdgts.SWITCH_COLL.write_obj_to_gui(self, self.icon_dict["switch_off"])
+            wdgts.LED_COLL.obj_to_gui(self, led_list)
+            wdgts.SWITCH_COLL.obj_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
         #        # Turn off video
