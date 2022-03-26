@@ -30,13 +30,11 @@ legacy_matlab_trans_dict = {
     "X": "x",
     "Y": "y",
     "ActualSpeed": "actual_speed_um_s",
-    "ScanFreq": "scan_freq_hz",
-    "SampleFreq": "sample_freq_hz",
+    "ScanFreq": "line_freq_hz",
+    "SampleFreq": "ao_sampling_freq_hz",
     "PointsPerLineTotal": "samples_per_line",
     "PointsPerLine": "points_per_line",
     "NofLines": "n_lines",
-    "LineLength": "line_length",
-    "LengthTot": "total_length",
     "LineLengthMax": "max_line_length_um",
     "LineShift": "line_shift_um",
     "AngleDegrees": "angle_degrees",
@@ -91,12 +89,13 @@ legacy_python_trans_dict = {
     "circle_speed_um_sec": "circle_speed_um_s",
     "actual_speed": "speed_um_s",
     "actual_speed_um_s": "speed_um_s",
-    "scan_freq": "scan_freq_hz",
-    "sample_freq": "sample_freq_hz",
+    "scan_freq": "line_freq_hz",
+    "sample_freq": "ao_sampling_freq_hz",
     "max_line_length": "max_line_length_um",
     "line_shift": "line_shift_um",
     "data": "byte_data",
     "points_per_line_total": "samples_per_line",
+    "line_length": "linear_len",
     # Image
     "cnt": "ci",
     "lines": "n_lines",
@@ -109,6 +108,7 @@ legacy_python_trans_dict = {
     "dim2_col_um": "dim2_um",
     "linear_frac": "linear_fraction",
     # General
+    "sample_freq_hz": "ao_sampling_freq_hz",
     "scan_param": "scan_params",
 }
 
@@ -367,7 +367,7 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
             full_data["scan_settings"] = {
                 "pattern": "circle",
                 "speed_um_s": 6000,
-                "sample_freq_hz": int(1e4),
+                "ao_sampling_freq_hz": int(1e4),
                 "diameter_um": 50,
             }
         scan_pattern = None

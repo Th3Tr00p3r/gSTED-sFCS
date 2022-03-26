@@ -406,7 +406,7 @@ class MainWin:
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.display_patterns(x_data, y_data)
                 # display the calculated parameters
-                scan_params_coll.write_obj_to_gui(self._app, scan_params)
+                scan_params_coll.obj_to_gui(self._app, scan_params)
 
         else:
             # no scan
@@ -560,7 +560,7 @@ class MainWin:
             "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
         }
 
-        wdgts.IMG_SCAN_COLL.write_obj_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
+        wdgts.IMG_SCAN_COLL.obj_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
 
     def cycle_through_image_scans(self, dir: str) -> None:
@@ -618,7 +618,7 @@ class MainWin:
             },
         }
 
-        wdgts.SOL_MEAS_COLL.write_obj_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
+        wdgts.SOL_MEAS_COLL.obj_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
 
     ####################

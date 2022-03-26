@@ -40,8 +40,6 @@ class ScanPatternAO:
         dim_um = tuple(getattr(self.scan_params, f"dim{i}_um") for i in (1, 2, 3))
         n_lines = self.scan_params.n_lines
         n_planes = self.scan_params.n_planes
-        set_pnts_lines_odd = self.scan_params.set_pnts_lines_odd
-        set_pnts_lines_even = self.scan_params.set_pnts_lines_even
 
         # order according to relevant plane dimensions
         if plane_orientation == "XY":
@@ -121,7 +119,7 @@ class ScanPatternAO:
         max_line_len = self.scan_params.max_line_len_um
         line_shift_um = self.scan_params.line_shift_um
         min_n_lines = self.scan_params.min_lines
-        ao_sampling_freq_hz = self.scan_params.ao_samp_freq_hz
+        ao_sampling_freq_hz = self.scan_params.ao_sampling_freq_hz
         max_scan_freq_Hz = self.scan_params.max_scan_freq_Hz
         speed_um_s = self.scan_params.speed_um_s
 
@@ -202,7 +200,7 @@ class ScanPatternAO:
                     ),
                 )
 
-        lin_len = f * tot_len
+        linear_len = f * tot_len
         line_freq_hz = speed_um_s / (2 * tot_len * (2 - f))
 
         samples_per_line = round((ao_sampling_freq_hz / line_freq_hz) / 2)
@@ -244,8 +242,8 @@ class ScanPatternAO:
 
         x_ao = np.zeros(shape=(T, n_lines + 1))
         y_ao = np.zeros(shape=(T, n_lines + 1))
-        X1 = lin_len * s * cos(ang_rad) + shift_vec * sin(ang_rad)
-        Y1 = lin_len * s * sin(ang_rad) - shift_vec * cos(ang_rad)
+        X1 = linear_len * s * cos(ang_rad) + shift_vec * sin(ang_rad)
+        Y1 = linear_len * s * sin(ang_rad) - shift_vec * cos(ang_rad)
         X2 = -X1 + 2 * shift_vec * sin(ang_rad)
         Y2 = -Y1 - 2 * shift_vec * cos(ang_rad)
         for line_idx in range(n_lines):
@@ -277,8 +275,12 @@ class ScanPatternAO:
         ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
 
         self.scan_params.dt = 1 / ao_sampling_freq_hz
+        self.scan_params.n_lines = n_lines
+        self.scan_params.samples_per_line = T
+        self.scan_params.linear_len = linear_len
         self.scan_params.ppl = ppl
-        self.scan_params.eff_speed_um_s = (v * lin_len * ao_sampling_freq_hz,)
+        self.scan_params.line_freq_hz = line_freq_hz
+        self.scan_params.eff_speed_um_s = v * linear_len * ao_sampling_freq_hz
         self.scan_params.linear_part = np.arange(t0, (T - t0) + 1, dtype=np.int32)
         self.scan_params.x_lim = [np.min(x_ao), np.max(x_ao)]
         self.scan_params.y_lim = [np.min(y_ao), np.max(y_ao)]
