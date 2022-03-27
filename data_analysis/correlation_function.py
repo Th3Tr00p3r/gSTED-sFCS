@@ -779,8 +779,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         scan_settings = full_data["scan_settings"]
-        circumference = np.pi * scan_settings["diameter_um"]
-        line_freq_hz = scan_settings["speed_um_s"] / circumference
         ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
 
         print("Converting circular scan to image...", end=" ")
@@ -788,8 +786,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         cnt, self.scan_settings["samples_per_circle"] = _sum_scan_circles(
             pulse_runtime,
             self.laser_freq_hz,
-            int(scan_settings["ao_sampling_freq_hz"]),
-            line_freq_hz,
+            int(ao_sampling_freq_hz),
+            scan_settings["circle_freq_hz"],
         )
 
         p.image = cnt
@@ -1590,16 +1588,16 @@ def calculate_afterpulse(
     return afterpulse
 
 
-def _sum_scan_circles(pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, line_freq_hz):
+def _sum_scan_circles(pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, circle_freq_hz):
     """Doc."""
 
     # calculate the number of samples obtained at each photon arrival, since beginning of file
     sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
     # calculate to which pixel each photon belongs (possibly many samples per pixel)
-    samples_per_circle = int(ao_sampling_freq_hz / line_freq_hz)
+    samples_per_circle = int(ao_sampling_freq_hz / circle_freq_hz)
     pixel_num = sample_runtime % samples_per_circle
 
-    # build the line image
+    # build the 'line image'
     bins = np.arange(-0.5, samples_per_circle)
     img, _ = np.histogram(pixel_num, bins=bins)
 
