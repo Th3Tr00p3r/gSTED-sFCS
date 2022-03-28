@@ -335,8 +335,11 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         self.pattern_wdgt = kwargs["pattern_wdgt"]
         self.scale_image = kwargs["scale_image"]
         self.image_method = kwargs["image_method"]
+        self.scan_type = "image"
         self.scanning = True
-        self.scan_params.initial_ao = tuple(getattr(scan_params, f"curr_ao_{ax}") for ax in "xyz")
+        self.scan_params.initial_ao = tuple(
+            getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz"
+        )
 
     def build_filename(self) -> str:
         return f"{self.file_template}_{self.laser_mode}_{self.scan_params.plane_orientation}_{dt.now().strftime('%H%M%S')}"
@@ -377,6 +380,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         self.ao_buffer, self.scan_params = ScanPatternAO(
             "image",
             self.um_v_ratio,
+            self.scan_params.initial_ao,
             self.scan_params,
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
@@ -433,6 +437,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
                 "dim1_um": self.scan_params.dim1_um,
                 "dim2_um": self.scan_params.dim2_um,
                 "dim3_um": self.scan_params.dim3_um,
+                "dim_order": self.scan_params.dim_order,
                 "n_lines": self.scan_params.n_lines,
                 "n_planes": self.scan_params.n_planes,
                 "line_freq_hz": self.scan_params.line_freq_hz,
@@ -595,9 +600,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_sampling_freq_hz) - 2
             )
         # create ao_buffer
+        curr_ao_v = tuple(getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz")
         self.ao_buffer, self.scan_params = ScanPatternAO(
             self.scan_params.pattern,
             self.um_v_ratio,
+            curr_ao_v,
             self.scan_params,
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
@@ -689,7 +696,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     samples_per_line=self.scan_params.samples_per_line,
                     ppl=self.scan_params.ppl,
                     n_lines=self.scan_params.n_lines,
-                    linear_len=self.scan_params.linear_len,
+                    linear_len_um=self.scan_params.linear_len_um,
                     max_line_length_um=self.scan_params.max_line_len_um,
                     line_shift_um=self.scan_params.line_shift_um,
                     angle_degrees=self.scan_params.angle_deg,

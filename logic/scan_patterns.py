@@ -11,9 +11,16 @@ import numpy as np
 class ScanPatternAO:
     """Doc."""
 
-    def __init__(self, pattern: str, um_v_ratio: Tuple[float, float, float], scan_params):
+    def __init__(
+        self,
+        pattern: str,
+        um_v_ratio: Tuple[float, float, float],
+        curr_ao_v: tuple,
+        scan_params,
+    ):
         self.pattern = pattern
         self.um_v_ratio = um_v_ratio
+        self.curr_ao_v = curr_ao_v
         self.scan_params = scan_params
 
     def calculate_pattern(self):
@@ -36,7 +43,7 @@ class ScanPatternAO:
         ppl = self.scan_params.ppl
         f = self.scan_params.linear_fraction
         plane_orientation = self.scan_params.plane_orientation
-        current_ao = tuple(getattr(self.scan_params, f"curr_ao_{ax}") for ax in "xyz")
+        current_ao = self.curr_ao_v
         dim_um = tuple(getattr(self.scan_params, f"dim{i}_um") for i in (1, 2, 3))
         n_lines = self.scan_params.n_lines
         n_planes = self.scan_params.n_planes
@@ -102,6 +109,7 @@ class ScanPatternAO:
 
         self.scan_params.dt = 1 / (line_freq_hz * ppl)
         self.scan_params.dim_order = dim_order
+        self.scan_params.set_pnts_lines_odd = set_pnts_lines_odd
         self.scan_params.set_pnts_lines_even = set_pnts_lines_even
         self.scan_params.set_pnts_planes = set_pnts_planes
 
@@ -200,7 +208,7 @@ class ScanPatternAO:
                     ),
                 )
 
-        linear_len = f * tot_len
+        linear_len_um = f * tot_len
         line_freq_hz = speed_um_s / (2 * tot_len * (2 - f))
 
         samples_per_line = round((ao_sampling_freq_hz / line_freq_hz) / 2)
@@ -242,8 +250,8 @@ class ScanPatternAO:
 
         x_ao = np.zeros(shape=(T, n_lines + 1))
         y_ao = np.zeros(shape=(T, n_lines + 1))
-        X1 = linear_len * s * cos(ang_rad) + shift_vec * sin(ang_rad)
-        Y1 = linear_len * s * sin(ang_rad) - shift_vec * cos(ang_rad)
+        X1 = linear_len_um * s * cos(ang_rad) + shift_vec * sin(ang_rad)
+        Y1 = linear_len_um * s * sin(ang_rad) - shift_vec * cos(ang_rad)
         X2 = -X1 + 2 * shift_vec * sin(ang_rad)
         Y2 = -Y1 - 2 * shift_vec * cos(ang_rad)
         for line_idx in range(n_lines):
@@ -272,7 +280,13 @@ class ScanPatternAO:
         x_ao = x_ao / x_um_v_ratio
         y_ao = y_ao / y_um_v_ratio
 
+        # combine AOX and AOY
         ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
+
+        # add current AO
+        current_aox_v, current_aoy_v, _ = self.curr_ao_v
+        curr_ao = np.array([[current_aox_v], [current_aoy_v]])
+        ao_buffer += curr_ao
 
         self.scan_params.dt = 1 / (
             line_freq_hz * ppl
@@ -280,10 +294,10 @@ class ScanPatternAO:
         #        self.scan_params.dt = 1 / ao_sampling_freq_hz
         self.scan_params.n_lines = n_lines
         self.scan_params.samples_per_line = T
-        self.scan_params.linear_len = linear_len
+        self.scan_params.linear_len_um = linear_len_um
         self.scan_params.ppl = ppl
         self.scan_params.line_freq_hz = line_freq_hz
-        self.scan_params.eff_speed_um_s = v * linear_len * ao_sampling_freq_hz
+        self.scan_params.eff_speed_um_s = v * linear_len_um * ao_sampling_freq_hz
         self.scan_params.linear_part = np.arange(t0, (T - t0) + 1, dtype=np.int32)
         self.scan_params.x_lim = [np.min(x_ao), np.max(x_ao)]
         self.scan_params.y_lim = [np.min(y_ao), np.max(y_ao)]
@@ -321,6 +335,12 @@ class ScanPatternAO:
             ],
         )
 
+        # add current AO
+        current_aox_v, current_aoy_v, _ = self.curr_ao_v
+        curr_ao = np.array([[current_aox_v], [current_aoy_v]])
+        ao_buffer += curr_ao
+
+        # edit params object
         self.scan_params.dt = 1 / (circle_freq_hz * samples_per_circle)
         self.scan_params.eff_speed_um_s = (
             (1 / samples_per_circle) * circumference * ao_sampling_freq_hz

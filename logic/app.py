@@ -93,7 +93,7 @@ class App:
         # init AO as origin (actual AO is measured in internal AO if last position is needed)
         [
             getattr(self.gui.main, f"{axis}AOV").setValue(org_vltg)
-            for axis, org_vltg in zip("xyz", self.devices.scanners.ORIGIN)
+            for axis, org_vltg in zip("xyz", self.devices.scanners.origin)
         ]
 
         # init scan patterns

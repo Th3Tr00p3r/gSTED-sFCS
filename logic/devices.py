@@ -140,7 +140,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         mode_cmnd_dict = {"free running": "FR", "external gating": "GM"}
         self.mpd_command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
         if mode == "external gating":
-            self.spad_dvc.is_gated = True
+            self.is_gated = True
         else:
             self.is_gated = False
 
@@ -181,6 +181,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             except ValueError as exc:
                 exc = IOError(f"{self.log_ref} did not respond to initialization commands! [{exc}]")
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+                self.effective_delay_ns = 0
             else:
                 self.delay_ps = int(delay_str)
                 self.pulsewidth_ns = int(pulsewidth_str)
@@ -309,7 +310,6 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         "YZ": (False, True, True),
         "XYZ": (True, True, True),
     }
-    ORIGIN = (0.0, 0.0, 5.0)
     X_AO_LIMITS = Limits(-5.0, 5.0, ("min_val", "max_val"))
     Y_AO_LIMITS = Limits(-5.0, 5.0, ("min_val", "max_val"))
     Z_AO_LIMITS = Limits(0.0, 10.0, ("min_val", "max_val"))
@@ -349,6 +349,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             }
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
+        self.origin = tuple(getattr(self, f"{ax}_origin") for ax in "xyz")
         self.um_v_ratio = tuple(getattr(self, f"{ax}_um2v_const") for ax in "xyz")
         self.ai_buffer: Union[list, deque]
 
@@ -1092,6 +1093,9 @@ DEVICE_ATTR_DICT = {
             ao_x_init_vltg=("xAOV", "QDoubleSpinBox", "main", False),
             ao_y_init_vltg=("yAOV", "QDoubleSpinBox", "main", False),
             ao_z_init_vltg=("zAOV", "QDoubleSpinBox", "main", False),
+            x_origin=("xOrigin", "QDoubleSpinBox", "settings", False),
+            y_origin=("yOrigin", "QDoubleSpinBox", "settings", False),
+            z_origin=("zOrigin", "QDoubleSpinBox", "settings", False),
             x_um2v_const=("xConv", "QDoubleSpinBox", "settings", False),
             y_um2v_const=("yConv", "QDoubleSpinBox", "settings", False),
             z_um2v_const=("zConv", "QDoubleSpinBox", "settings", False),
