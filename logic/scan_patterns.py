@@ -7,6 +7,8 @@ from typing import Tuple
 
 import numpy as np
 
+from utilities.helper import Limits
+
 
 class ScanPatternAO:
     """Doc."""
@@ -15,12 +17,12 @@ class ScanPatternAO:
         self,
         pattern: str,
         um_v_ratio: Tuple[float, float, float],
-        curr_ao_v: tuple,
+        origin_ao_v: tuple,
         scan_params,
     ):
         self.pattern = pattern
         self.um_v_ratio = um_v_ratio
-        self.curr_ao_v = curr_ao_v
+        self.origin_ao_v = origin_ao_v
         self.scan_params = scan_params
 
     def calculate_pattern(self):
@@ -43,7 +45,6 @@ class ScanPatternAO:
         ppl = self.scan_params.ppl
         f = self.scan_params.linear_fraction
         plane_orientation = self.scan_params.plane_orientation
-        current_ao = self.curr_ao_v
         dim_um = tuple(getattr(self.scan_params, f"dim{i}_um") for i in (1, 2, 3))
         n_lines = self.scan_params.n_lines
         n_planes = self.scan_params.n_planes
@@ -56,7 +57,7 @@ class ScanPatternAO:
         elif plane_orientation == "XZ":
             dim_order = (0, 2, 1)
         dim_conv = tuple(self.um_v_ratio[i] for i in dim_order)
-        current_ao = tuple(current_ao[i] for i in dim_order)
+        origin_ao_v = tuple(self.origin_ao_v[i] for i in dim_order)
 
         t0 = ppl / 2 * (1 - f) / (2 - f)
         v = 1 / (ppl / 2 - 2 * t0)
@@ -84,21 +85,21 @@ class ScanPatternAO:
         s = s - 1 / (2 * f)
 
         ampl = dim_um[0] / dim_conv[0]
-        single_line_ao = current_ao[0] + ampl * s
+        single_line_ao = origin_ao_v[0] + ampl * s
 
         ampl = dim_um[1] / dim_conv[1]
         if n_lines > 1:
             vect = np.array([(val / (n_lines - 1)) - 0.5 for val in range(n_lines)])
         else:
             vect = 0
-        set_pnts_lines_odd = current_ao[1] + ampl * vect
+        set_pnts_lines_odd = origin_ao_v[1] + ampl * vect
 
         ampl = dim_um[2] / dim_conv[2]
         if n_planes > 1:
             vect = np.array([(val / (n_planes - 1)) - 0.5 for val in range(n_planes)])
         else:
             vect = 0
-        set_pnts_planes = np.atleast_1d(current_ao[2] + ampl * vect)
+        set_pnts_planes = np.atleast_1d(origin_ao_v[2] + ampl * vect)
 
         set_pnts_lines_even = set_pnts_lines_odd[::-1]
 
@@ -283,10 +284,9 @@ class ScanPatternAO:
         # combine AOX and AOY
         ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
 
-        # add current AO
-        current_aox_v, current_aoy_v, _ = self.curr_ao_v
-        curr_ao = np.array([[current_aox_v], [current_aoy_v]])
-        ao_buffer += curr_ao
+        # add origin AO
+        origin_aox_v, origin_aoy_v, _ = self.origin_ao_v
+        ao_buffer += np.array([[origin_aox_v], [origin_aoy_v]])
 
         self.scan_params.dt = 1 / (
             line_freq_hz * ppl
@@ -299,8 +299,8 @@ class ScanPatternAO:
         self.scan_params.line_freq_hz = line_freq_hz
         self.scan_params.eff_speed_um_s = v * linear_len_um * ao_sampling_freq_hz
         self.scan_params.linear_part = np.arange(t0, (T - t0) + 1, dtype=np.int32)
-        self.scan_params.x_lim = [np.min(x_ao), np.max(x_ao)]
-        self.scan_params.y_lim = [np.min(y_ao), np.max(y_ao)]
+        self.scan_params.x_lim = Limits(np.min(x_ao), np.max(x_ao))
+        self.scan_params.y_lim = Limits(np.min(y_ao), np.max(y_ao))
 
         return ao_buffer, self.scan_params
 
@@ -335,10 +335,9 @@ class ScanPatternAO:
             ],
         )
 
-        # add current AO
-        current_aox_v, current_aoy_v, _ = self.curr_ao_v
-        curr_ao = np.array([[current_aox_v], [current_aoy_v]])
-        ao_buffer += curr_ao
+        # add origin AO
+        origin_aox_v, origin_aoy_v, _ = self.origin_ao_v
+        ao_buffer += np.array([[origin_aox_v], [origin_aoy_v]])
 
         # edit params object
         self.scan_params.dt = 1 / (circle_freq_hz * samples_per_circle)
