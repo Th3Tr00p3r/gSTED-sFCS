@@ -95,7 +95,8 @@ legacy_python_trans_dict = {
     "line_shift": "line_shift_um",
     "data": "byte_data",
     "points_per_line_total": "samples_per_line",
-    "line_length": "linear_len",
+    "line_length": "linear_len_um",
+    "linear_len": "linear_len_um",
     # Image
     "cnt": "ci",
     "lines": "n_lines",
