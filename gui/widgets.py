@@ -392,9 +392,6 @@ IMG_SCAN_COLL = QtWidgetCollection(
     line_freq_hz=("imgScanLineFreq", "QSpinBox", "main", False),
     linear_fraction=("imgScanLinFrac", "QDoubleSpinBox", "main", False),
     n_planes=("imgScanNumPlanes", "QSpinBox", "main", False),
-    curr_ao_x=("xAOVint", "QDoubleSpinBox", "main", False),
-    curr_ao_y=("yAOVint", "QDoubleSpinBox", "main", False),
-    curr_ao_z=("zAOVint", "QDoubleSpinBox", "main", False),
     auto_cross=("autoCrosshair", "QCheckBox", "main", False),
 )
 

@@ -216,7 +216,7 @@ class MainWin:
         for axis, is_chosen, org_axis_vltg in zip(
             "xyz",
             scanners_dvc.AXES_TO_BOOL_TUPLE_DICT[which_axes],
-            scanners_dvc.ORIGIN,
+            scanners_dvc.origin,
         ):
             if is_chosen:
                 getattr(self._gui, f"{axis}AOV").setValue(org_axis_vltg)
@@ -234,8 +234,10 @@ class MainWin:
             scanners_dvc = self._app.devices.scanners
             axis = self._gui.posAxis.currentText()
             current_vltg = scanners_dvc.ai_buffer[-1][3:][scanners_dvc.AXIS_INDEX[axis]]
-            um_V_RATIO = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
-            delta_vltg = um_disp / um_V_RATIO
+            um_v_ratio = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
+            delta_vltg = um_disp / um_v_ratio
+            print(f"{axis}-axiy um_v_ratio: {um_v_ratio}")  # TESTESTEST
+            print("delta_vltg: ", delta_vltg)  # TESTESTEST
 
             new_vltg = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS").clamp(
                 (current_vltg + delta_vltg)
@@ -398,9 +400,13 @@ class MainWin:
                 # AttributeError - devices not yet initialized
                 # ZeroDivisionError - loadout has bad values
                 um_v_ratio = self._app.devices.scanners.um_v_ratio
+                curr_ao_v = tuple(
+                    getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz"
+                )
                 ao, scan_params = ScanPatternAO(
                     pattern,
                     um_v_ratio,
+                    curr_ao_v,
                     scan_params,
                 ).calculate_pattern()
                 x_data, y_data = ao[0, :], ao[1, :]

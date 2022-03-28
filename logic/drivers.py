@@ -115,7 +115,7 @@ class Ftd2xx:
         cmnd = (";".join(command_chain) + "#").encode("utf-8")
         self.write(cmnd)
         response = self.read().decode("utf-8").split(sep="#")
-        return [_ for _ in response if _]
+        return [elem for elem in response if elem]
 
     # NOT USED, CURRENTLY (using regular read())
     async def async_read(self) -> bytes:
