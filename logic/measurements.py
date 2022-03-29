@@ -431,7 +431,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
                 "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
                 "version": self.tdc_dvc.tdc_vrsn,
             },
-            "scan_params": {
+            "scan_settings": {
                 "set_pnts_lines_odd": self.scan_params.set_pnts_lines_odd,
                 "set_pnts_planes": self.scan_params.set_pnts_planes,
                 "dim1_um": self.scan_params.dim1_um,

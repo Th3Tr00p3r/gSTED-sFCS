@@ -96,7 +96,7 @@ class Ftd2xx:
 
     def mpd_command(
         self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
-    ) -> List[str]:
+    ) -> Tuple[List[str], str]:
         """Doc."""
 
         self.purge()
@@ -115,7 +115,7 @@ class Ftd2xx:
         cmnd = (";".join(command_chain) + "#").encode("utf-8")
         self.write(cmnd)
         response = self.read().decode("utf-8").split(sep="#")
-        return [elem for elem in response if elem]
+        return [elem for elem in response if elem], cmnd.decode("utf-8")
 
     # NOT USED, CURRENTLY (using regular read())
     async def async_read(self) -> bytes:
@@ -125,10 +125,12 @@ class Ftd2xx:
         # check this out: https://docs.python.org/3/library/asyncio-dev.html#detect-never-retrieved-exceptions
         return await self._inst.read(self.n_bytes)
 
-    def purge(self) -> None:
+    def purge(self, should_purge_write=False) -> None:
         """Doc."""
 
         self._inst.purge(ftd2xx.defines.PURGE_RX)
+        if should_purge_write:
+            self._inst.purge(ftd2xx.defines.PURGE_TX)
 
     def get_queue_status(self) -> None:
         """Doc."""

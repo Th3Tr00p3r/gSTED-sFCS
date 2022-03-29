@@ -110,7 +110,8 @@ legacy_python_trans_dict = {
     "linear_frac": "linear_fraction",
     # General
     "sample_freq_hz": "ao_sampling_freq_hz",
-    "scan_param": "scan_params",
+    "scan_param": "scan_settings",
+    "scan_params": "scan_settings",
 }
 
 default_system_info = {
@@ -387,6 +388,14 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
             full_data["scan_settings"].pop("y", None)
             full_data.pop("ao")
             full_data.pop("ai")
+    if scan_settings := file_dict.get("scan_settings"):  # legacy image scan
+        if scan_settings.get("plane_orientation") and not scan_settings.get("dim_order"):
+            if scan_settings["plane_orientation"] == "XY":
+                scan_settings["dim_order"] = (0, 1, 2)
+            elif scan_settings["plane_orientation"] == "YZ":
+                scan_settings["dim_order"] = (1, 2, 0)
+            elif scan_settings["plane_orientation"] == "XZ":
+                scan_settings["dim_order"] = (0, 2, 1)
 
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
