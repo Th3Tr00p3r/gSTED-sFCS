@@ -55,6 +55,7 @@ class CorrFunc:
     vt_um: np.ndarray
     cf_cr: np.ndarray
     g0: float
+    EPSILON = 1e-5  # TODO: why is this needed (in low-data measurements)
 
     def __init__(self, name, gate_ns, correlator_type):
         self.name = name
@@ -175,6 +176,7 @@ class CorrFunc:
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, axis=0)
         jj = Limits(self.norm_range.upper, 100).valid_indices(self.lag)  # work in the relevant part
+
         try:
             self.score = (
                 (1 / np.var(self.cf_cr[:, jj], 0))
@@ -184,12 +186,12 @@ class CorrFunc:
         except RuntimeWarning:  # division by zero
             # TODO: why does this happen?
             self.score = (
-                (1 / (np.var(self.cf_cr[:, jj], 0) + 1))
+                (1 / (np.var(self.cf_cr[:, jj], 0) + self.EPSILON))
                 * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
                 / len(jj)
             ).sum(axis=1)
             print(
-                "Division by zero avoided by adding epsilon=1. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={self.EPSILON}. Why does this happen (zero in variance)?"
             )
 
         total_n_rows, _ = self.cf_cr.shape
@@ -207,19 +209,48 @@ class CorrFunc:
         self.j_bad = delete_list
         self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
-        self.avg_cf_cr, self.error_cf_cr = _calculate_weighted_avg(
+        self.avg_cf_cr, self.error_cf_cr = self._calculate_weighted_avg(
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
         j_t = self.norm_range.valid_indices(self.lag)
-        self.g0 = (self.avg_cf_cr[j_t] / self.error_cf_cr[j_t] ** 2).sum() / (
-            1 / self.error_cf_cr[j_t] ** 2
-        ).sum()
+
+        try:
+            self.g0 = (self.avg_cf_cr[j_t] / self.error_cf_cr[j_t] ** 2).sum() / (
+                1 / self.error_cf_cr[j_t] ** 2
+            ).sum()
+        except RuntimeWarning:  # division by zero
+            # TODO: why does this happen?
+            self.g0 = (self.avg_cf_cr[j_t] / (self.error_cf_cr[j_t] + self.EPSILON) ** 2).sum() / (
+                1 / (self.error_cf_cr[j_t] + self.EPSILON) ** 2
+            ).sum()
+            print(
+                f"Division by zero avoided by adding EPSILON={self.EPSILON}. Why does this happen (zero in variance)?"
+            )
+
         self.normalized = self.avg_cf_cr / self.g0
         self.error_normalized = self.error_cf_cr / self.g0
 
         if should_plot:
             self.plot_correlation_function(plot_kwargs=plot_kwargs)
+
+    def _calculate_weighted_avg(self, cf_cr, weights):
+        """Doc."""
+
+        tot_weights = weights.sum(0)
+        try:
+            avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
+        except RuntimeWarning:  # division by zero - caused by zero total weights element/s
+            # TODO: why does this happen?
+            tot_weights += self.EPSILON
+            avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
+            print(
+                f"Division by zero avoided by adding epsilon={self.EPSILON}. Why does this happen (zero total weight)?"
+            )
+        finally:
+            error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
+
+        return avg_cf_cr, error_cf_cr
 
     def plot_correlation_function(
         self,
@@ -1714,22 +1745,3 @@ def _auto_corr(a):
     lags = np.arange(c.size, dtype=np.uint16)
 
     return c, lags
-
-
-def _calculate_weighted_avg(cf_cr, weights):
-    """Doc."""
-
-    tot_weights = weights.sum(0)
-    try:
-        avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
-    except RuntimeWarning:  # division by zero - caused by zero total weights element/s
-        # TODO: why does this happen?
-        tot_weights += 1
-        avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
-        print(
-            "Division by zero avoided by adding epsilon=1. Why does this happen (zero total weight)?"
-        )
-    finally:
-        error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
-
-    return avg_cf_cr, error_cf_cr
