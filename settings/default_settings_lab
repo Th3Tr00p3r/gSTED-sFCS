@@ -1,16 +1,6 @@
 sysScanSetup,STED with galvos
 afterpulsingFitType,multi_exponent_fit
 afterpulsingFitParams, 2.26707493e01, 2.10619289e-01, 1.95406751e06,
-dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
-solSubdirName,solution
-imgSubdirName,image
-camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
-logDataPath,./log/
-tempDataPath,C:/temp_sfcs_folder/
-spadDescription,FT232R USB UART
-spadModelQuery,AQ
-psdDescription,FT230X Basic UART
-psdModelQuery,RSN
 cam1Serial,4102737458
 cam2Serial,4102835063
 arduinoAddr,COM3
@@ -29,12 +19,6 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
-excMod,PicoQuant
-excTriggerExtAddr,Dev1/port0/line6
-excTriggerIntAddr,Dev3/port0/
-excAddr,Dev1/port0/line6
-depShutterAddr,Dev3/port0/line11
-depModelQuery,getmodel
 AOXaddr,Dev3/ao2, Dev3/ao3
 AOYaddr,Dev3/ao0, Dev3/ao1
 AOZaddr,Dev1/ao1
@@ -47,12 +31,22 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-spadBaudRate,115200
-spadTimeout,100
-psdBaudRate,115200
-psdTimeout,10
-psdThreshold_mV,-500
-psdFreqDiv,1
+spadDescription,FT232R USB UART
+spadModelQuery,AQ
+psdDescription,FT230X Basic UART
+psdModelQuery,RSN
+excMod,PicoQuant
+excTriggerExtAddr,Dev1/port0/line6
+excTriggerIntAddr,Dev3/port0/
+excAddr,Dev1/port0/line6
+depShutterAddr,Dev3/port0/line11
+depModelQuery,getmodel
+dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
+solSubdirName,solution
+imgSubdirName,image
+camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
+logDataPath,./log/
+tempDataPath,C:/temp_sfcs_folder/
 um232Timeout,2
 um232TxSize,256000
 um232NumBytes,256000
@@ -64,6 +58,12 @@ pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
 AIclkDiv,100
+spadBaudRate,115200
+spadTimeout,100
+psdBaudRate,115200
+psdTimeout,100
+psdThreshold_mV,-500
+psdFreqDiv,1
 laserPropTime,15.5
 xOrigin,0.0
 yOrigin,0.0
@@ -72,9 +72,9 @@ xConv,70.81
 yConv,20.0
 zConv,10.0
 counterTriggerEdge,Rising
-excTriggerSrc,External (TDC)
 AOtriggerEdge,Rising
 AOwfType,Sine
+excTriggerSrc,External (TDC)
 counterCIdupCountPrevention,True
-tabWidget,2
-tabWidget_2,1
+tabWidget,0
+tabWidget_2,0
