@@ -84,7 +84,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            self.purge()
+            self.purge(True)
             self.toggle_mode("free running")
 
             self.is_on = None  # found by querying the device (in timeout.py)
@@ -117,9 +117,9 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.gate_width_ns = 44
 
         try:
-            responses = self.mpd_command([("AQ", None), ("DC", None)])
+            responses, command = self.mpd_command([("AQ", None), ("DC", None)])
         except ValueError:
-            print(f"{self.log_ref} did not respond to stats query")
+            print(f"{self.log_ref} did not respond to stats query ('{command}')")
         else:
             relevant_codes = ("VPOL", "FR", "ERR")
             stats_dict = {
@@ -168,8 +168,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
+            self.purge(True)
             try:
-                *_, delay_str, pulsewidth_str = self.mpd_command(
+                response, command = self.mpd_command(
                     [
                         ("EM0", Limits(0, 1)),  # cancel echo mode
                         (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
@@ -178,8 +179,11 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                         ("RP", None),  # request initial pulsewidth
                     ]
                 )
+                *_, delay_str, pulsewidth_str = response
             except ValueError as exc:
-                exc = IOError(f"{self.log_ref} did not respond to initialization commands! [{exc}]")
+                exc = IOError(
+                    f"{self.log_ref} did not respond to initialization commands ('{command}') [{exc}]"
+                )
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
                 self.effective_delay_ns = 0
             else:
@@ -206,7 +210,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         self.toggle(False)
-        self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for accompanying software)
+        self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
     def update_effective_delay(self):
@@ -226,9 +230,10 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         new_value = getattr(self, f"set_{delay_component.split('_')[0]}_wdgt").get()
         cmnd = component_cmnd_dict[delay_component]
 
-        response, *_ = self.mpd_command(
+        response, _ = self.mpd_command(
             (f"{cmnd}{new_value}", getattr(self, f"{delay_component.split('_')[0]}_limits"))
         )
+        response = response[0]
 
         setattr(self, delay_component, int(response))
         self.update_effective_delay()
@@ -280,10 +285,8 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     def purge_buffers(self):
         """Doc."""
-        try:
-            self.purge()
-        except Exception as exc:  # TODO: is this needed?
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+
+        self.purge()
 
     def get_status(self):
         """Doc."""
