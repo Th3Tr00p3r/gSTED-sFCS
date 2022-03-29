@@ -459,7 +459,8 @@ class MainWin:
 
             dim_vltg = (line_ticks_v[coord_1], row_ticks_v[coord_2], plane_ticks_v[plane_idx])
 
-            vltgs = tuple(dim_vltg[i] for i in image_data.dim_order)
+            # order/sort the voltages according to dim_order
+            vltgs = tuple(dim_vltg for _, dim_vltg in sorted(zip(image_data.dim_order, dim_vltg)))
 
             [
                 getattr(self._gui, f"{axis.lower()}AOV").setValue(vltg)
@@ -594,7 +595,7 @@ class MainWin:
 
         with suppress(AttributeError):
             file_dict = self._app.last_image_scans[self._app.curr_img_idx]
-            file_name = f"{wdgt_coll.file_template}_{file_dict['laser_mode']}_{file_dict['scan_params']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
+            file_name = f"{wdgt_coll.file_template}_{file_dict['laser_mode']}_{file_dict['scan_settings']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
             today_dir = Path(wdgt_coll.save_path) / dt.now().strftime("%d_%m_%Y")
             dir_path = today_dir / "image"
             file_path = dir_path / (re.sub("\\s", "_", file_name) + ".pkl")
