@@ -23,21 +23,22 @@ class ScanPatternAO:
         self.curr_ao_v = curr_ao_v
         self.scan_params = scan_params
 
-    def calculate_pattern(self):
+    def calculate_pattern(self) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
 
         if self.pattern == "image":
             return self.calc_image_pattern()
-        if self.pattern == "angular":
+        elif self.pattern == "angular":
             return self.calc_angular_pattern()
-        if self.pattern == "circle":
+        elif self.pattern == "circle":
             return self.calc_circle_pattern()
+        else:
+            raise ValueError(f"{self.pattern} is not a valid pattern name!")
 
     def calc_image_pattern(
         self,
     ) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
-        # TODO: have it so that this function returns the same types - ao and params (in a tuple).
 
         line_freq_hz = self.scan_params.line_freq_hz
         ppl = self.scan_params.ppl

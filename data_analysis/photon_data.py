@@ -691,29 +691,29 @@ class CountsImageMixin:
     def create_image_stack_data(self, file_dict: dict) -> CountsImageStackData:
         """Doc."""
 
-        scan_params = file_dict["scan_params"]
+        scan_settings = file_dict["scan_settings"]
         um_v_ratio = file_dict["xyz_um_to_v"]
         ao = file_dict["ao"]
         counts = file_dict["ci"]
 
-        n_planes = scan_params["n_planes"]
-        n_lines = scan_params["n_lines"]
-        pxl_size_um = scan_params["dim2_um"] / n_lines
-        pxls_per_line = div_ceil(scan_params["dim1_um"], pxl_size_um)
-        dim_order = scan_params["dim_order"]
-        ppl = scan_params["ppl"]
+        n_planes = scan_settings["n_planes"]
+        n_lines = scan_settings["n_lines"]
+        pxl_size_um = scan_settings["dim2_um"] / n_lines
+        pxls_per_line = div_ceil(scan_settings["dim1_um"], pxl_size_um)
+        dim_order = scan_settings["dim_order"]
+        ppl = scan_settings["ppl"]
         ppp = n_lines * ppl
         turn_idx = ppl // 2
 
         first_dim = dim_order[0]
-        dim1_center = scan_params["initial_ao"][first_dim]
+        dim1_center = scan_settings["initial_ao"][first_dim]
         um_per_v = um_v_ratio[first_dim]
 
-        line_len_v = scan_params["dim1_um"] / um_per_v
+        line_len_v = scan_settings["dim1_um"] / um_per_v
         dim1_min = dim1_center - line_len_v / 2
 
         pxl_size_v = pxl_size_um / um_per_v
-        pxls_per_line = div_ceil(scan_params["dim1_um"], pxl_size_um)
+        pxls_per_line = div_ceil(scan_settings["dim1_um"], pxl_size_um)
 
         # prepare to remove counts from outside limits
         dim1_ao_single = ao[0][:ppl]
@@ -743,10 +743,10 @@ class CountsImageMixin:
             image_stack_backward=image_stack_backward,
             norm_stack_backward=norm_stack_backward,
             line_ticks_v=dim1_min + np.arange(pxls_per_line) * pxl_size_v,
-            row_ticks_v=scan_params["set_pnts_lines_odd"],
-            plane_ticks_v=scan_params.get("set_pnts_planes"),  # doesn't exist in older versions
+            row_ticks_v=scan_settings["set_pnts_lines_odd"],
+            plane_ticks_v=scan_settings.get("set_pnts_planes"),  # doesn't exist in older versions
             n_planes=n_planes,
-            plane_orientation=scan_params["plane_orientation"],
+            plane_orientation=scan_settings["plane_orientation"],
             dim_order=dim_order,
         )
 
