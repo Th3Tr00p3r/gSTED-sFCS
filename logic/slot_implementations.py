@@ -120,6 +120,8 @@ class MainWin:
                             logging.debug(f"{dvc.log_ref} toggled ON")
                             if nick == "stage":
                                 self._gui.stageButtonsGroup.setEnabled(True)
+                            if nick == "delayer":
+                                self._app.devices.spad.toggle_mode("external gating")
                             was_toggled = True
 
                 # switch OFF
@@ -134,6 +136,10 @@ class MainWin:
                         if nick == "stage":
                             # TODO: try to move this inside device (add widgets to device)
                             self._gui.stageButtonsGroup.setEnabled(False)
+
+                        if nick == "delayer":
+                            # TODO: try to move this inside device (add widgets to device)
+                            self._app.devices.spad.toggle_mode("free running")
 
                         if nick == "dep_laser":
                             # TODO: try to move this inside device (add widgets to device)
