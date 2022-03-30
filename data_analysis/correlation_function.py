@@ -332,10 +332,12 @@ class CorrFunc:
 
         # choose interpolation range (extrapolate the noisy parts)
         j_vt_um_sq_over_min = np.nonzero(self.vt_um ** 2 > vt_min_sq)[0]
-        #        j_vt_um_under_r_max = np.nonzero(self.vt_um < r_max)[0]
+        j_vt_um_under_r_max = np.nonzero(self.vt_um < r_max)[0]
         j_normalized_over_gmin = np.nonzero(self.normalized > g_min)[0][:-1]
-        j_intrp = sorted(set(j_vt_um_sq_over_min) & set(j_normalized_over_gmin))
-        #        j_intrp = sorted(set(j_vt_um_sq_over_min) & set(j_vt_um_under_r_max) & set(j_normalized_over_gmin))
+        #        j_intrp = sorted(set(j_vt_um_sq_over_min) & set(j_normalized_over_gmin))
+        j_intrp = sorted(
+            set(j_vt_um_sq_over_min) & set(j_vt_um_under_r_max) & set(j_normalized_over_gmin)
+        )
 
         sample_vt_um = self.vt_um[j_intrp]
         sample_normalized = self.normalized[j_intrp]
@@ -452,7 +454,8 @@ class CorrFunc:
 
         y = np.empty(shape=x.shape)
         ransac = linear_model.RANSACRegressor()
-        for i in range(start, finish + 1):
+        for i in range(start, finish):
+            #        for i in range(start, finish + 1):
             ji = range(i - n_pnts, i + n_pnts + 1)
 
             # Robustly fit linear model with RANSAC algorithm
@@ -461,7 +464,7 @@ class CorrFunc:
 
             if i == start:
                 j = range(ch[i + 1] + 1)
-            elif i == finish:
+            elif i == finish - 1:
                 j = range((ch[i] + 1), x.size)
             else:
                 j = range((ch[i] + 1), ch[i + 1] + 1)
@@ -950,7 +953,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             roi["row"].append(roi["row"][0])
             roi["col"].append(roi["col"][0])
         except IndexError:
-            print("ROI is empty (need to figure out the cause). Skipping file.")
+            print("ROI is empty (need to figure out the cause). Skipping file.\n")
             return None
 
         # convert lists/deques to numpy arrays
@@ -1279,7 +1282,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         """Doc."""
 
         # calculation
-        print(f"Calculating all structure factors for '{self.name}' measurement...")
         for cf in self.cf.values():
             #            if not hasattr(cf, "structure_factor"):
             cf.calculate_structure_factor(**kwargs)
@@ -1593,6 +1595,11 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
     def calculate_structure_factors(self, **kwargs) -> None:
         """Doc."""
+
+        print(
+            f"Calculating all structure factors for '{self.name.capitalize()}' experiment...",
+            end=" ",
+        )
 
         # calculate all structure factors
         for meas_type in ("confocal", "sted"):
