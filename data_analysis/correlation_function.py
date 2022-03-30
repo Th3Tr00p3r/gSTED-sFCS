@@ -651,6 +651,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 )
         else:
             print(f"Calculating duration (not supplied): {calc_duration_mins:.1f} mins\n")
+        self.requested_duration_min = self.duration_min
         self.duration_min = calc_duration_mins
 
         # done with loading
@@ -1479,7 +1480,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                     x_field = "vt_um"
 
             super_title = f"'{self.name.capitalize()}' Experiment\n'{measurement.name.capitalize()}' Measurement - ACFs"
-            with Plotter(super_title=super_title) as ax:
+            with Plotter(super_title=super_title, ylim=(-100, None)) as ax:
                 measurement.cf[cf_name].plot_correlation_function(
                     parent_ax=ax,
                     y_field="average_all_cf_cr",
