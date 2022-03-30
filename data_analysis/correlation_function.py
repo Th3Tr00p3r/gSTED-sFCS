@@ -1177,7 +1177,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         print("Preparing files for software correlator:", end=" ")
         ts_split_list = []
-        for p in self.data:
+        for file_idx, p in enumerate(self.data):
             #            print(f"({p.file_num})", end=" ")
             line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
             if hasattr(p, "delay_time"):  # if measurement quacks as gated
@@ -1206,7 +1206,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 valid = valid[valid != 0]
 
                 if not valid.size:
-                    print(f"No valid photons in line {j}. Skipping.")
+                    print(f"No valid photons in line {j} of file {file_idx+1}. Skipping.")
                     continue
 
                 # check that we start with the line beginning and not its end
