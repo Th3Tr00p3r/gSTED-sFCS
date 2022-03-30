@@ -371,7 +371,7 @@ class CorrFunc:
 
         # plot interpolations for checks
         with Plotter(
-            super_title=f"{self.name} Interpolation Testing",
+            super_title=f"{self.name.capitalize()}: Interpolation Testing",
             xlim=(0, self.vt_um[max(j_intrp) + 5] ** 2),
             ylim=(1e-1, 1.3),
         ) as ax:
@@ -387,6 +387,8 @@ class CorrFunc:
                     "Linear Intep/Extrap",
                 ]
             )
+            ax.set_xlabel("Displacement $(\\mu m^2)$")
+            ax.set_ylabel("ACF (Normalized)")
 
         #  zero-pad
         fr_linear_interp[r > self.vt_um[j_normalized_over_gmin[-1]]] = 0
@@ -595,6 +597,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             file_selection = "Use All"
         file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
         self.n_paths = len(file_paths)
+        self.file_path_template = file_path_template
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
 
@@ -1028,7 +1031,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self.min_duration_frac = kwargs.get("min_time_frac", 0.5)  # TODO: only used for static?
 
         # Unite TDC gate and detector gate
-        tdc_gate_ns = kwargs.get("gate_ns", Limits(0, np.inf))
+        tdc_gate_ns = Limits(kwargs.get("gate_ns", (0, np.inf)))
         kwargs["gate_ns"] = tdc_gate_ns & self.detector_gate_ns
 
         # correlate data
@@ -1065,7 +1068,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         if is_verbose:
             print(
-                f"Correlating static data ({self.name} [{gate_ns} gating]):",
+                f"Correlating static/circular data ({self.name} [{gate_ns} ns gating]):",
                 end=" ",
             )
             print("Preparing files for software correlator...", end=" ")
@@ -1166,7 +1169,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ) -> CorrFunc:
         """Correlates data for angular scans. Returns a CorrFunc object"""
 
-        print(f"{self.name} [{gate_ns} gating] - Correlating angular scan data '{self.template}':")
+        print(
+            f"{self.name} [{gate_ns} ns gating] - Correlating angular scan data '{self.template}':"
+        )
 
         CF = CorrFunc(cf_name, gate_ns, CorrelatorType.PH_DELAY_CORRELATOR_LINES)
 
@@ -1252,7 +1257,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
     ) -> List[str]:
         """Doc."""
 
-        with Plotter(super_title=f"'{self.name}' - ACFs", **kwargs) as ax:
+        with Plotter(super_title=f"'{self.name.capitalize()}' - ACFs", **kwargs) as ax:
             legend_labels = []
             kwargs["parent_ax"] = ax
             for cf_name, cf in self.cf.items():
@@ -1282,7 +1287,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         #  plotting
         with Plotter(
             #            xlim=Limits(q[1], np.pi / min(w_xy)),
-            super_title=f"{self.name}: Structure Factor ($S(q)$)",
+            super_title=f"{self.name.capitalize()}: Structure Factor ($S(q)$)",
             **kwargs,
         ) as ax:
             legend_labels = []
@@ -1294,6 +1299,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     f"{name}: Gaussian Interpolation",
                     f"{name}: Linear Interpolation",
                 ]
+            ax.set_xlabel("$q$ $(\\mu m^{-1})$")
+            ax.set_ylabel("$S(q)$")
             ax.legend(legend_labels)
 
     def dump_or_load_data(self, should_load: bool, method_name=None) -> None:
@@ -1404,7 +1411,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
-        super_title = f"Experiment '{self.name}' - All ACFs"
+        super_title = f"Experiment '{self.name.capitalize()}' - All ACFs"
         with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
             self.plot_correlation_functions(
                 parent_ax=axes[0],
@@ -1459,7 +1466,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 should_plot=should_plot,
                 **kwargs,
             )
-            measurement.correlate_and_average(**kwargs)
+            measurement.correlate_and_average(is_verbose=True, **kwargs)
 
         if should_plot:
 
@@ -1469,7 +1476,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 else:  # angular or circular scan
                     x_field = "vt_um"
 
-            super_title = f"'{self.name}' Experiment\n'{measurement.name}' Measurement - ACFs"
+            super_title = f"'{self.name.capitalize()}' Experiment\n'{measurement.name.capitalize()}' Measurement - ACFs"
             with Plotter(super_title=super_title) as ax:
                 measurement.cf[cf_name].plot_correlation_function(
                     parent_ax=ax,
@@ -1484,11 +1491,21 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
         setattr(self, meas_type, measurement)
 
+    def save_processed_measurements(self):
+        """Doc."""
+
+        print("Saving processed measurements to disk...", end=" ")
+        file_utilities.save_processed_solution_meas(
+            self.confocal, self.confocal.file_path_template.parent
+        )
+        file_utilities.save_processed_solution_meas(self.sted, self.sted.file_path_template.parent)
+        print("Done.")
+
     def calibrate_tdc(self, **kwargs):
         """Doc."""
 
-        if hasattr(self.confocal, "scan_type"):
-            super_title = f"'{self.name}' Experiment\nTDC Calibration"
+        if hasattr(self.confocal, "scan_type"):  # has confocal measurement (minimum requirement)
+            super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
             with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
                 self.confocal.calibrate_tdc(should_plot=True, parent_axes=axes[:, :2], **kwargs)
                 if hasattr(self.sted, "scan_type"):  # if both measurements quack as if loaded
@@ -1505,7 +1522,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
         """Doc."""
 
         if hasattr(self.confocal, "tdc_calib"):  # if TDC calibration performed
-            super_title = f"'{self.name}' Experiment\nLifetime Comparison"
+            super_title = f"'{self.name.capitalize()}' Experiment\nLifetime Comparison"
             with Plotter(super_title=super_title, **kwargs) as ax:
                 self.confocal.compare_lifetimes(
                     "confocal",
@@ -1518,7 +1535,9 @@ class SFCSExperiment(TDCPhotonDataMixin):
         """Doc."""
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
-            self.sted.correlate_and_average(cf_name=f"gSTED {gate_ns}", gate_ns=gate_ns, **kwargs)
+            self.sted.correlate_and_average(
+                cf_name=f"gSTED {gate_ns}", gate_ns=gate_ns, is_verbose=True, **kwargs
+            )
             if should_plot:
                 self.plot_correlation_functions(**kwargs)
         else:
@@ -1553,7 +1572,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
             kwargs["ylim"] = Limits(-1e3, ref_meas.cf[ref_meas.name].g0 * 1.5)
 
         with Plotter(
-            super_title=f"'{self.name}' Experiment - All ACFs",
+            super_title=f"'{self.name.capitalize()}' Experiment - All ACFs",
             **kwargs,
         ) as ax:
             legend_label_lists = [
@@ -1581,7 +1600,8 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
         # plot them
         with Plotter(
-            subplots=(1, 2), super_title=f"Experiment '{self.name}':\nStructure Factors"
+            subplots=(1, 2),
+            super_title=f"Experiment '{self.name.capitalize()}':\nStructure Factors",
         ) as axes:
             axes[0].set_title("Gaussian Interpolation")
             axes[1].set_title("Linear Interpolation")
@@ -1595,8 +1615,10 @@ class SFCSExperiment(TDCPhotonDataMixin):
                     axes[1].loglog(s.q, s.sq_linear_interp, **kwargs.get("plot_kwargs", {}))
                     legend_labels.append(cf_name)
 
-            axes[0].legend(legend_labels)
-            axes[1].legend(legend_labels)
+            for ax in axes:
+                ax.set_xlabel("$q$ $(\\mu m^{-1})$")
+                ax.set_ylabel("$S(q)$")
+                ax.legend(legend_labels)
 
 
 def calculate_afterpulse(
