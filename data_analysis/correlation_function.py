@@ -895,7 +895,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             try:
                 bw = _threshold_and_smooth(cnt)
             except ValueError:
-                print("Thresholding failed, skipping file.")
+                print("Thresholding failed, skipping file.\n")
                 return None
         elif roi_selection == "all":
             bw = np.full(cnt.shape, True)
