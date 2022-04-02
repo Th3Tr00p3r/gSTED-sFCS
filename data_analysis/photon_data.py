@@ -81,6 +81,7 @@ class TDCPhotonDataMixin:
         locate_outliers=False,
         max_outlier_prob=1e-5,
         should_use_all_sections=True,
+        len_factor=0.01,
         is_verbose=False,
         **kwargs,
     ) -> TDCPhotonData:
@@ -105,7 +106,6 @@ class TDCPhotonDataMixin:
         if should_use_all_sections:
             photon_idxs_list: List[int] = []
             section_runtime_edges = []
-            len_factor = 0.01
             for start_idx, end_idx in section_edges:
                 if end_idx - start_idx > sum(section_lengths) * len_factor:
                     section_runtime_start = len(photon_idxs_list)
