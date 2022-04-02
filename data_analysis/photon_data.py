@@ -103,7 +103,7 @@ class TDCPhotonDataMixin:
         if is_verbose:
             if len(section_edges) > 1:
                 print(
-                    f"Found {len(section_edges)} sections of lengths: {', '.join(map(str, section_lengths))}. Using largest.",
+                    f"Found {len(section_edges)} sections of lengths: {', '.join(map(str, section_lengths))}. Using largest (section num.{np.argmax(section_lengths)+1}).",
                     end=" ",
                 )
             else:
