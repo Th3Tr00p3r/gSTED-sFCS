@@ -753,7 +753,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             *_, template = file_path.parts
             file_idx = int(re.split("_(\\d+)\\.", template)[1])
             print(
-                f"Loading and processing file {file_idx}/{self.n_paths}: '{template}'...", end=" "
+                f"Loading and processing file No. {file_idx} ({self.n_paths} files): '{template}'...",
+                end=" ",
             )
             try:
                 file_dict = file_utilities.load_file_dict(file_path)
@@ -869,21 +870,51 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         print("Converting angular scan to image...", end=" ")
 
-        pulse_runtime = p.pulse_runtime
-        cnt, sample_runtime, pixel_num, line_num = _convert_angular_scan_to_image(
-            pulse_runtime, self.laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
-        )
+        pulse_runtime = np.empty(p.pulse_runtime.shape, dtype=np.int64)
+        cnt = np.zeros((n_lines + 1, samples_per_line), dtype=np.uint16)
+        sample_runtime = np.empty(pulse_runtime.shape, dtype=np.int64)
+        pixel_num = np.empty(pulse_runtime.shape, dtype=np.int64)
+        line_num = np.empty(pulse_runtime.shape, dtype=np.int16)
+        for sec_idx, (start_idx, end_idx) in enumerate(p.section_runtime_edges):
+            sec_pulse_runtime = p.pulse_runtime[start_idx:end_idx]
+            (
+                sec_cnt,
+                sec_sample_runtime,
+                sec_pixel_num,
+                sec_line_num,
+            ) = _convert_angular_scan_to_image(
+                sec_pulse_runtime,
+                self.laser_freq_hz,
+                ao_sampling_freq_hz,
+                samples_per_line,
+                n_lines,
+            )
 
-        if should_fix_shift:
-            print("Fixing line shift...", end=" ")
-            pix_shift = _fix_data_shift(cnt)
-            pulse_runtime = p.pulse_runtime + pix_shift * round(
-                self.laser_freq_hz / ao_sampling_freq_hz
-            )
-            cnt, sample_runtime, pixel_num, line_num = _convert_angular_scan_to_image(
-                pulse_runtime, self.laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
-            )
-            print(f"({pix_shift} pixels).", end=" ")
+            if should_fix_shift:
+                print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
+                pix_shift = _fix_data_shift(sec_cnt)
+                sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
+                    self.laser_freq_hz / ao_sampling_freq_hz
+                )
+                (
+                    sec_cnt,
+                    sec_sample_runtime,
+                    sec_pixel_num,
+                    sec_line_num,
+                ) = _convert_angular_scan_to_image(
+                    sec_pulse_runtime,
+                    self.laser_freq_hz,
+                    ao_sampling_freq_hz,
+                    samples_per_line,
+                    n_lines,
+                )
+                print(f"({pix_shift} pixels).", end=" ")
+
+            pulse_runtime[start_idx:end_idx] = sec_pulse_runtime
+            cnt += sec_cnt
+            sample_runtime[start_idx:end_idx] = sec_sample_runtime
+            pixel_num[start_idx:end_idx] = sec_pixel_num
+            line_num[start_idx:end_idx] = sec_line_num
 
         # invert every second line
         cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
@@ -1181,7 +1212,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         print("Preparing files for software correlator:", end=" ")
         ts_split_list = []
-        for file_idx, p in enumerate(self.data):
+        for p in self.data:
             #            print(f"({p.file_num})", end=" ")
             line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
             if hasattr(p, "delay_time"):  # if measurement quacks as gated
@@ -1210,7 +1241,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 valid = valid[valid != 0]
 
                 if not valid.size:
-                    print(f"No valid photons in line {j} of file {file_idx+1}. Skipping.")
+                    print(f"No valid photons in line {j} of file {p.file_num}. Skipping.")
                     continue
 
                 # check that we start with the line beginning and not its end
@@ -1704,6 +1735,11 @@ def _fix_data_shift(cnt) -> int:
     """Doc."""
 
     height, width = cnt.shape
+
+    # TESTESTEST - replacing outliers with median value
+    med = np.median(cnt)
+    cnt[cnt > med * 1.5] = med
+    # /TESTESTEST - replacing outliers with median value
 
     min_pix_shift = -round(width / 2)
     max_pix_shift = min_pix_shift + width + 1

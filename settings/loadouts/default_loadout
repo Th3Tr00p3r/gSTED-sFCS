@@ -61,7 +61,7 @@ solScanDurUnits,seconds
 dataMonth,3
 dataYear,2022
 dataDay,29
-dataTemplate1,conc_250xDiluted_angular_exc_191600_*.pkl
+dataTemplate1,conc_25xDiluted_63nsDelay_12uW_angular_exc_135914_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -82,8 +82,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveOver,True

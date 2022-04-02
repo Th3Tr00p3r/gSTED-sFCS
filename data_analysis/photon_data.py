@@ -20,6 +20,7 @@ class TDCPhotonData:
     """Holds a single file's worth of processed, TDC-based, temporal photon data"""
 
     version: int
+    section_runtime_edges: list
     coarse: np.ndarray
     coarse2: np.ndarray
     fine: np.ndarray
@@ -79,6 +80,7 @@ class TDCPhotonDataMixin:
         version=3,
         locate_outliers=False,
         max_outlier_prob=1e-5,
+        should_use_all_sections=True,
         is_verbose=False,
         **kwargs,
     ) -> TDCPhotonData:
@@ -98,29 +100,51 @@ class TDCPhotonDataMixin:
             byte_data = byte_data[data_slice]
 
         section_edges, tot_single_errors = _find_all_section_edges(byte_data, group_len)
-
         section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
+
+        if should_use_all_sections:
+            photon_idxs_list: List[int] = []
+            section_runtime_edges = []
+            len_factor = 0.01
+            for start_idx, end_idx in section_edges:
+                if end_idx - start_idx > sum(section_lengths) * len_factor:
+                    section_runtime_start = len(photon_idxs_list)
+                    section_photon_indxs = list(range(start_idx, end_idx, group_len))
+                    section_runtime_end = section_runtime_start + len(section_photon_indxs)
+                    photon_idxs_list += section_photon_indxs
+                    section_runtime_edges.append((section_runtime_start, section_runtime_end))
+
+            photon_idxs = np.array(photon_idxs_list)
+
+        else:  # using largest section only
+            max_sec_start_idx, max_sec_end_idx = section_edges[np.argmax(section_lengths)]
+            photon_idxs = np.arange(max_sec_start_idx, max_sec_end_idx, group_len)
+            section_runtime_edges = [(0, len(photon_idxs))]
+
         if is_verbose:
             if len(section_edges) > 1:
                 print(
-                    f"Found {len(section_edges)} sections of lengths: {', '.join(map(str, section_lengths))}. Using largest (section num.{np.argmax(section_lengths)+1}).",
+                    f"Found {len(section_edges)} sections of lengths: {', '.join(map(str, section_lengths))}.",
                     end=" ",
                 )
+                if should_use_all_sections:
+                    print(
+                        f"Using all valid (> {len_factor:.0%}) sections ({len(section_runtime_edges)}/{len(section_edges)}).",
+                        end=" ",
+                    )
+                else:  # Use largest section only
+                    print(f"Using largest (section num.{np.argmax(section_lengths)+1}).", end=" ")
             else:
                 print(f"Found a single section of length: {section_lengths[0]}.", end=" ")
             if tot_single_errors > 0:
                 print(f"Encountered {tot_single_errors} ignoreable single errors.", end=" ")
 
-        # using the largest section only
-        largest_section_start_idx, largest_section_end_idx = section_edges[
-            np.argmax(section_lengths)
-        ]
-        idxs = np.arange(largest_section_start_idx, largest_section_end_idx, group_len)
-
         # calculate the global pulse_runtime (the number of laser pulses at each photon arrival since the beginning of the file)
         # each index in pulse_runtime represents a photon arrival into the TDC
         pulse_runtime = (
-            byte_data[idxs + 1] * 256 ** 2 + byte_data[idxs + 2] * 256 + byte_data[idxs + 3]
+            byte_data[photon_idxs + 1] * 256 ** 2
+            + byte_data[photon_idxs + 2] * 256
+            + byte_data[photon_idxs + 3]
         ).astype(np.int64)
 
         time_stamps = np.diff(pulse_runtime)
@@ -146,8 +170,8 @@ class TDCPhotonDataMixin:
 
         # handling coarse and fine times (for gating)
         if not ignore_coarse_fine:
-            coarse = byte_data[idxs + 4].astype(np.int16)
-            fine = byte_data[idxs + 5].astype(np.int16)
+            coarse = byte_data[photon_idxs + 4].astype(np.int16)
+            fine = byte_data[photon_idxs + 5].astype(np.int16)
 
             # some fix due to an issue in FPGA
             if version >= 3:
@@ -185,6 +209,7 @@ class TDCPhotonDataMixin:
 
         return TDCPhotonData(
             version=version,
+            section_runtime_edges=section_runtime_edges,
             coarse=coarse,
             coarse2=coarse2,
             fine=fine,
