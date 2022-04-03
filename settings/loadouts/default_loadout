@@ -1,15 +1,10 @@
-imgScanFileTemplate,gb
 solScanFileTemplate,
+imgScanFileTemplate,gb
 newTemplate,
-solImportFileSelectionPattern,1-2
+solImportFileSelectionPattern,1-5
 lineEdit,
 experimentName,test
 spadMode,Free Running
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 maxLineLen,100
 angAoSampFreq,10000
 angle,120
@@ -24,6 +19,11 @@ circAoSampFreq,10000
 circDiameter,50
 circSpeed,6000
 numOfCircles,1
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 expStrctFctrRbstIntrpPnts,2
 tdcCalibGating,40
 tdcCalibGating_2,20
@@ -36,15 +36,15 @@ psdDelay_ps,0
 psdEffDelay_ps,1
 psdPulseWidth_ns,48
 psdEffPulseWidth_ns,48
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,10.0
-imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,6010.93
 solActualScanFreq,27.32
 solScanDur,10.0
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,10.0
+imgScanLinFrac,0.9
 expStrctFctrGMin,0.175
 customGateLifetimes,0.5
 solAnalysisRemoveOverSpinner,2.0
@@ -52,12 +52,12 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,5.0
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - actual counts per pixel
 solMeasPreset,Standard Static
 solScanType,static
 solScanDurUnits,seconds
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,3
 dataYear,2022
 dataDay,29
@@ -82,8 +82,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveOver,True
