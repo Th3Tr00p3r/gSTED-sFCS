@@ -1,7 +1,7 @@
 imgScanFileTemplate,gb
 solScanFileTemplate,
 newTemplate,
-solImportFileSelectionPattern,5
+solImportFileSelectionPattern,1-2
 lineEdit,
 experimentName,test
 spadMode,Free Running
@@ -82,8 +82,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,True
-solImportUse,False
+solImportUseAll,False
+solImportUse,True
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveOver,True
