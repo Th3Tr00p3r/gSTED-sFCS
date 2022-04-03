@@ -639,7 +639,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             ]
 
         # calculate average count rate
-        self.avg_cnt_rate_khz = sum([p.avg_cnt_rate_khz for p in self.data]) / len(self.data)
+        self.avg_cnt_rate_khz = np.mean([p.avg_cnt_rate_khz for p in self.data])
+        try:
+            self.std_cnt_rate_khz = np.std([p.avg_cnt_rate_khz for p in self.data], ddof=1)
+        except RuntimeWarning:  # single file
+            self.std_cnt_rate_khz = 0.0
 
         calc_duration_mins = (
             sum([np.diff(p.pulse_runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
@@ -1666,13 +1670,12 @@ def calculate_afterpulse(
     """Doc."""
 
     gate_pulse_period_ratio = min([1.0, gate_ns.interval() * laser_freq_hz / 1e9])
-    if after_pulse_params[0] == "multi_exponent_fit":
+    fit_name, beta = after_pulse_params
+    if fit_name == "multi_exponent_fit":
         # work with any number of exponents
-        beta = after_pulse_params[1]
         afterpulse = gate_pulse_period_ratio * multi_exponent_fit(lag, *beta)
     #        afterpulse = gate_pulse_period_ratio * np.dot(beta[::2], np.exp(-np.outer(beta[1::2], lag)))
-    elif after_pulse_params[0] == "exponent_of_polynom_of_log":  # for old MATLAB files
-        beta = after_pulse_params[1]
+    elif fit_name == "exponent_of_polynom_of_log":  # for old MATLAB files
         if lag[0] == 0:
             lag[0] = np.nan
         afterpulse = gate_pulse_period_ratio * np.exp(np.polyval(beta, np.log(lag)))
