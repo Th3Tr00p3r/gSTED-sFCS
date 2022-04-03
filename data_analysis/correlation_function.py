@@ -892,7 +892,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
             if should_fix_shift:
                 print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
-                pix_shift = _fix_data_shift(sec_cnt)
+                pix_shift = _fix_data_shift(sec_cnt.copy())
                 sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
                     self.laser_freq_hz / ao_sampling_freq_hz
                 )
@@ -924,7 +924,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         if roi_selection == "auto":
             print("automatic. Thresholding and smoothing...", end=" ")
             try:
-                bw = _threshold_and_smooth(cnt)
+                bw = _threshold_and_smooth(cnt.copy())
             except ValueError:
                 print("Thresholding failed, skipping file.\n")
                 return None
@@ -1736,11 +1736,11 @@ def _fix_data_shift(cnt) -> int:
 
     height, width = cnt.shape
 
-    # TESTESTEST - replacing outliers with median value
+    # replacing outliers with median value
     med = np.median(cnt)
     cnt[cnt > med * 1.5] = med
-    # /TESTESTEST - replacing outliers with median value
 
+    # limit initial attempt to the width of the image
     min_pix_shift = -round(width / 2)
     max_pix_shift = min_pix_shift + width + 1
     pix_shift = _get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
@@ -1753,6 +1753,7 @@ def _fix_data_shift(cnt) -> int:
     outer_half_sum = rolled_cnt.sum() - inner_half_sum
     return_row_idx = rolled_cnt.sum(axis=1).argmin()
 
+    # in case initial attempt fails, limit shift to the flattened size of the image
     if (outer_half_sum > inner_half_sum) or return_row_idx != height - 1:
         if return_row_idx != height - 1:
             print("Data is heavily shifted, check it out!", end=" ")
@@ -1765,6 +1766,10 @@ def _fix_data_shift(cnt) -> int:
 
 def _threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
     """Doc."""
+
+    #    # replacing outliers with median value
+    #    med = np.median(img)
+    #    img[img > med * 1.5] = med
 
     thresh = skimage.filters.threshold_multiotsu(
         skimage.filters.median(img).astype(np.float32), otsu_classes, nbins=n_bins
