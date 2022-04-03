@@ -372,6 +372,9 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
                 "ao_sampling_freq_hz": int(1e4),
                 "diameter_um": 50,
             }
+        elif (scan_settings := full_data["scan_settings"]).get("circle_freq_hz") is None:
+            circumference = np.pi * scan_settings["diameter_um"]
+            scan_settings["circle_freq_hz"] = scan_settings["speed_um_s"] / circumference
         scan_pattern = None
         if scan_settings := full_data.get("circular_scan_settings"):
             scan_pattern = "circle"
