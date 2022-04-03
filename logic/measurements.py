@@ -211,13 +211,13 @@ class MeasurementProcedure:
             elif self.laser_mode == "sted":
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
-            self.spad_dvc.toggle_mode("free running")
+        #            self.spad_dvc.toggle_mode("free running")
         else:
             # measurement begins
-            if self.delayer_dvc.is_on and not self.spad_dvc.is_gated:
-                self.spad_dvc.toggle_mode("external gating")
-                logging.info(f"Changing {self.spad_dvc.log_ref} mode to 'external gating'...")
-                await asyncio.sleep(2)
+            #            if self.delayer_dvc.is_on and not self.spad_dvc.is_gated:
+            #                self.spad_dvc.toggle_mode("external gating")
+            #                logging.info(f"Changing {self.spad_dvc.log_ref} mode to 'external gating'...")
+            #                await asyncio.sleep(2)
             if self.laser_mode == "exc":
                 # turn excitation ON and depletion shutter OFF
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
