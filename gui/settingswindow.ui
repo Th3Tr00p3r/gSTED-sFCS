@@ -95,7 +95,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -410,7 +410,7 @@
             <x>20</x>
             <y>220</y>
             <width>142</width>
-            <height>54</height>
+            <height>62</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_39">
@@ -489,7 +489,7 @@ Details</string>
                </font>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>6</number>
               </property>
               <widget class="QWidget" name="lasers">
                <attribute name="title">

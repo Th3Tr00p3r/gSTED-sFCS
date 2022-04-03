@@ -74,6 +74,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
     update_interval_s = 1
+    gate_width_limits = Limits(10, 98)
 
     def __init__(self, param_dict):
         super().__init__(
@@ -114,7 +115,6 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     def get_stats(self) -> None:
         """Doc."""
 
-        # TODO: add command to get the gate width for 'calculate_gate()'
         self.gate_width_ns = 44
 
         try:
@@ -147,10 +147,21 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.is_gated = False
             self.mode = "Free Running"
 
+    def set_gate_width(self):
+        """Doc."""
+
+        gate_width_ns = self.set_gate_width_wdgt.get() * 1e3
+        response, _ = self.mpd_command(
+            [
+                (f"TO{gate_width_ns}", self.gate_width_limits),
+                ("AD", None),
+            ]
+        )
+        self.gate_width_ns = int(response[0])
+
     def calculate_gate(self, effective_delay_ns: float):
         """Doc."""
 
-        # TODO: a calibrated time from laser pulse trigger to fluorescent pulse reaching detector (measure laser without notch/excitation filter) needs to be subtracted from the total delay
         self.gate_ns = Limits(effective_delay_ns, effective_delay_ns + self.gate_width_ns)
 
 
@@ -1163,6 +1174,7 @@ DEVICE_ATTR_DICT = {
         param_widgets=QtWidgetCollection(
             led_widget=("ledSPAD", "QIcon", "main", True),
             gate_led_widget=("ledGate", "QIcon", "main", True),
+            set_gate_width_wdgt=("spadGateWidth", "QSpinBox", "main", True),
             description=("spadDescription", "QLineEdit", "settings", False),
             baud_rate=("spadBaudRate", "QSpinBox", "settings", False),
             timeout_ms=("spadTimeout", "QSpinBox", "settings", False),

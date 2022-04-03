@@ -291,6 +291,15 @@ class MainWin:
             delayer_dvc = self._app.devices.delayer
             delayer_dvc.set_delay_component(component)
 
+    def set_spad_gatewidth(self):
+        """Doc."""
+
+        with suppress(AttributeError, ValueError, DeviceError):
+            # AttributeError - device not yet defined
+            # ValueError:  writing/reading PSD too fast!
+            delayer_dvc = self._app.devices.spad
+            delayer_dvc.set_gate_width()
+
     def show_stage_dock(self):
         """Make the laser dock visible (convenience)."""
 
@@ -1357,6 +1366,7 @@ class MainWin:
                 sol_data_analysis_wdgts.n_files.set(num_files)
                 sol_data_analysis_wdgts.scan_duration_min.set(measurement.duration_min)
                 sol_data_analysis_wdgts.avg_cnt_rate_khz.set(measurement.avg_cnt_rate_khz)
+                sol_data_analysis_wdgts.std_cnt_rate_khz.set(measurement.std_cnt_rate_khz)
 
                 if measurement.scan_type == "circle":
                     # populate scan image tab

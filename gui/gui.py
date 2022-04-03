@@ -148,6 +148,9 @@ class MainWin(QtWidgets.QMainWindow):
             lambda: self.impl.set_delayer_property("pulsewidth_ns")
         )
 
+        # SPAD
+        self.spadGateWidth.valueChanged.connect(self.impl.set_spad_gatewidth)
+
         # Device Toggling
         self.excOnButton.released.connect(lambda: self.impl.device_toggle("exc_laser"))
         self.depEmissionOn.released.connect(
