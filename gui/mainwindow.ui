@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -6084,9 +6084,21 @@ Mean ACF</string>
                               <property name="title">
                                <string>General</string>
                               </property>
-                              <layout class="QVBoxLayout" name="verticalLayout_142" stretch="1,1,1,10">
+                              <layout class="QVBoxLayout" name="verticalLayout_142" stretch="1,1,0,10">
                                <property name="spacing">
                                 <number>0</number>
+                               </property>
+                               <property name="leftMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="topMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="rightMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="bottomMargin">
+                                <number>2</number>
                                </property>
                                <item>
                                 <layout class="QVBoxLayout" name="verticalLayout_143">
@@ -6200,15 +6212,12 @@ Mean ACF</string>
                                 </layout>
                                </item>
                                <item>
-                                <layout class="QVBoxLayout" name="verticalLayout_145">
+                                <layout class="QVBoxLayout" name="verticalLayout_160">
                                  <property name="spacing">
                                   <number>0</number>
                                  </property>
-                                 <property name="sizeConstraint">
-                                  <enum>QLayout::SetDefaultConstraint</enum>
-                                 </property>
                                  <item>
-                                  <widget class="QLabel" name="label_82">
+                                  <widget class="QLabel" name="label_116">
                                    <property name="sizePolicy">
                                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                                      <horstretch>0</horstretch>
@@ -6227,34 +6236,78 @@ Mean ACF</string>
                                   </widget>
                                  </item>
                                  <item>
-                                  <widget class="QDoubleSpinBox" name="solAnalysisCountRate">
-                                   <property name="sizePolicy">
-                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                     <horstretch>0</horstretch>
-                                     <verstretch>0</verstretch>
-                                    </sizepolicy>
+                                  <layout class="QHBoxLayout" name="horizontalLayout_74">
+                                   <property name="spacing">
+                                    <number>2</number>
                                    </property>
-                                   <property name="font">
-                                    <font>
-                                     <pointsize>8</pointsize>
-                                    </font>
-                                   </property>
-                                   <property name="frame">
-                                    <bool>true</bool>
-                                   </property>
-                                   <property name="readOnly">
-                                    <bool>true</bool>
-                                   </property>
-                                   <property name="buttonSymbols">
-                                    <enum>QAbstractSpinBox::NoButtons</enum>
-                                   </property>
-                                   <property name="decimals">
-                                    <number>1</number>
-                                   </property>
-                                   <property name="maximum">
-                                    <double>999999999999.000000000000000</double>
-                                   </property>
-                                  </widget>
+                                   <item>
+                                    <widget class="QDoubleSpinBox" name="solAnalysisAvgCountRate">
+                                     <property name="sizePolicy">
+                                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                       <horstretch>0</horstretch>
+                                       <verstretch>0</verstretch>
+                                      </sizepolicy>
+                                     </property>
+                                     <property name="font">
+                                      <font>
+                                       <pointsize>8</pointsize>
+                                      </font>
+                                     </property>
+                                     <property name="frame">
+                                      <bool>true</bool>
+                                     </property>
+                                     <property name="readOnly">
+                                      <bool>true</bool>
+                                     </property>
+                                     <property name="buttonSymbols">
+                                      <enum>QAbstractSpinBox::NoButtons</enum>
+                                     </property>
+                                     <property name="decimals">
+                                      <number>1</number>
+                                     </property>
+                                     <property name="maximum">
+                                      <double>999999999999.000000000000000</double>
+                                     </property>
+                                    </widget>
+                                   </item>
+                                   <item>
+                                    <widget class="QLabel" name="label_39">
+                                     <property name="text">
+                                      <string>+/-</string>
+                                     </property>
+                                    </widget>
+                                   </item>
+                                   <item>
+                                    <widget class="QDoubleSpinBox" name="solAnalysisStdCountRate">
+                                     <property name="sizePolicy">
+                                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                       <horstretch>0</horstretch>
+                                       <verstretch>0</verstretch>
+                                      </sizepolicy>
+                                     </property>
+                                     <property name="font">
+                                      <font>
+                                       <pointsize>8</pointsize>
+                                      </font>
+                                     </property>
+                                     <property name="frame">
+                                      <bool>true</bool>
+                                     </property>
+                                     <property name="readOnly">
+                                      <bool>true</bool>
+                                     </property>
+                                     <property name="buttonSymbols">
+                                      <enum>QAbstractSpinBox::NoButtons</enum>
+                                     </property>
+                                     <property name="decimals">
+                                      <number>1</number>
+                                     </property>
+                                     <property name="maximum">
+                                      <double>999999999999.000000000000000</double>
+                                     </property>
+                                    </widget>
+                                   </item>
+                                  </layout>
                                  </item>
                                 </layout>
                                </item>
@@ -6286,6 +6339,18 @@ Mean ACF</string>
                                <string>Mean ACF</string>
                               </property>
                               <layout class="QGridLayout" name="gridLayout_57">
+                               <property name="leftMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="topMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="rightMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="bottomMargin">
+                                <number>2</number>
+                               </property>
                                <property name="spacing">
                                 <number>0</number>
                                </property>
@@ -6513,6 +6578,18 @@ Rows</string>
                                <string>Scan Settings</string>
                               </property>
                               <layout class="QGridLayout" name="gridLayout_58">
+                               <property name="leftMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="topMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="rightMargin">
+                                <number>2</number>
+                               </property>
+                               <property name="bottomMargin">
+                                <number>2</number>
+                               </property>
                                <property name="spacing">
                                 <number>0</number>
                                </property>
@@ -7255,7 +7332,7 @@ Factors</string>
                              <rect>
                               <x>190</x>
                               <y>60</y>
-                              <width>52</width>
+                              <width>58</width>
                               <height>49</height>
                              </rect>
                             </property>
@@ -7309,7 +7386,7 @@ Factors</string>
                               <x>270</x>
                               <y>60</y>
                               <width>133</width>
-                              <height>59</height>
+                              <height>62</height>
                              </rect>
                             </property>
                             <layout class="QVBoxLayout" name="verticalLayout_90">
@@ -12150,10 +12227,30 @@ Disp. (um)</string>
               <property name="spacing">
                <number>0</number>
               </property>
-              <item row="0" column="0">
-               <layout class="QVBoxLayout" name="verticalLayout_156">
+              <item row="1" column="4">
+               <widget class="QToolButton" name="openSpadInterface">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="toolTip">
+                 <string>Open MPD interface (press again after closing to re-connect to SPAD)</string>
+                </property>
+                <property name="text">
+                 <string>...</string>
+                </property>
+                <property name="icon">
+                 <iconset resource="icons/icons.qrc">
+                  <normaloff>:/settings.png</normaloff>:/settings.png</iconset>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="3">
+               <layout class="QVBoxLayout" name="verticalLayout_159">
                 <item>
-                 <widget class="QLabel" name="label_111">
+                 <widget class="QLabel" name="label_112">
                   <property name="minimumSize">
                    <size>
                     <width>60</width>
@@ -12166,41 +12263,14 @@ Disp. (um)</string>
                    </font>
                   </property>
                   <property name="text">
-                   <string>Unit Temp. (C)</string>
+                   <string>Mode</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="spadTemp">
+                 <widget class="QLineEdit" name="spadMode">
                   <property name="enabled">
                    <bool>false</bool>
-                  </property>
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>16777215</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                  <property name="styleSheet">
-                   <string notr="true">background-color: rgb(255, 255, 255);</string>
-                  </property>
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                  <property name="buttonSymbols">
-                   <enum>QAbstractSpinBox::NoButtons</enum>
-                  </property>
-                  <property name="minimum">
-                   <double>-999.000000000000000</double>
-                  </property>
-                  <property name="maximum">
-                   <double>999999.000000000000000</double>
                   </property>
                  </widget>
                 </item>
@@ -12287,7 +12357,7 @@ Disp. (um)</string>
                 </item>
                </layout>
               </item>
-              <item row="0" column="2" colspan="2">
+              <item row="0" column="2" colspan="3">
                <layout class="QVBoxLayout" name="verticalLayout_158">
                 <property name="spacing">
                  <number>0</number>
@@ -12368,10 +12438,10 @@ Disp. (um)</string>
                 </item>
                </layout>
               </item>
-              <item row="1" column="0" colspan="3">
-               <layout class="QVBoxLayout" name="verticalLayout_159">
+              <item row="0" column="0">
+               <layout class="QVBoxLayout" name="verticalLayout_156">
                 <item>
-                 <widget class="QLabel" name="label_112">
+                 <widget class="QLabel" name="label_111">
                   <property name="minimumSize">
                    <size>
                     <width>60</width>
@@ -12384,38 +12454,99 @@ Disp. (um)</string>
                    </font>
                   </property>
                   <property name="text">
-                   <string>Mode</string>
+                   <string>Unit Temp. (C)</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLineEdit" name="spadMode">
+                 <widget class="QDoubleSpinBox" name="spadTemp">
                   <property name="enabled">
                    <bool>false</bool>
+                  </property>
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>16777215</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(255, 255, 255);</string>
+                  </property>
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::NoButtons</enum>
+                  </property>
+                  <property name="minimum">
+                   <double>-999.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>999999.000000000000000</double>
                   </property>
                  </widget>
                 </item>
                </layout>
               </item>
               <item row="1" column="3">
-               <widget class="QToolButton" name="openSpadInterface">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+               <layout class="QVBoxLayout" name="verticalLayout_135">
+                <property name="spacing">
+                 <number>0</number>
                 </property>
-                <property name="toolTip">
-                 <string>Open MPD interface (press again after closing to re-connect to SPAD)</string>
-                </property>
-                <property name="text">
-                 <string>...</string>
-                </property>
-                <property name="icon">
-                 <iconset resource="icons/icons.qrc">
-                  <normaloff>:/settings.png</normaloff>:/settings.png</iconset>
-                </property>
-               </widget>
+                <item>
+                 <widget class="QLabel" name="label_114">
+                  <property name="minimumSize">
+                   <size>
+                    <width>60</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <pointsize>7</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Set
+Gate Width (ns)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="spadGateWidth">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(255, 255, 255);</string>
+                  </property>
+                  <property name="wrapping">
+                   <bool>false</bool>
+                  </property>
+                  <property name="frame">
+                   <bool>true</bool>
+                  </property>
+                  <property name="readOnly">
+                   <bool>false</bool>
+                  </property>
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::UpDownArrows</enum>
+                  </property>
+                  <property name="maximum">
+                   <number>49090</number>
+                  </property>
+                  <property name="singleStep">
+                   <number>100</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </item>
