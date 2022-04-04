@@ -5,7 +5,6 @@ from contextlib import suppress
 from typing import List, Tuple
 
 import numpy as np
-from cycler import cycler
 from matplotlib import pyplot as plt
 
 # from matplotlib.widgets import RectangleSelector
