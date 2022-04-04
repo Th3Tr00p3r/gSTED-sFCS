@@ -5,6 +5,7 @@ from contextlib import suppress
 from typing import List, Tuple
 
 import numpy as np
+from cycler import cycler
 from matplotlib import pyplot as plt
 
 # from matplotlib.widgets import RectangleSelector
@@ -113,9 +114,11 @@ class GuiDisplay:
 
         with Plotter(gui_display=self, **kwargs) as ax:
             if cf_cr is not None:
-                for row_acf in cf_cr:
-                    ax.plot(x_arr, row_acf)
-            ax.plot(x_arr, avg_cf_cr, "k")
+                cmap = np.flipud(plt.cm.rainbow(list(range(cf_cr.shape[0]))))
+                ax.set_prop_cycle(cycler("color", cmap))
+                ax.plot(x_arr, cf_cr.T)
+            ax.set_prop_cycle(color="k")
+            ax.plot(x_arr, avg_cf_cr)
 
 
 class Plotter:
