@@ -32,6 +32,7 @@ scanImgFileNum,1
 depPow,130
 depCurr,1500
 stageSteps,250
+spadGateWidth,0
 psdDelay_ps,0
 psdEffDelay_ps,1
 psdPulseWidth_ns,48
@@ -106,7 +107,7 @@ tabWidget_3,0
 tabWidget_5,0
 autoCrosshair,True
 alwaysSaveImg,False
-solImportAutoLoadProcessed,False
+solImportAutoLoadProcessed,True
 solDataFixShift,True
 solDataUseDefaultSysInfo,False
 solDataSubtractAfterpulse,True
