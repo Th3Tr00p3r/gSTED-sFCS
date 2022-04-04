@@ -76,6 +76,21 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     update_interval_s = 1
     gate_width_limits = Limits(10, 98)
 
+    code_attr_dict = {
+        "VPOL": "is_on",
+        "FR": "mode",
+        "ERR": "error",
+        "VT": "input_thresh_mv",
+        "SE": "pulse_edge",
+        "TS": "trigger_select",
+        "GF": "gate_freq_hz",
+        "TK": "temperature",
+        "HO": "hold_off",  # need to tabulate values to get linear relationship
+        "CT": "avalanch_thresh",  # need to tabulate values to get linear relationship
+        "CE": "excess_bias",  # need to tabulate values to get linear relationship
+        "CC": "current",  # need to tabulate values to get linear relationship
+    }
+
     def __init__(self, param_dict):
         super().__init__(
             param_dict=param_dict,
@@ -115,24 +130,30 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     def get_stats(self) -> None:
         """Doc."""
 
-        self.gate_width_ns = 44
-
         try:
             responses, command = self.mpd_command([("AQ", None), ("DC", None)])
         except ValueError:
             print(f"{self.log_ref} did not respond to stats query ('{command}')")
         else:
-            relevant_codes = ("VPOL", "FR", "ERR")
             stats_dict = {
-                str_.rstrip(digits + "-"): number(str_.lstrip(ascii_letters))
+                self.code_attr_dict[str_.rstrip(digits + "-")]: number(str_.lstrip(ascii_letters))
                 for str_ in responses
-                if str_.startswith(relevant_codes)
+                if str_.startswith(list(self.code_attr_dict.keys()))
             }
 
+            # TODO: in measurements, add relevant properties to a new dict/object called spad_settings.
             with suppress(KeyError):
-                self.is_on = bool(stats_dict["VPOL"])
-                self.mode = "Free Running" if stats_dict["FR"] == 1 else "External"
-                raise DeviceError(f"{self.log_ref} error number {stats_dict['ERR']}.")
+                self.is_on = bool(stats_dict["is_on"])
+                self.mode = "Free Running" if stats_dict["mode"] == 1 else "External"
+                self.input_thresh_mv = stats_dict["input_thresh_mv"]
+                self.pulse_edge = "falling" if stats_dict["mode"] == 1 else "rising"
+                self.gate_freq_mhz = stats_dict["gate_freq_hz"] * 1e-6
+                self.temperature_c = stats_dict["temperature"] / 10 - 273
+                self.hold_off_ns = stats_dict["hold_off"]
+                self.input_thresh_mv = stats_dict["input_thresh"]
+                self.excess_bias_v = stats_dict["excess_bias"]
+                self.current_ma = stats_dict["current"]
+                raise DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
                 self.change_icons("error")
 
     def toggle_mode(self, mode: str) -> None:
@@ -161,6 +182,9 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     def calculate_gate(self, effective_delay_ns: float):
         """Doc."""
+        # TODO: this is useless. the actual detector gate will be calculated during processing
+        # (from TDC cal. histogram compared to calibrated pulse prpagation time)
+        # only the gate_width is needed
 
         self.gate_ns = Limits(effective_delay_ns, effective_delay_ns + self.gate_width_ns)
 
@@ -229,6 +253,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     def update_effective_delay(self):
         """Doc."""
+        # TODO: instead of choosing an arbitrary delay, the user should be able to choose a proper gate in ns
+        # Using a calibration value, the requested gate should be translated to delay (pulsewidth_ns + delay_ps).
+        # The actual detector gate will be determined and used during processing (TDC calibration compared to calibrated pulse propagation time)
 
         self.total_delay_ns = self.delay_ps / 1e3 + self.pulsewidth_ns
         self.effective_delay_ns = self.total_delay_ns - self.laser_propagation_time_ns
