@@ -32,7 +32,7 @@ scanImgFileNum,1
 depPow,130
 depCurr,1500
 stageSteps,250
-spadGateWidth,0
+spadGateWidth,40
 psdDelay_ps,0
 psdEffDelay_ps,1
 psdPulseWidth_ns,48
@@ -59,10 +59,10 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,3
+dataMonth,4
 dataYear,2022
-dataDay,29
-dataTemplate1,conc_25xDiluted_63nsDelay_12uW_angular_exc_135914_*.pkl
+dataDay,3
+dataTemplate1,cal_300bp_20uW_angular_exc_133619_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
