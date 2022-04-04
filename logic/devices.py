@@ -74,7 +74,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
     update_interval_s = 1
-    gate_width_limits = Limits(10, 98)
+    gate_width_limits = Limits(10000, 98000)
 
     code_attr_dict = {
         "VPOL": "is_on",
@@ -138,7 +138,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             stats_dict = {
                 self.code_attr_dict[str_.rstrip(digits + "-")]: number(str_.lstrip(ascii_letters))
                 for str_ in responses
-                if str_.startswith(list(self.code_attr_dict.keys()))
+                if str_.startswith(tuple(self.code_attr_dict.keys()))
             }
 
             # TODO: in measurements, add relevant properties to a new dict/object called spad_settings.
@@ -178,7 +178,10 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 ("AD", None),
             ]
         )
-        self.gate_width_ns = int(response[0])
+        try:
+            self.gate_width_ns = int(response[0])
+        except IndexError:  # writing too fast?
+            print("TRY AGAIN?")
 
     def calculate_gate(self, effective_delay_ns: float):
         """Doc."""

@@ -381,7 +381,13 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
                 scan_settings["circle_freq_hz"] = scan_settings["speed_um_s"] / circumference
         if scan_settings := full_data.get("circular_scan_settings"):
             scan_pattern = "circle"
-            full_data["scan_settings"] = {"pattern": scan_pattern, **scan_settings}
+            circumference = np.pi * scan_settings["diameter_um"]
+            circle_freq_hz = scan_settings["speed_um_s"] / circumference
+            full_data["scan_settings"] = {
+                "pattern": scan_pattern,
+                "circle_freq_hz": circle_freq_hz,
+                **scan_settings,
+            }
         elif scan_settings := full_data.get("angular_scan_settings"):
             scan_pattern = "angular"
             full_data["scan_settings"] = {"pattern": scan_pattern, **scan_settings}

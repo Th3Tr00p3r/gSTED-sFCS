@@ -114,11 +114,16 @@ class GuiDisplay:
 
         with Plotter(gui_display=self, **kwargs) as ax:
             if cf_cr is not None:
-                cmap = np.flipud(plt.cm.rainbow(list(range(cf_cr.shape[0]))))
-                ax.set_prop_cycle(cycler("color", cmap))
-                ax.plot(x_arr, cf_cr.T)
+                # create violet-cyan gradient colormap
+                n_lines, _ = cf_cr.shape
+                cmap = np.ones((n_lines, 4))
+                cmap[:, 0] = np.linspace(1, 0, n_lines)
+                cmap[:, 1] = np.linspace(0, 1, n_lines)
+
+                ax.set_prop_cycle(color=cmap)
+                ax.plot(x_arr, cf_cr.T, lw=0.4)
             ax.set_prop_cycle(color="k")
-            ax.plot(x_arr, avg_cf_cr)
+            ax.plot(x_arr, avg_cf_cr, lw=1.4)
 
 
 class Plotter:
