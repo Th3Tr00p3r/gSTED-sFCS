@@ -6,8 +6,6 @@ from typing import List, Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
-
-# from matplotlib.widgets import RectangleSelector
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
