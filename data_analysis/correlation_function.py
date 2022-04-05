@@ -681,7 +681,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                         ax.imshow(image, interpolation="none")
                         ax.plot(roi["col"], roi["row"], color="white")
             elif self.scan_type == "circle":
-                # TODO: FILL ME IN
+                # TODO: FILL ME IN (plotting in jupyter notebook, same as above angular scan stuff)
                 pass
             print("Done.\n")
 
@@ -724,9 +724,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         full_data = file_dict["full_data"]
 
         self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
+        if detector_settings := file_dict["system_info"].get("detector_settings"):
+            self.detector_gate_width_ns = detector_settings["gate_width_ns"]
+        else:
+            self.detector_gate_width_ns = None
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
-        self.detector_gate_ns = full_data.get("detector_gate_ns")
         with suppress(KeyError):
             self.duration_min = full_data["duration_s"] / 60
 
@@ -1071,7 +1074,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(kwargs.get("gate_ns", (0, np.inf)))
-        kwargs["gate_ns"] = tdc_gate_ns & self.detector_gate_ns
+        kwargs["gate_ns"] = tdc_gate_ns  # & self.detector_gate_ns # TODO: fix
+        self.detector_gate_ns = None  # TODO: fix
 
         # correlate data
         if self.scan_type in {"static", "circle"}:

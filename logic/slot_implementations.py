@@ -121,7 +121,7 @@ class MainWin:
                             if nick == "stage":
                                 self._gui.stageButtonsGroup.setEnabled(True)
                             if nick == "delayer":
-                                self._app.devices.spad.toggle_mode("external gating")
+                                self._app.devices.spad.toggle_mode("external")
                             was_toggled = True
 
                 # switch OFF
@@ -1713,20 +1713,20 @@ class MainWin:
         try:
             display_kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
             experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **display_kwargs)
-        except RuntimeError:  # sted or confocal not loaded
-            logging.info(
-                "One of the measurements (confocal or STED) was not loaded - cannot calibrate TDC."
-            )
+        except RuntimeError:  # confocal not loaded
+            logging.info("Confocal measurement was not loaded - cannot calibrate TDC.")
         except AttributeError:
             logging.info("Can't calibrate TDC, no experiment is loaded!")
         else:
             display_kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
             experiment.compare_lifetimes(**display_kwargs)
-            lt_params = experiment.get_lifetime_parameters()
 
-            # display parameters in GUI
-            wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
-            wdgt_coll.laser_pulse_delay.set(lt_params.laser_pulse_delay_ns)
+            if hasattr(experiment.sted, "scan_type"):
+                lt_params = experiment.get_lifetime_parameters()
+
+                # display parameters in GUI
+                wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
+                wdgt_coll.laser_pulse_delay.set(lt_params.laser_pulse_delay_ns)
 
     def assign_gate(self) -> None:
         """Doc."""
