@@ -66,6 +66,7 @@ class MeasurementProcedure:
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
         self.sys_info = file_utilities.default_system_info
         self.sys_info["xyz_um_to_v"] = self.um_v_ratio
+        self.sys_info["detector_settings"] = self.spad_dvc.settings
 
         # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
         # better suit this case. see this: https://github.com/python/mypy/issues/1996
@@ -211,13 +212,9 @@ class MeasurementProcedure:
             elif self.laser_mode == "sted":
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
-        #            self.spad_dvc.toggle_mode("free running")
+
         else:
             # measurement begins
-            #            if self.delayer_dvc.is_on and not self.spad_dvc.is_gated:
-            #                self.spad_dvc.toggle_mode("external gating")
-            #                logging.info(f"Changing {self.spad_dvc.log_ref} mode to 'external gating'...")
-            #                await asyncio.sleep(2)
             if self.laser_mode == "exc":
                 # turn excitation ON and depletion shutter OFF
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
@@ -421,7 +418,6 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             "ao": self.ao_buffer,
             "is_fast_scan": True,
             "system_info": self.sys_info,
-            "xyz_um_to_v": self.um_v_ratio,
             "tdc_scan_data": {
                 # TODO: prepare a function to cut the data into planes, similar to how the counts are cut
                 "byte_data": np.array(self.data_dvc.data, dtype=np.uint8),

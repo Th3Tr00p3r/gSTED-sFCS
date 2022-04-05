@@ -8,6 +8,7 @@ from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
 from string import ascii_letters, digits
+from types import SimpleNamespace
 from typing import List, Union
 
 import nidaqmx.constants as ni_consts
@@ -20,6 +21,7 @@ from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
+from utilities.fit_tools import linear_fit
 from utilities.helper import Limits, div_ceil, number
 
 
@@ -85,10 +87,18 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         "TS": "trigger_select",
         "GF": "gate_freq_hz",
         "TK": "temperature",
-        "HO": "hold_off",  # need to tabulate values to get linear relationship
-        "CT": "avalanch_thresh",  # need to tabulate values to get linear relationship
-        "CE": "excess_bias",  # need to tabulate values to get linear relationship
-        "CC": "current",  # need to tabulate values to get linear relationship
+        "HO": "hold_off",
+        "CT": "avalanch_thresh",
+        "CE": "excess_bias",
+        "CC": "current",
+    }
+
+    # NOTE: see jupyter notebook
+    lin_fit_consts_dict = {
+        "hold_off": (3.0, 18.0),
+        "avalanch_thresh": (-2.0, 400.0),
+        "excess_bias": (-0.02409447, 6.9712588),
+        "current": (-0.45454545, 115.45454545),
     }
 
     def __init__(self, param_dict):
@@ -107,6 +117,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
             self.gate_ns = None
             self.is_paused = False  # used when ceding control to MPD interface
+            self.settings = SimpleNamespace()
 
     def close(self):
         """Doc."""
@@ -141,18 +152,32 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 if str_.startswith(tuple(self.code_attr_dict.keys()))
             }
 
-            # TODO: in measurements, add relevant properties to a new dict/object called spad_settings.
+            self.is_on = bool(stats_dict["is_on"])
+
+            self.settings.mode = "Free Running" if stats_dict["mode"] == 1 else "External"
+            self.settings.input_thresh_mv = stats_dict["input_thresh_mv"]
+            self.settings.pulse_edge = "falling" if stats_dict["mode"] == 1 else "rising"
+            self.settings.gate_freq_mhz = stats_dict["gate_freq_hz"] * 1e-6
+            self.settings.temperature_c = stats_dict["temperature"] / 10 - 273
+
+            # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
+            # and using said fits to estimate the actual setting (returned values are module-specific)
+            self.settings.hold_off_ns = round(
+                linear_fit(stats_dict["hold_off"], *self.lin_fit_consts_dict["hold_off"])
+            )
+            self.settings.avalanche_thresh_mv = round(
+                linear_fit(
+                    stats_dict["avalanch_thresh"], *self.lin_fit_consts_dict["avalanch_thresh"]
+                )
+            )
+            self.settings.excess_bias_v = round(
+                linear_fit(stats_dict["excess_bias"], *self.lin_fit_consts_dict["excess_bias"])
+            )
+            self.settings.current_ma = round(
+                linear_fit(stats_dict["current"], *self.lin_fit_consts_dict["current"])
+            )
+
             with suppress(KeyError):
-                self.is_on = bool(stats_dict["is_on"])
-                self.mode = "Free Running" if stats_dict["mode"] == 1 else "External"
-                self.input_thresh_mv = stats_dict["input_thresh_mv"]
-                self.pulse_edge = "falling" if stats_dict["mode"] == 1 else "rising"
-                self.gate_freq_mhz = stats_dict["gate_freq_hz"] * 1e-6
-                self.temperature_c = stats_dict["temperature"] / 10 - 273
-                self.hold_off_ns = stats_dict["hold_off"]
-                self.input_thresh_mv = stats_dict["input_thresh"]
-                self.excess_bias_v = stats_dict["excess_bias"]
-                self.current_ma = stats_dict["current"]
                 raise DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
                 self.change_icons("error")
 
