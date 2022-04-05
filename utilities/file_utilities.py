@@ -180,7 +180,7 @@ def estimate_bytes(obj) -> int:
         raise MemoryError("Object is too big!")
 
 
-def deep_size_estimate(obj, level=np.inf, indent=0, threshold_mb=0.01, name=None) -> None:
+def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -> None:
     """
      Print a cascading size description of object 'obj' up to level 'level'
     for objects (and subobjects) requiring an estimated disk space over 'threshold_mb'.

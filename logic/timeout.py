@@ -263,7 +263,7 @@ class Timeout:
                 # display status and mode
                 was_on = self.spad_dvc.is_on
                 self.spad_dvc.get_stats()
-                self.main_gui.spadMode.setText(self.spad_dvc.mode)
+                self.main_gui.spadMode.setText(self.spad_dvc.settings.mode.title())
                 if was_on != self.spad_dvc.is_on:
                     self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
 

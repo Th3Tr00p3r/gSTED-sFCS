@@ -86,6 +86,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         "SE": "pulse_edge",
         "TS": "trigger_select",
         "GF": "gate_freq_hz",
+        "TO": "gate_width_ps",
         "TK": "temperature",
         "HO": "hold_off",
         "CT": "avalanch_thresh",
@@ -152,46 +153,41 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 if str_.startswith(tuple(self.code_attr_dict.keys()))
             }
 
-            self.is_on = bool(stats_dict["is_on"])
-
-            self.settings.mode = "Free Running" if stats_dict["mode"] == 1 else "External"
-            self.settings.input_thresh_mv = stats_dict["input_thresh_mv"]
-            self.settings.pulse_edge = "falling" if stats_dict["mode"] == 1 else "rising"
-            self.settings.gate_freq_mhz = stats_dict["gate_freq_hz"] * 1e-6
-            self.settings.temperature_c = stats_dict["temperature"] / 10 - 273
-
-            # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
-            # and using said fits to estimate the actual setting (returned values are module-specific)
-            self.settings.hold_off_ns = round(
-                linear_fit(stats_dict["hold_off"], *self.lin_fit_consts_dict["hold_off"])
-            )
-            self.settings.avalanche_thresh_mv = round(
-                linear_fit(
-                    stats_dict["avalanch_thresh"], *self.lin_fit_consts_dict["avalanch_thresh"]
-                )
-            )
-            self.settings.excess_bias_v = round(
-                linear_fit(stats_dict["excess_bias"], *self.lin_fit_consts_dict["excess_bias"])
-            )
-            self.settings.current_ma = round(
-                linear_fit(stats_dict["current"], *self.lin_fit_consts_dict["current"])
-            )
-
             with suppress(KeyError):
+                self.is_on = bool(stats_dict["is_on"])
+
+                self.settings.mode = "free running" if stats_dict["mode"] == 1 else "external"
+                self.settings.input_thresh_mv = stats_dict["input_thresh_mv"]
+                self.settings.pulse_edge = "falling" if stats_dict["mode"] == 1 else "rising"
+                self.settings.gate_freq_mhz = stats_dict["gate_freq_hz"] * 1e-6
+                self.settings.gate_width_ns = stats_dict["gate_width_ps"] * 1e-3
+                self.settings.temperature_c = stats_dict["temperature"] / 10 - 273
+
+                # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
+                # and using said fits to estimate the actual setting (returned values are module-specific)
+                self.settings.hold_off_ns = round(
+                    linear_fit(stats_dict["hold_off"], *self.lin_fit_consts_dict["hold_off"])
+                )
+                self.settings.avalanche_thresh_mv = round(
+                    linear_fit(
+                        stats_dict["avalanch_thresh"], *self.lin_fit_consts_dict["avalanch_thresh"]
+                    )
+                )
+                self.settings.excess_bias_v = round(
+                    linear_fit(stats_dict["excess_bias"], *self.lin_fit_consts_dict["excess_bias"])
+                )
+                self.settings.current_ma = round(
+                    linear_fit(stats_dict["current"], *self.lin_fit_consts_dict["current"])
+                )
+
                 raise DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
                 self.change_icons("error")
 
     def toggle_mode(self, mode: str) -> None:
         """Doc."""
 
-        mode_cmnd_dict = {"free running": "FR", "external gating": "GM"}
+        mode_cmnd_dict = {"free running": "FR", "external": "GM"}
         self.mpd_command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
-        if mode == "external gating":
-            self.is_gated = True
-            self.mode = "External"
-        else:
-            self.is_gated = False
-            self.mode = "Free Running"
 
     def set_gate_width(self):
         """Doc."""
@@ -204,17 +200,9 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             ]
         )
         try:
-            self.gate_width_ns = int(response[0])
+            self.settings.gate_width_ns = int(response[0])
         except IndexError:  # writing too fast?
             print("TRY AGAIN?")
-
-    def calculate_gate(self, effective_delay_ns: float):
-        """Doc."""
-        # TODO: this is useless. the actual detector gate will be calculated during processing
-        # (from TDC cal. histogram compared to calibrated pulse prpagation time)
-        # only the gate_width is needed
-
-        self.gate_ns = Limits(effective_delay_ns, effective_delay_ns + self.gate_width_ns)
 
 
 class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
