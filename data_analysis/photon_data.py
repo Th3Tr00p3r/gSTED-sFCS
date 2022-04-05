@@ -717,7 +717,7 @@ class CountsImageMixin:
         """Doc."""
 
         scan_settings = file_dict["scan_settings"]
-        um_v_ratio = file_dict["xyz_um_to_v"]
+        um_v_ratio = file_dict["system_info"]["xyz_um_to_v"]
         ao = file_dict["ao"]
         counts = file_dict["ci"]
 
