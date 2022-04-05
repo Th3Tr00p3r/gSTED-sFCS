@@ -50,9 +50,6 @@ class MeasurementProcedure:
             dep_shutter=app.devices.dep_shutter,
         )
 
-        # calculate gate
-        self.spad_dvc.calculate_gate(self.delayer_dvc.effective_delay_ns)
-
         self._app = app
         self.type = type
         self.laser_mode = laser_mode
@@ -669,7 +666,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
             "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
             "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
-            "detector_gate_ns": self.spad_dvc.gate_ns if self.spad_dvc.is_gated else None,
         }
 
         if self.scanning:

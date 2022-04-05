@@ -39,7 +39,7 @@ class TDCCalibration:
     l_quarter_tdc: Any
     r_quarter_tdc: Any
     t_calib: Any
-    hist_weight: Any
+    hist_weight: np.ndarray
     delay_times: Any
     total_laser_pulses: int
     h: Any
@@ -218,6 +218,27 @@ class TDCPhotonDataMixin:
             size_estimate_mb=max(section_lengths) / 1e6,
         )
 
+    def _unite_coarse_fine_data(self):
+        """Doc."""
+
+        # keep pulse_runtime elements of each file for array size allocation
+        n_elem = np.cumsum([0] + [p.pulse_runtime.size for p in self.data])
+
+        # unite coarse and fine times from all files
+        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+        fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+        for i, p in enumerate(self.data):
+            coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
+            fine[n_elem[i] : n_elem[i + 1]] = p.fine
+
+        # remove line starts/ends from angular scan data
+        if self.scan_type == "angular":
+            photon_idxs = fine > self.NAN_PLACEBO
+            coarse = coarse[photon_idxs]
+            fine = fine[photon_idxs]
+
+        return coarse, fine
+
     @rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(  # NO#QA C901
         self,
@@ -240,21 +261,7 @@ class TDCPhotonDataMixin:
 
         print(f"\n{self.name}: Calibrating TDC...", end=" ")
 
-        # keep pulse_runtime elements of each file for array size allocation
-        n_elem = np.cumsum([0] + [p.pulse_runtime.size for p in self.data])
-
-        # unite coarse and fine times from all files
-        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
-        fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
-        for i, p in enumerate(self.data):
-            coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
-            fine[n_elem[i] : n_elem[i + 1]] = p.fine
-
-        # remove line starts/ends from angular scan data
-        if self.scan_type == "angular":
-            photon_idxs = fine > self.NAN_PLACEBO
-            coarse = coarse[photon_idxs]
-            fine = fine[photon_idxs]
+        coarse, fine = self._unite_coarse_fine_data()
 
         h_all = np.bincount(coarse).astype(np.uint32)
         x_all = np.arange(coarse.max() + 1, dtype=np.uint8)
@@ -262,7 +269,7 @@ class TDCPhotonDataMixin:
         if pick_valid_bins_method == "auto":
             h_all = h_all[coarse.min() :]
             x_all = np.arange(coarse.min(), coarse.max() + 1, dtype=np.uint8)
-            j = (h_all > (np.median(h_all) / 100)).nonzero()[0]
+            j = (h_all > (np.median(h_all) / 100)).nonzero()[0]  # get rid of 'small' bins
             bins = x_all[j]
             h = h_all[j]
         elif pick_valid_bins_method == "forced":
@@ -279,6 +286,7 @@ class TDCPhotonDataMixin:
         # rearranging the bins
         if sync_coarse_time_to is None:
             max_j = np.argmax(h)
+            print("max_j: ", max_j)  # TESTESTEST
         elif isinstance(sync_coarse_time_to, int):
             max_j = sync_coarse_time_to
         elif isinstance(sync_coarse_time_to, TDCCalibration):
@@ -378,7 +386,7 @@ class TDCPhotonDataMixin:
         if max_j_m1 == -1:
             max_j_m1 = last_coarse_bin
 
-        delay_time = np.empty((0,), dtype=np.float64)
+        delay_time_list = []
         for p in self.data:
             p.delay_time = np.empty(p.coarse.shape, dtype=np.float64)
             crs = np.minimum(p.coarse, last_coarse_bin) - bins[max_j_m1]
@@ -404,7 +412,9 @@ class TDCPhotonDataMixin:
             total_laser_pulses += p.pulse_runtime[-1]
             p.delay_time[~photon_idxs] = np.nan  # line ends/starts
 
-            delay_time = np.append(delay_time, p.delay_time[photon_idxs])
+            delay_time_list.append(p.delay_time[photon_idxs])
+
+        delay_time = np.hstack(delay_time_list)
 
         bin_edges = np.arange(
             -time_bins_for_hist_ns / 2,
@@ -422,6 +432,7 @@ class TDCPhotonDataMixin:
             hist_weight[i] = np.sum(t_weight[j])
 
         all_hist = np.histogram(delay_time, bins=bin_edges)[0].astype(np.uint32)
+
         all_hist_norm = np.empty(all_hist.shape, dtype=np.float64)
         error_all_hist_norm = np.empty(all_hist.shape, dtype=np.float64)
         nonzero = hist_weight > 0
@@ -439,23 +450,21 @@ class TDCPhotonDataMixin:
             super_title=f"TDC Calibration - '{self.template}'",
         ) as axes:
             # TODO: shouldn't these (x, h, x_all, h_all, x_calib...) be saved to enable plotting later on?
+            axes[0, 0].semilogy(x_all, h_all, "-o", label="All Hist")
+            axes[0, 0].semilogy(bins, h, "-o", label="Valid Bins")
             axes[0, 0].semilogy(
-                x_all,
-                h_all,
-                "-o",
-                bins,
-                h,
-                "-o",
                 bins[np.isin(bins, coarse_bins)],
                 h[np.isin(bins, coarse_bins)],
                 "-o",
+                label="Calibration Bins",
             )
-            axes[0, 1].plot(t_calib, "-o")
-            axes[1, 0].semilogy(t_hist, all_hist_norm, "-o")
+            axes[0, 0].legend()
 
-            axes[0, 0].legend(["all hist", "valid bins", "calibration bins"])
-            axes[0, 1].legend(["TDC calibration"])
-            axes[1, 0].legend(["Photon lifetime histogram"])
+            axes[0, 1].plot(t_calib, "-o", label="TDC Calibration")
+            axes[0, 1].legend()
+
+            axes[1, 0].semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
+            axes[1, 0].legend()
 
         print("Done.")
 
@@ -627,7 +636,10 @@ class TDCPhotonDataMixin:
 
                 lifetime_ns = conf_params.beta[1]
                 sigma_sted = p1 * lifetime_ns
-                laser_pulse_delay_ns = (1 - p0) / p1
+                try:
+                    laser_pulse_delay_ns = (1 - p0) / p1
+                except RuntimeWarning:
+                    laser_pulse_delay_ns = None
 
             elif sted_field == "paraboloid":
                 fit_params = curve_fit_lims(

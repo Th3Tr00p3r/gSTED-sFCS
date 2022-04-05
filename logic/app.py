@@ -2,7 +2,8 @@
 
 import logging
 import logging.config
-import shutil
+
+# import shutil
 from collections import deque
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -290,7 +291,7 @@ class App:
             close_all_dvcs(self)
 
             # clear temp folder
-            shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True)
+            #            shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True) # TODO: make optional
 
             logging.info("Quitting application.")
             print("Application closed.")
