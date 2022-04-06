@@ -242,9 +242,8 @@ class Timeout:
                 if self.delayer_dvc.is_on:
                     with suppress(ValueError):
                         response, _ = self.delayer_dvc.mpd_command(("RT", None))
-                        temp = response[
-                            0
-                        ]  # TODO: have response be a scalar and not a list if list has just one value
+                        # TODO: have response be a scalar and not a list if list has just one value
+                        temp = response[0]
                         self.main_gui.psdTemp.setValue(float(temp))
 
             await asyncio.sleep(self.delayer_dvc.update_interval_s)
