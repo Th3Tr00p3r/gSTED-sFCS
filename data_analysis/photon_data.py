@@ -253,6 +253,7 @@ class TDCPhotonDataMixin:
         sync_coarse_time_to=None,
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
+        #        gate_width=
         should_plot=False,
         parent_axes=None,
         **kwargs,
@@ -299,8 +300,10 @@ class TDCPhotonDataMixin:
         j_shift = np.roll(np.arange(len(h)), -max_j + 2)
 
         if pick_calib_bins_method == "auto":
-            # pick data at more than 20ns delay from maximum
+            # pick data at more than 'calib_time_ns' delay from peak maximum
             j = np.where(j >= ((calib_time_ns * 1e-9) * self.fpga_freq_hz + 2))[0]
+            if not j:
+                raise ValueError(f"Gate width is too narrow for calib_time_ns={calib_time_ns}!")
             j_calib = j_shift[j]
             coarse_bins = bins[j_calib]
         elif pick_calib_bins_method == "forced":
