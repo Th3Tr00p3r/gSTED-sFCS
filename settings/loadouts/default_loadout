@@ -59,18 +59,18 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,4
+dataMonth,3
 dataYear,2022
-dataDay,3
-dataTemplate1,cal_300bp_20uW_angular_exc_133619_*.pkl
+dataDay,29
+dataTemplate1,bp300_20uW_angular_exc_172325_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
-importedSolDataTemplates1,cal_300bp_20uW_angular_exc_133619_*.pkl
+importedSolDataTemplates1,
 loadedExperimentNames,
 assignedGates,
 availableGates,
-importedSolDataTemplates2,cal_300bp_20uW_angular_exc_133619_*.pkl
+importedSolDataTemplates2,
 expPropGstedGate,Lifetime
 avgInterval,5000
 posAxis,X
@@ -83,8 +83,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,True
-solImportUse,False
+solImportUseAll,False
+solImportUse,True
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
@@ -107,7 +107,7 @@ tabWidget_4,0
 tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
-solImportAutoLoadProcessed,True
+solImportAutoLoadProcessed,False
 solDataFixShift,True
 solDataUseDefaultSysInfo,False
 solDataSubtractAfterpulse,True

@@ -94,12 +94,12 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         "CC": "current",
     }
 
-    # NOTE: see jupyter notebook
+    # NOTE: see jupyter notebook for details on how these were measured
     lin_fit_consts_dict = {
-        "hold_off": (3.0, 18.0),
-        "avalanch_thresh": (-2.0, 400.0),
-        "excess_bias": (-0.02409447, 6.9712588),
-        "current": (-0.45454545, 115.45454545),
+        "hold_off_ns": (3.0, 18.0),
+        "avalanch_thresh_mv": (-2.0, 400.0),
+        "excess_bias_v": (-0.02409447, 6.9712588),
+        "current_ma": (-0.45454545, 115.45454545),
     }
 
     def __init__(self, param_dict):
@@ -147,15 +147,18 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except ValueError:
             print(f"{self.log_ref} did not respond to stats query ('{command}')")
         else:
-            stats_dict = {
-                self.code_attr_dict[str_.rstrip(digits + "-")]: number(str_.lstrip(ascii_letters))
-                for str_ in responses
-                if str_.startswith(tuple(self.code_attr_dict.keys()))
-            }
-
             with suppress(KeyError):
-                self.is_on = bool(stats_dict["is_on"])
+                # get an dictionary of read values instead of codes
+                stats_dict = {
+                    self.code_attr_dict[str_.rstrip(digits + "-")]: number(
+                        str_.lstrip(ascii_letters)
+                    )
+                    for str_ in responses
+                    if str_.startswith(tuple(self.code_attr_dict.keys()))
+                }
 
+                # set attributes based on 'stats_dict'
+                self.is_on = bool(stats_dict["is_on"])
                 self.settings.mode = "free running" if stats_dict["mode"] == 1 else "external"
                 self.settings.input_thresh_mv = stats_dict["input_thresh_mv"]
                 self.settings.pulse_edge = "falling" if stats_dict["mode"] == 1 else "rising"
@@ -165,21 +168,13 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
                 # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
                 # and using said fits to estimate the actual setting (returned values are module-specific)
-                self.settings.hold_off_ns = round(
-                    linear_fit(stats_dict["hold_off"], *self.lin_fit_consts_dict["hold_off"])
-                )
-                self.settings.avalanche_thresh_mv = round(
-                    linear_fit(
-                        stats_dict["avalanch_thresh"], *self.lin_fit_consts_dict["avalanch_thresh"]
-                    )
-                )
-                self.settings.excess_bias_v = round(
-                    linear_fit(stats_dict["excess_bias"], *self.lin_fit_consts_dict["excess_bias"])
-                )
-                self.settings.current_ma = round(
-                    linear_fit(stats_dict["current"], *self.lin_fit_consts_dict["current"])
-                )
+                for attr_name, beta in self.lin_fit_consts_dict.items():
+                    _, response_name_flipped = attr_name[::-1].split("_", maxsplit=1)
+                    response_name = response_name_flipped[::-1]
+                    calc_value = round(linear_fit(stats_dict[response_name], *beta))
+                    setattr(self.settings, attr_name, calc_value)
 
+                # raise error if one is encountered in the responses (else will raise KeyError and be suppressed
                 raise DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
                 self.change_icons("error")
 
@@ -223,6 +218,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.purge(True)
+            self.settings = SimpleNamespace()
             try:
                 response, command = self.mpd_command(
                     [
@@ -241,9 +237,8 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
                 self.effective_delay_ns = 0
             else:
-                self.delay_ps = int(delay_str)
-                self.pulsewidth_ns = int(pulsewidth_str)
-                self.update_effective_delay()
+                self.settings.delay_ps = int(delay_str)
+                self.settings.pulsewidth_ns = int(pulsewidth_str)
 
         self.is_on = False
 
@@ -267,17 +262,12 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
-    def update_effective_delay(self):
+    def set_delay_component(self, delay_component: str):
         """Doc."""
+
         # TODO: instead of choosing an arbitrary delay, the user should be able to choose a proper gate in ns
         # Using a calibration value, the requested gate should be translated to delay (pulsewidth_ns + delay_ps).
         # The actual detector gate will be determined and used during processing (TDC calibration compared to calibrated pulse propagation time)
-
-        self.total_delay_ns = self.delay_ps / 1e3 + self.pulsewidth_ns
-        self.effective_delay_ns = self.total_delay_ns - self.laser_propagation_time_ns
-
-    def set_delay_component(self, delay_component: str):
-        """Doc."""
 
         component_cmnd_dict = {
             "delay_ps": "SD",
@@ -292,8 +282,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         )
         response = response[0]
 
-        setattr(self, delay_component, int(response))
-        self.update_effective_delay()
+        setattr(self.settings, delay_component, int(response))
 
         effective_value_wdgt = getattr(self, f"eff_{delay_component.split('_')[0]}_wdgt")
         effective_value_wdgt.set(int(response))
