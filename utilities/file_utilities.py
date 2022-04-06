@@ -601,16 +601,11 @@ def prepare_file_paths(file_path_template: Path, file_selection: str = "Use All"
         raise FileNotFoundError(f"File template path ('{file_path_template}') does not exist!")
 
     if file_selection != "Use All":
-        try:
-            file_idxs, choice = file_selection_str_to_list(file_selection)
-            if choice == "Use":
-                file_paths = [file_paths[i] for i in file_idxs]
-            else:
-                file_paths = [file_paths[i] for i in range(len(file_paths)) if i not in file_idxs]
-        except IndexError:
-            raise ValueError(
-                f"Bad file selection string: '{file_selection}'. Try file numbers between 1 and {len(file_paths)}."
-            )
+        file_idxs, choice = file_selection_str_to_list(file_selection)
+        if choice == "Use":
+            file_paths = [file_paths[i] for i in range(len(file_paths)) if i in file_idxs]
+        else:
+            file_paths = [file_paths[i] for i in range(len(file_paths)) if i not in file_idxs]
 
     return file_paths
 

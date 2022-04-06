@@ -1194,9 +1194,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
             print("- Done.")
 
-        # temporal to spatial conversion, if scanning (circular)
-        with suppress(AttributeError):
+        try:  # temporal to spatial conversion, if scanning (circular)
             CF.vt_um = self.v_um_ms * CF.lag
+        except AttributeError:
+            CF.vt_um = CF.lag  # static # TESTESTEST
 
         return CF
 
