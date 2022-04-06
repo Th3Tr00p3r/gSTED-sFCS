@@ -724,10 +724,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         full_data = file_dict["full_data"]
 
         self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
-        if detector_settings := file_dict["system_info"].get("detector_settings"):
-            self.detector_gate_width_ns = detector_settings["gate_width_ns"]
-        else:
-            self.detector_gate_width_ns = None
+        self.detector_settings = file_dict["system_info"].get("detector_settings")
+        self.delayer_settings = file_dict["system_info"].get("delayer_settings")
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
         with suppress(KeyError):

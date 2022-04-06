@@ -64,6 +64,7 @@ class MeasurementProcedure:
         self.sys_info = file_utilities.default_system_info
         self.sys_info["xyz_um_to_v"] = self.um_v_ratio
         self.sys_info["detector_settings"] = self.spad_dvc.settings
+        self.sys_info["delayer_settings"] = self.delayer_dvc.settings
 
         # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
         # better suit this case. see this: https://github.com/python/mypy/issues/1996
@@ -411,7 +412,6 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             "version": self.tdc_dvc.tdc_vrsn,
             "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float64),
             "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int64),
-            "pid": [],  # check
             "ao": self.ao_buffer,
             "is_fast_scan": True,
             "system_info": self.sys_info,
