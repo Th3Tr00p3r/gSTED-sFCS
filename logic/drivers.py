@@ -112,23 +112,27 @@ class Ftd2xx:
             else:
                 command_chain.append(command)
 
+        # I/O
         cmnd = ";".join(command_chain) + "#"
         self.write(cmnd.encode("utf-8"))
         response = self.read().decode("utf-8").split(sep="#")
-        if len(response) != len(command_list):
+
+        if len(response) < len(command_list) - 1:
             raise IOError(f"Got {len(response)} responses for {len(command_list)} commands...")
-        if len(response) == 1:
+        # single commands
+        if len(response) == 1 or (len(response) == 2 and response[-1] == ""):
             single_response = response[0]
             if single_response:
                 return single_response, cmnd
             else:
                 return None, cmnd
+        # multiple commands
         else:
             return [elem for elem in response if elem], cmnd
 
-    # NOT USED, CURRENTLY (using regular read())
     async def async_read(self) -> bytes:
         """Doc."""
+        # NOTE: NOT CURRENTLY USED (using regular read())
 
         # todo: fix bug where something here blocks - I think it's some error in the async read function.
         # check this out: https://docs.python.org/3/library/asyncio-dev.html#detect-never-retrieved-exceptions

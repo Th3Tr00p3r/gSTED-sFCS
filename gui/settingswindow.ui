@@ -438,8 +438,11 @@ Propagation Time (ns)</string>
                <property name="buttonSymbols">
                 <enum>QAbstractSpinBox::NoButtons</enum>
                </property>
+               <property name="decimals">
+                <number>4</number>
+               </property>
                <property name="maximum">
-                <double>999.000000000000000</double>
+                <double>99999.000000000000000</double>
                </property>
               </widget>
              </item>
@@ -465,8 +468,11 @@ Propagation Time (ns)</string>
                <property name="buttonSymbols">
                 <enum>QAbstractSpinBox::NoButtons</enum>
                </property>
+               <property name="decimals">
+                <number>4</number>
+               </property>
                <property name="maximum">
-                <double>999.000000000000000</double>
+                <double>9999.000000000000000</double>
                </property>
               </widget>
              </item>

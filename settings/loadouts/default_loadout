@@ -33,10 +33,6 @@ depPow,130
 depCurr,1500
 stageSteps,250
 spadGateWidth,40
-psdDelay_ps,0
-psdEffDelay_ps,1
-psdPulseWidth_ns,48
-psdEffPulseWidth_ns,48
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,6010.93
@@ -53,6 +49,8 @@ xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,5.0
+psdDelay,0.0
+psdEffDelay,0.0
 solMeasPreset,Standard Static
 solScanType,static
 solScanDurUnits,seconds
@@ -62,7 +60,7 @@ imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,4
 dataYear,2022
 dataDay,6
-dataTemplate1,atto_GATED_static_exc_144025_*.pkl
+dataTemplate1,atto_FR_angular_exc_141224_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
