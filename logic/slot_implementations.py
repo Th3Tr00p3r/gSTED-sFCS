@@ -242,8 +242,6 @@ class MainWin:
             current_vltg = scanners_dvc.ai_buffer[-1][3:][scanners_dvc.AXIS_INDEX[axis]]
             um_v_ratio = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
             delta_vltg = um_disp / um_v_ratio
-            print(f"{axis}-axiy um_v_ratio: {um_v_ratio}")  # TESTESTEST
-            print("delta_vltg: ", delta_vltg)  # TESTESTEST
 
             new_vltg = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS").clamp(
                 (current_vltg + delta_vltg)
@@ -282,14 +280,27 @@ class MainWin:
                     print(exc)  # TODO: make unique
                     spad_dvc.pause(False)  # take back control
 
-    def set_delayer_property(self, component: str):
+    def set_detector_gate(self):
         """Doc."""
 
         with suppress(AttributeError, ValueError, DeviceError):
             # AttributeError - device not yet defined
             # ValueError:  writing/reading PSD too fast!
+
+            # set the lower gate using the delayer
             delayer_dvc = self._app.devices.delayer
-            delayer_dvc.set_delay_component(component)
+            lower_gate_ns = delayer_dvc.set_delay_wdgt.get()
+            delayer_dvc.set_lower_gate(lower_gate_ns)
+
+            # set the maximum possible gate width according to the lower gate chosen
+            spad_dvc = self._app.devices.spad
+            laser_period_ns = round(1 / (spad_dvc.laser_freq_mhz * 1e6) * 1e9)
+            # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
+            gate_width_ns = laser_period_ns - lower_gate_ns - 2
+            spad_dvc.set_gate_width(gate_width_ns)
+            spad_dvc.settings.detector_gate_ns = helper.Limits(
+                lower_gate_ns, lower_gate_ns + gate_width_ns
+            )
 
     def set_spad_gatewidth(self):
         """Doc."""
