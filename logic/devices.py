@@ -94,7 +94,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         "CC": "current",
     }
 
-    # NOTE: see jupyter notebook for details on how these were measured
+    # NOTE: see jupyter notebook ('Getting SPAD settings calibration using linear fits') for details on how these were measured
     lin_fit_consts_dict = {
         "hold_off_ns": (3.0, 18.0),
         "avalanch_thresh_mv": (-2.0, 400.0),
@@ -205,8 +205,8 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     update_interval_s = 1
 
-    delay_limits = Limits(1, 49090)
-    pulsewidth_limits = Limits(1, 250)
+    psd_delay_limits_ps = Limits(1, 49090)
+    pulsewidth_limits_ns = Limits(1, 250)
 
     def __init__(self, param_dict):
         super().__init__(
@@ -218,7 +218,10 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.purge(True)
-            self.settings = SimpleNamespace()
+            self.settings = SimpleNamespace(
+                laser_propagation_time_ns=self.laser_propagation_time_ns,
+                sync_delay_ns=self.sync_delay_ns,
+            )
             try:
                 response, command = self.mpd_command(
                     [
@@ -262,30 +265,67 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
-    def set_delay_component(self, delay_component: str):
+    def set_pulsewidth(self, pulsewidth_ns: int):
         """Doc."""
 
-        # TODO: instead of choosing an arbitrary delay, the user should be able to choose a proper gate in ns
-        # Using a calibration value, the requested gate should be translated to delay (pulsewidth_ns + delay_ps).
-        # The actual detector gate will be determined and used during processing (TDC calibration compared to calibrated pulse propagation time)
-
-        component_cmnd_dict = {
-            "delay_ps": "SD",
-            "pulsewidth_ns": "SP",
-        }
-
-        new_value = getattr(self, f"set_{delay_component.split('_')[0]}_wdgt").get()
-        cmnd = component_cmnd_dict[delay_component]
-
-        response, _ = self.mpd_command(
-            (f"{cmnd}{new_value}", getattr(self, f"{delay_component.split('_')[0]}_limits"))
+        self.settings.pulsewidth_ns, _ = self.mpd_command(
+            (f"SP{pulsewidth_ns}", self.pulsewidth_limits_ns)
         )
-        response = response[0]
 
-        setattr(self.settings, delay_component, int(response))
+    def set_lower_gate(self, lower_gate_ns: float):
+        """
+        Set the delay according to the chosen lower gate in ns.
+        This is achieved by a combination of setting the pulse width as a mechanism of coarse delay,
+        and on top of that setting the signal delay in picoseconds.
+        The value for each is automatically found by calibrating ahead of time the delay needed
+        for syncronizing the laser pulse with the fluorescence pulse.
+        """
 
-        effective_value_wdgt = getattr(self, f"eff_{delay_component.split('_')[0]}_wdgt")
-        effective_value_wdgt.set(int(response))
+        req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
+
+        req_pulsewidth_ns = (
+            req_total_delay_ns - 5
+        )  # ensure pulsewidth step doesn't go past 'req_delay_ns'
+        pulsewidth_ns, _ = self.mpd_command((f"SP{req_pulsewidth_ns}", self.pulsewidth_limits_ns))
+
+        req_psd_delay_ps = (req_total_delay_ns - pulsewidth_ns) * 1e3
+        psd_delay_ps, _ = self.mpd_command((f"SD{req_psd_delay_ps}", self.psd_delay_limits_ps))
+
+        effective_delay_ns = pulsewidth_ns + psd_delay_ps * 1e-3
+
+        self.settings = SimpleNamespace(
+            pulsewidth_ns=pulsewidth_ns,
+            psd_delay_ns=psd_delay_ps * 1e-3,
+            effective_delay_ns=effective_delay_ns,
+        )
+
+        self.eff_delay_wdgt.set(effective_delay_ns)
+
+
+#    def set_delay_component(self, delay_component: str):
+#        """Doc."""
+#
+#        # TODO: instead of choosing an arbitrary delay, the user should be able to choose a proper gate in ns
+#        # Using a calibration value, the requested gate should be translated to delay (pulsewidth_ns + delay_ps).
+#        # The actual detector gate will be determined and used during processing (TDC calibration compared to calibrated pulse propagation time)
+#
+#        component_cmnd_dict = {
+#            "delay_ps": "SD",
+#            "pulsewidth_ns": "SP",
+#        }
+#
+#        new_value = getattr(self, f"set_{delay_component.split('_')[0]}_wdgt").get()
+#        cmnd = component_cmnd_dict[delay_component]
+#
+#        response, _ = self.mpd_command(
+#            (f"{cmnd}{new_value}", getattr(self, f"{delay_component.split('_')[0]}_limits"))
+#        )
+#
+#        setattr(self.settings, delay_component, int(response))
+#        self.settings.total_delay = self.settings.pulsewidth_ns + self.settings.delay_ps * 1e-3
+#
+#        effective_value_wdgt = getattr(self, f"eff_{delay_component.split('_')[0]}_wdgt")
+#        effective_value_wdgt.set(int(response))
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -624,10 +664,10 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         return diff_ao_data
 
 
-class PhotonDetector(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
+class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     """
-    Represents the detector which counts the green
-    fluorescence photons coming from the sample.
+    Represents the DAQ card which counts the green
+    fluorescence photons coming from the detector.
     """
 
     CI_BUFFER_SIZE = int(1e4)
@@ -1165,10 +1205,10 @@ DEVICE_ATTR_DICT = {
             ao_wf_type=("AOwfType", "QComboBox", "settings", False),
         ),
     ),
-    "photon_detector": DeviceAttrs(
-        class_name="PhotonDetector",
+    "photon_counter": DeviceAttrs(
+        class_name="PhotonCounter",
         cls_xtra_args=["devices.scanners.tasks.ai"],
-        log_ref="Photon Detector",
+        log_ref="Photon Counter",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCounter", "QIcon", "main", True),
             pxl_clk=("counterPixelClockAddress", "QLineEdit", "settings", False),
@@ -1218,8 +1258,8 @@ DEVICE_ATTR_DICT = {
         param_widgets=QtWidgetCollection(
             led_widget=("ledPSD", "QIcon", "main", True),
             switch_widget=("psdSwitch", "QIcon", "main", True),
-            set_delay_wdgt=("psdDelay_ps", "QSpinBox", "main", True),
-            eff_delay_wdgt=("psdEffDelay_ps", "QSpinBox", "main", True),
+            set_delay_wdgt=("psdDelay", "QSpinBox", "main", True),
+            eff_delay_wdgt=("psdEffDelay", "QSpinBox", "main", True),
             set_pulsewidth_wdgt=("psdPulseWidth_ns", "QSpinBox", "main", True),
             eff_pulsewidth_wdgt=("psdEffPulseWidth_ns", "QSpinBox", "main", True),
             description=("psdDescription", "QLineEdit", "settings", False),
@@ -1227,6 +1267,9 @@ DEVICE_ATTR_DICT = {
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
+            # sync_delay_ns was by measuring a detector-gated samle, getting its actual delay by syncing to the laser sample's (below) TDC calibration and subtracting laser_propagation_time_ns from it.
+            sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", False),
+            # laser_propagation_time_ns was calibrated by measuring a mirror sample, and getting the laser propagation time from the TDC calibration
             laser_propagation_time_ns=("laserPropTime", "QDoubleSpinBox", "settings", False),
         ),
     ),

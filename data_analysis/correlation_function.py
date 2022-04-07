@@ -1358,10 +1358,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                         f"{method_name}: Loading dumped data '{self.name_on_disk}' from '{self.DUMP_PATH}'."
                     )
                     with suppress(FileNotFoundError):
-                        self.data = file_utilities.load_file(self.DUMP_PATH / self.name_on_disk)
+                        self.data = file_utilities.load_object(self.DUMP_PATH / self.name_on_disk)
                         self.is_data_dumped = False
             else:  # saving data
-                is_saved = file_utilities.save_object_to_disk(
+                is_saved = file_utilities.save_object(
                     self.data,
                     self.DUMP_PATH / self.name_on_disk,
                     obj_name="dumped data array",
@@ -1574,6 +1574,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
     def add_gate(self, gate_ns: Tuple[float, float], should_plot=True, **kwargs):
         """Doc."""
+        # TODO: this should be a method of SolutionSFCSMeasurement
 
         if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
             self.sted.correlate_and_average(
@@ -1665,6 +1666,13 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 ax.set_xlabel("$q$ $(\\mu m^{-1})$")
                 ax.set_ylabel("$S(q)$")
                 ax.legend(legend_labels)
+
+    def fit_structure_factors(self, model: str):
+        """Doc."""
+        # TODO:
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.dawsn.html
+
+        pass
 
 
 def calculate_afterpulse(

@@ -28,7 +28,7 @@ class Timeout:
         self.log_buffer_deque = deque([""], maxlen=50)
 
         self.exc_laser_dvc = self._app.devices.exc_laser
-        self.cntr_dvc = self._app.devices.photon_detector
+        self.cntr_dvc = self._app.devices.photon_counter
         self.scan_dvc = self._app.devices.scanners
         self.dep_dvc = self._app.devices.dep_laser
         self.delayer_dvc = self._app.devices.delayer
@@ -62,7 +62,7 @@ class Timeout:
         def fill_buffers() -> None:
             """Doc."""
 
-            # CI (Photon Detector)
+            # CI (Photon Counter)
             if not self.cntr_dvc.error_dict:
                 self.cntr_dvc.fill_ci_buffer()
 
@@ -184,7 +184,7 @@ class Timeout:
                     # log file widget
                     update_log_wdgt()
 
-            # photon_detector count rate
+            # photon_counter count rate
             if not self.cntr_dvc.error_dict:
                 update_avg_counts(meas)
 
@@ -241,9 +241,7 @@ class Timeout:
             if (not self.delayer_dvc.error_dict) and (not self._app.meas.is_running):
                 if self.delayer_dvc.is_on:
                     with suppress(ValueError):
-                        response, _ = self.delayer_dvc.mpd_command(("RT", None))
-                        # TODO: have response be a scalar and not a list if list has just one value
-                        temp = response[0]
+                        temp, _ = self.delayer_dvc.mpd_command(("RT", None))
                         self.main_gui.psdTemp.setValue(float(temp))
 
             await asyncio.sleep(self.delayer_dvc.update_interval_s)
