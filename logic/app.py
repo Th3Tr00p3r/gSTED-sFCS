@@ -37,7 +37,7 @@ class App:
         "stage",
         "UM232H",
         "scanners",
-        "photon_detector",
+        "photon_counter",
         "delayer",
         "spad",
         "pixel_clock",
@@ -195,7 +195,7 @@ class App:
         logging.debug("Pausing 'ai' and 'ci' tasks")
         with suppress(DeviceError):
             self.devices.scanners.pause_tasks("ai")
-            self.devices.photon_detector.pause_tasks("ci")
+            self.devices.photon_counter.pause_tasks("ci")
 
         try:
             yield
@@ -206,8 +206,8 @@ class App:
                 # devices not initialized
                 self.devices.scanners.init_ai_buffer()
                 self.devices.scanners.start_tasks("ai")
-                self.devices.photon_detector.init_ci_buffer()
-                self.devices.photon_detector.start_tasks("ci")
+                self.devices.photon_counter.init_ci_buffer()
+                self.devices.photon_counter.start_tasks("ci")
 
     async def clean_up_app(self, restart=False):
         """Doc."""
