@@ -218,27 +218,6 @@ class TDCPhotonDataMixin:
             size_estimate_mb=max(section_lengths) / 1e6,
         )
 
-    def _unite_coarse_fine_data(self):
-        """Doc."""
-
-        # keep pulse_runtime elements of each file for array size allocation
-        n_elem = np.cumsum([0] + [p.pulse_runtime.size for p in self.data])
-
-        # unite coarse and fine times from all files
-        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
-        fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
-        for i, p in enumerate(self.data):
-            coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
-            fine[n_elem[i] : n_elem[i + 1]] = p.fine
-
-        # remove line starts/ends from angular scan data
-        if self.scan_type == "angular":
-            photon_idxs = fine > self.NAN_PLACEBO
-            coarse = coarse[photon_idxs]
-            fine = fine[photon_idxs]
-
-        return coarse, fine
-
     @rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(  # NO#QA C901
         self,
@@ -287,7 +266,6 @@ class TDCPhotonDataMixin:
         # rearranging the bins
         if sync_coarse_time_to is None:
             max_j = np.argmax(h)
-            print("max_j: ", max_j)  # TESTESTEST
         elif isinstance(sync_coarse_time_to, int):
             max_j = sync_coarse_time_to
         elif isinstance(sync_coarse_time_to, TDCCalibration):
@@ -660,6 +638,27 @@ class TDCPhotonDataMixin:
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params
+
+    def _unite_coarse_fine_data(self):
+        """Doc."""
+
+        # keep pulse_runtime elements of each file for array size allocation
+        n_elem = np.cumsum([0] + [p.pulse_runtime.size for p in self.data])
+
+        # unite coarse and fine times from all files
+        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+        fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+        for i, p in enumerate(self.data):
+            coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
+            fine[n_elem[i] : n_elem[i + 1]] = p.fine
+
+        # remove line starts/ends from angular scan data
+        if self.scan_type == "angular":
+            photon_idxs = fine > self.NAN_PLACEBO
+            coarse = coarse[photon_idxs]
+            fine = fine[photon_idxs]
+
+        return coarse, fine
 
 
 @dataclass

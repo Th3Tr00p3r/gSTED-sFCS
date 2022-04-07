@@ -64,7 +64,12 @@ class MeasurementProcedure:
         self.sys_info = file_utilities.default_system_info
         self.sys_info["xyz_um_to_v"] = self.um_v_ratio
         self.sys_info["detector_settings"] = self.spad_dvc.settings
-        self.sys_info["delayer_settings"] = self.delayer_dvc.settings
+        if self.delayer_dvc.is_on:
+            self.sys_info["delayer_settings"] = self.delayer_dvc.settings
+            self.sys_info["detector_settings"].is_gated = True
+        else:
+            self.sys_info["delayer_settings"] = None
+            self.sys_info["detector_settings"].is_gated = False
 
         # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
         # better suit this case. see this: https://github.com/python/mypy/issues/1996
