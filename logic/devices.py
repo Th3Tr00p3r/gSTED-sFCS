@@ -22,7 +22,7 @@ from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.fit_tools import linear_fit
-from utilities.helper import Limits, div_ceil, number
+from utilities.helper import Limits, div_ceil, generate_numbers_from_string, number
 
 
 class BaseDevice:
@@ -147,8 +147,8 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except ValueError:
             print(f"{self.log_ref} did not respond to stats query ('{command}')")
         else:
-            with suppress(KeyError):
-                # get an dictionary of read values instead of codes
+            with suppress(KeyError, TypeError):
+                # get a dictionary of read values instead of codes
                 stats_dict = {
                     self.code_attr_dict[str_.rstrip(digits + "-")]: number(
                         str_.lstrip(ascii_letters)
@@ -182,22 +182,30 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         mode_cmnd_dict = {"free running": "FR", "external": "GM"}
-        self.mpd_command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
+        with suppress(IOError):  # TESTESTEST
+            self.mpd_command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
 
-    def set_gate_width(self):
+    def set_gate_width(self, gate_width_ns=None):
         """Doc."""
 
-        gate_width_ns = self.set_gate_width_wdgt.get() * 1e3
+        if gate_width_ns is None:  # Manually set from GUI (needed?)
+            gate_width_ps = int(self.set_gate_width_wdgt.get() * 1e3)
+        else:
+            gate_width_ps = gate_width_ns * 1e3
         response, _ = self.mpd_command(
             [
-                (f"TO{gate_width_ns}", self.gate_width_limits),
+                (f"TO{gate_width_ps}", self.gate_width_limits),
                 ("AD", None),
             ]
         )
-        try:
-            self.settings.gate_width_ns = int(response[0])
-        except IndexError:  # writing too fast?
-            print("TRY AGAIN?")
+
+        # handle weird stuff happening with what seems to be mixing of responses (from get_stats)
+        if isinstance(response, list):
+            response = response[0]
+
+        with suppress(TypeError):  # response is empty?
+            effective_gatewidth_ns = int(next(generate_numbers_from_string(response)) * 1e-3)
+            self.eff_gate_width_wdgt.set(effective_gatewidth_ns)
 
 
 class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -283,49 +291,24 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
         req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
 
-        req_pulsewidth_ns = (
-            req_total_delay_ns - 5
-        )  # ensure pulsewidth step doesn't go past 'req_delay_ns'
-        pulsewidth_ns, _ = self.mpd_command((f"SP{req_pulsewidth_ns}", self.pulsewidth_limits_ns))
+        # ensure pulsewidth step doesn't go past 'req_delay_ns' by subtracting 5 ns (steps are 3 or 4 ns)
+        # yet stays close so all relevant gates are still reachable with the PSD delay (up to ~50 ns)
+        req_pulsewidth_ns = round((req_total_delay_ns - 5))
+        response, _ = self.mpd_command((f"SP{req_pulsewidth_ns}", self.pulsewidth_limits_ns))
+        pulsewidth_ns = int(response)
 
-        req_psd_delay_ps = (req_total_delay_ns - pulsewidth_ns) * 1e3
-        psd_delay_ps, _ = self.mpd_command((f"SD{req_psd_delay_ps}", self.psd_delay_limits_ps))
+        req_psd_delay_ps = round((req_total_delay_ns - pulsewidth_ns) * 1e3)
+        response, _ = self.mpd_command((f"SD{req_psd_delay_ps}", self.psd_delay_limits_ps))
+        psd_delay_ps = int(response)
 
         effective_delay_ns = pulsewidth_ns + psd_delay_ps * 1e-3
 
-        self.settings = SimpleNamespace(
-            pulsewidth_ns=pulsewidth_ns,
-            psd_delay_ns=psd_delay_ps * 1e-3,
-            effective_delay_ns=effective_delay_ns,
-        )
+        self.settings.pulsewidth_ns = pulsewidth_ns
+        self.settings.psd_delay_ns = psd_delay_ps * 1e-3
+        self.settings.effective_delay_ns = effective_delay_ns
 
+        # Show delay in GUI
         self.eff_delay_wdgt.set(effective_delay_ns)
-
-
-#    def set_delay_component(self, delay_component: str):
-#        """Doc."""
-#
-#        # TODO: instead of choosing an arbitrary delay, the user should be able to choose a proper gate in ns
-#        # Using a calibration value, the requested gate should be translated to delay (pulsewidth_ns + delay_ps).
-#        # The actual detector gate will be determined and used during processing (TDC calibration compared to calibrated pulse propagation time)
-#
-#        component_cmnd_dict = {
-#            "delay_ps": "SD",
-#            "pulsewidth_ns": "SP",
-#        }
-#
-#        new_value = getattr(self, f"set_{delay_component.split('_')[0]}_wdgt").get()
-#        cmnd = component_cmnd_dict[delay_component]
-#
-#        response, _ = self.mpd_command(
-#            (f"{cmnd}{new_value}", getattr(self, f"{delay_component.split('_')[0]}_limits"))
-#        )
-#
-#        setattr(self.settings, delay_component, int(response))
-#        self.settings.total_delay = self.settings.pulsewidth_ns + self.settings.delay_ps * 1e-3
-#
-#        effective_value_wdgt = getattr(self, f"eff_{delay_component.split('_')[0]}_wdgt")
-#        effective_value_wdgt.set(int(response))
 
 
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -1247,9 +1230,11 @@ DEVICE_ATTR_DICT = {
             led_widget=("ledSPAD", "QIcon", "main", True),
             gate_led_widget=("ledGate", "QIcon", "main", True),
             set_gate_width_wdgt=("spadGateWidth", "QSpinBox", "main", True),
+            eff_gate_width_wdgt=("spadEffGateWidth", "QSpinBox", "main", True),
             description=("spadDescription", "QLineEdit", "settings", False),
             baud_rate=("spadBaudRate", "QSpinBox", "settings", False),
             timeout_ms=("spadTimeout", "QSpinBox", "settings", False),
+            laser_freq_mhz=("TDClaserFreq", "QSpinBox", "settings", False),
         ),
     ),
     "delayer": DeviceAttrs(
@@ -1260,8 +1245,6 @@ DEVICE_ATTR_DICT = {
             switch_widget=("psdSwitch", "QIcon", "main", True),
             set_delay_wdgt=("psdDelay", "QSpinBox", "main", True),
             eff_delay_wdgt=("psdEffDelay", "QSpinBox", "main", True),
-            set_pulsewidth_wdgt=("psdPulseWidth_ns", "QSpinBox", "main", True),
-            eff_pulsewidth_wdgt=("psdEffPulseWidth_ns", "QSpinBox", "main", True),
             description=("psdDescription", "QLineEdit", "settings", False),
             baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
