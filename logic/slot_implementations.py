@@ -298,9 +298,7 @@ class MainWin:
             # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
             gate_width_ns = laser_period_ns - lower_gate_ns - 2
             spad_dvc.set_gate_width(gate_width_ns)
-            spad_dvc.settings.detector_gate_ns = helper.Limits(
-                lower_gate_ns, lower_gate_ns + gate_width_ns
-            )
+            spad_dvc.settings.gate_ns = helper.Limits(lower_gate_ns, lower_gate_ns + gate_width_ns)
 
     def set_spad_gatewidth(self):
         """Doc."""
