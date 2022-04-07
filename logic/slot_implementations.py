@@ -162,7 +162,7 @@ class MainWin:
             "ledStage": "stage",
             "ledUm232h": "UM232H",
             "ledScn": "scanners",
-            "ledCounter": "photon_detector",
+            "ledCounter": "photon_counter",
             "ledPxlClk": "pixel_clock",
             "ledPSD": "delayer",
             "ledSPAD": "spad",
@@ -608,7 +608,7 @@ class MainWin:
             today_dir = Path(wdgt_coll.save_path) / dt.now().strftime("%d_%m_%Y")
             dir_path = today_dir / "image"
             file_path = dir_path / (re.sub("\\s", "_", file_name) + ".pkl")
-            file_utilities.save_object_to_disk(
+            file_utilities.save_object(
                 file_dict, file_path, compression_method="gzip", obj_name="image"
             )
             logging.debug(f"Saved measurement file: '{file_path}'.")

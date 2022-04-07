@@ -37,7 +37,7 @@ class MeasurementProcedure:
     ):
 
         # devices
-        self.counter_dvc = app.devices.photon_detector
+        self.counter_dvc = app.devices.photon_counter
         self.pxl_clk_dvc = app.devices.pixel_clock
         self.scanners_dvc = app.devices.scanners
         self.tdc_dvc = app.devices.TDC
@@ -171,7 +171,7 @@ class MeasurementProcedure:
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
         file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
-        file_utilities.save_object_to_disk(
+        file_utilities.save_object(
             data_dict, file_path, compression_method="gzip", obj_name="raw data"
         )
         logging.debug(f"Saved measurement file: '{file_path}'.")

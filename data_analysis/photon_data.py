@@ -247,9 +247,9 @@ class TDCPhotonDataMixin:
         pick_calib_bins_method="auto",
         calib_time_ns=40,
         n_zeros_for_fine_bounds=10,
-        fine_shift=0,
+        fine_shift=0,  # TODO: this does nothing?
         time_bins_for_hist_ns=0.1,
-        example_photon_data=None,
+        example_tdc_calib=None,
         sync_coarse_time_to=None,
         forced_valid_coarse_bins=np.arange(19),
         forced_calibration_coarse_bins=np.arange(3, 12),
@@ -277,7 +277,7 @@ class TDCPhotonDataMixin:
             bins = forced_valid_coarse_bins
             h = h_all[bins]
         elif pick_valid_bins_method == "by example":
-            bins = example_photon_data.tdc_calib.coarse_bins
+            bins = example_tdc_calib.coarse_bins
             h = h_all[bins]
         elif pick_valid_bins_method == "interactive":
             raise NotImplementedError("'interactive' valid bins selection is not yet implemented.")
@@ -302,7 +302,7 @@ class TDCPhotonDataMixin:
         if pick_calib_bins_method == "auto":
             # pick data at more than 'calib_time_ns' delay from peak maximum
             j = np.where(j >= ((calib_time_ns * 1e-9) * self.fpga_freq_hz + 2))[0]
-            if not j:
+            if not j.any():
                 raise ValueError(f"Gate width is too narrow for calib_time_ns={calib_time_ns}!")
             j_calib = j_shift[j]
             coarse_bins = bins[j_calib]
@@ -312,7 +312,7 @@ class TDCPhotonDataMixin:
             pick_calib_bins_method == "by example"
             or pick_calib_bins_method == "External calibration"
         ):
-            coarse_bins = example_photon_data.tdc_calib.coarse_bins
+            coarse_bins = example_tdc_calib.coarse_bins
         elif pick_valid_bins_method == "interactive":
             raise NotImplementedError(
                 "'interactive' calibration bins selection is not yet implemented."
@@ -323,16 +323,16 @@ class TDCPhotonDataMixin:
             )
 
         if pick_calib_bins_method == "External calibration":
-            max_j = example_photon_data.tdc_calib.max_j
-            coarse_bins = example_photon_data.tdc_calib.coarse_bins
-            fine_bins = example_photon_data.tdc_calib.fine_bins
-            t_calib = example_photon_data.tdc_calib.t_calib
-            h_tdc_calib = example_photon_data.tdc_calib.h_tdc_calib
-            t_weight = example_photon_data.tdc_calib.t_weight
-            l_quarter_tdc = example_photon_data.tdc_calib.l_quarter_tdc
-            r_quarter_tdc = example_photon_data.tdc_calib.r_quarter_tdc
-            h = example_photon_data.tdc_calib.h
-            delay_times = example_photon_data.tdc_calib.delay_times
+            max_j = example_tdc_calib.max_j
+            coarse_bins = example_tdc_calib.coarse_bins
+            fine_bins = example_tdc_calib.fine_bins
+            t_calib = example_tdc_calib.t_calib
+            h_tdc_calib = example_tdc_calib.h_tdc_calib
+            t_weight = example_tdc_calib.t_weight
+            l_quarter_tdc = example_tdc_calib.l_quarter_tdc
+            r_quarter_tdc = example_tdc_calib.r_quarter_tdc
+            h = example_tdc_calib.h
+            delay_times = example_tdc_calib.delay_times
 
             with suppress(AttributeError):
                 l_quarter_tdc = self.tdc_calib.l_quarter_tdc

@@ -96,7 +96,7 @@ class Ftd2xx:
 
     def mpd_command(
         self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
-    ) -> Tuple[List[str], str]:
+    ) -> Tuple[Union[List[str], str], str]:
         """Doc."""
 
         self.purge()
@@ -112,10 +112,19 @@ class Ftd2xx:
             else:
                 command_chain.append(command)
 
-        cmnd = (";".join(command_chain) + "#").encode("utf-8")
-        self.write(cmnd)
+        cmnd = ";".join(command_chain) + "#"
+        self.write(cmnd.encode("utf-8"))
         response = self.read().decode("utf-8").split(sep="#")
-        return [elem for elem in response if elem], cmnd.decode("utf-8")
+        if len(response) != len(command_list):
+            raise IOError(f"Got {len(response)} responses for {len(command_list)} commands...")
+        if len(response) == 1:
+            single_response = response[0]
+            if single_response:
+                return single_response, cmnd
+            else:
+                return None, cmnd
+        else:
+            return [elem for elem in response if elem], cmnd
 
     # NOT USED, CURRENTLY (using regular read())
     async def async_read(self) -> bytes:

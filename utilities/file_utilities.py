@@ -8,8 +8,6 @@ import gzip
 import logging
 import pickle
 import re
-
-# from contextlib import suppress
 from pathlib import Path
 from typing import Any, Callable, List, Tuple, Union
 
@@ -222,7 +220,7 @@ def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -
 
 
 @timer(threshold_ms=10000)
-def save_object_to_disk(
+def save_object(
     obj,
     file_path: Path,
     compression_method: str = None,  # "gzip" / "blosc"
@@ -271,7 +269,7 @@ def save_object_to_disk(
 
 
 @timer(threshold_ms=3000)
-def load_file(file_path: Union[str, Path]) -> Any:
+def load_object(file_path: Union[str, Path]) -> Any:
     """
     Short cut for opening (possibly 'gzip' and/or 'blosc' compressed) .pkl files
     Returns the saved object.
@@ -327,9 +325,7 @@ def save_processed_solution_meas(meas, dir_path: Path) -> None:
     dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", meas.template)
     file_path = dir_path / file_name
-    save_object_to_disk(
-        meas, file_path, compression_method="blosc", obj_name="processed measurement"
-    )
+    save_object(meas, file_path, compression_method="blosc", obj_name="processed measurement")
 
     meas.data = original_data
 
@@ -337,7 +333,7 @@ def save_processed_solution_meas(meas, dir_path: Path) -> None:
 def load_processed_solution_measurement(file_path: Path):
     """Doc."""
 
-    tdc_obj = load_file(file_path)
+    tdc_obj = load_object(file_path)
 
     # Load runtimes as int64 if they are not already of that type
     for p in tdc_obj.data:
@@ -354,7 +350,7 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
     """
 
     if file_path.suffix == ".pkl":
-        file_dict = translate_dict_keys(load_file(file_path), legacy_python_trans_dict)
+        file_dict = translate_dict_keys(load_object(file_path), legacy_python_trans_dict)
     elif file_path.suffix == ".mat":
         file_dict = translate_dict_keys(load_mat(file_path), legacy_matlab_trans_dict)
     else:
