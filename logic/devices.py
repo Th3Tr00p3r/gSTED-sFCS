@@ -227,7 +227,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         else:
             self.purge(True)
             self.settings = SimpleNamespace(
-                laser_propagation_time_ns=self.laser_propagation_time_ns,
                 sync_delay_ns=self.sync_delay_ns,
             )
             try:
@@ -1250,10 +1249,8 @@ DEVICE_ATTR_DICT = {
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
-            # sync_delay_ns was by measuring a detector-gated samle, getting its actual delay by syncing to the laser sample's (below) TDC calibration and subtracting laser_propagation_time_ns from it.
+            # sync_delay_ns was by measuring a detector-gated samle, getting its actual delay by syncing to the laser sample's (below) TDC calibration
             sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", False),
-            # laser_propagation_time_ns was calibrated by measuring a mirror sample, and getting the laser propagation time from the TDC calibration
-            laser_propagation_time_ns=("laserPropTime", "QDoubleSpinBox", "settings", False),
         ),
     ),
 }
