@@ -20,7 +20,7 @@ from utilities.helper import chunks, reverse_dict, timer
 legacy_matlab_trans_dict = {
     # Solution Scan
     "Setup": "setup",
-    "AfterPulseParam": "after_pulse_param",
+    "AfterPulseParam": "afterpulse_params",
     "AI_ScalingXYZ": "ai_scaling_xyz",
     "XYZ_um_to_V": "xyz_um_to_v",
     "SystemInfo": "system_info",
@@ -110,11 +110,12 @@ legacy_python_trans_dict = {
     "sample_freq_hz": "ao_sampling_freq_hz",
     "scan_param": "scan_settings",
     "scan_params": "scan_settings",
+    "after_pulse_param": "afterpulse_params",
 }
 
 default_system_info = {
     "setup": "STED with galvos",
-    "after_pulse_param": (
+    "afterpulse_params": (
         "multi_exponent_fit",
         #        np.array( # OLD DETECTOR
         #            [
@@ -346,7 +347,7 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
     """
     Load files according to extension,
     Allow backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files),
-    use defaults for legacy files where 'system_info' or 'after_pulse_param' is not iterable (therefore old).
+    use defaults for legacy files where 'system_info' or 'afterpulse_params' is not iterable (therefore old).
     """
 
     if file_path.suffix == ".pkl":
@@ -406,16 +407,16 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
                 scan_settings["dim_order"] = (0, 2, 1)
 
     # patch MATLAB files
-    elif not isinstance(file_dict["system_info"]["after_pulse_param"], tuple):
+    elif not isinstance(file_dict["system_info"]["afterpulse_params"], tuple):
         if file_dict.get("python_converted"):
-            file_dict["system_info"]["after_pulse_param"] = (
+            file_dict["system_info"]["afterpulse_params"] = (
                 "multi_exponent_fit",  # modern MATLAB format
-                file_dict["system_info"]["after_pulse_param"],
+                file_dict["system_info"]["afterpulse_params"],
             )
         else:
-            file_dict["system_info"]["after_pulse_param"] = (
+            file_dict["system_info"]["afterpulse_params"] = (
                 "exponent_of_polynom_of_log",  # legacy MATLAB format
-                file_dict["system_info"]["after_pulse_param"],
+                file_dict["system_info"]["afterpulse_params"],
             )
 
     return file_dict
