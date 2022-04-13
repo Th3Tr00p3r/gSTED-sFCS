@@ -276,9 +276,8 @@ class MainWin:
                             "C:/Program Files (x86)/MPD/FastGATED SPAD Module/FastGatedSPAD_Module.exe"
                         )
                     )
-                except Exception as exc:
-                    print(exc)  # TODO: make unique
-                    spad_dvc.pause(False)  # take back control
+                except FileNotFoundError:
+                    spad_dvc.pause(False)  # unpause if 'FastGatedSPAD_Module.exe' not found
 
     def set_detector_gate(self):
         """Doc."""
