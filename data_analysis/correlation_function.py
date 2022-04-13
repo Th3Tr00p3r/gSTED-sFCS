@@ -26,6 +26,8 @@ from utilities.display import Plotter
 from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
 from utilities.helper import Limits, div_ceil, timer
 
+laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis./laser_pulse_tdc_calib.pkl")
+
 
 @dataclass
 class StructureFactor:
@@ -1542,16 +1544,24 @@ class SFCSExperiment(TDCPhotonDataMixin):
         file_utilities.save_processed_solution_meas(self.sted, self.sted.file_path_template.parent)
         print("Done.")
 
-    def calibrate_tdc(self, **kwargs):
+    def calibrate_tdc(self, should_plot=True, **kwargs):
         """Doc."""
 
         if hasattr(self.confocal, "scan_type"):  # has confocal measurement (minimum requirement)
-            super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
-            with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
-                self.confocal.calibrate_tdc(should_plot=True, parent_axes=axes[:, :2], **kwargs)
+
+            self.confocal.calibrate_tdc(**kwargs)
+            if hasattr(self.sted, "scan_type"):  # if both measurements quack as if loaded
+                self.sted.calibrate_tdc(sync_coarse_time_to=self.confocal.tdc_calib, **kwargs)
+
+            if should_plot:
+                super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
                 if hasattr(self.sted, "scan_type"):  # if both measurements quack as if loaded
-                    kwargs["sync_coarse_time_to"] = self.confocal.tdc_calib  # sync sted to confocal
-                    self.sted.calibrate_tdc(should_plot=True, parent_axes=axes[:, 2:], **kwargs)
+                    with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
+                        self.confocal.plot_tdc_calibration(parent_axes=axes[:, :2])
+                        self.sted.plot_tdc_calibration(parent_axes=axes[:, 2:])
+                else:  # STED measurement not loaded
+                    self.confocal.plot_tdc_calibration(super_title=super_title, **kwargs)
+
         else:
             raise RuntimeError("Can't calibrate TDC with no confocal measurements loaded!")
 
