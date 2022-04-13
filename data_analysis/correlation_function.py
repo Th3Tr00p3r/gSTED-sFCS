@@ -1454,18 +1454,19 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
-        super_title = f"Experiment '{self.name.capitalize()}' - All ACFs"
-        with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
-            self.plot_correlation_functions(
-                parent_ax=axes[0],
-                y_field="avg_cf_cr",
-                x_scale="log",
-                xlim=None,  # autoscale x axis
-            )
+        if should_plot:
+            super_title = f"Experiment '{self.name.capitalize()}' - All ACFs"
+            with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
+                self.plot_correlation_functions(
+                    parent_ax=axes[0],
+                    y_field="avg_cf_cr",
+                    x_scale="log",
+                    xlim=None,  # autoscale x axis
+                )
 
-            self.plot_correlation_functions(
-                parent_ax=axes[1],
-            )
+                self.plot_correlation_functions(
+                    parent_ax=axes[1],
+                )
 
     def load_measurement(
         self,
