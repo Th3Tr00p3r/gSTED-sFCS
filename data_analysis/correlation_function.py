@@ -725,7 +725,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         full_data = file_dict["full_data"]
 
-        self.after_pulse_param = file_dict["system_info"]["after_pulse_param"]
+        self.afterpulse_params = file_dict["system_info"]["afterpulse_params"]
         self.detector_settings = file_dict["system_info"].get("detector_settings")
         self.delayer_settings = file_dict["system_info"].get("delayer_settings")
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
@@ -1178,7 +1178,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         CF.correlate_measurement(
             ts_split_list,
-            afterpulse_params if afterpulse_params is not None else self.after_pulse_param,
+            afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
             self.laser_freq_hz,
             getattr(self, "bg_corr_list", None) if should_subtract_bg_corr else None,
             is_verbose=is_verbose,
@@ -1279,7 +1279,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         CF.correlate_measurement(
             ts_split_list,
-            self.after_pulse_param,
+            self.afterpulse_params,
             self.laser_freq_hz,
             self.bg_corr_list if should_subtract_bg_corr else None,
             **kwargs,

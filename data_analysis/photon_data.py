@@ -87,6 +87,7 @@ class TDCPhotonDataMixin:
         should_use_all_sections=True,
         len_factor=0.01,
         is_verbose=False,
+        byte_data_slice=None,
         **kwargs,
     ) -> TDCPhotonData:
         """Doc."""
@@ -101,8 +102,8 @@ class TDCPhotonDataMixin:
             raise ValueError(f"Version ({version}) must be greater than 2")
 
         # option to use only certain parts of data (for testing)
-        if (data_slice := kwargs.get("byte_data_slice")) is not None:
-            byte_data = byte_data[data_slice]
+        if byte_data_slice is not None:
+            byte_data = byte_data[byte_data_slice]
 
         section_edges, tot_single_errors = _find_all_section_edges(byte_data, group_len)
         section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
@@ -418,10 +419,6 @@ class TDCPhotonDataMixin:
 
         if should_plot:
             self.plot_tdc_calibration()
-
-        max_bin_idx = np.nanargmax(all_hist_norm)  # TESTESTEST
-        sample_pulse_time_ns = t_hist[max_bin_idx]  # TESTESTEST
-        print("sample_pulse_time_ns: ", sample_pulse_time_ns)  # TESTESTEST
 
         print("Done.")
 
