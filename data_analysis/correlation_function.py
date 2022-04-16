@@ -69,7 +69,7 @@ class CorrFunc:
 
     def correlate_measurement(
         self,
-        time_stamp_split_lists: List[np.ndarray],
+        time_stamp_split_list: List[np.ndarray],
         after_pulse_params,
         laser_freq_hz: float,
         bg_corr_list=None,
@@ -81,24 +81,24 @@ class CorrFunc:
         """Doc."""
 
         if is_verbose:
-            print(f"Correlating {len(time_stamp_split_lists)} splits -", end=" ")
+            print(f"Correlating {len(time_stamp_split_list)} splits -", end=" ")
 
         SC = SoftwareCorrelator()
 
         # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
         # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
-        if should_parallel_process and len(time_stamp_split_lists) > 1:  # parallel-correlate
+        if should_parallel_process and len(time_stamp_split_list) > 1:  # parallel-correlate
             N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
             func = partial(
                 SC.correlate, c_type=self.correlator_type, timebase_ms=1000 / laser_freq_hz
             )
             print(f"Parallel processing using {N_CORES} CPUs/processes.")
             with mp.get_context("spawn").Pool(N_CORES) as pool:
-                correlator_output_list = list(pool.imap(func, time_stamp_split_lists))
+                correlator_output_list = list(pool.imap(func, time_stamp_split_list))
 
         else:  # serial-correlate
             correlator_output_list = []
-            for idx, ts_split in enumerate(time_stamp_split_lists):
+            for idx, ts_split in enumerate(time_stamp_split_list):
                 SC.correlate(
                     ts_split,
                     self.correlator_type,
@@ -689,7 +689,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
     @timer(int(1e4))
     def process_all_data(
-        self, file_paths: List[Path], should_parallel_process: bool = False, **kwargs
+        self,
+        file_paths: List[Path],
+        should_parallel_process: bool = False,
+        run_duration=None,
+        n_runs_requested=60,
+        **kwargs,
     ) -> List[TDCPhotonData]:
         """Doc."""
 
@@ -703,7 +708,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             with mp.get_context("spawn").Pool(N_CORES) as pool:
                 data = list(pool.map(func, file_paths))
 
-        # serial processing (defualt)
+        # serial processing (default)
         else:
             data = []
             for file_path in file_paths:
@@ -712,6 +717,18 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 # Appending data to self
                 if p is not None:
                     data.append(p)
+
+        if run_duration is None:  # auto determination of run duration
+            total_duration_estimate = 0
+            for p in data:
+                time_stamps = np.diff(p.pulse_runtime).astype(np.int32)
+                mu = np.median(time_stamps) / np.log(2)
+                total_duration_estimate = (
+                    total_duration_estimate + mu * len(p.pulse_runtime) / self.laser_freq_hz
+                )
+            self.run_duration = total_duration_estimate / n_runs_requested
+        else:  # use supplied value
+            self.run_duration = run_duration
 
         return data
 
@@ -1099,12 +1116,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self,
         cf_name=None,
         gate_ns=(0, np.inf),
-        run_duration=None,
-        n_runs_requested=60,
-        min_time_frac=0.5,
-        is_verbose=False,
         afterpulse_params=None,
         should_subtract_bg_corr=True,
+        is_verbose=False,
         **kwargs,
     ) -> CorrFunc:
         """Correlates data for static FCS and circular sFCS. Returns a CorrFunc object"""
@@ -1114,68 +1128,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 f"Correlating static/circular data ({self.name} [{gate_ns} ns gating]):",
                 end=" ",
             )
-            print("Preparing files for software correlator...", end=" ")
 
-        if run_duration is None:  # auto determination of run duration
-            if len(self.cf) > 0:  # read run_time from the last calculated correlation function
-                run_duration = next(reversed(self.cf.values())).run_duration
-            else:  # auto determine
-                total_duration_estimate = 0
-                for p in self.data:
-                    time_stamps = np.diff(p.pulse_runtime).astype(np.int32)
-                    mu = np.median(time_stamps) / np.log(2)
-                    total_duration_estimate = (
-                        total_duration_estimate + mu * len(p.pulse_runtime) / self.laser_freq_hz
-                    )
-                run_duration = total_duration_estimate / n_runs_requested
+        ts_split_list, total_duration, skipped_duration = self._prepare_split_list(gate_ns)
 
         CF = CorrFunc(cf_name, gate_ns, CorrelatorType.PH_DELAY_CORRELATOR)
-        CF.run_duration = run_duration
-
-        ts_split_list = []
-        for p in self.data:
-            # Ignore short segments (default is below half the run_duration)
-            for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
-                segment_time = (
-                    p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
-                ) / self.laser_freq_hz
-                if segment_time < min_time_frac * run_duration:
-                    if is_verbose:
-                        print(
-                            f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time:.2f}s).",
-                            end=" ",
-                        )
-                    CF.skipped_duration += segment_time
-                    continue
-
-                pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
-
-                # Gating
-                if hasattr(p, "delay_time"):
-                    delay_time = p.delay_time[se_start : se_end + 1]
-                    j_gate = CF.gate_ns.valid_indices(delay_time)
-                    pulse_runtime = pulse_runtime[j_gate]
-                #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
-                elif (self.detector_gate_ns is None) and (CF.gate_ns != (0, np.inf)):
-                    raise RuntimeError(
-                        f"A gate '{CF.gate_ns}' was specified for uncalibrated TDC data."
-                    )
-
-                # split into segments of approx time of run_duration
-                n_splits = div_ceil(segment_time, run_duration)
-                splits = np.linspace(0, pulse_runtime.size, n_splits + 1, dtype=np.int32)
-                time_stamps = np.diff(pulse_runtime).astype(np.int32)
-
-                for k in range(n_splits):
-
-                    ts_split = time_stamps[splits[k] : splits[k + 1]]
-                    ts_split_list.append(ts_split)
-
-                    CF.total_duration += ts_split.sum() / self.laser_freq_hz
-
-        if is_verbose:
-            print("Done.")
-
         CF.correlate_measurement(
             ts_split_list,
             afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
@@ -1186,16 +1142,16 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         )
 
         if is_verbose:
-            if CF.skipped_duration:
+            if skipped_duration:
                 try:
-                    skipped_ratio = CF.skipped_duration / CF.total_duration
+                    skipped_ratio = skipped_duration / total_duration
                 except RuntimeWarning:
-                    # CF.total_duration = 0
                     print("Whole measurement was skipped! Something's wrong...", end=" ")
                 else:
                     print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
             print("- Done.")
 
+        CF.total_duration = total_duration
         try:  # temporal to spatial conversion, if scanning (circular)
             CF.vt_um = self.v_um_ms * CF.lag
         except AttributeError:
@@ -1203,7 +1159,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         return CF
 
-    @timer()
     def _correlate_angular_scan_data(
         self,
         cf_name=None,
@@ -1217,66 +1172,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             f"{self.name} [{gate_ns} ns gating] - Correlating angular scan data '{self.template}':"
         )
 
+        ts_split_list, total_duration, _ = self._prepare_split_list(gate_ns)
+
         CF = CorrFunc(cf_name, gate_ns, CorrelatorType.PH_DELAY_CORRELATOR_LINES)
-
-        print("Preparing files for software correlator:", end=" ")
-        ts_split_list = []
-        for p in self.data:
-            #            print(f"({p.file_num})", end=" ")
-            line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
-            if hasattr(p, "delay_time"):  # if measurement quacks as gated
-                j_gate = CF.gate_ns.valid_indices(p.delay_time) | np.isnan(p.delay_time)
-                pulse_runtime = p.pulse_runtime[j_gate]
-                #                    delay_time = delay_time[j_gate] # TODO: not used?
-                line_num = p.line_num[j_gate]
-
-            elif (self.detector_gate_ns is None) and (CF.gate_ns != (0, np.inf)):
-                raise RuntimeError(
-                    f"A gate '{CF.gate_ns}' was specified for uncalibrated TDC data."
-                )
-            else:
-                pulse_runtime = p.pulse_runtime
-
-            time_stamps = np.diff(pulse_runtime).astype(np.int32)
-            for line_idx, j in enumerate(range(*p.line_limits)):
-                valid = (line_num == j).astype(np.int8)
-                valid[line_num == -j] = -1
-                valid[line_num == -j - self.LINE_END_ADDER] = -2
-                # both photons separated by time-stamp should belong to the line
-                valid = valid[1:]
-
-                # remove photons from wrong lines
-                timest = time_stamps[valid != 0]
-                valid = valid[valid != 0]
-
-                if not valid.size:
-                    print(f"No valid photons in line {j} of file {p.file_num}. Skipping.")
-                    continue
-
-                # check that we start with the line beginning and not its end
-                if valid[0] != -1:
-                    # remove photons till the first found beginning
-                    j_start = np.where(valid == -1)[0]
-                    if len(j_start) > 0:
-                        timest = timest[j_start[0] :]
-                        valid = valid[j_start[0] :]
-
-                # check that we stop with the line ending and not its beginning
-                # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
-                if valid[-1] != -2:
-                    # remove photons till the last found ending
-                    j_start = np.where(valid == -1)[0]
-                    if len(j_start) > 0:
-                        timest = timest[j_start[0] :]
-                        valid = valid[j_start[0] :]
-
-                ts_split = np.vstack((timest, valid))
-                ts_split_list.append(ts_split)
-
-                CF.total_duration += timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
-
-        print("Done.")
-
         CF.correlate_measurement(
             ts_split_list,
             self.afterpulse_params,
@@ -1285,9 +1183,124 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             **kwargs,
         )
 
+        CF.total_duration = total_duration
         CF.vt_um = self.v_um_ms * CF.lag
 
         return CF
+
+    def _prepare_split_list(
+        self, gate_ns=(0, np.inf), min_time_frac=0.5, is_verbose=False, **kwargs
+    ):
+        """Doc."""
+
+        ts_split_list = []
+        total_duration = 0
+        skipped_duration = 0
+
+        if is_verbose:
+            print("Preparing files for software correlator...", end=" ")
+
+        for p in self.data:
+            if self.scan_type in {"static", "circle"}:
+                # Ignore short segments (default is below half the run_duration)
+                for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
+                    segment_time = (
+                        p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
+                    ) / self.laser_freq_hz
+                    if segment_time < min_time_frac * self.run_duration:
+                        if is_verbose:
+                            print(
+                                f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time:.2f}s).",
+                                end=" ",
+                            )
+                        skipped_duration += segment_time
+                        continue
+
+                    pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
+
+                    # Gating
+                    if hasattr(p, "delay_time"):
+                        delay_time = p.delay_time[se_start : se_end + 1]
+                        j_gate = gate_ns.valid_indices(delay_time)
+                        pulse_runtime = pulse_runtime[j_gate]
+                    #                        delay_time = delay_time[j_gate]  # TODO: why is this not used anywhere?
+                    elif (self.detector_gate_ns is None) and (gate_ns != (0, np.inf)):
+                        raise RuntimeError(
+                            f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
+                        )
+
+                    # split into segments of approx time of run_duration
+                    n_splits = div_ceil(segment_time, self.run_duration)
+                    splits = np.linspace(0, pulse_runtime.size, n_splits + 1, dtype=np.int32)
+                    time_stamps = np.diff(pulse_runtime).astype(np.int32)
+
+                    for k in range(n_splits):
+
+                        ts_split = time_stamps[splits[k] : splits[k + 1]]
+                        ts_split_list.append(ts_split)
+
+                        total_duration += ts_split.sum() / self.laser_freq_hz
+
+            elif self.scan_type == "angular":
+                #            print(f"({p.file_num})", end=" ")
+                line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
+                if hasattr(p, "delay_time"):  # if measurement quacks as gated
+                    j_gate = gate_ns.valid_indices(p.delay_time) | np.isnan(p.delay_time)
+                    pulse_runtime = p.pulse_runtime[j_gate]
+                    #                    delay_time = delay_time[j_gate] # TODO: not used?
+                    line_num = p.line_num[j_gate]
+
+                elif (self.detector_gate_ns is None) and (gate_ns != (0, np.inf)):
+                    raise RuntimeError(
+                        f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
+                    )
+                else:
+                    pulse_runtime = p.pulse_runtime
+
+                time_stamps = np.diff(pulse_runtime).astype(np.int32)
+                for line_idx, j in enumerate(range(*p.line_limits)):
+                    valid = (line_num == j).astype(np.int8)
+                    valid[line_num == -j] = -1
+                    valid[line_num == -j - self.LINE_END_ADDER] = -2
+                    # both photons separated by time-stamp should belong to the line
+                    valid = valid[1:]
+
+                    # remove photons from wrong lines
+                    timest = time_stamps[valid != 0]
+                    valid = valid[valid != 0]
+
+                    if not valid.size:
+                        print(f"No valid photons in line {j} of file {p.file_num}. Skipping.")
+                        continue
+
+                    # check that we start with the line beginning and not its end
+                    if valid[0] != -1:
+                        # remove photons till the first found beginning
+                        j_start = np.where(valid == -1)[0]
+                        if len(j_start) > 0:
+                            timest = timest[j_start[0] :]
+                            valid = valid[j_start[0] :]
+
+                    # check that we stop with the line ending and not its beginning
+                    # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
+                    if valid[-1] != -2:
+                        # remove photons till the last found ending
+                        j_start = np.where(valid == -1)[0]
+                        if len(j_start) > 0:
+                            timest = timest[j_start[0] :]
+                            valid = valid[j_start[0] :]
+
+                    ts_split = np.vstack((timest, valid))
+                    ts_split_list.append(ts_split)
+
+                    total_duration += (
+                        timest[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
+                    )
+
+            if is_verbose:
+                print("Done.")
+
+        return ts_split_list, total_duration, skipped_duration  # TODO units??
 
     def plot_correlation_functions(
         self,
