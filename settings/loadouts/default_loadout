@@ -60,16 +60,16 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,4
 dataYear,2022
-dataDay,6
-dataTemplate1,atto_GATED_70nsWidth_static_exc_171521_*.pkl
+dataDay,13
+dataTemplate1,ATTO_Gated7ns_angular_exc_110755_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
-importedSolDataTemplates1,atto_GATED_70nsWidth_static_exc_171521_*.pkl
+importedSolDataTemplates1,
 loadedExperimentNames,
 assignedGates,
 availableGates,
-importedSolDataTemplates2,atto_GATED_70nsWidth_static_exc_171521_*.pkl
+importedSolDataTemplates2,
 expPropGstedGate,Lifetime
 avgInterval,5000
 posAxis,X
@@ -82,8 +82,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
@@ -106,7 +106,7 @@ tabWidget_4,0
 tabWidget_3,1
 autoCrosshair,True
 alwaysSaveImg,False
-solImportAutoLoadProcessed,True
+solImportAutoLoadProcessed,False
 solDataFixShift,True
 solDataUseDefaultSysInfo,False
 solDataSubtractAfterpulse,True
