@@ -103,18 +103,22 @@ class SoftwareCorrelator:
 
         if corr_type == CorrelatorType.PH_DELAY_CORRELATOR:
             if len(photon_array.shape) != 1:
-                raise RuntimeError("Photon Array should be 1D for this correlator option!")
+                raise RuntimeError(
+                    f"Photon array {photon_array.shape} should be 1D for this correlator option!"
+                )
             self.countrate = n_entries / photon_array.sum() / timebase_ms * 1000
 
         elif corr_type == CorrelatorType.PH_COUNT_CORRELATOR:
             if len(photon_array.shape) != 1:
-                raise RuntimeError("Photon Array should be 1D for this correlator option!")
+                raise RuntimeError(
+                    f"Photon array {photon_array.shape} should be 1D for this correlator option!"
+                )
             self.countrate = photon_array.sum() / n_entries / timebase_ms * 1000
 
         elif corr_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 3):
                 raise RuntimeError(
-                    "Photon Array should have 3 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
+                    f"Photon array {photon_array.shape} should have 3 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
                 )
             duration_s = photon_array[0, :].sum() * timebase_ms / 1000
             countrate_a = photon_array[1, :].sum() / duration_s
@@ -124,7 +128,7 @@ class SoftwareCorrelator:
         elif corr_type == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
                 raise RuntimeError(
-                    "Photon Array should have 2 rows for this correlator option! 0th row with photon delay times, 1st row is 1 for valid lines"
+                    f"Photon array {photon_array.shape} should have 2 rows for this correlator option! 0th row with photon delay times, 1st row is 1 for valid lines"
                 )
             valid = (photon_array[1, :] == 1) | (photon_array[1, :] == -2)
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
@@ -133,7 +137,7 @@ class SoftwareCorrelator:
         elif corr_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 4):
                 raise RuntimeError(
-                    "Photon Array should have 4 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
+                    f"Photon array {photon_array.shape} should have 4 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
                 )
             valid = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
