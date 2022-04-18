@@ -59,23 +59,22 @@ class CorrFunc:
     g0: float
     EPSILON = 1e-5  # TODO: why is this needed (in low-data measurements)
 
-    def __init__(self, name, gate_ns, correlator_type):
+    def __init__(self, name, gate_ns, laser_freq_hz):
         self.name = name
         self.gate_ns = Limits(gate_ns)
-        self.correlator_type = correlator_type
+        self.laser_freq_hz = laser_freq_hz
+
         self.skipped_duration = 0
         self.fit_params: Dict[str, FitParams] = dict()
         self.total_duration = 0
 
     def correlate_measurement(
         self,
+        correlator_type: int,
         time_stamp_split_list: List[np.ndarray],
-        after_pulse_params,
-        laser_freq_hz: float,
-        bg_corr_list=None,
-        should_subtract_afterpulse: bool = True,
+        *args,
+        #        should_parallel_process=False,
         is_verbose: bool = False,
-        should_parallel_process=False,
         **kwargs,
     ):
         """Doc."""
@@ -85,80 +84,92 @@ class CorrFunc:
 
         SC = SoftwareCorrelator()
 
-        # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
-        # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
-        if should_parallel_process and len(time_stamp_split_list) > 1:  # parallel-correlate
-            N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
-            func = partial(
-                SC.correlate, c_type=self.correlator_type, timebase_ms=1000 / laser_freq_hz
-            )
-            print(f"Parallel processing using {N_CORES} CPUs/processes.")
-            with mp.get_context("spawn").Pool(N_CORES) as pool:
-                correlator_output_list = list(pool.imap(func, time_stamp_split_list))
-
-        else:  # serial-correlate
-            correlator_output_list = []
-            for idx, ts_split in enumerate(time_stamp_split_list):
-                SC.correlate(
-                    ts_split,
-                    self.correlator_type,
-                    # time base of 20MHz to ms
-                    timebase_ms=1000 / laser_freq_hz,
-                )
-                correlator_output_list.append(SC.output())
-                if is_verbose:
-                    print(idx + 1, end=", ")
-
-        # accumulate all software correlator outputs in lists
-        countrate_list = [output.countrate for output in correlator_output_list]
-        corrfunc_list = [output.corrfunc for output in correlator_output_list]
-        weights_list = [output.weights for output in correlator_output_list]
-        lag_list = [output.lag for output in correlator_output_list]
-        self.lag = max(lag_list, key=len)
+        #        # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
+        #        # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
+        #        if should_parallel_process and len(time_stamp_split_list) > 1:  # parallel-correlate
+        #            N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
+        #            func = partial(
+        #                SC.correlate, c_type=correlator_type, timebase_ms=1000 / laser_freq_hz
+        #            )
+        #            print(f"Parallel processing using {N_CORES} CPUs/processes.")
+        #            with mp.get_context("spawn").Pool(N_CORES) as pool:
+        #                correlator_output_list = list(pool.imap(func, time_stamp_split_list))
+        #
+        #        else:  # serial-correlate
+        output = SC.correlate_list(
+            time_stamp_split_list,
+            correlator_type,
+            timebase_ms=1000 / self.laser_freq_hz,
+            is_verbose=is_verbose,
+        )
+        self.lag = max(output.lag_list, key=len)
 
         if is_verbose:
-            print("Done.")
+            print(". Processing...", end=" ")
+
+        self.process_correlator_list_output(output, *args, **kwargs)
+
+    def process_correlator_list_output(
+        self,
+        corr_output,
+        after_pulse_params,
+        bg_corr_list,
+        should_subtract_afterpulse: bool = True,
+        **kwargs,
+    ):
+        """Doc."""
+
+        # remove_background_correlation
+        self._remove_background_correlation(corr_output, bg_corr_list)
+
+        # calculate afterpulsing
+        if should_subtract_afterpulse:
+            self.afterpulse = calculate_afterpulse(
+                after_pulse_params,
+                self.lag,
+                self.laser_freq_hz,
+                self.gate_ns,
+            )
+
+        self.countrate_list = corr_output.countrate_list
+        self._generate_cf_cr(corr_output, should_subtract_afterpulse)
+
+    def _remove_background_correlation(self, corr_output, bg_corr_list) -> None:
+        """Doc."""
 
         # remove background correlation
         with suppress(TypeError):
-            if len(bg_corr_list) < len(corrfunc_list):
+            if len(bg_corr_list) < len(corr_output.corrfunc_list):
                 print(
-                    f"TESTESTEST: bg_corr_list ({len(bg_corr_list)}) is shorter than corrfunc_list ({len(corrfunc_list)})"
+                    f"TESTESTEST: bg_corr_list ({len(bg_corr_list)}) is shorter than corrfunc_list ({len(corr_output.corrfunc_list)})"
                 )
-                bg_corr_list = bg_corr_list * len(corrfunc_list)
+                bg_corr_list = bg_corr_list * len(corr_output.corrfunc_list)
 
             for idx, bg_corr_dict in enumerate(bg_corr_list):
                 bg_corr = np.interp(
-                    lag_list[idx],
+                    corr_output.lag_list[idx],
                     bg_corr_dict["lag"],
                     bg_corr_dict["corrfunc"],
                     right=0,
                 )
-                corrfunc_list[idx] -= bg_corr
+                corr_output.corrfunc_list[idx] -= bg_corr
 
-        self.afterpulse = calculate_afterpulse(
-            after_pulse_params, self.lag, laser_freq_hz, self.gate_ns
-        )
+    def _generate_cf_cr(self, corr_output, should_subtract_afterpulse: bool) -> None:
+        """Zero-pad and generate cf_cr"""
 
-        # zero-pad and generate cf_cr
         lag_len = len(self.lag)
-        n_corrfuncs = len(correlator_output_list)
+        n_corrfuncs = len(corr_output.corrfunc_list)
         shape = (n_corrfuncs, lag_len)
-        corrfunc = np.empty(shape=shape, dtype=np.float64)
-        weights = np.empty(shape=shape, dtype=np.float64)
-        cf_cr = np.empty(shape=shape, dtype=np.float64)
+        self.corrfunc = np.empty(shape=shape, dtype=np.float64)
+        self.weights = np.empty(shape=shape, dtype=np.float64)
+        self.cf_cr = np.empty(shape=shape, dtype=np.float64)
         for idx in range(n_corrfuncs):
-            pad_len = lag_len - len(corrfunc_list[idx])
-            corrfunc[idx] = np.pad(corrfunc_list[idx], (0, pad_len))
-            weights[idx] = np.pad(weights_list[idx], (0, pad_len))
-            cf_cr[idx] = countrate_list[idx] * corrfunc[idx]
+            pad_len = lag_len - len(corr_output.corrfunc_list[idx])
+            self.corrfunc[idx] = np.pad(corr_output.corrfunc_list[idx], (0, pad_len))
+            self.weights[idx] = np.pad(corr_output.weights_list[idx], (0, pad_len))
+            self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
             if should_subtract_afterpulse:
-                cf_cr[idx] -= self.afterpulse
-
-        self.countrate_list = countrate_list
-        self.corrfunc = corrfunc
-        self.weights = weights
-        self.cf_cr = cf_cr
+                self.cf_cr[idx] -= self.afterpulse
 
     def average_correlation(
         self,
@@ -584,6 +595,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self.name = name
         self.data = []  # list to hold the data of each file
         self.cf = dict()
+        self.xcf = dict()
         self.is_data_dumped = False
         self.scan_type: str
         self.duration_min: float = None
@@ -1080,117 +1092,79 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         CF.average_correlation(**kwargs)
 
     @file_utilities.rotate_data_to_disk()
-    def correlate_data(self, **kwargs):
-        """
-        High level function for correlating any type of data (e.g. static, angular scan, circular scan...)
-        Returns a 'CorrFunc' object.
-        Data attribute is possibly rotated from/to disk.
-        """
-
-        self.min_duration_frac = kwargs.get("min_time_frac", 0.5)  # TODO: only used for static?
-
-        # Unite TDC gate and detector gate
-        tdc_gate_ns = Limits(kwargs.get("gate_ns", Limits(0, np.inf)))
-        kwargs["gate_ns"] = tdc_gate_ns  # & self.detector_gate_ns # TODO: fix
-        self.detector_gate_ns = None  # TODO: fix
-
-        # correlate data
-        if self.scan_type in {"static", "circle"}:
-            CF = self._correlate_continuous_data(**kwargs)
-        elif self.scan_type == "angular":
-            CF = self._correlate_angular_scan_data(**kwargs)
-        else:
-            raise NotImplementedError(
-                f"Correlating data of type '{self.scan_type}' is not implemented."
-            )
-
-        # name the Corrfunc object
-        if (cf_name := kwargs.get("cf_name")) is not None:
-            self.cf[cf_name] = CF
-        else:
-            self.cf[f"gSTED {CF.gate_ns}"] = CF
-
-        return CF
-
-    def _correlate_continuous_data(
+    def correlate_data(
         self,
         cf_name=None,
         gate_ns=Limits(0, np.inf),
         afterpulse_params=None,
         should_subtract_bg_corr=True,
         is_verbose=False,
+        min_time_frac=0.5,
         **kwargs,
     ) -> CorrFunc:
-        """Correlates data for static FCS and circular sFCS. Returns a CorrFunc object"""
+        """
+        High level function for correlating any type of data (e.g. static, angular scan, circular scan...)
+        Returns a 'CorrFunc' object.
+        Data attribute is possibly rotated from/to disk.
+        """
 
+        self.min_duration_frac = min_time_frac
+
+        # Unite TDC gate and detector gate
+        tdc_gate_ns = Limits(gate_ns)
+        gate_ns = tdc_gate_ns  # & self.detector_gate_ns # TODO: fix
+        self.detector_gate_ns = None  # TODO: fix
+
+        # correlate data
         if is_verbose:
             print(
-                f"Correlating static/circular data ({self.name} [{gate_ns} ns gating]):",
-                end=" ",
+                f"Correlating {self.scan_type} data ({self.name} [{gate_ns} ns gating]):", end=" "
             )
 
-        ts_split_list, total_duration, skipped_duration = self._prepare_split_list(
+        ts_split_list, total_duration, skipped_duration = self._prepare_corr_split_list(
             is_verbose=is_verbose, gate_ns=gate_ns
         )
 
-        CF = CorrFunc(cf_name, gate_ns, CorrelatorType.PH_DELAY_CORRELATOR)
+        if self.scan_type in {"static", "circle"}:
+            corr_type = CorrelatorType.PH_DELAY_CORRELATOR
+        elif self.scan_type == "angular":
+            corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
+
+        CF = CorrFunc(cf_name, gate_ns, self.laser_freq_hz)
         CF.correlate_measurement(
+            corr_type,
             ts_split_list,
             afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
-            self.laser_freq_hz,
             getattr(self, "bg_corr_list", None) if should_subtract_bg_corr else None,
             is_verbose=is_verbose,
             **kwargs,
         )
 
-        if is_verbose:
-            if skipped_duration:
-                try:
-                    skipped_ratio = skipped_duration / total_duration
-                except RuntimeWarning:
-                    print("Whole measurement was skipped! Something's wrong...", end=" ")
-                else:
+        try:
+            skipped_ratio = skipped_duration / total_duration
+        except RuntimeWarning:
+            print("Whole measurement was skipped! Something's wrong...", end=" ")
+        else:
+            if is_verbose:
+                if skipped_duration:
                     print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
-            print("- Done.")
+                print("- Done.")
 
         CF.total_duration = total_duration
-        try:  # temporal to spatial conversion, if scanning (circular)
+        try:  # temporal to spatial conversion, if scanning
             CF.vt_um = self.v_um_ms * CF.lag
         except AttributeError:
             CF.vt_um = CF.lag  # static # TESTESTEST
 
-        return CF
-
-    def _correlate_angular_scan_data(
-        self,
-        cf_name=None,
-        gate_ns=Limits(0, np.inf),
-        should_subtract_bg_corr=True,
-        **kwargs,
-    ) -> CorrFunc:
-        """Correlates data for angular scans. Returns a CorrFunc object"""
-
-        print(
-            f"{self.name} [{gate_ns} ns gating] - Correlating angular scan data '{self.template}':"
-        )
-
-        ts_split_list, total_duration, _ = self._prepare_split_list(gate_ns=gate_ns)
-
-        CF = CorrFunc(cf_name, gate_ns, CorrelatorType.PH_DELAY_CORRELATOR_LINES)
-        CF.correlate_measurement(
-            ts_split_list,
-            self.afterpulse_params,
-            self.laser_freq_hz,
-            self.bg_corr_list if should_subtract_bg_corr else None,
-            **kwargs,
-        )
-
-        CF.total_duration = total_duration
-        CF.vt_um = self.v_um_ms * CF.lag
+        # name the Corrfunc object
+        if cf_name is not None:
+            self.cf[cf_name] = CF
+        else:
+            self.cf[f"gSTED {CF.gate_ns}"] = CF
 
         return CF
 
-    def _prepare_split_list(self, is_verbose=True, xcorr_gate_ns=None, **kwargs):
+    def _prepare_corr_split_list(self, is_verbose=True, **kwargs):
         """Doc."""
 
         if is_verbose:
@@ -1201,21 +1175,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         total_skipped_duration = 0
 
         for p in self.data:
-
-            if xcorr_gate_ns is None:
-                (
-                    file_ts_split_list,
-                    file_duration,
-                    file_skipped_duration,
-                ) = self._prepare_file_corr_split_list(p, is_verbose=is_verbose, **kwargs)
-            else:
-                (
-                    file_ts_split_list,
-                    file_duration,
-                    file_skipped_duration,
-                ) = self._prepare_file_xcorr_split_list(
-                    p, is_verbose=is_verbose, gate2_ns=xcorr_gate_ns, **kwargs
-                )
+            (
+                file_ts_split_list,
+                file_duration,
+                file_skipped_duration,
+            ) = self._prepare_file_corr_split_list(p, is_verbose=is_verbose, **kwargs)
 
             ts_split_list += file_ts_split_list
             total_duration += file_duration
@@ -1280,9 +1244,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         elif self.scan_type == "angular":
             line_num = p.line_num  # TODO: change this variable's name - photon_line_num?
             if hasattr(p, "delay_time"):  # if measurement is TDC-calibrated
-                j_gate = gate_ns.valid_indices(p.delay_time) | np.isnan(
-                    p.delay_time
-                )  # NaNs mark line starts/ends
+                # NaNs mark line starts/ends
+                j_gate = gate_ns.valid_indices(p.delay_time) | np.isnan(p.delay_time)
                 pulse_runtime = p.pulse_runtime[j_gate]
                 line_num = p.line_num[j_gate]
 
@@ -1297,11 +1260,139 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     self.prepare_timestamps(time_stamps, j, line_num=line_num)
                 )
                 file_duration += self.get_split_duration(file_ts_split_list[-1])
-                file_skipped_duration = (
-                    0  # TODO: what's the difference between segment_time and file_duration?
-                )
+                # TODO: what's the difference between segment_time and file_duration?
+                file_skipped_duration = 0
 
         return file_ts_split_list, file_duration, file_skipped_duration
+
+    @file_utilities.rotate_data_to_disk()
+    def cross_correlate_data(
+        self,
+        cf_name=None,
+        gate1_ns=Limits(0, np.inf),
+        gate2_ns=Limits(0, np.inf),
+        afterpulse_params=None,
+        should_subtract_bg_corr=True,
+        is_verbose=True,
+        min_time_frac=0.5,
+        **kwargs,
+    ) -> List[CorrFunc]:
+        """
+        High level function for correlating any type of data (e.g. static, angular scan, circular scan...)
+        Returns a 'CorrFunc' object.
+        Data attribute is possibly rotated from/to disk.
+        """
+
+        self.min_duration_frac = min_time_frac
+
+        #        # Unite TDC gate and detector gate
+        #        tdc_gate_ns = Limits(gate_ns1)
+        #        gate_ns = tdc_gate_ns  # & self.detector_gate_ns # TODO: fix
+        #        self.detector_gate_ns = None  # TODO: fix
+
+        # correlate data
+        if is_verbose:
+            print(
+                f"Cross-Correlating {self.scan_type} data ({self.name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
+                end=" ",
+            )
+
+        ts_split_lists_tuple, total_duration, skipped_duration = self._prepare_xcorr_split_list(
+            is_verbose=is_verbose, gate1_ns=gate1_ns, gate2_ns=gate2_ns
+        )
+        ts_split_list_AB, ts_split_list_A, ts_split_list_B = ts_split_lists_tuple
+
+        if self.scan_type in {"static", "circle"}:
+            corr_type = CorrelatorType.PH_DELAY_CORRELATOR
+            xcorr_type = CorrelatorType.PH_DELAY_CROSS_CORRELATOR
+        elif self.scan_type == "angular":
+            corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
+            xcorr_type = CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES
+
+        CF_AA = CorrFunc(cf_name, gate1_ns, self.laser_freq_hz)
+        CF_BB = CorrFunc(cf_name, gate1_ns, self.laser_freq_hz)
+        CF_AB = CorrFunc(cf_name, gate1_ns, self.laser_freq_hz)
+        CF_BA = CorrFunc(cf_name, gate1_ns, self.laser_freq_hz)
+
+        CF_list = [CF_AA, CF_BB, CF_AB, CF_BA]
+        corr_type_list = [corr_type] * 2 + [xcorr_type] * 2
+        ts_split_lists = [
+            ts_split_list_A,
+            ts_split_list_B,
+            ts_split_list_AB,
+            ts_split_list_AB[[0, 2, 1], :],
+        ]
+
+        for CF, correlator_type, ts_split_list in zip(CF_list, corr_type_list, ts_split_lists):
+            CF.correlate_measurement(
+                corr_type,
+                ts_split_list,
+                afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
+                getattr(self, "bg_corr_list", None) if should_subtract_bg_corr else None,
+                is_verbose=is_verbose,
+                **kwargs,
+            )
+            CF.total_duration = total_duration
+            try:  # temporal to spatial conversion, if scanning
+                CF.vt_um = self.v_um_ms * CF.lag
+            except AttributeError:
+                CF.vt_um = CF.lag  # static
+
+        try:
+            skipped_ratio = skipped_duration / total_duration
+        except RuntimeWarning:
+            print("Whole measurement was skipped! Something's wrong...", end=" ")
+        else:
+            if is_verbose:
+                if skipped_duration:
+                    print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
+                print("- Done.")
+
+        # name the Corrfunc object
+        if cf_name is not None:
+            self.xcf[cf_name] = CF_list
+        else:
+            self.xcf[f"gSTED {gate1_ns} vs. {gate2_ns} ns"] = CF_list
+
+        return CF_list
+
+    def _prepare_xcorr_split_list(self, is_verbose=True, **kwargs):
+        """Doc."""
+
+        if is_verbose:
+            print("Preparing files for software correlator...", end=" ")
+
+        ts_split_list = []
+        ts1_split_list = []
+        ts2_split_list = []
+
+        total_duration = 0.0
+        total_skipped_duration = 0.0
+
+        for p in self.data:
+            (
+                (file_ts_split_list, file_ts1_split_list, file_ts2_split_list),
+                file_duration,
+                file_skipped_duration,
+            ) = self._prepare_file_xcorr_split_list(p, is_verbose=is_verbose, **kwargs)
+
+            ts_split_list += file_ts_split_list
+            ts1_split_list += file_ts1_split_list
+            ts2_split_list += file_ts2_split_list
+
+            total_duration += file_duration
+
+            total_skipped_duration += file_skipped_duration
+
+        if is_verbose:
+            print("Done.")
+
+        # TODO units??
+        return (
+            (ts_split_list, ts1_split_list, ts2_split_list),
+            total_duration,
+            total_skipped_duration,
+        )
 
     def _prepare_file_xcorr_split_list(
         self,
@@ -1317,10 +1408,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         file_ts_split_list = []
         file_ts1_split_list = []
         file_ts2_split_list = []
-        file_skipped_duration = 0.0
         file_duration = 0.0
-        file_duration1 = 0.0
-        file_duration2 = 0.0
+        file_skipped_duration = 0.0
 
         if self.scan_type in {"static", "circle"}:
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
@@ -1342,7 +1431,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 j_gate2 = gate2_ns.valid_indices(delay_time)
                 pulse_runtime1 = pulse_runtime[j_gate1]
                 pulse_runtime2 = pulse_runtime[j_gate2]
-                pulse_runtime = np.hstack((pulse_runtime, j_gate1, j_gate2))
+                pulse_runtime = np.vstack((pulse_runtime, j_gate1, j_gate2))
                 j_gate = j_gate1 | j_gate2  # CHECK ME!
                 pulse_runtime = pulse_runtime[j_gate]  # CHECK ME!
                 ts = np.diff(pulse_runtime).astype(np.int32)
@@ -1352,13 +1441,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 n_splits = div_ceil(segment_time / self.run_duration)
                 for j in range(n_splits):
                     file_ts_split_list += self.prepare_timestamps(ts, j, n_splits=n_splits)
-                    file_duration += self.get_split_duration(file_ts_split_list[-1])
-
                     file_ts1_split_list += self.prepare_timestamps(ts1, j, n_splits=n_splits)
-                    file_duration1 += self.get_split_duration(file_ts1_split_list[-1])
-
                     file_ts2_split_list += self.prepare_timestamps(ts2, j, n_splits=n_splits)
-                    file_duration2 += self.get_split_duration(file_ts2_split_list[-1])
+
+                    file_duration += self.get_split_duration(file_ts_split_list[-1])
 
         elif self.scan_type == "angular":
             line_num = np.around(p.line_num)
@@ -1382,21 +1468,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
             for j in range(*p.line_limits):
                 file_ts_split_list += self.prepare_timestamps(ts, j, line_num=line_num)
+                file_ts1_split_list += self.prepare_timestamps(ts1, j, line_num=line_num1)
+                file_ts2_split_list += self.prepare_timestamps(ts2, j, line_num=line_num2)
+
                 file_duration += self.get_split_duration(file_ts_split_list[-1])
 
-                file_ts1_split_list += self.prepare_timestamps(ts1, j, line_num=line_num1)
-                file_duration1 += self.get_split_duration(file_ts1_split_list[-1])
-
-                file_ts2_split_list += self.prepare_timestamps(ts2, j, line_num=line_num2)
-                file_duration2 += self.get_split_duration(file_ts2_split_list[-1])
-
-                file_skipped_duration = (
-                    0  # TODO: what's the difference between segment_time and file_duration?
-                )
+                # TODO: what's the difference between segment_time and file_duration?
+                file_skipped_duration = 0
 
         return (
             (file_ts_split_list, file_ts1_split_list, file_ts2_split_list),
-            (file_duration, file_duration1, file_duration2),
+            file_duration,
             file_skipped_duration,
         )
 
