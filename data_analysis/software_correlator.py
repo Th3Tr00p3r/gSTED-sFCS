@@ -3,6 +3,7 @@
 import sys
 from ctypes import CDLL, c_double, c_int, c_long
 from dataclasses import dataclass
+from typing import List
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -24,6 +25,15 @@ class SoftwareCorrelatorOutput:
     corrfunc: np.ndarray
     weights: np.ndarray
     countrate: float
+
+
+@dataclass
+class SoftwareCorrelatorListOutput:
+
+    lag_list: list
+    corrfunc_list: list
+    weights_list: list
+    countrate_list: list
 
 
 class SoftwareCorrelator:
@@ -61,10 +71,24 @@ class SoftwareCorrelator:
 
         self.corr_py = np.zeros((3, self.tot_corr_chan_len), dtype=float)
 
-    def correlate(self, photon_array, c_type=CorrelatorType.PH_DELAY_CORRELATOR, timebase_ms=1):
+    def correlate_list(
+        self, list_of_photon_arrays: List[np.ndarray], *args, is_verbose=False, **kwargs
+    ) -> SoftwareCorrelatorListOutput:
         """Doc."""
 
-        self.c_type = c_type
+        correlator_output_list = []
+        for idx, ts_split in enumerate(list_of_photon_arrays):
+            self.correlate(ts_split, *args, **kwargs)
+            correlator_output_list.append(self.output())
+            if is_verbose:
+                print(idx + 1, end=", ")
+
+        return self.list_output(correlator_output_list)
+
+    def correlate(self, photon_array, corr_type, timebase_ms=1):
+        """Doc."""
+
+        self.corr_type = corr_type
 
         if sys.platform == "darwin":  # fix operation for Mac users
             photon_array = photon_array.astype(np.int64)
@@ -77,17 +101,17 @@ class SoftwareCorrelator:
         ph_hist = photon_array.reshape(-1)  # convert to 1D array
         n_corr_channels = np.zeros(1, dtype=np.int32)
 
-        if c_type == CorrelatorType.PH_DELAY_CORRELATOR:
+        if corr_type == CorrelatorType.PH_DELAY_CORRELATOR:
             if len(photon_array.shape) != 1:
                 raise RuntimeError("Photon Array should be 1D for this correlator option!")
             self.countrate = n_entries / photon_array.sum() / timebase_ms * 1000
 
-        elif c_type == CorrelatorType.PH_COUNT_CORRELATOR:
+        elif corr_type == CorrelatorType.PH_COUNT_CORRELATOR:
             if len(photon_array.shape) != 1:
                 raise RuntimeError("Photon Array should be 1D for this correlator option!")
             self.countrate = photon_array.sum() / n_entries / timebase_ms * 1000
 
-        elif c_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR:
+        elif corr_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 3):
                 raise RuntimeError(
                     "Photon Array should have 3 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
@@ -97,7 +121,7 @@ class SoftwareCorrelator:
             countrate_b = photon_array[2, :].sum() / duration_s
             self.countrate = (countrate_a, countrate_b)
 
-        elif c_type == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
+        elif corr_type == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
                 raise RuntimeError(
                     "Photon Array should have 2 rows for this correlator option! 0th row with photon delay times, 1st row is 1 for valid lines"
@@ -106,7 +130,7 @@ class SoftwareCorrelator:
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
             self.countrate = np.sum(photon_array[1, :] == 1) / duration_s
 
-        elif c_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES:
+        elif corr_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 4):
                 raise RuntimeError(
                     "Photon Array should have 4 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
@@ -119,7 +143,7 @@ class SoftwareCorrelator:
         else:
             raise ValueError("Invalid correlator type!")
 
-        self.soft_corr(c_type, n_entries, ph_hist, n_corr_channels, self.corr_py)
+        self.soft_corr(corr_type, n_entries, ph_hist, n_corr_channels, self.corr_py)
         if n_corr_channels[0] != self.tot_corr_chan_len:
             raise ValueError("Number of correlator channels inconsistent!")
 
@@ -127,6 +151,16 @@ class SoftwareCorrelator:
         self.lag = (self.corr_py[1, :] * timebase_ms)[valid_corr]
         self.corrfunc = self.corr_py[0, :][valid_corr]
         self.weights = self.corr_py[2, :][valid_corr]
+
+    def list_output(self, correlator_output_list: list) -> SoftwareCorrelatorListOutput:
+        """Accumulate all software correlator outputs in lists"""
+
+        lag_list = [output.lag for output in correlator_output_list]
+        corrfunc_list = [output.corrfunc for output in correlator_output_list]
+        weights_list = [output.weights for output in correlator_output_list]
+        countrate_list = [output.countrate for output in correlator_output_list]
+
+        return SoftwareCorrelatorListOutput(lag_list, corrfunc_list, weights_list, countrate_list)
 
     def output(self) -> SoftwareCorrelatorOutput:
         """Doc."""
