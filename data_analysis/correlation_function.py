@@ -1313,10 +1313,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
             xcorr_type = CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES
 
-        CF_list = [
-            CorrFunc(f"{cf_name}_{xx}", gate1_ns, self.laser_freq_hz)
-            for xx in ("AA", "BB", "AB", "BA")
-        ]
+        CF_names = ("AA", "BB", "AB", "BA")
+        CF_list = [CorrFunc(f"{cf_name}_{xx}", gate1_ns, self.laser_freq_hz) for xx in CF_names]
         corr_type_list = [corr_type] * 2 + [xcorr_type] * 2
         ts_split_lists = [
             ts_split_list_A,
@@ -1352,7 +1350,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
         # name the Corrfunc object
         if cf_name is not None:
-            self.xcf[cf_name] = CF_list
+            for xx, CF in zip(CF_names, CF_list):
+                self.xcf[f"{cf_name}_{xx}"] = CF
         else:
             self.xcf[f"gSTED {gate1_ns} vs. {gate2_ns} ns"] = CF_list
 
@@ -1553,7 +1552,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         with Plotter(super_title=f"'{self.name.capitalize()}' - ACFs", **kwargs) as ax:
             legend_labels = []
             kwargs["parent_ax"] = ax
-            for cf_name, cf in self.cf.items():
+            for cf_name, cf in {**self.cf, **self.xcf}.items():
                 cf.plot_correlation_function(
                     x_field=x_field,
                     y_field=y_field,
