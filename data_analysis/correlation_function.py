@@ -107,9 +107,9 @@ class CorrFunc:
         if is_verbose:
             print(". Processing...", end=" ")
 
-        self.process_correlator_list_output(output, *args, **kwargs)
+        self._process_correlator_list_output(output, *args, **kwargs)
 
-    def process_correlator_list_output(
+    def _process_correlator_list_output(
         self,
         corr_output,
         after_pulse_params,
@@ -167,7 +167,10 @@ class CorrFunc:
             pad_len = lag_len - len(corr_output.corrfunc_list[idx])
             self.corrfunc[idx] = np.pad(corr_output.corrfunc_list[idx], (0, pad_len))
             self.weights[idx] = np.pad(corr_output.weights_list[idx], (0, pad_len))
-            self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
+            try:
+                self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
+            except ValueError:  # Cross-correlation - countrate is a 2-tuple
+                self.cf_cr[idx] = np.mean(corr_output.countrate_list[idx]) * self.corrfunc[idx]
             if should_subtract_afterpulse:
                 self.cf_cr[idx] -= self.afterpulse
 
@@ -1154,7 +1157,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         try:  # temporal to spatial conversion, if scanning
             CF.vt_um = self.v_um_ms * CF.lag
         except AttributeError:
-            CF.vt_um = CF.lag  # static # TESTESTEST
+            CF.vt_um = CF.lag  # static
 
         # name the Corrfunc object
         if cf_name is not None:
@@ -1301,6 +1304,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             is_verbose=is_verbose, gate1_ns=gate1_ns, gate2_ns=gate2_ns
         )
         ts_split_list_AB, ts_split_list_A, ts_split_list_B = ts_split_lists_tuple
+        ts_split_list_BA = [ts_split_AB[[0, 2, 1, 3], :] for ts_split_AB in ts_split_list_AB]
 
         if self.scan_type in {"static", "circle"}:
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR
@@ -1309,23 +1313,21 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
             xcorr_type = CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES
 
-        CF_AA = CorrFunc(cf_name, gate1_ns, self.laser_freq_hz)
-        CF_BB = CorrFunc(cf_name, gate1_ns, self.laser_freq_hz)
-        CF_AB = CorrFunc(cf_name, gate1_ns, self.laser_freq_hz)
-        CF_BA = CorrFunc(cf_name, gate1_ns, self.laser_freq_hz)
-
-        CF_list = [CF_AA, CF_BB, CF_AB, CF_BA]
+        CF_list = [
+            CorrFunc(f"{cf_name}_{xx}", gate1_ns, self.laser_freq_hz)
+            for xx in ("AA", "BB", "AB", "BA")
+        ]
         corr_type_list = [corr_type] * 2 + [xcorr_type] * 2
         ts_split_lists = [
             ts_split_list_A,
             ts_split_list_B,
             ts_split_list_AB,
-            ts_split_list_AB[[0, 2, 1], :],
+            ts_split_list_BA,
         ]
 
         for CF, correlator_type, ts_split_list in zip(CF_list, corr_type_list, ts_split_lists):
             CF.correlate_measurement(
-                corr_type,
+                correlator_type,
                 ts_split_list,
                 afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
                 getattr(self, "bg_corr_list", None) if should_subtract_bg_corr else None,
@@ -1433,7 +1435,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 pulse_runtime2 = pulse_runtime[j_gate2]
                 pulse_runtime = np.vstack((pulse_runtime, j_gate1, j_gate2))
                 j_gate = j_gate1 | j_gate2  # CHECK ME!
-                pulse_runtime = pulse_runtime[j_gate]  # CHECK ME!
+                pulse_runtime = pulse_runtime[:, j_gate]
                 ts = np.diff(pulse_runtime).astype(np.int32)
                 ts1 = np.diff(pulse_runtime1).astype(np.int32)
                 ts2 = np.diff(pulse_runtime2).astype(np.int32)
@@ -1456,20 +1458,20 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             )  # NaNs mark line starts/ends
             pulse_runtime1 = p.pulse_runtime[j_gate1]
             pulse_runtime2 = p.pulse_runtime[j_gate2]
-            pulse_runtime = np.hstack((p.pulse_runtime, j_gate1, j_gate2))
+            pulse_runtime = np.vstack((p.pulse_runtime, j_gate1, j_gate2))
             j_gate = j_gate1 | j_gate2
-            pulse_runtime = pulse_runtime[j_gate, :]
-            ts = np.diff(pulse_runtime)
-            ts1 = np.diff(pulse_runtime1)
-            ts2 = np.diff(pulse_runtime2)
-            line_num1 = line_num(j_gate1)
-            line_num2 = line_num(j_gate2)
-            line_num = line_num(j_gate)
+            pulse_runtime = pulse_runtime[:, j_gate]
+            ts = np.diff(pulse_runtime).astype(np.int32)
+            ts1 = np.diff(pulse_runtime1).astype(np.int32)
+            ts2 = np.diff(pulse_runtime2).astype(np.int32)
+            line_num1 = line_num[j_gate1]
+            line_num2 = line_num[j_gate2]
+            line_num = line_num[j_gate]
 
             for j in range(*p.line_limits):
-                file_ts_split_list += self.prepare_timestamps(ts, j, line_num=line_num)
-                file_ts1_split_list += self.prepare_timestamps(ts1, j, line_num=line_num1)
-                file_ts2_split_list += self.prepare_timestamps(ts2, j, line_num=line_num2)
+                file_ts_split_list.append(self.prepare_timestamps(ts, j, line_num=line_num))
+                file_ts1_split_list.append(self.prepare_timestamps(ts1, j, line_num=line_num1))
+                file_ts2_split_list.append(self.prepare_timestamps(ts2, j, line_num=line_num2))
 
                 file_duration += self.get_split_duration(file_ts_split_list[-1])
 
@@ -1496,7 +1498,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             valid = valid[1:]
 
             #  remove photons from wrong lines
-            ts_out = ts_in[valid != 0]
+            try:
+                ts_out = ts_in[:, valid != 0]
+            except IndexError:  # 1D
+                ts_out = ts_in[valid != 0]
             valid = valid[valid != 0]
 
             # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
@@ -1512,10 +1517,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             if valid[-1] != -2:
                 # remove photons after the last found ending
                 j_end = np.where(valid == -2)[0]
+
                 if len(j_end) > 0:
-                    *_, J_end_last = j_end
-                    ts_out = ts_out[: J_end_last + 1]
-                    valid = valid[: J_end_last + 1]
+                    *_, j_end_last = j_end
+                    try:
+                        ts_out = ts_out[:, : j_end_last + 1]
+                    except IndexError:  # 1D
+                        ts_out = ts_out[: j_end_last + 1]
+                    valid = valid[: j_end_last + 1]
 
             return np.vstack((ts_out, valid))
 
@@ -1525,7 +1534,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         if self.scan_type in {"static", "circle"}:
             split_duration = ts_split.sum() / self.laser_freq_hz
         elif self.scan_type == "angular":
-            ts, valid = ts_split
+            ts, *_, valid = ts_split
             split_duration = ts[(valid == 1) | (valid == -2)].sum() / self.laser_freq_hz
         return split_duration
 
