@@ -93,8 +93,9 @@ class SoftwareCorrelator:
                     "Photon Array should have 3 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
                 )
             duration_s = photon_array[0, :].sum() * timebase_ms / 1000
-            self.countrate_a = photon_array[1, :].sum() / duration_s
-            self.countrate_b = photon_array[2, :].sum() / duration_s
+            countrate_a = photon_array[1, :].sum() / duration_s
+            countrate_b = photon_array[2, :].sum() / duration_s
+            self.countrate = (countrate_a, countrate_b)
 
         elif c_type == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
@@ -108,12 +109,13 @@ class SoftwareCorrelator:
         elif c_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 4):
                 raise RuntimeError(
-                    "Photon Array should have 3 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 3rd column is 1s for valid lines"
+                    "Photon Array should have 4 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
                 )
             valid = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
-            self.countrate_a = np.sum(photon_array[1, :] == 1) / duration_s
-            self.countrate_b = np.sum(photon_array[2, :] == 1) / duration_s
+            countrate_a = np.sum(photon_array[1, :] == 1) / duration_s
+            countrate_b = np.sum(photon_array[2, :] == 1) / duration_s
+            self.countrate = (countrate_a, countrate_b)
         else:
             raise ValueError("Invalid correlator type!")
 
@@ -129,12 +131,4 @@ class SoftwareCorrelator:
     def output(self) -> SoftwareCorrelatorOutput:
         """Doc."""
 
-        if self.c_type in (
-            valid_types := {
-                CorrelatorType.PH_DELAY_CORRELATOR,
-                CorrelatorType.PH_DELAY_CORRELATOR_LINES,
-            }
-        ):
-            return SoftwareCorrelatorOutput(self.lag, self.corrfunc, self.weights, self.countrate)
-        else:
-            raise NotImplementedError(f"Only implemented for '{valid_types}'!")
+        return SoftwareCorrelatorOutput(self.lag, self.corrfunc, self.weights, self.countrate)
