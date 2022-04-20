@@ -78,10 +78,11 @@ class SoftwareCorrelator:
 
         correlator_output_list = []
         for idx, ts_split in enumerate(list_of_photon_arrays):
-            self.correlate(ts_split, *args, **kwargs)
-            correlator_output_list.append(self.output())
-            if is_verbose:
-                print(idx + 1, end=", ")
+            if ts_split.size != 0:
+                self.correlate(ts_split, *args, **kwargs)
+                correlator_output_list.append(self.output())
+                if is_verbose:
+                    print(idx + 1, end=", ")
 
         return self.list_output(correlator_output_list)
 

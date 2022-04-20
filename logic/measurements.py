@@ -63,13 +63,6 @@ class MeasurementProcedure:
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
         self.sys_info = file_utilities.default_system_info
         self.sys_info["xyz_um_to_v"] = self.um_v_ratio
-        self.sys_info["detector_settings"] = self.spad_dvc.settings
-        if self.delayer_dvc.is_on:
-            self.sys_info["delayer_settings"] = self.delayer_dvc.settings
-            self.sys_info["detector_settings"].is_gated = True
-        else:
-            self.sys_info["delayer_settings"] = None
-            self.sys_info["detector_settings"].is_gated = False
 
         # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
         # better suit this case. see this: https://github.com/python/mypy/issues/1996
@@ -671,7 +664,15 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
             "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
             "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
+            "detector_settings": self.spad_dvc.settings,
         }
+
+        if self.delayer_dvc.is_on:
+            full_data["delayer_settings"] = self.delayer_dvc.settings
+            full_data["detector_settings"].is_gated = True
+        else:
+            full_data["delayer_settings"] = None
+            full_data["detector_settings"].is_gated = False
 
         if self.scanning:
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz

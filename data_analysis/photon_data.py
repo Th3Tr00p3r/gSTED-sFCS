@@ -470,6 +470,7 @@ class TDCPhotonDataMixin:
                 bins[np.isin(bins, coarse_calib_bins)],
                 h[np.isin(bins, coarse_calib_bins)],
                 "o",
+                markersize=4,
                 label="Calibration Bins",
             )
             axes[0, 0].legend()
