@@ -771,14 +771,19 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
             self.duration_min = full_data["duration_s"] / 60
 
         # Detector Gate (calibrated - actual gate can be inferred from TDC calibration and compared)
-        gate_width_ns = self.detector_settings.gate_width_ns
-        if self.delayer_settings is not None:
-            lower_detector_gate_ns = self.delayer_settings.lower_gate_ns
+        if self.delayer_settings is not None and getattr(self.delayer_settings, "is_gated", False):
+            lower_detector_gate_ns = (
+                self.delayer_settings.effective_delay_ns - self.delayer_settings.sync_delay_ns
+            )
         else:
             lower_detector_gate_ns = 0
-        self.detector_gate_ns = Limits(
-            lower_detector_gate_ns, lower_detector_gate_ns + gate_width_ns
-        )
+        if self.detector_settings is not None:
+            gate_width_ns = self.detector_settings.gate_width_ns
+            self.detector_gate_ns = Limits(
+                lower_detector_gate_ns, lower_detector_gate_ns + gate_width_ns
+            )
+        else:
+            self.detector_gate_ns = Limits(0, np.inf)
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -1308,7 +1313,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         self.min_duration_frac = min_time_frac
 
         # Unite TDC gates and detector gates
-        for i in range(2):
+        for i in (1, 2):
             gate_ns = locals()[f"gate{i}_ns"]
             tdc_gate_ns = Limits(gate_ns)
             if tdc_gate_ns != Limits(0, np.inf):
@@ -1457,7 +1462,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 pulse_runtime1 = pulse_runtime[j_gate1]
                 pulse_runtime2 = pulse_runtime[j_gate2]
                 pulse_runtime = np.vstack((pulse_runtime, j_gate1, j_gate2))
-                j_gate = j_gate1 | j_gate2  # CHECK ME!
+                j_gate = j_gate1 | j_gate2
                 pulse_runtime = pulse_runtime[:, j_gate]
                 ts = pulse_runtime.astype(np.int32)
                 ts[0] = np.hstack(([0], np.diff(pulse_runtime[0]).astype(np.int32)))

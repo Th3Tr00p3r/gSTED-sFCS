@@ -299,7 +299,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.settings.pulsewidth_ns = pulsewidth_ns
         self.settings.psd_delay_ns = psd_delay_ps * 1e-3
         self.settings.effective_delay_ns = effective_delay_ns
-        self.settings.lower_gate_ns = lower_gate_ns
 
         # Show delay in GUI
         self.eff_delay_wdgt.set(effective_delay_ns)
