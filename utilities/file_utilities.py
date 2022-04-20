@@ -358,7 +358,9 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
         raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
 
     # patches for legacy Python files (almost non-existant)
-    if not file_dict.get("system_info") or override_system_info:  # missing/overriden system_info
+    if (
+        file_dict.get("system_info") is None or override_system_info
+    ):  # missing/overriden system_info
         file_dict["system_info"] = default_system_info
     if full_data := file_dict.get("full_data"):  # legacy full_data object structures
         if full_data.get("circle_speed_um_s"):
@@ -406,6 +408,10 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
             elif scan_settings["plane_orientation"] == "XZ":
                 scan_settings["dim_order"] = (0, 2, 1)
 
+    # legacy detector/delayer settings placement
+    if file_dict["system_info"].get("detector_settings") is not None:
+        full_data["detector_settings"] = file_dict["system_info"]["detector_settings"]
+        full_data["delayer_settings"] = file_dict["system_info"]["delayer_settings"]
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["afterpulse_params"], tuple):
         if file_dict.get("python_converted"):
