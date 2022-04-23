@@ -29,6 +29,119 @@ from utilities.helper import Limits, div_ceil, timer
 laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis./laser_pulse_tdc_calib.pkl")
 
 
+class AngularScanMixin:
+    """Doc."""
+
+    NAN_PLACEBO = -100
+
+    def _convert_angular_scan_to_image(
+        self, pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
+    ):
+        """utility function for opening Angular Scans"""
+
+        # calculate the number of samples obtained at each photon arrival, since beginning of file
+        sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
+        # calculate to which pixel each photon belongs (possibly many samples per pixel)
+        pixel_num = sample_runtime % samples_per_line
+        # calculate to which line each photon belongs (global, not considering going back to the first line)
+        line_num_tot = sample_runtime // samples_per_line
+        # calculate to which line each photon belongs (extra line is for returning to starting position)
+        line_num = (line_num_tot % (n_lines + 1)).astype(np.int16)
+
+        # build the image
+        img = np.empty((n_lines + 1, samples_per_line), dtype=np.uint16)
+        bins = np.arange(-0.5, samples_per_line)
+        for j in range(n_lines + 1):
+            img[j, :], _ = np.histogram(pixel_num[line_num == j], bins=bins)
+
+        return img, sample_runtime, pixel_num, line_num
+
+    def _get_best_pix_shift(self, img: np.ndarray, min_shift, max_shift) -> int:
+        """Doc."""
+
+        score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
+        pix_shifts = np.arange(min_shift, max_shift)
+        for idx, pix_shift in enumerate(range(min_shift, max_shift)):
+            rolled_img = np.roll(img, pix_shift).astype(np.uint32)
+            score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
+        return pix_shifts[score.argmin()]
+
+    def _fix_data_shift(self, cnt) -> int:
+        """Doc."""
+
+        height, width = cnt.shape
+
+        # replacing outliers with median value
+        med = np.median(cnt)
+        cnt[cnt > med * 1.5] = med
+
+        # limit initial attempt to the width of the image
+        min_pix_shift = -round(width / 2)
+        max_pix_shift = min_pix_shift + width + 1
+        pix_shift = self._get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+
+        # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
+        # OR if the 'return row' (the empty one) is not at the bottom for some reason
+        # TODO: ask Oleg how the latter can happen
+        rolled_cnt = np.roll(cnt, pix_shift)
+        inner_half_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
+        outer_half_sum = rolled_cnt.sum() - inner_half_sum
+        return_row_idx = rolled_cnt.sum(axis=1).argmin()
+
+        # in case initial attempt fails, limit shift to the flattened size of the image
+        if (outer_half_sum > inner_half_sum) or return_row_idx != height - 1:
+            if return_row_idx != height - 1:
+                print("Data is heavily shifted, check it out!", end=" ")
+            min_pix_shift = -round(cnt.size / 2)
+            max_pix_shift = min_pix_shift + cnt.size + 1
+            pix_shift = self._get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+
+        return pix_shift
+
+    def _threshold_and_smooth(self, img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
+        """Doc."""
+
+        #    # replacing outliers with median value
+        #    med = np.median(img)
+        #    img[img > med * 1.5] = med
+
+        thresh = skimage.filters.threshold_multiotsu(
+            skimage.filters.median(img).astype(np.float32), otsu_classes, nbins=n_bins
+        )  # minor filtering of outliers
+        cnt_dig = np.digitize(img, bins=thresh)
+        plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
+        std_plateau = scipy.stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
+        dev_cnt = img - plateau_lvl
+        bw = dev_cnt > -std_plateau
+        bw = scipy.ndimage.binary_fill_holes(bw)
+        disk_open = skimage.morphology.selem.disk(radius=disk_radius)
+        bw = skimage.morphology.opening(bw, selem=disk_open)
+        return bw
+
+    def _bg_line_correlations(self, p: TDCPhotonData, sampling_freq_Hz) -> list:
+        """Returns a list of auto-correlations of the lines of an image"""
+
+        image = p.image * p.bw_mask
+
+        image_line_corr = []
+        for j in range(*p.line_limits):  # roi["row"].min(), roi["row"].max() + 1):
+            line = image[j][p.bw_mask[j] > 0]
+            try:
+                c, lags = _auto_corr(line.astype(np.float64))
+            except ValueError:
+                print(f"Auto correlation of line No.{j} has failed. Skipping.", end=" ")
+            else:
+                c = c / line.mean() ** 2 - 1
+                c[0] -= 1 / line.mean()  # subtracting shot noise, small stuff really
+                image_line_corr.append(
+                    {
+                        "lag": lags * 1e3 / sampling_freq_Hz,  # in ms
+                        "corrfunc": c,
+                    }
+                )
+        return image_line_corr
+
+
 @dataclass
 class StructureFactor:
     """Holds structure factor data"""
@@ -593,10 +706,10 @@ class CorrFunc:
             return r, C @ (interpolator(q) / m2) * m1
 
 
-class SolutionSFCSMeasurement(TDCPhotonDataMixin):
+class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
     """Doc."""
 
-    NAN_PLACEBO = -100  # TODO: belongs in 'AngularScanMixin'
+    NAN_PLACEBO: int
     DUMP_PATH = Path("C:/temp_sfcs_data/")
 
     def __init__(self, name=""):
@@ -941,7 +1054,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                 sec_sample_runtime,
                 sec_pixel_num,
                 sec_line_num,
-            ) = _convert_angular_scan_to_image(
+            ) = self._convert_angular_scan_to_image(
                 sec_pulse_runtime,
                 self.laser_freq_hz,
                 ao_sampling_freq_hz,
@@ -951,7 +1064,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
 
             if should_fix_shift:
                 print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
-                pix_shift = _fix_data_shift(sec_cnt.copy())
+                pix_shift = self._fix_data_shift(sec_cnt.copy())
                 sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
                     self.laser_freq_hz / ao_sampling_freq_hz
                 )
@@ -960,7 +1073,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
                     sec_sample_runtime,
                     sec_pixel_num,
                     sec_line_num,
-                ) = _convert_angular_scan_to_image(
+                ) = self._convert_angular_scan_to_image(
                     sec_pulse_runtime,
                     self.laser_freq_hz,
                     ao_sampling_freq_hz,
@@ -983,7 +1096,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         if roi_selection == "auto":
             print("automatic. Thresholding and smoothing...", end=" ")
             try:
-                bw = _threshold_and_smooth(cnt.copy())
+                bw = self._threshold_and_smooth(cnt.copy())
             except ValueError:
                 print("Thresholding failed, skipping file.\n")
                 return None
@@ -1101,10 +1214,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin):
         p.bw_mask = bw
 
         # get image line correlation to subtract trends
-        img = p.image * p.bw_mask
-
         p.line_limits = Limits(line_num[line_num > 0].min(), line_num.max())
-        p.image_line_corr = _bg_line_correlations(img, bw, roi, p.line_limits, ao_sampling_freq_hz)
+        p.image_line_corr = self._bg_line_correlations(p, ao_sampling_freq_hz)
 
         return p
 
@@ -1869,28 +1980,25 @@ class SFCSExperiment(TDCPhotonDataMixin):
         """Doc."""
         # TODO: this should be a method of SolutionSFCSMeasurement
 
-        if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
+        try:
             self.sted.correlate_and_average(
                 cf_name=f"gSTED {gate_ns}", gate_ns=gate_ns, is_verbose=True, **kwargs
             )
             if should_plot:
                 self.plot_correlation_functions(**kwargs)
-        else:
+        except AttributeError:
+            # STED measurement not loaded
             raise RuntimeError(
                 "Cannot add a gate if there's no STED measurement loaded to the experiment!"
             )
 
-    def add_gates(self, gate_list: List[Tuple[float, float]], **kwargs):
+    def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=True, **kwargs):
         """A convecience method for adding multiple gates."""
 
-        if hasattr(self.sted, "scan_type"):  # if sted maesurement quacks as if loaded
-            for gate_ns in gate_list:
-                self.add_gate(gate_ns, should_plot=False, **kwargs)
+        for gate_ns in gate_list:
+            self.add_gate(gate_ns, should_plot=False, **kwargs)
+        if should_plot:
             self.plot_correlation_functions(**kwargs)
-        else:
-            raise RuntimeError(
-                "Cannot add a gate if there's no STED measurement loaded to the experiment!"
-            )
 
     def plot_correlation_functions(self, **kwargs):
         """Doc."""
@@ -2002,117 +2110,6 @@ def _sum_scan_circles(pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, circle_
     img, _ = np.histogram(pixel_num, bins=bins)
 
     return img, samples_per_circle
-
-
-# TODO - create an AngularScanMixin class and throw the below functions there
-def _convert_angular_scan_to_image(
-    pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
-):
-    """utility function for opening Angular Scans"""
-
-    # calculate the number of samples obtained at each photon arrival, since beginning of file
-    sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
-    # calculate to which pixel each photon belongs (possibly many samples per pixel)
-    pixel_num = sample_runtime % samples_per_line
-    # calculate to which line each photon belongs (global, not considering going back to the first line)
-    line_num_tot = sample_runtime // samples_per_line
-    # calculate to which line each photon belongs (extra line is for returning to starting position)
-    line_num = (line_num_tot % (n_lines + 1)).astype(np.int16)
-
-    # build the image
-    img = np.empty((n_lines + 1, samples_per_line), dtype=np.uint16)
-    bins = np.arange(-0.5, samples_per_line)
-    for j in range(n_lines + 1):
-        img[j, :], _ = np.histogram(pixel_num[line_num == j], bins=bins)
-
-    return img, sample_runtime, pixel_num, line_num
-
-
-def _get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
-    """Doc."""
-
-    score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
-    pix_shifts = np.arange(min_shift, max_shift)
-    for idx, pix_shift in enumerate(range(min_shift, max_shift)):
-        rolled_img = np.roll(img, pix_shift).astype(np.uint32)
-        score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
-    return pix_shifts[score.argmin()]
-
-
-def _fix_data_shift(cnt) -> int:
-    """Doc."""
-
-    height, width = cnt.shape
-
-    # replacing outliers with median value
-    med = np.median(cnt)
-    cnt[cnt > med * 1.5] = med
-
-    # limit initial attempt to the width of the image
-    min_pix_shift = -round(width / 2)
-    max_pix_shift = min_pix_shift + width + 1
-    pix_shift = _get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
-
-    # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
-    # OR if the 'return row' (the empty one) is not at the bottom for some reason
-    # TODO: ask Oleg how the latter can happen
-    rolled_cnt = np.roll(cnt, pix_shift)
-    inner_half_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
-    outer_half_sum = rolled_cnt.sum() - inner_half_sum
-    return_row_idx = rolled_cnt.sum(axis=1).argmin()
-
-    # in case initial attempt fails, limit shift to the flattened size of the image
-    if (outer_half_sum > inner_half_sum) or return_row_idx != height - 1:
-        if return_row_idx != height - 1:
-            print("Data is heavily shifted, check it out!", end=" ")
-        min_pix_shift = -round(cnt.size / 2)
-        max_pix_shift = min_pix_shift + cnt.size + 1
-        pix_shift = _get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
-
-    return pix_shift
-
-
-def _threshold_and_smooth(img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
-    """Doc."""
-
-    #    # replacing outliers with median value
-    #    med = np.median(img)
-    #    img[img > med * 1.5] = med
-
-    thresh = skimage.filters.threshold_multiotsu(
-        skimage.filters.median(img).astype(np.float32), otsu_classes, nbins=n_bins
-    )  # minor filtering of outliers
-    cnt_dig = np.digitize(img, bins=thresh)
-    plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
-    std_plateau = scipy.stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
-    dev_cnt = img - plateau_lvl
-    bw = dev_cnt > -std_plateau
-    bw = scipy.ndimage.binary_fill_holes(bw)
-    disk_open = skimage.morphology.selem.disk(radius=disk_radius)
-    bw = skimage.morphology.opening(bw, selem=disk_open)
-    return bw
-
-
-def _bg_line_correlations(image, bw_mask, roi, line_limits: Limits, sampling_freq_Hz) -> list:
-    """Returns a list of auto-correlations of the lines of an image"""
-
-    image_line_corr = []
-    for j in range(*line_limits):  # roi["row"].min(), roi["row"].max() + 1):
-        line = image[j][bw_mask[j] > 0]
-        try:
-            c, lags = _auto_corr(line.astype(np.float64))
-        except ValueError:
-            print(f"Auto correlation of line No.{j} has failed. Skipping.", end=" ")
-        else:
-            c = c / line.mean() ** 2 - 1
-            c[0] -= 1 / line.mean()  # subtracting shot noise, small stuff really
-            image_line_corr.append(
-                {
-                    "lag": lags * 1e3 / sampling_freq_Hz,  # in ms
-                    "corrfunc": c,
-                }
-            )
-    return image_line_corr
 
 
 def _auto_corr(a):
