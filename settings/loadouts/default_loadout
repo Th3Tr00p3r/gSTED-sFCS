@@ -1,7 +1,7 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
 newTemplate,
-solImportFileSelectionPattern,1-5
+solImportFileSelectionPattern,1-3
 lineEdit,
 experimentName,test
 spadMode,Free Running
@@ -24,11 +24,11 @@ imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
-scanImgFileNum,1
-solAnalysisRemoveWorstSpinner,0
 expStrctFctrRbstIntrpPnts,2
 tdcCalibGating,40
 tdcCalibGating_2,20
+scanImgFileNum,1
+solAnalysisRemoveWorstSpinner,0
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -43,9 +43,9 @@ imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
-solAnalysisRemoveOverSpinner,2.0
 expStrctFctrGMin,0.175
 customGateLifetimes,0.5
+solAnalysisRemoveOverSpinner,2.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -60,17 +60,17 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,4
 dataYear,2022
-dataDay,13
-dataTemplate1,ATTO_Gated7ns_angular_exc_110755_*.pkl
+dataDay,3
+dataTemplate1,cal_300bp_20uW_angular_exc_133619_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
-importedSolDataTemplates1,
 loadedExperimentNames,
 assignedGates,
 availableGates,
 importedSolDataTemplates2,
 expPropGstedGate,Lifetime
+importedSolDataTemplates1,
 avgInterval,5000
 posAxis,X
 solScanParamsStacked,2
@@ -84,12 +84,12 @@ imageDataImport,False
 solDataImport,True
 solImportUseAll,True
 solImportUse,False
+assignLoadedMeas,False
+assignRawData,True
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
 solAveragingPlotSpatial,False
-assignLoadedMeas,False
-assignRawData,True
 currMode,True
 powMode,False
 numPlaneShownChoice,0
@@ -100,10 +100,10 @@ pixel_clock2,99
 framerate2,99
 exposure2,99
 tabWidget,2
-tabWidget_2,1
-tabWidget_5,1
+tabWidget_2,0
 tabWidget_4,0
 tabWidget_3,1
+tabWidget_5,1
 autoCrosshair,True
 alwaysSaveImg,False
 solImportAutoLoadProcessed,False

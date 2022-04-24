@@ -264,6 +264,11 @@ class Limits:
 
         return max(min(self.upper, n), self.lower)
 
+    def as_range(self) -> range:
+        """Get a Python 'range' (generator)"""
+
+        return range(self.lower, self.upper)
+
 
 def center_of_mass_of_dimension(arr: np.ndarray, dim: int = 0) -> float:
     """

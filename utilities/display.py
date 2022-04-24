@@ -7,6 +7,7 @@ from typing import List, Tuple
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
+from matplotlib.colors import to_rgb
 from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
 
@@ -111,12 +112,7 @@ class GuiDisplay:
 
         with Plotter(gui_display=self, **kwargs) as ax:
             if cf_cr is not None:
-                # create violet-cyan gradient colormap
-                n_lines, _ = cf_cr.shape
-                cmap = np.ones((n_lines, 4))
-                cmap[:, 0] = np.linspace(1, 0, n_lines)
-                cmap[:, 1] = np.linspace(0, 1, n_lines)
-
+                cmap = get_gradient_colormap(cf_cr.shape[0])
                 ax.set_prop_cycle(color=cmap)
                 ax.plot(x_arr, cf_cr.T, lw=0.4)
             ax.set_prop_cycle(color="k")
@@ -386,3 +382,27 @@ def force_aspect(ax, aspect=1) -> None:
     img, *_ = ax.get_images()
     extent = img.get_extent()
     ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
+
+
+def get_gradient_colormap(n_lines, color_list=["magenta", "lime", "cyan"]) -> np.ndarray:
+    """Create a multicolor gradient colormap"""
+
+    # get a list of RGB colors from the list of colors provided (i.e. (1.0, 0.0, 1.0) for "magenta")
+    rgb_color_list = [to_rgb(color) for color in color_list]
+    n_colors = len(rgb_color_list)
+
+    # split gradient switch points evenly across the number of lines, and build the gradients
+    cmap = np.ones((n_lines, 4))
+    grad_switch_idxs = [int(n_lines / (n_colors - 1)) * i for i in range(n_colors)]
+    for i in range(n_colors - 1):
+        r1, g1, b1 = rgb_color_list[i]
+        r2, g2, b2 = rgb_color_list[i + 1]
+
+        gradient_slice = slice(grad_switch_idxs[i], grad_switch_idxs[i + 1])
+        slice_len = grad_switch_idxs[i + 1] - grad_switch_idxs[i]
+
+        cmap[gradient_slice, 0] = np.linspace(r1, r2, slice_len)
+        cmap[gradient_slice, 1] = np.linspace(g1, g2, slice_len)
+        cmap[gradient_slice, 2] = np.linspace(b1, b2, slice_len)
+
+    return cmap
