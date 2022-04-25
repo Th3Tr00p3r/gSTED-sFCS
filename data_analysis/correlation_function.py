@@ -306,7 +306,7 @@ class CorrFunc:
             except ValueError:  # Cross-correlation - countrate is a 2-tuple
                 self.cf_cr[idx] = np.mean(corr_output.countrate_list[idx]) * self.corrfunc[idx]
             if self.afterpulse is not None:
-                self.cf_cr[idx] -= self.afterpulse
+                self.cf_cr[idx] -= self.afterpulse[:lag_len]  # ext. afterpulse might be too long
 
     def average_correlation(
         self,
