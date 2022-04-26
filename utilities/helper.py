@@ -85,6 +85,17 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     return img, thresh
 
 
+def xcorr(a, b):
+    """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
+
+    c = np.correlate(a, b, mode="full")
+    c = c[c.size // 2 :]
+    c = c / np.arange(c.size, 0, -1)
+    lags = np.arange(c.size, dtype=np.uint16)
+
+    return c, lags
+
+
 def chunks(list_: list, n: int):
     """
     Yield successive n-sized chunks from list_.
