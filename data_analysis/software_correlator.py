@@ -76,6 +76,17 @@ class SoftwareCorrelator:
     ) -> SoftwareCorrelatorListOutput:
         """Doc."""
 
+        #        # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
+        #        # See: https://stackoverflow.com/questions/18976937/multiprocessing-and-ctypes-with-pointers
+        #        if should_parallel_process and len(time_stamp_split_list) > 1:  # parallel-correlate
+        #            N_CORES = mp.cpu_count() // 2 - 1  # division by 2 due to hyperthreading in intel CPUs
+        #            func = partial(
+        #                SC.correlate, c_type=correlator_type, timebase_ms=1000 / laser_freq_hz
+        #            )
+        #            print(f"Parallel processing using {N_CORES} CPUs/processes.")
+        #            with mp.get_context("spawn").Pool(N_CORES) as pool:
+        #                correlator_output_list = list(pool.imap(func, time_stamp_split_list))
+
         correlator_output_list = []
         for idx, ts_split in enumerate(list_of_photon_arrays):
             if ts_split.size != 0:

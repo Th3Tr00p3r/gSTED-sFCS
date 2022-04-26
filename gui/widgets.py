@@ -325,7 +325,7 @@ SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
     gui_display_sted_gating=("solExpGSTED", None, "main", True),
     # structure factor
     g_min=("expStrctFctrGMin", "QDoubleSpinBox", "main", False),
-    n_rbst_intrp_points=("expStrctFctrRbstIntrpPnts", "QSpinBox", "main", False),
+    n_robust=("expStrctFctrRbstIntrpPnts", "QSpinBox", "main", False),
     # properties
     g0_ratio=("expPropRatio", "QDoubleSpinBox", "main", True),
     fluoresence_lifetime=("expPropLifetime", "QDoubleSpinBox", "main", True),

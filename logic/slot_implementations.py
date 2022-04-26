@@ -1658,6 +1658,7 @@ class MainWin:
         kwargs["gui_display"] = wdgt_coll.gui_display_loading.obj
         kwargs["gui_options"] = GuiDisplay.GuiDisplayOptions(show_axis=True)
         kwargs["fontsize"] = 10
+        kwargs["should_plot_meas"] = False
 
         experiment = SFCSExperiment(experiment_name)
         try:
@@ -1734,7 +1735,16 @@ class MainWin:
 
                 # display parameters in GUI
                 wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
-                wdgt_coll.laser_pulse_delay.set(lt_params.laser_pulse_delay_ns)
+                calib_pulse_delay_ns = self._app.gui.settings.laserPulsePropTime.value()
+                calc_pulse_delay_ns = lt_params.laser_pulse_delay_ns
+                if abs(calc_pulse_delay_ns - calib_pulse_delay_ns) / calc_pulse_delay_ns > 0.1:
+                    logging.info(
+                        f"Calculated laser pulse delay time ({calc_pulse_delay_ns} ns) is very different from calibrated value. Using calibrated value ({calib_pulse_delay_ns} ns)"
+                    )
+                    wdgt_coll.laser_pulse_delay.set(calib_pulse_delay_ns)
+                    experiment.lifetime_params.laser_pulse_delay_ns = calib_pulse_delay_ns
+                else:
+                    wdgt_coll.laser_pulse_delay.set(calc_pulse_delay_ns)
 
     def assign_gate(self) -> None:
         """Doc."""
@@ -1823,7 +1833,7 @@ class MainWin:
         experiment = self.get_experiment()
         try:
             experiment.calculate_structure_factors(
-                g_min=wdgt_coll.g_min, n_rbst_intrp_points=wdgt_coll.n_rbst_intrp_points
+                g_min=wdgt_coll.g_min, n_robust=wdgt_coll.n_robust
             )
         except AttributeError:
             logging.info("Can't calculate structure factors, no experiment is loaded!")
