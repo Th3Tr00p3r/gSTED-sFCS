@@ -335,6 +335,8 @@ class MainWin:
 
                     kwargs = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app, "dict")
 
+                    scan_params.floating_z_amplitude_um = kwargs["floating_z_amplitude_um"]
+
                     self._app.meas = meas.SolutionMeasurementProcedure(
                         app=self._app,
                         scan_params=scan_params,

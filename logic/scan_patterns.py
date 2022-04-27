@@ -117,9 +117,7 @@ class ScanPatternAO:
 
         return ao_buffer, self.scan_params
 
-    def calc_angular_pattern(
-        self,
-    ) -> Tuple[np.ndarray, SimpleNamespace]:
+    def calc_angular_pattern(self) -> Tuple[np.ndarray, SimpleNamespace]:
         """Doc."""
 
         # argument definitions (for better readability
@@ -278,7 +276,7 @@ class ScanPatternAO:
         y_ao[:, line_idx + 1] = Yend + np.arange(T) * (y_ao[0, 0] - Yend) / T
 
         # convert to voltages
-        x_um_v_ratio, y_um_v_ratio, _ = self.um_v_ratio
+        x_um_v_ratio, y_um_v_ratio, z_um_v_ratio = self.um_v_ratio
         x_ao = x_ao / x_um_v_ratio
         y_ao = y_ao / y_um_v_ratio
 
@@ -286,13 +284,22 @@ class ScanPatternAO:
         ao_buffer = np.vstack((x_ao.flatten("F"), y_ao.flatten("F")))
 
         # add origin AO
-        origin_aox_v, origin_aoy_v, _ = self.origin_ao_v
+        origin_aox_v, origin_aoy_v, origin_aoz_v = self.origin_ao_v
         ao_buffer += np.array([[origin_aox_v], [origin_aoy_v]])
 
-        self.scan_params.dt = 1 / (
-            line_freq_hz * ppl
-        )  # TODO: test this (instead of commented line below)
-        #        self.scan_params.dt = 1 / ao_sampling_freq_hz
+        # extend to best fit the AO sampling rate
+        _, samples_per_scan = ao_buffer.shape
+        n_scans = int(ao_sampling_freq_hz / samples_per_scan)
+        ao_buffer = np.hstack([ao_buffer] * n_scans)
+
+        # floating z - scan slowly in z-axis (one period during many xy circles)
+        if (z_amp_um := getattr(self.scan_params, "floating_z_amplitude_um", 0)) != 0:
+            R_Vz = z_amp_um / z_um_v_ratio
+            _, aoz_len = ao_buffer.shape
+            aoz = [origin_aoz_v + R_Vz * sin(2 * pi * (idx / aoz_len)) for idx in range(aoz_len)]
+            ao_buffer = np.vstack((ao_buffer, aoz))
+
+        self.scan_params.dt = 1 / (line_freq_hz * ppl)
         self.scan_params.n_lines = n_lines
         self.scan_params.samples_per_line = T
         self.scan_params.linear_len_um = linear_len_um
@@ -317,7 +324,7 @@ class ScanPatternAO:
         samples_per_circle = int(ao_sampling_freq_hz / circle_freq_hz)
         n_circles = int(ao_sampling_freq_hz / samples_per_circle)
 
-        x_um_v_ratio, y_um_v_ratio, _ = self.um_v_ratio
+        x_um_v_ratio, y_um_v_ratio, z_um_v_ratio = self.um_v_ratio
         R_Vx = diameter_um / 2 / x_um_v_ratio
         R_Vy = diameter_um / 2 / y_um_v_ratio
 
@@ -336,9 +343,16 @@ class ScanPatternAO:
             ],
         )
 
-        # add origin AO
-        origin_aox_v, origin_aoy_v, _ = self.origin_ao_v
+        # add origin AO vector
+        origin_aox_v, origin_aoy_v, origin_aoz_v = self.origin_ao_v
         ao_buffer += np.array([[origin_aox_v], [origin_aoy_v]])
+
+        # floating z - scan slowly in z-axis (one period during many xy circles)
+        if (z_amp_um := getattr(self.scan_params, "floating_z_amplitude_um", 0)) != 0:
+            R_Vz = z_amp_um / z_um_v_ratio
+            aoz_len = samples_per_circle * n_circles
+            aoz = [origin_aoz_v + R_Vz * sin(2 * pi * (idx / aoz_len)) for idx in range(aoz_len)]
+            ao_buffer = np.vstack((ao_buffer, aoz))
 
         # edit params object
         self.scan_params.dt = 1 / (circle_freq_hz * samples_per_circle)

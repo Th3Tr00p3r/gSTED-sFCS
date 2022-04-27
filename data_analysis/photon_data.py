@@ -293,11 +293,9 @@ class TDCPhotonDataMixin:
                 f"Unknown type '{type(pick_calib_bins_according_to)}' for picking calibration bins!"
             )
 
-        # Don't use 'empty' bins for calibration # TESTESTEST
-        valid_cal_bins = np.nonzero(h_all > (np.median(h_all) / 100))[0]  # TESTESTEST
-        coarse_bins = np.array(
-            [bin_idx for bin_idx in coarse_bins if bin_idx in valid_cal_bins]
-        )  # TESTESTEST
+        # Don't use 'empty' bins for calibration
+        valid_cal_bins = np.nonzero(h_all > (np.median(h_all) / 100))[0]
+        coarse_bins = np.array([bin_idx for bin_idx in coarse_bins if bin_idx in valid_cal_bins])
 
         if isinstance(external_calib, TDCCalibration):
             max_j = external_calib.max_j
