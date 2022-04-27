@@ -38,7 +38,7 @@ class TDCCalibration:
     bins: np.ndarray
     h: np.ndarray
     max_j: int
-    coarse_bins: Any
+    coarse_calib_bins: Any
     fine_bins: Any
     l_quarter_tdc: Any
     r_quarter_tdc: Any
@@ -256,7 +256,7 @@ class TDCPhotonDataMixin:
             bins = sync_coarse_time_to
             h = h_all[bins]
         elif isinstance(pick_valid_bins_according_to, TDCCalibration):
-            bins = sync_coarse_time_to.coarse_bins
+            bins = sync_coarse_time_to.coarse_calib_bins
             h = h_all[bins]
         else:
             raise TypeError(
@@ -283,11 +283,11 @@ class TDCPhotonDataMixin:
             if not j.any():
                 raise ValueError(f"Gate width is too narrow for calib_time_ns={calib_time_ns}!")
             j_calib = j_shift[j]
-            coarse_bins = bins[j_calib]
+            coarse_calib_bins = bins[j_calib]
         elif isinstance(pick_calib_bins_according_to, (list, np.ndarray)):
-            coarse_bins = pick_calib_bins_according_to
+            coarse_calib_bins = pick_calib_bins_according_to
         elif isinstance(pick_calib_bins_according_to, TDCCalibration):
-            coarse_bins = pick_calib_bins_according_to.coarse_bins
+            coarse_calib_bins = pick_calib_bins_according_to.coarse_calib_bins
         else:
             raise TypeError(
                 f"Unknown type '{type(pick_calib_bins_according_to)}' for picking calibration bins!"
@@ -295,11 +295,13 @@ class TDCPhotonDataMixin:
 
         # Don't use 'empty' bins for calibration
         valid_cal_bins = np.nonzero(h_all > (np.median(h_all) / 100))[0]
-        coarse_bins = np.array([bin_idx for bin_idx in coarse_bins if bin_idx in valid_cal_bins])
+        coarse_calib_bins = np.array(
+            [bin_idx for bin_idx in coarse_calib_bins if bin_idx in valid_cal_bins]
+        )
 
         if isinstance(external_calib, TDCCalibration):
             max_j = external_calib.max_j
-            coarse_bins = external_calib.coarse_bins
+            coarse_calib_bins = external_calib.coarse_calib_bins
             fine_bins = external_calib.fine_bins
             t_calib = external_calib.t_calib
             h_tdc_calib = external_calib.h_tdc_calib
@@ -315,7 +317,7 @@ class TDCPhotonDataMixin:
 
         else:
 
-            fine_calib = fine[np.isin(coarse, coarse_bins)]
+            fine_calib = fine[np.isin(coarse, coarse_calib_bins)]
             fine_bins = np.arange(tdc_chain_length, dtype=np.uint8)
             h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length).astype(np.uint32)
 
@@ -426,7 +428,7 @@ class TDCPhotonDataMixin:
             bins=bins,
             h=h,
             max_j=max_j,
-            coarse_bins=coarse_bins,
+            coarse_calib_bins=coarse_calib_bins,
             fine_bins=fine_bins,
             l_quarter_tdc=l_quarter_tdc,
             r_quarter_tdc=r_quarter_tdc,
@@ -450,7 +452,7 @@ class TDCPhotonDataMixin:
             h_all = self.tdc_calib.h_all
             bins = self.tdc_calib.bins
             h = self.tdc_calib.h
-            coarse_bins = self.tdc_calib.coarse_bins
+            coarse_calib_bins = self.tdc_calib.coarse_calib_bins
             t_calib = self.tdc_calib.t_calib
             t_hist = self.tdc_calib.t_hist
             all_hist_norm = self.tdc_calib.all_hist_norm
@@ -465,9 +467,10 @@ class TDCPhotonDataMixin:
             axes[0, 0].semilogy(x_all, h_all, "-o", label="All Hist")
             axes[0, 0].semilogy(bins, h, "o", label="Valid Bins")
             axes[0, 0].semilogy(
-                bins[np.isin(bins, coarse_bins)],
-                h[np.isin(bins, coarse_bins)],
+                bins[np.isin(bins, coarse_calib_bins)],
+                h[np.isin(bins, coarse_calib_bins)],
                 "o",
+                markersize=4,
                 label="Calibration Bins",
             )
             axes[0, 0].legend()
