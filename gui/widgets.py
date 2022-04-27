@@ -366,6 +366,7 @@ SOL_MEAS_COLL = QtWidgetCollection(
     sub_dir_name=("solSubdirName", "QLineEdit", "settings", False),
     prog_bar_wdgt=("solScanProgressBar", "QSlider", "main", True),
     scan_type=("solScanType", "QComboBox", "main", False),
+    floating_z_amplitude_um=("solScanFloatingAmp", "QSpinBox", "main", False),
     regular=("regularSolMeas", "QRadioButton", "main", False),
     repeat=("repeatSolMeas", "QRadioButton", "main", False),
     final=("finalSolMeas", "QRadioButton", "main", False),
