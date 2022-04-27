@@ -559,7 +559,10 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.plot_wdgt = kwargs["plot_wdgt"]
         self.fit_led = kwargs["fit_led"]
 
-        self.scan_params.plane_orientation = "XY"
+        if self.scan_params.floating_z_amplitude_um != 0:
+            self.scan_params.plane_orientation = "XYZ"
+        else:
+            self.scan_params.plane_orientation = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
         self.scanning = not (self.scan_params.pattern == "static")
@@ -721,6 +724,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             return
 
         try:
+            # TODO: enable "static" floating Z (for testing)
             if self.scanning:
                 self.setup_scan()
                 self._app.gui.main.impl.device_toggle("pixel_clock", leave_on=True)
