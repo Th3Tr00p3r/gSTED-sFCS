@@ -104,7 +104,7 @@ class GuiDisplay:
             else:
                 kwargs["ylim"] = (-1e4, 1e4)
 
-        if x_type == "disp":
+        elif x_type == "disp":
             kwargs["y_scale"] = "log"
             x_arr = x_arr ** 2
             kwargs["xlim"] = (0, 0.6)
