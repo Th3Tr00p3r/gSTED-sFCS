@@ -3,7 +3,7 @@ imgScanFileTemplate,gb
 newTemplate,
 solImportFileSelectionPattern,1-5
 lineEdit,
-experimentName,test
+experimentName,
 spadMode,Free Running
 maxLineLen,100
 angAoSampFreq,10000
@@ -26,7 +26,7 @@ imgScanNumPlanes,1
 currPlane,0
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
-expStrctFctrRbstIntrpPnts,2
+expStrctFctrRbstIntrpPnts,3
 tdcCalibGating,40
 tdcCalibGating_2,20
 depPow,130
@@ -44,8 +44,8 @@ imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
 solAnalysisRemoveOverSpinner,2.0
-expStrctFctrGMin,0.175
 customGateLifetimes,0.5
+expStrctFctrGMin,0.1
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -61,15 +61,15 @@ imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,3
 dataYear,2022
 dataDay,29
-dataTemplate1,bp300_20uW_200mW_angular_sted_174126_*.pkl
+dataTemplate1,bp300_20uW_angular_exc_172325_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
-importedSolDataTemplates1,
-loadedExperimentNames,
-assignedGates,
-availableGates,
-importedSolDataTemplates2,
+importedSolDataTemplates1,bp300_20uW_angular_exc_172325_*.pkl
+loadedExperimentNames,test
+assignedGates,(5.27, 20)
+availableGates,(5.27, 20)
+importedSolDataTemplates2,bp300_20uW_angular_exc_172325_*.pkl
 expPropGstedGate,Lifetime
 avgInterval,5000
 posAxis,X
@@ -106,7 +106,7 @@ tabWidget_4,0
 tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
-solImportAutoLoadProcessed,True
+solImportAutoLoadProcessed,False
 solDataFixShift,True
 solDataUseDefaultSysInfo,False
 solDataSubtractAfterpulse,True

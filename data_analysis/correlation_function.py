@@ -745,14 +745,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         # aggregate images and ROIs for sFCS
         if self.scan_type == "circle":
             self.scan_image = np.vstack(tuple(p.image for p in self.data))
-
-        #            # TODO: do same as for angular (gated background)
-        #            bg_corr_array = np.empty((len(self.data), self.scan_settings["samples_per_circle"]))
-        #            for idx, p in enumerate(self.data):
-        #                bg_corr_array[idx] = p.bg_line_corr_list["corrfunc"]
-        #            avg_bg_corr = bg_corr_array.mean(axis=0)
-        #            self.bg_corr_list = [dict(lag=p.bg_line_corr_list["lag"], corrfunc=avg_bg_corr)]
-        #            # /TODO: do same as for angular (gated background)
+            bg_corr_array = np.empty((len(self.data), self.scan_settings["samples_per_circle"]))
+            for idx, p in enumerate(self.data):
+                bg_corr_array[idx] = p.bg_line_corr_list["corrfunc"]
+            avg_bg_corr = bg_corr_array.mean(axis=0)
+            self.bg_line_corr_list = [dict(lag=p.bg_line_corr_list["lag"], corrfunc=avg_bg_corr)]
 
         if self.scan_type == "angular":
             # aggregate images and ROIs for angular sFCS
