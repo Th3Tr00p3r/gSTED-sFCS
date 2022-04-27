@@ -475,7 +475,11 @@ def convert_types_to_matlab_format(obj, key_name=None):
             return obj
 
     # recursion
-    return {key: convert_types_to_matlab_format(val, key_name=str(key)) for key, val in obj.items()}
+    return {
+        key: convert_types_to_matlab_format(val, key_name=str(key))
+        for key, val in obj.items()
+        if val is not None
+    }
 
 
 def save_mat(file_dict: dict, file_path: Path) -> None:

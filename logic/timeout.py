@@ -171,18 +171,17 @@ class Timeout:
             meas = self._app.meas
 
             # TODO: add GUI switch to override this condition (for testing)
-            if not meas.is_running:
+            if not meas.is_running or meas.scan_type == "static":
                 # scanners
                 if not self.scan_dvc.error_dict:
                     updt_scn_pos()
 
+                # log file widget
+                update_log_wdgt()
+
             else:
                 # MeasurementProcedure progress bar and time left
                 updt_meas_progress(meas)
-
-                if meas.scan_type == "static":
-                    # log file widget
-                    update_log_wdgt()
 
             # photon_counter count rate
             if not self.cntr_dvc.error_dict:
