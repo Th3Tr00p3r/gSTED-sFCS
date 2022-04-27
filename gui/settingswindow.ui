@@ -408,7 +408,7 @@
           <property name="geometry">
            <rect>
             <x>20</x>
-            <y>220</y>
+            <y>310</y>
             <width>132</width>
             <height>81</height>
            </rect>
@@ -446,6 +446,48 @@
               </widget>
              </item>
             </layout>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="">
+          <property name="geometry">
+           <rect>
+            <x>30</x>
+            <y>230</y>
+            <width>111</width>
+            <height>54</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_44">
+           <item>
+            <widget class="QLabel" name="label_29">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>Laser Pulse
+Propagation Time (ns)</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="laserPulsePropTime">
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>2</number>
+             </property>
+             <property name="maximum">
+              <double>9999.000000000000000</double>
+             </property>
+             <property name="value">
+              <double>3.700000000000000</double>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
@@ -498,7 +540,7 @@ Details</string>
                </font>
               </property>
               <property name="currentIndex">
-               <number>6</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="lasers">
                <attribute name="title">

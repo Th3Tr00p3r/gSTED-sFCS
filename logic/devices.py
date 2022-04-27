@@ -272,13 +272,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
-    def set_pulsewidth(self, pulsewidth_ns: int):
-        """Doc."""
-
-        self.settings.pulsewidth_ns, _ = self.mpd_command(
-            (f"SP{pulsewidth_ns}", self.pulsewidth_limits_ns)
-        )
-
     def set_lower_gate(self, lower_gate_ns: float):
         """
         Set the delay according to the chosen lower gate in ns.
@@ -286,6 +279,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         and on top of that setting the signal delay in picoseconds.
         The value for each is automatically found by calibrating ahead of time the delay needed
         for syncronizing the laser pulse with the fluorescence pulse.
+        (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
         """
 
         req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
