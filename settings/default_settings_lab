@@ -1,5 +1,7 @@
 spadDescription,FT232R USB UART
 spadModelQuery,AQ
+psdDescription,FT230X Basic UART
+psdModelQuery,RSN
 cam1Serial,4102737458
 cam2Serial,4102835063
 arduinoAddr,COM3
@@ -30,8 +32,6 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-psdDescription,FT230X Basic UART
-psdModelQuery,RSN
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
@@ -49,6 +49,10 @@ afterpulsingFitType,multi_exponent_fit
 afterpulsingFitParams, 2.26707493e01, 2.10619289e-01, 1.95406751e06,
 spadBaudRate,115200
 spadTimeout,100
+psdBaudRate,115200
+psdTimeout,100
+psdThreshold_mV,-500
+psdFreqDiv,1
 um232Timeout,2
 um232TxSize,256000
 um232NumBytes,256000
@@ -60,10 +64,6 @@ pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
 AIclkDiv,100
-psdBaudRate,115200
-psdTimeout,100
-psdThreshold_mV,-500
-psdFreqDiv,1
 xOrigin,0.0
 yOrigin,0.0
 zOrigin,5.0
@@ -71,6 +71,7 @@ xConv,70.81
 yConv,20.0
 zConv,10.0
 syncDelay,49.4055
+laserPulsePropTime,3.7
 counterTriggerEdge,Rising
 AOtriggerEdge,Rising
 AOwfType,Sine
