@@ -142,6 +142,7 @@ class Plotter:
         self.y_scale: str = kwargs.get("y_scale")
         self.should_autoscale = kwargs.get("should_autoscale", False)
         self.selection_limits: Limits = kwargs.get("selection_limits")
+        self.subplot_kw = kwargs.get("subplot_kw", {})  # dict(projection='3d')
 
     def __enter__(self):
         """Prepare the 'axes' object to use in context manager"""
@@ -173,7 +174,7 @@ class Plotter:
                     ax_width, ax_height = self.AX_SIZE
                     self.figsize = (n_cols * ax_width, n_rows * ax_height)
                 self.fig = plt.figure(figsize=self.figsize, constrained_layout=True)
-                self.axes = self.fig.subplots(*self.subplots)
+                self.axes = self.fig.subplots(*self.subplots, subplot_kw=self.subplot_kw)
                 if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
                     self.axes = np.array([self.axes])
             else:  # using given figure

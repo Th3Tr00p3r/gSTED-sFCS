@@ -878,7 +878,7 @@ class MainWin:
         except IndexError:
             # Dealing with legacy templates which do not contain the appropriate time format
             sorted_templates = sorted(pkl_template_set.union(mat_template_set))
-            logging.warning(
+            logging.info(
                 "Folder contains irregular file templates! Templates may not be properly sorted."
             )
         finally:
