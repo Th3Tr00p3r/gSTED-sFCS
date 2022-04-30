@@ -227,7 +227,7 @@ class CorrFunc:
     def _process_correlator_list_output(
         self,
         corr_output,
-        after_pulse_params,
+        afterpulse_params,
         bg_corr_list,
         should_subtract_afterpulse: bool = True,
         external_afterpulse: np.ndarray = None,
@@ -249,7 +249,7 @@ class CorrFunc:
         if external_afterpulse is not None:
             self.afterpulse = external_afterpulse
         elif should_subtract_afterpulse:
-            self.calculate_afterpulse(after_pulse_params)
+            self.calculate_afterpulse(afterpulse_params)
 
         # zero-pad and generate cf_cr
         lag_len = len(self.lag)
@@ -272,11 +272,11 @@ class CorrFunc:
 
         self.countrate_list = corr_output.countrate_list
 
-    def calculate_afterpulse(self, after_pulse_params: tuple) -> None:
+    def calculate_afterpulse(self, afterpulse_params: tuple) -> None:
         """Doc."""
 
         gate_pulse_period_ratio = min(1.0, self.gate_ns.interval() / 1e9 * self.laser_freq_hz)
-        fit_name, beta = after_pulse_params
+        fit_name, beta = afterpulse_params
         if fit_name == "multi_exponent_fit":
             # work with any number of exponents
             self.afterpulse = gate_pulse_period_ratio * multi_exponent_fit(self.lag, *beta)
@@ -747,9 +747,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             self.scan_image = np.vstack(tuple(p.image for p in self.data))
             bg_corr_array = np.empty((len(self.data), self.scan_settings["samples_per_circle"]))
             for idx, p in enumerate(self.data):
-                bg_corr_array[idx] = p.bg_line_corr_list["corrfunc"]
+                bg_corr_array[idx] = p.bg_line_corr["corrfunc"]
             avg_bg_corr = bg_corr_array.mean(axis=0)
-            self.bg_line_corr_list = [dict(lag=p.bg_line_corr_list["lag"], corrfunc=avg_bg_corr)]
+            self.bg_line_corr_list = [dict(lag=p.bg_line_corr["lag"], corrfunc=avg_bg_corr)]
 
         if self.scan_type == "angular":
             # aggregate images and ROIs for angular sFCS
@@ -909,6 +909,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         if file_dict is not None:
             self.get_general_properties(file_dict=file_dict, **kwargs)
 
+        # File Data Loading
         if file_path is not None:  # Loading file from disk
             *_, template = file_path.parts
             file_idx = int(re.split("_(\\d+)\\.", template)[1])
@@ -923,6 +924,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         else:  # using supplied file_dict
             file_idx = 1
 
+        # File Processing
         full_data = file_dict["full_data"]
 
         # sFCS
@@ -993,10 +995,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         p.image = cnt
 
         # get background correlation
-        c, lags = xcorr(cnt.astype(np.float64))
+        cnt = cnt.astype(np.float64)
+        c, lags = xcorr(cnt, cnt)
         c = c / cnt.mean() ** 2 - 1
         c[0] -= 1 / cnt.mean()  # subtracting shot noise, small stuff really
-        p.image_line_corr = {
+        p.bg_line_corr = {
             "lag": lags * 1e3 / p.ao_sampling_freq_hz,  # in ms
             "corrfunc": c,
         }
@@ -1173,27 +1176,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 line_num * bw[line_num, pixel_num].flatten(),
             )
         )[sorted_idxs]
-        p.coarse = np.hstack(
-            (
-                np.full(line_starts_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
-                np.full(line_stops_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
-                p.coarse,
-            )
-        )[sorted_idxs]
-        p.coarse2 = np.hstack(
-            (
-                np.full(line_starts_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
-                np.full(line_stops_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
-                p.coarse2,
-            )
-        )[sorted_idxs]
-        p.fine = np.hstack(
-            (
-                np.full(line_starts_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
-                np.full(line_stops_runtime.size, self.NAN_PLACEBO, dtype=np.int16),
-                p.fine,
-            )
-        )[sorted_idxs]
+        line_starts_nans = np.full(line_starts_runtime.size, self.NAN_PLACEBO, dtype=np.int16)
+        line_stops_nans = np.full(line_stops_runtime.size, self.NAN_PLACEBO, dtype=np.int16)
+        p.coarse = np.hstack((line_starts_nans, line_stops_nans, p.coarse))[sorted_idxs]
+        p.coarse2 = np.hstack((line_starts_nans, line_stops_nans, p.coarse2))[sorted_idxs]
+        p.fine = np.hstack((line_starts_nans, line_stops_nans, p.fine))[sorted_idxs]
 
         p.image = cnt
         p.roi = roi
@@ -1576,7 +1563,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
                 n_splits = div_ceil(segment_time, self.run_duration)
                 for j in range(n_splits):
-                    file_ts_split_list.append(self.prepare_timestamps(ts, j, n_splits=n_splits))
+                    file_ts_split_list.append(
+                        self.prepare_timestamps(ts, j, is_xcorr=True, n_splits=n_splits)
+                    )
                     file_ts1_split_list.append(self.prepare_timestamps(ts1, j, n_splits=n_splits))
                     file_ts2_split_list.append(self.prepare_timestamps(ts2, j, n_splits=n_splits))
 
@@ -1604,7 +1593,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             line_num = line_num[j_gate]
 
             for j in p.line_limits.as_range():
-                file_ts_split_list.append(self.prepare_timestamps(ts, j, line_num=line_num))
+                file_ts_split_list.append(
+                    self.prepare_timestamps(ts, j, is_xcorr=True, line_num=line_num)
+                )
                 file_ts1_split_list.append(self.prepare_timestamps(ts1, j, line_num=line_num1))
                 file_ts2_split_list.append(self.prepare_timestamps(ts2, j, line_num=line_num2))
 
@@ -1619,14 +1610,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             file_skipped_duration,
         )
 
-    def prepare_timestamps(self, ts_in, idx, line_num=None, n_splits=None):
-        """A utility function for linear scan data"""
+    def prepare_timestamps(self, ts_in, idx, is_xcorr=False, line_num=None, n_splits=None):
+        """Doc."""
 
         if self.scan_type in {"static", "circle"}:
             splits = np.linspace(0, ts_in.size, n_splits + 1, dtype=np.int32)
-            try:
+            if is_xcorr:  # 3D
                 return ts_in[:, splits[idx] : splits[idx + 1]]
-            except IndexError:  # 1D
+            else:  # 1D
                 return ts_in[splits[idx] : splits[idx + 1]]
 
         elif self.scan_type == "angular":
@@ -1635,9 +1626,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             valid[line_num == -idx - self.LINE_END_ADDER] = -2
 
             #  remove photons from wrong lines
-            try:
+            if is_xcorr:  # 3D before adding 'valid' row
                 ts_out = ts_in[:, valid != 0]
-            except IndexError:  # 1D
+            else:  # 1D before adding 'valid' row
                 ts_out = ts_in[valid != 0]
             valid = valid[valid != 0]
 
@@ -1649,8 +1640,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             if valid[0] != -1:
                 # remove photons till the first found beginning
                 j_start = np.where(valid == -1)[0]
+
                 if len(j_start) > 0:
-                    ts_out = ts_out[j_start[0] :]
+                    if is_xcorr:  # 3D before adding 'valid' row
+                        ts_out = ts_out[:, j_start[0] :]
+                    else:  # 1D before adding 'valid' row
+                        ts_out = ts_out[j_start[0] :]
                     valid = valid[j_start[0] :]
 
             # check that we stop with the line ending and not its beginning
@@ -1660,9 +1655,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
                 if len(j_end) > 0:
                     *_, j_end_last = j_end
-                    try:
+                    if is_xcorr:  # 3D before adding 'valid' row
                         ts_out = ts_out[:, : j_end_last + 1]
-                    except IndexError:  # 1D
+                    else:  # 1D before adding 'valid' row
                         ts_out = ts_out[: j_end_last + 1]
                     valid = valid[: j_end_last + 1]
 
