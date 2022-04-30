@@ -27,7 +27,7 @@ legacy_matlab_trans_dict = {
     "FullData": "full_data",
     "X": "x",
     "Y": "y",
-    "ActualSpeed": "actual_speed_um_s",
+    "ActualSpeed": "speed_um_s",
     "ScanFreq": "line_freq_hz",
     "SampleFreq": "ao_sampling_freq_hz",
     "PointsPerLineTotal": "samples_per_line",
@@ -391,9 +391,11 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
             scan_pattern = "angular"
             full_data["scan_settings"] = {"pattern": scan_pattern, **scan_settings}
         if full_data.get("ao") is not None:
+            n_rows_ao, n_cols_ao = full_data["ao"].shape
+            n_rows_ai, n_cols_ai = full_data["ai"].shape
             full_data["scan_settings"].update(
-                ao=full_data["ao"].T,
-                ai=full_data["ai"],
+                ao=full_data["ao"].T if n_rows_ao < n_cols_ao else full_data["ao"],
+                ai=full_data["ai"].T if n_rows_ai < n_cols_ai else full_data["ai"],
             )
             full_data["scan_settings"].pop("x", None)
             full_data["scan_settings"].pop("y", None)
@@ -423,6 +425,11 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
             file_dict["system_info"]["afterpulse_params"] = (
                 "exponent_of_polynom_of_log",  # legacy MATLAB format
                 file_dict["system_info"]["afterpulse_params"],
+            )
+            # completing AI to 6 channes (X,Y,Z and their internals)
+            n_samples, _ = full_data["scan_settings"]["ai"].shape
+            full_data["scan_settings"]["ai"] = np.hstack(
+                (full_data["scan_settings"]["ai"], np.full((n_samples, 4), np.nan))
             )
 
     return file_dict
@@ -524,7 +531,13 @@ def load_mat(file_path):
             elem = matobj.__dict__[name]
             if isinstance(elem, spio.matlab.mio5_params.mat_struct):
                 d[name] = _todict(elem)
-            elif isinstance(elem, np.ndarray) and name not in {"Data", "data", "LinearPart"}:
+            elif isinstance(elem, np.ndarray) and name not in {
+                "Data",
+                "data",
+                "LinearPart",
+                "AO",
+                "AI",
+            }:
                 d[name] = _tolist(elem)
             else:
                 d[name] = elem
