@@ -945,7 +945,11 @@ class MainWin:
             curr_template_prefix = re.findall("(^.*)(?=_[0-9]{6})", curr_template)[0]
         except IndexError:
             # legacy template which has no timestamp
-            curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
+            try:
+                curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
+            except IndexError:
+                # legacy template which has no underscores
+                curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[0]
 
         if new_template_prefix == curr_template_prefix:
             logging.warning(

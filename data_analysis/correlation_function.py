@@ -24,7 +24,7 @@ from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
 from utilities.display import Plotter
 from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
-from utilities.helper import Limits, div_ceil, timer, xcorr
+from utilities.helper import Limits, div_ceil, timer, unify_length, xcorr
 
 laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis./laser_pulse_tdc_calib.pkl")
 
@@ -231,6 +231,7 @@ class CorrFunc:
         bg_corr_list,
         should_subtract_afterpulse: bool = True,
         external_afterpulse: np.ndarray = None,
+        is_reverse_xcorr=False,
         **kwargs,
     ):
         """Doc."""
@@ -265,10 +266,10 @@ class CorrFunc:
             try:
                 self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
             except ValueError:  # Cross-correlation - countrate is a 2-tuple
-                self.cf_cr[idx] = np.mean(corr_output.countrate_list[idx]) * self.corrfunc[idx]
+                self.cf_cr[idx] = corr_output.countrate_list[idx][0] * self.corrfunc[idx]
             with suppress(AttributeError):  # no .afterpulse attribute
-                self.cf_cr[idx] -= self.afterpulse[:lag_len]  # ext. afterpulse might be long longer
-                # NOTE: perhaps interpolation is better here? What if ext. afterpulse is shorter?
+                # ext. afterpulse might be shorter/longer
+                self.cf_cr[idx] -= unify_length(self.afterpulse, lag_len)
 
         self.countrate_list = corr_output.countrate_list
 
@@ -500,7 +501,7 @@ class CorrFunc:
             )
             fr_linear_interp = interpolator(r)
 
-        # plot interpolations for checks
+        # plot interpolations for testing
         with Plotter(
             super_title=f"{self.name.capitalize()}: Interpolation Testing",
             xlim=(0, self.vt_um[max(j_intrp) + 5] ** 2),
@@ -1436,7 +1437,16 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             xcorr_type = CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES
 
         CF_names = ("AA", "BB", "AB", "BA")
-        CF_list = [CorrFunc(f"{cf_name}_{xx}", gate1_ns, self.laser_freq_hz) for xx in CF_names]
+        CF_list = [
+            CorrFunc(
+                f"{cf_name}_{xx} ({gate1_ns} vs. {gate2_ns} ns)"
+                if cf_name is not None
+                else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
+                gate1_ns,
+                self.laser_freq_hz,
+            )
+            for xx in CF_names
+        ]
         corr_type_list = [corr_type] * 2 + [xcorr_type] * 2
         ts_split_lists = [
             ts_split_list_A,
@@ -1452,6 +1462,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
                 self.bg_line_corr_list if should_subtract_bg_corr else [],
                 is_verbose=is_verbose,
+                is_reverse_xcorr=True if "BA" in CF.name else False,  # TODO: test me!
                 **kwargs,
             )
             CF.total_duration = total_duration
@@ -1471,11 +1482,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 print("- Done.")
 
         # name the Corrfunc object
-        if cf_name is not None:
-            for xx, CF in zip(CF_names, CF_list):
-                self.xcf[f"{cf_name}_{xx} ({gate1_ns} vs. {gate2_ns} ns)"] = CF
-        else:
-            self.xcf[f"{xx} ({gate1_ns} vs. {gate2_ns} ns)"] = CF
+        for xx, CF in zip(CF_names, CF_list):
+            self.xcf[CF.name] = CF
 
         return CF_list
 

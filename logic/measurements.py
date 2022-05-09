@@ -63,6 +63,7 @@ class MeasurementProcedure:
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
         self.sys_info = file_utilities.default_system_info
         self.sys_info["xyz_um_to_v"] = self.um_v_ratio
+        self.sys_info["date"] = dt.now().strftime("%d-%m-%Y")
 
         # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
         # better suit this case. see this: https://github.com/python/mypy/issues/1996
@@ -407,7 +408,6 @@ class ImageMeasurementProcedure(MeasurementProcedure):
 
         return {
             "laser_mode": self.laser_mode,
-            "version": self.tdc_dvc.tdc_vrsn,
             "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float64),
             "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int64),
             "ao": self.ao_buffer,
@@ -416,7 +416,6 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             "tdc_scan_data": {
                 # TODO: prepare a function to cut the data into planes, similar to how the counts are cut
                 "byte_data": np.array(self.data_dvc.data, dtype=np.uint8),
-                "data_version": self.tdc_dvc.data_vrsn,  # already in 'version'
                 "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
                 "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
                 "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
