@@ -85,6 +85,15 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     return img, thresh
 
 
+def unify_length(vec_in: np.ndarray, out_len: int) -> np.ndarray:
+    """Either trims or zero-pads the tail of a 1D array to match 'out_len'"""
+
+    if len(vec_in) >= out_len:
+        return vec_in[:out_len]
+    else:
+        return np.hstack((vec_in, np.zeros(out_len - len(vec_in))))
+
+
 def xcorr(a, b):
     """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
@@ -219,11 +228,15 @@ class Limits:
 
     def __gt__(self, other):
         if isinstance(other, (int, float)):
-            return other < self.upper
+            return other < self.lower
+        if isinstance(other, Limits):
+            return other.upper < self.lower
 
     def __lt__(self, other):
         if isinstance(other, (int, float)):
-            return other > self.lower
+            return other > self.upper
+        if isinstance(other, Limits):
+            return other.lower > self.upper
 
     def __contains__(self, other):
         """

@@ -562,6 +562,9 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 )
                 ao_data_z = self._limit_ao_data(ao_task, ao_data_z)
                 self.analog_write(z_task_name, ao_data_z)
+                # TODO: perhaps floating z should be introduced here and not during pattern creation?
+                # This is because there is no reason why the AOZ array should be the same length as the AOX/Y array -
+                # this unnecessary requirement limits how slow the Z variation can be (should be very slow, and even out of sync with XY)
 
             if start is True:
                 self.start_tasks("ao")
