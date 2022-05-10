@@ -277,6 +277,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     should_auto_roi=("solDataAutoRoi", "QCheckBox", "main", False),
     should_subtract_bg_corr=("solDataSubtractBgCorr", "QCheckBox", "main", False),
     should_subtract_afterpulse=("solDataSubtractAfterpulse", "QCheckBox", "main", False),
+    should_use_inherent_afterpulse=("solDataUseInherentAfterpulse", "QCheckBox", "main", False),
     override_system_info=("solDataUseDefaultSysInfo", "QCheckBox", "main", False),
     auto_load_processed=("solImportAutoLoadProcessed", "QCheckBox", "main", False),
 )

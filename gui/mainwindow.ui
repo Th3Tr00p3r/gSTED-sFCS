@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5534,14 +5534,16 @@ Measurement</string>
                           <item row="1" column="1">
                            <widget class="QCheckBox" name="solDataSubtractAfterpulse">
                             <property name="text">
-                             <string>Subtract Afterpulse</string>
+                             <string>Subtract
+Afterpulsing</string>
                             </property>
                            </widget>
                           </item>
                           <item row="2" column="1">
                            <widget class="QCheckBox" name="solDataSubtractBgCorr">
                             <property name="text">
-                             <string>Subtract Background</string>
+                             <string>Subtract
+Background</string>
                             </property>
                            </widget>
                           </item>
@@ -5549,6 +5551,22 @@ Measurement</string>
                            <widget class="QCheckBox" name="solDataAutoRoi">
                             <property name="text">
                              <string>Auto ROI</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="2" column="0">
+                           <widget class="QCheckBox" name="solDataUseInherentAfterpulse">
+                            <property name="font">
+                             <font>
+                              <pointsize>8</pointsize>
+                             </font>
+                            </property>
+                            <property name="text">
+                             <string>Inherent
+Afterpulsing</string>
+                            </property>
+                            <property name="tristate">
+                             <bool>false</bool>
                             </property>
                            </widget>
                           </item>
