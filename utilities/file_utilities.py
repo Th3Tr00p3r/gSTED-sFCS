@@ -638,15 +638,19 @@ def rotate_data_to_disk(does_modify_data: bool = False) -> Callable:
 
     def outer_wrapper(method) -> Callable:
         @functools.wraps(method)
-        def method_wrapper(self, *args, **kwargs):
-            self.dump_or_load_data(should_load=True, method_name=method.__name__)
-            value = method(self, *args, **kwargs)
-            if does_modify_data:
-                self.dump_or_load_data(should_load=False, method_name=method.__name__)
-            else:
-                self.data = []
-                self.is_data_dumped = True
-            return value
+        def method_wrapper(self, *args, should_rotate_data=True, **kwargs):
+            if should_rotate_data:
+                self.dump_or_load_data(should_load=True, method_name=method.__name__)
+                value = method(self, *args, **kwargs)
+                if does_modify_data:
+                    self.dump_or_load_data(should_load=False, method_name=method.__name__)
+                else:
+                    self.data = []
+                    self.is_data_dumped = True
+                return value
+
+            else:  # don't do anything
+                return method(self, *args, **kwargs)
 
         return method_wrapper
 

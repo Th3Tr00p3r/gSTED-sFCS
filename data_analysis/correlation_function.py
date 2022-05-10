@@ -187,8 +187,9 @@ class CorrFunc:
     g0: float
     EPSILON = 1e-5  # TODO: why is this needed (in low-data measurements)
 
-    def __init__(self, name, gate_ns, laser_freq_hz):
+    def __init__(self, name: str, correlator_type: int, gate_ns, laser_freq_hz):
         self.name = name
+        self.correlator_type = correlator_type
         self.gate_ns = Limits(gate_ns)
         self.laser_freq_hz = laser_freq_hz
 
@@ -198,7 +199,6 @@ class CorrFunc:
 
     def correlate_measurement(
         self,
-        correlator_type: int,
         time_stamp_split_list: List[np.ndarray],
         *args,
         #        should_parallel_process=False,
@@ -213,7 +213,7 @@ class CorrFunc:
         SC = SoftwareCorrelator()
         output = SC.correlate_list(
             time_stamp_split_list,
-            correlator_type,
+            self.correlator_type,
             timebase_ms=1000 / self.laser_freq_hz,
             is_verbose=is_verbose,
         )
@@ -231,7 +231,6 @@ class CorrFunc:
         bg_corr_list,
         should_subtract_afterpulse: bool = True,
         external_afterpulse: np.ndarray = None,
-        is_reverse_xcorr=False,
         **kwargs,
     ):
         """Doc."""
@@ -247,10 +246,11 @@ class CorrFunc:
             corr_output.corrfunc_list[idx] -= bg_corr
 
         # subtract afterpulsing
-        if external_afterpulse is not None:
-            self.afterpulse = external_afterpulse
-        elif should_subtract_afterpulse:
-            self.calculate_afterpulse(afterpulse_params)
+        if should_subtract_afterpulse:
+            if external_afterpulse is not None:
+                self.afterpulse = external_afterpulse
+            else:
+                self.calculate_afterpulse(afterpulse_params)
 
         # zero-pad and generate cf_cr
         lag_len = len(self.lag)
@@ -266,7 +266,7 @@ class CorrFunc:
             try:
                 self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
             except ValueError:  # Cross-correlation - countrate is a 2-tuple
-                self.cf_cr[idx] = corr_output.countrate_list[idx][0] * self.corrfunc[idx]
+                self.cf_cr[idx] = corr_output.countrate_list[idx][1] * self.corrfunc[idx]  # [0]?
             with suppress(AttributeError):  # no .afterpulse attribute
                 # ext. afterpulse might be shorter/longer
                 self.cf_cr[idx] -= unify_length(self.afterpulse, lag_len)
@@ -1211,6 +1211,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         gate_ns=Limits(0, np.inf),
         afterpulse_params=None,
         external_afterpulse=None,
+        should_use_inherent_afterpulse=False,
         should_subtract_bg_corr=True,
         is_verbose=False,
         min_time_frac=0.5,
@@ -1223,6 +1224,23 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         """
 
         self.min_duration_frac = min_time_frac
+
+        # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
+        if is_verbose:
+            print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
+        if should_use_inherent_afterpulse:
+            self.calibrate_tdc(should_rotate_data=False)  # abort data rotation decorator
+            CF_BA, *_ = self.cross_correlate_data(
+                corr_names=("BA",),
+                cf_name="Afterpulsing",
+                gate1_ns=Limits(2, 20),
+                gate2_ns=Limits(35, 85),
+                should_subtract_afterpulse=False,
+                #                should_subtract_bg_corr=False,
+                should_rotate_data=False,  # abort data rotation decorator
+            )
+            CF_BA.average_correlation()
+            external_afterpulse = CF_BA.avg_cf_cr
 
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(gate_ns)
@@ -1248,9 +1266,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         elif self.scan_type == "angular":
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
-        CF = CorrFunc(cf_name, gate_ns, self.laser_freq_hz)
+        CF = CorrFunc(cf_name, corr_type, gate_ns, self.laser_freq_hz)
         CF.correlate_measurement(
-            corr_type,
             ts_split_list,
             afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
             self.bg_line_corr_list if should_subtract_bg_corr else [],
@@ -1389,6 +1406,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
     @file_utilities.rotate_data_to_disk()
     def cross_correlate_data(
         self,
+        corr_names=("AA", "BB", "AB", "BA"),
         cf_name=None,
         gate1_ns=Limits(0, np.inf),
         gate2_ns=Limits(0, np.inf),
@@ -1418,14 +1436,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         # correlate data
         if is_verbose:
             print(
-                f"Cross-Correlating {self.scan_type} data ({self.name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
+                f"Cross-Correlating ({', '.join(corr_names)}) {self.scan_type} data ({self.name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
                 end=" ",
             )
 
         (ts_split_lists_tuple, total_duration, skipped_duration,) = self._prepare_xcorr_split_list(
             is_verbose=is_verbose, gate1_ns=gate1_ns, gate2_ns=gate2_ns
         )
-        ts_split_list_AB, ts_split_list_A, ts_split_list_B = ts_split_lists_tuple
+        ts_split_list_AB, ts_split_list_AA, ts_split_list_BB = ts_split_lists_tuple
 
         if self.scan_type in {"static", "circle"}:
             ts_split_list_BA = [ts_split_AB[[0, 2, 1], :] for ts_split_AB in ts_split_list_AB]
@@ -1436,33 +1454,31 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
             xcorr_type = CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES
 
-        CF_names = ("AA", "BB", "AB", "BA")
         CF_list = [
             CorrFunc(
                 f"{cf_name}_{xx} ({gate1_ns} vs. {gate2_ns} ns)"
                 if cf_name is not None
                 else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
+                corr_type if xx in {"AA", "BB"} else xcorr_type,
                 gate1_ns,
                 self.laser_freq_hz,
             )
-            for xx in CF_names
+            for xx in corr_names
         ]
-        corr_type_list = [corr_type] * 2 + [xcorr_type] * 2
-        ts_split_lists = [
-            ts_split_list_A,
-            ts_split_list_B,
-            ts_split_list_AB,
-            ts_split_list_BA,
-        ]
+        all_ts_split_lists_dict = {
+            "AA": ts_split_list_AA,
+            "BB": ts_split_list_BB,
+            "AB": ts_split_list_AB,
+            "BA": ts_split_list_BA,
+        }
+        ts_split_lists = [all_ts_split_lists_dict[xx] for xx in corr_names]
 
-        for CF, correlator_type, ts_split_list in zip(CF_list, corr_type_list, ts_split_lists):
+        for CF, ts_split_list in zip(CF_list, ts_split_lists):
             CF.correlate_measurement(
-                correlator_type,
                 ts_split_list,
                 afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
                 self.bg_line_corr_list if should_subtract_bg_corr else [],
                 is_verbose=is_verbose,
-                is_reverse_xcorr=True if "BA" in CF.name else False,  # TODO: test me!
                 **kwargs,
             )
             CF.total_duration = total_duration
@@ -1482,7 +1498,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 print("- Done.")
 
         # name the Corrfunc object
-        for xx, CF in zip(CF_names, CF_list):
+        for xx, CF in zip(corr_names, CF_list):
             self.xcf[CF.name] = CF
 
         return CF_list
@@ -1634,9 +1650,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             valid[line_num == -idx - self.LINE_END_ADDER] = -2
 
             #  remove photons from wrong lines
-            if is_xcorr:  # 3D before adding 'valid' row
+            if is_xcorr:  # 3-rows before adding 'valid' row
                 ts_out = ts_in[:, valid != 0]
-            else:  # 1D before adding 'valid' row
+            else:  # 1-row before adding 'valid' row
                 ts_out = ts_in[valid != 0]
             valid = valid[valid != 0]
 
@@ -1650,9 +1666,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 j_start = np.where(valid == -1)[0]
 
                 if len(j_start) > 0:
-                    if is_xcorr:  # 3D before adding 'valid' row
+                    if is_xcorr:  # 3-rows before adding 'valid' row
                         ts_out = ts_out[:, j_start[0] :]
-                    else:  # 1D before adding 'valid' row
+                    else:  # 1-row before adding 'valid' row
                         ts_out = ts_out[j_start[0] :]
                     valid = valid[j_start[0] :]
 
@@ -1663,9 +1679,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
                 if len(j_end) > 0:
                     *_, j_end_last = j_end
-                    if is_xcorr:  # 3D before adding 'valid' row
+                    if is_xcorr:  # 3-rows before adding 'valid' row
                         ts_out = ts_out[:, : j_end_last + 1]
-                    else:  # 1D before adding 'valid' row
+                    else:  # 1-row before adding 'valid' row
                         ts_out = ts_out[: j_end_last + 1]
                     valid = valid[: j_end_last + 1]
 
