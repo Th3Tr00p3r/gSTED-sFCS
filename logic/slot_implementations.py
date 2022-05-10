@@ -1313,6 +1313,9 @@ class MainWin:
         loading_options["should_fix_shift"] = import_wdgts.fix_shift
         loading_options["roi_selection"] = "auto" if import_wdgts.should_auto_roi else "all"
         loading_options["should_subtract_afterpulse"] = import_wdgts.should_subtract_afterpulse
+        loading_options[
+            "should_use_inherent_afterpulse"
+        ] = import_wdgts.should_use_inherent_afterpulse
         loading_options["should_subtract_bg_corr"] = import_wdgts.should_subtract_bg_corr
         loading_options["override_system_info"] = import_wdgts.override_system_info
 
@@ -1614,7 +1617,7 @@ class MainWin:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
-        options = self.get_loading_options_as_dict()
+        options_dict = self.get_loading_options_as_dict()
 
         if wdgt_coll.should_assign_loaded:
             template = wdgt_coll.imported_templates.get()
@@ -1625,7 +1628,7 @@ class MainWin:
 
         MeasAssignParams = namedtuple("MeasAssignParams", "template method options")
         self._app.analysis.assigned_to_experiment[meas_type] = MeasAssignParams(
-            template, method, options
+            template, method, options_dict
         )
 
         wdgt_to_assign_to = getattr(wdgt_coll, f"assigned_{meas_type}_template")
