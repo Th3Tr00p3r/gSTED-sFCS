@@ -230,7 +230,7 @@ class CorrFunc:
         afterpulse_params,
         bg_corr_list,
         should_subtract_afterpulse: bool = True,
-        external_afterpulse: np.ndarray = None,
+        external_afterpulsing: np.ndarray = None,
         **kwargs,
     ):
         """Doc."""
@@ -247,8 +247,8 @@ class CorrFunc:
 
         # subtract afterpulsing
         if should_subtract_afterpulse:
-            if external_afterpulse is not None:
-                self.afterpulse = external_afterpulse
+            if external_afterpulsing is not None:
+                self.afterpulse = external_afterpulsing
             else:
                 self.calculate_afterpulse(afterpulse_params)
 
@@ -266,7 +266,7 @@ class CorrFunc:
             try:
                 self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
             except ValueError:  # Cross-correlation - countrate is a 2-tuple
-                self.cf_cr[idx] = corr_output.countrate_list[idx][1] * self.corrfunc[idx]  # [0]?
+                self.cf_cr[idx] = corr_output.countrate_list[idx][0] * self.corrfunc[idx]  # [0]?
             with suppress(AttributeError):  # no .afterpulse attribute
                 # ext. afterpulse might be shorter/longer
                 self.cf_cr[idx] -= unify_length(self.afterpulse, lag_len)
@@ -1210,8 +1210,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         cf_name=None,
         gate_ns=Limits(0, np.inf),
         afterpulse_params=None,
-        external_afterpulse=None,
-        should_use_inherent_afterpulse=False,
+        external_afterpulsing=None,
+        should_use_inherent_afterpulsing=False,
+        inherent_afterpulsing_gates=(Limits(2, 20), Limits(35, 85)),
         should_subtract_bg_corr=True,
         is_verbose=False,
         min_time_frac=0.5,
@@ -1226,21 +1227,22 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         self.min_duration_frac = min_time_frac
 
         # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
-        if is_verbose:
-            print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
-        if should_use_inherent_afterpulse:
+        if should_use_inherent_afterpulsing:
+            if is_verbose:
+                print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
+            gate1_ns, gate2_ns = inherent_afterpulsing_gates
             self.calibrate_tdc(should_rotate_data=False)  # abort data rotation decorator
             CF_BA, *_ = self.cross_correlate_data(
-                corr_names=("BA",),
+                corr_names=("AB",),
                 cf_name="Afterpulsing",
-                gate1_ns=Limits(2, 20),
-                gate2_ns=Limits(35, 85),
+                gate1_ns=gate1_ns,
+                gate2_ns=gate2_ns,
                 should_subtract_afterpulse=False,
                 #                should_subtract_bg_corr=False,
                 should_rotate_data=False,  # abort data rotation decorator
             )
             CF_BA.average_correlation()
-            external_afterpulse = CF_BA.avg_cf_cr
+            external_afterpulsing = CF_BA.avg_cf_cr
 
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(gate_ns)
@@ -1272,7 +1274,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
             self.bg_line_corr_list if should_subtract_bg_corr else [],
             is_verbose=is_verbose,
-            external_afterpulse=external_afterpulse,
+            external_afterpulsing=external_afterpulsing,
             **kwargs,
         )
 
@@ -1576,7 +1578,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 j_gate2 = gate2_ns.valid_indices(delay_time)
                 pulse_runtime1 = pulse_runtime[j_gate1]
                 pulse_runtime2 = pulse_runtime[j_gate2]
-                pulse_runtime = np.vstack((pulse_runtime, j_gate1, j_gate2))
+                pulse_runtime = np.vstack((pulse_runtime, j_gate2, j_gate1))
                 j_gate = j_gate1 | j_gate2
                 pulse_runtime = pulse_runtime[:, j_gate]
                 ts = pulse_runtime.astype(np.int32)
@@ -1605,7 +1607,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             )  # NaNs mark line starts/ends
             pulse_runtime1 = p.pulse_runtime[j_gate1]
             pulse_runtime2 = p.pulse_runtime[j_gate2]
-            pulse_runtime = np.vstack((p.pulse_runtime, j_gate1, j_gate2))
+            pulse_runtime = np.vstack((p.pulse_runtime, j_gate2, j_gate1))
             j_gate = j_gate1 | j_gate2
             pulse_runtime = pulse_runtime[:, j_gate]
             ts = pulse_runtime.astype(np.int32)
