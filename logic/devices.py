@@ -28,6 +28,8 @@ from utilities.helper import Limits, div_ceil, generate_numbers_from_string, num
 class BaseDevice:
     """Doc."""
 
+    log_ref: str
+
     def __init__(self, *args, **kwargs):
         self.error_dict = None
         super().__init__(*args, **kwargs)
@@ -70,6 +72,15 @@ class BaseDevice:
 
         if not self.error_dict and should_change_icons:
             self.change_icons("on" if is_being_switched_on else "off")
+
+    def disable_switch(self) -> None:
+        """Disable the GUI switch for the device (used to avoid further errors)"""
+
+        with suppress(AttributeError):  # Device has no switch
+            self.switch_widget.obj.setEnabled(False)
+            self.switch_widget.obj.setToolTip(
+                f"{self.log_ref} switch is disabled due to device error. Press LED for details."
+            )
 
 
 class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):

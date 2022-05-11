@@ -5452,7 +5452,7 @@ Measurement</string>
                          </widget>
                         </item>
                         <item>
-                         <layout class="QHBoxLayout" name="horizontalLayout_65" stretch="10,1">
+                         <layout class="QHBoxLayout" name="horizontalLayout_65" stretch="10,0,1">
                           <property name="spacing">
                            <number>2</number>
                           </property>
@@ -5460,6 +5460,13 @@ Measurement</string>
                            <widget class="QPushButton" name="solImportLoadProcessed">
                             <property name="text">
                              <string>Load</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QCheckBox" name="solImportReCorrelate">
+                            <property name="text">
+                             <string>Re-correlate</string>
                             </property>
                            </widget>
                           </item>
