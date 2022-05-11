@@ -1254,6 +1254,17 @@ class MainWin:
                         f"Pre-processed measurement not found at: '{file_path}'. Processing data regularly."
                     )
 
+                if should_re_correlate := import_wdgts.should_re_correlate.get():
+                    options_dict = self.get_loading_options_as_dict()
+                    # Inferring data_dype from template
+                    data_type = self.infer_data_type_from_template(current_template)
+
+                    measurement.correlate_data(
+                        cf_name=data_type,
+                        is_verbose=True,
+                        **options_dict,
+                    )
+
             if measurement is None:  # process data
                 options_dict = self.get_loading_options_as_dict()
 
@@ -1314,8 +1325,8 @@ class MainWin:
         loading_options["roi_selection"] = "auto" if import_wdgts.should_auto_roi else "all"
         loading_options["should_subtract_afterpulse"] = import_wdgts.should_subtract_afterpulse
         loading_options[
-            "should_use_inherent_afterpulse"
-        ] = import_wdgts.should_use_inherent_afterpulse
+            "should_use_inherent_afterpulsing"
+        ] = import_wdgts.should_use_inherent_afterpulsing
         loading_options["should_subtract_bg_corr"] = import_wdgts.should_subtract_bg_corr
         loading_options["override_system_info"] = import_wdgts.override_system_info
 
