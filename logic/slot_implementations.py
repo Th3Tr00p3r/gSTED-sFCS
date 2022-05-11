@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import shutil
 import sys
 import webbrowser
 from collections import namedtuple
@@ -1169,6 +1170,34 @@ class MainWin:
             file_utilities.save_processed_solution_meas(measurement, curr_dir)
             logging.info("Saved the processed data.")
 
+    def delete_all_processed_data(self) -> None:
+        """Doc."""
+
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+
+        if import_wdgts.is_image_type:
+            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
+        elif import_wdgts.is_solution_type:
+            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
+        save_path = Path(meas_settings.save_path)
+
+        if processed_dir_paths := [
+            item / "solution" / "processed"
+            for item in save_path.iterdir()
+            if (item / "solution" / "processed").is_dir()
+        ]:
+            pressed = dialog.Question(
+                txt="Are you sure you wish to delete all processed data?",
+                title="Clearing Processed Data",
+            ).display()
+            if pressed == dialog.NO:
+                return
+
+            for dir_path in processed_dir_paths:
+                shutil.rmtree(dir_path, ignore_errors=True)
+
+            self._gui.solImportLoadProcessed.setEnabled(False)
+
     def toggle_save_processed_enabled(self):
         """Doc."""
 
@@ -1253,7 +1282,7 @@ class MainWin:
                     print(
                         f"Pre-processed measurement not found at: '{file_path}'. Processing data regularly."
                     )
-
+            with suppress(AttributeError):  # TODO: delete button should be disabled!
                 if import_wdgts.should_re_correlate:
                     options_dict = self.get_loading_options_as_dict()
                     # Inferring data_dype from template
