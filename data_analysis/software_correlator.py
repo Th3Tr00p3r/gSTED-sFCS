@@ -133,8 +133,8 @@ class SoftwareCorrelator:
                     f"Photon array {photon_array.shape} should have 3 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
                 )
             duration_s = photon_array[0, :].sum() * timebase_ms / 1000
-            countrate_a = photon_array[1, :].sum() / duration_s
-            countrate_b = photon_array[2, :].sum() / duration_s
+            countrate_a = photon_array[2, :].sum() / duration_s
+            countrate_b = photon_array[1, :].sum() / duration_s
             self.countrate = (countrate_a, countrate_b)
 
         elif corr_type == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
@@ -153,8 +153,8 @@ class SoftwareCorrelator:
                 )
             valid = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
-            countrate_a = np.sum(photon_array[1, :] == 1) / duration_s
-            countrate_b = np.sum(photon_array[2, :] == 1) / duration_s
+            countrate_a = np.sum(photon_array[2, :] == 1) / duration_s
+            countrate_b = np.sum(photon_array[1, :] == 1) / duration_s
             self.countrate = (countrate_a, countrate_b)
         else:
             raise ValueError("Invalid correlator type!")
