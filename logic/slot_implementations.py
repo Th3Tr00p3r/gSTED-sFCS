@@ -1254,7 +1254,7 @@ class MainWin:
                         f"Pre-processed measurement not found at: '{file_path}'. Processing data regularly."
                     )
 
-                if should_re_correlate := import_wdgts.should_re_correlate.get():
+                if import_wdgts.should_re_correlate:
                     options_dict = self.get_loading_options_as_dict()
                     # Inferring data_dype from template
                     data_type = self.infer_data_type_from_template(current_template)
