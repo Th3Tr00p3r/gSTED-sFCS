@@ -26,7 +26,7 @@ from utilities.display import Plotter
 from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
 from utilities.helper import Limits, div_ceil, timer, unify_length, xcorr
 
-laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis./laser_pulse_tdc_calib.pkl")
+laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis/laser_pulse_tdc_calib.pkl")
 
 
 class AngularScanMixin:

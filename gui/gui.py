@@ -76,6 +76,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.impl.switch_data_type)
         self.solImportSaveProcessed.released.connect(self.impl.save_processed_data)
+        self.solImportDeleteProcessed.released.connect(self.impl.delete_all_processed_data)
         self.solImportLoadProcessed.released.connect(
             lambda: self.impl.import_sol_data(should_load_processed=True)
         )
