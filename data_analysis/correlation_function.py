@@ -37,7 +37,7 @@ class AngularScanMixin:
     def _convert_angular_scan_to_image(
         self, pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
     ):
-        """utility function for opening Angular Scans"""
+        """Converts angular scan pulse_runtime into an image."""
 
         # calculate the number of samples obtained at each photon arrival, since beginning of file
         sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
@@ -56,18 +56,18 @@ class AngularScanMixin:
 
         return img, sample_runtime, pixel_num, line_num
 
-    def _get_best_pix_shift(self, img: np.ndarray, min_shift, max_shift) -> int:
+    def _get_data_shift(self, cnt: np.ndarray) -> int:
         """Doc."""
 
-        score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
-        pix_shifts = np.arange(min_shift, max_shift)
-        for idx, pix_shift in enumerate(range(min_shift, max_shift)):
-            rolled_img = np.roll(img, pix_shift).astype(np.uint32)
-            score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
-        return pix_shifts[score.argmin()]
+        def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
+            """Doc."""
 
-    def _fix_data_shift(self, cnt) -> int:
-        """Doc."""
+            score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
+            pix_shifts = np.arange(min_shift, max_shift)
+            for idx, pix_shift in enumerate(range(min_shift, max_shift)):
+                rolled_img = np.roll(img, pix_shift).astype(np.int32)
+                score[idx] = (abs(rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :]))).sum()
+            return pix_shifts[score.argmin()]
 
         height, width = cnt.shape
 
@@ -78,11 +78,10 @@ class AngularScanMixin:
         # limit initial attempt to the width of the image
         min_pix_shift = -round(width / 2)
         max_pix_shift = min_pix_shift + width + 1
-        pix_shift = self._get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+        pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
-        # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
-        # OR if the 'return row' (the empty one) is not at the bottom for some reason
-        # TODO: ask Oleg how the latter can happen
+        # Test if not stuck in local minimum. Either 'outer_half_sum > inner_half_sum'
+        # Or if the 'return row' (the empty one) is not at the bottom after shift
         rolled_cnt = np.roll(cnt, pix_shift)
         inner_half_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
         outer_half_sum = rolled_cnt.sum() - inner_half_sum
@@ -94,7 +93,7 @@ class AngularScanMixin:
                 print("Data is heavily shifted, check it out!", end=" ")
             min_pix_shift = -round(cnt.size / 2)
             max_pix_shift = min_pix_shift + cnt.size + 1
-            pix_shift = self._get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+            pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
         return pix_shift
 
@@ -1060,7 +1059,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
             if should_fix_shift:
                 print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
-                pix_shift = self._fix_data_shift(sec_cnt.copy())
+                pix_shift = self._get_data_shift(sec_cnt.copy())
                 sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
                     self.laser_freq_hz / p.ao_sampling_freq_hz
                 )
