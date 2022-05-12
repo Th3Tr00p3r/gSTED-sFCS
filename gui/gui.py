@@ -59,7 +59,7 @@ class MainWin(QtWidgets.QMainWindow):
         # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.impl.displace_scanner_axis(1))
         self.axisMoveDown.released.connect(lambda: self.impl.displace_scanner_axis(-1))
-        self.goToOrg.released.connect(lambda: self.impl.go_to_origin("XYZ"))
+        self.goToOrg.released.connect(self.impl.go_to_origin)
         self.goToOrgXY.released.connect(lambda: self.impl.go_to_origin("XY"))
         self.goToOrgZ.released.connect(lambda: self.impl.go_to_origin("Z"))
 
@@ -76,6 +76,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.analysisDataTypeGroup.addButton(self.solDataImport)
         self.analysisDataTypeGroup.buttonReleased.connect(self.impl.switch_data_type)
         self.solImportSaveProcessed.released.connect(self.impl.save_processed_data)
+        self.solImportDeleteProcessed.released.connect(self.impl.delete_all_processed_data)
         self.solImportLoadProcessed.released.connect(
             lambda: self.impl.import_sol_data(should_load_processed=True)
         )

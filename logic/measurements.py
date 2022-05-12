@@ -92,7 +92,7 @@ class MeasurementProcedure:
                 self._app.gui.main.impl.device_toggle("pixel_clock", leave_off=True)
 
                 if self.type == "SFCSSolution":
-                    self._app.gui.main.impl.go_to_origin("XY")
+                    self._app.gui.main.impl.go_to_origin()
                     type_ = "solution"
                 elif self.type == "SFCSImage":
                     self._app.gui.main.impl.move_scanners(destination=self.scan_params.initial_ao)
