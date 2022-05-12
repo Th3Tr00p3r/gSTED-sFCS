@@ -289,7 +289,8 @@ class ScanPatternAO:
 
         # extend to best fit the AO sampling rate
         _, samples_per_scan = ao_buffer.shape
-        n_scans = int(ao_sampling_freq_hz / samples_per_scan)
+        # TODO: TESTESTEST multiplied by 10 for floating Z
+        n_scans = int(ao_sampling_freq_hz / samples_per_scan) * 10
         ao_buffer = np.hstack([ao_buffer] * n_scans)
 
         # floating z - scan slowly in z-axis (one period during many xy circles)
@@ -322,7 +323,8 @@ class ScanPatternAO:
         circumference = pi * diameter_um
         circle_freq_hz = speed_um_s / circumference
         samples_per_circle = int(ao_sampling_freq_hz / circle_freq_hz)
-        n_circles = int(ao_sampling_freq_hz / samples_per_circle)
+        # TODO: TESTESTEST multiplied by 10 for floating Z
+        n_circles = int(ao_sampling_freq_hz / samples_per_circle) * 10
 
         x_um_v_ratio, y_um_v_ratio, z_um_v_ratio = self.um_v_ratio
         R_Vx = diameter_um / 2 / x_um_v_ratio
