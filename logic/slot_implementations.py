@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import shutil
 import sys
 import webbrowser
 from collections import namedtuple
@@ -214,7 +215,7 @@ class MainWin:
         logging.debug(f"{self._app.devices.scanners.log_ref} were moved to {str(destination)} V")
 
     # TODO: implement a 'go_to_last_position' - same as origin, just need to save last location each time (if it's not the origin)
-    def go_to_origin(self, which_axes: str) -> None:
+    def go_to_origin(self, which_axes: str = "XYZ") -> None:
         """Doc."""
 
         scanners_dvc = self._app.devices.scanners
@@ -386,7 +387,7 @@ class MainWin:
                 self._gui.startSolScanDep.setEnabled(True)
                 self._gui.startSolScanSted.setEnabled(True)
                 getattr(self._gui, f"startSolScan{laser_mode}").setText(f"{laser_mode} \nScan")
-                self._gui.impl.go_to_origin("XY")
+                self._gui.impl.go_to_origin()
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanDur.setEnabled(True)
                 self._gui.solScanDurUnits.setEnabled(True)
@@ -1169,6 +1170,34 @@ class MainWin:
             file_utilities.save_processed_solution_meas(measurement, curr_dir)
             logging.info("Saved the processed data.")
 
+    def delete_all_processed_data(self) -> None:
+        """Doc."""
+
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+
+        if import_wdgts.is_image_type:
+            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
+        elif import_wdgts.is_solution_type:
+            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
+        save_path = Path(meas_settings.save_path)
+
+        if processed_dir_paths := [
+            item / "solution" / "processed"
+            for item in save_path.iterdir()
+            if (item / "solution" / "processed").is_dir()
+        ]:
+            pressed = dialog.Question(
+                txt="Are you sure you wish to delete all processed data?",
+                title="Clearing Processed Data",
+            ).display()
+            if pressed == dialog.NO:
+                return
+
+            for dir_path in processed_dir_paths:
+                shutil.rmtree(dir_path, ignore_errors=True)
+
+            self._gui.solImportLoadProcessed.setEnabled(False)
+
     def toggle_save_processed_enabled(self):
         """Doc."""
 
@@ -1253,8 +1282,8 @@ class MainWin:
                     print(
                         f"Pre-processed measurement not found at: '{file_path}'. Processing data regularly."
                     )
-
-                if should_re_correlate := import_wdgts.should_re_correlate.get():
+            with suppress(AttributeError):  # TODO: delete button should be disabled!
+                if import_wdgts.should_re_correlate:
                     options_dict = self.get_loading_options_as_dict()
                     # Inferring data_dype from template
                     data_type = self.infer_data_type_from_template(current_template)
