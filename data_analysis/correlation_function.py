@@ -121,7 +121,7 @@ class AngularScanMixin:
         sampling_freq_Hz,
         image2: np.ndarray = None,
     ) -> list:
-        """Returns a list of auto-correlations of the lines of an image"""
+        """Returns a list of auto-correlations of the lines of an image."""
 
         is_doing_xcorr = image2 is not None
 
@@ -203,7 +203,7 @@ class CorrFunc:
         #        should_parallel_process=False,
         is_verbose: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         """Doc."""
 
         if is_verbose:
@@ -231,7 +231,7 @@ class CorrFunc:
         should_subtract_afterpulse: bool = True,
         external_afterpulsing: np.ndarray = None,
         **kwargs,
-    ):
+    ) -> None:
         """Doc."""
 
         # subtract background correlation
@@ -294,7 +294,7 @@ class CorrFunc:
         should_plot=False,
         plot_kwargs={},
         **kwargs,
-    ):
+    ) -> None:
         """Doc."""
 
         self.rejection = rejection
@@ -361,8 +361,10 @@ class CorrFunc:
         if should_plot:
             self.plot_correlation_function(plot_kwargs=plot_kwargs)
 
-    def _calculate_weighted_avg(self, cf_cr, weights):
-        """Doc."""
+    def _calculate_weighted_avg(
+        self, cf_cr: np.ndarray, weights: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Calculates weighted average and standard error of a 2D array (rows are correlation functions)."""
 
         tot_weights = weights.sum(0)
         try:
@@ -386,7 +388,7 @@ class CorrFunc:
         x_scale="log",
         y_scale="linear",
         **kwargs,
-    ):
+    ) -> None:
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
@@ -415,7 +417,7 @@ class CorrFunc:
         y_scale="linear",
         should_plot=False,
         **kwargs,
-    ):
+    ) -> None:
 
         if fit_param_estimate is None:
             fit_param_estimate = (self.g0, 0.035, 30.0)
@@ -443,11 +445,11 @@ class CorrFunc:
 
     def calculate_structure_factor(
         self,
-        n_interp_pnts=2056,
-        r_max=10,
-        r_min=0.05,
-        g_min=1e-2,
-        n_robust=2,
+        n_interp_pnts: int = 2056,
+        r_max: float = 10.0,
+        r_min: float = 0.05,
+        g_min: float = 1e-2,
+        n_robust: int = 2,
         **kwargs,
     ) -> StructureFactor:
         """Doc."""
@@ -566,7 +568,7 @@ class CorrFunc:
         xi,  # real x vals
         yi,  # real y vals
         n_pnts,  # number of points to include in each intepolation
-    ):
+    ) -> np.ndarray:
         """Doc."""
 
         # translated from: [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
@@ -604,7 +606,7 @@ class CorrFunc:
         n_robust: int = 2,
         should_do_gaussian_interpolation: bool = False,
         dr=None,
-    ):
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Doc."""
 
         n = x.size
