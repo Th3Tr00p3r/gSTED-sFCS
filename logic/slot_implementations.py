@@ -215,7 +215,7 @@ class MainWin:
         logging.debug(f"{self._app.devices.scanners.log_ref} were moved to {str(destination)} V")
 
     # TODO: implement a 'go_to_last_position' - same as origin, just need to save last location each time (if it's not the origin)
-    def go_to_origin(self, which_axes: str) -> None:
+    def go_to_origin(self, which_axes: str = "XYZ") -> None:
         """Doc."""
 
         scanners_dvc = self._app.devices.scanners
@@ -387,7 +387,7 @@ class MainWin:
                 self._gui.startSolScanDep.setEnabled(True)
                 self._gui.startSolScanSted.setEnabled(True)
                 getattr(self._gui, f"startSolScan{laser_mode}").setText(f"{laser_mode} \nScan")
-                self._gui.impl.go_to_origin("XY")
+                self._gui.impl.go_to_origin()
                 self._gui.solScanMaxFileSize.setEnabled(True)
                 self._gui.solScanDur.setEnabled(True)
                 self._gui.solScanDurUnits.setEnabled(True)
