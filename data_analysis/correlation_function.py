@@ -913,7 +913,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         # File Data Loading
         if file_path is not None:  # Loading file from disk
             *_, template = file_path.parts
-            file_idx = int(re.split("_(\\d+)\\.", template)[1])
+            try:
+                file_idx = int(re.split("_(\\d+)\\.", template)[1])
+            except IndexError:  # legacy template style
+                file_idx = int(re.split("(\\d+)\\.", template)[1])
             print(
                 f"Loading and processing file No. {file_idx} ({self.n_paths} files): '{template}'...",
                 end=" ",
