@@ -2,8 +2,7 @@
 
 import logging
 import logging.config
-
-# import shutil
+import shutil
 from collections import deque
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -239,20 +238,6 @@ class App:
             wdgts.SWITCH_COLL.obj_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
-        #        # Turn off video
-        #        with suppress(TypeError):
-        #            # TypeError - self.cameras is None
-        #            for idx, camera in enumerate(self.cameras):
-        #                with suppress(AttributeError, DeviceError):
-        #                    # AttributeError - camera is None
-        #                    # DeviceError - error in camera
-        #                    camera.toggle_video(False)
-        #                self.video_button_gui_toggle(idx + 1, False)
-        #
-        #        self.cameras = None
-        #        self._app.gui.main.actionCamera_Control.setEnabled(True)
-        #        logging.debug("Camera connections closed")
-
         if restart:
             logging.info("Restarting application.")
 
@@ -291,7 +276,7 @@ class App:
             close_all_dvcs(self)
 
             # clear temp folder
-            #            shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True) # TODO: make optional
+            shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True)  # TODO: make optional
 
             logging.info("Quitting application.")
             print("Application closed.")

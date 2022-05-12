@@ -5445,14 +5445,28 @@ Measurement</string>
                        </property>
                        <layout class="QVBoxLayout" name="verticalLayout_109">
                         <item>
-                         <widget class="QPushButton" name="solImportSaveProcessed">
-                          <property name="text">
-                           <string>Save</string>
+                         <layout class="QHBoxLayout" name="horizontalLayout_26">
+                          <property name="spacing">
+                           <number>2</number>
                           </property>
-                         </widget>
+                          <item>
+                           <widget class="QPushButton" name="solImportSaveProcessed">
+                            <property name="text">
+                             <string>Save</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QPushButton" name="solImportDeleteProcessed">
+                            <property name="text">
+                             <string>Delete All</string>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
                         </item>
                         <item>
-                         <layout class="QHBoxLayout" name="horizontalLayout_65" stretch="10,1">
+                         <layout class="QHBoxLayout" name="horizontalLayout_65" stretch="10,0,1">
                           <property name="spacing">
                            <number>2</number>
                           </property>
@@ -5460,6 +5474,13 @@ Measurement</string>
                            <widget class="QPushButton" name="solImportLoadProcessed">
                             <property name="text">
                              <string>Load</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QCheckBox" name="solImportReCorrelate">
+                            <property name="text">
+                             <string>Re-correlate</string>
                             </property>
                            </widget>
                           </item>
@@ -8082,7 +8103,7 @@ Experiment</string>
                  </property>
                  <property name="font">
                   <font>
-                   <pointsize>25</pointsize>
+                   <pointsize>22</pointsize>
                   </font>
                  </property>
                  <property name="alignment">
@@ -8242,7 +8263,7 @@ Experiment</string>
                  </property>
                  <property name="font">
                   <font>
-                   <pointsize>25</pointsize>
+                   <pointsize>22</pointsize>
                   </font>
                  </property>
                  <property name="alignment">

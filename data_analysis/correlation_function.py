@@ -26,7 +26,7 @@ from utilities.display import Plotter
 from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
 from utilities.helper import Limits, div_ceil, timer, unify_length, xcorr
 
-laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis./laser_pulse_tdc_calib.pkl")
+laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis/laser_pulse_tdc_calib.pkl")
 
 
 class AngularScanMixin:
@@ -37,7 +37,7 @@ class AngularScanMixin:
     def _convert_angular_scan_to_image(
         self, pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
     ):
-        """utility function for opening Angular Scans"""
+        """Converts angular scan pulse_runtime into an image."""
 
         # calculate the number of samples obtained at each photon arrival, since beginning of file
         sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
@@ -56,18 +56,18 @@ class AngularScanMixin:
 
         return img, sample_runtime, pixel_num, line_num
 
-    def _get_best_pix_shift(self, img: np.ndarray, min_shift, max_shift) -> int:
+    def _get_data_shift(self, cnt: np.ndarray) -> int:
         """Doc."""
 
-        score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
-        pix_shifts = np.arange(min_shift, max_shift)
-        for idx, pix_shift in enumerate(range(min_shift, max_shift)):
-            rolled_img = np.roll(img, pix_shift).astype(np.uint32)
-            score[idx] = ((rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :])) ** 2).sum()
-        return pix_shifts[score.argmin()]
+        def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
+            """Doc."""
 
-    def _fix_data_shift(self, cnt) -> int:
-        """Doc."""
+            score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
+            pix_shifts = np.arange(min_shift, max_shift)
+            for idx, pix_shift in enumerate(range(min_shift, max_shift)):
+                rolled_img = np.roll(img, pix_shift).astype(np.int32)
+                score[idx] = (abs(rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :]))).sum()
+            return pix_shifts[score.argmin()]
 
         height, width = cnt.shape
 
@@ -78,11 +78,10 @@ class AngularScanMixin:
         # limit initial attempt to the width of the image
         min_pix_shift = -round(width / 2)
         max_pix_shift = min_pix_shift + width + 1
-        pix_shift = self._get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+        pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
-        # Test if not stuck in local minimum (outer_half_sum > inner_half_sum)
-        # OR if the 'return row' (the empty one) is not at the bottom for some reason
-        # TODO: ask Oleg how the latter can happen
+        # Test if not stuck in local minimum. Either 'outer_half_sum > inner_half_sum'
+        # Or if the 'return row' (the empty one) is not at the bottom after shift
         rolled_cnt = np.roll(cnt, pix_shift)
         inner_half_sum = rolled_cnt[:, int(width * 0.25) : int(width * 0.75)].sum()
         outer_half_sum = rolled_cnt.sum() - inner_half_sum
@@ -94,7 +93,7 @@ class AngularScanMixin:
                 print("Data is heavily shifted, check it out!", end=" ")
             min_pix_shift = -round(cnt.size / 2)
             max_pix_shift = min_pix_shift + cnt.size + 1
-            pix_shift = self._get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+            pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
 
         return pix_shift
 
@@ -122,7 +121,7 @@ class AngularScanMixin:
         sampling_freq_Hz,
         image2: np.ndarray = None,
     ) -> list:
-        """Returns a list of auto-correlations of the lines of an image"""
+        """Returns a list of auto-correlations of the lines of an image."""
 
         is_doing_xcorr = image2 is not None
 
@@ -204,7 +203,7 @@ class CorrFunc:
         #        should_parallel_process=False,
         is_verbose: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         """Doc."""
 
         if is_verbose:
@@ -232,7 +231,7 @@ class CorrFunc:
         should_subtract_afterpulse: bool = True,
         external_afterpulsing: np.ndarray = None,
         **kwargs,
-    ):
+    ) -> None:
         """Doc."""
 
         # subtract background correlation
@@ -295,7 +294,7 @@ class CorrFunc:
         should_plot=False,
         plot_kwargs={},
         **kwargs,
-    ):
+    ) -> None:
         """Doc."""
 
         self.rejection = rejection
@@ -362,8 +361,10 @@ class CorrFunc:
         if should_plot:
             self.plot_correlation_function(plot_kwargs=plot_kwargs)
 
-    def _calculate_weighted_avg(self, cf_cr, weights):
-        """Doc."""
+    def _calculate_weighted_avg(
+        self, cf_cr: np.ndarray, weights: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Calculates weighted average and standard error of a 2D array (rows are correlation functions)."""
 
         tot_weights = weights.sum(0)
         try:
@@ -387,7 +388,7 @@ class CorrFunc:
         x_scale="log",
         y_scale="linear",
         **kwargs,
-    ):
+    ) -> None:
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
@@ -416,7 +417,7 @@ class CorrFunc:
         y_scale="linear",
         should_plot=False,
         **kwargs,
-    ):
+    ) -> None:
 
         if fit_param_estimate is None:
             fit_param_estimate = (self.g0, 0.035, 30.0)
@@ -444,11 +445,11 @@ class CorrFunc:
 
     def calculate_structure_factor(
         self,
-        n_interp_pnts=2056,
-        r_max=10,
-        r_min=0.05,
-        g_min=1e-2,
-        n_robust=2,
+        n_interp_pnts: int = 2056,
+        r_max: float = 10.0,
+        r_min: float = 0.05,
+        g_min: float = 1e-2,
+        n_robust: int = 2,
         **kwargs,
     ) -> StructureFactor:
         """Doc."""
@@ -567,7 +568,7 @@ class CorrFunc:
         xi,  # real x vals
         yi,  # real y vals
         n_pnts,  # number of points to include in each intepolation
-    ):
+    ) -> np.ndarray:
         """Doc."""
 
         # translated from: [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
@@ -605,7 +606,7 @@ class CorrFunc:
         n_robust: int = 2,
         should_do_gaussian_interpolation: bool = False,
         dr=None,
-    ):
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Doc."""
 
         n = x.size
@@ -913,7 +914,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         # File Data Loading
         if file_path is not None:  # Loading file from disk
             *_, template = file_path.parts
-            file_idx = int(re.split("_(\\d+)\\.", template)[1])
+            try:
+                file_idx = int(re.split("_(\\d+)\\.", template)[1])
+            except IndexError:  # legacy template style
+                file_idx = int(re.split("(\\d+)\\.", template)[1])
             print(
                 f"Loading and processing file No. {file_idx} ({self.n_paths} files): '{template}'...",
                 end=" ",
@@ -1057,7 +1061,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
             if should_fix_shift:
                 print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
-                pix_shift = self._fix_data_shift(sec_cnt.copy())
+                pix_shift = self._get_data_shift(sec_cnt.copy())
                 sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
                     self.laser_freq_hz / p.ao_sampling_freq_hz
                 )

@@ -64,6 +64,7 @@ def err_hndlr(exc, func_frame, func_locals, dvc=None, lvl="error", disp=False) -
             if not dvc.error_dict:  # keep only first error
                 dvc.error_dict = error_dict
             dvc.change_icons("error")
+            dvc.disable_switch()
 
     else:  # logic eror
         log_str = f"{error_dict['type']}: {error_dict['msg']} ({func_string}, {location_string})"
