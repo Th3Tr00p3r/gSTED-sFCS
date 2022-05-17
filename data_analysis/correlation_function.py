@@ -186,8 +186,11 @@ class CorrFunc:
     g0: float
     EPSILON = 1e-5  # TODO: why is this needed (in low-data measurements)
 
-    def __init__(self, name: str, correlator_type: int, gate_ns, laser_freq_hz):
+    def __init__(
+        self, name: str, SC: SoftwareCorrelator, correlator_type: int, gate_ns, laser_freq_hz
+    ):
         self.name = name
+        self.SC = SC
         self.correlator_type = correlator_type
         self.gate_ns = Limits(gate_ns)
         self.laser_freq_hz = laser_freq_hz
@@ -209,8 +212,7 @@ class CorrFunc:
         if is_verbose:
             print(f"Correlating {len(time_stamp_split_list)} splits -", end=" ")
 
-        SC = SoftwareCorrelator()
-        output = SC.correlate_list(
+        output = self.SC.correlate_list(
             time_stamp_split_list,
             self.correlator_type,
             timebase_ms=1000 / self.laser_freq_hz,
@@ -265,7 +267,8 @@ class CorrFunc:
             try:
                 self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
             except ValueError:  # Cross-correlation - countrate is a 2-tuple
-                self.cf_cr[idx] = corr_output.countrate_list[idx][0] * self.corrfunc[idx]  # [0]?
+                countrate_a, countrate_b = corr_output.countrate_list[idx]
+                self.cf_cr[idx] = countrate_a * self.corrfunc[idx]
             with suppress(AttributeError):  # no .afterpulse attribute
                 # ext. afterpulse might be shorter/longer
                 self.cf_cr[idx] -= unify_length(self.afterpulse, lag_len)
@@ -703,11 +706,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
     NAN_PLACEBO: int
     DUMP_PATH = Path("C:/temp_sfcs_data/")
 
-    def __init__(self, name=""):
+    def __init__(self, name="", SC: SoftwareCorrelator = None):
         self.name = name
-        self.data = []  # list to hold the data of each file
-        self.cf = dict()
-        self.xcf = dict()
+        self.data: list = []  # list to hold the data of each file
+        self.SC = SC
+        self.cf: dict = dict()
+        self.xcf: dict = dict()
         self.is_data_dumped = False
         self.scan_type: str
         self.duration_min: float = None
@@ -1272,7 +1276,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         elif self.scan_type == "angular":
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
-        CF = CorrFunc(cf_name, corr_type, gate_ns, self.laser_freq_hz)
+        CF = CorrFunc(cf_name, self.SC, corr_type, gate_ns, self.laser_freq_hz)
         CF.correlate_measurement(
             ts_split_list,
             afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
@@ -1465,6 +1469,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 f"{cf_name}_{xx} ({gate1_ns} vs. {gate2_ns} ns)"
                 if cf_name is not None
                 else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
+                self.SC,
                 corr_type if xx in {"AA", "BB"} else xcorr_type,
                 gate1_ns,
                 self.laser_freq_hz,
@@ -1821,8 +1826,9 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
     UPPERֹ_ֹGATE_NS = 20
 
-    def __init__(self, name):
+    def __init__(self, name, SC: SoftwareCorrelator):
         self.name = name
+        self.SC = SC
         self.confocal: SolutionSFCSMeasurement
         self.sted: SolutionSFCSMeasurement
 
@@ -1863,7 +1869,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                         **kwargs,
                     )
                 else:  # Use empty measuremnt by default
-                    setattr(self, meas_type, SolutionSFCSMeasurement(name=meas_type))
+                    setattr(self, meas_type, SolutionSFCSMeasurement(name=meas_type, SC=self.SC))
             else:  # use supllied measurement
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
@@ -1889,6 +1895,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
         should_plot: bool = False,
         plot_kwargs: dict = {},
         should_use_preprocessed=False,
+        should_re_correlate=False,
         **kwargs,
     ):
 
@@ -1902,7 +1909,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
         if kwargs.get(f"{meas_type}_file_selection"):
             kwargs["file_selection"] = kwargs[f"{meas_type}_file_selection"]
 
-        measurement = SolutionSFCSMeasurement(name=meas_type)
+        measurement = SolutionSFCSMeasurement(name=meas_type, SC=self.SC)
 
         if should_use_preprocessed:
             try:
@@ -1924,6 +1931,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 should_plot=should_plot,
                 **kwargs,
             )
+        if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.correlate_and_average(is_verbose=True, **kwargs)
 
         if should_plot:

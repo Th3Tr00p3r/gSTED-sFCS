@@ -1,9 +1,9 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
 newTemplate,
-solImportFileSelectionPattern,1-5
-experimentName,
+solImportFileSelectionPattern,1
 lineEdit,
+experimentName,
 spadMode,Free Running
 solScanFloatingAmp,0
 circAoSampFreq,10000
@@ -59,19 +59,19 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,3
-dataYear,2022
-dataDay,29
-dataTemplate1,conc_250xDiluted_angular_sted_193229_*.pkl
+dataMonth,5
+dataYear,2018
+dataDay,10
+dataTemplate1,bp300_angular_exc_*.mat
 solImportUseDontUse,Use
-loadedExperimentNames,test
-assignedGates,
-availableGates,
-importedSolDataTemplates2,conc_250xDiluted_angular_sted_193229_*.pkl
-expPropGstedGate,Lifetime
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
-importedSolDataTemplates1,conc_250xDiluted_angular_sted_193229_*.pkl
+loadedExperimentNames,
+assignedGates,
+availableGates,
+importedSolDataTemplates2,
+expPropGstedGate,Lifetime
+importedSolDataTemplates1,
 avgInterval,5000
 posAxis,X
 solScanParamsStacked,2
@@ -83,8 +83,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,True
-solImportUse,False
+solImportUseAll,False
+solImportUse,True
 assignLoadedMeas,True
 assignRawData,False
 solAnalysisRemoveOver,True
@@ -107,7 +107,8 @@ tabWidget_3,0
 tabWidget_5,1
 autoCrosshair,True
 alwaysSaveImg,False
-solImportAutoLoadProcessed,False
+solImportReCorrelate,True
+solImportAutoLoadProcessed,True
 solDataFixShift,True
 solDataUseDefaultSysInfo,False
 solDataSubtractAfterpulse,True

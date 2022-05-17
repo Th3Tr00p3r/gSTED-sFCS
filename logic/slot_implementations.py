@@ -1059,7 +1059,7 @@ class MainWin:
             # Inferring data_dype from template
             data_type = self.infer_data_type_from_template(template)
 
-            measurement = SolutionSFCSMeasurement()
+            measurement = SolutionSFCSMeasurement(SC=self._app.SC)
             try:
                 measurement.read_fpga_data(
                     date_dir_path / template,
@@ -1304,7 +1304,7 @@ class MainWin:
                 try:
                     with suppress(AttributeError):
                         # AttributeError - No directories found
-                        measurement = SolutionSFCSMeasurement()
+                        measurement = SolutionSFCSMeasurement(SC=self._app.SC)
                         measurement.read_fpga_data(
                             curr_dir / current_template,
                             **options_dict,
@@ -1709,7 +1709,7 @@ class MainWin:
         kwargs["fontsize"] = 10
         kwargs["should_plot_meas"] = False
 
-        experiment = SFCSExperiment(experiment_name)
+        experiment = SFCSExperiment(experiment_name, SC=self._app.SC)
         try:
             experiment.load_experiment(**kwargs)
         except RuntimeError as exc:
