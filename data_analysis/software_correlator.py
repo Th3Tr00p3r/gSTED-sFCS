@@ -1,6 +1,7 @@
 """Software correlator"""
 
 import sys
+from collections import namedtuple
 from ctypes import CDLL, c_double, c_int, c_long
 from dataclasses import dataclass
 from typing import List
@@ -34,6 +35,9 @@ class SoftwareCorrelatorListOutput:
     corrfunc_list: list
     weights_list: list
     countrate_list: list
+
+
+CrossCorrCountRates = namedtuple("CrossCorrCountRates", "a b")
 
 
 class SoftwareCorrelator:
@@ -135,7 +139,7 @@ class SoftwareCorrelator:
             duration_s = photon_array[0, :].sum() * timebase_ms / 1000
             countrate_a = photon_array[2, :].sum() / duration_s
             countrate_b = photon_array[1, :].sum() / duration_s
-            self.countrate = (countrate_a, countrate_b)
+            self.countrate = CrossCorrCountRates(countrate_a, countrate_b)
 
         elif corr_type == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
@@ -155,7 +159,7 @@ class SoftwareCorrelator:
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
             countrate_a = np.sum(photon_array[2, :] == 1) / duration_s
             countrate_b = np.sum(photon_array[1, :] == 1) / duration_s
-            self.countrate = (countrate_a, countrate_b)
+            self.countrate = CrossCorrCountRates(countrate_a, countrate_b)
         else:
             raise ValueError("Invalid correlator type!")
 
