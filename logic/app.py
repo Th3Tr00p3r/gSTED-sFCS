@@ -15,6 +15,7 @@ import gui.gui
 import gui.widgets as wdgts
 import logic.devices as dvcs
 import utilities.helper as helper
+from data_analysis.software_correlator import SoftwareCorrelator
 from gui.icons import icons
 from logic.timeout import Timeout
 from utilities.errors import DeviceError
@@ -43,6 +44,7 @@ class App:
         "camera_1",
         "camera_2",
     )
+    SC = SoftwareCorrelator()
 
     def __init__(self, loop):
         """Doc."""
