@@ -4,6 +4,7 @@ import sys
 from collections import namedtuple
 from ctypes import CDLL, c_double, c_int, c_long
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -43,13 +44,16 @@ CrossCorrCountRates = namedtuple("CrossCorrCountRates", "a b")
 class SoftwareCorrelator:
     """Doc."""
 
-    LIB_PATH = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
+    LIB_DIR_PATH = Path("./SoftCorrelatorDynamicLib/")
 
     def __init__(self):
         if sys.platform == "darwin":
-            self.LIB_PATH = "/Users/oleg/Documents/Python programming/Scanning setups Lab/gSTED-sFCS/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.so"
+            LIB_NAME = "SoftCorrelatorDynamicLib.so"
+        else:  # win32
+            LIB_NAME = "SoftCorrelatorDynamicLib_win32.so"
+        self.LIB_PATH = self.LIB_DIR_PATH / LIB_NAME
 
-        soft_corr_dynamic_lib = CDLL(self.LIB_PATH, winmode=0)
+        soft_corr_dynamic_lib = CDLL(str(self.LIB_PATH), winmode=0)
         get_corr_params = soft_corr_dynamic_lib.getCorrelatorParams
         get_corr_params.restype = None
         get_corr_params.argtypes = [ndpointer(c_int), ndpointer(c_int)]
