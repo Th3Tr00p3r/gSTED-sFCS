@@ -175,10 +175,10 @@ class Limits:
             except TypeError:  # limits is not iterable
                 self.lower, self.upper = limits, upper
                 if limits is None:
-                    raise TypeError("Arguments cannot be 'None'!")
+                    return None
             else:
                 if None in limits:
-                    raise TypeError("Arguments cannot be 'None'!")
+                    return None
 
     def __call__(self, *args, **kwargs):
         self.__init__(*args, **kwargs)
