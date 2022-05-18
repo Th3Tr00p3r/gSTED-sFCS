@@ -1059,7 +1059,7 @@ class MainWin:
             # Inferring data_dype from template
             data_type = self.infer_data_type_from_template(template)
 
-            measurement = SolutionSFCSMeasurement(SC=self._app.SC)
+            measurement = SolutionSFCSMeasurement()
             try:
                 measurement.read_fpga_data(
                     date_dir_path / template,
@@ -1276,7 +1276,9 @@ class MainWin:
                 try:
                     file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
                     logging.info(f"Loading processed data '{current_template}' from hard drive...")
-                    measurement = file_utilities.load_processed_solution_measurement(file_path)
+                    measurement = file_utilities.load_processed_solution_measurement(
+                        file_path, current_template
+                    )
                     print("Done.")
                 except OSError:
                     print(
@@ -1304,7 +1306,7 @@ class MainWin:
                 try:
                     with suppress(AttributeError):
                         # AttributeError - No directories found
-                        measurement = SolutionSFCSMeasurement(SC=self._app.SC)
+                        measurement = SolutionSFCSMeasurement()
                         measurement.read_fpga_data(
                             curr_dir / current_template,
                             **options_dict,
@@ -1687,6 +1689,7 @@ class MainWin:
         kwargs = dict()
         with suppress(KeyError):
             for meas_type, assignment_params in self._app.analysis.assigned_to_experiment.items():
+
                 if assignment_params.method == "loaded":
                     with self.get_measurement_from_template(
                         getattr(wdgt_coll, f"assigned_{meas_type}_template").get(),
@@ -1694,12 +1697,14 @@ class MainWin:
                         method_name="load_experiment",
                     ) as measurement:
                         kwargs[meas_type] = measurement
+
                 elif assignment_params.method == "raw":
                     curr_dir = self.current_date_type_dir_path()
                     kwargs[f"{meas_type}_template"] = (
                         curr_dir / getattr(wdgt_coll, f"assigned_{meas_type}_template").get()
                     )
                     kwargs["should_use_preprocessed"] = data_import_wdgt_coll.auto_load_processed
+                    kwargs["should_re_correlate"] = data_import_wdgt_coll.should_re_correlate
                 # get loading options as kwargs
                 kwargs[f"{meas_type}_kwargs"] = assignment_params.options
 
@@ -1709,7 +1714,7 @@ class MainWin:
         kwargs["fontsize"] = 10
         kwargs["should_plot_meas"] = False
 
-        experiment = SFCSExperiment(experiment_name, SC=self._app.SC)
+        experiment = SFCSExperiment(experiment_name)
         try:
             experiment.load_experiment(**kwargs)
         except RuntimeError as exc:
@@ -1779,7 +1784,7 @@ class MainWin:
             display_kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
             experiment.compare_lifetimes(**display_kwargs)
 
-            if hasattr(experiment.sted, "scan_type"):
+            if hasattr(experiment.sted, "scan_type") and hasattr(experiment.confocal, "scan_type"):
                 lt_params = experiment.get_lifetime_parameters()
 
                 # display parameters in GUI

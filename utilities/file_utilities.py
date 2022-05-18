@@ -331,10 +331,11 @@ def save_processed_solution_meas(meas, dir_path: Path) -> None:
     meas.data = original_data
 
 
-def load_processed_solution_measurement(file_path: Path):
+def load_processed_solution_measurement(file_path: Path, file_template: str):
     """Doc."""
 
     tdc_obj = load_object(file_path)
+    tdc_obj.template = file_template
 
     # Load runtimes as int64 if they are not already of that type
     for p in tdc_obj.data:

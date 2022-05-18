@@ -179,6 +179,9 @@ class StructureFactor:
 class CorrFunc:
     """Doc."""
 
+    # Initialize the software correlator
+    SC = SoftwareCorrelator()
+
     run_duration: float
     afterpulse: np.ndarray
     vt_um: np.ndarray
@@ -186,11 +189,8 @@ class CorrFunc:
     g0: float
     EPSILON = 1e-5  # TODO: why is this needed (in low-data measurements)
 
-    def __init__(
-        self, name: str, SC: SoftwareCorrelator, correlator_type: int, gate_ns, laser_freq_hz
-    ):
+    def __init__(self, name: str, correlator_type: int, gate_ns, laser_freq_hz):
         self.name = name
-        self.SC = SC
         self.correlator_type = correlator_type
         self.gate_ns = Limits(gate_ns)
         self.laser_freq_hz = laser_freq_hz
@@ -267,8 +267,7 @@ class CorrFunc:
             try:
                 self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
             except ValueError:  # Cross-correlation - countrate is a 2-tuple
-                countrate_a, countrate_b = corr_output.countrate_list[idx]
-                self.cf_cr[idx] = countrate_a * self.corrfunc[idx]
+                self.cf_cr[idx] = corr_output.countrate_list[idx].a * self.corrfunc[idx]
             with suppress(AttributeError):  # no .afterpulse attribute
                 # ext. afterpulse might be shorter/longer
                 self.cf_cr[idx] -= unify_length(self.afterpulse, lag_len)
@@ -706,10 +705,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
     NAN_PLACEBO: int
     DUMP_PATH = Path("C:/temp_sfcs_data/")
 
-    def __init__(self, name="", SC: SoftwareCorrelator = None):
+    def __init__(self, name=""):
         self.name = name
         self.data: list = []  # list to hold the data of each file
-        self.SC = SC
         self.cf: dict = dict()
         self.xcf: dict = dict()
         self.is_data_dumped = False
@@ -766,6 +764,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 for bg_file_corr in [p.bg_line_corr for p in self.data]
                 for bg_line_corr in bg_file_corr
             ]
+
+        else:  # static
+            self.bg_line_corr_list = []
 
         # calculate average count rate
         self.avg_cnt_rate_khz = np.mean([p.avg_cnt_rate_khz for p in self.data])
@@ -885,11 +886,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         else:
             lower_detector_gate_ns = 0
         if self.detector_settings is not None:
-            gate_width_ns = self.detector_settings.gate_width_ns
+            self.gate_width_ns = self.detector_settings.gate_width_ns
             self.detector_gate_ns = Limits(
-                lower_detector_gate_ns, lower_detector_gate_ns + gate_width_ns
+                lower_detector_gate_ns, lower_detector_gate_ns + self.gate_width_ns
             )
         else:
+            self.gate_width_ns = 100
             self.detector_gate_ns = Limits(0, np.inf)
 
         # sFCS
@@ -1206,7 +1208,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
         return p
 
-    def correlate_and_average(self, **kwargs):
+    def correlate_and_average(self, **kwargs) -> None:
         """High level function for correlating and averaging any data."""
 
         CF = self.correlate_data(**kwargs)
@@ -1250,7 +1252,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 should_rotate_data=False,  # abort data rotation decorator
             )
             CF_BA.average_correlation()
-            external_afterpulsing = CF_BA.avg_cf_cr
+            countrate_a = np.mean([countrate_pair.a for countrate_pair in CF_BA.countrate_list])
+            countrate_b = np.mean([countrate_pair.b for countrate_pair in CF_BA.countrate_list])
+            external_afterpulsing = (
+                countrate_b
+                * (self.gate_width_ns / gate2_ns.interval())
+                * CF_BA.avg_cf_cr
+                / countrate_a
+            )
 
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(gate_ns)
@@ -1276,7 +1285,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         elif self.scan_type == "angular":
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
-        CF = CorrFunc(cf_name, self.SC, corr_type, gate_ns, self.laser_freq_hz)
+        CF = CorrFunc(cf_name, corr_type, gate_ns, self.laser_freq_hz)
         CF.correlate_measurement(
             ts_split_list,
             afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
@@ -1469,7 +1478,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 f"{cf_name}_{xx} ({gate1_ns} vs. {gate2_ns} ns)"
                 if cf_name is not None
                 else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
-                self.SC,
                 corr_type if xx in {"AA", "BB"} else xcorr_type,
                 gate1_ns,
                 self.laser_freq_hz,
@@ -1826,9 +1834,8 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
     UPPERֹ_ֹGATE_NS = 20
 
-    def __init__(self, name, SC: SoftwareCorrelator):
+    def __init__(self, name):
         self.name = name
-        self.SC = SC
         self.confocal: SolutionSFCSMeasurement
         self.sted: SolutionSFCSMeasurement
 
@@ -1860,7 +1867,8 @@ class SFCSExperiment(TDCPhotonDataMixin):
             meas_template = locals()[f"{meas_type}_template"]
             meas_kwargs = locals()[f"{meas_type}_kwargs"]
             if measurement is None:
-                if meas_template is not None:  # process measurement from template
+
+                if meas_template is not None:
                     self.load_measurement(
                         meas_type=meas_type,
                         file_path_template=meas_template,
@@ -1869,7 +1877,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                         **kwargs,
                     )
                 else:  # Use empty measuremnt by default
-                    setattr(self, meas_type, SolutionSFCSMeasurement(name=meas_type, SC=self.SC))
+                    setattr(self, meas_type, SolutionSFCSMeasurement(name=meas_type))
             else:  # use supllied measurement
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
@@ -1909,7 +1917,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
         if kwargs.get(f"{meas_type}_file_selection"):
             kwargs["file_selection"] = kwargs[f"{meas_type}_file_selection"]
 
-        measurement = SolutionSFCSMeasurement(name=meas_type, SC=self.SC)
+        measurement = SolutionSFCSMeasurement(name=meas_type)
 
         if should_use_preprocessed:
             try:
@@ -1917,7 +1925,9 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 dir_path, file_template = file_path_template.parent, file_path_template.name
                 # load pre-processed
                 file_path = dir_path / "processed" / re.sub("_[*]", "", file_template)
-                measurement = file_utilities.load_processed_solution_measurement(file_path)
+                measurement = file_utilities.load_processed_solution_measurement(
+                    file_path, file_template
+                )
                 measurement.name = meas_type
                 print(f"Loaded pre-processed {meas_type} measurement: '{file_path}'")
             except OSError:
@@ -1943,7 +1953,9 @@ class SFCSExperiment(TDCPhotonDataMixin):
                     x_field = "vt_um"
 
             super_title = f"'{self.name.capitalize()}' Experiment\n'{measurement.name.capitalize()}' Measurement - ACFs"
-            with Plotter(super_title=super_title, ylim=(-100, None)) as ax:
+            with Plotter(
+                super_title=super_title, ylim=(-100, list(measurement.cf.values())[0].g0 * 1.5)
+            ) as ax:
                 measurement.cf[cf_name].plot_correlation_function(
                     parent_ax=ax,
                     y_field="average_all_cf_cr",
@@ -1961,32 +1973,48 @@ class SFCSExperiment(TDCPhotonDataMixin):
         """Doc."""
 
         print("Saving processed measurements to disk...", end=" ")
-        file_utilities.save_processed_solution_meas(
-            self.confocal, self.confocal.file_path_template.parent
-        )
-        file_utilities.save_processed_solution_meas(self.sted, self.sted.file_path_template.parent)
+        if hasattr(self.confocal, "scan_type"):
+            file_utilities.save_processed_solution_meas(
+                self.confocal, self.confocal.file_path_template.parent
+            )
+            print("Confocal saved...", end=" ")
+        if hasattr(self.sted, "scan_type"):
+            file_utilities.save_processed_solution_meas(
+                self.sted, self.sted.file_path_template.parent
+            )
+            print("STED saved...", end=" ")
         print("Done.")
 
     def calibrate_tdc(self, should_plot=True, **kwargs):
         """Doc."""
 
-        if hasattr(self.confocal, "scan_type"):  # has confocal measurement (minimum requirement)
-
+        # calibrate excitation measurement first, and sync STED to it if STED exists
+        if hasattr(self.confocal, "scan_type"):
             self.confocal.calibrate_tdc(**kwargs)
             if hasattr(self.sted, "scan_type"):  # if both measurements quack as if loaded
                 self.sted.calibrate_tdc(sync_coarse_time_to=self.confocal.tdc_calib, **kwargs)
 
-            if should_plot:
-                super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
-                if hasattr(self.sted, "scan_type"):  # if both measurements quack as if loaded
-                    with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
-                        self.confocal.plot_tdc_calibration(parent_axes=axes[:, :2])
-                        self.sted.plot_tdc_calibration(parent_axes=axes[:, 2:])
-                else:  # STED measurement not loaded
-                    self.confocal.plot_tdc_calibration(super_title=super_title, **kwargs)
-
+        # calibrate STED only
         else:
-            raise RuntimeError("Can't calibrate TDC with no confocal measurements loaded!")
+            self.sted.calibrate_tdc(**kwargs)
+
+        if should_plot:
+            super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
+            # Both measurements loaded
+            if hasattr(self.confocal, "scan_type") and hasattr(
+                self.sted, "scan_type"
+            ):  # if both measurements quack as if loaded
+                with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
+                    self.confocal.plot_tdc_calibration(parent_axes=axes[:, :2])
+                    self.sted.plot_tdc_calibration(parent_axes=axes[:, 2:])
+
+            # Confocal only
+            elif hasattr(self.confocal, "scan_type"):  # STED measurement not loaded
+                self.confocal.plot_tdc_calibration(super_title=super_title, **kwargs)
+
+            # STED only
+            else:
+                self.sted.plot_tdc_calibration(super_title=super_title, **kwargs)
 
     def compare_lifetimes(
         self,

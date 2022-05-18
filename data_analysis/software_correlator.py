@@ -159,10 +159,11 @@ class SoftwareCorrelator:
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should have 4 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
                 )
-            valid = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
-            duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
-            countrate_a = np.sum(photon_array[2, :] == 1) / duration_s
-            countrate_b = np.sum(photon_array[1, :] == 1) / duration_s
+            valid_timestamps = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
+            valid_photons = photon_array[3, :] == 1
+            duration_s = photon_array[0, valid_timestamps].sum() * timebase_ms / 1000
+            countrate_a = np.sum(photon_array[2, valid_photons] == 1) / duration_s
+            countrate_b = np.sum(photon_array[1, valid_photons] == 1) / duration_s
             self.countrate = CrossCorrCountRates(countrate_a, countrate_b)
         else:
             raise ValueError("Invalid correlator type!")
