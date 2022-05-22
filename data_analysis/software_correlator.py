@@ -1,8 +1,10 @@
 """Software correlator"""
 
 import sys
+from collections import namedtuple
 from ctypes import CDLL, c_double, c_int, c_long
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -36,16 +38,22 @@ class SoftwareCorrelatorListOutput:
     countrate_list: list
 
 
+CrossCorrCountRates = namedtuple("CrossCorrCountRates", "a b")
+
+
 class SoftwareCorrelator:
     """Doc."""
 
-    LIB_PATH = "./SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib_win32.so"
+    LIB_DIR_PATH = Path("./SoftCorrelatorDynamicLib/")
 
     def __init__(self):
         if sys.platform == "darwin":
-            self.LIB_PATH = "/Users/oleg/Documents/Python programming/Scanning setups Lab/gSTED-sFCS/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib.so"
+            LIB_NAME = "SoftCorrelatorDynamicLib.so"
+        else:  # win32
+            LIB_NAME = "SoftCorrelatorDynamicLib_win32.so"
+        self.LIB_PATH = self.LIB_DIR_PATH / LIB_NAME
 
-        soft_corr_dynamic_lib = CDLL(self.LIB_PATH, winmode=0)
+        soft_corr_dynamic_lib = CDLL(str(self.LIB_PATH), winmode=0)
         get_corr_params = soft_corr_dynamic_lib.getCorrelatorParams
         get_corr_params.restype = None
         get_corr_params.argtypes = [ndpointer(c_int), ndpointer(c_int)]
@@ -135,7 +143,7 @@ class SoftwareCorrelator:
             duration_s = photon_array[0, :].sum() * timebase_ms / 1000
             countrate_a = photon_array[2, :].sum() / duration_s
             countrate_b = photon_array[1, :].sum() / duration_s
-            self.countrate = (countrate_a, countrate_b)
+            self.countrate = CrossCorrCountRates(countrate_a, countrate_b)
 
         elif corr_type == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
@@ -151,11 +159,12 @@ class SoftwareCorrelator:
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should have 4 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
                 )
-            valid = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
-            duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
-            countrate_a = np.sum(photon_array[2, :] == 1) / duration_s
-            countrate_b = np.sum(photon_array[1, :] == 1) / duration_s
-            self.countrate = (countrate_a, countrate_b)
+            valid_timestamps = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
+            valid_photons = photon_array[3, :] == 1
+            duration_s = photon_array[0, valid_timestamps].sum() * timebase_ms / 1000
+            countrate_a = np.sum(photon_array[2, valid_photons] == 1) / duration_s
+            countrate_b = np.sum(photon_array[1, valid_photons] == 1) / duration_s
+            self.countrate = CrossCorrCountRates(countrate_a, countrate_b)
         else:
             raise ValueError("Invalid correlator type!")
 
