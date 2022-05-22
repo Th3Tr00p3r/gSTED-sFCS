@@ -236,7 +236,8 @@ void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry, bool belongToAch, bo
 			if (Entry == smplTime)
 			{
 				*cursor = belongToBch;
-                counterA =  belongToAch;
+				counterA = 0;// belongToAch; changes Oleg 16.05.22
+				counterB = 0;// changes Oleg 16.05.22
 				if (FirstDelayTime < 1)
 				{
 					(*accumulator)+= belongToBch*belongToAch; //zeroth channel

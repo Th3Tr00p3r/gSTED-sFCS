@@ -24,3 +24,6 @@ all = true
                      # the root of the project
 )
 '''
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
