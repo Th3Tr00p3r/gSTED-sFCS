@@ -6,40 +6,60 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.13.8
+#       jupytext_version: 1.13.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
-# %%
-# import native/external packages
-import pickle
-import numpy as np
-import matplotlib as mpl
-mpl.use('nbAgg')
-from matplotlib import pyplot as plt
-from pathlib import Path
-import os
-import re
-from winsound import Beep
-from IPython.core.debugger import set_trace
+# %% [markdown]
+# Import core and 3rd party modules:
 
+# %%
+import os
+import pickle
+import re
+from pathlib import Path
+from winsound import Beep
+
+import matplotlib as mpl
+
+mpl.use("nbAgg")
+import numpy as np
+from IPython.core.debugger import set_trace
+from matplotlib import pyplot as plt
+from scipy.fft import fft, ifft
+
+# %% [markdown]
+# Move current working directory to project root, if needed, and import project modules:
+
+# %%
 # Move to project root to easily import modules
-# PROJECT_ROOT = Path("D:\people\Idomic\gSTED-sFCS") # Lab PC
-PROJECT_ROOT = Path("D:\MEGA\BioPhysics_Lab\Optical_System\gSTEDsFCS") # Laptop
+try:  # running from Spyder
+    PROJECT_ROOT = Path(__file__).resolve()
+except NameError:  # running as Jupyter Notebook
+    PROJECT_ROOT = Path(os.getcwd()).resolve().parent.parent
 os.chdir(PROJECT_ROOT)
 
-# Import project modules
-from data_analysis.correlation_function import CorrFunc, SolutionSFCSMeasurement, SFCSExperiment
-from data_analysis.software_correlator import SoftwareCorrelator, CorrelatorType
+print("Working from: ", PROJECT_ROOT)
+
+from data_analysis.correlation_function import (CorrFunc, SFCSExperiment,
+                                                SolutionSFCSMeasurement)
+from data_analysis.software_correlator import (CorrelatorType,
+                                               SoftwareCorrelator)
 from utilities.display import Plotter, get_gradient_colormap
-from utilities.file_utilities import save_processed_solution_meas, default_system_info, load_object, save_object, load_mat
+from utilities.file_utilities import (default_system_info, load_mat,
+                                      load_object, save_object,
+                                      save_processed_solution_meas)
 from utilities.helper import Limits
 
-# Define other global constants
-DATA_ROOT = Path("D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data") # Laptop/Lab PC (same path)
+# %% [markdown]
+# Set data paths and other constants:
+
+# %%
+DATA_ROOT = Path("D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data")  # Laptop/Lab PC (same path)
+# DATA_ROOT = Path("D:\???")  # Oleg's
 DATA_TYPE = "solution"
 
 FORCE_PROCESSING = False
@@ -60,7 +80,9 @@ FORCE_PROCESSING = True
 # DATA_DATE = "30_01_2022"; confocal_template = "yoyo300bp500nW_angular_sted_125650_*.pkl"; label = "Old Detector Free-Running 300 bp STED"
 
 # DATA_DATE = "10_05_2018"; confocal_template = "bp300_angular_exc_*.mat"; label = "MATLAB Free-Running 300 bp"
-DATA_DATE = "10_05_2018"; confocal_template = "bp300_angular_sted_*.mat"; label = "MATLAB Free-Running 300 bp STED"
+DATA_DATE = "10_05_2018"
+confocal_template = "bp300_angular_sted_*.mat"
+label = "MATLAB Free-Running 300 bp STED"
 # DATA_DATE = "20_08_2018"; confocal_template = "EdU300bp_angular_sted_*.mat"; label = "MATLAB Free-Running EdU 300 bp STED"
 
 # DATA_DATE = "06_04_2022"; confocal_template = "atto_FR_angular_exc_141224_*.pkl"; label = "Free-Running ATTO"
@@ -96,12 +118,12 @@ exp.calibrate_tdc()
 
 # %%
 meas = exp.confocal
-meas.xcf = {} #"halogen_afterpulsing": meas.cf["confocal"].afterpulse}
+meas.xcf = {}  # "halogen_afterpulsing": meas.cf["confocal"].afterpulse}
 
-gate1_ns=Limits(2, 10)
-gate2_ns=Limits(35, 85)
+gate1_ns = Limits(2, 10)
+gate2_ns = Limits(35, 85)
 
-corr_names=("AB",)
+corr_names = ("AB",)
 CF_list = meas.cross_correlate_data(
     cf_name="fl_vs_wn",
     corr_names=corr_names,
@@ -124,42 +146,47 @@ exp.plot_correlation_functions(y_field="avg_cf_cr", ylim=Limits(5e1, 5e4))
 # Now let's try to use the cross-correlation as the afterpulsing:
 
 # %%
-ap_factor = 1.05 # 1
+ap_factor = 1.05  # 1
 
 # calculate afterpulsing from cross-correlation
 countrate_a = np.mean([countrate_pair.a for countrate_pair in CF_dict["AB"].countrate_list])
 countrate_b = np.mean([countrate_pair.b for countrate_pair in CF_dict["AB"].countrate_list])
-inherent_afterpulsing = countrate_b * (exp.confocal.gate_width_ns / gate2_ns.interval()) *  CF_dict["AB"].avg_cf_cr / countrate_a
+inherent_afterpulsing = (
+    countrate_b
+    * (exp.confocal.gate_width_ns / gate2_ns.interval())
+    * CF_dict["AB"].avg_cf_cr
+    / countrate_a
+)
 
 # load experiment
-exp_xcorr_as_ap = SFCSExperiment(name="Free-Running 300 bp, X-Correlation of Fluorescent vs. White-Noise as Afterpulsing")
+exp_xcorr_as_ap = SFCSExperiment(
+    name="Free-Running 300 bp, X-Correlation of Fluorescent vs. White-Noise as Afterpulsing"
+)
 exp_xcorr_as_ap.load_experiment(
     confocal_template=DATA_PATH / confocal_template,
     should_plot=False,
     should_plot_meas=False,
-    should_use_preprocessed=True, 
-    should_re_correlate=True, # Need to re-process with ext. afterpulsing
-    external_afterpulsing=inherent_afterpulsing * ap_factor
+    should_use_preprocessed=True,
+    should_re_correlate=True,  # Need to re-process with ext. afterpulsing
+    external_afterpulsing=inherent_afterpulsing * ap_factor,
 )
 
 # %% [markdown]
 # Let's look at them together:
 
 # %%
-with Plotter(super_title=label, ylim=(-300, exp.confocal.cf["confocal"].g0*1.5))as ax:
+with Plotter(super_title=label, ylim=(-300, exp.confocal.cf["confocal"].g0 * 1.5)) as ax:
     exp.confocal.cf["confocal"].plot_correlation_function(
-        parent_ax=ax,
-        x_field="vt_um",
-        plot_kwargs=dict(label="Regular")
+        parent_ax=ax, x_field="vt_um", plot_kwargs=dict(label="Regular")
     )
     exp_xcorr_as_ap.confocal.cf["confocal"].plot_correlation_function(
-        parent_ax=ax,
-        x_field="vt_um",
-        plot_kwargs=dict(label="BA XCorr as Afterpulsing")
+        parent_ax=ax, x_field="vt_um", plot_kwargs=dict(label="BA XCorr as Afterpulsing")
     )
     ax.legend()
-    
-with Plotter(super_title="Afterpulsing", x_scale="log", y_scale="linear", xlim=(1e-4,1e0), ylim=(1e-2, 1e4)) as ax:
+
+with Plotter(
+    super_title="Afterpulsing", x_scale="log", y_scale="linear", xlim=(1e-4, 1e0), ylim=(1e-2, 1e4)
+) as ax:
     lag = exp.confocal.cf["confocal"].lag
     ax.plot(lag, exp.confocal.cf["confocal"].afterpulse, label="Halogen AutoCorr")
     ax.plot(CF_dict["AB"].lag, inherent_afterpulsing, label="X Corr")
@@ -263,12 +290,12 @@ exp.calibrate_tdc(should_plot=False)
 
 # %%
 meas = exp.confocal
-meas.xcf = {} #"halogen_afterpulsing": meas.cf["confocal"].afterpulse}
+meas.xcf = {}  # "halogen_afterpulsing": meas.cf["confocal"].afterpulse}
 
-gate1_ns=Limits(2, 10)
-gate2_ns=Limits(35, 85)
+gate1_ns = Limits(2, 10)
+gate2_ns = Limits(35, 85)
 
-corr_names=("AB",)
+corr_names = ("AB",)
 XCF = meas.cross_correlate_data(
     cf_name="fl_vs_wn",
     corr_names=corr_names,
@@ -293,11 +320,9 @@ lag = np.copy(XCF.lag)
 
 # plotting
 with Plotter(
-    xlim=(1e-3, 1e1),
-    ylim=(-500, exp.confocal.cf["confocal"].g0*1.3),
-    x_scale="log"
+    xlim=(1e-3, 1e1), ylim=(-500, exp.confocal.cf["confocal"].g0 * 1.3), x_scale="log"
 ) as ax:
-    
+
     ax.plot(lag, G_ap_signal_t, label="Afterpulsed Signal")
     ax.plot(lag, G_ap_t, label="Afterpulsing")
     ax.legend()
@@ -317,18 +342,15 @@ G_ap_signal_t_symm = np.hstack((np.flip(G_ap_signal_t), G_ap_signal_t))
 G_ap_t_symm = np.hstack((np.flip(G_ap_t), G_ap_t))
 lag_symm = np.hstack((-np.flip(lag), lag))
 
-# %%
-G_ap_signal_t_symm.shape
-
 # %% [markdown]
 # Look again:
 
 # %%
 with Plotter(
     xlim=(-1e-1, 1e-1),
-    ylim=(-500, exp.confocal.cf["confocal"].g0*1.3),
+    ylim=(-500, exp.confocal.cf["confocal"].g0 * 1.3),
 ) as ax:
-    
+
     ax.plot(lag_symm, G_ap_signal_t_symm, label="Afterpulsed Signal")
     ax.plot(lag_symm, G_ap_t_symm, label="Afterpulsing")
     ax.legend()
@@ -337,7 +359,6 @@ with Plotter(
 # Fourier transform:
 
 # %%
-from scipy.fft import fft, ifft
 fft(G_ap_t_symm)
 
 # %% [markdown]
