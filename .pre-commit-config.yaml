@@ -1,16 +1,16 @@
 ---
 
 repos:
-    # - repo: https://github.com/kynan/nbstripout
-      # rev: 0.5.0
-      # hooks:
-          # - id: nbstripout
+    - repo: https://github.com/kynan/nbstripout
+      rev: 0.5.0
+      hooks:
+          - id: nbstripout
 
     - repo: https://github.com/mwouts/jupytext
       rev: v1.13.7
       hooks:
           - id: jupytext
-            args: [--from, ipynb, --to, py:percent, --pipe, black, --pipe, isort - --treat-comment-as-code "# %%" --float-to-top]
+            args: [--from, ipynb, --to, py:percent, --pipe, black, --pipe, isort - --treat-comment-as-code "# %%"]
             additional_dependencies:
                 - black==22.3.0 # Matches hook
                 - isort==5.9.3 # Matches hook
