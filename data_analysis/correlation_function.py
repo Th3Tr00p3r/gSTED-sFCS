@@ -13,7 +13,6 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 import scipy
 import skimage
-from sklearn import linear_model
 
 from data_analysis.photon_data import (
     CountsImageMixin,
@@ -24,7 +23,15 @@ from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
 from utilities.display import Plotter
 from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
-from utilities.helper import Limits, div_ceil, timer, unify_length, xcorr
+from utilities.helper import (
+    Limits,
+    div_ceil,
+    hankel_transform,
+    robust_interpolation,
+    timer,
+    unify_length,
+    xcorr,
+)
 
 laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis/laser_pulse_tdc_calib.pkl")
 
@@ -477,7 +484,7 @@ class CorrFunc:
 
         #  Gaussian interpolation
         if n_robust:
-            log_fr = self.robust_interpolation(
+            log_fr = robust_interpolation(
                 r ** 2, sample_vt_um ** 2, np.log(sample_normalized), n_robust
             )
         else:
@@ -492,9 +499,7 @@ class CorrFunc:
 
         #  linear interpolation
         if n_robust:
-            fr_linear_interp = self.robust_interpolation(
-                r, sample_vt_um, sample_normalized, n_robust
-            )
+            fr_linear_interp = robust_interpolation(r, sample_vt_um, sample_normalized, n_robust)
         else:
             interpolator = scipy.interpolate.interp1d(
                 sample_vt_um,
@@ -503,6 +508,9 @@ class CorrFunc:
                 assume_sorted=True,
             )
             fr_linear_interp = interpolator(r)
+
+        #  zero-pad the linear interpolation
+        fr_linear_interp[r > self.vt_um[j_normalized_over_gmin[-1]]] = 0
 
         # plot interpolations for testing
         with Plotter(
@@ -518,14 +526,11 @@ class CorrFunc:
             ax.set_xlabel("Displacement $(\\mu m^2)$")
             ax.set_ylabel("ACF (Normalized)")
 
-        #  zero-pad
-        fr_linear_interp[r > self.vt_um[j_normalized_over_gmin[-1]]] = 0
-
         # Fourier Transform
-        q, fq = self.hankel_transform(r, fr)
+        q, fq = hankel_transform(r, fr)
 
         #  linear interpolated Fourier Transform
-        _, fq_linear_interp = self.hankel_transform(r, fr_linear_interp)
+        _, fq_linear_interp = hankel_transform(r, fr_linear_interp)
 
         # TODO: show this to Oleg - can't figure out what's wrong
         #        #  Estimating error of transform
@@ -535,7 +540,7 @@ class CorrFunc:
         #            sample_cf_cr = self.cf_cr[j, j_intrp]
         #            sample_cf_cr[sample_cf_cr <= 0] = 1e-3  # TODO: is that the best way to solve this?
         #            if n_robust and False: # TESTESTEST - CANELLED FOR NOW
-        #                log_fr = self.robust_interpolation(
+        #                log_fr = robust_interpolation(
         #                    r ** 2, sample_vt_um ** 2, np.log(sample_cf_cr), n_robust
         #                )
         #            else:
@@ -543,7 +548,7 @@ class CorrFunc:
         #            fr = np.exp(log_fr)
         #            fr[np.nonzero(fr < 0)[0]] = 0
         #
-        #            _, fq_allfunc[idx] = self.hankel_transform(r, fr)
+        #            _, fq_allfunc[idx] = hankel_transform(r, fr)
         #
         #        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
         fq_error = None
@@ -563,140 +568,6 @@ class CorrFunc:
         )
 
         return self.structure_factor
-
-    def robust_interpolation(
-        self,
-        x,  # x-values to interpolate onto
-        xi,  # real x vals
-        yi,  # real y vals
-        n_pnts,  # number of points to include in each intepolation
-    ) -> np.ndarray:
-        """Doc."""
-
-        # translated from: [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
-        bins = np.hstack(([-np.inf], xi, [np.inf]))
-        (x_bin_counts, _), x_bin_idxs = np.histogram(x, bins), np.digitize(x, bins)
-        ch = np.cumsum(x_bin_counts, dtype=np.uint16)
-        start = max(x_bin_idxs[0] - 1, n_pnts)
-        finish = min(x_bin_idxs[x.size - 1] - 1, xi.size - n_pnts - 1)
-
-        y = np.empty(shape=x.shape)
-        ransac = linear_model.RANSACRegressor()
-        for i in range(start, finish):
-
-            # Robustly fit linear model with RANSAC algorithm for (1 + 2*n_pnts) points
-            ji = slice(i - n_pnts, i + n_pnts + 1)
-            ransac.fit(xi[ji][:, np.newaxis], yi[ji])
-            p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
-
-            if i == start:
-                j = slice(ch[i + 1] + 1)
-            elif i == finish - 1:
-                j = slice((ch[i] + 1), x.size)
-            else:
-                j = slice((ch[i] + 1), ch[i + 1] + 1)
-
-            y[j] = p0 + p1 * x[j]
-
-        return y
-
-    def hankel_transform(
-        self,
-        x: np.ndarray,
-        y: np.ndarray,
-        should_inverse: bool = False,
-        n_robust: int = 2,
-        should_do_gaussian_interpolation: bool = False,
-        dr=None,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Doc."""
-
-        n = x.size
-
-        # prepare the Hankel transformation matrix C
-        c0 = scipy.special.jn_zeros(0, n)
-        bessel_j0 = scipy.special.j0
-        bessel_j1 = scipy.special.j1
-
-        j_n, j_m = np.meshgrid(c0, c0)
-
-        C = (
-            (2 / c0[n - 1])
-            * bessel_j0(j_n * j_m / c0[n - 1])
-            / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
-        )
-
-        if not should_inverse:
-
-            r_max = max(x)
-            q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
-
-            r = c0.T * r_max / c0[n - 1]  # Radius vector
-            q = c0.T / (2 * np.pi * r_max)  # Frequency vector
-
-            m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
-            m2 = m1 * r_max / q_max  # m2 prepares output vector for display
-
-            # end preparations for Hankel transform
-
-            if n_robust:  # use robust interpolation
-                if should_do_gaussian_interpolation:  # Gaussian
-                    y_interp = np.exp(
-                        self.robust_interpolation(r ** 2, x ** 2, np.log(y), n_robust)
-                    )
-                    y_interp[
-                        r > x[-n_robust]
-                    ] = 0  # zero pad last points that do not have full interpolation
-                else:  # linear
-                    y_interp = self.robust_interpolation(r, x, y, n_robust)
-
-                y_interp = y_interp.ravel()
-
-            else:
-                if should_do_gaussian_interpolation:
-                    interpolator = scipy.interpolate.interp1d(
-                        x ** 2,
-                        np.log(y),
-                        fill_value="extrapolate",
-                        assume_sorted=True,
-                    )
-                    y_interp = np.exp(interpolator(r ** 2))
-                else:  # linear
-                    interpolator = scipy.interpolate.interp1d(
-                        x,
-                        y,
-                        fill_value="extrapolate",
-                        assume_sorted=True,
-                    )
-                    y_interp = interpolator(r)
-
-            return 2 * np.pi * q, C @ (y_interp / m1) * m2
-
-        else:  # inverse transform
-
-            if dr is not None:
-                q_max = 1 / (2 * dr)
-            else:
-                q_max = max(x) / (2 * np.pi)
-
-            r_max = c0[n - 1] / (2 * np.pi * q_max)  # Maximum radius
-
-            r = c0.T * r_max / c0[n - 1]  # Radius vector
-            q = c0.T / (2 * np.pi * r_max)  # Frequency vector
-            q = 2 * np.pi * q
-
-            m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
-            m2 = m1 * r_max / q_max  # m2 prepares output vector for display
-            # end preparations for Hankel transform
-
-            interpolator = scipy.interpolate.interp1d(
-                x,
-                y,
-                fill_value="extrapolate",
-                assume_sorted=True,
-            )
-
-            return r, C @ (interpolator(q) / m2) * m1
 
 
 class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):

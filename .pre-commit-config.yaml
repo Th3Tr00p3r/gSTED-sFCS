@@ -10,7 +10,7 @@ repos:
       rev: v1.13.7
       hooks:
           - id: jupytext
-            args: [--from, ipynb, --to, py:percent, --pipe, black, --pipe, isort - --treat-comment-as-code "# %%"]
+            args: [--from, ipynb, --to, py:percent, --pipe, black] #, --pipe, isort - --treat-comment-as-code "# %%"]
             additional_dependencies:
                 - black==22.3.0 # Matches hook
                 - isort==5.9.3 # Matches hook
@@ -31,7 +31,7 @@ repos:
             types: [python]
             pass_filenames: false
             stages: [commit]
-            additional_dependencies: [numpy]
+            additional_dependencies: [numpy, scipy, sklearn]
 
     - repo: https://github.com/pycqa/isort
       rev: 5.9.3
