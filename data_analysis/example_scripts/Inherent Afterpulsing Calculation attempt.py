@@ -14,14 +14,22 @@
 # ---
 
 # %% [markdown]
-# Import core and 3rd party modules:
+# - Import core and 3rd party modules
+# - Move current working directory to project root (if needed) and import project modules
+# - Set data paths and other constants
 
 # %%
+######################################
+# importing core and 3rd-party modules
+######################################
+
 import os
 import pickle
 import re
+import scipy
 from pathlib import Path
 from winsound import Beep
+from contextlib import suppress
 
 import matplotlib as mpl
 
@@ -31,33 +39,36 @@ from IPython.core.debugger import set_trace
 from matplotlib import pyplot as plt
 from scipy.fft import fft, ifft
 
-# %% [markdown]
-# Move current working directory to project root, if needed, and import project modules:
-
-# %%
+###############################################
 # Move to project root to easily import modules
-try:  # running from Spyder
-    PROJECT_ROOT = Path(__file__).resolve()
-except NameError:  # running as Jupyter Notebook
-    PROJECT_ROOT = Path(os.getcwd()).resolve().parent.parent
-os.chdir(PROJECT_ROOT)
+###############################################
 
-print("Working from: ", PROJECT_ROOT)
+try:  # avoid changes if already set
+    print("Working from: ", PROJECT_ROOT)
+except NameError:
+    try:  # running from Spyder
+        PROJECT_ROOT = Path(__file__).resolve()
+    except NameError:  # running as Jupyter Notebook
+        PROJECT_ROOT = Path(os.getcwd()).resolve().parent.parent
+    os.chdir(PROJECT_ROOT)
+    print("Working from: ", PROJECT_ROOT)
 
-from data_analysis.correlation_function import (CorrFunc, SFCSExperiment,
-                                                SolutionSFCSMeasurement)
-from data_analysis.software_correlator import (CorrelatorType,
-                                               SoftwareCorrelator)
+from data_analysis.correlation_function import CorrFunc, SFCSExperiment, SolutionSFCSMeasurement
+from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities.display import Plotter, get_gradient_colormap
-from utilities.file_utilities import (default_system_info, load_mat,
-                                      load_object, save_object,
-                                      save_processed_solution_meas)
-from utilities.helper import Limits
+from utilities.file_utilities import (
+    default_system_info,
+    load_mat,
+    load_object,
+    save_object,
+    save_processed_solution_meas,
+)
+from utilities.helper import Limits, fourier_transform_1d
 
-# %% [markdown]
-# Set data paths and other constants:
+#################################################
+# Setting up data path and other global constants
+#################################################
 
-# %%
 DATA_ROOT = Path("D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data")  # Laptop/Lab PC (same path)
 # DATA_ROOT = Path("D:\???")  # Oleg's
 DATA_TYPE = "solution"
@@ -271,8 +282,8 @@ exp = SFCSExperiment(name=label)
 exp.load_experiment(
     confocal_template=DATA_PATH / confocal_template,
     should_plot=True,
-    should_use_preprocessed=True,
-    should_re_correlate=True,
+    should_use_preprocessed=True,  # TODO: load anew if not found
+    should_re_correlate=False,  # True
     should_subtract_afterpulse=False,
 )
 
@@ -320,46 +331,136 @@ lag = np.copy(XCF.lag)
 
 # plotting
 with Plotter(
-    xlim=(1e-3, 1e1), ylim=(-500, exp.confocal.cf["confocal"].g0 * 1.3), x_scale="log"
+    super_title="Logarithmic Scale",
+    xlim=(1e-3, 1e1),
+    ylim=(-500, exp.confocal.cf["confocal"].g0 * 1.3),
+    x_scale="log",
 ) as ax:
 
     ax.plot(lag, G_ap_signal_t, label="Afterpulsed Signal")
-    ax.plot(lag, G_ap_t, label="Afterpulsing")
+    ax.plot(lag, G_ap_t, label="X-Corr Afterpulsing")
+    ax.legend()
+
+with Plotter(
+    super_title="Linear Scale", xlim=(-1e-2, 1e-1), ylim=(-1e4, 1e5), x_scale="linear"
+) as ax:
+
+    ax.plot(lag, G_ap_signal_t, label="Afterpulsed Signal")
+    ax.plot(lag, G_ap_t, label="X-Corr Afterpulsing")
     ax.legend()
 
 # %% [markdown]
-# Cutting of the tail at lag of 1 ms:
+# Checking out the probability density at bin 0:
+
+# %%
+lag[G_ap_t == max(G_ap_t)]
+
+# %%
+n = 0
+G_ap_signal_t[n]
+G_ap_signal_t[n] * np.diff(lag)[n] * 1e-3
+
+# %%
+G_ap_t[0] * np.diff(lag)[n] * 1e-3
+
+# %% [markdown]
+# Cutting of the tail at lag of 1 ms: (later should gaussian interpolate)
 
 # %%
 G_ap_signal_t[lag > 1] = 0
 G_ap_t[lag > 1] = 0
 
 # %% [markdown]
-# Symmetrizing:
+# Testing our Fourier transform:
 
 # %%
-G_ap_signal_t_symm = np.hstack((np.flip(G_ap_signal_t), G_ap_signal_t))
-G_ap_t_symm = np.hstack((np.flip(G_ap_t), G_ap_t))
-lag_symm = np.hstack((-np.flip(lag), lag))
+# # %debug
+# define Gaussian on positive axis:
+a = 1
+sigma = 5
+t = np.arange(int(1e4))
+ft = a * np.exp(-((t / sigma) ** 2))
 
-# %% [markdown]
-# Look again:
-
-# %%
+# show it
 with Plotter(
-    xlim=(-1e-1, 1e-1),
-    ylim=(-500, exp.confocal.cf["confocal"].g0 * 1.3),
+    super_title="Gaussian",
+    xlabel="$t$ (ms)",
+    ylabel="f(t) (Normalized)",
+    xlim=(-1e-2, sigma * 4),
 ) as ax:
+    ax.plot(t, ft, "o")
 
-    ax.plot(lag_symm, G_ap_signal_t_symm, label="Afterpulsed Signal")
-    ax.plot(lag_symm, G_ap_t_symm, label="Afterpulsing")
+# Fourier transform it:
+r, fr_interp, w, fw = fourier_transform_1d(
+    t,
+    ft,
+    bin_size=1,  # in ms (meaning 100 ns)
+    should_symmetrize=False,
+    #     should_symmetrize=True,
+    #     should_make_q_symmetric=False,
+    should_make_q_symmetric=True,
+    lag_units_factor=1,
+)
+
+# show Fourier transform interpolation
+with Plotter(
+    super_title="Interpolation",
+    xlim=(-sigma * 4, sigma * 4),
+) as ax:
+    ax.plot(t, ft, "o", label="before interpolation")
+    ax.plot(r, fr_interp, "x", label="after interpolation")
+    ax.legend()
+
+# show vanilla FFT
+fq = scipy.fft.fft(fr_interp)
+with Plotter(
+    super_title="Quick and dirty FFT",
+) as ax:
+    ax.plot(np.real(fq), label="real part")
+    ax.plot(np.imag(fq), label="imaginary part")
+    ax.legend()
+
+# show our Fourier transform
+with Plotter(
+    super_title="Our Fourier Transform",
+    xlabel="$\omega$ (UNITS?)",
+    ylabel="f($\omega$) (UNITS?)",
+    #     xlim=(-1e-2, 1e-1), ylim=(-1e4, 1e5), x_scale="linear"
+) as ax:
+    ax.plot(w, np.real(fw), label="real part")
+    ax.plot(w, np.imag(fw), label="imaginary part")
     ax.legend()
 
 # %% [markdown]
 # Fourier transform:
 
 # %%
-fft(G_ap_t_symm)
+# # %debug
+r, fr_interp, q, fq = fourier_transform_1d(
+    lag,
+    G_ap_signal_t,
+    bin_size=1e-4,  # in ms (meaning 100 ns)
+    should_symmetrize=False,
+    #     should_symmetrize=True,
+    should_make_q_symmetric=True,
+    #     should_gaussian_interpolate=True,
+)
+
+with Plotter(super_title="Interpolation", xlim=(-1e-3, 1e-3), x_scale="linear") as ax:
+    ax.plot(lag, G_ap_signal_t * 1e-4 * 1e-3, "o", label="before interpolation")
+    ax.plot(r, fr_interp, "x", label="after interpolation")
+    ax.legend()
+
+with Plotter(
+    super_title="Fourier Transform",
+    xlabel="$\omega$ (UNITS?)",
+    ylabel="f($\omega$) (UNITS?)",
+    #     xlim=(-1e-2, 1e-1), ylim=(-1e4, 1e5), x_scale="linear"
+) as ax:
+
+    ax.plot(q, np.real(fq), label="real part")
+    ax.plot(q, np.imag(fq), label="imaginary part")
+    ax.legend()
 
 # %% [markdown]
 # Play sound when done:

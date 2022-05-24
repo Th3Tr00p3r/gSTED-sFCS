@@ -3,12 +3,17 @@
 import asyncio
 import functools
 import logging
+import math
 import os
 import time
 from contextlib import suppress
 from typing import Any, Callable, List, Tuple
 
 import numpy as np
+from scipy.fft import fft
+from scipy.interpolate import interp1d
+from scipy.special import j0, j1, jn_zeros
+from sklearn import linear_model
 
 # import time # TESTING
 # tic = time.perf_counter() # TESTING
@@ -83,6 +88,219 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     img[img < thresh] = 0
 
     return img, thresh
+
+
+def robust_interpolation(
+    x,  # x-values to interpolate onto
+    xi,  # real x vals
+    yi,  # real y vals
+    n_pnts=3,  # number of points to include in each intepolation
+) -> np.ndarray:
+    """Doc."""
+
+    # translated from: [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
+    bins = np.hstack(([-np.inf], xi, [np.inf]))
+    (x_bin_counts, _), x_bin_idxs = np.histogram(x, bins), np.digitize(x, bins)
+    ch = np.cumsum(x_bin_counts, dtype=np.uint16)
+    start = max(x_bin_idxs[0] - 1, n_pnts)
+    finish = min(x_bin_idxs[x.size - 1] - 1, xi.size - n_pnts - 1)
+
+    y = np.empty(shape=x.shape)
+    ransac = linear_model.RANSACRegressor()
+    for i in range(start, finish):
+
+        # Robustly fit linear model with RANSAC algorithm for (1 + 2*n_pnts) points
+        ji = slice(i - n_pnts, i + n_pnts + 1)
+        ransac.fit(xi[ji][:, np.newaxis], yi[ji])
+        p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
+
+        if i == start:
+            j = slice(ch[i + 1] + 1)
+        elif i == finish - 1:
+            j = slice((ch[i] + 1), x.size)
+        else:
+            j = slice((ch[i] + 1), ch[i + 1] + 1)
+
+        y[j] = p0 + p1 * x[j]
+
+    return y
+
+
+def fourier_transform_1d(
+    x: np.ndarray,
+    y: np.ndarray,
+    should_symmetrize=True,
+    should_inverse: bool = False,
+    n_bins=1024,
+    bin_size=None,
+    lag_units_factor=1e-3,
+    should_gaussian_interpolate: bool = False,
+    should_make_q_symmetric: bool = False,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Doc."""
+    # TODO: this should be more general, and the specifics should go to a CorrFunc method (perhaps named 'clear_afterpulsing' or something
+
+    # keep the zero value
+    y_0 = y[0]
+
+    # interpolate to ensure equal spacing and set bins_size or number of bins
+    if bin_size:
+        r = np.hstack((np.arange(min(x), max(x), bin_size), max(x)))
+        n_bins = r.size
+    else:
+        r = np.linspace(min(x), max(x), n_bins)
+        bin_size = r[1] - r[0]
+
+    q = 2 * np.pi * np.arange(n_bins) / (bin_size * n_bins)
+
+    if should_symmetrize:
+        x = np.hstack((-np.flip(x[1:]), x[1:]))
+        y = np.hstack((np.flip(y[1:]), y[1:]))
+        r = np.hstack((-np.flip(r[1:]), r[0], r[1:]))
+        q = np.hstack((-np.flip(q[1:]), q[0], q[1:]))
+    else:
+        x = x[1:]
+        y = y[1:]
+
+    # Gaussian interpolation
+    if should_gaussian_interpolate:
+        interpolator = interp1d(
+            x ** 2,
+            np.log(y),
+            fill_value="extrapolate",
+            assume_sorted=True,
+        )
+        fr_interp = np.exp(interpolator(r ** 2))
+
+    # Linear interpolation
+    else:
+        interpolator = interp1d(
+            x,
+            y,
+            fill_value="extrapolate",
+            assume_sorted=True,
+        )
+        fr_interp = interpolator(r)
+
+    # normalize
+    fr_interp *= bin_size * lag_units_factor
+
+    # set probability at zero to 1
+    if should_symmetrize:
+        fr_interp[fr_interp.size // 2] = y_0 * bin_size * lag_units_factor
+    else:
+        fr_interp[0] = y_0 * bin_size * lag_units_factor
+
+    fq = fft(fr_interp)
+
+    if should_make_q_symmetric:
+        #        fq *= np.exp( -1j*q*min(r))
+        #        k1 = np.arange(int(q.size/2+0.9)) # trick to deal with even and odd values of 'n'
+        #        k2 = np.arange(math.ceil(n_bins/2+1))
+        #        q =  np.hstack((q[k2] - 2*np.pi/bin_size, q[k1]))
+        #        fq =  np.hstack((fq[k2], fq[k1]))
+        k1 = int(q.size / 2 + 0.9)  # trick to deal with even and odd values of 'n'
+        k2 = math.ceil(n_bins / 2 + 1)
+        q = np.hstack((q[k2:] - 2 * np.pi / bin_size, q[:k1]))
+        fq = np.hstack((fq[k2:], fq[:k1]))
+
+    return r, fr_interp, q, fq
+
+
+def hankel_transform(
+    x: np.ndarray,
+    y: np.ndarray,
+    should_inverse: bool = False,
+    n_robust: int = 3,
+    should_do_gaussian_interpolation: bool = False,
+    dr=None,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Doc."""
+
+    n = x.size
+
+    # prepare the Hankel transformation matrix C
+    c0 = jn_zeros(0, n)
+    bessel_j0 = j0
+    bessel_j1 = j1
+
+    j_n, j_m = np.meshgrid(c0, c0)
+
+    C = (
+        (2 / c0[n - 1])
+        * bessel_j0(j_n * j_m / c0[n - 1])
+        / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
+    )
+
+    if not should_inverse:
+
+        r_max = max(x)
+        q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
+
+        r = c0.T * r_max / c0[n - 1]  # Radius vector
+        q = c0.T / (2 * np.pi * r_max)  # Frequency vector
+
+        m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
+        m2 = m1 * r_max / q_max  # m2 prepares output vector for display
+
+        # end preparations for Hankel transform
+
+        if n_robust:  # use robust interpolation
+            if should_do_gaussian_interpolation:  # Gaussian
+                fr_interp = np.exp(robust_interpolation(r ** 2, x ** 2, np.log(y), n_robust))
+                fr_interp[
+                    r > x[-n_robust]
+                ] = 0  # zero pad last points that do not have full interpolation
+            else:  # linear
+                fr_interp = robust_interpolation(r, x, y, n_robust)
+
+            fr_interp = fr_interp.ravel()
+
+        else:
+            if should_do_gaussian_interpolation:
+                interpolator = interp1d(
+                    x ** 2,
+                    np.log(y),
+                    fill_value="extrapolate",
+                    assume_sorted=True,
+                )
+                fr_interp = np.exp(interpolator(r ** 2))
+            else:  # linear
+                interpolator = interp1d(
+                    x,
+                    y,
+                    fill_value="extrapolate",
+                    assume_sorted=True,
+                )
+                fr_interp = interpolator(r)
+
+        return 2 * np.pi * q, C @ (fr_interp / m1) * m2
+
+    else:  # inverse transform
+
+        if dr is not None:
+            q_max = 1 / (2 * dr)
+        else:
+            q_max = max(x) / (2 * np.pi)
+
+        r_max = c0[n - 1] / (2 * np.pi * q_max)  # Maximum radius
+
+        r = c0.T * r_max / c0[n - 1]  # Radius vector
+        q = c0.T / (2 * np.pi * r_max)  # Frequency vector
+        q = 2 * np.pi * q
+
+        m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
+        m2 = m1 * r_max / q_max  # m2 prepares output vector for display
+        # end preparations for Hankel transform
+
+        interpolator = interp1d(
+            x,
+            y,
+            fill_value="extrapolate",
+            assume_sorted=True,
+        )
+
+        return r, C @ (interpolator(q) / m2) * m1
 
 
 def unify_length(vec_in: np.ndarray, out_len: int) -> np.ndarray:
@@ -365,7 +583,10 @@ def deep_getattr(obj, deep_attr_name: str, default=None, recursion=False):
 def div_ceil(x: int, y: int) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
-    return int(x // y + (x % y > 0))
+    return -(-x // y)  # TODO: test me!
+
+
+#    return int(x // y + (x % y > 0))
 
 
 def reverse_dict(dict_: dict) -> dict:
