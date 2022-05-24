@@ -134,6 +134,8 @@ class Plotter:
         self.subplots = kwargs.get("subplots", (1, 1))
         self.figsize = kwargs.get("figsize")
         self.super_title = kwargs.get("super_title")
+        self.xlabel = kwargs.get("xlabel", "")
+        self.ylabel = kwargs.get("ylabel", "")
         self.should_force_aspect = kwargs.get("should_force_aspect", False)
         self.fontsize = kwargs.get("fontsize", 14)
         self.xlim: Tuple[float, float] = kwargs.get("xlim")
@@ -229,6 +231,8 @@ class Plotter:
                 ax.set_xscale(self.x_scale)
             if self.y_scale is not None:
                 ax.set_yscale(self.y_scale)
+            ax.set_xlabel(self.xlabel)
+            ax.set_ylabel(self.ylabel)
             [
                 text.set_fontsize(self.fontsize)
                 for text in [ax.title, ax.xaxis.label, ax.yaxis.label]
