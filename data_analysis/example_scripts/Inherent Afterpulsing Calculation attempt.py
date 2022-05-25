@@ -395,10 +395,8 @@ r, fr_interp, w, fw = fourier_transform_1d(
     t,
     ft,
     bin_size=1,  # in ms (meaning 100 ns)
-    should_symmetrize=False,
-    #     should_symmetrize=True,
-    #     should_make_q_symmetric=False,
-    should_make_q_symmetric=True,
+    #     should_symmetrize=False,
+    should_symmetrize=True,
     lag_units_factor=1,
 )
 
@@ -412,12 +410,13 @@ with Plotter(
     ax.legend()
 
 # show vanilla FFT
-fq = scipy.fft.fft(fr_interp)
+fq = scipy.fft.fft(ft)
 with Plotter(
     super_title="Quick and dirty FFT",
 ) as ax:
     ax.plot(np.real(fq), label="real part")
     ax.plot(np.imag(fq), label="imaginary part")
+    ax.plot(abs(fq), label="absolute")
     ax.legend()
 
 # show our Fourier transform
@@ -429,38 +428,79 @@ with Plotter(
 ) as ax:
     ax.plot(w, np.real(fw), label="real part")
     ax.plot(w, np.imag(fw), label="imaginary part")
+    ax.plot(w, abs(fw), label="absolute")
     ax.legend()
 
 # %% [markdown]
-# Fourier transform:
+# Fourier transform of afterpulsed signal:
 
 # %%
 # # %debug
-r, fr_interp, q, fq = fourier_transform_1d(
+r, fr_interp, q, fq_signal = fourier_transform_1d(
     lag,
     G_ap_signal_t,
     bin_size=1e-4,  # in ms (meaning 100 ns)
-    should_symmetrize=False,
-    #     should_symmetrize=True,
-    should_make_q_symmetric=True,
-    #     should_gaussian_interpolate=True,
+    should_symmetrize=True,
+    should_force_zero_to_one=True,
 )
 
-with Plotter(super_title="Interpolation", xlim=(-1e-3, 1e-3), x_scale="linear") as ax:
+with Plotter(
+    super_title="Interpolation of $G_{signal}$", xlim=(-1e-3, 1e-3), x_scale="linear"
+) as ax:
     ax.plot(lag, G_ap_signal_t * 1e-4 * 1e-3, "o", label="before interpolation")
     ax.plot(r, fr_interp, "x", label="after interpolation")
     ax.legend()
 
 with Plotter(
-    super_title="Fourier Transform",
+    super_title="Fourier Transform of $G_{signal}$",
     xlabel="$\omega$ (UNITS?)",
     ylabel="f($\omega$) (UNITS?)",
     #     xlim=(-1e-2, 1e-1), ylim=(-1e4, 1e5), x_scale="linear"
 ) as ax:
 
-    ax.plot(q, np.real(fq), label="real part")
-    ax.plot(q, np.imag(fq), label="imaginary part")
+    ax.plot(q, np.real(fq_signal), label="real part")
+    ax.plot(q, np.imag(fq_signal), label="imaginary part")
+    ax.plot(q, abs(fq_signal), label="absolute")
     ax.legend()
+
+# %% [markdown]
+# Fourier transform of afterpulsing:
+
+# %%
+# # %debug
+r, fr_interp, q, fq_ap = fourier_transform_1d(
+    lag,
+    G_ap_t,
+    bin_size=1e-4,  # in ms (meaning 100 ns)
+    should_symmetrize=True,
+    should_force_zero_to_one=True,
+)
+
+with Plotter(super_title="Interpolation of $G_{ap}$", xlim=(-1e-3, 1e-3), x_scale="linear") as ax:
+    ax.plot(lag, G_ap_t * 1e-4 * 1e-3, "o", label="before interpolation")
+    ax.plot(r, fr_interp, "x", label="after interpolation")
+    ax.legend()
+
+with Plotter(
+    super_title="Fourier Transform of $G_{ap}$",
+    xlabel="$\omega$ (UNITS?)",
+    ylabel="f($\omega$) (UNITS?)",
+    #     xlim=(-1e-2, 1e-1), ylim=(-1e4, 1e5), x_scale="linear"
+) as ax:
+
+    ax.plot(q, np.real(fq_ap), label="real part")
+    ax.plot(q, np.imag(fq_ap), label="imaginary part")
+    ax.plot(q, abs(fq_ap), label="absolute")
+    ax.legend()
+
+# %%
+fq_ap
+
+# %%
+with Plotter() as ax:
+    ax.plot(q, abs(fq_signal) / abs(fq_ap))
+
+# %%
 
 # %% [markdown]
 # Play sound when done:
