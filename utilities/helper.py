@@ -10,7 +10,7 @@ from contextlib import suppress
 from typing import Any, Callable, List, Tuple
 
 import numpy as np
-from scipy.fft import fft
+from scipy.fft import fft, ifft
 from scipy.interpolate import interp1d
 from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
@@ -129,15 +129,13 @@ def robust_interpolation(
 def fourier_transform_1d(
     x: np.ndarray,
     y: np.ndarray,
-    should_symmetrize=True,
     should_inverse: bool = False,
     n_bins=1024,
     bin_size=None,
-    lag_units_factor=1e-3,
+    lag_units_factor=1,
     should_force_zero_to_one: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Doc."""
-    # TODO: this should be more general, and the specifics should go to a CorrFunc method (perhaps named 'clear_afterpulsing' or something
 
     # keep the zero value
     y0 = y[0]
@@ -145,19 +143,15 @@ def fourier_transform_1d(
     # interpolate to ensure equal spacing and set bins_size or number of bins
     if bin_size:
         r = np.arange(min(x), max(x), bin_size)
-        n_bins = r.size
     else:
         r = np.linspace(min(x), max(x), n_bins)
         bin_size = r[1] - r[0]
 
-    if should_symmetrize:
-        x = np.hstack((-np.flip(x[1:]), x[1:]))
-        y = np.hstack((np.flip(y[1:]), y[1:]))
-        r = np.hstack((-np.flip(r[1:]), r[0], r[1:]))
-        n_bins = r.size
-    else:
-        x = x[1:]
-        y = y[1:]
+    x = np.hstack((-np.flip(x[1:]), x[1:]))
+    y = np.hstack((np.flip(y[1:]), y[1:]))
+    r = np.hstack((-np.flip(r[1:]), r[0], r[1:]))
+    n_bins = r.size
+
     q = 2 * np.pi * np.arange(n_bins) / (bin_size * n_bins)
 
     # Linear interpolation
@@ -172,17 +166,20 @@ def fourier_transform_1d(
     # normalize
     fr_interp *= bin_size * lag_units_factor
 
+    # handle center (0)
     if should_force_zero_to_one:
         y0 = 1
     else:  # normalize according to the units and bin size
         y0 *= bin_size * lag_units_factor
+    fr_interp[fr_interp.size // 2] = y0
 
-    if should_symmetrize:
-        fr_interp[fr_interp.size // 2] = y0
+    # Transform
+    if should_inverse:
+        fr_interp = fr_interp.astype(np.complex) * np.exp(+1j * q * (min(r)))
+        fq = ifft(fr_interp)
     else:
-        fr_interp[0] = y0
-
-    fq = fft(fr_interp) * np.exp(-1j * q * (min(r)))
+        fq = fft(fr_interp)
+    fq *= np.exp(-1j * q * (min(r)))
 
     # symmetrize q
     k1 = int(n_bins / 2 + 0.9)  # trick to deal with even and odd values of 'n'
