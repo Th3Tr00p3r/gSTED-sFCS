@@ -26,8 +26,8 @@ from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
 from utilities.helper import (
     Limits,
     div_ceil,
+    extrapolate_over_noise,
     hankel_transform,
-    robust_interpolation,
     timer,
     unify_length,
     xcorr,
@@ -170,7 +170,7 @@ class StructureFactor:
     # parameters
     n_interp_pnts: int
     r_max: float
-    vt_min_sq: float
+    r_min: float
     g_min: float
 
     r: np.ndarray
@@ -454,7 +454,7 @@ class CorrFunc:
 
     def calculate_structure_factor(
         self,
-        n_interp_pnts: int = 2056,
+        n_interp_pnts: int = 2048,
         r_max: float = 10.0,
         r_min: float = 0.05,
         g_min: float = 1e-2,
@@ -465,72 +465,53 @@ class CorrFunc:
 
         print(f"Calculating '{self.name}' structure factor...", end=" ")
 
-        vt_min_sq = r_min ** 2
-
         c0 = scipy.special.jn_zeros(0, n_interp_pnts)  # Bessel function zeros
         r = (r_max / c0[n_interp_pnts - 1]) * c0  # Radius vector
 
-        # choose interpolation range (extrapolate the noisy parts)
-        j_vt_um_sq_over_min = np.nonzero(self.vt_um ** 2 > vt_min_sq)[0]
-        j_vt_um_under_r_max = np.nonzero(self.vt_um < r_max)[0]
-        j_normalized_over_gmin = np.nonzero(self.normalized > g_min)[0][:-1]
-        #        j_intrp = sorted(set(j_vt_um_sq_over_min) & set(j_normalized_over_gmin))
-        j_intrp = sorted(
-            set(j_vt_um_sq_over_min) & set(j_vt_um_under_r_max) & set(j_normalized_over_gmin)
+        # interpolation (extrapolate the noisy parts)
+        #  Gaussian
+        gauss_interp = extrapolate_over_noise(
+            self.vt_um,
+            self.normalized,
+            r,
+            Limits(r_min, r_max),
+            Limits(g_min, np.inf),
+            n_robust=n_robust,
+            interp_type="gaussian",
         )
 
-        sample_vt_um = self.vt_um[j_intrp]
-        sample_normalized = self.normalized[j_intrp]
-
-        #  Gaussian interpolation
-        if n_robust:
-            log_fr = robust_interpolation(
-                r ** 2, sample_vt_um ** 2, np.log(sample_normalized), n_robust
-            )
-        else:
-            interpolator = scipy.interpolate.interp1d(
-                sample_vt_um ** 2,
-                np.log(sample_normalized),
-                fill_value="extrapolate",
-                assume_sorted=True,
-            )
-            log_fr = interpolator(r ** 2)
-        fr = np.exp(log_fr)
-
-        #  linear interpolation
-        if n_robust:
-            fr_linear_interp = robust_interpolation(r, sample_vt_um, sample_normalized, n_robust)
-        else:
-            interpolator = scipy.interpolate.interp1d(
-                sample_vt_um,
-                sample_normalized,
-                fill_value="extrapolate",
-                assume_sorted=True,
-            )
-            fr_linear_interp = interpolator(r)
-
-        #  zero-pad the linear interpolation
-        fr_linear_interp[r > self.vt_um[j_normalized_over_gmin[-1]]] = 0
+        #  linear
+        lin_interp = extrapolate_over_noise(
+            self.vt_um,
+            self.normalized,
+            r,
+            Limits(r_min, r_max),
+            Limits(g_min, np.inf),
+            n_robust=n_robust,
+            interp_type="linear",
+        )
 
         # plot interpolations for testing
         with Plotter(
             super_title=f"{self.name.capitalize()}: Interpolation Testing",
-            xlim=(0, self.vt_um[max(j_intrp) + 5] ** 2),
+            xlim=(0, self.vt_um[max(lin_interp.interp_idxs) + 5] ** 2),
             ylim=(1e-1, 1.3),
         ) as ax:
             ax.semilogy(self.vt_um ** 2, self.normalized, "x", label="Normalized")
-            ax.semilogy(sample_vt_um ** 2, sample_normalized, "o", label="Interpolation Sample")
-            ax.semilogy(r ** 2, fr, label="Gaussian Intep/Extrap")
-            ax.semilogy(r ** 2, fr_linear_interp, label="Linear Intep/Extrap")
+            ax.semilogy(
+                lin_interp.x_samples ** 2, lin_interp.y_samples, "o", label="Interpolation Sample"
+            )
+            ax.semilogy(r ** 2, gauss_interp.y_interp, label="Gaussian Intep/Extrap")
+            ax.semilogy(r ** 2, lin_interp.y_interp, label="Linear Intep/Extrap")
             ax.legend()
             ax.set_xlabel("Displacement $(\\mu m^2)$")
             ax.set_ylabel("ACF (Normalized)")
 
         # Fourier Transform
-        q, fq = hankel_transform(r, fr)
+        q, fq = hankel_transform(r, gauss_interp.y_interp)
 
         #  linear interpolated Fourier Transform
-        _, fq_linear_interp = hankel_transform(r, fr_linear_interp)
+        _, fq_linear_interp = hankel_transform(r, lin_interp.y_interp)
 
         # TODO: show this to Oleg - can't figure out what's wrong
         #        #  Estimating error of transform
@@ -556,11 +537,11 @@ class CorrFunc:
         self.structure_factor = StructureFactor(
             n_interp_pnts,
             r_max,
-            vt_min_sq,
+            r_min,
             g_min,
             r,
-            fr,
-            fr_linear_interp,
+            gauss_interp.y_interp,
+            lin_interp.y_interp,
             q,
             fq,
             fq_linear_interp,
