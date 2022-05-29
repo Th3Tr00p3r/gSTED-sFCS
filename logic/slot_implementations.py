@@ -1569,7 +1569,13 @@ class MainWin:
                 with suppress(AttributeError, RuntimeError):
                     # AttributeError - no data loaded
                     data_type = self.infer_data_type_from_template(measurement.template)
-                    cf = measurement.cf[data_type]
+                    try:
+                        cf = measurement.cf[data_type]
+                    except KeyError:
+                        cf = list(measurement.cf.values())[0]
+                        print(
+                            "Warning! data type was errorneously inferred from template - possible bad template naming..."
+                        )
                     cf.average_correlation(**avg_corr_kwargs)
 
                     if sol_data_analysis_wdgts.plot_spatial:
