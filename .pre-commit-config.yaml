@@ -31,7 +31,7 @@ repos:
             types: [python]
             pass_filenames: false
             stages: [commit]
-            additional_dependencies: [numpy, scipy, sklearn]
+            additional_dependencies: [numpy, scipy, sklearn, scikit-image, matplotlib, PyQt5]
 
     - repo: https://github.com/pycqa/isort
       rev: 5.9.3

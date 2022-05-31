@@ -198,8 +198,15 @@ XCF.average_correlation()
 # Let's define them and take a look first:
 
 # %%
-# defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
-G_ap_t = np.copy(XCF.avg_cf_cr)
+# Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
+gate_width_ns = 100
+countrate_a = np.mean([countrate_pair.a for countrate_pair in XCF.countrate_list])
+countrate_b = np.mean([countrate_pair.b for countrate_pair in XCF.countrate_list])
+norm_factor = countrate_b * (gate_width_ns / gate2_ns.interval()) / countrate_a
+# norm_factor = 1
+print("afterpulse norm_factor: ", norm_factor)
+G_ap_t = XCF.avg_cf_cr * norm_factor
+
 G_ap_signal_t = np.copy(exp.confocal.cf["confocal"].avg_cf_cr)
 lag = np.copy(XCF.lag)
 
@@ -241,8 +248,6 @@ G_ap_t[0] * np.diff(lag)[n] * 1e-3
 # Testing our Fourier transform and its inverse by performing a round-trip transform on a Gaussian function:
 
 # %%
-# # %debug
-
 # define Gaussian on positive axis:
 a = 7
 sigma = 137  # say, in seconds
@@ -266,62 +271,25 @@ with Plotter(
 r, fr_interp, w, fw = fourier_transform_1d(
     t,
     ft,
+    should_plot=True,
 )
-
-# show Fourier transform interpolation
-with Plotter(
-    super_title="Interpolation",
-    xlabel="$t$ ($s$)",
-    xlim=(-sigma * 4, sigma * 4),
-) as ax:
-    ax.plot(t, ft, "o", label="before interpolation")
-    ax.plot(r, fr_interp, "x", label="after interpolation")
-    ax.legend()
-
-# show our Fourier transform
-with Plotter(
-    super_title="Our Fourier Transform",
-    xlabel="$\omega$ ($2\pi\cdot Hz$)",
-    #     ylabel="f($\omega$) (UNITS?)",
-    xlim=(-1 / sigma * 5, 1 / sigma * 5),
-) as ax:
-    ax.plot(w, np.real(fw), label="real part")
-    ax.plot(w, np.imag(fw), label="imaginary part")
-    ax.legend()
 
 ###################
 # Inverse transform
 ###################
 
 w_post, fw_interp, t_post, ft_post = fourier_transform_1d(
-    w, fw, should_inverse=True, is_input_symmetric=True
+    w,
+    fw,
+    should_inverse=True,
+    is_input_symmetric=True,
+    should_plot=True,
 )
 
-# show Fourier transform interpolation
-with Plotter(
-    super_title="Interpolation",
-    xlabel="$t$ ($s$)",
-    xlim=(-1 / sigma * 5, 1 / sigma * 5),
-) as ax:
-    ax.plot(w, abs(fw), "o", label="before interpolation")
-    ax.plot(w_post, np.real(fw_interp), "x", label="after interpolation (real)")
-    ax.plot(w_post, np.imag(fw_interp), "x", label="after interpolation (imaginary)")
-    #     ax.plot(w_post, abs(fw_interp), 'x', label="after interpolation (absolute)")
-    ax.legend()
-
-# show our inverse Fourier transform
-with Plotter(
-    super_title="Our Inverse Fourier Transform",
-    xlabel="$\omega$ ($2\pi\cdot Hz$)",
-    xlim=(-sigma * 5, sigma * 5),
-    x_scale="linear",
-) as ax:
-    ax.plot(t_post, np.real(ft_post), label="real part")
-    ax.plot(t_post, np.imag(ft_post), label="imaginary part")
-    #     ax.plot(r, abs(fr), label="absolute")
-    ax.legend()
-
+######################
 # Comparing round-trip
+######################
+
 with Plotter(
     super_title="Round-Trip Fourier Transform\n Compared to Original",
     xlabel="$t$ ($s$)",
@@ -344,26 +312,13 @@ y_lims = Limits(1, 4)
 gauss_interp = extrapolate_over_noise(
     t,
     ft,
-    #     x_interp=np.array(range(1000)),
     n_bins=2**17,
     x_lims=x_lims,
     y_lims=y_lims,
     n_robust=2,
     interp_type="gaussian",
+    should_plot=True,
 )
-
-# Comparing interp/extrap with original
-with Plotter(
-    super_title="Gaussian interp/extrap testing",
-    xlabel="$t$ ($s$)",
-    ylabel="$f(t)$ (Normalized)",
-    xlim=(-sigma * 5, sigma * 5),
-) as ax:
-    ax.plot(t, ft, "o", label="Original Gaussian")
-    ax.plot(
-        gauss_interp.x_interp, gauss_interp.y_interp, ".", markersize="4", label="interp/extrap"
-    )
-    ax.legend()
 
 # %% [markdown]
 # Extrapolating over noisy parts of signal and afterpulsing:
@@ -371,253 +326,530 @@ with Plotter(
 # %%
 lag_s = lag * 1e-3  # ms to seconds
 
-n_bins = 2**17
-n_robust = 10
-x_lims = Limits(1e-7, 1e-3)  # (100 ns to 1 ms)
-y_lims = Limits(1e1, np.inf)
+n_bins = 2**15
+n_robust = 0
+x_lims = Limits(1e-6, 1e-3)  # (1 us to 1 ms)
+y_lims = Limits(50, np.inf)
 interp_type = "gaussian"
-extrap_x_lims = Limits(1e-6, 5e-3)
+extrap_x_lims = Limits(-1, 5e-3)  # up to 5 ms
 
 gauss_interp_ap_signal = extrapolate_over_noise(
     lag_s,
-    G_ap_signal_t[1:],
+    G_ap_signal_t,
     n_bins=n_bins,
     x_lims=x_lims,
     y_lims=y_lims,
     n_robust=n_robust,
     interp_type=interp_type,
     extrap_x_lims=extrap_x_lims,
+    should_plot=True,
 )
 
 gauss_interp_ap = extrapolate_over_noise(
     lag_s,
-    G_ap_t[1:],
+    G_ap_t,
     n_bins=n_bins,
     x_lims=x_lims,
     y_lims=y_lims,
     n_robust=n_robust,
     interp_type=interp_type,
     extrap_x_lims=extrap_x_lims,
+    should_plot=True,
 )
 
-# Comparing interp/extrap with original
-with Plotter(
-    super_title="Gaussian interp/extrap testing",
-    xlabel="$t$ ($s$)",
-    ylabel="$f(t)$ (Normalized)",
-    #     xlim=(-sigma * 5, sigma * 5),
-) as ax:
-    ax.plot(lag_s, G_ap_signal_t, "o", label="original signal")
-    ax.plot(
-        gauss_interp_ap_signal.x_interp,
-        gauss_interp_ap_signal.y_interp,
-        ".",
-        markersize="4",
-        label="interp/extrap",
-    )
-    ax.legend()
-
-with Plotter(
-    super_title="Gaussian interp/extrap testing",
-    xlabel="$t$ ($s$)",
-    ylabel="$f(t)$ (Normalized)",
-    #     xlim=(-sigma * 5, sigma * 5),
-) as ax:
-    ax.plot(lag_s, G_ap_t, "o", label="original afterpulsing")
-    ax.plot(
-        gauss_interp_ap.x_interp,
-        gauss_interp_ap.y_interp,
-        ".",
-        markersize="4",
-        label="interp/extrap",
-    )
-    ax.legend()
-
-# %% [markdown]
-# Using the interpolated tails instead:
-
-# %%
-G_ap_signal_t
-gauss_interp_ap_signal
+G_ap_signal_t_interp = gauss_interp_ap_signal.y_interp
+G_ap_t_interp = gauss_interp_ap.y_interp
+lag_s_interp = gauss_interp_ap.x_interp
 
 # %% [markdown]
 # Fourier transform of afterpulsed signal:
 
 # %%
 t_signal, ft_interp_signal, w_signal, fw_signal = fourier_transform_1d(
-    lag_s,
-    G_ap_signal_t,
+    lag_s_interp,
+    G_ap_signal_t_interp,
     bin_size=1e-7,  # meaning 100 ns
     should_normalize=True,
+    should_plot=True,
 )
-
-with Plotter(
-    super_title="Interpolation of $G_{signal}$",
-    xlabel="$t$ ($\mu s$)",
-    ylabel="p",
-    xlim=(-1, 1),
-    x_scale="linear",
-) as ax:
-    ax.plot(lag_s * 1e6, G_ap_signal_t * 1e-7, "o", label="before interpolation")
-    ax.plot(t_signal * 1e6, ft_interp_signal, "x", label="after interpolation")
-    ax.legend()
-
-with Plotter(
-    super_title="Fourier Transform of $G_{ap\ signal}$",
-    xlabel="$\omega$ ($2\pi\cdot MHz$)",
-    xlim=(-0.25, 0.25),
-) as ax:
-
-    ax.plot(w_signal * 1e-6, np.real(fw_signal), label="real part")
-    ax.plot(w_signal * 1e-6, np.imag(fw_signal), label="imaginary part")
-    ax.plot(w_signal * 1e-6, abs(fw_signal), label="absolute")
-    ax.legend()
 
 # %% [markdown]
 # Fourier transform of afterpulsing:
 
 # %%
-# # %debug
 t_ap, ft_interp_ap, w_ap, fw_ap = fourier_transform_1d(
-    lag_s,
-    G_ap_t,
+    lag_s_interp,
+    G_ap_t_interp,
     bin_size=1e-7,  # meaning 100 ns
     should_normalize=True,
+    should_plot=True,
 )
 
-with Plotter(
-    super_title="Interpolation of $G_{ap}$",
-    xlabel="$t$ ($\mu s$)",
-    ylabel="p",
-    xlim=(-1, 1),
-    x_scale="linear",
-) as ax:
-    ax.plot(lag_s * 1e6, G_ap_t * 1e-7, "o", label="before interpolation")
-    ax.plot(t_ap * 1e6, ft_interp_ap, "x", label="after interpolation")
-    ax.legend()
-
-with Plotter(
-    super_title="Fourier Transform of $G_{ap}$",
-    xlabel="$\omega$ ($2\pi\cdot MHz$)",
-    xlim=(-0.3, 0.3),
-) as ax:
-
-    ax.plot(w_ap * 1e-6, np.real(fw_ap), label="real part")
-    ax.plot(w_ap * 1e-6, np.imag(fw_ap), label="imaginary part")
-    ax.plot(w_ap * 1e-6, abs(fw_ap), label="absolute")
-    ax.legend()
+# %% [markdown]
+# Get the baselines and normalize to 1:
 
 # %%
-with Plotter() as ax:
-    ax.plot(w_signal * 1e-6, np.real(fw_signal), label="signal")
-    ax.plot(w_ap * 1e-6, np.real(fw_ap), label="ap")
+fw_signal_baseline = np.mean(np.real(fw_signal[abs(w_signal) > 1e7]))
+fw_ap_baseline = np.mean(np.real(fw_ap[abs(w_ap) > 1e7]))
+
+print("fw_signal_baseline: ", fw_signal_baseline)
+print("fw_ap_baseline: ", fw_ap_baseline)
+
+fw_signal += 1 - fw_signal_baseline
+fw_ap += 1 - fw_ap_baseline
+
+# %% [markdown]
+# Compare the (normalized) transforms:
+
+# %%
+with Plotter(
+    super_title="Comparing the transforms",
+    #     xlim=(-1e6, 1e6),
+    #     ylim=(0.99, 1.04),
+) as ax:
+    ax.plot(w_signal, np.real(fw_signal), label="signal")
+    ax.plot(w_ap, np.real(fw_ap), label="ap")
 
 # %% [markdown]
 # Dividing the Fourier transform of the afterpulsed signal by that of the afterpulse (from cross-correlation)
 
 # %%
-quotient = abs(fw_signal) / abs(fw_ap)
+quotient = fw_signal / fw_ap
 
 with Plotter() as ax:
-    ax.plot(w_ap, quotient)
+    ax.plot(w_ap, np.real(quotient), label="quotient (real part)")
+    ax.plot(w_ap, np.imag(quotient), label="quotient (imaginary part)")
+    ax.legend()
+
+# %% [markdown]
+# Extrapolating to smooth noise:
+
+# %%
+# # %debug
+
+n_bins = 2**17
+n_robust = 0
+x_lims = Limits(np.NINF, np.inf)
+# x_lims = Limits(3000, np.inf)
+# x_lims = Limits(3000, 200000)
+y_lims = Limits(np.NINF, np.inf)
+interp_type = "gaussian"
+extrap_x_lims = Limits(np.NINF, np.inf)
+# extrap_x_lims = Limits(np.NINF, 3000)
+
+gauss_interp_quotient = extrapolate_over_noise(
+    w_ap[w_ap.size // 2 :],
+    np.real(quotient)[quotient.size // 2 :],
+    n_bins=n_bins,
+    x_lims=x_lims,
+    y_lims=y_lims,
+    n_robust=n_robust,
+    interp_type=interp_type,
+    extrap_x_lims=extrap_x_lims,
+    should_plot=True,
+)
 
 # %% [markdown]
 # Attempting to inverse-transform the quotient to get the afterpulse-free ACF:
 
 # %%
-# # %debug
+w_ap_interp = gauss_interp_quotient.x_interp
+quotient_interp = gauss_interp_quotient.y_interp
 
-w_min = 0.00015  # 0.015*1e6*2*np.pi
+# w_ap_interp = w_ap
+# quotient_interp = quotient
 
 w_quotient, fw_interp_quotient, t_quotient, ft_quotient = fourier_transform_1d(
-    #     w_ap[w_ap < w_min],
-    #     quotient[w_ap < w_min],
-    w_ap,
-    quotient,
+    w_ap_interp,
+    quotient_interp,
     should_inverse=True,
-    is_input_symmetric=True,
-    bin_size=np.diff(w_ap)[0]
+    is_input_symmetric=False,
+    bin_size=np.diff(w_ap_interp)[0],
     #     should_normalize=True,
+    should_plot=True,
 )
-
-with Plotter(
-    super_title="Interpolation",
-    xlabel="$\omega$ ($2\pi\cdot MHz$)",
-    xlim=(-1, 1),
-) as ax:
-    ax.plot(w_ap * 1e-6, quotient, "o", label="before interpolation")
-    ax.plot(w_quotient * 1e-6, abs(fw_interp_quotient), "x", label="after interpolation")
-    ax.legend()
-
-with Plotter(
-    super_title="Inverse Fourier Transform\n of $G(\omega)_{signal}\ /\ G(\omega)_{ap}$",
-    xlabel="$t$ ($\mu s$)",
-    xlim=(-1, 1),
-) as ax:
-
-    ax.plot(t_quotient * 1e6, np.real(ft_quotient), label="real part")
-    ax.plot(t_quotient * 1e6, np.imag(ft_quotient), label="imaginary part")
-    ax.plot(t_quotient * 1e6, abs(ft_quotient), label="absolute")
-    ax.legend()
 
 # %% [markdown]
 # Generating the Fourier transform of the afterpulse-subtracted (in the usual/old way) signal, to compare with the quotient in Fourier space:
 
 # %%
 # load experiment
-exp = SFCSExperiment(name=label)
-exp.load_experiment(
+exp2 = SFCSExperiment(name=label)
+exp2.load_experiment(
     confocal_template=DATA_PATH / confocal_template,
     should_plot=True,
     should_use_preprocessed=True,  # TODO: load anew if not found
     should_re_correlate=True,
     should_subtract_afterpulse=True,
+    should_use_inherent_afterpulsing=True,
 )
+
+# %% [markdown]
+# Extrapolating over noise to facillitate the Fourier transform:
 
 # %%
-G_signal_t = np.copy(exp.confocal.cf["confocal"].avg_cf_cr)
+G_signal_t = np.copy(exp2.confocal.cf["confocal"].avg_cf_cr)
 
-t_std_signal, ft_interp_std_signal, w_std_signal, fw_std_signal = fourier_transform_1d(
-    lag_s[1:],
-    G_signal_t[1:],
-    bin_size=1e-7,  # meaning 100 ns
-    should_normalize=True,
+lag_s = lag * 1e-3  # ms to seconds
+
+n_bins = 2**17
+n_robust = 8
+x_lims = Limits(1e-6, 1e-3)  # (1 us to 1 ms)
+y_lims = Limits(50, np.inf)
+interp_type = "gaussian"
+extrap_x_lims = Limits(-1, 5e-3)
+
+gauss_interp_signal = extrapolate_over_noise(
+    lag_s,
+    G_signal_t,
+    n_bins=n_bins,
+    x_lims=x_lims,
+    y_lims=y_lims,
+    n_robust=n_robust,
+    interp_type=interp_type,
+    extrap_x_lims=extrap_x_lims,
+    should_plot=True,
 )
 
-with Plotter(
-    super_title="Interpolation of $G_{signal}$",
-    xlabel="$t$ ($\mu s$)",
-    ylabel="p",
-    xlim=(-1, 1),
-    x_scale="linear",
-) as ax:
-    ax.plot(lag_s * 1e6, G_signal_t * 1e-7, "o", label="before interpolation")
-    ax.plot(t_std_signal * 1e6, ft_interp_std_signal, "x", label="after interpolation")
-    ax.legend()
+# %% [markdown]
+# Fourier-transforming the afterpulsing-subtracted signal:
 
-with Plotter(
-    super_title="Fourier Transform of $G_{signal}$",
-    xlabel="$\omega$ ($2\pi\cdot MHz$)",
-    xlim=(-0.3, 0.3),
-) as ax:
+# %%
+# # %debug
+lag_s_interp = gauss_interp_signal.x_interp
+G_signal_t_interp = gauss_interp_signal.y_interp
 
-    ax.plot(w_std_signal * 1e-6, np.real(fw_std_signal), label="real part")
-    ax.plot(w_std_signal * 1e-6, np.imag(fw_std_signal), label="imaginary part")
-    ax.plot(w_std_signal * 1e-6, abs(fw_std_signal), label="absolute")
-    ax.legend()
+t_std_signal, ft_interp_std_signal, w_std_signal, fw_std_signal = fourier_transform_1d(
+    lag_s_interp,
+    G_signal_t_interp,
+    bin_size=1e-7,  # meaning 100 ns
+    should_normalize=True,
+    should_plot=True,
+)
 
 # %% [markdown]
 # Plotting the transformed ap-subtracted signal together with the quotient:
 
 # %%
-with Plotter(
-    super_title="Fourier Transform of $G_{signal}$",
-    xlabel="$\omega$ ($2\pi\cdot MHz$)",
-    xlim=(-0.3, 0.3),
-) as ax:
-    ax.plot(w_std_signal * 1e-6, abs(fw_std_signal), label="absolute $G_{signal}")
+factor = 1
+# factor = 1.53
 
-    ax.plot(w_ap * 1e-6, quotient, label="absolute $G_{signal}")
+with Plotter(
+    subplots=(1, 2),
+    super_title="Fourier Transform of $G_{signal}$ vs. Quotient",
+    xlabel="$\omega$ ($2\pi\cdot Hz$)",
+) as axes:
+    axes[0].plot(w_std_signal, np.real(fw_std_signal), label="$G_{signal}$ (real part)")
+    axes[0].plot(
+        w_ap_interp,
+        factor * np.real(quotient_interp),
+        label="$G(\omega)_{ap\ signal}/G(\omega)_{ap}$ (real part)",
+    )
+    axes[0].legend()
+    axes[0].set_xscale("log")
+
+    axes[1].plot(w_std_signal, np.real(fw_std_signal), label="$G_{signal}$ (real part)")
+    axes[1].plot(
+        w_ap_interp,
+        factor * np.real(quotient_interp),
+        label="$G(\omega)_{ap\ signal}/G(\omega)_{ap}$ (real part)",
+    )
+    axes[1].legend()
+    axes[1].set_xlim(-1e6, 1e6)
+
+# %% [markdown]
+# Directly comparing the clean signal to the inverse transform of the quotient:
+
+# %%
+g0_factor = 1.045e7
+
+with Plotter(
+    super_title="Comparing the transforms",
+    #     xlim=(-1e6, 1e6),
+    ylim=(-100, max(G_signal_t_interp) * 1.1),
+    x_scale="log",
+) as ax:
+
+    ax.plot(lag_s_interp, G_signal_t_interp, label="$G(t)_{signal}$")
+    ax.plot(t_quotient, np.real(ft_quotient) * g0_factor, label="$G(t)_{quotient}$")
+    ax.legend()
+
+# %% [markdown]
+# ## Testing on new detector data...
+
+# %% [markdown]
+# importing the data:
+
+# %%
+DATA_DATE = "29_03_2022"
+confocal_template = "bp300_20uW_angular_exc_172325_*.pkl"
+label = "300 bp new detector"
+
+DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
+
+# load experiment
+exp3 = SFCSExperiment(name=label)
+exp3.load_experiment(
+    confocal_template=DATA_PATH / confocal_template,
+    should_plot=True,
+    should_use_preprocessed=True,  # TODO: load anew if not found
+    should_re_correlate=False,  # True
+    should_subtract_afterpulse=False,
+)
+
+# save processed data (to avoid re-processing)
+exp3.save_processed_measurements()
+
+# Show countrate
+print(f"Count-Rate: {exp3.confocal.avg_cnt_rate_khz} kHz")
+
+# calibrate TDC
+exp3.calibrate_tdc(should_plot=False)
+
+# %% [markdown]
+# Get the inverse quotient:
+
+# %%
+meas = exp3.confocal
+meas.xcf = {}  # "halogen_afterpulsing": meas.cf["confocal"].afterpulse}
+
+gate1_ns = Limits(2, 10)
+gate2_ns = Limits(45, 85)
+
+corr_names = ("AB",)
+XCF = meas.cross_correlate_data(
+    cf_name="fl_vs_wn",
+    corr_names=corr_names,
+    gate1_ns=gate1_ns,
+    gate2_ns=gate2_ns,
+    should_subtract_bg_corr=True,
+    should_subtract_afterpulse=False,
+)[0]
+
+XCF.average_correlation()
+
+# %%
+# Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
+gate_width_ns = 100
+countrate_a = np.mean([countrate_pair.a for countrate_pair in XCF.countrate_list])
+countrate_b = np.mean([countrate_pair.b for countrate_pair in XCF.countrate_list])
+norm_factor = countrate_b * (gate_width_ns / gate2_ns.interval()) / countrate_a
+# norm_factor = 1
+print("afterpulse norm_factor: ", norm_factor)
+G_ap_t = XCF.avg_cf_cr * norm_factor
+
+G_ap_signal_t = np.copy(exp3.confocal.cf["confocal"].avg_cf_cr)
+lag = np.copy(XCF.lag)
+
+# plotting
+with Plotter(
+    super_title="Logarithmic Scale",
+    xlim=(1e-3, 1e1),
+    ylim=(-500, exp3.confocal.cf["confocal"].g0 * 1.3),
+    x_scale="log",
+) as ax:
+
+    ax.plot(lag, G_ap_signal_t, label="Afterpulsed Signal")
+    ax.plot(lag, G_ap_t, label="X-Corr Afterpulsing")
+    ax.legend()
+
+with Plotter(
+    super_title="Linear Scale", xlim=(-1e-2, 1e-1), ylim=(-1e4, 1e5), x_scale="linear"
+) as ax:
+
+    ax.plot(lag, G_ap_signal_t, label="Afterpulsed Signal")
+    ax.plot(lag, G_ap_t, label="X-Corr Afterpulsing")
+    ax.legend()
+
+# %%
+lag_s = lag * 1e-3  # ms to seconds
+
+n_bins = 2**15
+n_robust = 0
+x_lims = Limits(1e-6, 1e-3)  # (1 us to 1 ms)
+y_lims = Limits(50, np.inf)
+interp_type = "gaussian"
+extrap_x_lims = Limits(-1, 5e-3)  # up to 5 ms
+
+gauss_interp_ap_signal = extrapolate_over_noise(
+    lag_s,
+    G_ap_signal_t,
+    n_bins=n_bins,
+    x_lims=x_lims,
+    y_lims=y_lims,
+    n_robust=n_robust,
+    interp_type=interp_type,
+    extrap_x_lims=extrap_x_lims,
+    should_plot=True,
+)
+
+gauss_interp_ap = extrapolate_over_noise(
+    lag_s,
+    G_ap_t,
+    n_bins=n_bins,
+    x_lims=x_lims,
+    y_lims=y_lims,
+    n_robust=n_robust,
+    interp_type=interp_type,
+    extrap_x_lims=extrap_x_lims,
+    should_plot=True,
+)
+
+G_ap_signal_t_interp = gauss_interp_ap_signal.y_interp
+G_ap_t_interp = gauss_interp_ap.y_interp
+lag_s_interp = gauss_interp_ap.x_interp
+
+# %%
+t_signal, ft_interp_signal, w_signal, fw_signal = fourier_transform_1d(
+    lag_s_interp,
+    G_ap_signal_t_interp,
+    bin_size=1e-7,  # meaning 100 ns
+    should_normalize=True,
+    should_plot=True,
+)
+
+t_ap, ft_interp_ap, w_ap, fw_ap = fourier_transform_1d(
+    lag_s_interp,
+    G_ap_t_interp,
+    bin_size=1e-7,  # meaning 100 ns
+    should_normalize=True,
+    should_plot=True,
+)
+
+# %%
+fw_signal_baseline = np.mean(np.real(fw_signal[abs(w_signal) > 1e7]))
+fw_ap_baseline = np.mean(np.real(fw_ap[abs(w_ap) > 1e7]))
+
+print("fw_signal_baseline: ", fw_signal_baseline)
+print("fw_ap_baseline: ", fw_ap_baseline)
+
+fw_signal += 1 - fw_signal_baseline
+fw_ap += 1 - fw_ap_baseline
+
+# %%
+with Plotter(
+    super_title="Comparing the transforms",
+    #     xlim=(-1e6, 1e6),
+    #     ylim=(0.99, 1.04),
+) as ax:
+    ax.plot(w_signal, np.real(fw_signal), label="signal")
+    ax.plot(w_ap, np.real(fw_ap), label="ap")
+
+# %%
+quotient = fw_signal / fw_ap
+
+with Plotter() as ax:
+    ax.plot(w_ap, np.real(quotient), label="quotient (real part)")
+    ax.plot(w_ap, np.imag(quotient), label="quotient (imaginary part)")
+    ax.legend()
+
+# %%
+n_bins = 2**17
+n_robust = 0
+# x_lims = Limits(np.NINF, np.inf)
+x_lims = Limits(3000, np.inf)
+# x_lims = Limits(3000, 200000)
+y_lims = Limits(np.NINF, np.inf)
+interp_type = "gaussian"
+extrap_x_lims = Limits(np.NINF, np.inf)
+# extrap_x_lims = Limits(np.NINF, 3000)
+
+gauss_interp_quotient = extrapolate_over_noise(
+    w_ap[w_ap.size // 2 :],
+    np.real(quotient)[quotient.size // 2 :],
+    n_bins=n_bins,
+    x_lims=x_lims,
+    y_lims=y_lims,
+    n_robust=n_robust,
+    interp_type=interp_type,
+    extrap_x_lims=extrap_x_lims,
+    should_plot=True,
+)
+
+# %%
+w_ap_interp = gauss_interp_quotient.x_interp
+quotient_interp = gauss_interp_quotient.y_interp
+
+# w_ap_interp = w_ap
+# quotient_interp = quotient
+
+w_quotient, fw_interp_quotient, t_quotient, ft_quotient = fourier_transform_1d(
+    w_ap_interp,
+    quotient_interp,
+    should_inverse=True,
+    is_input_symmetric=False,
+    bin_size=np.diff(w_ap_interp)[0],
+    #     should_normalize=True,
+    should_plot=True,
+)
+
+# %% [markdown]
+# Comparing to regularly subtracted afterpulsing (calibrated and inherent):
+
+# %%
+DATA_DATE = "29_03_2022"
+confocal_template = "bp300_20uW_angular_exc_172325_*.pkl"
+label = "300 bp new detector"
+
+DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
+
+# load experiment
+exp4 = SFCSExperiment(name=label)
+exp4.load_experiment(
+    confocal_template=DATA_PATH / confocal_template,
+    should_plot=True,
+    should_use_preprocessed=True,  # TODO: load anew if not found
+    should_re_correlate=True,
+    should_subtract_afterpulse=True,
+    should_use_inherent_afterpulsing=True,
+)
+
+# save processed data (to avoid re-processing)
+exp4.save_processed_measurements()
+
+# Show countrate
+print(f"Count-Rate: {exp4.confocal.avg_cnt_rate_khz} kHz")
+
+# load experiment
+exp5 = SFCSExperiment(name=label)
+exp5.load_experiment(
+    confocal_template=DATA_PATH / confocal_template,
+    should_plot=True,
+    should_use_preprocessed=True,  # TODO: load anew if not found
+    should_re_correlate=True,
+    should_subtract_afterpulse=True,
+    should_use_inherent_afterpulsing=False,
+)
+
+# save processed data (to avoid re-processing)
+exp5.save_processed_measurements()
+
+# Show countrate
+print(f"Count-Rate: {exp5.confocal.avg_cnt_rate_khz} kHz")
+
+# %%
+clean_signal_inherent = exp4.confocal.cf["confocal"].avg_cf_cr
+lag_s = exp4.confocal.cf["confocal"].lag * 1e-3
+
+clean_signal_calibrated = exp5.confocal.cf["confocal"].avg_cf_cr
+
+g0_factor = 1.38e7
+# g0_factor = 1
+
+with Plotter(
+    super_title="Comparing the 'clean' signal\nwith the inverse transform (new detector)",
+    #     xlim=(-1e6, 1e6),
+    ylim=(-100, np.median(clean_signal) * 100),
+    x_scale="log",
+) as ax:
+
+    ax.plot(lag_s, clean_signal_inherent, label="$G(t)_{signal,\ inherent}$")
+    ax.plot(lag_s, clean_signal_calibrated, label="$G(t)_{signal,\ calibrated}$")
+    ax.plot(
+        t_quotient,
+        np.real(ft_quotient) * g0_factor,
+        label="$G(t)_{quotient}$ x " + f"{g0_factor:.2e}",
+    )
     ax.legend()
 
 # %% [markdown]
