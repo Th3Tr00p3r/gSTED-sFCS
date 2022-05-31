@@ -59,10 +59,10 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,3
+dataMonth,4
 dataYear,2022
-dataDay,29
-dataTemplate1,conc_250xDiluted_angular_sted_193229_*.pkl
+dataDay,13
+dataTemplate1,ATTO_Gated7ns_angular_exc_110755_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -108,7 +108,7 @@ tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
 solImportReCorrelate,True
-solImportAutoLoadProcessed,True
+solImportAutoLoadProcessed,False
 solDataFixShift,True
 solDataUseDefaultSysInfo,False
 solDataSubtractAfterpulse,True
