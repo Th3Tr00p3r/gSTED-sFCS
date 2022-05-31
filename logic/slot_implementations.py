@@ -1272,6 +1272,7 @@ class MainWin:
 
             measurement = None
 
+            # TODO: data file may not exist - check and force re-processing if so.
             if should_load_processed or import_wdgts.auto_load_processed:
                 try:
                     file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)

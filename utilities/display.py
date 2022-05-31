@@ -11,7 +11,7 @@ from matplotlib.colors import to_rgb
 from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
 
-from utilities.helper import Limits
+import utilities.helper as helper
 
 plt.rcParams.update({"figure.max_open_warning": 100})
 
@@ -134,8 +134,8 @@ class Plotter:
         self.subplots = kwargs.get("subplots", (1, 1))
         self.figsize = kwargs.get("figsize")
         self.super_title = kwargs.get("super_title")
-        self.xlabel = kwargs.get("xlabel", "")
-        self.ylabel = kwargs.get("ylabel", "")
+        self.xlabel = kwargs.get("xlabel")
+        self.ylabel = kwargs.get("ylabel")
         self.should_force_aspect = kwargs.get("should_force_aspect", False)
         self.fontsize = kwargs.get("fontsize", 14)
         self.xlim: Tuple[float, float] = kwargs.get("xlim")
@@ -143,7 +143,7 @@ class Plotter:
         self.x_scale: str = kwargs.get("x_scale")
         self.y_scale: str = kwargs.get("y_scale")
         self.should_autoscale = kwargs.get("should_autoscale", False)
-        self.selection_limits: Limits = kwargs.get("selection_limits")
+        self.selection_limits: helper.Limits = kwargs.get("selection_limits")
         self.subplot_kw = kwargs.get("subplot_kw", {})  # dict(projection='3d')
 
     def __enter__(self):
@@ -210,7 +210,7 @@ class Plotter:
                 if self.gui_options.fix_aspect:
                     self.should_force_aspect = True
                 if self.gui_options.scroll_zoom:
-                    ax.org_lims = (Limits(ax.get_xlim()), Limits(ax.get_ylim()))
+                    ax.org_lims = (helper.Limits(ax.get_xlim()), helper.Limits(ax.get_ylim()))
                     ax.org_dims = tuple(lim.interval() for lim in ax.org_lims)
                     ax.zoom_func = zoom_factory(ax)
                 if self.gui_options.cursor:
@@ -231,8 +231,10 @@ class Plotter:
                 ax.set_xscale(self.x_scale)
             if self.y_scale is not None:
                 ax.set_yscale(self.y_scale)
-            ax.set_xlabel(self.xlabel)
-            ax.set_ylabel(self.ylabel)
+            if self.xlabel is not None:
+                ax.set_xlabel(self.xlabel)
+            if self.ylabel is not None:
+                ax.set_ylabel(self.ylabel)
             [
                 text.set_fontsize(self.fontsize)
                 for text in [ax.title, ax.xaxis.label, ax.yaxis.label]
@@ -328,8 +330,8 @@ def zoom_factory(ax, base_scale=1.5):
             # AttributeError - when toolbar is not defined
             ax.figure.canvas.toolbar.push_current()
         # get the current x and y limits
-        cur_xlim = Limits(ax.get_xlim())
-        cur_ylim = Limits(ax.get_ylim())
+        cur_xlim = helper.Limits(ax.get_xlim())
+        cur_ylim = helper.Limits(ax.get_ylim())
         # set the range
         cur_xrange = cur_xlim.interval() * 0.5
         cur_yrange = cur_ylim.interval() * 0.5
@@ -350,8 +352,12 @@ def zoom_factory(ax, base_scale=1.5):
             scale_factor = base_scale
 
         # set new limits
-        new_xlim = Limits(xdata - cur_xrange * scale_factor, xdata + cur_xrange * scale_factor)
-        new_ylim = Limits(ydata + cur_yrange * scale_factor, ydata - cur_yrange * scale_factor)
+        new_xlim = helper.Limits(
+            xdata - cur_xrange * scale_factor, xdata + cur_xrange * scale_factor
+        )
+        new_ylim = helper.Limits(
+            ydata + cur_yrange * scale_factor, ydata - cur_yrange * scale_factor
+        )
         # limit zoom out
         org_width, org_height = ax.org_dims
         if (new_xlim.interval() > org_width * 1.1) or (-new_ylim.interval() > org_height * 1.1):

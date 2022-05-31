@@ -14,6 +14,9 @@ import numpy as np
 import scipy
 from sklearn import linear_model
 
+# from utilities.display import display.Plotter
+import utilities.display as display
+
 # import time # TESTING
 # tic = time.perf_counter() # TESTING
 # print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
@@ -156,20 +159,31 @@ class Limits:
 
         return sum(self) * 0.5
 
-    def clamp(self, n):
-        """Force limit range on number n"""
+    def clamp(self, obj):
+        """Force limit range on object"""
 
-        return max(min(self.upper, n), self.lower)
-
-    def clamp_limit(self, lims):
-        """Force limit range on number n"""
-
-        return Limits(self.clamp(lims.lower), self.clamp(lims.upper))
+        if isinstance(obj, (int, float)):
+            return max(min(self.upper, obj), self.lower)
+        elif hasattr(obj, "lower") and hasattr(obj, "upper"):
+            return Limits(self.clamp(obj.lower), self.clamp(obj.upper))
+        else:
+            raise TypeError("Clamped object must be either a Limits instance or a number!")
 
     def as_range(self) -> range:
         """Get a Python 'range' (generator)"""
 
         return range(self.lower, self.upper)
+
+
+def largest_n(arr: np.ndarray, n: int):
+    """
+    Adapted from:
+    https://stackoverflow.com/questions/10337533/a-fast-way-to-find-the-largest-n-elements-in-an-numpy-array
+    """
+
+    sz = arr.size
+    perc = (np.arange(sz - n, sz) + 1.0) / sz * 100
+    return np.percentile(arr, perc, interpolation="nearest")
 
 
 def timer(threshold_ms: int = 0) -> Callable:
@@ -285,23 +299,25 @@ def extrapolate_over_noise(
     x_lims: Limits = Limits(np.NINF, np.inf),
     y_lims: Limits = Limits(np.NINF, np.inf),
     n_bins=2 ** 17,
-    n_robust=2,
+    n_robust=0,
     interp_type="linear",  # gaussian
     extrap_x_lims=Limits(np.NINF, np.inf),
+    should_plot=False,
 ) -> SimpleNamespace:
     """Doc."""
 
     if x_interp is None:
-        extrap_x_lims = extrap_x_lims.clamp_limit(Limits(min(x), max(x)))
+        extrap_x_lims = extrap_x_lims.clamp(Limits(min(x), max(x)))
         initial_x_interp = np.linspace(*extrap_x_lims, n_bins)
     else:
         initial_x_interp = x_interp
 
-    # choose interpolation range (extrapolate the noisy parts)
+    # choose interpolation range (extrapola.te the noisy parts)
     interp_idxs = sorted(
         set(x_lims.valid_indices(x, as_bool=False))
         & set(y_lims.valid_indices(y, as_bool=False)[:-1])
     )
+
     x_samples = x[interp_idxs]
     y_samples = y[interp_idxs]
 
@@ -329,6 +345,18 @@ def extrapolate_over_noise(
         #  zero-pad the linear interpolation
         y_interp[x_interp > x[y_lims.valid_indices(y, as_bool=False)[-1]]] = 0
 
+    if should_plot:
+        with display.Plotter(
+            super_title=f"{interp_type.capitalize()} Interpolation Testing",
+            xlabel="$x$",
+            ylabel="$y$",
+            x_scale="log",
+            ylim=(-(abs(min(y_interp)) + 0.5) * 1.1, np.median(largest_n(y_interp, 5)) * 1.1),
+        ) as ax:
+            ax.plot(x, y, "o", label="before")
+            ax.plot(initial_x_interp, y_interp, ".", markersize="4", label="after")
+            ax.legend()
+
     return SimpleNamespace(
         x_interp=initial_x_interp,
         y_interp=y_interp,
@@ -346,6 +374,7 @@ def fourier_transform_1d(
     n_bins=2 ** 17,
     bin_size=None,
     should_normalize: bool = False,
+    should_plot=False,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Doc."""
 
@@ -403,6 +432,54 @@ def fourier_transform_1d(
     k2 = math.ceil(n_bins / 2)  # + 1)
     q = np.hstack((q[k2:] - 2 * np.pi / bin_size, q[:k1]))
     fq = np.hstack((fq[k2:], fq[:k1]))
+
+    if should_plot:
+        with display.Plotter(
+            subplots=(2, 2),
+            super_title=f"{'Inverse ' if should_inverse else ''}Fourier Transform",
+        ) as axes:
+            axes[0][0].plot(
+                x, np.real(y) * (bin_size if should_normalize else 1), "o", label="before"
+            )
+            axes[0][0].plot(r, np.real(fr_interp), "x", label="after interpolation")
+            axes[0][0].legend()
+            axes[0][0].set_xlim(r[r.size // 2 - 10], r[r.size // 2 + 10]),
+            axes[0][0].set_title("Interpolation")
+            axes[0][0].set_xlabel("$r$")
+            axes[0][0].set_ylabel("$f(r)$")
+
+            axes[0][1].plot(
+                x,
+                np.real(y) * (bin_size if should_normalize else 1),
+                "o",
+                label="before interpolation",
+            )
+            axes[0][1].plot(r, np.real(fr_interp), "x", label="after interpolation")
+            axes[0][1].legend()
+            axes[0][1].set_ylim(0, max(np.real(fr_interp)[fr_interp.size // 2 + 1 :])),
+            axes[0][1].set_xscale("log"),
+            axes[0][1].set_title("Interpolation")
+            axes[0][1].set_xlabel("$r$")
+            axes[0][1].set_ylabel("$f(r)$")
+
+            axes[1][0].plot(q, np.real(fq), label="real part")
+            axes[1][0].plot(q, np.imag(fq), label="imaginary part")
+            axes[1][0].plot(q, abs(fq), label="absolute")
+            axes[1][0].legend()
+            axes[1][0].set_xlim(q[q.size // 2 - 1000], q[q.size // 2 + 1000]),
+            axes[1][0].set_title("Transform")
+            axes[1][0].set_xlabel("$q$ $(2\\pi\\cdot[r^{-1}])$")
+            axes[1][0].set_ylabel("$f(q)$")
+
+            axes[1][1].plot(q, np.real(fq), label="real part")
+            axes[1][1].legend()
+            axes[1][1].set_ylim(
+                min(np.real(fq[fq.size // 2 :])), max(np.real(fq[fq.size // 2 :])) * 1.1
+            ),
+            axes[1][1].set_xscale("log"),
+            axes[1][1].set_title("Transform")
+            axes[1][1].set_xlabel("$q$ $(2\\pi\\cdot[r^{-1}])$")
+            axes[1][1].set_ylabel("$f(q)$")
 
     return r, fr_interp, q, fq
 
