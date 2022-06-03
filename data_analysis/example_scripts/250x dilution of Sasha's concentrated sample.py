@@ -1,12 +1,11 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.13.7
+#       jupytext_version: 1.13.8
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -15,6 +14,7 @@
 
 # %%
 import os
+
 # import native/external packages
 import pickle
 import re
@@ -28,11 +28,9 @@ from IPython.core.debugger import set_trace
 from matplotlib import pyplot as plt
 
 # Import project modules
-from data_analysis.correlation_function import (SFCSExperiment,
-                                                SolutionSFCSMeasurement)
+from data_analysis.correlation_function import SFCSExperiment, SolutionSFCSMeasurement
 from utilities.display import Plotter
-from utilities.file_utilities import (default_system_info,
-                                      save_processed_solution_meas)
+from utilities.file_utilities import default_system_info, save_processed_solution_meas
 from utilities.helper import Limits
 
 mpl.use("nbAgg")

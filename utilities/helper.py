@@ -347,15 +347,20 @@ def extrapolate_over_noise(
 
     if should_plot:
         with display.Plotter(
+            subplots=(1, 2),
             super_title=f"{interp_type.capitalize()} Interpolation Testing",
             xlabel="$x$",
             ylabel="$y$",
-            x_scale="log",
-            ylim=(-(abs(min(y_interp)) + 0.5) * 1.1, np.median(largest_n(y_interp, 5)) * 1.1),
-        ) as ax:
-            ax.plot(x, y, "o", label="before")
-            ax.plot(initial_x_interp, y_interp, ".", markersize="4", label="after")
-            ax.legend()
+            ylim=(-abs(np.median(y_interp)) * 1.3, np.median(largest_n(y_interp, 5)) * 1.3),
+        ) as axes:
+            axes[0].plot(x, y, "o", label="before")
+            axes[0].plot(initial_x_interp, y_interp, ".", markersize="4", label="after")
+            axes[0].legend()
+
+            axes[1].plot(x, y, "o", label="before")
+            axes[1].plot(initial_x_interp, y_interp, ".", markersize="4", label="after")
+            axes[1].legend()
+            axes[1].set_xscale("log")
 
     return SimpleNamespace(
         x_interp=initial_x_interp,
