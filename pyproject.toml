@@ -27,3 +27,4 @@ all = true
 
 [tool.jupytext]
 formats = "ipynb,py:percent"
+outdated_text_notebook_margin = 5 # default is 1 (second)

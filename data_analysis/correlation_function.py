@@ -1241,7 +1241,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                     )
 
                 # split into segments of approx time of run_duration
-                n_splits = div_ceil(segment_time, self.run_duration)
+                n_splits = int(div_ceil(segment_time, self.run_duration))
                 time_stamps = np.hstack(([0], np.diff(pulse_runtime).astype(np.int32)))
 
                 for j in range(n_splits):
@@ -1456,7 +1456,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 ts1 = np.hstack(([0], np.diff(pulse_runtime1).astype(np.int32)))
                 ts2 = np.hstack(([0], np.diff(pulse_runtime2).astype(np.int32)))
 
-                n_splits = div_ceil(segment_time, self.run_duration)
+                n_splits = int(div_ceil(segment_time, self.run_duration))
                 for j in range(n_splits):
                     file_ts_split_list.append(
                         self.prepare_timestamps(ts, j, is_xcorr=True, n_splits=n_splits)
@@ -1794,6 +1794,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 **kwargs,
             )
         if not measurement.cf or should_re_correlate:  # Correlate and average data
+            measurement.cf = {}
             measurement.correlate_and_average(is_verbose=True, **kwargs)
 
         if should_plot:
