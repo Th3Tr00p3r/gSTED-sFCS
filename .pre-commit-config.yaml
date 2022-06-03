@@ -1,19 +1,6 @@
 ---
 
 repos:
-    - repo: https://github.com/kynan/nbstripout
-      rev: 0.5.0
-      hooks:
-          - id: nbstripout
-
-    - repo: https://github.com/mwouts/jupytext
-      rev: v1.13.7
-      hooks:
-          - id: jupytext
-            args: [--from, ipynb, --to, py:percent, --pipe, black] #, --pipe, isort - --treat-comment-as-code "# %%"]
-            additional_dependencies:
-                - black==22.3.0 # Matches hook
-                - isort==5.9.3 # Matches hook
 
     - repo: https://github.com/pre-commit/mirrors-mypy
       rev: v0.812
@@ -45,7 +32,6 @@ repos:
       hooks:
           - id: black
             language_version: python3.9
-            exclude: ^data_analysis/example_scripts
 
     - repo: https://gitlab.com/pycqa/flake8
       rev: 3.9.2
