@@ -72,8 +72,10 @@ DATA_ROOT = Path("D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data")  # Laptop/Lab P
 # DATA_ROOT = Path("D:\???")  # Oleg's
 DATA_TYPE = "solution"
 
-FORCE_PROCESSING = False
+# FORCE_PROCESSING = False
 FORCE_PROCESSING = True
+
+SHOULD_PLOT = True
 
 # %% [markdown]
 # ## Afterpulsing removal through de-convolution
@@ -157,7 +159,8 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
     n_bins = 2 ** 17
     n_robust = 0
     x_lims = Limits(1e-6, 1e-3)  # (1 us to 1 ms)
-    y_lims = Limits(50, np.inf)
+    #     y_lims = Limits(50, np.inf)
+    y_lims = Limits(np.NINF, np.inf)
     interp_type = "gaussian"
     extrap_x_lims = Limits(-1, 5e-3)  # up to 5 ms
 
@@ -398,7 +401,9 @@ with Plotter(
     ax.legend()
 
 # %%
-old_detector_quotient_FT = deconvolve_afterpulse(lag_signal_old, ap_signal_t_old, ap_t_old)
+old_detector_quotient_FT = deconvolve_afterpulse(
+    lag_signal_old, ap_signal_t_old, ap_t_old, should_plot=SHOULD_PLOT
+)
 
 # %% [markdown]
 # Generating the Fourier transform of the afterpulse-subtracted (in the usual/old way) signal, to compare with the quotient in Fourier space:
@@ -489,7 +494,24 @@ with Plotter(
 # Directly comparing the clean signal to the inverse transform of the quotient:
 
 # %%
-g0_factor = 1.055e7
+DATA_DATE = "05_10_2021"
+confocal_template = "sol_static_exc_181325_*.pkl"
+label = "ATTO static old detector"
+
+DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
+
+# load experiment
+exp_test = SFCSExperiment(name=label)
+exp_test.load_experiment(
+    confocal_template=DATA_PATH / confocal_template,
+    should_plot=True,
+    should_use_preprocessed=False,  # TODO: load anew if not found
+    should_re_correlate=True,  # True
+    should_subtract_afterpulse=True,
+)
+
+# %%
+g0_factor = 1e7
 
 with Plotter(
     super_title="Comparing the transforms",
@@ -504,6 +526,11 @@ with Plotter(
         np.real(old_detector_quotient_FT.ft) * g0_factor,
         label="$G(t)_{quotient}$",
     )
+    ax.plot(exp_test.confocal.cf["confocal"].lag * 1e-3, exp_test.confocal.cf["confocal"].avg_cf_cr)
+    ax.plot(
+        exp_test.confocal.cf["confocal"].lag * 1e-3, exp_test.confocal.cf["confocal"].afterpulse
+    )
+    ax.plot(lag_ap_old * 1e-3, ap_t_old)
     ax.legend()
 
 # %% [markdown]
@@ -599,7 +626,9 @@ with Plotter(
     ax.legend()
 
 # %%
-new_detector_quotient_inherent_FT = deconvolve_afterpulse(lag_new, ap_signal_new_t, ap_new_t)
+new_detector_quotient_inherent_FT = deconvolve_afterpulse(
+    lag_ap_new, ap_signal_new_t, ap_new_t, should_plot=SHOULD_PLOT
+)
 
 # %% [markdown]
 # Comparing to regularly subtracted afterpulsing (calibrated and inherent):
@@ -655,7 +684,7 @@ print(f"Count-Rate: {exp5.confocal.avg_cnt_rate_khz} kHz")
 # %%
 ap_new_t_calibrated = exp5.confocal.cf["confocal"].afterpulse
 new_detector_quotient_calibrated_FT = deconvolve_afterpulse(
-    lag_new, ap_signal_new_t, ap_new_t_calibrated
+    lag_ap_signal_new_t, ap_signal_new_t, ap_new_t_calibrated, should_plot=SHOULD_PLOT
 )
 
 # %%
@@ -664,18 +693,19 @@ lag_s = exp4.confocal.cf["confocal"].lag * 1e-3
 
 clean_signal_calibrated = exp5.confocal.cf["confocal"].avg_cf_cr
 
-g0_factor = 1.335e7
+# g0_factor = 1.335e7
+g0_factor = 5.9e7
 # g0_factor = 1
 
 with Plotter(
     super_title="Comparing the 'clean' signal\nwith the inverse transform (new detector)",
     #     xlim=(-1e6, 1e6),
-    ylim=(-1000, np.median(clean_signal_inherent) * 100),
+    ylim=(-1000, max(clean_signal_old_t_interp) * 10),
     x_scale="log",
 ) as ax:
 
     ax.plot(lag_s_interp, clean_signal_old_t_interp * 1.3, label="$G(t)_{signal}$")
-    ax.plot(lag_s, clean_signal_inherent, label="$G(t)_{subtracted,\ inherent\ ap}$")
+    ax.plot(lag_s, clean_signal_inherent * 4, label="$G(t)_{subtracted,\ inherent\ ap}$")
     ax.plot(lag_s, clean_signal_calibrated, label="$G(t)_{subtracted,\ calibrated\ ap}$")
     ax.plot(
         new_detector_quotient_inherent_FT.t,
