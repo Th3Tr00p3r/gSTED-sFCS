@@ -306,6 +306,9 @@ def extrapolate_over_noise(
 ) -> SimpleNamespace:
     """Doc."""
 
+    # unify length of y to x (assumes y decays to zero)
+    y = unify_length(y, len(x))  # TESTESTEST
+
     if x_interp is None:
         extrap_x_lims = extrap_x_lims.clamp(Limits(min(x), max(x)))
         initial_x_interp = np.linspace(*extrap_x_lims, n_bins)
