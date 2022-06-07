@@ -723,10 +723,7 @@ def deep_getattr(obj, deep_attr_name: str, default=None, recursion=False):
 def div_ceil(x: int, y: int) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
-    return -(-x // y)  # TODO: test me!
-
-
-#    return int(x // y + (x % y > 0))
+    return int(-(-x // y))  # TODO: test me!
 
 
 def reverse_dict(dict_: dict) -> dict:

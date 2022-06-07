@@ -1126,7 +1126,11 @@ class MainWin:
 
         try:  # load the log file in path
             text_lines = helper.file_to_list(file_path)
-        except (FileNotFoundError, OSError):  # initialize a new log file if no existing file
+        except (
+            FileNotFoundError,
+            OSError,
+            UnicodeDecodeError,
+        ):  # initialize a new log file if no existing file
             with suppress(OSError, IndexError):
                 # OSError - missing file/folder (deleted during operation)
                 # IndexError - alignment file does not exist
