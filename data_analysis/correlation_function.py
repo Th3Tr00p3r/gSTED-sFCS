@@ -673,7 +673,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         file_paths: List[Path],
         should_parallel_process: bool = False,
         run_duration=None,
-        n_runs_requested=60,
         **kwargs,
     ) -> List[TDCPhotonData]:
         """Doc."""
@@ -699,14 +698,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                     data.append(p)
 
         if run_duration is None:  # auto determination of run duration
-            total_duration_estimate = 0
-            for p in data:
-                time_stamps = np.diff(p.pulse_runtime).astype(np.int32)
-                mu = np.median(time_stamps) / np.log(2)
-                total_duration_estimate = (
-                    total_duration_estimate + mu * len(p.pulse_runtime) / self.laser_freq_hz
-                )
-            self.run_duration = total_duration_estimate / n_runs_requested
+            self.run_duration = sum([p.duration_estimate for p in data])
         else:  # use supplied value
             self.run_duration = run_duration
 
@@ -762,7 +754,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             self.scan_type = "static"
 
     def process_data_file(
-        self, file_path: Path = None, file_dict: dict = None, **kwargs
+        self, file_path: Path = None, file_dict: dict = None, n_runs_requested=60, **kwargs
     ) -> TDCPhotonData:
         """Doc."""
 
@@ -805,6 +797,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         if file_path is not None and p is not None:
             p.file_path = file_path
             print("Done.\n")
+
+        # Duration Estimate
+        time_stamps = np.diff(p.pulse_runtime).astype(np.int32)
+        mu = np.median(time_stamps) / np.log(2)
+        p.duration_estimate = mu * len(p.pulse_runtime) / self.laser_freq_hz / n_runs_requested
 
         return p
 
@@ -1141,7 +1138,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         CF.correlate_measurement(
             ts_split_list,
             afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
-            self.bg_line_corr_list if should_subtract_bg_corr else [],
+            getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
             is_verbose=is_verbose,
             external_afterpulsing=external_afterpulsing,
             **kwargs,
@@ -1241,7 +1238,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                     )
 
                 # split into segments of approx time of run_duration
-                n_splits = int(div_ceil(segment_time, self.run_duration))
+                n_splits = div_ceil(segment_time, self.run_duration)
                 time_stamps = np.hstack(([0], np.diff(pulse_runtime).astype(np.int32)))
 
                 for j in range(n_splits):
@@ -1456,7 +1453,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 ts1 = np.hstack(([0], np.diff(pulse_runtime1).astype(np.int32)))
                 ts2 = np.hstack(([0], np.diff(pulse_runtime2).astype(np.int32)))
 
-                n_splits = int(div_ceil(segment_time, self.run_duration))
+                n_splits = div_ceil(segment_time, self.run_duration)
                 for j in range(n_splits):
                     file_ts_split_list.append(
                         self.prepare_timestamps(ts, j, is_xcorr=True, n_splits=n_splits)

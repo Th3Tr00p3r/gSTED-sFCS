@@ -609,9 +609,13 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         def compute_acf(data):
             """Doc."""
+            # TODO: Something weird is going on - sometimes when acf is fitted it looks funny (very few data points)
 
             s = SolutionSFCSMeasurement()
             p = s.process_data_file(file_dict=self.prep_meas_dict(), ignore_coarse_fine=True)
+            s.run_duration = (
+                self.duration_s
+            )  # TODO: this is a patch! run duration should be determined in 'correlation_function,py'
             s.data.append(p)
             s.correlate_and_average(cf_name=self.laser_mode)
             return s
