@@ -147,7 +147,13 @@ from types import SimpleNamespace
 from utilities.helper import largest_n
 
 
-def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
+def deconvolve_afterpulse(
+    lag,
+    ap_signal_cf_cr,
+    ap_cf_cr,
+    bin_size=1e-7,  # 100 ns (lag delta of first correlator)
+    should_plot=False,
+):
     """Doc."""
 
     lag_s = lag * 1e-3  # ms to seconds
@@ -159,8 +165,8 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
     n_bins = 2 ** 17
     n_robust = 0
     x_lims = Limits(1e-6, 1e-3)  # (1 us to 1 ms)
-    #     y_lims = Limits(50, np.inf)
-    y_lims = Limits(np.NINF, np.inf)
+    y_lims = Limits(100, np.inf)
+    #     y_lims = Limits(np.NINF, np.inf)
     interp_type = "gaussian"
     extrap_x_lims = Limits(-1, 5e-3)  # up to 5 ms
 
@@ -199,7 +205,7 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
     ap_signal_t, ap_signal_ft_interp, ap_signal_w, ap_signal_fw = fourier_transform_1d(
         lag_s_interp,
         ap_signal_cf_cr_interp,
-        bin_size=1e-7,  # meaning 100 ns
+        bin_size=bin_size,
         should_normalize=True,
         should_plot=should_plot,
     )
@@ -207,7 +213,7 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
     ap_t, ap_ft_interp, ap_w, ap_fw = fourier_transform_1d(
         lag_s_interp,
         ap_cf_cr_interp,
-        bin_size=1e-7,  # meaning 100 ns
+        bin_size=bin_size,
         should_normalize=True,
         should_plot=should_plot,
     )
@@ -215,18 +221,11 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
     ap_signal_fw_baseline = np.mean(np.real(ap_signal_fw[abs(ap_signal_w) > 1e7]))
     ap_fw_baseline = np.mean(np.real(ap_fw[abs(ap_w) > 1e7]))
 
-    print("fw_signal_baseline: ", ap_signal_fw_baseline)
-    print("fw_ap_baseline: ", ap_fw_baseline)
-
     ap_signal_fw += 1 - ap_signal_fw_baseline
     ap_fw += 1 - ap_fw_baseline
 
     if should_plot:
-        with Plotter(
-            super_title="Comparing the transforms",
-            #     xlim=(-1e6, 1e6),
-            #     ylim=(0.99, 1.04),
-        ) as ax:
+        with Plotter(super_title="Comparing the transforms") as ax:
             ax.plot(ap_signal_w, np.real(ap_signal_fw), label="ap signal")
             ax.plot(ap_w, np.real(ap_fw), label="ap")
 
@@ -237,9 +236,9 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
     quotient = ap_signal_fw / ap_fw
 
     if should_plot:
-        with Plotter() as ax:
-            ax.plot(ap_w, np.real(quotient), label="quotient (real part)")
-            ax.plot(ap_w, np.imag(quotient), label="quotient (imaginary part)")
+        with Plotter(super_title="Quotient of the transforms") as ax:
+            ax.plot(ap_w, np.real(quotient), label="real part")
+            ax.plot(ap_w, np.imag(quotient), label="imaginary part")
             ax.legend()
 
     ############################################
@@ -248,9 +247,8 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
 
     n_bins = 2 ** 17
     n_robust = 0
-    x_lims = Limits(np.NINF, np.inf)
     x_lims = Limits(3e3, np.inf)
-    y_lims = Limits(np.NINF, np.inf)
+    y_lims = Limits(np.median(np.real(quotient)), np.inf)
     interp_type = "gaussian"
     extrap_x_lims = Limits(np.NINF, np.inf)
 
@@ -273,8 +271,8 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
     ap_w_interp = gauss_interp_quotient.x_interp
     quotient_interp = gauss_interp_quotient.y_interp
 
-    # w_ap_interp = w_ap
-    # quotient_interp = quotient
+    # Normalization to original bin_size is needed since the division above essentially normalizes to 1
+    quotient_interp /= bin_size
 
     quotient_w, quotient_fw_interp, quotient_t, quotient_ft = fourier_transform_1d(
         ap_w_interp,
@@ -282,7 +280,6 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
         should_inverse=True,
         is_input_symmetric=False,
         bin_size=np.diff(ap_w_interp)[0],
-        #     should_normalize=True,
         should_plot=should_plot,
     )
 
@@ -310,13 +307,9 @@ def deconvolve_afterpulse(lag, ap_signal_cf_cr, ap_cf_cr, should_plot=False):
 # We begin by loading the measurement and calibrating the TDC:
 
 # %%
-# DATA_DATE = "10_05_2018"
-# confocal_template = "bp300_angular_sted_*.mat"
-# label = "MATLAB Free-Running 300 bp STED"
-
-DATA_DATE = "05_10_2021"
-confocal_template = "sol_static_exc_181325_*.pkl"
-label = "ATTO static old detector"
+DATA_DATE = "10_05_2018"
+confocal_template = "bp300_angular_exc_*.mat"
+label = "300 bp ATTO (old detector)"
 
 DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 
@@ -494,25 +487,6 @@ with Plotter(
 # Directly comparing the clean signal to the inverse transform of the quotient:
 
 # %%
-DATA_DATE = "05_10_2021"
-confocal_template = "sol_static_exc_181325_*.pkl"
-label = "ATTO static old detector"
-
-DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
-
-# load experiment
-exp_test = SFCSExperiment(name=label)
-exp_test.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
-    should_plot=True,
-    should_use_preprocessed=False,  # TODO: load anew if not found
-    should_re_correlate=True,  # True
-    should_subtract_afterpulse=True,
-)
-
-# %%
-g0_factor = 1e7
-
 with Plotter(
     super_title="Comparing the transforms",
     #     xlim=(-1e6, 1e6),
@@ -523,14 +497,9 @@ with Plotter(
     ax.plot(lag_s_interp, clean_signal_old_t_interp, label="$G(t)_{signal}$")
     ax.plot(
         old_detector_quotient_FT.t,
-        np.real(old_detector_quotient_FT.ft) * g0_factor,
+        np.real(old_detector_quotient_FT.ft),
         label="$G(t)_{quotient}$",
     )
-    ax.plot(exp_test.confocal.cf["confocal"].lag * 1e-3, exp_test.confocal.cf["confocal"].avg_cf_cr)
-    ax.plot(
-        exp_test.confocal.cf["confocal"].lag * 1e-3, exp_test.confocal.cf["confocal"].afterpulse
-    )
-    ax.plot(lag_ap_old * 1e-3, ap_t_old)
     ax.legend()
 
 # %% [markdown]
@@ -540,13 +509,13 @@ with Plotter(
 # importing the data:
 
 # %%
-# DATA_DATE = "29_03_2022"
-# confocal_template = "bp300_20uW_angular_exc_172325_*.pkl"
-# label = "300 bp new detector"
+DATA_DATE = "06_06_2022"
+confocal_template = "atto300bp_angular_exc_190337_*.pkl"
+label = "300 bp ATTO (new detector)"
 
-DATA_DATE = "13_03_2022"
-confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
-label = "ATTO static new detector"
+# DATA_DATE = "13_03_2022"
+# confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
+# label = "ATTO static new detector"
 
 DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 
@@ -558,6 +527,7 @@ exp3.load_experiment(
     should_use_preprocessed=True,  # TODO: load anew if not found
     should_re_correlate=True,  # True
     should_subtract_afterpulse=False,
+    file_selection="Use 1-5, 8-10",  # TESTESTEST
 )
 
 # save processed data (to avoid re-processing)
@@ -634,13 +604,13 @@ new_detector_quotient_inherent_FT = deconvolve_afterpulse(
 # Comparing to regularly subtracted afterpulsing (calibrated and inherent):
 
 # %%
-# DATA_DATE = "29_03_2022"
-# confocal_template = "bp300_20uW_angular_exc_172325_*.pkl"
-# label = "300 bp new detector"
+DATA_DATE = "06_06_2022"
+confocal_template = "atto300bp_angular_exc_190337_*.pkl"
+label = "300 bp ATTO (new detector)"
 
-DATA_DATE = "13_03_2022"
-confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
-label = "ATTO static new detector"
+# DATA_DATE = "13_03_2022"
+# confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
+# label = "ATTO static new detector"
 
 DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 
@@ -693,29 +663,25 @@ lag_s = exp4.confocal.cf["confocal"].lag * 1e-3
 
 clean_signal_calibrated = exp5.confocal.cf["confocal"].avg_cf_cr
 
-# g0_factor = 1.335e7
-g0_factor = 5.9e7
-# g0_factor = 1
-
 with Plotter(
-    super_title="Comparing the 'clean' signal\nwith the inverse transform (new detector)",
+    super_title="Comparing the old 'clean' signal\nwith various methods of (new detector)",
     #     xlim=(-1e6, 1e6),
-    ylim=(-1000, max(clean_signal_old_t_interp) * 10),
+    ylim=(-1000, max(clean_signal_old_t_interp) * 2),
     x_scale="log",
 ) as ax:
 
-    ax.plot(lag_s_interp, clean_signal_old_t_interp * 1.3, label="$G(t)_{signal}$")
-    ax.plot(lag_s, clean_signal_inherent * 4, label="$G(t)_{subtracted,\ inherent\ ap}$")
-    ax.plot(lag_s, clean_signal_calibrated, label="$G(t)_{subtracted,\ calibrated\ ap}$")
+    ax.plot(lag_s_interp, clean_signal_old_t_interp, label="$G(t)_{signal} (old)$")
+    ax.plot(lag_s, clean_signal_inherent * 1.5, label="$G(t)_{subtracted,\ inherent\ ap}$")
+    ax.plot(lag_s, clean_signal_calibrated * 1.21, label="$G(t)_{subtracted,\ calibrated\ ap}$")
     ax.plot(
         new_detector_quotient_inherent_FT.t,
-        np.real(new_detector_quotient_inherent_FT.ft) * g0_factor,
-        label="$G(t)_{deconvolved,\ inherent\ ap}$ x " + f"{g0_factor:.2e}",
+        np.real(new_detector_quotient_inherent_FT.ft) * 2.5,
+        label="$G(t)_{deconvolved,\ inherent\ ap}$",
     )
     ax.plot(
         new_detector_quotient_calibrated_FT.t,
-        np.real(new_detector_quotient_calibrated_FT.ft) * g0_factor,
-        label="$G(t)_{deconvolved,\ calibrated\ ap}$ x " + f"{g0_factor:.2e}",
+        np.real(new_detector_quotient_calibrated_FT.ft) * 1.6,
+        label="$G(t)_{deconvolved,\ calibrated\ ap}$",
     )
     ax.legend()
 
