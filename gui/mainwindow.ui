@@ -5046,7 +5046,7 @@ Pattern:</string>
                 <property name="title">
                  <string>Import Raw Measurement Data</string>
                 </property>
-                <layout class="QVBoxLayout" name="verticalLayout_61">
+                <layout class="QVBoxLayout" name="verticalLayout_61" stretch="1,10">
                  <property name="spacing">
                   <number>0</number>
                  </property>
@@ -5057,7 +5057,7 @@ Pattern:</string>
                   <number>2</number>
                  </property>
                  <item>
-                  <layout class="QVBoxLayout" name="verticalLayout_5" stretch="0,0">
+                  <layout class="QVBoxLayout" name="verticalLayout_5" stretch="10,1">
                    <property name="spacing">
                     <number>0</number>
                    </property>
@@ -5333,7 +5333,7 @@ Pattern:</string>
                          <property name="maximumSize">
                           <size>
                            <width>99999</width>
-                           <height>150</height>
+                           <height>100</height>
                           </size>
                          </property>
                          <property name="frameShape">
@@ -7470,7 +7470,7 @@ Factors</string>
                               <x>270</x>
                               <y>60</y>
                               <width>133</width>
-                              <height>62</height>
+                              <height>65</height>
                              </rect>
                             </property>
                             <layout class="QVBoxLayout" name="verticalLayout_90">
