@@ -307,7 +307,7 @@ def extrapolate_over_noise(
     """Doc."""
 
     # unify length of y to x (assumes y decays to zero)
-    y = unify_length(y, len(x))  # TESTESTEST
+    y = unify_length(y, len(x))
 
     if x_interp is None:
         extrap_x_lims = extrap_x_lims.clamp(Limits(min(x), max(x)))
@@ -354,7 +354,7 @@ def extrapolate_over_noise(
             super_title=f"{interp_type.capitalize()} Interpolation Testing",
             xlabel="$x$",
             ylabel="$y$",
-            ylim=(-abs(np.median(y_interp)) * 1.3, np.median(largest_n(y_interp, 5)) * 1.3),
+            ylim=(-abs(np.median(y)) * 1.3, np.median(largest_n(y, 5)) * 1.3),
         ) as axes:
             axes[0].plot(x, y, "o", label="before")
             axes[0].plot(initial_x_interp, y_interp, ".", markersize="4", label="after")
