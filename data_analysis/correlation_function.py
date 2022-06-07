@@ -280,6 +280,11 @@ class CorrFunc:
                 self.cf_cr[idx] -= unify_length(self.afterpulse, lag_len)
 
         self.countrate_list = corr_output.countrate_list
+        try:  # xcorr
+            self.countrate_a = np.mean([countrate_pair.a for countrate_pair in self.countrate_list])
+            self.countrate_b = np.mean([countrate_pair.b for countrate_pair in self.countrate_list])
+        except AttributeError:  # autocorr
+            self.countrate = np.mean([countrate for countrate in self.countrate_list])
 
     def calculate_afterpulse(self, afterpulse_params: tuple) -> None:
         """Doc."""
@@ -1091,7 +1096,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
             gate1_ns, gate2_ns = inherent_afterpulsing_gates
             self.calibrate_tdc(should_rotate_data=False)  # abort data rotation decorator
-            CF_BA, *_ = self.cross_correlate_data(
+            CF_AB, *_ = self.cross_correlate_data(
                 corr_names=("AB",),
                 cf_name="Afterpulsing",
                 gate1_ns=gate1_ns,
@@ -1100,14 +1105,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 #                should_subtract_bg_corr=False,
                 should_rotate_data=False,  # abort data rotation decorator
             )
-            CF_BA.average_correlation()
-            countrate_a = np.mean([countrate_pair.a for countrate_pair in CF_BA.countrate_list])
-            countrate_b = np.mean([countrate_pair.b for countrate_pair in CF_BA.countrate_list])
+            CF_AB.average_correlation()
             external_afterpulsing = (
-                countrate_b
+                CF_AB.countrate_b
                 * (self.gate_width_ns / gate2_ns.interval())
-                * CF_BA.avg_cf_cr
-                / countrate_a
+                * CF_AB.avg_cf_cr
+                / CF_AB.countrate_a
             )
 
         # Unite TDC gate and detector gate

@@ -168,7 +168,7 @@ def deconvolve_afterpulse(
     y_lims = Limits(100, np.inf)
     #     y_lims = Limits(np.NINF, np.inf)
     interp_type = "gaussian"
-    extrap_x_lims = Limits(-1, 5e-3)  # up to 5 ms
+    extrap_x_lims = Limits(-1, 1e-3)  # up to 1 ms
 
     gauss_interp_ap_signal = extrapolate_over_noise(
         lag_s,
@@ -457,8 +457,7 @@ t_std_signal, ft_interp_std_signal, w_std_signal, fw_std_signal = fourier_transf
 # Plotting the transformed ap-subtracted signal together with the quotient:
 
 # %%
-factor = 1
-# factor = 1.53
+factor = 1e-7
 
 with Plotter(
     subplots=(1, 2),
@@ -524,7 +523,7 @@ exp3 = SFCSExperiment(name=label)
 exp3.load_experiment(
     confocal_template=DATA_PATH / confocal_template,
     should_plot=True,
-    should_use_preprocessed=True,  # TODO: load anew if not found
+    should_use_preprocessed=False,  # TODO: load anew if not found
     should_re_correlate=True,  # True
     should_subtract_afterpulse=False,
     file_selection="Use 1-5, 8-10",  # TESTESTEST
@@ -546,8 +545,8 @@ exp3.calibrate_tdc(should_plot=False)
 meas3 = exp3.confocal
 meas3.xcf = {}
 
-gate1_ns = Limits(2, 10)
-gate2_ns = Limits(35, 85)
+gate1_ns = Limits(35, 50)
+gate2_ns = Limits(60, 95)
 
 corr_names = ("AB",)
 XCF = meas3.cross_correlate_data(
@@ -623,6 +622,8 @@ exp4.load_experiment(
     should_re_correlate=True,
     should_subtract_afterpulse=True,
     should_use_inherent_afterpulsing=True,
+    inherent_afterpulsing_gates=(gate1_ns, gate2_ns),
+    file_selection="Use 1-5, 8-10",
 )
 
 # save processed data (to avoid re-processing)
@@ -640,6 +641,7 @@ exp5.load_experiment(
     should_re_correlate=True,
     should_subtract_afterpulse=True,
     should_use_inherent_afterpulsing=False,
+    file_selection="Use 1-5, 8-10",
 )
 
 # save processed data (to avoid re-processing)
@@ -675,7 +677,7 @@ with Plotter(
     ax.plot(lag_s, clean_signal_calibrated * 1.21, label="$G(t)_{subtracted,\ calibrated\ ap}$")
     ax.plot(
         new_detector_quotient_inherent_FT.t,
-        np.real(new_detector_quotient_inherent_FT.ft) * 2.5,
+        np.real(new_detector_quotient_inherent_FT.ft) * 2.9,
         label="$G(t)_{deconvolved,\ inherent\ ap}$",
     )
     ax.plot(
@@ -684,6 +686,154 @@ with Plotter(
         label="$G(t)_{deconvolved,\ calibrated\ ap}$",
     )
     ax.legend()
+
+
+# %% [markdown]
+# Comparing the afterpulsings:
+
+# %%
+def unify_length(vec_in: np.ndarray, out_len: int) -> np.ndarray:
+    """Either trims or zero-pads the tail of a 1D array to match 'out_len'"""
+
+    if len(vec_in) >= out_len:
+        return vec_in[:out_len]
+    else:
+        return np.hstack((vec_in, np.zeros(out_len - len(vec_in))))
+
+
+clean_signal_inherent = exp4.confocal.cf["confocal"]
+clean_signal_calibrated = exp5.confocal.cf["confocal"]
+lag = exp4.confocal.cf["confocal"].lag
+
+with Plotter(
+    super_title="Comparing the old 'clean' signal\nwith various methods of (new detector)",
+    #     xlim=(-1e6, 1e6),
+    ylim=(-1000, max(clean_signal_old_t_interp) * 2),
+    x_scale="log",
+) as ax:
+
+    ax.plot(
+        lag,
+        unify_length(clean_signal_calibrated.avg_cf_cr / 3.5, len(lag)),
+        label="$new - cal. ap$",
+    )
+    ax.plot(
+        lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="$new - cal. ap$"
+    )
+    ax.plot(lag, unify_length(clean_signal_inherent.afterpulse, len(lag)), label="$new - xcorr ap$")
+    ax.plot(
+        lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="$new - cal. ap$"
+    )
+    ax.plot(lag, unify_length(clean_signal_inherent.afterpulse, len(lag)), label="$new - xcorr ap$")
+    ax.legend()
+
+# %%
+gate1_test = Limits(2, 15)
+gate2_test = Limits(50, 95)
+
+XCF_AB, XCF_BA = meas3.cross_correlate_data(
+    cf_name="test",
+    corr_names=("AB", "BA"),
+    gate1_ns=gate1_test,
+    gate2_ns=gate2_test,
+    should_subtract_bg_corr=True,  # TEST ME!
+    should_subtract_afterpulse=False,
+)
+
+XCF_AB.average_correlation()
+XCF_BA.average_correlation()
+
+# %%
+norm_a = XCF_AB.countrate_b * (gate_width_ns / gate2_test.interval()) / XCF_AB.countrate_a
+norm_b = XCF_BA.countrate_b * (gate_width_ns / gate2_test.interval()) / XCF_BA.countrate_a
+
+with Plotter(
+    #         super_title="Comparing inherent afterpulsings\nfrom different xcorr gates",
+    ylim=(-1000, meas3.cf["confocal"].g0 * 2),
+    x_scale="log",
+) as ax:
+    ax.plot(XCF_AB.lag, XCF_AB.avg_cf_cr * norm_a, label=XCF_AB.name)
+    ax.plot(XCF_BA.lag, XCF_BA.avg_cf_cr * norm_b, label=XCF_BA.name)
+    #     ax.plot(XCF_BA.lag, XCF_AB.avg_cf_cr * norm_a - XCF_BA.avg_cf_cr * norm_b * 0.24, label="SUBTRACTION TEST")
+    ax.plot(
+        lag,
+        unify_length(clean_signal_calibrated.afterpulse, len(lag)),
+        label="calibrated afterpulsing",
+    )
+    ax.legend()
+
+# %%
+# meas3 = exp3.confocal
+# meas3.xcf = {}
+
+# gate_width_ns = 98
+# gate1_ns_list = [Limits(2, 15), Limits(2, 40), Limits(20, 35), Limits(35, 50), Limits(50, 95)]
+# gate2_ns_list = [Limits(40, 95), Limits(50, 95), Limits(60, 95), Limits(70, 95)]
+
+# gate_pair_AB_list = [(gate1_ns, gate2_ns) for gate2_ns in gate2_ns_list for gate1_ns in gate1_ns_list]
+
+# ap_lag_name_AB_dict = {}
+# for gate1_ns, gate2_ns in gate_pair_AB_list:
+#     XCF = meas3.cross_correlate_data(
+#         cf_name="test",
+#         corr_names=("AB",),
+#         gate1_ns=gate1_ns,
+#         gate2_ns=gate2_ns,
+#         should_subtract_bg_corr=True, # TEST ME!
+#         should_subtract_afterpulse=False,
+#     )[0]
+
+#     XCF.average_correlation()
+
+#     # Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
+#     norm_factor = get_norm_factor(XCF)
+
+# #         print("afterpulsing norm_factor: ", norm_factor)
+
+#     ap_lag_name_AB_dict[XCF.name] = (XCF.lag, XCF.avg_cf_cr * norm_factor)
+
+# %%
+# for name, (lag, ap) in ap_lag_name_AB_dict.items():
+#     with Plotter(
+# #         super_title="Comparing inherent afterpulsings\nfrom different xcorr gates",
+#         ylim=(-1000, meas3.cf["confocal"].g0 * 2),
+#         x_scale="log",
+#     ) as ax:
+#         ax.plot(lag, ap, label=f"{name}")
+#         ax.plot(lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="$new - cal. ap$")
+#         ax.legend()
+
+# %%
+# ap_lag_name_BA_dict = {}
+# for gate1_ns, gate2_ns in gate_pair_AB_list:
+#     XCF = meas3.cross_correlate_data(
+#         cf_name="test",
+#         corr_names=("BA",),
+#         gate1_ns=gate1_ns,
+#         gate2_ns=gate2_ns,
+#         should_subtract_bg_corr=True, # TEST ME!
+#         should_subtract_afterpulse=False,
+#     )[0]
+
+#     XCF.average_correlation()
+
+#     # Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
+#     norm_factor = norm_factor = get_norm_factor(XCF)
+
+# #         print("afterpulsing norm_factor: ", norm_factor)
+
+#     ap_lag_name_BA_dict[XCF.name] = (XCF.lag, XCF.avg_cf_cr * norm_factor)
+
+# %%
+# for name, (lag, ap) in ap_lag_name_BA_dict.items():
+#     with Plotter(
+# #         super_title="Comparing inherent afterpulsings\nfrom different xcorr gates",
+#         ylim=(-1000, max(clean_signal_old_t_interp) * 2),
+#         x_scale="log",
+#     ) as ax:
+#         ax.plot(lag, ap, label=f"{name}")
+#         ax.plot(lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="$new - cal. ap$")
+#         ax.legend()
 
 # %% [markdown]
 # Play sound when done:
