@@ -179,7 +179,7 @@ class Timeout:
                 # log file widget
                 update_log_wdgt()
 
-            else:
+            if meas.is_running:
                 # MeasurementProcedure progress bar and time left
                 updt_meas_progress(meas)
 
@@ -259,7 +259,10 @@ class Timeout:
                 # display status and mode
                 was_on = self.spad_dvc.is_on
                 self.spad_dvc.get_stats()
-                self.main_gui.spadMode.setText(self.spad_dvc.settings.mode.title())
+                try:
+                    self.main_gui.spadMode.setText(self.spad_dvc.settings.mode.title())
+                except AttributeError:
+                    self.main_gui.spadMode.setText("ERROR")
                 if was_on != self.spad_dvc.is_on:
                     self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
 
