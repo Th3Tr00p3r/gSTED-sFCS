@@ -152,7 +152,9 @@ def deconvolve_afterpulse(
     lag,
     ap_signal_cf_cr,
     ap_cf_cr,
+    n_bins=2 ** 17,
     bin_size=1e-7,  # 100 ns (lag delta of first correlator)
+    n_robust=0,
     should_plot=False,
 ):
     """Doc."""
@@ -163,11 +165,9 @@ def deconvolve_afterpulse(
     # interp/extrap both
     ####################
 
-    n_bins = 2 ** 17
-    n_robust = 0
-    x_lims = Limits(1e-6, 1e-3)  # (1 us to 1 ms)
-    y_lims = Limits(100, np.inf)
-    #     y_lims = Limits(np.NINF, np.inf)
+    x_lims = Limits(5e-7, 1e-3)  # (1 us to 1 ms)
+    #     y_lims = Limits(10, np.inf)
+    y_lims = Limits(0.1, np.inf)
     interp_type = "gaussian"
     extrap_x_lims = Limits(-1, 1e-3)  # up to 1 ms
 
@@ -246,8 +246,6 @@ def deconvolve_afterpulse(
     # Smoothing before inverse Fourier transform
     ############################################
 
-    n_bins = 2 ** 17
-    n_robust = 0
     x_lims = Limits(3e3, np.inf)
     y_lims = Limits(np.median(np.real(quotient)), np.inf)
     interp_type = "gaussian"
@@ -340,20 +338,18 @@ exp1.calibrate_tdc(should_plot=False)
 meas1 = deepcopy(exp1.confocal)
 meas1.xcf = {}  # "halogen_afterpulsing": meas.cf["confocal"].afterpulse}
 
-gate1_ns = Limits(2, 10)
-gate2_ns = Limits(35, 85)
+gate1_ns = Limits(2, 15)
+gate2_ns = Limits(35, 95)
 
-corr_names = ("AB",)
-XCF = meas1.cross_correlate_data(
+corr_names = ("AB", "BA")
+XCF_AB, XCF_BA = meas1.cross_correlate_data(
     cf_name="fl_vs_wn",
     corr_names=corr_names,
     gate1_ns=gate1_ns,
     gate2_ns=gate2_ns,
     should_subtract_bg_corr=True,
     should_subtract_afterpulse=False,
-)[0]
-
-XCF.average_correlation()
+)
 
 # %% [markdown]
 # Now, we need to perform Fourier transforms. To prepare the functions for the transform we would do well to trim the noisy tail end and to symmetrize them.
@@ -362,17 +358,21 @@ XCF.average_correlation()
 
 # %%
 # Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
-gate_width_ns = 100
-countrate_a = np.mean([countrate_pair.a for countrate_pair in XCF.countrate_list])
-countrate_b = np.mean([countrate_pair.b for countrate_pair in XCF.countrate_list])
-norm_factor = countrate_b * (gate_width_ns / gate2_ns.interval()) / countrate_a
-# norm_factor = 1
-print("afterpulse norm_factor: ", norm_factor)
+pulse_period_ns = 100
+sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
+for idx, (corrfunc_AB, corrfunc_BA, countrate_pair) in enumerate(
+    zip(XCF_AB.corrfunc, XCF_BA.corrfunc, XCF_AB.countrate_list)
+):
+    norm_factor = pulse_period_ns / (
+        gate2_ns.interval() / countrate_pair.b - gate1_ns.interval() / countrate_pair.a
+    )
+    sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
+sbtrct_AB_BA = sbtrct_AB_BA_arr.mean(axis=0)
 
-ap_t_old = XCF.avg_cf_cr * norm_factor
+ap_t_old = sbtrct_AB_BA
 ap_signal_t_old = np.copy(exp1.confocal.cf["confocal"].avg_cf_cr)
 lag_signal_old = np.copy(exp1.confocal.cf["confocal"].lag)
-lag_ap_old = np.copy(XCF.lag)
+lag_ap_old = np.copy(XCF_AB.lag)
 
 # plotting
 with Plotter(
@@ -408,7 +408,7 @@ exp2 = SFCSExperiment(name=label)
 exp2.load_experiment(
     confocal_template=DATA_PATH / confocal_template,
     should_plot=True,
-    should_use_preprocessed=True,  # TODO: load anew if not found
+    should_use_preprocessed=False,  # TODO: load anew if not found
     should_re_correlate=True,
     should_subtract_afterpulse=True,
     should_use_inherent_afterpulsing=True,
@@ -546,34 +546,40 @@ exp3.calibrate_tdc(should_plot=False)
 meas3 = deepcopy(exp3.confocal)
 meas3.xcf = {}
 
-gate1_ns = Limits(35, 50)
-gate2_ns = Limits(60, 95)
+gate1_ns = Limits(2, 15)
+gate2_ns = Limits(35, 95)
 
-corr_names = ("AB",)
-XCF = meas3.cross_correlate_data(
+corr_names = ("AB", "BA")
+XCF_AB, XCF_BA = meas3.cross_correlate_data(
     cf_name="fl_vs_wn",
     corr_names=corr_names,
     gate1_ns=gate1_ns,
     gate2_ns=gate2_ns,
     should_subtract_bg_corr=True,
+    #     should_subtract_bg_corr=False,
     should_subtract_afterpulse=False,
-)[0]
+)
 
-XCF.average_correlation()
+XCF_AB.average_correlation()
+XCF_BA.average_correlation()
 
 # %%
 # Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
-gate_width_ns = 98
-countrate_a = np.mean([countrate_pair.a for countrate_pair in XCF.countrate_list])
-countrate_b = np.mean([countrate_pair.b for countrate_pair in XCF.countrate_list])
-norm_factor = countrate_b * (gate_width_ns / gate2_ns.interval()) / countrate_a
-# norm_factor = 1
-print("afterpulse norm_factor: ", norm_factor)
+pulse_period_ns = 100
+sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
+for idx, (corrfunc_AB, corrfunc_BA, countrate_pair) in enumerate(
+    zip(XCF_AB.corrfunc, XCF_BA.corrfunc, XCF_AB.countrate_list)
+):
+    norm_factor = pulse_period_ns / (
+        gate2_ns.interval() / countrate_pair.b - gate1_ns.interval() / countrate_pair.a
+    )
+    sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
+sbtrct_AB_BA = sbtrct_AB_BA_arr.mean(axis=0)
 
-ap_new_t = XCF.avg_cf_cr * norm_factor
+ap_new_t = sbtrct_AB_BA
 ap_signal_new_t = np.copy(exp3.confocal.cf["confocal"].avg_cf_cr)
 lag_ap_signal_new_t = np.copy(exp3.confocal.cf["confocal"].lag)
-lag_ap_new = np.copy(XCF.lag)
+lag_ap_new = np.copy(XCF_AB.lag)
 
 # plotting
 with Plotter(
@@ -674,16 +680,16 @@ with Plotter(
 ) as ax:
 
     ax.plot(lag_s_interp, clean_signal_old_t_interp, label="$G(t)_{signal} (old)$")
-    ax.plot(lag_s, clean_signal_inherent * 1.5, label="$G(t)_{subtracted,\ inherent\ ap}$")
+    ax.plot(lag_s, clean_signal_inherent * 1.21, label="$G(t)_{subtracted,\ inherent\ ap}$")
     ax.plot(lag_s, clean_signal_calibrated * 1.21, label="$G(t)_{subtracted,\ calibrated\ ap}$")
     ax.plot(
         new_detector_quotient_inherent_FT.t,
-        np.real(new_detector_quotient_inherent_FT.ft) * 2.9,
+        np.real(new_detector_quotient_inherent_FT.ft) * 1.75,
         label="$G(t)_{deconvolved,\ inherent\ ap}$",
     )
     ax.plot(
         new_detector_quotient_calibrated_FT.t,
-        np.real(new_detector_quotient_calibrated_FT.ft) * 1.6,
+        np.real(new_detector_quotient_calibrated_FT.ft) * 1.75,
         label="$G(t)_{deconvolved,\ calibrated\ ap}$",
     )
     ax.legend()
@@ -718,19 +724,15 @@ with Plotter(
         unify_length(clean_signal_calibrated.avg_cf_cr / 3.5, len(lag)),
         label="$new - cal. ap$",
     )
-    ax.plot(
-        lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="$new - cal. ap$"
-    )
-    ax.plot(lag, unify_length(clean_signal_inherent.afterpulse, len(lag)), label="$new - xcorr ap$")
-    ax.plot(
-        lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="$new - cal. ap$"
-    )
-    ax.plot(lag, unify_length(clean_signal_inherent.afterpulse, len(lag)), label="$new - xcorr ap$")
+    ax.plot(lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="new - cal. ap")
+    ax.plot(lag, unify_length(clean_signal_inherent.afterpulse, len(lag)), label="new - xcorr ap")
+    ax.plot(lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="new - cal. ap")
+    ax.plot(lag, unify_length(clean_signal_inherent.afterpulse, len(lag)), label="new - xcorr ap")
     ax.legend()
 
 # %%
-gate1_test = Limits(2, 15)
-gate2_test = Limits(50, 95)
+gate1_ns = Limits(2, 15)
+gate2_ns = Limits(35, 95)
 
 # meas = deepcopy(exp1.confocal) # OLD detector
 meas = deepcopy(exp3.confocal)  # NEW detector
@@ -739,8 +741,8 @@ meas = deepcopy(exp3.confocal)  # NEW detector
 XCF_AB, XCF_BA, XCF_BB = meas.cross_correlate_data(
     cf_name="test",
     corr_names=("AB", "BA", "BB"),
-    gate1_ns=gate1_test,
-    gate2_ns=gate2_test,
+    gate1_ns=gate1_ns,
+    gate2_ns=gate2_ns,
     should_subtract_bg_corr=True,  # TEST ME!
     should_subtract_afterpulse=False,
 )
@@ -750,27 +752,34 @@ XCF_BA.average_correlation()
 XCF_BB.average_correlation()
 
 # %%
-norm_ab = XCF_AB.countrate_b * (gate_width_ns / gate2_test.interval()) / XCF_AB.countrate_a
-norm_ba = XCF_BA.countrate_a * (gate_width_ns / gate1_test.interval()) / XCF_BA.countrate_b
-# norm_bb = gate_width_ns / gate2_test.interval()
-norm_ab, norm_ba, norm_bb = 1, 1, 1
-factor = 100 / (
-    gate2_test.interval() / XCF_AB.countrate_b - gate1_test.interval() / XCF_AB.countrate_a
-)
+pulse_period_ns = 100
 
-# subtraction_AB_BA = XCF_AB.corrfunc.mean(axis=0) - XCF_BA.corrfunc.mean(axis=0)
-subtraction_AB_BA = XCF_AB.corrfunc.mean(axis=0) - XCF_BA.corrfunc.mean(axis=0)
+norm_ab = XCF_AB.countrate_b * (pulse_period_ns / gate2_ns.interval()) / XCF_AB.countrate_a
+norm_ba = XCF_BA.countrate_a * (pulse_period_ns / gate1_ns.interval()) / XCF_BA.countrate_b
+norm_bb = pulse_period_ns / gate2_ns.interval()
+# norm_ab, norm_ba, norm_bb = 1, 1, 1
+
+pulse_period_ns = 100
+sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
+for idx, (corrfunc_AB, corrfunc_BA, countrate_pair) in enumerate(
+    zip(XCF_AB.corrfunc, XCF_BA.corrfunc, XCF_AB.countrate_list)
+):
+    norm_factor = pulse_period_ns / (
+        gate2_ns.interval() / countrate_pair.b - gate1_ns.interval() / countrate_pair.a
+    )
+    sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
+sbtrct_AB_BA = sbtrct_AB_BA_arr.mean(axis=0)
 
 with Plotter(
     #         super_title="Comparing inherent afterpulsings\nfrom different xcorr gates",
-    ylim=(-1, 5),
+    #     ylim=(-1, 5),
     x_scale="log",
 ) as ax:
-    ax.plot(XCF_AB.lag, XCF_AB.corrfunc.mean(axis=0) * norm_ab, label=XCF_AB.name)
-    ax.plot(XCF_BA.lag, XCF_BA.corrfunc.mean(axis=0) * norm_ba, label=XCF_BA.name)
-    ax.plot(XCF_BB.lag, XCF_BB.corrfunc.mean(axis=0) * norm_bb, label=XCF_BB.name)
-    ax.plot(meas.cf["confocal"].lag, meas.cf["confocal"].corrfunc.mean(axis=0) * 1, label=meas.name)
-    ax.plot(XCF_BB.lag, subtraction_AB_BA, label="AB - BA")
+    ax.plot(XCF_AB.lag, XCF_AB.avg_cf_cr * norm_ab, label=XCF_AB.name)
+    ax.plot(XCF_BA.lag, XCF_BA.avg_cf_cr * norm_ba, label=XCF_BA.name)
+    ax.plot(XCF_BB.lag, XCF_BB.avg_cf_cr * norm_bb, label=XCF_BB.name)
+    ax.plot(meas.cf["confocal"].lag, meas.cf["confocal"].avg_cf_cr, label=meas.name)
+    ax.plot(XCF_BB.lag, sbtrct_AB_BA, label="AB - BA")
     #     ax.plot(
     #         lag,
     #         unify_length(clean_signal_calibrated.afterpulse, len(lag)),
@@ -785,85 +794,12 @@ with Plotter(
     #     ylim=(-1000, meas.cf["confocal"].g0 * 2),
     x_scale="log",
 ) as ax:
-    ax.plot(XCF_BB.lag, subtraction_AB_BA * factor, label="AB - BA")
+    ax.plot(XCF_BB.lag, sbtrct_AB_BA, label="AB - BA")
     ax.plot(
         meas_afterpulse_subtracted.cf["confocal"].lag,
         meas_afterpulse_subtracted.cf["confocal"].afterpulse,
     )
     ax.legend()
-
-# %%
-# meas3 = exp3.confocal
-# meas3.xcf = {}
-
-# gate_width_ns = 98
-# gate1_ns_list = [Limits(2, 15), Limits(2, 40), Limits(20, 35), Limits(35, 50), Limits(50, 95)]
-# gate2_ns_list = [Limits(40, 95), Limits(50, 95), Limits(60, 95), Limits(70, 95)]
-
-# gate_pair_AB_list = [(gate1_ns, gate2_ns) for gate2_ns in gate2_ns_list for gate1_ns in gate1_ns_list]
-
-# ap_lag_name_AB_dict = {}
-# for gate1_ns, gate2_ns in gate_pair_AB_list:
-#     XCF = meas3.cross_correlate_data(
-#         cf_name="test",
-#         corr_names=("AB",),
-#         gate1_ns=gate1_ns,
-#         gate2_ns=gate2_ns,
-#         should_subtract_bg_corr=True, # TEST ME!
-#         should_subtract_afterpulse=False,
-#     )[0]
-
-#     XCF.average_correlation()
-
-#     # Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
-#     norm_factor = get_norm_factor(XCF)
-
-# #         print("afterpulsing norm_factor: ", norm_factor)
-
-#     ap_lag_name_AB_dict[XCF.name] = (XCF.lag, XCF.avg_cf_cr * norm_factor)
-
-# %%
-# for name, (lag, ap) in ap_lag_name_AB_dict.items():
-#     with Plotter(
-# #         super_title="Comparing inherent afterpulsings\nfrom different xcorr gates",
-#         ylim=(-1000, meas3.cf["confocal"].g0 * 2),
-#         x_scale="log",
-#     ) as ax:
-#         ax.plot(lag, ap, label=f"{name}")
-#         ax.plot(lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="$new - cal. ap$")
-#         ax.legend()
-
-# %%
-# ap_lag_name_BA_dict = {}
-# for gate1_ns, gate2_ns in gate_pair_AB_list:
-#     XCF = meas3.cross_correlate_data(
-#         cf_name="test",
-#         corr_names=("BA",),
-#         gate1_ns=gate1_ns,
-#         gate2_ns=gate2_ns,
-#         should_subtract_bg_corr=True, # TEST ME!
-#         should_subtract_afterpulse=False,
-#     )[0]
-
-#     XCF.average_correlation()
-
-#     # Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
-#     norm_factor = norm_factor = get_norm_factor(XCF)
-
-# #         print("afterpulsing norm_factor: ", norm_factor)
-
-#     ap_lag_name_BA_dict[XCF.name] = (XCF.lag, XCF.avg_cf_cr * norm_factor)
-
-# %%
-# for name, (lag, ap) in ap_lag_name_BA_dict.items():
-#     with Plotter(
-# #         super_title="Comparing inherent afterpulsings\nfrom different xcorr gates",
-#         ylim=(-1000, max(clean_signal_old_t_interp) * 2),
-#         x_scale="log",
-#     ) as ax:
-#         ax.plot(lag, ap, label=f"{name}")
-#         ax.plot(lag, unify_length(clean_signal_calibrated.afterpulse, len(lag)), label="$new - cal. ap$")
-#         ax.legend()
 
 # %% [markdown]
 # Play sound when done:
