@@ -723,6 +723,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         self.detector_settings = full_data.get("detector_settings")
         self.delayer_settings = full_data.get("delayer_settings")
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
+        self.pulse_period_ns = 1 / self.laser_freq_hz * 1e9
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
         with suppress(KeyError):
             self.duration_min = full_data["duration_s"] / 60
@@ -1076,7 +1077,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         afterpulse_params=None,
         external_afterpulsing=None,
         should_use_inherent_afterpulsing=False,
-        inherent_afterpulsing_gates=(Limits(2, 20), Limits(35, 85)),
+        inherent_afterpulsing_gates=(Limits(2, 20), Limits(35, 95)),
         should_subtract_bg_corr=True,
         is_verbose=False,
         min_time_frac=0.5,
@@ -1096,8 +1097,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
             gate1_ns, gate2_ns = inherent_afterpulsing_gates
             self.calibrate_tdc(should_rotate_data=False)  # abort data rotation decorator
-            CF_AB, *_ = self.cross_correlate_data(
-                corr_names=("AB",),
+            XCF_AB, XCF_BA = self.cross_correlate_data(
+                corr_names=("AB", "BA"),
                 cf_name="Afterpulsing",
                 gate1_ns=gate1_ns,
                 gate2_ns=gate2_ns,
@@ -1105,13 +1106,24 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 #                should_subtract_bg_corr=False,
                 should_rotate_data=False,  # abort data rotation decorator
             )
-            CF_AB.average_correlation()
-            external_afterpulsing = (
-                CF_AB.countrate_b
-                * (self.gate_width_ns / gate2_ns.interval())
-                * CF_AB.avg_cf_cr
-                / CF_AB.countrate_a
+
+            XCF_AB.average_correlation()
+            XCF_BA.average_correlation()
+
+            norm_factor = self.pulse_period_ns / (
+                gate2_ns.interval() / XCF_AB.countrate_b - gate1_ns.interval() / XCF_AB.countrate_a
             )
+
+            # Averaging and normalizing properly the subtraction of BA from AB
+            sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
+            for idx, (corrfunc_AB, corrfunc_BA, countrate_pair) in enumerate(
+                zip(XCF_AB.corrfunc, XCF_BA.corrfunc, XCF_AB.countrate_list)
+            ):
+                norm_factor = self.pulse_period_ns / (
+                    gate2_ns.interval() / countrate_pair.b - gate1_ns.interval() / countrate_pair.a
+                )
+                sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
+            external_afterpulsing = sbtrct_AB_BA_arr.mean(axis=0)
 
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(gate_ns)
