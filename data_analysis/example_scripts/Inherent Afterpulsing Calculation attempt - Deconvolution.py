@@ -29,6 +29,7 @@ import scipy
 from pathlib import Path
 from winsound import Beep
 from contextlib import suppress
+from copy import deepcopy
 
 import matplotlib as mpl
 
@@ -336,7 +337,7 @@ exp1.calibrate_tdc(should_plot=False)
 # Now, let's get the afterpulsing from cross-corralting gates:
 
 # %%
-meas1 = exp1.confocal
+meas1 = deepcopy(exp1.confocal)
 meas1.xcf = {}  # "halogen_afterpulsing": meas.cf["confocal"].afterpulse}
 
 gate1_ns = Limits(2, 10)
@@ -542,7 +543,7 @@ exp3.calibrate_tdc(should_plot=False)
 # Get the inverse quotient:
 
 # %%
-meas3 = exp3.confocal
+meas3 = deepcopy(exp3.confocal)
 meas3.xcf = {}
 
 gate1_ns = Limits(35, 50)
@@ -731,9 +732,13 @@ with Plotter(
 gate1_test = Limits(2, 15)
 gate2_test = Limits(50, 95)
 
-XCF_AB, XCF_BA = meas3.cross_correlate_data(
+# meas = deepcopy(exp1.confocal) # OLD detector
+meas = deepcopy(exp3.confocal)  # NEW detector
+
+# XCF_AB, XCF_BA, XCF_BB = old_meas.cross_correlate_data(
+XCF_AB, XCF_BA, XCF_BB = meas.cross_correlate_data(
     cf_name="test",
-    corr_names=("AB", "BA"),
+    corr_names=("AB", "BA", "BB"),
     gate1_ns=gate1_test,
     gate2_ns=gate2_test,
     should_subtract_bg_corr=True,  # TEST ME!
@@ -742,23 +747,48 @@ XCF_AB, XCF_BA = meas3.cross_correlate_data(
 
 XCF_AB.average_correlation()
 XCF_BA.average_correlation()
+XCF_BB.average_correlation()
 
 # %%
-norm_a = XCF_AB.countrate_b * (gate_width_ns / gate2_test.interval()) / XCF_AB.countrate_a
-norm_b = XCF_BA.countrate_b * (gate_width_ns / gate2_test.interval()) / XCF_BA.countrate_a
+norm_ab = XCF_AB.countrate_b * (gate_width_ns / gate2_test.interval()) / XCF_AB.countrate_a
+norm_ba = XCF_BA.countrate_a * (gate_width_ns / gate1_test.interval()) / XCF_BA.countrate_b
+# norm_bb = gate_width_ns / gate2_test.interval()
+norm_ab, norm_ba, norm_bb = 1, 1, 1
+factor = 100 / (
+    gate2_test.interval() / XCF_AB.countrate_b - gate1_test.interval() / XCF_AB.countrate_a
+)
+
+# subtraction_AB_BA = XCF_AB.corrfunc.mean(axis=0) - XCF_BA.corrfunc.mean(axis=0)
+subtraction_AB_BA = XCF_AB.corrfunc.mean(axis=0) - XCF_BA.corrfunc.mean(axis=0)
 
 with Plotter(
     #         super_title="Comparing inherent afterpulsings\nfrom different xcorr gates",
-    ylim=(-1000, meas3.cf["confocal"].g0 * 2),
+    ylim=(-1, 5),
     x_scale="log",
 ) as ax:
-    ax.plot(XCF_AB.lag, XCF_AB.avg_cf_cr * norm_a, label=XCF_AB.name)
-    ax.plot(XCF_BA.lag, XCF_BA.avg_cf_cr * norm_b, label=XCF_BA.name)
-    #     ax.plot(XCF_BA.lag, XCF_AB.avg_cf_cr * norm_a - XCF_BA.avg_cf_cr * norm_b * 0.24, label="SUBTRACTION TEST")
+    ax.plot(XCF_AB.lag, XCF_AB.corrfunc.mean(axis=0) * norm_ab, label=XCF_AB.name)
+    ax.plot(XCF_BA.lag, XCF_BA.corrfunc.mean(axis=0) * norm_ba, label=XCF_BA.name)
+    ax.plot(XCF_BB.lag, XCF_BB.corrfunc.mean(axis=0) * norm_bb, label=XCF_BB.name)
+    ax.plot(meas.cf["confocal"].lag, meas.cf["confocal"].corrfunc.mean(axis=0) * 1, label=meas.name)
+    ax.plot(XCF_BB.lag, subtraction_AB_BA, label="AB - BA")
+    #     ax.plot(
+    #         lag,
+    #         unify_length(clean_signal_calibrated.afterpulse, len(lag)),
+    #         label="calibrated afterpulsing",
+    #     )
+    ax.legend()
+
+meas_afterpulse_subtracted = deepcopy(exp5.confocal)  # NEW detector
+
+with Plotter(
+    #         super_title="Comparing inherent afterpulsings\nfrom different xcorr gates",
+    #     ylim=(-1000, meas.cf["confocal"].g0 * 2),
+    x_scale="log",
+) as ax:
+    ax.plot(XCF_BB.lag, subtraction_AB_BA * factor, label="AB - BA")
     ax.plot(
-        lag,
-        unify_length(clean_signal_calibrated.afterpulse, len(lag)),
-        label="calibrated afterpulsing",
+        meas_afterpulse_subtracted.cf["confocal"].lag,
+        meas_afterpulse_subtracted.cf["confocal"].afterpulse,
     )
     ax.legend()
 
