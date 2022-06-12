@@ -1063,11 +1063,12 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
         return p
 
-    def correlate_and_average(self, **kwargs) -> None:
+    def correlate_and_average(self, **kwargs) -> CorrFunc:
         """High level function for correlating and averaging any data."""
 
         CF = self.correlate_data(**kwargs)
         CF.average_correlation(**kwargs)
+        return CF
 
     @file_utilities.rotate_data_to_disk()
     def correlate_data(
