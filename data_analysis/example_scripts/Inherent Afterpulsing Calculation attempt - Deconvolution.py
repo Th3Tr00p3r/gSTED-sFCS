@@ -63,7 +63,7 @@ from utilities.file_utilities import (
     save_object,
     save_processed_solution_meas,
 )
-from utilities.helper import Limits, fourier_transform_1d, extrapolate_over_noise
+from utilities.helper import Limits, fourier_transform_1d, extrapolate_over_noise, unify_length
 
 #################################################
 # Setting up data path and other global constants
@@ -155,6 +155,7 @@ def deconvolve_afterpulse(
     n_bins=2 ** 17,
     bin_size=1e-7,  # 100 ns (lag delta of first correlator)
     n_robust=0,
+    ifft_x_lims=None,
     should_plot=False,
 ):
     """Doc."""
@@ -246,20 +247,24 @@ def deconvolve_afterpulse(
     # Smoothing before inverse Fourier transform
     ############################################
 
-    x_lims = Limits(3e3, np.inf)
-    y_lims = Limits(np.median(np.real(quotient)), np.inf)
-    interp_type = "gaussian"
-    extrap_x_lims = Limits(np.NINF, np.inf)
+    ap_w_positive = ap_w[ap_w.size // 2 :]
+    quotient_positive = np.real(quotient)[quotient.size // 2 :]
+
+    if ifft_x_lims is None:
+        factor = 3
+        ifft_x_lims = Limits(ap_w_positive[np.argmax(quotient_positive)] * factor, np.inf)
+        print("ifft_x_lims.lower: ", ifft_x_lims.lower)  # TESTESTEST
+    ifft_y_lims = Limits(np.median(np.real(quotient)), np.inf)
 
     gauss_interp_quotient = extrapolate_over_noise(
-        ap_w[ap_w.size // 2 :],
-        np.real(quotient)[quotient.size // 2 :],
+        ap_w_positive,
+        quotient_positive,
         n_bins=n_bins,
-        x_lims=x_lims,
-        y_lims=y_lims,
+        x_lims=ifft_x_lims,
+        y_lims=ifft_y_lims,
         n_robust=n_robust,
-        interp_type=interp_type,
-        extrap_x_lims=extrap_x_lims,
+        interp_type="gaussian",
+        extrap_x_lims=Limits(np.NINF, np.inf),
         should_plot=should_plot,
     )
 
@@ -513,6 +518,10 @@ DATA_DATE = "06_06_2022"
 confocal_template = "atto300bp_angular_exc_190337_*.pkl"
 label = "300 bp ATTO (new detector)"
 
+# DATA_DATE = "29_03_2022"
+# confocal_template = "bp300_20uW_angular_exc_172325_*.pkl"
+# label = "300 bp ATTO (new detector)"
+
 # DATA_DATE = "13_03_2022"
 # confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
 # label = "ATTO static new detector"
@@ -567,38 +576,58 @@ XCF_BA.average_correlation()
 # Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
 pulse_period_ns = 100
 sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
+norm_AB_arr = np.empty(XCF_AB.corrfunc.shape)
+norm_BA_arr = np.empty(XCF_BA.corrfunc.shape)
 for idx, (corrfunc_AB, corrfunc_BA, countrate_pair) in enumerate(
     zip(XCF_AB.corrfunc, XCF_BA.corrfunc, XCF_AB.countrate_list)
 ):
     norm_factor = pulse_period_ns / (
         gate2_ns.interval() / countrate_pair.b - gate1_ns.interval() / countrate_pair.a
     )
-    sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
+    norm_AB_arr[idx] = norm_factor * corrfunc_AB
+    norm_BA_arr[idx] = norm_factor * corrfunc_BA
+    sbtrct_AB_BA_arr[idx] = norm_AB_arr[idx] - norm_BA_arr[idx]
 sbtrct_AB_BA = sbtrct_AB_BA_arr.mean(axis=0)
+norm_AB = norm_AB_arr.mean(axis=0)
+norm_BA = norm_BA_arr.mean(axis=0)
 
-ap_new_t = sbtrct_AB_BA
-ap_signal_new_t = np.copy(exp3.confocal.cf["confocal"].avg_cf_cr)
-lag_ap_signal_new_t = np.copy(exp3.confocal.cf["confocal"].lag)
-lag_ap_new = np.copy(XCF_AB.lag)
+ap_t_old = sbtrct_AB_BA
+ap_signal_t_old = np.copy(exp1.confocal.cf["confocal"].avg_cf_cr)
+lag_signal_old = np.copy(exp1.confocal.cf["confocal"].lag)
+lag_ap_old = np.copy(XCF_AB.lag)
 
 # plotting
 with Plotter(
     super_title="Logarithmic Scale",
     xlim=(1e-3, 1e1),
-    ylim=(-500, exp3.confocal.cf["confocal"].g0 * 1.3),
+    ylim=(-500, exp1.confocal.cf["confocal"].g0 * 1.3),
     x_scale="log",
 ) as ax:
 
-    ax.plot(lag_ap_signal_new_t, ap_signal_new_t, label="Afterpulsed Signal")
-    ax.plot(lag_ap_new, ap_new_t, label="X-Corr Afterpulsing")
+    ax.plot(lag_signal_old, ap_signal_t_old, label="Afterpulsed Signal")
+    ax.plot(
+        lag_signal_old,
+        ap_signal_t_old - unify_length(ap_t_old, len(ap_signal_t_old)),
+        label="Afterpulse-Subtracted Signal",
+    )
+    ax.plot(lag_ap_old, ap_t_old, label="X-Corr Afterpulsing")
+    ax.plot(lag_ap_old, norm_AB, label="norm_AB")
+    ax.plot(lag_ap_old, norm_BA, label="norm_BA")
     ax.legend()
 
 with Plotter(
     super_title="Linear Scale", xlim=(-1e-2, 1e-1), ylim=(-1e4, 1e5), x_scale="linear"
 ) as ax:
 
-    ax.plot(lag_ap_signal_new_t, ap_signal_new_t, label="Afterpulsed Signal")
-    ax.plot(lag_ap_new, ap_new_t, label="X-Corr Afterpulsing")
+    ax.plot(lag_signal_old, ap_signal_t_old, label="Afterpulsed Signal")
+    ax.plot(
+        lag_signal_old,
+        ap_signal_t_old - unify_length(ap_t_old, len(ap_signal_t_old)),
+        label="Afterpulse-Subtracted Signal",
+    )
+    ax.plot(lag_ap_old, ap_t_old, label="X-Corr Afterpulsing")
+    ax.plot(lag_ap_old, norm_AB, label="norm_AB")
+    ax.plot(lag_ap_old, norm_BA, label="norm_BA")
     ax.legend()
 
 # %%
@@ -610,16 +639,6 @@ new_detector_quotient_inherent_FT = deconvolve_afterpulse(
 # Comparing to regularly subtracted afterpulsing (calibrated and inherent):
 
 # %%
-DATA_DATE = "06_06_2022"
-confocal_template = "atto300bp_angular_exc_190337_*.pkl"
-label = "300 bp ATTO (new detector)"
-
-# DATA_DATE = "13_03_2022"
-# confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
-# label = "ATTO static new detector"
-
-DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
-
 # load experiment
 exp4 = SFCSExperiment(name=label)
 exp4.load_experiment(
@@ -680,34 +699,24 @@ with Plotter(
 ) as ax:
 
     ax.plot(lag_s_interp, clean_signal_old_t_interp, label="$G(t)_{signal} (old)$")
-    ax.plot(lag_s, clean_signal_inherent * 1.21, label="$G(t)_{subtracted,\ inherent\ ap}$")
-    ax.plot(lag_s, clean_signal_calibrated * 1.21, label="$G(t)_{subtracted,\ calibrated\ ap}$")
+    ax.plot(lag_s, clean_signal_inherent * 2.7, label="$G(t)_{subtracted,\ inherent\ ap}$")
+    ax.plot(lag_s, clean_signal_calibrated * 2.7, label="$G(t)_{subtracted,\ calibrated\ ap}$")
     ax.plot(
         new_detector_quotient_inherent_FT.t,
-        np.real(new_detector_quotient_inherent_FT.ft) * 1.75,
+        np.real(new_detector_quotient_inherent_FT.ft) * 3.3,
         label="$G(t)_{deconvolved,\ inherent\ ap}$",
     )
     ax.plot(
         new_detector_quotient_calibrated_FT.t,
-        np.real(new_detector_quotient_calibrated_FT.ft) * 1.75,
+        np.real(new_detector_quotient_calibrated_FT.ft) * 3.7,
         label="$G(t)_{deconvolved,\ calibrated\ ap}$",
     )
     ax.legend()
-
 
 # %% [markdown]
 # Comparing the afterpulsings:
 
 # %%
-def unify_length(vec_in: np.ndarray, out_len: int) -> np.ndarray:
-    """Either trims or zero-pads the tail of a 1D array to match 'out_len'"""
-
-    if len(vec_in) >= out_len:
-        return vec_in[:out_len]
-    else:
-        return np.hstack((vec_in, np.zeros(out_len - len(vec_in))))
-
-
 clean_signal_inherent = exp4.confocal.cf["confocal"]
 clean_signal_calibrated = exp5.confocal.cf["confocal"]
 lag = exp4.confocal.cf["confocal"].lag
