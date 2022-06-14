@@ -334,7 +334,7 @@ exp1.save_processed_measurements()
 print(f"Count-Rate: {exp1.confocal.avg_cnt_rate_khz:.2f} kHz")
 
 # calibrate TDC
-exp1.calibrate_tdc(should_plot=False)
+exp1.calibrate_tdc(should_plot=True)
 
 # %% [markdown]
 # Now, let's get the afterpulsing from cross-corralting gates:
@@ -514,13 +514,13 @@ with Plotter(
 # importing the data:
 
 # %%
-DATA_DATE = "06_06_2022"
-confocal_template = "atto300bp_angular_exc_190337_*.pkl"
-label = "300 bp ATTO (new detector)"
-
-# DATA_DATE = "29_03_2022"
-# confocal_template = "bp300_20uW_angular_exc_172325_*.pkl"
+# DATA_DATE = "06_06_2022"
+# confocal_template = "atto300bp_angular_exc_190337_*.pkl"
 # label = "300 bp ATTO (new detector)"
+
+DATA_DATE = "29_03_2022"
+confocal_template = "bp300_20uW_angular_exc_172325_*.pkl"
+label = "300 bp YOYO (new detector)"
 
 # DATA_DATE = "13_03_2022"
 # confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
@@ -536,7 +536,7 @@ exp3.load_experiment(
     should_use_preprocessed=False,  # TODO: load anew if not found
     should_re_correlate=True,  # True
     should_subtract_afterpulse=False,
-    file_selection="Use 1-5, 8-10",  # TESTESTEST
+    #     file_selection="Use 1-5, 8-10",  # TESTESTEST
 )
 
 # save processed data (to avoid re-processing)
@@ -546,7 +546,7 @@ exp3.save_processed_measurements()
 print(f"Count-Rate: {exp3.confocal.avg_cnt_rate_khz} kHz")
 
 # calibrate TDC
-exp3.calibrate_tdc(should_plot=False)
+exp3.calibrate_tdc(should_plot=True)
 
 # %% [markdown]
 # Get the inverse quotient:
@@ -591,10 +591,10 @@ sbtrct_AB_BA = sbtrct_AB_BA_arr.mean(axis=0)
 norm_AB = norm_AB_arr.mean(axis=0)
 norm_BA = norm_BA_arr.mean(axis=0)
 
-ap_t_old = sbtrct_AB_BA
-ap_signal_t_old = np.copy(exp1.confocal.cf["confocal"].avg_cf_cr)
-lag_signal_old = np.copy(exp1.confocal.cf["confocal"].lag)
-lag_ap_old = np.copy(XCF_AB.lag)
+ap_new_t = sbtrct_AB_BA
+ap_signal_new_t = np.copy(exp1.confocal.cf["confocal"].avg_cf_cr)
+lag_ap_signal_new_t = np.copy(exp1.confocal.cf["confocal"].lag)
+lag_ap_new = np.copy(XCF_AB.lag)
 
 # plotting
 with Plotter(
@@ -602,21 +602,6 @@ with Plotter(
     xlim=(1e-3, 1e1),
     ylim=(-500, exp1.confocal.cf["confocal"].g0 * 1.3),
     x_scale="log",
-) as ax:
-
-    ax.plot(lag_signal_old, ap_signal_t_old, label="Afterpulsed Signal")
-    ax.plot(
-        lag_signal_old,
-        ap_signal_t_old - unify_length(ap_t_old, len(ap_signal_t_old)),
-        label="Afterpulse-Subtracted Signal",
-    )
-    ax.plot(lag_ap_old, ap_t_old, label="X-Corr Afterpulsing")
-    ax.plot(lag_ap_old, norm_AB, label="norm_AB")
-    ax.plot(lag_ap_old, norm_BA, label="norm_BA")
-    ax.legend()
-
-with Plotter(
-    super_title="Linear Scale", xlim=(-1e-2, 1e-1), ylim=(-1e4, 1e5), x_scale="linear"
 ) as ax:
 
     ax.plot(lag_signal_old, ap_signal_t_old, label="Afterpulsed Signal")
@@ -649,7 +634,7 @@ exp4.load_experiment(
     should_subtract_afterpulse=True,
     should_use_inherent_afterpulsing=True,
     inherent_afterpulsing_gates=(gate1_ns, gate2_ns),
-    file_selection="Use 1-5, 8-10",
+    #     file_selection="Use 1-5, 8-10",
 )
 
 # save processed data (to avoid re-processing)
@@ -667,7 +652,7 @@ exp5.load_experiment(
     should_re_correlate=True,
     should_subtract_afterpulse=True,
     should_use_inherent_afterpulsing=False,
-    file_selection="Use 1-5, 8-10",
+    #     file_selection="Use 1-5, 8-10",
 )
 
 # save processed data (to avoid re-processing)

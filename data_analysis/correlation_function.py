@@ -1290,7 +1290,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
     @file_utilities.rotate_data_to_disk()
     def cross_correlate_data(
         self,
-        corr_names=("AA", "BB", "AB", "BA"),
+        corr_names=("AB", "BA"),
         cf_name=None,
         gate1_ns=Limits(0, np.inf),
         gate2_ns=Limits(0, np.inf),
@@ -1309,13 +1309,15 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         self.min_duration_frac = min_time_frac
 
         # Unite TDC gates and detector gates
+        gates = []
         for i in (1, 2):
             gate_ns = locals()[f"gate{i}_ns"]
             tdc_gate_ns = Limits(gate_ns)
             if tdc_gate_ns != Limits(0, np.inf):
                 effective_lower_gate_ns = max(tdc_gate_ns.lower - self.detector_gate_ns.lower, 0)
                 effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
-                locals()[f"gate{i}_ns"] = Limits(effective_lower_gate_ns, effective_upper_gate_ns)
+                gates.append(Limits(effective_lower_gate_ns, effective_upper_gate_ns))
+        gate1_ns, gate2_ns = gates
 
         # correlate data
         if is_verbose:
