@@ -33,7 +33,7 @@ from utilities.helper import (
     xcorr,
 )
 
-laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis/laser_pulse_tdc_calib.pkl")
+# laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis/laser_pulse_tdc_calib.pkl")
 
 
 class AngularScanMixin:
@@ -1097,7 +1097,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             if is_verbose:
                 print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
             gate1_ns, gate2_ns = inherent_afterpulsing_gates
-            self.calibrate_tdc(should_rotate_data=False)  # abort data rotation decorator
+            self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
             XCF_AB, XCF_BA = self.cross_correlate_data(
                 corr_names=("AB", "BA"),
                 cf_name="Afterpulsing",
@@ -1105,7 +1105,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 gate2_ns=gate2_ns,
                 should_subtract_afterpulse=False,
                 #                should_subtract_bg_corr=False,
-                should_rotate_data=False,  # abort data rotation decorator
+                should_dump_data=False,  # abort data rotation decorator
             )
 
             XCF_AB.average_correlation()
