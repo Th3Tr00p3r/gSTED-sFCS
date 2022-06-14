@@ -300,27 +300,20 @@ XCF_AB, XCF_BA = meas1.cross_correlate_data(
 # %%
 # various xcorrs:
 gate_A = (3, 8)
-gate_B_list = [(3, 8), (6, 11), (9, 14), (12, 17), (20, 42.5), (42.5, 95)]
-corr_names = ("AB", "BA")
+gate_B_list = [(3, 8), (6, 11), (9, 14), (12, 17), (20, 42.5), (42.5, 45.5)]
 XCF_dict = {}
 for gate_B in gate_B_list:
     XCF_dict[gate_B] = meas1.cross_correlate_data(
         cf_name="fl_vs_wn",
-        corr_names=corr_names,
         gate1_ns=gate_A,
         gate2_ns=gate_B,
         should_subtract_bg_corr=True,
         should_subtract_afterpulse=False,
+        should_dump_data=False,
     )
 
 # %%
-# gated signals:
-gate_list = [(3, 8), (6, 11), (9, 14), (12, 17), (20, 42.5), (42.5, 95)]
-gated_signals_dict = {}
-for gate_ns in gate_list:
-    gated_signals_dict[gate_ns] = exp1.confocal.correlate_and_average(
-        gate_ns=gate_ns, should_subtract_afterpulse=False, is_verbose=True
-    )
+XCF_dict
 
 # %%
 # Normalizing and defining the ACF of the afterpulsing (from xcorr) and the afterpulsed signal
@@ -377,20 +370,6 @@ with Plotter(
     ax.legend()
 
 with Plotter(
-    super_title="Various Auto-Correlation gates",
-    xlim=(1e-3, 1e1),
-    #     ylim=(-500, exp1.confocal.cf["confocal"].g0 * 1.3),
-    ylim=(0, 0.1),
-    x_scale="log",
-) as ax:
-    for gate_ns, CF in gated_signals_dict.items():
-        #         ax.plot(CF.lag, CF.avg_cf_cr, label=f"Afterpulsed Gated Signal {gate_ns}")
-        #         ax.plot(CF.lag, CF.avg_cf_cr / CF.countrate, label=f"Afterpulsed Gated Signal {gate_ns}")
-        ax.plot(CF.lag, CF.corrfunc.mean(axis=0), label=f"Afterpulsed Gated Signal {gate_ns}")
-    ax.legend()
-
-
-with Plotter(
     super_title="Various Cross-Correlation 'B' gates",
     xlim=(1e-3, 1e1),
     #     ylim=(-500, exp1.confocal.cf["confocal"].g0 * 1.3),
@@ -398,20 +377,23 @@ with Plotter(
     x_scale="log",
 ) as ax:
     for gate_ns, (CF_AB, CF_BA) in XCF_dict.items():
-        if gate_ns in {(3, 8), (42.5, 95)}:
+        if gate_ns in {(3, 8), (43.5, 45.5)}:
             ax.plot(
                 CF_AB.lag,
                 CF_AB.corrfunc.mean(axis=0),
-                label=f"Afterpulsed Gated Signal {gate_ns} AB",
+                label=f"AP Gated Signal {(3, 8)} vs. {gate_ns} AB",
             )
             ax.plot(
                 CF_BA.lag,
                 CF_BA.corrfunc.mean(axis=0),
-                label=f"Afterpulsed Gated Signal {gate_ns} BA",
+                label=f"AP Gated Signal {(3, 8)} vs. {gate_ns} BA",
             )
     ax.legend()
 
 # gate_list = [(3, 8), (6, 11), (9, 14), (12, 17), (20, 42.5), (42.5, 95)]
+
+# %%
+XCF_dict[(46, 95)][1].corrfunc
 
 # %%
 old_detector_quotient_FT = deconvolve_afterpulse(
