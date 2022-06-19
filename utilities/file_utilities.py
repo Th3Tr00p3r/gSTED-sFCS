@@ -17,6 +17,8 @@ import scipy.io as spio
 
 from utilities.helper import chunks, reverse_dict, timer
 
+DUMP_PATH = Path("C:/temp_sfcs_data/")
+
 legacy_matlab_trans_dict = {
     # Solution Scan
     "Setup": "setup",
@@ -316,19 +318,24 @@ def save_processed_solution_meas(meas, dir_path: Path) -> None:
     The template may then be loaded much more quickly.
     """
 
-    original_data = copy.deepcopy(meas.data)
+    # load the data first, to save it as well
+    meas.dump_or_load_data(should_load=True)
+    # copy it
+    data_copy = copy.deepcopy(meas.data)
+    # dump the data back
+    meas.dump_or_load_data(should_load=False)
 
     # lower size if possible
-    for p in meas.data:
+    for p in data_copy:
         if p.pulse_runtime.max() <= np.iinfo(np.int32).max:
             p.pulse_runtime = p.pulse_runtime.astype(np.int32)
+
+    meas.data = data_copy
 
     dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", meas.template)
     file_path = dir_path / file_name
     save_object(meas, file_path, compression_method="blosc", obj_name="processed measurement")
-
-    meas.data = original_data
 
 
 def load_processed_solution_measurement(file_path: Path, file_template: str):
