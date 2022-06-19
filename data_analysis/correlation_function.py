@@ -24,6 +24,7 @@ from utilities import file_utilities
 from utilities.display import Plotter
 from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
 from utilities.helper import (
+    EPS,
     Limits,
     div_ceil,
     extrapolate_over_noise,
@@ -194,12 +195,10 @@ class CorrFunc:
     vt_um: np.ndarray
     cf_cr: np.ndarray
     g0: float
-    EPSILON = 1e-5  # TODO: why is this needed (in low-data measurements)
 
-    def __init__(self, name: str, correlator_type: int, gate_ns, laser_freq_hz):
+    def __init__(self, name: str, correlator_type: int, laser_freq_hz):
         self.name = name
         self.correlator_type = correlator_type
-        self.gate_ns = Limits(gate_ns)
         self.laser_freq_hz = laser_freq_hz
 
         self.skipped_duration = 0
@@ -237,6 +236,7 @@ class CorrFunc:
         corr_output,
         afterpulse_params,
         bg_corr_list,
+        gate_ns=Limits(0, np.inf),
         should_subtract_afterpulse: bool = True,
         external_afterpulsing: np.ndarray = None,
         **kwargs,
@@ -258,7 +258,7 @@ class CorrFunc:
             if external_afterpulsing is not None:
                 self.afterpulse = external_afterpulsing
             else:
-                self.calculate_afterpulse(afterpulse_params)
+                calculate_afterpulse(self.lag, afterpulse_params, gate_ns, self.laser_freq_hz)
 
         # zero-pad and generate cf_cr
         lag_len = len(self.lag)
@@ -285,19 +285,6 @@ class CorrFunc:
             self.countrate_b = np.mean([countrate_pair.b for countrate_pair in self.countrate_list])
         except AttributeError:  # autocorr
             self.countrate = np.mean([countrate for countrate in self.countrate_list])
-
-    def calculate_afterpulse(self, afterpulse_params: tuple) -> None:
-        """Doc."""
-
-        gate_pulse_period_ratio = min(1.0, self.gate_ns.interval() / 1e9 * self.laser_freq_hz)
-        fit_name, beta = afterpulse_params
-        if fit_name == "multi_exponent_fit":
-            # work with any number of exponents
-            self.afterpulse = gate_pulse_period_ratio * multi_exponent_fit(self.lag, *beta)
-        elif fit_name == "exponent_of_polynom_of_log":  # for old MATLAB files
-            if self.lag[0] == 0:
-                self.lag[0] = np.nan
-            self.afterpulse = gate_pulse_period_ratio * np.exp(np.polyval(beta, np.log(self.lag)))
 
     def average_correlation(
         self,
@@ -327,12 +314,12 @@ class CorrFunc:
         except RuntimeWarning:  # division by zero
             # TODO: why does this happen?
             self.score = (
-                (1 / (np.var(self.cf_cr[:, jj], 0) + self.EPSILON))
+                (1 / (np.var(self.cf_cr[:, jj], 0) + EPS))
                 * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
                 / len(jj)
             ).sum(axis=1)
             print(
-                f"Division by zero avoided by adding EPSILON={self.EPSILON}. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={EPS}. Why does this happen (zero in variance)?"
             )
 
         total_n_rows, _ = self.cf_cr.shape
@@ -354,6 +341,10 @@ class CorrFunc:
             self.cf_cr[self.j_good, :], self.weights[self.j_good, :]
         )
 
+        self.avg_corrfunc, self.error_corrfunc = self._calculate_weighted_avg(
+            self.corrfunc[self.j_good, :], self.weights[self.j_good, :]
+        )
+
         j_t = self.norm_range.valid_indices(self.lag)
 
         try:
@@ -362,11 +353,11 @@ class CorrFunc:
             ).sum()
         except RuntimeWarning:  # division by zero
             # TODO: why does this happen?
-            self.g0 = (self.avg_cf_cr[j_t] / (self.error_cf_cr[j_t] + self.EPSILON) ** 2).sum() / (
-                1 / (self.error_cf_cr[j_t] + self.EPSILON) ** 2
+            self.g0 = (self.avg_cf_cr[j_t] / (self.error_cf_cr[j_t] + EPS) ** 2).sum() / (
+                1 / (self.error_cf_cr[j_t] + EPS) ** 2
             ).sum()
             print(
-                f"Division by zero avoided by adding EPSILON={self.EPSILON}. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={EPS}. Why does this happen (zero in variance)?"
             )
 
         self.normalized = self.avg_cf_cr / self.g0
@@ -385,10 +376,10 @@ class CorrFunc:
             avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
         except RuntimeWarning:  # division by zero - caused by zero total weights element/s
             # TODO: why does this happen?
-            tot_weights += self.EPSILON
+            tot_weights += EPS
             avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
             print(
-                f"Division by zero avoided by adding epsilon={self.EPSILON}. Why does this happen (zero total weight)?"
+                f"Division by zero avoided by adding epsilon={EPS}. Why does this happen (zero total weight)?"
             )
         finally:
             error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
@@ -560,7 +551,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
     """Doc."""
 
     NAN_PLACEBO: int
-    DUMP_PATH = Path("C:/temp_sfcs_data/")
 
     def __init__(self, name=""):
         self.name = name
@@ -729,13 +719,15 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             self.duration_min = full_data["duration_s"] / 60
 
         # Detector Gate (calibrated - actual gate can be inferred from TDC calibration and compared)
-        if self.delayer_settings is not None and getattr(self.delayer_settings, "is_gated", False):
+        if self.delayer_settings is not None and getattr(self.detector_settings, "is_gated", False):
             lower_detector_gate_ns = (
                 self.delayer_settings.effective_delay_ns - self.delayer_settings.sync_delay_ns
             )
         else:
             lower_detector_gate_ns = 0
-        if self.detector_settings is not None:
+        if self.detector_settings is not None and getattr(
+            self.detector_settings, "is_gated", False
+        ):
             self.gate_width_ns = self.detector_settings.gate_width_ns
             self.detector_gate_ns = Limits(
                 lower_detector_gate_ns, lower_detector_gate_ns + self.gate_width_ns
@@ -805,7 +797,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             print("Done.\n")
 
         # Duration Estimate
-        time_stamps = np.diff(p.pulse_runtime).astype(np.int32)
+        try:  # TODO: TESTESTEST - does this makes sense? what causes p to not have pulse_runtime? state it.
+            time_stamps = np.diff(p.pulse_runtime).astype(np.int32)
+        except AttributeError:
+            return None
         mu = np.median(time_stamps) / np.log(2)
         p.duration_estimate = mu * len(p.pulse_runtime) / self.laser_freq_hz / n_runs_requested
 
@@ -1078,7 +1073,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         afterpulse_params=None,
         external_afterpulsing=None,
         should_use_inherent_afterpulsing=False,
-        inherent_afterpulsing_gates=(Limits(2, 20), Limits(35, 95)),
+        # TODO: gates should not be fixed - gate1 should start at the peak (or right before it) and the second should end before the detector width ends -
+        # these choices are important for normalization
+        inherent_afterpulsing_gates=(Limits(2.5, 10), Limits(30, 90)),
         should_subtract_bg_corr=True,
         is_verbose=False,
         min_time_frac=0.5,
@@ -1094,37 +1091,15 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
         # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
         if should_use_inherent_afterpulsing:
-            if is_verbose:
-                print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
-            gate1_ns, gate2_ns = inherent_afterpulsing_gates
-            self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
-            XCF_AB, XCF_BA = self.cross_correlate_data(
-                corr_names=("AB", "BA"),
-                cf_name="Afterpulsing",
-                gate1_ns=gate1_ns,
-                gate2_ns=gate2_ns,
-                should_subtract_afterpulse=False,
-                #                should_subtract_bg_corr=False,
-                should_dump_data=False,  # abort data rotation decorator
-            )
-
-            XCF_AB.average_correlation()
-            XCF_BA.average_correlation()
-
-            norm_factor = self.pulse_period_ns / (
-                gate2_ns.interval() / XCF_AB.countrate_b - gate1_ns.interval() / XCF_AB.countrate_a
-            )
-
-            # Averaging and normalizing properly the subtraction of BA from AB
-            sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
-            for idx, (corrfunc_AB, corrfunc_BA, countrate_pair) in enumerate(
-                zip(XCF_AB.corrfunc, XCF_BA.corrfunc, XCF_AB.countrate_list)
-            ):
-                norm_factor = self.pulse_period_ns / (
-                    gate2_ns.interval() / countrate_pair.b - gate1_ns.interval() / countrate_pair.a
+            if external_afterpulsing is None:
+                external_afterpulsing, _ = self.calculate_inherent_afterpulsing(
+                    *inherent_afterpulsing_gates
                 )
-                sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
-            external_afterpulsing = sbtrct_AB_BA_arr.mean(axis=0)
+            else:
+                print(
+                    "Warning: external_afterpulsing was given and should_use_inherent_afterpulsing is 'True'! Using external_afterpulsing...",
+                    end=" ",
+                )
 
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(gate_ns)
@@ -1150,13 +1125,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         elif self.scan_type == "angular":
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
-        CF = CorrFunc(cf_name, corr_type, gate_ns, self.laser_freq_hz)
+        CF = CorrFunc(cf_name, corr_type, self.laser_freq_hz)
         CF.correlate_measurement(
             ts_split_list,
             afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
             getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
             is_verbose=is_verbose,
             external_afterpulsing=external_afterpulsing,
+            gate_ns=gate_ns,
             **kwargs,
         )
 
@@ -1180,7 +1156,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         if cf_name is not None:
             self.cf[cf_name] = CF
         else:
-            self.cf[f"gSTED {CF.gate_ns}"] = CF
+            self.cf[f"gSTED {gate_ns}"] = CF
 
         return CF
 
@@ -1298,6 +1274,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         should_subtract_bg_corr=True,
         is_verbose=True,
         min_time_frac=0.5,
+        should_add_to_xcf_dict=True,
         **kwargs,
     ) -> List[CorrFunc]:
         """
@@ -1346,7 +1323,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 if cf_name is not None
                 else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
                 corr_type if xx in {"AA", "BB"} else xcorr_type,
-                gate1_ns,
                 self.laser_freq_hz,
             )
             for xx in corr_names
@@ -1383,9 +1359,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                     print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
                 print("- Done.")
 
-        # name the Corrfunc object
-        for xx, CF in zip(corr_names, CF_list):
-            self.xcf[CF.name] = CF
+        if should_add_to_xcf_dict:
+            # name the Corrfunc object
+            for xx, CF in zip(corr_names, CF_list):
+                self.xcf[CF.name] = CF
 
         return CF_list
 
@@ -1639,26 +1616,64 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             ax.set_ylabel("$S(q)$")
             ax.legend(legend_labels)
 
+    def calculate_inherent_afterpulsing(
+        self, gate1_ns, gate2_ns, is_verbose=False
+    ) -> Tuple[np.ndarray, Tuple[CorrFunc, CorrFunc]]:
+        """Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)"""
+
+        if is_verbose:
+            print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
+        if not hasattr(self, "tdc_calib"):
+            self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
+        XCF_AB, XCF_BA = self.cross_correlate_data(
+            corr_names=("AB", "BA"),
+            cf_name="Afterpulsing",
+            gate1_ns=gate1_ns,
+            gate2_ns=gate2_ns,
+            should_subtract_afterpulse=False,
+            #                should_subtract_bg_corr=False,
+            should_dump_data=False,  # abort data rotation decorator
+            should_add_to_xcf_dict=False,  # avoid saving to self
+        )
+
+        norm_factor = self.pulse_period_ns / (
+            gate2_ns.interval() / XCF_AB.countrate_b - gate1_ns.interval() / XCF_AB.countrate_a
+        )
+
+        # Averaging and normalizing properly the subtraction of BA from AB
+        sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
+        for idx, (corrfunc_AB, corrfunc_BA, countrate_pair) in enumerate(
+            zip(XCF_AB.corrfunc, XCF_BA.corrfunc, XCF_AB.countrate_list)
+        ):
+            norm_factor = self.pulse_period_ns / (
+                gate2_ns.interval() / countrate_pair.b - gate1_ns.interval() / countrate_pair.a
+            )
+            sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
+
+        return sbtrct_AB_BA_arr.mean(axis=0), (XCF_AB, XCF_BA)
+
     def dump_or_load_data(self, should_load: bool, method_name=None) -> None:
         """
         Load or save the 'data' attribute.
         (relieve RAM - important during multiple-experiment analysis)
         """
 
+        DUMP_PATH = file_utilities.DUMP_PATH
+
         with suppress(AttributeError):
             # AttributeError - name_on_disk is not defined (happens when doing alignment, for example)
             if should_load:  # loading data
                 if self.is_data_dumped:
                     logging.debug(
-                        f"{method_name}: Loading dumped data '{self.name_on_disk}' from '{self.DUMP_PATH}'."
+                        f"{method_name}: Loading dumped data '{self.name_on_disk}' from '{DUMP_PATH}'."
                     )
                     with suppress(FileNotFoundError):
-                        self.data = file_utilities.load_object(self.DUMP_PATH / self.name_on_disk)
+                        self.data = file_utilities.load_object(DUMP_PATH / self.name_on_disk)
                         self.is_data_dumped = False
             else:  # saving data
                 is_saved = file_utilities.save_object(
                     self.data,
-                    self.DUMP_PATH / self.name_on_disk,
+                    DUMP_PATH / self.name_on_disk,
                     obj_name="dumped data array",
                     element_size_estimate_mb=self.data[0].size_estimate_mb,
                 )
@@ -1666,7 +1681,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                     self.data = []
                     self.is_data_dumped = True
                     logging.debug(
-                        f"{method_name}: Dumped data '{self.name_on_disk}' to '{self.DUMP_PATH}'."
+                        f"{method_name}: Dumped data '{self.name_on_disk}' to '{DUMP_PATH}'."
                     )
 
 
@@ -2018,3 +2033,24 @@ def _sum_scan_circles(pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, circle_
     img, _ = np.histogram(pixel_num, bins=bins)
 
     return img, samples_per_circle
+
+
+def calculate_afterpulse(
+    lag: np.ndarray,
+    afterpulse_params: tuple = file_utilities.default_system_info["afterpulse_params"],
+    gate_ns: Union[tuple, Limits] = (0, np.inf),
+    laser_freq_hz: float = 1e7,
+) -> np.ndarray:
+    """Doc."""
+
+    gate_pulse_period_ratio = min(1.0, Limits(gate_ns).interval() / 1e9 * laser_freq_hz)
+    fit_name, beta = afterpulse_params
+    if fit_name == "multi_exponent_fit":
+        # work with any number of exponents
+        afterpulse = gate_pulse_period_ratio * multi_exponent_fit(lag, *beta)
+    elif fit_name == "exponent_of_polynom_of_log":  # for old MATLAB files
+        if lag[0] == 0:
+            lag[0] = np.nan
+        afterpulse = gate_pulse_period_ratio * np.exp(np.polyval(beta, np.log(lag)))
+
+    return afterpulse

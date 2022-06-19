@@ -353,6 +353,8 @@ with Plotter(
     xlim=(1e-3, 1e1),
     ylim=(-500, exp1.confocal.cf["confocal"].g0 * 1.3),
     x_scale="log",
+    xlabel="Lag time (ms)",
+    ylabel="avg_cf_cr",
 ) as ax:
 
     ax.plot(lag_signal_old, ap_signal_t_old, label="Afterpulsed Signal")
@@ -375,25 +377,24 @@ with Plotter(
     #     ylim=(-500, exp1.confocal.cf["confocal"].g0 * 1.3),
     ylim=(0, 0.1),
     x_scale="log",
+    xlabel="Lag time (ms)",
+    ylabel="mean corrfunc",
 ) as ax:
     for gate_ns, (CF_AB, CF_BA) in XCF_dict.items():
-        if gate_ns in {(3, 8), (43.5, 45.5)}:
-            ax.plot(
-                CF_AB.lag,
-                CF_AB.corrfunc.mean(axis=0),
-                label=f"AP Gated Signal {(3, 8)} vs. {gate_ns} AB",
-            )
-            ax.plot(
-                CF_BA.lag,
-                CF_BA.corrfunc.mean(axis=0),
-                label=f"AP Gated Signal {(3, 8)} vs. {gate_ns} BA",
-            )
+        #         if gate_ns in {(3, 8), (43.5, 45.5)}:
+        ax.plot(
+            CF_AB.lag,
+            CF_AB.corrfunc.mean(axis=0),
+            label=f"AP Gated Signal {(3, 8)} vs. {gate_ns} AB",
+        )
+        ax.plot(
+            CF_BA.lag,
+            CF_BA.corrfunc.mean(axis=0),
+            label=f"AP Gated Signal {(3, 8)} vs. {gate_ns} BA",
+        )
     ax.legend()
 
 # gate_list = [(3, 8), (6, 11), (9, 14), (12, 17), (20, 42.5), (42.5, 95)]
-
-# %%
-XCF_dict[(46, 95)][1].corrfunc
 
 # %%
 old_detector_quotient_FT = deconvolve_afterpulse(

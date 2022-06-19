@@ -322,7 +322,7 @@ exp1 = SFCSExperiment(name=label)
 exp1.load_experiment(
     confocal_template=DATA_PATH / confocal_template,
     should_plot=True,
-    should_use_preprocessed=True,  # TODO: load anew if not found
+    should_use_preprocessed=False,  # TODO: load anew if not found
     should_re_correlate=True,  # True
     should_subtract_afterpulse=False,
 )
