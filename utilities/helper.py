@@ -5,6 +5,7 @@ import functools
 import logging
 import math
 import os
+import sys
 import time
 from contextlib import suppress
 from types import SimpleNamespace
@@ -20,6 +21,8 @@ import utilities.display as display
 # import time # TESTING
 # tic = time.perf_counter() # TESTING
 # print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
+
+EPS = sys.float_info.epsilon
 
 
 class Limits:
