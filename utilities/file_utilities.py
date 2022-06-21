@@ -677,10 +677,17 @@ def file_selection_str_to_list(file_selection: str) -> Tuple[List[int], str]:
     return file_idxs, choice
 
 
-def prepare_file_paths(file_path_template: Path, file_selection: str = "Use All") -> List[Path]:
+def prepare_file_paths(
+    file_path_template: Path,
+    file_selection: str = "Use All",
+    should_unite_start_times=False,
+    **kwargs,
+) -> List[Path]:
     """Doc."""
 
     dir_path, file_template = file_path_template.parent, file_path_template.name
+    if should_unite_start_times:  # ignore start time in template
+        file_template = "_".join(file_template.split("_")[:-2]) + "_*.pkl"
     unsorted_paths = list(dir_path.glob(file_template))
     file_paths = sort_file_paths_by_file_number(unsorted_paths)
     if not file_paths:

@@ -182,6 +182,7 @@ for label in used_labels:
         force_processing=force_processing[label],
         should_re_correlate=FORCE_PROCESSING,
         should_subtract_afterpulse=False,
+        should_unite_start_times=True,  # TESTESTEST
         **label_load_kwargs_dict[label],
     )
 
@@ -284,21 +285,21 @@ plotted_labels = [
     "White Noise 305 kHz",
 ]
 
-f = 0.85
-# f = 1
+# f = 0.85
+f = 1
 
-with Plotter(super_title="Oscillations", x_scale="log", ylim=(-4e3, 4e3)) as ax:
+with Plotter(super_title="Oscillations", x_scale="log", xlim=(1e-3, 1e1), ylim=(-4e3, 4e3)) as ax:
     for label, exp in halogen_exp_dict.items():
         if label in plotted_labels:
             cf = exp.confocal.cf["confocal"]
             wn_lag = cf.lag
-            CF_CR_AA = cf.avg_cf_cr
+            CF_CR = cf.avg_cf_cr
             G_ap = calculate_afterpulse(wn_lag, afterpulse_params) / cf.countrate * f
-            noise = (CF_CR_AA + cf.countrate) / (G_ap + 1) - cf.countrate
+            noise = (CF_CR + cf.countrate) / (G_ap + 1) - cf.countrate
 
-            ax.plot(wn_lag, CF_CR_AA, label=f"G_AA ({label})")
-            ax.plot(wn_lag, G_ap * cf.countrate, label=f"G_ap * CR  ({label})")
-            ax.plot(wn_lag, noise, label=f"quotient ({label})")
+            ax.plot(wn_lag, CF_CR, label=f"CF_CR ({label})")
+            #             ax.plot(wn_lag, G_ap, label=f"G_ap * CR  ({label})")
+            ax.plot(wn_lag, noise, label=f"noise ({label})")
             ax.legend()
 
 # %% [markdown]

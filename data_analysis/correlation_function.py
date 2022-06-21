@@ -571,11 +571,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
 
-        if not file_selection:
-            file_selection = "Use All"
-        file_paths = file_utilities.prepare_file_paths(Path(file_path_template), file_selection)
+        file_paths = file_utilities.prepare_file_paths(
+            Path(file_path_template), file_selection, **kwargs
+        )
         self.n_paths = len(file_paths)
-        self.file_path_template = file_path_template
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
 
