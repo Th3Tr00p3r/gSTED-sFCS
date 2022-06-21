@@ -236,9 +236,14 @@ class TDCPhotonDataMixin:
         time_bins_for_hist_ns=0.1,
         should_plot=False,
         parent_axes=None,
+        force_processing=True,
         **kwargs,
     ) -> None:
         """Doc."""
+
+        if not force_processing and hasattr(self, "tdc_calib"):
+            print(f"\n{self.name}: TDC calibration exists, skipping.")
+            return
 
         print(f"\n{self.name}: Calibrating TDC...", end=" ")
 
@@ -535,7 +540,6 @@ class TDCPhotonDataMixin:
         fit_range=(3.5, 30),
         x_scale="linear",
         y_scale="log",
-        max_iter=3,
         should_plot=False,
     ) -> FitParams:
         """Doc."""

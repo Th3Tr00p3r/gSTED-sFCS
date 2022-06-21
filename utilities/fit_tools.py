@@ -39,7 +39,7 @@ def curve_fit_lims(
     param_estimates,
     xs,
     ys,
-    ys_errors,
+    ys_errors=None,
     x_limits=Limits(),
     y_limits=Limits(),
     should_plot=True,
@@ -49,6 +49,12 @@ def curve_fit_lims(
     **kwargs,
 ) -> FitParams:
     """Doc."""
+
+    should_plot_errorbars = True
+
+    if ys_errors is None:
+        should_plot_errorbars = False
+        ys_errors = np.ones(ys.shape)
 
     in_lims = x_limits.valid_indices(xs) & y_limits.valid_indices(ys)
     is_finite_err = (ys_errors > 0) & np.isfinite(ys_errors)
@@ -62,9 +68,13 @@ def curve_fit_lims(
     )
 
     if should_plot:
-        with Plotter(x_scale=x_scale, y_scale=y_scale) as ax:
-            ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_params.beta), zorder=10, **plot_kwargs)
-            ax.errorbar(xs, ys, ys_errors, fmt=".")
+        with Plotter(
+            super_title=f"Curve Fit ({fit_name})", x_scale=x_scale, y_scale=y_scale, **plot_kwargs
+        ) as ax:
+            ax.plot(xs[in_lims], ys[in_lims], ".k")
+            ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_params.beta), "--r")
+            if should_plot_errorbars:
+                ax.errorbar(xs, ys, ys_errors, fmt=".")
 
     return fit_params
 
@@ -102,7 +112,7 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
     chi_sq_arr = np.square((fit_func(x, *beta) - y) / sigma)
     try:
         chi_sq_norm = chi_sq_arr.sum() / x.size
-    except AttributeError:  # x is a tuple (2D Gaussian)
+    except AttributeError:  # x is a tuple (e.g. for 2D Gaussian)
         chi_sq_norm = chi_sq_arr.sum() / x[0].size
 
     return FitParams(
@@ -144,8 +154,8 @@ def power_fit(t, a, n):
     return a * t ** n
 
 
-def diffusion_3d_fit(t, A, tau, w_sq):
-    return A / (1 + t / tau) / np.sqrt(1 + t / tau / w_sq)
+def diffusion_3d_fit(t, a, tau, w_sq):
+    return a / (1 + t / tau) / np.sqrt(1 + t / tau / w_sq)
 
 
 def exponent_with_background_fit(t, A, tau, bg):
@@ -163,19 +173,12 @@ def multi_exponent_fit(t, *beta):
     return (amplitude_row_vec @ np.exp(-decay_column_vec * t)).squeeze()
 
 
+def decaying_cosine_fit(t, a, omega, phi, tau, c):
+    return a * np.cos(omega * t + phi) * np.exp(-t / tau) + c
+
+
 def ratio_of_lifetime_histograms(t, sig_x, sig_y, t0):
     if (t >= t0).all():
         return np.sqrt(1 + sig_x * (t - t0)) * np.sqrt(1 + sig_y * (t - t0))
     else:
         return 1
-
-
-def weighted_average(data_vectors_list, data_errors_list):
-    """Doc."""
-
-    data_vectors = np.array(data_vectors_list)
-    data_errors = np.array(data_errors_list)
-    weights = data_errors ** (-2)
-    wa = np.sum(data_vectors * weights, 0) / np.sum(weights, 0)
-    we = np.sum(weights, 0) ** (-2)
-    return wa, we
