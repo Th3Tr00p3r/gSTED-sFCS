@@ -1281,7 +1281,8 @@ class MainWin:
                     file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
                     logging.info(f"Loading processed data '{current_template}' from hard drive...")
                     measurement = file_utilities.load_processed_solution_measurement(
-                        file_path, current_template
+                        file_path,
+                        current_template,
                     )
                     print("Done.")
                 except OSError:
@@ -1713,7 +1714,7 @@ class MainWin:
                     kwargs[f"{meas_type}_template"] = (
                         curr_dir / getattr(wdgt_coll, f"assigned_{meas_type}_template").get()
                     )
-                    kwargs["should_use_preprocessed"] = data_import_wdgt_coll.auto_load_processed
+                    kwargs["force_processing"] = not data_import_wdgt_coll.auto_load_processed
                     kwargs["should_re_correlate"] = data_import_wdgt_coll.should_re_correlate
                 # get loading options as kwargs
                 kwargs[f"{meas_type}_kwargs"] = assignment_params.options
@@ -1776,7 +1777,7 @@ class MainWin:
             experiment_name = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments.get()
         return self._app.analysis.loaded_experiments.get(experiment_name)
 
-    def calibrate_tdc(self) -> None:
+    def calibrate_tdc(self, **kwargs) -> None:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)

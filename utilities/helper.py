@@ -611,16 +611,6 @@ def xcorr(a, b):
     return c, lags
 
 
-def chunks(list_: list, n: int):
-    """
-    Yield successive n-sized chunks from list_.
-    https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks?page=1&tab=votes#tab-top
-    """
-
-    for i in range(0, len(list_), n):
-        yield list_[i : i + n]
-
-
 def can_float(value: Any) -> bool:
     """Checks if 'value' can be turned into a float"""
 

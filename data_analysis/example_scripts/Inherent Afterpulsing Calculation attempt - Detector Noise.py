@@ -81,9 +81,6 @@ DATA_ROOT = Path("D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data")  # Laptop/Lab P
 # DATA_ROOT = Path("D:\???")  # Oleg's
 DATA_TYPE = "solution"
 
-# FORCE_PROCESSING = False
-FORCE_PROCESSING = True
-
 SHOULD_PLOT = True
 
 # %% [markdown]
@@ -93,30 +90,45 @@ SHOULD_PLOT = True
 # Choosing the data
 
 # %%
+label = "Concentrated Plasmids"
 DATA_DATE = "24_03_2022"
 confocal_template = "conc_1uW_low_delay_angular_exc_151408_*.pkl"
-label = "Concentrated Plasmids"
-file_selection = "Use 1-20"
-gate1_ns, gate2_ns = Limits(3, 15), Limits(35, 42.5)
+file_selection = "Use 1-10"
+# file_selection = "Use All"
+gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 42.5)
 detector_gate_width_ns = 40
 
+# label = "25X Diluted Plasmids"
+# DATA_DATE = "03_04_2022"
+# confocal_template = "conc_25xDiluted_20uW_59psGate_angular_exc_155134_*.pkl"
+# file_selection = "Use All"
+# gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 42.2)
+# detector_gate_width_ns = 40
+
+# label = "250X Diluted Plasmids"
+# DATA_DATE = "29_03_2022"
+# confocal_template = "conc_250xDiluted_angular_exc_191600_*.pkl"
+# file_selection = "Use All"
+# gate1_ns, gate2_ns = Limits(1.25, 15), Limits(30, 79)
+# detector_gate_width_ns = 100
+
+# label = "300 bp ATTO (new detector)"
 # DATA_DATE = "06_06_2022"
 # confocal_template = "atto300bp_angular_exc_190337_*.pkl"
-# label = "300 bp ATTO (new detector)"
 # file_selection = "Use All"
 # gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 90)
 # detector_gate_width_ns = 100
 
+# label = "300 bp YOYO (new detector)"
 # DATA_DATE = "29_03_2022"
 # confocal_template = "bp300_20uW_angular_exc_172325_*.pkl"
-# label = "300 bp YOYO (new detector)"
 # file_selection = "Use All"
 # gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 90)
 # detector_gate_width_ns = 100
 
+# label = "ATTO static new detector"
 # DATA_DATE = "13_03_2022"
 # confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
-# label = "ATTO static new detector"
 # file_selection = "Use All"
 # gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 90)
 # detector_gate_width_ns = 100
@@ -127,26 +139,30 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 # importing the data:
 
 # %%
+# FORCE_PROCESSING = False
+FORCE_PROCESSING = True
+
 # load experiment
 new_det_atto300bp_exp = SFCSExperiment(name=label)
 new_det_atto300bp_exp.load_experiment(
     confocal_template=DATA_PATH / confocal_template,
     should_plot=True,
-    #     should_use_preprocessed=True,
-    should_use_preprocessed=False,
-    should_re_correlate=True,  # True
+    force_processing=FORCE_PROCESSING,
+    #     should_re_correlate=True,
+    should_re_correlate=False,
     should_subtract_afterpulse=False,
     file_selection=file_selection,
 )
-
-# save processed data (to avoid re-processing)
-new_det_atto300bp_exp.save_processed_measurements()
 
 # Show countrate
 print(f"Count-Rate: {new_det_atto300bp_exp.confocal.avg_cnt_rate_khz} kHz")
 
 # calibrate TDC
-new_det_atto300bp_exp.calibrate_tdc(should_plot=True)
+new_det_atto300bp_exp.calibrate_tdc(should_plot=True, force_processing=FORCE_PROCESSING)
+
+# save processed data (to avoid re-processing)
+if FORCE_PROCESSING:
+    new_det_atto300bp_exp.save_processed_measurements()
 
 # %% [markdown]
 # # Testing a new type of afterpulsing calculation attempt (Oleg)
@@ -166,6 +182,8 @@ p_cal_ap = calculate_afterpulse(lag) * detector_gate_width_ns / pulse_period_ns
 
 # %%
 p_inherent_ap, (XCF_AB, XCF_BA) = meas.calculate_inherent_afterpulsing(gate1_ns, gate2_ns)
+
+print("rate A / rate B: ", XCF_AB.countrate_a / XCF_AB.countrate_b)
 
 XCF_AB.average_correlation()
 XCF_BA.average_correlation()
@@ -201,16 +219,15 @@ meas_cf = meas.cf["confocal"]
 
 # plotting
 with Plotter(
-    super_title="Corrfunc Comparison",
+    super_title="XCorr Comparison",
     xlim=(1e-4, 1e1),
     ylim=(1, 1.1),
     x_scale="log",
 ) as ax:
 
-    ax.plot(lag, G_BA + 1, label="G_BA + 1")
     ax.plot(lag, G_AB + 1, label="G_AB + 1")
+    ax.plot(lag, G_BA + 1, label="G_BA + 1")
     ax.plot(lag, meas_cf.avg_corrfunc + 1, label="G_AA + 1")
-    ax.plot(lag, meas_cf.avg_cf_cr / meas_cf.countrate + 1, label="G_AA + 1")
     ax.legend()
 
 
@@ -218,7 +235,7 @@ with Plotter(
 # Preparing the signal in the same way:
 
 # %%
-cf_cr = meas.cf["confocal"].avg_cf_cr
+cf_cr = meas_cf.avg_cf_cr
 cf_cr_new = (cf_cr + XCF_AB.countrate_a) / (G_BA + 1) - XCF_AB.countrate_a
 
 # %% [markdown]
@@ -228,7 +245,7 @@ cf_cr_new = (cf_cr + XCF_AB.countrate_a) / (G_BA + 1) - XCF_AB.countrate_a
 with Plotter(
     super_title="Signal Comparison",
     xlim=(1e-4, 1e1),
-    ylim=(-500, meas.cf["confocal"].g0 * 1.3),
+    ylim=(-500, meas_cf.g0 * 1.3),
     x_scale="log",
 ) as ax:
 

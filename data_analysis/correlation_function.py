@@ -752,7 +752,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             self.scan_type = "static"
 
     def process_data_file(
-        self, file_path: Path = None, file_dict: dict = None, n_runs_requested=60, **kwargs
+        self, file_path: Path = None, file_dict: dict = None, **kwargs
     ) -> TDCPhotonData:
         """Doc."""
 
@@ -802,7 +802,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         except AttributeError:
             return None
         mu = np.median(time_stamps) / np.log(2)
-        p.duration_estimate = mu * len(p.pulse_runtime) / self.laser_freq_hz / n_runs_requested
+        p.duration_estimate = mu * len(p.pulse_runtime) / self.laser_freq_hz
 
         return p
 
@@ -1194,6 +1194,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         gate_ns=Limits(0, np.inf),
         min_time_frac=0.5,
         is_verbose=False,
+        n_splits_requested=10,
         **kwargs,
     ):
         """Doc."""
@@ -1201,16 +1202,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         file_ts_split_list = []
         file_duration = 0.0
         if self.scan_type in {"static", "circle"}:
+            split_duration = p.duration_estimate / n_splits_requested
             file_skipped_duration = 0
             # Ignore short segments (default is below half the run_duration)
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
                 segment_time = (
                     p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
                 ) / self.laser_freq_hz
-                if segment_time < min_time_frac * self.run_duration:
+                if segment_time < min_time_frac * split_duration:
                     if is_verbose:
                         print(
-                            f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time:.2f}s).",
+                            f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time * 1e3:.2f} ms).",
                             end=" ",
                         )
                     file_skipped_duration += segment_time
@@ -1230,7 +1232,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                     )
 
                 # split into segments of approx time of run_duration
-                n_splits = div_ceil(segment_time, self.run_duration)
+                n_splits = div_ceil(segment_time, split_duration)
                 time_stamps = np.hstack(([0], np.diff(pulse_runtime).astype(np.int32)))
 
                 for j in range(n_splits):
@@ -1408,6 +1410,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         gate1_ns=Limits(0, np.inf),
         gate2_ns=Limits(0, np.inf),
         min_time_frac=0.5,
+        n_splits_requested=10,
         is_verbose=False,
         **kwargs,
     ):
@@ -1420,14 +1423,15 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         file_skipped_duration = 0.0
 
         if self.scan_type in {"static", "circle"}:
+            split_duration = p.duration_estimate / n_splits_requested
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
                 # split into segments of approx time of run_duration
                 segment_time = (
                     p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
                 ) / self.laser_freq_hz
-                if segment_time < min_time_frac * self.run_duration:
+                if segment_time < min_time_frac * split_duration:
                     print(
-                        f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time:.2f}s).",
+                        f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time * 1e3:.2f} ms).",
                         end=" ",
                     )
                     file_skipped_duration = file_skipped_duration + segment_time
@@ -1448,7 +1452,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 ts1 = np.hstack(([0], np.diff(pulse_runtime1).astype(np.int32)))
                 ts2 = np.hstack(([0], np.diff(pulse_runtime2).astype(np.int32)))
 
-                n_splits = div_ceil(segment_time, self.run_duration)
+                n_splits = div_ceil(segment_time, split_duration)
                 for j in range(n_splits):
                     file_ts_split_list.append(
                         self.prepare_timestamps(ts, j, is_xcorr=True, n_splits=n_splits)
@@ -1784,7 +1788,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
         file_path_template: Union[str, Path],
         should_plot: bool = False,
         plot_kwargs: dict = {},
-        should_use_preprocessed=False,
+        force_processing=True,
         should_re_correlate=False,
         **kwargs,
     ):
@@ -1801,14 +1805,15 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
         measurement = SolutionSFCSMeasurement(name=meas_type)
 
-        if should_use_preprocessed:
+        if not force_processing:  # Use pre-processed
             try:
                 file_path_template = Path(file_path_template)  # str-> Path if needed
                 dir_path, file_template = file_path_template.parent, file_path_template.name
                 # load pre-processed
                 file_path = dir_path / "processed" / re.sub("_[*]", "", file_template)
                 measurement = file_utilities.load_processed_solution_measurement(
-                    file_path, file_template
+                    file_path,
+                    file_template,
                 )
                 measurement.name = meas_type
                 print(f"Loaded pre-processed {meas_type} measurement: '{file_path}'")
