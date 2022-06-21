@@ -15,7 +15,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import chunks, reverse_dict, timer
+from utilities.helper import reverse_dict, timer
 
 DUMP_PATH = Path("C:/temp_sfcs_data/")
 
@@ -172,6 +172,16 @@ default_system_info = {
 }
 
 
+def chunks(list_: list, n: int):
+    """
+    Yield successive n-sized chunks from list_.
+    https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks?page=1&tab=votes#tab-top
+    """
+
+    for i in range(0, len(list_), n):
+        yield list_[i : i + n]
+
+
 def estimate_bytes(obj) -> int:
     """Returns the estimated size in bytes."""
 
@@ -229,6 +239,7 @@ def save_object(
     compression_method: str = None,  # "gzip" / "blosc"
     obj_name: str = None,
     element_size_estimate_mb: float = None,
+    should_track_progress=False,
 ) -> bool:
     """
     Save a pickle-serialized and optionally gzip/blosc-compressed object to disk, if estimated size is within the limits.
@@ -241,16 +252,22 @@ def save_object(
 
     # split iterables to chunks if possible
     if element_size_estimate_mb is not None:
-        MAX_CHUNK_MB = 2000  # should be about optimized
-        chunk_size = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
-        chunked_obj = list(chunks(obj, chunk_size))
+        MAX_CHUNK_MB = 500  # 2000 should be about optimized
+        n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
+        chunked_obj = list(chunks(obj, n_elem_per_chunk))
     else:  # obj isn't iterable - treat as a single chunk
         chunked_obj = [obj]
+
+    should_track_progress = should_track_progress and len(chunked_obj) > 1
+    if should_track_progress:
+        print(f"Saving '{file_path.name}' in {len(chunked_obj)} chunks:", end=" ")
 
     if compression_method == "gzip":
         with gzip.open(file_path, "wb", compresslevel=1) as f_gzip:
             for chunk_ in chunked_obj:
                 pickle.dump(chunk_, f_gzip, protocol=-1)  # type: ignore
+                if should_track_progress:
+                    print("O", end="")
 
     elif compression_method == "blosc":
         blosc_args = bloscpack.BloscArgs(typesize=4, clevel=1, cname="zlib")
@@ -259,11 +276,18 @@ def save_object(
                 p_chunk = pickle.dumps(chunk_, protocol=-1)
                 cmprsd_chunk = bloscpack.pack_bytes_to_bytes(p_chunk, blosc_args=blosc_args)
                 pickle.dump(cmprsd_chunk, f_blosc, protocol=-1)
+                if should_track_progress:
+                    print("O", end="")
 
     else:  # save uncompressed
         with open(file_path, "wb") as f:
             for chunk_ in chunked_obj:
                 pickle.dump(chunk_, f, protocol=-1)
+                if should_track_progress:
+                    print("O", end="")
+
+    if should_track_progress:
+        print(" - Done.")
 
     logging.debug(
         f"Object '{obj_name}' of class '{obj.__class__.__name__}' ({compression_method}-compressed) saved as: {file_path}"
@@ -271,12 +295,17 @@ def save_object(
     return True
 
 
-@timer(threshold_ms=3000)
-def load_object(file_path: Union[str, Path]) -> Any:
+@timer(threshold_ms=10000)
+def load_object(file_path: Union[str, Path], should_track_progress=False, **kwargs) -> Any:
     """
     Short cut for opening (possibly 'gzip' and/or 'blosc' compressed) .pkl files
     Returns the saved object.
     """
+
+    file_path = Path(file_path)
+
+    if should_track_progress:
+        print(f"Loading '{file_path.name}':", end=" ")
 
     try:
         try:  # gzip decompression
@@ -284,6 +313,8 @@ def load_object(file_path: Union[str, Path]) -> Any:
                 loaded_data = []
                 while True:
                     loaded_data.append(pickle.load(f_gzip_cmprsd))  # type: ignore
+                    if should_track_progress:
+                        print("O", end="")
 
         except gzip.BadGzipFile:  # blosc decompression
             with open(file_path, "rb") as f_blosc_cmprsd:
@@ -293,12 +324,16 @@ def load_object(file_path: Union[str, Path]) -> Any:
                         cmprsd_bytes = pickle.load(f_blosc_cmprsd)
                         p_bytes, _ = bloscpack.unpack_bytes_from_bytes(cmprsd_bytes)
                         loaded_data.append(pickle.loads(p_bytes))
+                        if should_track_progress:
+                            print("O", end="")
 
                 except (ValueError, TypeError):  # uncompressed file
                     with open(file_path, "rb") as f_uncompressed:
                         loaded_data = []
                         while True:
                             loaded_data.append(pickle.load(f_uncompressed))
+                            if should_track_progress:
+                                print("O", end="")
 
         except OSError as exc:  # not fully downloaded from cloud
             raise OSError(
@@ -306,6 +341,10 @@ def load_object(file_path: Union[str, Path]) -> Any:
             )
 
     except EOFError:
+
+        if should_track_progress:
+            print(f" - Done ({len(loaded_data)} chunks)")
+
         if len(loaded_data) == 1:  # extract non-chunked loaded data
             return loaded_data[0]
         else:  # flatten iterable chunked data
@@ -330,32 +369,51 @@ def save_processed_solution_meas(meas, dir_path: Path) -> None:
         if p.pulse_runtime.max() <= np.iinfo(np.int32).max:
             p.pulse_runtime = p.pulse_runtime.astype(np.int32)
 
-    meas.data = data_copy
-
+    # save the measurement
     dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", meas.template)
     file_path = dir_path / file_name
     save_object(meas, file_path, compression_method="blosc", obj_name="processed measurement")
 
+    # save the data separately
+    data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
+    save_object(
+        data_copy,
+        data_path,
+        compression_method="blosc",
+        element_size_estimate_mb=data_copy[0].size_estimate_mb,
+        obj_name="dumped data array",
+        should_track_progress=True,
+    )
+
 
 def load_processed_solution_measurement(file_path: Path, file_template: str):
     """Doc."""
 
-    tdc_obj = load_object(file_path)
-    tdc_obj.template = file_template
+    # load the measurement
+    meas = load_object(file_path)
+
+    # load separately the data
+    data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
+    data = load_object(data_path, should_track_progress=True)
+
+    # define the template # TODO: why is this needed?
+    meas.template = file_template
 
     # Load runtimes as int64 if they are not already of that type
-    for p in tdc_obj.data:
+    for p in data:
         p.pulse_runtime = p.pulse_runtime.astype(np.int64, copy=False)
+    meas.data = data
+    meas.is_data_dumped = False
 
-    return tdc_obj
+    return meas
 
 
 def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
     """
-    Load files according to extension,
-    Allow backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files),
-    use defaults for legacy files where 'system_info' or 'afterpulse_params' is not iterable (therefore old).
+    Load files according to extension.
+    Allows backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files).
+    Uses defaults for legacy files where 'system_info' or 'afterpulse_params' is not iterable (therefore old).
     """
 
     if file_path.suffix == ".pkl":
