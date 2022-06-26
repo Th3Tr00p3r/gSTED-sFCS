@@ -263,7 +263,9 @@ class CorrFunc:
             if external_afterpulsing is not None:
                 self.afterpulse = external_afterpulsing
             else:
-                calculate_afterpulse(self.lag, afterpulse_params, gate_ns, self.laser_freq_hz)
+                self.afterpulse = calculate_afterpulse(
+                    self.lag, afterpulse_params, gate_ns, self.laser_freq_hz
+                )
 
         # zero-pad and generate cf_cr
         lag_len = len(self.lag)
