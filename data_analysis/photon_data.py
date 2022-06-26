@@ -11,7 +11,7 @@ from sklearn import linear_model
 
 from utilities.display import Plotter
 from utilities.file_utilities import rotate_data_to_disk
-from utilities.fit_tools import FitParams, curve_fit_lims
+from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
 from utilities.helper import Limits, div_ceil
 
 
@@ -547,7 +547,7 @@ class TDCPhotonDataMixin:
         is_finite_y = np.isfinite(getattr(self.tdc_calib, y_field))
 
         return curve_fit_lims(
-            fit_name,
+            FIT_NAME_DICT[fit_name],
             fit_param_estimate,
             xs=getattr(self.tdc_calib, x_field)[is_finite_y],
             ys=getattr(self.tdc_calib, y_field)[is_finite_y],
@@ -642,7 +642,7 @@ class TDCPhotonDataMixin:
 
             elif sted_field == "paraboloid":
                 fit_params = curve_fit_lims(
-                    fit_name="ratio_of_lifetime_histograms",
+                    FIT_NAME_DICT["ratio_of_lifetime_histograms"],
                     param_estimates=(2, 1, 1),
                     xs=t[j_selected],
                     ys=hist_ratio[j_selected],

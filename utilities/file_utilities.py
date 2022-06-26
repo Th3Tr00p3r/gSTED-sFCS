@@ -19,6 +19,10 @@ from utilities.helper import reverse_dict, timer
 
 DUMP_PATH = Path("C:/temp_sfcs_data/")
 
+with open("FastGatedSPAD_AP.pkl", "rb") as f:
+    beta = pickle.load(f)
+FAST_GATED_SPAD_AP = ("multi_exponent_fit", beta)
+
 legacy_matlab_trans_dict = {
     # Solution Scan
     "Setup": "setup",
@@ -117,56 +121,19 @@ legacy_python_trans_dict = {
 
 default_system_info = {
     "setup": "STED with galvos",
-    "afterpulse_params": (
-        "multi_exponent_fit",
-        #        np.array( # OLD DETECTOR
-        #            [
-        #                114424.39560026,
-        #                10895.53707084,
-        #                12817.86449556,
-        #                1766.32335809,
-        #                119012.66649389,
-        #                10895.66339894,
-        #                1518.68623068,
-        #                315.70074808,
-        #            ]
-        np.array(  # NEW DETECTOR (Excess Bias 7 V, Hold-Off 81 ns, Avalanch Threshold 12 mV)
-            [
-                2.26707493e01,
-                2.10619289e-01,
-                1.95406751e06,
-                1.17004364e04,
-                7.45553100e03,
-                1.90475963e02,
-                5.93804996e05,
-                1.17013329e04,
-                1.43743630e02,
-                1.97811220e00,
-                1.08782875e05,
-                5.14638029e03,
-                2.18822045e04,
-                6.55547606e02,
-                5.00531813e-02,
-                3.17472622e04,
-                1.43057260e00,
-                1.16796715e03,
-                1.02380788e-05,
-                2.83428494e04,
-                4.48333435e04,
-                1.59884967e03,
-                1.04250667e06,
-                1.17004999e04,
-                7.04799778e02,
-                1.17899635e01,
-                2.58805952e05,
-                5.14515360e03,
-                2.69116431e03,
-                5.18255653e01,
-                3.51408021e06,
-                1.40067773e05,
-            ]
-        ),
-    ),
+    # NEW DETECTOR AFTERPULSING (Excess Bias 7 V, Hold-Off 81 ns, Avalanch Threshold 12 mV)
+    "afterpulse_params": FAST_GATED_SPAD_AP,
+    #        np.array( # OLD DETECTOR
+    #            [
+    #                114424.39560026,
+    #                10895.53707084,
+    #                12817.86449556,
+    #                1766.32335809,
+    #                119012.66649389,
+    #                10895.66339894,
+    #                1518.68623068,
+    #                315.70074808,
+    #            ]
     "ai_scaling_xyz": (1.243, 1.239, 1),
     "xyz_um_to_v": (70.81, 82.74, 10.0),
 }

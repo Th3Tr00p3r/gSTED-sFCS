@@ -34,6 +34,7 @@ from pathlib import Path
 from winsound import Beep
 from contextlib import suppress
 from copy import deepcopy
+from types import SimpleNamespace
 
 import matplotlib as mpl
 
@@ -92,29 +93,67 @@ SHOULD_PLOT = True
 # Defining a fitting function for the oscillating temporal noise:
 
 # %%
+def decaying_cosine_fit(t, a, omega, phi, tau, c):
+    return a * np.cos(omega * t + phi) * np.exp(-t / tau) + c
+
+
 def fit_decaying_cosine(
     x,
     y,
+    fit_range,
     y_errors=None,
-    fit_param_estimate=[1] * 5,
-    fit_range=(0, np.inf),
-    x_scale="log",
-    y_scale="linear",
+    y_limits=(np.NINF, np.inf),
+    fit_param_estimate=None,
     should_plot=False,
+    bounds=None,
     **kwargs,
 ) -> FitParams:
     """Doc."""
 
+    if fit_param_estimate is None or bounds is None:
+        # Guess initial params
+        in_lims_idxs = Limits(fit_range).valid_indices(x)
+        y_limited = y[in_lims_idxs]
+        x_limited = x[in_lims_idxs]
+        omega = (
+            2
+            * np.pi
+            / abs(x_limited[np.argmax(y_limited)] - x_limited[np.argmin(y_limited)])
+            / np.pi
+        )
+        #         omega = 2*np.pi / (0.025)
+        phi = 0
+        tau = (max(x_limited) - min(x_limited)) / 2
+        y_shift = np.mean(y_limited)
+        amplitude = abs(y_limited[np.argmax(abs(y_limited))] - y_shift)
+
+        # set initial parameters
+        if fit_param_estimate is None:
+            fit_param_estimate = [
+                amplitude,
+                omega,
+                phi,
+                tau,
+                y_shift,
+            ]
+
+        # set bounds for parameters
+        if bounds is None:
+            bounds = (
+                [amplitude / 3, omega / 3, -2 * np.pi, 0, y_shift - np.std(y) * 2],
+                [amplitude * 3, omega * 3, +2 * np.pi, tau * 10, y_shift + np.std(y) * 2],
+            )
+
     return curve_fit_lims(
-        "decaying_cosine_fit",
+        decaying_cosine_fit,
         fit_param_estimate,
         xs=x,
         ys=y,
         ys_errors=y_errors,
         x_limits=Limits(fit_range),
+        y_limits=Limits(y_limits),
         should_plot=should_plot,
-        x_scale=x_scale,
-        y_scale=y_scale,
+        bounds=bounds,
         **kwargs,
     )
 
@@ -144,7 +183,7 @@ data_templates = [
 file_selections = ["Use All"] * n_meas
 
 force_processing = {
-    "White Noise 5 kHz": True,
+    "White Noise 5 kHz": False,
     "White Noise 150 kHz": False,
     "White Noise 180 kHz": False,
     "White Noise 210 kHz": False,
@@ -182,7 +221,7 @@ for label in used_labels:
         force_processing=force_processing[label],
         should_re_correlate=FORCE_PROCESSING,
         should_subtract_afterpulse=False,
-        should_unite_start_times=True,  # TESTESTEST
+        should_unite_start_times=True,  # for uniting the two 5 kHz measurements
         **label_load_kwargs_dict[label],
     )
 
@@ -190,9 +229,10 @@ for label in used_labels:
     #     exp.calibrate_tdc(should_plot=True, force_processing=FORCE_PROCESSING)
 
     # save processed data (to avoid re-processing)
-    if FORCE_PROCESSING:
+    if force_processing[label]:
         halogen_exp_dict[label].save_processed_measurements()
 
+# Present count-rates
 for label in used_labels:
     meas = halogen_exp_dict[label].confocal
     print(f"'{label}' countrate: {meas.avg_cnt_rate_khz:.2f} +/- {meas.std_cnt_rate_khz:.2f}")
@@ -211,122 +251,115 @@ with Plotter(x_scale="log", xlim=(1e-4, 1e0), ylim=(-1, 3e4)) as ax:
         ax.legend()
 
 # %% [markdown]
-# Leave only the oscillating noise by dividing (corrfunc + 1) by the calibrated afterpusing + 1 (TODO: Add the derivation).
-#
-# The factor 'f' is needed (persumebly) because the afterpulsing was actually calibrated for different detector parameters (hold-off, voltage bias...)
+# Leave only the oscillating noise by dividing (cf_cr + CR) by the calibrated afterpusing + 1 (TODO: Add the derivation).
 
 # %%
-plotted_labels = [
-    "White Noise 5 kHz",
-    "White Noise 150 kHz",
-    "White Noise 180 kHz",
-    "White Noise 210 kHz",
-    "White Noise 305 kHz",
-]
+c = 1
+labels_factors_dict = {
+    "White Noise 5 kHz": 1,
+    "White Noise 150 kHz": 0.9187 * c,
+    "White Noise 180 kHz": 0.9035 * c,
+    "White Noise 210 kHz": 0.892 * c,
+    "White Noise 305 kHz": 0.86 * c,
+}
 
-# f = 0.85
-f = 1
+label_G_noise_dict = {}
+label_CF_CR_noise_dict = {}
+for label, f in labels_factors_dict.items():
+    cf = halogen_exp_dict[label].confocal.cf["confocal"]
+    wn_lag = cf.lag
+    G = cf.avg_corrfunc
+    CF_CR = cf.avg_cf_cr
+    G_ap = calculate_afterpulse(wn_lag) / cf.countrate * f
+    label_G_noise_dict[label] = SimpleNamespace(
+        lag=wn_lag, noise=(G + 1) / (G_ap + 1) - 1, G=G, countrate=cf.countrate
+    )
+    label_CF_CR_noise_dict[label] = SimpleNamespace(
+        lag=wn_lag,
+        noise=(CF_CR + cf.countrate) / (G_ap + 1) - cf.countrate,
+        CF_CR=CF_CR,
+        countrate=cf.countrate,
+    )
 
-with Plotter(super_title="Oscillations", x_scale="log", ylim=(-1e-2, 1e-2)) as ax:
-    for label in plotted_labels:
-        cf = halogen_exp_dict[label].confocal.cf["confocal"]
-        wn_lag = cf.lag
-        G_AA = cf.avg_corrfunc
-        G_ap = calculate_afterpulse(wn_lag) / cf.countrate * f
-        noise = (G_AA + 1) / (G_ap + 1) - 1
+# Plotting
+with Plotter(
+    super_title="Oscillations CF_CR", x_scale="log", xlim=(1e-3, 1e0), ylim=(-4e3, 4e3)
+) as ax:
+    for label in labels_factors_dict.keys():
+        ax.plot(
+            label_CF_CR_noise_dict[label].lag,
+            label_CF_CR_noise_dict[label].CF_CR,
+            label=f"G_AA ({label})",
+        )
+        #             ax.plot(wn_lag, G_ap, label=f"G_ap  ({label})")
+        ax.plot(
+            label_CF_CR_noise_dict[label].lag,
+            label_CF_CR_noise_dict[label].noise,
+            label=f"quotient ({label})",
+        )
+#         ax.legend()
 
-        ax.plot(wn_lag, G_AA, label=f"G_AA ({label})")
-        ax.plot(wn_lag, G_ap, label=f"G_ap  ({label})")
-        ax.plot(wn_lag, noise, label=f"quotient ({label})")
-        ax.legend()
-
-# %% [markdown]
-# Same as above, using newly calibrated afterpulse parameters (fit to the 5 kHz measurement):
-
-# %%
-with open("beta_dict.pkl", "rb") as f:
-    beta_dict = pickle.load(f)
-afterpulse_params = ("multi_exponent_fit", list(beta_dict.values())[0])
-
-plotted_labels = [
-    "White Noise 5 kHz",
-    "White Noise 150 kHz",
-    "White Noise 180 kHz",
-    "White Noise 210 kHz",
-    "White Noise 305 kHz",
-]
-
-f = 0.85
-# f = 1
-
-with Plotter(super_title="Oscillations", x_scale="log", ylim=(-1e-2, 1e-2)) as ax:
-    for label, exp in halogen_exp_dict.items():
-        if label in plotted_labels:
-            cf = exp.confocal.cf["confocal"]
-            wn_lag = cf.lag
-            G_AA = cf.avg_corrfunc
-            G_ap = calculate_afterpulse(wn_lag, afterpulse_params) / cf.countrate * f
-            noise = (G_AA + 1) / (G_ap + 1) - 1
-
-            ax.plot(wn_lag, G_AA, label=f"G_AA ({label})")
-            ax.plot(wn_lag, G_ap, label=f"G_ap  ({label})")
-            ax.plot(wn_lag, noise, label=f"quotient ({label})")
-            ax.legend()
-
-# %% [markdown]
-# Same with cf_cr (attempt):
-
-# %%
-plotted_labels = [
-    "White Noise 5 kHz",
-    "White Noise 150 kHz",
-    "White Noise 180 kHz",
-    "White Noise 210 kHz",
-    "White Noise 305 kHz",
-]
-
-# f = 0.85
-f = 1
-
-with Plotter(super_title="Oscillations", x_scale="log", xlim=(1e-3, 1e1), ylim=(-4e3, 4e3)) as ax:
-    for label, exp in halogen_exp_dict.items():
-        if label in plotted_labels:
-            cf = exp.confocal.cf["confocal"]
-            wn_lag = cf.lag
-            CF_CR = cf.avg_cf_cr
-            G_ap = calculate_afterpulse(wn_lag, afterpulse_params) / cf.countrate * f
-            noise = (CF_CR + cf.countrate) / (G_ap + 1) - cf.countrate
-
-            ax.plot(wn_lag, CF_CR, label=f"CF_CR ({label})")
-            #             ax.plot(wn_lag, G_ap, label=f"G_ap * CR  ({label})")
-            ax.plot(wn_lag, noise, label=f"noise ({label})")
-            ax.legend()
+with Plotter(
+    super_title="Oscillations G (corrfunc)", x_scale="log", xlim=(1e-3, 1e0), ylim=(-0.01, 0.03)
+) as ax:
+    for label in labels_factors_dict.keys():
+        ax.plot(label_G_noise_dict[label].lag, label_G_noise_dict[label].G, label=f"G_AA ({label})")
+        #             ax.plot(wn_lag, G_ap, label=f"G_ap  ({label})")
+        ax.plot(
+            label_G_noise_dict[label].lag,
+            label_G_noise_dict[label].noise,
+            label=f"quotient ({label})",
+        )
+#         ax.legend()
 
 # %% [markdown]
 # Attempt to fit a decaying oscillating function to the detector noise:
 
 # %%
-fit_params = fit_decaying_cosine(
-    wn_lag,
-    noise,
-    fit_param_estimate=[3e-3, 1 / (3e-2), 0, 1e-1, 0],
-    #     fit_param_estimate=[1]*4,
-    fit_range=(22e-3, 2.5e-1),
-    should_plot=True,
-    bounds=([-1, -1e3, -2 * np.pi, 0, -1], [1, 1e3, 2 * np.pi, 1e3, 1]),
-    maxfev=1000000,
-)
+fitted_labels = [
+    "White Noise 150 kHz",
+    "White Noise 180 kHz",
+    "White Noise 210 kHz",
+    "White Noise 305 kHz",
+]
 
-param_names = ["Amplitude", "Angular Frequency", "Phase", "Decay Time", "Y-shift"]
-fit_params_dict = {
-    param_name: param_val for param_name, param_val in zip(param_names, fit_params.beta)
-}
-for name, val in fit_params_dict.items():
-    print(f"{name}: {val:e}")
+label_amplitude_dict = {}
+for label, vals in label_CF_CR_noise_dict.items():
+    if label in fitted_labels:
+        fit_params = fit_decaying_cosine(
+            vals.lag,
+            vals.noise,
+            fit_range=(1e-2, 2e-1),
+            #             y_limits=(0, np.inf),
+            should_plot=True,
+            plot_kwargs=dict(x_scale="linear"),
+            maxfev=1000000,
+        )
 
-print(f"\nFrequency: {fit_params.beta[1] / 2*np.pi * 1e-1:.2f} kHz")
-print(f"Period: {2*np.pi / fit_params.beta[1] * 1e3:.2f} us")
-print(f"Decay time: {fit_params.beta[3] * 1e3:.2f} us")
+        param_names = ["Amplitude", "Angular Frequency", "Phase", "Decay Time", "Y-shift"]
+        fit_params_dict = {
+            param_name: (param_val, param_error)
+            for param_name, param_val, param_error in zip(
+                param_names, fit_params.beta, fit_params.beta_error
+            )
+        }
+
+        print(f"Amplitude: {fit_params.beta[0]:.2f}")
+        print(f"Phase: {fit_params.beta[2]:.2f}")
+        print(f"Frequency: {fit_params.beta[1] / 2*np.pi * 1e-1:.2f} kHz")
+        print(f"Period: {2*np.pi / fit_params.beta[1] * 1e3:.2f} us")
+        print(f"Decay time: {fit_params.beta[3] * 1e3:.2f} us")
+        print("")
+
+        label_amplitude_dict[label] = fit_params.beta[0]
+
+amp_to_countrate_ratios = [
+    label_amplitude_dict[label] / label_CF_CR_noise_dict[label].countrate for label in fitted_labels
+]
+coeffs = [labels_factors_dict[label] for label in fitted_labels]
+
+with Plotter(super_title="Amplitude/Countrate vs. AP factor") as ax:
+    ax.plot(coeffs, amp_to_countrate_ratios, "o-")
 
 # %% [markdown]
 # Play sound when done:
