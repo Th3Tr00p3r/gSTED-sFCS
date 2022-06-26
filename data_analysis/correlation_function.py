@@ -22,7 +22,12 @@ from data_analysis.photon_data import (
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
 from utilities.display import Plotter
-from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
+from utilities.fit_tools import (
+    FIT_NAME_DICT,
+    FitParams,
+    curve_fit_lims,
+    multi_exponent_fit,
+)
 from utilities.helper import (
     EPS,
     Limits,
@@ -436,15 +441,14 @@ class CorrFunc:
             error_y = error_y[1:]
 
         self.fit_params[fit_name] = curve_fit_lims(
-            fit_name,
+            FIT_NAME_DICT[fit_name],
             fit_param_estimate,
             x,
             y,
             error_y,
             x_limits=Limits(fit_range),
             should_plot=should_plot,
-            x_scale=x_scale,
-            y_scale=y_scale,
+            plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
             **kwargs,
         )
 
@@ -575,6 +579,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             Path(file_path_template), file_selection, **kwargs
         )
         self.n_paths = len(file_paths)
+        self.file_path_template = file_path_template
         *_, self.template = Path(file_path_template).parts
         self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
 

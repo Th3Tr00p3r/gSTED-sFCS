@@ -15,6 +15,9 @@ warnings.simplefilter("error", opt.OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
 
 
+FIT_NAME_DICT = globals()
+
+
 class FitError(Exception):
     pass
 
@@ -35,7 +38,7 @@ class FitParams:
 
 
 def curve_fit_lims(
-    fit_name,
+    fit_func,
     param_estimates,
     xs,
     ys,
@@ -43,9 +46,7 @@ def curve_fit_lims(
     x_limits=Limits(),
     y_limits=Limits(),
     should_plot=True,
-    x_scale="log",
-    y_scale="linear",
-    plot_kwargs={},
+    plot_kwargs=dict(x_scale="log"),
     **kwargs,
 ) -> FitParams:
     """Doc."""
@@ -61,16 +62,13 @@ def curve_fit_lims(
     x = xs[in_lims & is_finite_err]
     y = ys[in_lims & is_finite_err]
     y_err = ys_errors[in_lims & is_finite_err]
-    fit_func = globals()[fit_name]
 
     fit_params = _fit_and_get_param_dict(
         fit_func, x, y, param_estimates, sigma=y_err, absolute_sigma=True, **kwargs
     )
 
     if should_plot:
-        with Plotter(
-            super_title=f"Curve Fit ({fit_name})", x_scale=x_scale, y_scale=y_scale, **plot_kwargs
-        ) as ax:
+        with Plotter(super_title=f"Curve Fit ({fit_func.__name__})", **plot_kwargs) as ax:
             ax.plot(xs[in_lims], ys[in_lims], ".k")
             ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_params.beta), "--r")
             if should_plot_errorbars:
@@ -171,10 +169,6 @@ def multi_exponent_fit(t, *beta):
     amplitude_row_vec = np.array(beta[::2])[:, np.newaxis].T
     decay_column_vec = np.array(beta[1::2])[:, np.newaxis]
     return (amplitude_row_vec @ np.exp(-decay_column_vec * t)).squeeze()
-
-
-def decaying_cosine_fit(t, a, omega, phi, tau, c):
-    return a * np.cos(omega * t + phi) * np.exp(-t / tau) + c
 
 
 def ratio_of_lifetime_histograms(t, sig_x, sig_y, t0):

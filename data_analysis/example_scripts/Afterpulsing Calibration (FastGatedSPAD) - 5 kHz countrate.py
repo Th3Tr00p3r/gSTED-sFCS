@@ -1,7 +1,6 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -129,6 +128,7 @@ for label in used_labels:
         force_processing=FORCE_PROCESSING,
         should_re_correlate=FORCE_PROCESSING,
         should_subtract_afterpulse=False,
+        should_unite_start_times=True,  # for uniting the two 5 kHz measurements
         **label_load_kwargs_dict[label],
     )
 
@@ -160,9 +160,11 @@ for label in used_labels:
     old_chi_sq_norm = 1e5
     new_chi_sq_norm = 1e5 - 1
     max_nfev = 10000
-    eps = 0.5
+    eps = 0.005
+    MAX_N_PARAMS = 128
     p0 = [1, 1]  # start from single decaying exponent (fit is sure to succeed)
-    while True:
+    chi_sq_beta_list = []
+    while abs(new_chi_sq_norm - 1) > eps:
         old_chi_sq_norm = new_chi_sq_norm
         try:
             meas.cf["confocal"].fit_correlation_function(
@@ -179,32 +181,31 @@ for label in used_labels:
                 max_nfev=max_nfev,
             )
         except FitError as exc:  # fit failed
+            print(exc)
             break
         else:
             new_chi_sq_norm = meas.cf["confocal"].fit_params["multi_exponent_fit"].chi_sq_norm
-            if new_chi_sq_norm > old_chi_sq_norm + eps:
-                print(f"chi_sq_norm increased {new_chi_sq_norm}, using previous fit as final.")
-                break
-            if new_chi_sq_norm < 1 - eps:
-                print(f"chi_sq_norm dropped below 1, using previous fit as final.")
-                new_chi_sq_norm = old_chi_sq_norm
-                break
-            beta = meas.cf["confocal"].fit_params["multi_exponent_fit"].beta
-            print(f"number of parameters: {beta.size}")
+            new_beta = meas.cf["confocal"].fit_params["multi_exponent_fit"].beta
+            chi_sq_beta_list.append((new_chi_sq_norm, new_beta))
+            print(f"number of parameters: {new_beta.size}")
             print(f"new_chi_sq_norm: {new_chi_sq_norm}\n")
-            p0 += (
-                beta.tolist()
-            )  # use the found parameters, and add another exponent (TODO: this is not what this code does! Why does it work better this way?)
-            if new_chi_sq_norm < 1 + eps:
-                print("close enough")
+            #             p0 += (
+            #                 new_beta.tolist()
+            #             )  # use the found parameters, and add another exponent (TODO: this is not what this code does! Why does it work better this way?)
+            p0 = new_beta.tolist() + [1, 1]
+            if len(p0) > MAX_N_PARAMS:
+                print(f"Maximal number of parameters{MAX_N_PARAMS} reached.")
                 break
 
     #     break # TESTESTEST - only fit first measurement
 
-    print(f"number of parameters: {beta.size}")
-    print(f"beta: {beta.tolist()}")
-    print(f"final_chi_sq_norm: {new_chi_sq_norm}\n")
-    beta_dict["confocal"] = beta
+    chi_sq_vals = [pair[0] for pair in chi_sq_beta_list]
+    best_fit_idx = np.argmin(abs(np.array(chi_sq_vals) - 1))
+    best_chi_sq, best_beta = chi_sq_beta_list[best_fit_idx]
+    print(f"number of parameters: {best_beta.size}")
+    print(f"final beta: {best_beta.tolist()}")
+    print(f"final_chi_sq_norm: {best_chi_sq}\n")
+    beta_dict["confocal"] = best_beta
 
     # BEEP WHEN DONE!
     Beep(4000, 1000)
@@ -215,12 +216,12 @@ for label in used_labels:
 # %%
 import pickle
 
-are_you_sure = True
-# are_you_sure = False
+# are_you_sure = True
+are_you_sure = False
 
 if are_you_sure:
-    with open("beta_dict.pkl", "wb") as f:
-        pickle.dump(beta_dict, f)
+    with open("calibrated_afterpulsing_parameters.pkl", "wb") as f:
+        pickle.dump(beta_dict["confocal"], f)
 else:
     print("Are you sure you wish to over-write?")
 
@@ -230,14 +231,11 @@ else:
 # %%
 import pickle
 
-with open("beta_dict.pkl", "rb") as f:
-    beta_dict = pickle.load(f)
+with open("calibrated_afterpulsing_parameters.pkl", "rb") as f:
+    beta = pickle.load(f)
 
 afterpulse_params_list = [("multi_exponent_fit", beta) for beta in beta_dict]
-print("Loaded 'beta_dict'.")
-
-# %%
-beta_dict
+print("Loaded 'beta'.")
 
 # %% [markdown]
 # Load the 300 bp measurements with the correct afterpulsing subtraction:
@@ -258,7 +256,7 @@ data_dates = ["10_03_2022"] * n_measurements
 
 data_labels = [str_.split("_static")[0] for str_ in data_templates]
 
-data_file_selections = [""] * n_measurements
+data_file_selections = ["Use All"] * n_measurements
 
 # %%
 meas_dict = {label: SolutionSFCSMeasurement() for label in data_labels}
