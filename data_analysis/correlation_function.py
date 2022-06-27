@@ -1347,7 +1347,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             CF.correlate_measurement(
                 ts_split_list,
                 afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
-                self.bg_line_corr_list if should_subtract_bg_corr else [],
+                getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
                 is_verbose=is_verbose,
                 **kwargs,
             )
