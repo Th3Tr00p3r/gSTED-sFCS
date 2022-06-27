@@ -609,7 +609,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         def compute_acf(data):
             """Doc."""
-            # TODO: Something weird is going on - sometimes when acf is fitted it looks funny (very few data points)
 
             s = SolutionSFCSMeasurement()
             p = s.process_data_file(file_dict=self.prep_meas_dict(), ignore_coarse_fine=True)
@@ -650,7 +649,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 fit_func = getattr(fit_tools, fp.func_name)
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(tau * 1e3)
-                self.plot_wdgt.obj.plot_acfs((fp.x, "lag"), fp.y, g0, should_autoscale=True)
+                self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
                 y_fit = fit_func(cf.lag, *fp.beta)
                 self.plot_wdgt.obj.plot(cf.lag, y_fit, "-.r")
                 logging.info(
