@@ -90,13 +90,13 @@ SHOULD_PLOT = True
 # Choosing the data
 
 # %%
-label = "Concentrated Plasmids"
-DATA_DATE = "24_03_2022"
-confocal_template = "conc_1uW_low_delay_angular_exc_151408_*.pkl"
-file_selection = "Use 1-10"
-# file_selection = "Use All"
-gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 42.5)
-detector_gate_width_ns = 40
+# label = "Concentrated Plasmids"
+# DATA_DATE = "24_03_2022"
+# confocal_template = "conc_1uW_low_delay_angular_exc_151408_*.pkl"
+# file_selection = "Use 1-10"
+# # file_selection = "Use All"
+# gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 42.5)
+# detector_gate_width_ns = 40
 
 # label = "25X Diluted Plasmids"
 # DATA_DATE = "03_04_2022"
@@ -126,12 +126,12 @@ detector_gate_width_ns = 40
 # gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 90)
 # detector_gate_width_ns = 100
 
-# label = "ATTO static new detector"
-# DATA_DATE = "13_03_2022"
-# confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
-# file_selection = "Use All"
-# gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 90)
-# detector_gate_width_ns = 100
+label = "ATTO static new detector"
+DATA_DATE = "13_03_2022"
+confocal_template = "atto_12uW_FR_static_exc_182414_*.pkl"
+file_selection = "Use All"
+gate1_ns, gate2_ns = Limits(3, 15), Limits(30, 90)
+detector_gate_width_ns = 100
 
 DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 
@@ -139,8 +139,8 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 # importing the data:
 
 # %%
-# FORCE_PROCESSING = False
-FORCE_PROCESSING = True
+FORCE_PROCESSING = False
+# FORCE_PROCESSING = True
 
 # load experiment
 new_det_atto300bp_exp = SFCSExperiment(name=label)
@@ -193,7 +193,7 @@ XCF_BA.average_correlation()
 
 # %%
 G_AB = XCF_AB.avg_corrfunc
-G_BA = XCF_BA.avg_corrfunc  # + EPS
+G_BA = XCF_BA.avg_corrfunc + EPS
 G_new = (G_AB + 1) / (G_BA + 1) - 1
 
 p_new_ap = G_new * pulse_period_ns * XCF_AB.countrate_b / gate2_ns.interval()
@@ -225,8 +225,8 @@ with Plotter(
     x_scale="log",
 ) as ax:
 
-    ax.plot(lag, G_AB + 1, label="G_AB + 1")
-    ax.plot(lag, G_BA + 1, label="G_BA + 1")
+    ax.plot(XCF_AB.lag, G_AB + 1, label="G_AB + 1")
+    ax.plot(XCF_BA.lag, G_BA + 1, label="G_BA + 1")
     ax.plot(lag, meas_cf.avg_corrfunc + 1, label="G_AA + 1")
     ax.legend()
 
@@ -236,7 +236,7 @@ with Plotter(
 
 # %%
 cf_cr = meas_cf.avg_cf_cr
-cf_cr_new = (cf_cr + XCF_AB.countrate_a) / (G_BA + 1) - XCF_AB.countrate_a
+cf_cr_new = (cf_cr + XCF_AB.countrate_a) / (unify_length(G_BA, len(cf_cr)) + 1) - XCF_AB.countrate_a
 
 # %% [markdown]
 # Plotting:
@@ -265,8 +265,15 @@ with Plotter(
 ) as ax:
 
     ax.plot(lag, cf_cr - p_cal_ap, label="Old CF_CR - calibrated afterpulsing")
-    ax.plot(lag, cf_cr_new - p_new_ap, label="New CF_CR - new Afterpulsing")
+    ax.plot(
+        lag,
+        cf_cr_new - unify_length(p_new_ap, len(cf_cr_new)),
+        label="New CF_CR - new Afterpulsing",
+    )
     ax.legend()
+
+# %%
+(cf_cr_new - p_new_ap)
 
 # %% [markdown]
 # Play sound when done:
