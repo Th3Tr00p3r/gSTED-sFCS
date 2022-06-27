@@ -122,8 +122,8 @@ class AngularScanMixin:
         dev_cnt = img - plateau_lvl
         bw = dev_cnt > -std_plateau
         bw = scipy.ndimage.binary_fill_holes(bw)
-        disk_open = skimage.morphology.selem.disk(radius=disk_radius)
-        bw = skimage.morphology.opening(bw, selem=disk_open)
+        disk_open = skimage.morphology.disk(radius=disk_radius)
+        bw = skimage.morphology.opening(bw, footprint=disk_open)
         return bw
 
     def _bg_line_correlations(
