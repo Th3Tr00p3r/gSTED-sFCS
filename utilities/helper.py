@@ -189,7 +189,7 @@ def largest_n(arr: np.ndarray, n: int):
     return np.percentile(arr, perc, interpolation="nearest")
 
 
-def timer(threshold_ms: int = 0) -> Callable:
+def timer(threshold_ms: float = 0.0) -> Callable:
     """
     Meant to be used as a decorator (@helper.timer(threshold))
     for quickly setting up function timing for testing.
@@ -210,8 +210,9 @@ def timer(threshold_ms: int = 0) -> Callable:
                 toc = time.perf_counter()
                 elapsed_time_ms = (toc - tic) * 1e3
                 if elapsed_time_ms > threshold_ms:
+                    in_s = elapsed_time_ms > 1000
                     print(
-                        f"***TIMER*** Function '{func.__name__}()' took {elapsed_time_ms:.2f} ms (threshold: {threshold_ms:d} ms).\n"
+                        f"***TIMER*** Function '{func.__name__}()' took {elapsed_time_ms * (1e-3 if in_s else 1):.2f} {'s' if in_s else 'ms'} (threshold: {threshold_ms * (1e-3 if in_s else 1):.0f} {'s' if in_s else 'ms'}).\n"
                     )
                 return value
 
@@ -224,8 +225,9 @@ def timer(threshold_ms: int = 0) -> Callable:
                 toc = time.perf_counter()
                 elapsed_time_ms = (toc - tic) * 1e3
                 if elapsed_time_ms > threshold_ms:
+                    in_s = elapsed_time_ms > 1000
                     print(
-                        f"***TIMER*** Function '{func.__name__}()' took {elapsed_time_ms:.2f} ms (threshold: {threshold_ms:d} ms).\n"
+                        f"***TIMER*** Function '{func.__name__}()' took {elapsed_time_ms * (1e-3 if in_s else 1):.2f} {'s' if in_s else 'ms'} (threshold: {threshold_ms * (1e-3 if in_s else 1):.0f} {'s' if in_s else 'ms'}).\n"
                     )
                 return value
 

@@ -1863,21 +1863,31 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
         setattr(self, meas_type, measurement)
 
-    def save_processed_measurements(self):
+    def save_processed_measurements(self, **kwargs):
         """Doc."""
 
         print("Saving processed measurements to disk...", end=" ")
         if hasattr(self.confocal, "scan_type"):
-            file_utilities.save_processed_solution_meas(
-                self.confocal, self.confocal.file_path_template.parent
-            )
-            print("Confocal saved...", end=" ")
+            if file_utilities.save_processed_solution_meas(
+                self.confocal, self.confocal.file_path_template.parent, **kwargs
+            ):
+                print("Confocal saved...", end=" ")
+            else:
+                print(
+                    "Processed measurement already exists. set 'should_force = True' to override.",
+                    end=" ",
+                )
         if hasattr(self.sted, "scan_type"):
-            file_utilities.save_processed_solution_meas(
-                self.sted, self.sted.file_path_template.parent
-            )
-            print("STED saved...", end=" ")
-        print("Done.")
+            if file_utilities.save_processed_solution_meas(
+                self.sted, self.sted.file_path_template.parent, **kwargs
+            ):
+                print("STED saved...", end=" ")
+            else:
+                print(
+                    "Processed measurement already exists. set 'should_force = True' to override.",
+                    end=" ",
+                )
+        print("Done.\n")
 
     def calibrate_tdc(self, should_plot=True, **kwargs):
         """Doc."""
