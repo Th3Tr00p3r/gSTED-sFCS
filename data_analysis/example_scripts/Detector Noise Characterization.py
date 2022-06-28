@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -162,63 +162,103 @@ def fit_decaying_cosine(
 # Loading the white-noise (Halogen) data:
 
 # %%
-data_labels = [
-    "White Noise 5 kHz",
-    "White Noise 150 kHz",
-    "White Noise 180 kHz",
-    "White Noise 210 kHz",
-    "White Noise 305 kHz",
-]
+data_label_dict = {
+    "White Noise 5 kHz": SimpleNamespace(
+        date="21_06_2022",
+        template="halogen5khz_static_exc_152832_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 30 kHz": SimpleNamespace(
+        date="27_06_2022",
+        template="halogen30khz_static_exc_153856_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+        #         force_processing=True,
+    ),
+    "White Noise 60 kHz": SimpleNamespace(
+        date="27_06_2022",
+        template="halogen60khz_static_exc_132729_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+        #         force_processing=True,
+    ),
+    "White Noise 90 kHz": SimpleNamespace(
+        date="27_06_2022",
+        template="halogen90khz_static_exc_123654_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+        #         force_processing=True,
+    ),
+    "White Noise 120 kHz": SimpleNamespace(
+        date="27_06_2022",
+        template="halogen120khz_static_exc_115748_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+        #         force_processing=True,
+    ),
+    "White Noise 150 kHz": SimpleNamespace(
+        date="21_06_2022",
+        template="halogen150khz_static_exc_133749_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 180 kHz": SimpleNamespace(
+        date="21_06_2022",
+        template="halogen180khz_static_exc_140956_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 210 kHz": SimpleNamespace(
+        date="21_06_2022",
+        template="halogen210khz_static_exc_144154_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 305 kHz": SimpleNamespace(
+        date="21_06_2022",
+        template="halogen300khz_static_exc_150947_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+}
+
+data_labels = list(data_label_dict.keys())
 
 n_meas = len(data_labels)
 
-data_templates = [
-    "halogen5khz_static_exc_152832_*.pkl",
-    "halogen150khz_static_exc_133749_*.pkl",
-    "halogen180khz_static_exc_140956_*.pkl",
-    "halogen210khz_static_exc_144154_*.pkl",
-    "halogen300khz_static_exc_150947_*.pkl",
+template_paths = [
+    DATA_ROOT / data.date / DATA_TYPE / data.template for data in data_label_dict.values()
 ]
-
-file_selections = ["Use All"] * n_meas
-
-force_processing = {
-    "White Noise 5 kHz": False,
-    "White Noise 150 kHz": False,
-    "White Noise 180 kHz": False,
-    "White Noise 210 kHz": False,
-    "White Noise 305 kHz": False,
-}
-
-DATA_DATE = "21_06_2022"
-DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
-
-template_paths = [DATA_PATH / tmplt for tmplt in data_templates]
 
 halogen_exp_dict = {label: SFCSExperiment(name=label) for label in data_labels}
 
 label_load_kwargs_dict = {
-    label: dict(confocal_template=tmplt_path, file_selection=selection)
-    for label, tmplt_path, selection in zip(data_labels, template_paths, file_selections)
+    label: dict(confocal_template=tmplt_path, file_selection=data.file_selection)
+    for label, tmplt_path, data in zip(data_labels, template_paths, data_label_dict.values())
 }
+
+# TEST - use pprint?
+print(template_paths)
 
 # %%
 FORCE_PROCESSING = False
 # FORCE_PROCESSING = True
 
-used_labels = [
-    "White Noise 5 kHz",
-    "White Noise 150 kHz",
-    "White Noise 180 kHz",
-    "White Noise 210 kHz",
-    "White Noise 305 kHz",
-]
+used_labels = data_labels
+# [
+#     "White Noise 5 kHz",
+#     "White Noise 150 kHz",
+#     "White Noise 180 kHz",
+#     "White Noise 210 kHz",
+#     "White Noise 305 kHz",
+# ]
 
 # load experiment
 for label in used_labels:
     halogen_exp_dict[label].load_experiment(
-        should_plot=True,
-        force_processing=force_processing[label],
+        #         should_plot=True,
+        force_processing=data_label_dict[label].force_processing,
         should_re_correlate=FORCE_PROCESSING,
         should_subtract_afterpulse=False,
         should_unite_start_times=True,  # for uniting the two 5 kHz measurements
@@ -229,16 +269,14 @@ for label in used_labels:
     #     exp.calibrate_tdc(should_plot=True, force_processing=FORCE_PROCESSING)
 
     # save processed data (to avoid re-processing)
-    if force_processing[label]:
-        halogen_exp_dict[label].save_processed_measurements()
+    halogen_exp_dict[label].save_processed_measurements(
+        should_force=data_label_dict[label].force_processing
+    )
 
 # Present count-rates
 for label in used_labels:
     meas = halogen_exp_dict[label].confocal
     print(f"'{label}' countrate: {meas.avg_cnt_rate_khz:.2f} +/- {meas.std_cnt_rate_khz:.2f}")
-
-# %%
-# halogen_exp_dict['White Noise 150 kHz'].save_processed_measurements()
 
 # %% [markdown]
 # Plot all:
@@ -254,13 +292,29 @@ with Plotter(x_scale="log", xlim=(1e-4, 1e0), ylim=(-1, 3e4)) as ax:
 # Leave only the oscillating noise by dividing (cf_cr + CR) by the calibrated afterpusing + 1 (TODO: Add the derivation).
 
 # %%
-c = 1
+# c = 1
+# labels_factors_dict = {
+#     "White Noise 5 kHz": 1,
+#     "White Noise 30 kHz": 1,
+#     "White Noise 60 kHz": 1,
+#     "White Noise 90 kHz": 1,
+#     "White Noise 120 kHz": 1,
+#     "White Noise 150 kHz": 0.9187 * c,
+#     "White Noise 180 kHz": 0.9035 * c,
+#     "White Noise 210 kHz": 0.892 * c,
+#     "White Noise 305 kHz": 0.86 * c,
+# }
+
 labels_factors_dict = {
     "White Noise 5 kHz": 1,
-    "White Noise 150 kHz": 0.9187 * c,
-    "White Noise 180 kHz": 0.9035 * c,
-    "White Noise 210 kHz": 0.892 * c,
-    "White Noise 305 kHz": 0.86 * c,
+    "White Noise 30 kHz": 1,
+    "White Noise 60 kHz": 1,
+    "White Noise 90 kHz": 1,
+    "White Noise 120 kHz": 1,
+    "White Noise 150 kHz": 1,
+    "White Noise 180 kHz": 1,
+    "White Noise 210 kHz": 1,
+    "White Noise 305 kHz": 1,
 }
 
 label_G_noise_dict = {}
@@ -286,50 +340,51 @@ with Plotter(
     super_title="Oscillations CF_CR", x_scale="log", xlim=(1e-3, 1e0), ylim=(-4e3, 4e3)
 ) as ax:
     for label in labels_factors_dict.keys():
-        ax.plot(
-            label_CF_CR_noise_dict[label].lag,
-            label_CF_CR_noise_dict[label].CF_CR,
-            label=f"G_AA ({label})",
-        )
+        #         ax.plot(
+        #             label_CF_CR_noise_dict[label].lag,
+        #             label_CF_CR_noise_dict[label].CF_CR,
+        #             label=f"G_AA ({label})",
+        #         )
         #             ax.plot(wn_lag, G_ap, label=f"G_ap  ({label})")
         ax.plot(
             label_CF_CR_noise_dict[label].lag,
             label_CF_CR_noise_dict[label].noise,
             label=f"quotient ({label})",
         )
-#         ax.legend()
+        ax.legend()
 
 with Plotter(
     super_title="Oscillations G (corrfunc)", x_scale="log", xlim=(1e-3, 1e0), ylim=(-0.01, 0.03)
 ) as ax:
     for label in labels_factors_dict.keys():
-        ax.plot(label_G_noise_dict[label].lag, label_G_noise_dict[label].G, label=f"G_AA ({label})")
+        #         ax.plot(label_G_noise_dict[label].lag, label_G_noise_dict[label].G, label=f"G_AA ({label})")
         #             ax.plot(wn_lag, G_ap, label=f"G_ap  ({label})")
         ax.plot(
             label_G_noise_dict[label].lag,
             label_G_noise_dict[label].noise,
             label=f"quotient ({label})",
         )
-#         ax.legend()
+        ax.legend()
 
 # %% [markdown]
 # Attempt to fit a decaying oscillating function to the detector noise:
 
 # %%
-fitted_labels = [
-    "White Noise 150 kHz",
-    "White Noise 180 kHz",
-    "White Noise 210 kHz",
-    "White Noise 305 kHz",
-]
+fitted_labels = data_labels
+# [
+#     "White Noise 150 kHz",
+#     "White Noise 180 kHz",
+#     "White Noise 210 kHz",
+#     "White Noise 305 kHz",
+# ]
 
 label_amplitude_dict = {}
-for label, vals in label_CF_CR_noise_dict.items():
+for label, vals in label_G_noise_dict.items():
     if label in fitted_labels:
         fit_params = fit_decaying_cosine(
             vals.lag,
             vals.noise,
-            fit_range=(1e-2, 2e-1),
+            fit_range=(2e-2, 2e-1),
             #             y_limits=(0, np.inf),
             should_plot=True,
             plot_kwargs=dict(x_scale="linear"),
@@ -344,7 +399,7 @@ for label, vals in label_CF_CR_noise_dict.items():
             )
         }
 
-        print(f"Amplitude: {fit_params.beta[0]:.2f}")
+        print(f"Amplitude: {fit_params.beta[0]:.2e}")
         print(f"Phase: {fit_params.beta[2]:.2f}")
         print(f"Frequency: {fit_params.beta[1] / 2*np.pi * 1e-1:.2f} kHz")
         print(f"Period: {2*np.pi / fit_params.beta[1] * 1e3:.2f} us")

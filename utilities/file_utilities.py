@@ -318,40 +318,49 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
             return [item for chunk_ in loaded_data for item in chunk_]
 
 
-def save_processed_solution_meas(meas, dir_path: Path) -> None:
+def save_processed_solution_meas(meas, dir_path: Path, should_force=False) -> bool:
     """
     Save a processed measurement, including the '.data' attribute.
     The template may then be loaded much more quickly.
     """
 
-    # load the data first, to save it as well
-    meas.dump_or_load_data(should_load=True)
-    # copy it
-    data_copy = copy.deepcopy(meas.data)
-    # dump the data back
-    meas.dump_or_load_data(should_load=False)
-
-    # lower size if possible
-    for p in data_copy:
-        if p.pulse_runtime.max() <= np.iinfo(np.int32).max:
-            p.pulse_runtime = p.pulse_runtime.astype(np.int32)
+    # init return value as false
+    has_saved_meas = False
 
     # save the measurement
     dir_path = dir_path / "processed"
     file_name = re.sub("_[*]", "", meas.template)
     file_path = dir_path / file_name
-    save_object(meas, file_path, compression_method="blosc", obj_name="processed measurement")
+    if not file_path.is_file() or should_force:
 
-    # save the data separately
-    data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
-    save_object(
-        data_copy,
-        data_path,
-        compression_method="blosc",
-        element_size_estimate_mb=data_copy[0].size_estimate_mb,
-        obj_name="dumped data array",
-        should_track_progress=True,
-    )
+        # load the data first, to save it as well
+        meas.dump_or_load_data(should_load=True)
+        # copy it
+        data_copy = copy.deepcopy(meas.data)
+        # dump the data back
+        meas.dump_or_load_data(should_load=False)
+
+        # lower size if possible
+        for p in data_copy:
+            if p.pulse_runtime.max() <= np.iinfo(np.int32).max:
+                p.pulse_runtime = p.pulse_runtime.astype(np.int32)
+
+        has_saved_meas = save_object(
+            meas, file_path, compression_method="blosc", obj_name="processed measurement"
+        )
+
+        # save the data separately
+        data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
+        has_saved_data = save_object(
+            data_copy,
+            data_path,
+            compression_method="blosc",
+            element_size_estimate_mb=data_copy[0].size_estimate_mb,
+            obj_name="dumped data array",
+            should_track_progress=True,
+        )
+
+    return has_saved_meas and has_saved_data
 
 
 def load_processed_solution_measurement(file_path: Path, file_template: str):
