@@ -163,9 +163,45 @@ def fit_decaying_cosine(
 
 # %%
 data_label_dict = {
+    "White Noise 4 kHz": SimpleNamespace(
+        date="28_06_2022",
+        template="halogen4khz_static_exc_162446_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
     "White Noise 5 kHz": SimpleNamespace(
         date="21_06_2022",
         template="halogen5khz_static_exc_152832_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 6 kHz": SimpleNamespace(
+        date="28_06_2022",
+        template="halogen6khz_static_exc_164636_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 6.5 kHz": SimpleNamespace(
+        date="28_06_2022",
+        template="halogen6_5khz_static_exc_171231_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 7 kHz": SimpleNamespace(
+        date="28_06_2022",
+        template="halogen7khz_static_exc_153022_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 10 kHz": SimpleNamespace(
+        date="28_06_2022",
+        template="halogen10khz_static_exc_144456_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+    ),
+    "White Noise 20 kHz": SimpleNamespace(
+        date="28_06_2022",
+        template="halogen20khz_static_exc_135859_*.pkl",
         file_selection="Use All",
         force_processing=False,
     ),
@@ -174,28 +210,24 @@ data_label_dict = {
         template="halogen30khz_static_exc_153856_*.pkl",
         file_selection="Use All",
         force_processing=False,
-        #         force_processing=True,
     ),
     "White Noise 60 kHz": SimpleNamespace(
         date="27_06_2022",
         template="halogen60khz_static_exc_132729_*.pkl",
         file_selection="Use All",
         force_processing=False,
-        #         force_processing=True,
     ),
     "White Noise 90 kHz": SimpleNamespace(
         date="27_06_2022",
         template="halogen90khz_static_exc_123654_*.pkl",
         file_selection="Use All",
         force_processing=False,
-        #         force_processing=True,
     ),
     "White Noise 120 kHz": SimpleNamespace(
         date="27_06_2022",
         template="halogen120khz_static_exc_115748_*.pkl",
         file_selection="Use All",
         force_processing=False,
-        #         force_processing=True,
     ),
     "White Noise 150 kHz": SimpleNamespace(
         date="21_06_2022",
@@ -231,7 +263,14 @@ template_paths = [
     DATA_ROOT / data.date / DATA_TYPE / data.template for data in data_label_dict.values()
 ]
 
-halogen_exp_dict = {label: SFCSExperiment(name=label) for label in data_labels}
+# initialize the experiment dictionary, if it doens't already exist
+if "halogen_exp_dict" not in locals():
+    print("resetting 'halogen_exp_dict'")
+    halogen_exp_dict = {}
+
+for label in data_labels:
+    if label not in halogen_exp_dict:
+        halogen_exp_dict[label] = SFCSExperiment(name=label)
 
 label_load_kwargs_dict = {
     label: dict(confocal_template=tmplt_path, file_selection=data.file_selection)
@@ -256,22 +295,24 @@ used_labels = data_labels
 
 # load experiment
 for label in used_labels:
-    halogen_exp_dict[label].load_experiment(
-        #         should_plot=True,
-        force_processing=data_label_dict[label].force_processing,
-        should_re_correlate=FORCE_PROCESSING,
-        should_subtract_afterpulse=False,
-        should_unite_start_times=True,  # for uniting the two 5 kHz measurements
-        **label_load_kwargs_dict[label],
-    )
+    # skip already loaded experiments, unless forced
+    if not hasattr(halogen_exp_dict[label], "confocal") or data_label_dict[label].force_processing:
+        halogen_exp_dict[label].load_experiment(
+            should_plot=False,
+            force_processing=data_label_dict[label].force_processing,
+            should_re_correlate=FORCE_PROCESSING,
+            should_subtract_afterpulse=False,
+            should_unite_start_times=True,  # for uniting the two 5 kHz measurements
+            **label_load_kwargs_dict[label],
+        )
 
-    #     # calibrate TDC
-    #     exp.calibrate_tdc(should_plot=True, force_processing=FORCE_PROCESSING)
+        #     # calibrate TDC
+        #     exp.calibrate_tdc(should_plot=True, force_processing=FORCE_PROCESSING)
 
-    # save processed data (to avoid re-processing)
-    halogen_exp_dict[label].save_processed_measurements(
-        should_force=data_label_dict[label].force_processing
-    )
+        # save processed data (to avoid re-processing)
+        halogen_exp_dict[label].save_processed_measurements(
+            should_force=data_label_dict[label].force_processing
+        )
 
 # Present count-rates
 for label in used_labels:
@@ -306,15 +347,21 @@ with Plotter(x_scale="log", xlim=(1e-4, 1e0), ylim=(-1, 3e4)) as ax:
 # }
 
 labels_factors_dict = {
+    #     "White Noise 4 kHz": 1,
     "White Noise 5 kHz": 1,
-    "White Noise 30 kHz": 1,
-    "White Noise 60 kHz": 1,
-    "White Noise 90 kHz": 1,
-    "White Noise 120 kHz": 1,
-    "White Noise 150 kHz": 1,
-    "White Noise 180 kHz": 1,
-    "White Noise 210 kHz": 1,
-    "White Noise 305 kHz": 1,
+    "White Noise 6 kHz": 1,
+    "White Noise 6.5 kHz": 1,
+    "White Noise 7 kHz": 1,
+    "White Noise 10 kHz": 1,
+    #     "White Noise 20 kHz": 1,
+    #     "White Noise 30 kHz": 1,
+    #     "White Noise 60 kHz": 1,
+    #     "White Noise 90 kHz": 1,
+    #     "White Noise 120 kHz": 1,
+    #     "White Noise 150 kHz": 1,
+    #     "White Noise 180 kHz": 1,
+    #     "White Noise 210 kHz": 1,
+    #     "White Noise 305 kHz": 1,
 }
 
 label_G_noise_dict = {}
@@ -365,6 +412,67 @@ with Plotter(
             label=f"quotient ({label})",
         )
         ax.legend()
+
+# %% [markdown]
+# Attempt to smooth:
+
+# %%
+# def smooth(x,window_len=11,window='hanning'):
+#     """smooth the data using a window with requested size.
+
+#     This method is based on the convolution of a scaled window with the signal.
+#     The signal is prepared by introducing reflected copies of the signal
+#     (with the window size) in both ends so that transient parts are minimized
+#     in the begining and end part of the output signal.
+
+#     input:
+#         x: the input signal
+#         window_len: the dimension of the smoothing window; should be an odd integer
+#         window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+#             flat window will produce a moving average smoothing.
+
+#     output:
+#         the smoothed signal
+
+#     example:
+
+#     t=linspace(-2,2,0.1)
+#     x=sin(t)+randn(len(t))*0.1
+#     y=smooth(x)
+
+#     see also:
+
+#     numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
+#     scipy.signal.lfilter
+
+#     TODO: the window parameter could be the window itself if an array instead of a string
+#     NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+#     """
+
+#     if x.ndim != 1:
+#         raise ValueError, "smooth only accepts 1 dimension arrays."
+
+#     if x.size < window_len:
+#         raise ValueError, "Input vector needs to be bigger than window size."
+
+
+#     if window_len<3:
+#         return x
+
+
+#     if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+#         raise ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
+
+
+#     s=numpy.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
+#     #print(len(s))
+#     if window == 'flat': #moving average
+#         w=numpy.ones(window_len,'d')
+#     else:
+#         w=eval('numpy.'+window+'(window_len)')
+
+#     y=numpy.convolve(w/w.sum(),s,mode='valid')
+#     return y
 
 # %% [markdown]
 # Attempt to fit a decaying oscillating function to the detector noise:
