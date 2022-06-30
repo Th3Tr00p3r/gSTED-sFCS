@@ -1874,7 +1874,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 print("Confocal saved...", end=" ")
             else:
                 print(
-                    "Processed measurement already exists. set 'should_force = True' to override.",
+                    "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
                     end=" ",
                 )
         if hasattr(self.sted, "scan_type"):
@@ -1884,7 +1884,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 print("STED saved...", end=" ")
             else:
                 print(
-                    "Processed measurement already exists. set 'should_force = True' to override.",
+                    "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
                     end=" ",
                 )
         print("Done.\n")

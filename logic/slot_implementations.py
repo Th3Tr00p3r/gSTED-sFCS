@@ -1355,7 +1355,7 @@ class MainWin:
                 "file_selection"
             ] = f"{import_wdgts.sol_file_use_or_dont} {import_wdgts.sol_file_selection}"
         else:
-            loading_options["file_selection"] = None
+            loading_options["file_selection"] = "Use All"
 
         loading_options["should_fix_shift"] = import_wdgts.fix_shift
         loading_options["roi_selection"] = "auto" if import_wdgts.should_auto_roi else "all"
