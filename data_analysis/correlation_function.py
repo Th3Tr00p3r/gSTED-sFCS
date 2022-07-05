@@ -34,7 +34,6 @@ from utilities.helper import (
     div_ceil,
     extrapolate_over_noise,
     hankel_transform,
-    timer,
     unify_length,
     xcorr,
 )
@@ -668,7 +667,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 pass
             print("Done.\n")
 
-    @timer(int(1e4))
     def process_all_data(
         self,
         file_paths: List[Path],
@@ -1110,7 +1108,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(gate_ns)
         if tdc_gate_ns != Limits(0, np.inf):
-            effective_lower_gate_ns = max(tdc_gate_ns.lower - self.detector_gate_ns.lower, 0)
+            effective_lower_gate_ns = max(tdc_gate_ns.lower, self.detector_gate_ns.lower)
             effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
             gate_ns = Limits(effective_lower_gate_ns, effective_upper_gate_ns)
 
@@ -1299,7 +1297,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             gate_ns = locals()[f"gate{i}_ns"]
             tdc_gate_ns = Limits(gate_ns)
             if tdc_gate_ns != Limits(0, np.inf):
-                effective_lower_gate_ns = max(tdc_gate_ns.lower - self.detector_gate_ns.lower, 0)
+                effective_lower_gate_ns = max(tdc_gate_ns.lower, self.detector_gate_ns.lower)
                 effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
                 gates.append(Limits(effective_lower_gate_ns, effective_upper_gate_ns))
         gate1_ns, gate2_ns = gates
@@ -1937,9 +1935,15 @@ class SFCSExperiment(TDCPhotonDataMixin):
                     parent_ax=ax,
                 )
 
-    def add_gate(self, gate_ns: Tuple[float, float], should_plot=True, **kwargs):
+    def add_gate(
+        self, gate_ns: Tuple[float, float], should_plot=True, should_re_correlate=False, **kwargs
+    ):
         """Doc."""
         # TODO: this should be a method of SolutionSFCSMeasurement
+
+        if not should_re_correlate and self.sted.cf.get(f"gSTED {gate_ns}"):
+            print(f"gSTED gate {gate_ns} already exists. Skipping...")
+            return
 
         try:
             self.sted.correlate_and_average(

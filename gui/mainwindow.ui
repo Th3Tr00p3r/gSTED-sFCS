@@ -6737,7 +6737,7 @@ Rows</string>
                         <item>
                          <widget class="QTabWidget" name="tabWidget_4">
                           <property name="currentIndex">
-                           <number>0</number>
+                           <number>2</number>
                           </property>
                           <widget class="QWidget" name="tab_7">
                            <attribute name="title">
@@ -7226,10 +7226,10 @@ Upper Gate</string>
                                         <string> lifetimes</string>
                                        </property>
                                        <property name="decimals">
-                                        <number>1</number>
+                                        <number>2</number>
                                        </property>
                                        <property name="singleStep">
-                                        <double>0.100000000000000</double>
+                                        <double>0.010000000000000</double>
                                        </property>
                                       </widget>
                                      </item>
