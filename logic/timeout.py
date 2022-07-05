@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import sys
+import time
 from collections import deque
 from contextlib import suppress
 
@@ -212,6 +213,7 @@ class Timeout:
         while self.not_finished:
 
             if (not self.dep_dvc.error_dict) and (not self._app.meas.is_running):
+
                 if self.dep_dvc.is_emission_on:
                     temp, pow, curr = (
                         self.dep_dvc.get_prop("temp"),
@@ -229,6 +231,14 @@ class Timeout:
                         self.main_gui.depTemp.setStyleSheet(
                             "background-color: white; color: black;"
                         )
+
+                    # automatic laser shutdown
+                    mins_since_turned_on = (time.perf_counter() - self.dep_dvc.turn_on_time) / 60
+                    if mins_since_turned_on > self.dep_dvc.OFF_TIMER_MINUTES:
+                        logging.info(
+                            f"Shutting down {self.dep_dvc.log_ref} automatically (idle for {self.dep_dvc.OFF_TIMER_MINUTES} mins)"
+                        )
+                        self.dep_dvc.laser_toggle(False)
 
             await asyncio.sleep(self.dep_dvc.update_interval_s)
 

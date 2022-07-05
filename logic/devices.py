@@ -864,6 +864,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     update_interval_s = 0.3
     MIN_SHG_TEMP = 53  # Celsius
+    OFF_TIMER_MINUTES = 5
     power_limits_mW = Limits(99, 1000)
     current_limits_mA = Limits(1500, 2500)
 
@@ -877,6 +878,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         self.address = None  # found automatically
         self.is_on = None
         self.is_emission_on = None
+        self.turn_on_time = None
 
         with suppress(DeviceError):
             self.toggle(True, should_change_icons=False)
@@ -911,6 +913,10 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         else:
             self.is_emission_on = is_being_switched_on
             self.change_icons("on" if is_being_switched_on else "off")
+            if is_being_switched_on:
+                self.turn_on_time = time.perf_counter()
+            else:
+                self.turn_on_time = None
 
     def get_prop(self, prop):
         """Doc."""
