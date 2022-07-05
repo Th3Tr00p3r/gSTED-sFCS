@@ -201,7 +201,10 @@ class MeasurementProcedure:
                 return "nolaser"
 
         if finish:
-            # measurement finishing
+            # reset automatic shutdown for depletion laser
+            if self.laser_mode in {"dep", "sted"}:
+                self.laser_dvcs.dep.turn_on_time = time.perf_counter()
+            # turn off lasers
             if self.laser_mode == "exc":
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "dep":

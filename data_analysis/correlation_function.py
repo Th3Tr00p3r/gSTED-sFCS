@@ -426,6 +426,8 @@ class CorrFunc:
         fit_range=(1e-3, 100),
         x_scale="log",
         y_scale="linear",
+        bounds=None,
+        max_nfev=int(1e4),
         should_plot=False,
         **kwargs,
     ) -> None:
@@ -441,6 +443,13 @@ class CorrFunc:
             y = y[1:]
             error_y = error_y[1:]
 
+        # set bounds for parameters
+        if fit_name == "diffusion_3d_fit":
+            bounds = (  # a, tau, w_sq
+                [0, 0, 0],
+                [1e7, 10, np.inf],
+            )
+
         self.fit_params[fit_name] = curve_fit_lims(
             FIT_NAME_DICT[fit_name],
             fit_param_estimate,
@@ -450,6 +459,8 @@ class CorrFunc:
             x_limits=Limits(fit_range),
             should_plot=should_plot,
             plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
+            bounds=bounds,
+            max_nfev=max_nfev,
             **kwargs,
         )
 
