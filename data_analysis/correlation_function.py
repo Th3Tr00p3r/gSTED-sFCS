@@ -1118,7 +1118,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(gate_ns)
-        if tdc_gate_ns != Limits(0, np.inf):
+        if tdc_gate_ns != Limits(0, np.inf) or self.detector_gate_ns != Limits(0, np.inf):
+            if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
+                self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
             effective_lower_gate_ns = max(tdc_gate_ns.lower, self.detector_gate_ns.lower)
             effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
             gate_ns = Limits(effective_lower_gate_ns, effective_upper_gate_ns)
@@ -1307,7 +1309,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         for i in (1, 2):
             gate_ns = locals()[f"gate{i}_ns"]
             tdc_gate_ns = Limits(gate_ns)
-            if tdc_gate_ns != Limits(0, np.inf):
+            if tdc_gate_ns != Limits(0, np.inf) or self.detector_gate_ns != Limits(0, np.inf):
+                if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
+                    self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
                 effective_lower_gate_ns = max(tdc_gate_ns.lower, self.detector_gate_ns.lower)
                 effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
                 gates.append(Limits(effective_lower_gate_ns, effective_upper_gate_ns))
@@ -1642,8 +1646,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
         if is_verbose:
             print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
-        if not hasattr(self, "tdc_calib"):
-            self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
         XCF_AB, XCF_BA = self.cross_correlate_data(
             corr_names=("AB", "BA"),
             cf_name="Afterpulsing",

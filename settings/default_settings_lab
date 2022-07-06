@@ -71,7 +71,7 @@ xConv,70.81
 yConv,20.0
 zConv,10.0
 syncDelay,49.4055
-laserPulsePropTime,3.7
+laserPulsePropTime,1.5
 counterTriggerEdge,Rising
 AOtriggerEdge,Rising
 AOwfType,Sine
