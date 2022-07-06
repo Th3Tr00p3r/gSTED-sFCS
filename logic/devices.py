@@ -1263,7 +1263,7 @@ DEVICE_ATTR_DICT = {
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
-            # sync_delay_ns was by measuring a detector-gated samle, getting its actual delay by syncing to the laser sample's (below) TDC calibration
+            # sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
             sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", False),
         ),
     ),
