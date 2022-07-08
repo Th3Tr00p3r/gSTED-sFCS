@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -97,21 +97,21 @@ data_label_dict = {
         date="03_07_2022",
         template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
         file_selection="Use All",
-        force_processing=True,
+        force_processing=False,
         should_use_inherent_afterpulsing=False,
     ),
     "300 bp ATTO STED FR": SimpleNamespace(
         date="03_07_2022",
         template="bp300ATTO_20uW_angular_sted_161127_*.pkl",
         file_selection="Use All",
-        force_processing=True,
+        force_processing=False,
         should_use_inherent_afterpulsing=False,
     ),
     "300 bp ATTO STED 3 ns Detector Gating": SimpleNamespace(
         date="03_07_2022",
         template="bp300ATTO_20uW_Gated3ns_angular_sted_171540_*.pkl",
         file_selection="Use All",
-        force_processing=True,
+        force_processing=False,
         should_use_inherent_afterpulsing=True,
     ),
 }
@@ -194,20 +194,87 @@ with Plotter(
 #
 # tdc/detector gating should overlap correctly - see line 1108 ["Unite TDC gate and detector gate"] in correlation_function.py
 
+# %% [markdown]
+# ### Gates
+
+# %%
+upper_gate = 20
+lower_gates = [0, 3, 4, 5, 6]
+gate_list = [(lower_gate, upper_gate) for lower_gate in lower_gates]
+
+
+# %%
+def plot_tdc_vs_detector_gating():
+    """Doc."""
+
+    with Plotter(
+        super_title="Free-Running vs. $3~ns$ Detector Gating",
+        xlabel="Lag (ms)",
+        ylabel="Normalized",
+        x_scale="log",
+        xlim=(1e-4, 1e0),
+        ylim=(-0.1, 2),
+    ) as ax:
+
+        meas_det_gated = halogen_exp_dict[detector_label].sted
+        meas_tdc_gated = halogen_exp_dict[tdc_label].sted
+
+        ax.plot(
+            meas_det_gated.cf["sted"].lag,
+            meas_det_gated.cf["sted"].normalized,
+            "--",
+            label="hard-gated",
+        )
+        for gate in gate_list:
+
+            if gate == (0, 20):
+                ax.plot(
+                    meas_det_gated.cf[f"gSTED {gate}"].lag,
+                    meas_det_gated.cf[f"gSTED {gate}"].normalized,
+                    "x",
+                    label=f"hard-gated {gate}",
+                )
+            else:
+                ax.plot(
+                    meas_det_gated.cf[f"gSTED {gate}"].lag,
+                    meas_det_gated.cf[f"gSTED {gate}"].normalized,
+                    "--",
+                    label=f"hard-gated {gate}",
+                )
+
+        ax.set_prop_cycle(None)
+
+        ax.plot(
+            meas_tdc_gated.cf["sted"].lag,
+            meas_tdc_gated.cf["sted"].normalized,
+            label="free-running",
+        )
+        for gate in gate_list:
+            ax.plot(
+                meas_tdc_gated.cf[f"gSTED {gate}"].lag,
+                meas_tdc_gated.cf[f"gSTED {gate}"].normalized,
+                label=f"free-runing {gate}",
+            )
+
+        ax.legend()
+
+
+# %% [markdown]
+# ### Using inherent afterpulsing
+
 # %%
 detector_label = "300 bp ATTO STED 3 ns Detector Gating"
 tdc_label = "300 bp ATTO STED FR"
-
-gate_list = [(3, 90), (4, 90), (5, 90), (6, 90)]
 
 FORCE_CORR = True
 # FORCE_CORR = False
 
 halogen_exp_dict[tdc_label].add_gates(
     gate_list,
-    #     should_use_inherent_afterpulsing=True,
+    should_use_inherent_afterpulsing=True,
     inherent_afterpulsing_gates=(Limits(3, 10), Limits(30, 90)),
     should_re_correlate=FORCE_CORR,
+    is_verbose=False,
 )
 halogen_exp_dict[detector_label].add_gates(
     gate_list,
@@ -215,45 +282,366 @@ halogen_exp_dict[detector_label].add_gates(
     should_use_inherent_afterpulsing=True,
     inherent_afterpulsing_gates=(Limits(3, 10), Limits(30, 90)),
     should_re_correlate=FORCE_CORR,
+    is_verbose=False,
+)
+
+# PLOT
+plot_tdc_vs_detector_gating()
+
+# %% [markdown]
+# ### Using calibrated afterpulsing
+
+# %%
+detector_label = "300 bp ATTO STED 3 ns Detector Gating"
+tdc_label = "300 bp ATTO STED FR"
+
+FORCE_CORR = True
+# FORCE_CORR = False
+
+halogen_exp_dict[tdc_label].add_gates(
+    gate_list,
+    should_re_correlate=FORCE_CORR,
+    is_verbose=False,
+)
+halogen_exp_dict[detector_label].add_gates(
+    gate_list,
+    norm_range=(5e-3, 6e-3),
+    should_re_correlate=FORCE_CORR,
+    is_verbose=False,
 )
 
 # %% [markdown]
-# and plot the 3 ns gate together with the detector gates one:
+# Plotting
 
 # %%
-with Plotter(
-    xlabel="Lag (ms)", ylabel="Normalized", x_scale="log", xlim=(1e-4, 1e0), ylim=(-0.1, 2)
-) as ax:
+# PLOT
+plot_tdc_vs_detector_gating()
 
-    meas_det_gated = halogen_exp_dict[detector_label].sted
-    meas_tdc_gated = halogen_exp_dict[tdc_label].sted
+# %% [markdown]
+# ### Checking out the countrates
 
-    ax.plot(
-        meas_det_gated.cf["sted"].lag,
-        meas_det_gated.cf["sted"].normalized,
-        "--",
-        label="hard-gated",
+# %%
+print("TDC")
+[print(f"{label}: {cf.countrate}") for label, cf in halogen_exp_dict[tdc_label].sted.cf.items()]
+
+print("")
+
+print("detector")
+[
+    print(f"{label}: {cf.countrate}")
+    for label, cf in halogen_exp_dict[detector_label].sted.cf.items()
+]
+
+print("")
+
+print("RATIOS")
+[
+    print(f"{label}: {cf_tdc.countrate / cf_det.countrate}")
+    for (label, cf_tdc), (_, cf_det) in zip(
+        halogen_exp_dict[tdc_label].sted.cf.items(),
+        halogen_exp_dict[detector_label].sted.cf.items(),
     )
-    for gate in gate_list:
-        ax.plot(
-            meas_det_gated.cf[f"gSTED {gate}"].lag,
-            meas_det_gated.cf[f"gSTED {gate}"].normalized,
-            "--",
-            label=f"hard-gated {gate}",
-        )
+]
+
+print("")
+
+print("Sub")
+[
+    print(f"{label}: {cf_tdc.countrate - cf_det.countrate}")
+    for (label, cf_tdc), (_, cf_det) in zip(
+        halogen_exp_dict[tdc_label].sted.cf.items(),
+        halogen_exp_dict[detector_label].sted.cf.items(),
+    )
+]
+
+# %%
+# TESTING
+
+tdc_calib = halogen_exp_dict[tdc_label].sted.tdc_calib
+
+t_hist = tdc_calib.t_hist
+all_hist_norm = tdc_calib.all_hist_norm
+
+# set nans to 0
+all_hist_norm[np.isnan(all_hist_norm)] = 0
+
+total_prob = np.diff(t_hist) @ all_hist_norm[1:]
+
+half_period = int(len(t_hist) / 2)
+
+tail_prob = np.diff(t_hist)[half_period:] @ all_hist_norm[half_period + 1 :]
+
+print("Free-Running")
+print("2 * tail_prob / (total_prob - 2*tail_prob): ", 2 * tail_prob / (total_prob - 2 * tail_prob))
+
+
+# Same for detector gated
+
+tdc_calib = halogen_exp_dict[detector_label].sted.tdc_calib
+
+t_hist = tdc_calib.t_hist
+all_hist_norm = tdc_calib.all_hist_norm
+
+# set nans to 0
+all_hist_norm[np.isnan(all_hist_norm)] = 0
+
+total_prob = np.diff(t_hist) @ all_hist_norm[1:]
+
+half_period = int(len(t_hist) / 2)
+
+tail_prob = np.diff(t_hist)[half_period:] @ all_hist_norm[half_period + 1 :]
+
+print("Detector-Gated")
+print("2 * tail_prob / (total_prob - 2*tail_prob): ", 2 * tail_prob / (total_prob - 2 * tail_prob))
+
+# %% [markdown]
+# ### Comparison of lifetime histogram of FR vs Detector gated STED
+
+# %%
+fr_tdc_calib = halogen_exp_dict[tdc_label].sted.tdc_calib
+det_gated_tdc_calib = halogen_exp_dict[detector_label].sted.tdc_calib
+
+with Plotter(super_title="FR vs Detector gated STED") as ax:
+    ax.plot(fr_tdc_calib.t_hist, fr_tdc_calib.all_hist_norm)
+    ax.plot(det_gated_tdc_calib.t_hist, det_gated_tdc_calib.all_hist_norm)
+
+# %% [markdown]
+# ### Total Afterpulsing Probability
+
+# %%
+print("TDC")
+[
+    print(f"{label}: {(np.diff(cf.lag) * 1e-3) @ cf.afterpulse[1:]}")
+    for label, cf in halogen_exp_dict[tdc_label].sted.cf.items()
+]
+
+print("")
+
+print("detector gated")
+[
+    print(f"{label}: {(np.diff(cf.lag) * 1e-3) @ cf.afterpulse[1:]}")
+    for label, cf in halogen_exp_dict[detector_label].sted.cf.items()
+]
+
+# %% [markdown]
+# ### Afterpulsing Accumulated Sum
+
+# %%
+print("TDC")
+tdc_cumsum_dict = {
+    label: (cf.lag, np.cumsum((np.diff(cf.lag) * 1e-3) * cf.afterpulse[1:]))
+    for label, cf in halogen_exp_dict[tdc_label].sted.cf.items()
+}
+
+print("")
+
+print("detector gated")
+det_cumsum_dict = {
+    label: (cf.lag, np.cumsum((np.diff(cf.lag) * 1e-3) * cf.afterpulse[1:]))
+    for label, cf in halogen_exp_dict[detector_label].sted.cf.items()
+}
+
+from contextlib import suppress
+
+with Plotter(x_scale="log") as ax:
+
+    for (label, pair_tdc) in tdc_cumsum_dict.items():
+        lag_tdc, cumsum_tdc = pair_tdc
+        ax.plot(lag_tdc[1:], cumsum_tdc, label=f"{label} (TDC)")
 
     ax.set_prop_cycle(None)
 
-    ax.plot(
-        meas_tdc_gated.cf["sted"].lag, meas_tdc_gated.cf["sted"].normalized, label="free-running"
-    )
-    for gate in gate_list:
-        ax.plot(
-            meas_tdc_gated.cf[f"gSTED {gate}"].lag,
-            meas_tdc_gated.cf[f"gSTED {gate}"].normalized,
-            label=f"free-runing {gate}",
-        )
+    for (label, pair_det) in det_cumsum_dict.items():
+        lag_det, cumsum_det = pair_det
+        ax.plot(lag_det[1:], cumsum_det, "--", label=f"{label} (detector)")
 
+    ax.legend()
+
+# %% [markdown]
+# Notice two things:
+# * the detector-gated STED measurement (blue dotted line) is much different than the rest, increasing towards longer times
+# * The above mentioned measurement is expected to behave similarly to the orange dotted curve, which should have the same lower gate
+#
+# The solution is given by the inclusion of an additional gate (0, 20), which gives the same result as (3, 20) for the detector-gated measurement
+
+# %% [markdown]
+# ### Comparing signal to noise and cross-correlations:
+
+# %%
+corr_names = ("AA", "AB", "BA", "BB")
+gate1_ns = Limits(3, 10)
+gate2_ns = Limits(30, 95)
+
+# %%
+cf_list = halogen_exp_dict[tdc_label].sted.cross_correlate_data(
+    corr_names=corr_names,
+    gate1_ns=gate1_ns,
+    gate2_ns=gate2_ns,
+    should_add_to_xcf_dict=False,
+    is_verbose=True,
+    should_subtract_afterpulse=False,
+)
+
+for cf in cf_list:
+    cf.average_correlation()
+
+# %%
+with Plotter() as ax:
+    for cf in cf_list:
+        #         if "AB" in cf.name or "BA" in cf.name:
+        #             cf.normalized_test = cf.avg_cf_cr * (100/gate2_ns.interval() *cf.countrate_b)
+        #             cf.plot_correlation_function(y_field="normalized_test", parent_ax=ax, plot_kwargs={"label": cf.name})
+        #         else:
+        cf.plot_correlation_function(
+            y_field="avg_corrfunc", parent_ax=ax, plot_kwargs={"label": cf.name}
+        )
+        pass
+    ax.legend()
+
+# %%
+gate2_ns.interval()
+
+# %% [markdown]
+# ### Comparing to total AP probability of some 'old detector'  300 bp measurement
+
+# %%
+# load experiment
+old_exp = SFCSExperiment("old detector 300 bp ATTO")
+old_exp.load_experiment(
+    confocal_template=DATA_ROOT / "10_08_2021" / "solution" / "bp300_20uW_angular_exc_141639_*.pkl",
+    force_processing=False,
+    should_re_correlate=False,
+    should_subtract_afterpulse=True,
+    #         should_unite_start_times=True,  # for uniting measurements of same name
+    #         inherent_afterpulsing_gates=(Limits(3, 10), Limits(30, 90)),
+    file_selection="Use All",
+    should_plot=False,
+    should_plot_meas=False,
+)
+
+# save processed data (to avoid re-processing)
+old_exp.save_processed_measurements(should_force=False)
+
+# calibrate TDC
+old_exp.calibrate_tdc(should_plot=True)
+
+# Present count-rates
+print(f"\n{old_exp.name}:")
+conf_meas = old_exp.confocal
+print(f"Confocal countrate: {conf_meas.avg_cnt_rate_khz:.2f} +/- {conf_meas.std_cnt_rate_khz:.2f}")
+
+# %% [markdown]
+# Calculate afterpulsing probability:
+
+# %%
+cf = old_exp.confocal.cf["confocal"]
+(np.diff(cf.lag) * 1e-3) @ cf.afterpulse[1:]
+
+# %%
+cf.countrate
+
+# %%
+tdc_calib = old_exp.confocal.tdc_calib
+
+t_hist = tdc_calib.t_hist
+all_hist_norm = tdc_calib.all_hist_norm
+
+# set nans to 0
+all_hist_norm[np.isnan(all_hist_norm)] = 0
+
+total_prob = np.diff(t_hist) @ all_hist_norm[1:]
+
+half_period = int(len(t_hist) / 2)
+
+tail_prob = np.diff(t_hist)[half_period:] @ all_hist_norm[half_period + 1 :]
+
+print("Detector-Gated")
+print("2 * tail_prob / (total_prob - 2*tail_prob): ", 2 * tail_prob / (total_prob - 2 * tail_prob))
+
+# %% [markdown]
+# ### Comparing to a 'Laser only' measurement
+
+# %%
+# load experiment
+laser_exp = SFCSExperiment("old detector 300 bp ATTO")
+laser_exp.load_experiment(
+    confocal_template=DATA_ROOT
+    / "20_03_2022"
+    / "solution"
+    / "mirror_100uW_wfilter_static_exc_143208_*.pkl",
+    force_processing=False,
+    should_re_correlate=False,
+    should_subtract_afterpulse=True,
+    #         should_unite_start_times=True,  # for uniting measurements of same name
+    #         inherent_afterpulsing_gates=(Limits(3, 10), Limits(30, 90)),
+    file_selection="Use All",
+    should_plot=False,
+    should_plot_meas=False,
+)
+
+# save processed data (to avoid re-processing)
+laser_exp.save_processed_measurements(should_force=False)
+
+# calibrate TDC
+laser_exp.calibrate_tdc(should_plot=True)
+
+# Present count-rates
+print(f"\n{laser_exp.name}:")
+conf_meas = laser_exp.confocal
+print(f"Confocal countrate: {conf_meas.avg_cnt_rate_khz:.2f} +/- {conf_meas.std_cnt_rate_khz:.2f}")
+
+# %% [markdown]
+# Calculate afterpulsing:
+
+# %%
+cf = laser_exp.confocal.cf["confocal"]
+(np.diff(cf.lag) * 1e-3) @ cf.afterpulse[1:]
+
+# %%
+tdc_calib = laser_exp.confocal.tdc_calib
+
+t_hist = tdc_calib.t_hist
+all_hist_norm = tdc_calib.all_hist_norm
+
+# set nans to 0
+all_hist_norm[np.isnan(all_hist_norm)] = 0
+
+total_prob = np.diff(t_hist) @ all_hist_norm[1:]
+
+half_period = int(len(t_hist) / 2)
+
+tail_prob = np.diff(t_hist)[half_period:] @ all_hist_norm[half_period + 1 :]
+
+print("Detector-Gated")
+print("2 * tail_prob / (total_prob - 2*tail_prob): ", 2 * tail_prob / (total_prob - 2 * tail_prob))
+
+# %% [markdown]
+# Getting and showing AA, AB, BA, BB auto/cross correlations:
+
+# %%
+cf_list = laser_exp.confocal.cross_correlate_data(
+    corr_names=corr_names,
+    gate1_ns=gate1_ns,
+    gate2_ns=gate2_ns,
+    should_add_to_xcf_dict=False,
+    is_verbose=True,
+    should_subtract_afterpulse=False,
+)
+
+for cf in cf_list:
+    cf.average_correlation()
+
+# %%
+with Plotter() as ax:
+    for cf in cf_list:
+        #         if "AB" in cf.name or "BA" in cf.name:
+        #             cf.normalized_test = cf.avg_cf_cr * (100/gate2_ns.interval() *cf.countrate_b)
+        #             cf.plot_correlation_function(y_field="normalized_test", parent_ax=ax, plot_kwargs={"label": cf.name})
+        #         else:
+        cf.plot_correlation_function(
+            y_field="avg_corrfunc", parent_ax=ax, plot_kwargs={"label": cf.name}
+        )
+        pass
     ax.legend()
 
 # %% [markdown]

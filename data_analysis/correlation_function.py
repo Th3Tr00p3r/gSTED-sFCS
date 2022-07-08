@@ -1108,7 +1108,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         if should_use_inherent_afterpulsing:
             if external_afterpulsing is None:
                 external_afterpulsing, _ = self.calculate_inherent_afterpulsing(
-                    *inherent_afterpulsing_gates
+                    *inherent_afterpulsing_gates,
+                    **kwargs,
                 )
             else:
                 print(
@@ -1291,7 +1292,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         gate2_ns=Limits(0, np.inf),
         afterpulse_params=None,
         should_subtract_bg_corr=True,
-        is_verbose=True,
+        is_verbose=False,
         min_time_frac=0.5,
         should_add_to_xcf_dict=True,
         **kwargs,
@@ -1640,7 +1641,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             ax.legend(legend_labels)
 
     def calculate_inherent_afterpulsing(
-        self, gate1_ns, gate2_ns, is_verbose=False
+        self,
+        gate1_ns,
+        gate2_ns,
+        is_verbose=False,
+        **kwargs,
     ) -> Tuple[np.ndarray, Tuple[CorrFunc, CorrFunc]]:
         """Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)"""
 
@@ -1655,10 +1660,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             #                should_subtract_bg_corr=False,
             should_dump_data=False,  # abort data rotation decorator
             should_add_to_xcf_dict=False,  # avoid saving to self
-        )
-
-        norm_factor = self.pulse_period_ns / (
-            gate2_ns.interval() / XCF_AB.countrate_b - gate1_ns.interval() / XCF_AB.countrate_a
+            is_verbose=is_verbose,
         )
 
         # Averaging and normalizing properly the subtraction of BA from AB
@@ -1857,9 +1859,9 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 else:  # angular or circular scan
                     x_field = "vt_um"
 
-            super_title = f"'{self.name.capitalize()}' Experiment\n'{measurement.name.capitalize()}' Measurement - ACFs"
             with Plotter(
-                super_title=super_title, ylim=(-100, list(measurement.cf.values())[0].g0 * 1.5)
+                super_title=f"'{self.name.capitalize()}' Experiment\n'{measurement.name.capitalize()}' Measurement - ACFs",
+                ylim=(-100, list(measurement.cf.values())[0].g0 * 1.5),
             ) as ax:
                 measurement.cf[cf_name].plot_correlation_function(
                     parent_ax=ax,
@@ -1949,7 +1951,12 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 )
 
     def add_gate(
-        self, gate_ns: Tuple[float, float], should_plot=True, should_re_correlate=False, **kwargs
+        self,
+        gate_ns: Tuple[float, float],
+        should_plot=True,
+        should_re_correlate=False,
+        is_verbose=True,
+        **kwargs,
     ):
         """Doc."""
         # TODO: this should be a method of SolutionSFCSMeasurement
@@ -1960,7 +1967,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
 
         try:
             self.sted.correlate_and_average(
-                cf_name=f"gSTED {gate_ns}", gate_ns=gate_ns, is_verbose=True, **kwargs
+                cf_name=f"gSTED {gate_ns}", gate_ns=gate_ns, is_verbose=is_verbose, **kwargs
             )
             if should_plot:
                 self.plot_correlation_functions(**kwargs)
