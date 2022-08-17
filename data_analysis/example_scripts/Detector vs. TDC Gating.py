@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -556,9 +556,33 @@ half_period = int(len(t_hist) / 2)
 tail_prob = np.diff(t_hist)[half_period:] @ all_hist_norm[half_period + 1 :]
 
 print("Detector-Gated")
-print(
-    "2 * tail_prob / (total_prob - 2 * tail_prob): ", 2 * tail_prob / (total_prob - 2 * tail_prob)
+print("2 * tail_prob / (total_prob - 2*tail_prob): ", 2 * tail_prob / (total_prob - 2 * tail_prob))
+
+# %%
+cf_list = old_exp.confocal.cross_correlate_data(
+    corr_names=corr_names,
+    gate1_ns=gate1_ns,
+    gate2_ns=gate2_ns,
+    should_add_to_xcf_dict=False,
+    is_verbose=True,
+    should_subtract_afterpulse=False,
 )
+
+for cf in cf_list:
+    cf.average_correlation()
+
+# %%
+with Plotter() as ax:
+    for cf in cf_list:
+        #         if "AB" in cf.name or "BA" in cf.name:
+        #             cf.normalized_test = cf.avg_cf_cr * (100/gate2_ns.interval() *cf.countrate_b)
+        #             cf.plot_correlation_function(y_field="normalized_test", parent_ax=ax, plot_kwargs={"label": cf.name})
+        #         else:
+        cf.plot_correlation_function(
+            y_field="avg_corrfunc", parent_ax=ax, plot_kwargs={"label": cf.name}
+        )
+        pass
+    ax.legend()
 
 # %% [markdown]
 # ### Comparing to a 'Laser only' measurement
