@@ -98,7 +98,7 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
 
     try:
         popt, pcov = opt.curve_fit(fit_func, x, y, p0=p0, **kwargs)
-    except (RuntimeWarning, RuntimeError, opt.OptimizeWarning) as exc:
+    except (RuntimeWarning, RuntimeError, opt.OptimizeWarning, ValueError) as exc:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
 
     func_name = fit_func.__name__
