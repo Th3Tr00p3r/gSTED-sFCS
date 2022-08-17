@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -556,7 +556,9 @@ half_period = int(len(t_hist) / 2)
 tail_prob = np.diff(t_hist)[half_period:] @ all_hist_norm[half_period + 1 :]
 
 print("Detector-Gated")
-print("2 * tail_prob / (total_prob - 2*tail_prob): ", 2 * tail_prob / (total_prob - 2 * tail_prob))
+print(
+    "2 * tail_prob / (total_prob - 2 * tail_prob): ", 2 * tail_prob / (total_prob - 2 * tail_prob)
+)
 
 # %% [markdown]
 # ### Comparing to a 'Laser only' measurement
@@ -598,6 +600,9 @@ cf = laser_exp.confocal.cf["confocal"]
 (np.diff(cf.lag) * 1e-3) @ cf.afterpulse[1:]
 
 # %%
+cf.countrate
+
+# %%
 tdc_calib = laser_exp.confocal.tdc_calib
 
 t_hist = tdc_calib.t_hist
@@ -619,6 +624,9 @@ print("2 * tail_prob / (total_prob - 2*tail_prob): ", 2 * tail_prob / (total_pro
 # Getting and showing AA, AB, BA, BB auto/cross correlations:
 
 # %%
+gate1_ns = (3.2, 4.5)
+gate2_ns = (10, 95)
+
 cf_list = laser_exp.confocal.cross_correlate_data(
     corr_names=corr_names,
     gate1_ns=gate1_ns,
