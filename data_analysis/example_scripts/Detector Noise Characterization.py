@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -284,14 +284,13 @@ print(template_paths)
 FORCE_PROCESSING = False
 # FORCE_PROCESSING = True
 
-used_labels = data_labels
-# [
-#     "White Noise 5 kHz",
-#     "White Noise 150 kHz",
-#     "White Noise 180 kHz",
-#     "White Noise 210 kHz",
-#     "White Noise 305 kHz",
-# ]
+# used_labels = data_labels
+used_labels = [
+    "White Noise 5 kHz",
+    "White Noise 30 kHz",
+    "White Noise 150 kHz",
+    "White Noise 305 kHz",
+]
 
 # load experiment
 for label in used_labels:
@@ -349,19 +348,19 @@ with Plotter(x_scale="log", xlim=(1e-4, 1e0), ylim=(-1, 3e4)) as ax:
 labels_factors_dict = {
     #     "White Noise 4 kHz": 1,
     "White Noise 5 kHz": 1,
-    "White Noise 6 kHz": 1,
-    "White Noise 6.5 kHz": 1,
-    "White Noise 7 kHz": 1,
-    "White Noise 10 kHz": 1,
+    #     "White Noise 6 kHz": 1,
+    #     "White Noise 6.5 kHz": 1,
+    #     "White Noise 7 kHz": 1,
+    #     "White Noise 10 kHz": 1,
     #     "White Noise 20 kHz": 1,
-    #     "White Noise 30 kHz": 1,
+    "White Noise 30 kHz": 1,
     #     "White Noise 60 kHz": 1,
     #     "White Noise 90 kHz": 1,
     #     "White Noise 120 kHz": 1,
-    #     "White Noise 150 kHz": 1,
+    "White Noise 150 kHz": 1,
     #     "White Noise 180 kHz": 1,
     #     "White Noise 210 kHz": 1,
-    #     "White Noise 305 kHz": 1,
+    "White Noise 305 kHz": 1,
 }
 
 label_G_noise_dict = {}

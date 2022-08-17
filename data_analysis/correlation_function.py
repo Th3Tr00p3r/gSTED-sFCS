@@ -1833,6 +1833,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 measurement = file_utilities.load_processed_solution_measurement(
                     file_path,
                     file_template,
+                    should_load_data=should_re_correlate,
                 )
                 measurement.name = meas_type
                 print(f"Loaded pre-processed {meas_type} measurement: '{file_path}'")

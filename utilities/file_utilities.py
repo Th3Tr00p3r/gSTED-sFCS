@@ -363,24 +363,25 @@ def save_processed_solution_meas(meas, dir_path: Path, should_force=False) -> bo
     return has_saved_meas and has_saved_data
 
 
-def load_processed_solution_measurement(file_path: Path, file_template: str):
+def load_processed_solution_measurement(file_path: Path, file_template: str, should_load_data=True):
     """Doc."""
 
     # load the measurement
     meas = load_object(file_path)
 
-    # load separately the data
-    data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
-    data = load_object(data_path, should_track_progress=True)
-
     # define the template # TODO: why is this needed?
     meas.template = file_template
 
-    # Load runtimes as int64 if they are not already of that type
-    for p in data:
-        p.pulse_runtime = p.pulse_runtime.astype(np.int64, copy=False)
-    meas.data = data
-    meas.is_data_dumped = False
+    # load separately the data
+    if should_load_data:
+        data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
+        data = load_object(data_path, should_track_progress=True)
+        for p in data:
+            # Load runtimes as int64 if they are not already of that type
+            p.pulse_runtime = p.pulse_runtime.astype(np.int64, copy=False)
+        meas.data = data
+
+    meas.is_data_dumped = not should_load_data
 
     return meas
 
