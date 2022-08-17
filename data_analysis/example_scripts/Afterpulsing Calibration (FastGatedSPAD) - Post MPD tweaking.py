@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -138,12 +138,12 @@ print(template_paths)
 # FORCE_ALL = True
 FORCE_ALL = False
 
-# used_labels = data_labels
-used_labels = [
-    "White Noise 5 kHz",
-    "White Noise 60 kHz",
-    "White Noise 300 kHz",
-]
+used_labels = data_labels
+# used_labels = [
+#     "White Noise 5 kHz",
+#     "White Noise 60 kHz",
+#     "White Noise 300 kHz",
+# ]
 
 # load experiment
 for label in used_labels:
@@ -250,13 +250,20 @@ with Plotter(
     ylabel="Mean CF_CR",
     super_title="White Noise Auto-Correlation\n(Afterpulsing)",
 ) as ax:
-    for (label, beta), color in zip(beta_dict.items(), ["tab:blue", "tab:orange", "tab:green"]):
+
+    colors = [
+        "tab:blue",
+        "tab:orange",
+        "tab:green",
+    ]  #'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+
+    for (label, beta), color in zip(beta_dict.items(), colors):
         # plot data
         cf = halogen_exp_dict[label].confocal.cf["confocal"]
-        ax.plot(cf.lag, cf.avg_cf_cr, "x", label=label + "(data)", color=color)
+        ax.plot(cf.lag, cf.avg_cf_cr, "x", label=label + " (data)", color=color)
         # calculate and plot afterpulsing
         ap = calculate_afterpulse(lag, ("multi_exponent_fit", beta))
-        ax.plot(lag, ap, label=label + "(fit)", color=color)
+        ax.plot(lag, ap, label=label + " (fit)", color=color)
     ax.legend()
 
 
@@ -264,6 +271,33 @@ with Plotter(
 # Comparing to the same curves before MPD fix:
 
 # %%
+lag = np.linspace(1e-5, 1e-1, num=int(1e5))
+with Plotter(
+    x_scale="log",
+    xlim=(1e-4, 1e-1),
+    ylim=(0, 2e6),
+    xlabel="Lag (ms)",
+    ylabel="Mean CF_CR",
+    super_title="White Noise Auto-Correlation\n(Afterpulsing)",
+) as ax:
+
+    colors = ["tab:red", "tab:purple", "tab:brown"]
+    for label, beta, color in zip(
+        [
+            "White Noise 5 kHz (before fix)",
+            "White Noise 60 kHz (before fix)",
+            "White Noise 305 kHz (before fix)",
+        ],
+        beta_dict.values(),
+        colors,
+    ):
+        # plot data
+        cf = halogen_exp_dict[label].confocal.cf["confocal"]
+        ax.plot(cf.lag, cf.avg_cf_cr, "x", label=label + " (data)", color=color)
+        # calculate and plot afterpulsing
+        ap = calculate_afterpulse(lag, ("multi_exponent_fit", beta))
+        ax.plot(lag, ap, label="post-fix fit", color=color)
+    ax.legend()
 
 # %% [markdown]
 # Save the parameters:
