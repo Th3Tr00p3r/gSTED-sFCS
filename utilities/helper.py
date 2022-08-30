@@ -178,6 +178,29 @@ class Limits:
         return range(self.lower, self.upper)
 
 
+def nan_helper(y):
+    """
+    Helper to handle indices and logical indices of NaNs.
+
+    Input:
+        - y, 1d numpy array with possible NaNs
+    Output:
+        - nans, logical indices of NaNs
+        - index, a function, with signature indices= index(logical_indices),
+          to convert logical indices of NaNs to 'equivalent' indices
+    Example:
+        >>> # linear interpolation of NaNs
+        >>> y = np.array([1.0 , 2.0, np.nan, 4.0])
+        >>> nans, x= nan_helper(y)
+        >>> y[nans]= np.interp(x(nans), x(~nans), y[~nans])
+
+    Adapted from:
+    https://stackoverflow.com/questions/6518811/interpolate-nan-values-in-a-numpy-array
+    """
+
+    return np.isnan(y), lambda z: z.nonzero()[0]
+
+
 def largest_n(arr: np.ndarray, n: int):
     """
     Adapted from:

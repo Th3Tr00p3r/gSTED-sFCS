@@ -153,6 +153,61 @@ extern "C" void softwareCorrelator(
 
 }
 
+
+extern "C" void softwareLifeTimeCorrelator(
+    int CorrelatorType,
+    long Nentries,  // number of supplied photons (rows in the array)
+    const EntryType *phHist,
+    const double *factorsLifeTime,
+    long *NoCorrChannels,           // number of correlator channels
+    double* corr
+)
+{
+    if (CorrelatorType == PhDelayLifeTimeCrossCorrelator)
+    {
+        CCorrArray<CPhDelayLifeTimeCrossCorrelator, NumOfCorrelators> CorrelatorArray(NumOfCorrelators, DoublingSize);
+                
+
+        const EntryType* HistEnd = phHist + Nentries;
+        const double* factor_Ach = factorsLifeTime;
+        const double* factor_Bch = factorsLifeTime + Nentries;
+        
+        
+        for (; phHist < HistEnd; )
+            CorrelatorArray.ProcessEntry(*phHist++, *factor_Ach++, *factor_Bch++);
+        
+        CorrelatorArray.GetAccumulators(corr);
+        *NoCorrChannels = CorrelatorArray.TotalLength;
+        
+    }
+    else if (CorrelatorType == PhDelayLifeTimeAutoCorrelator)
+    {
+        CCorrArray<CPhDelayLifeTimeCrossCorrelator, NumOfCorrelators> CorrelatorArray(NumOfCorrelators, DoublingSize);
+                
+
+        const EntryType* HistEnd = phHist + Nentries;
+        const double* factor_Ach = factorsLifeTime;
+        const double* factor_Bch = factorsLifeTime;
+        
+        
+        for (; phHist < HistEnd; )
+            CorrelatorArray.ProcessEntry(*phHist++, *factor_Ach++, *factor_Bch++);
+        
+        CorrelatorArray.GetAccumulators(corr);
+        *NoCorrChannels = CorrelatorArray.TotalLength;
+        
+    }
+    else
+     {
+         fprintf(stderr, "Nonexistent correlator type!\n");
+               exit(1);
+    //     std::cout << "Size: " << size << "\n";
+     }
+    
+}
+ 
+
+
 extern "C" void getCorrelatorParams(int* DoubSize, int* NumCorr)
 {
     *DoubSize = DoublingSize;

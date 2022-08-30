@@ -5,6 +5,7 @@ import multiprocessing as mp
 import re
 from collections import deque
 from contextlib import suppress
+from copy import copy
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 import scipy
 import skimage
+from numpy.linalg import inv
 
 from data_analysis.photon_data import (
     CountsImageMixin,
@@ -34,6 +36,7 @@ from utilities.helper import (
     div_ceil,
     extrapolate_over_noise,
     hankel_transform,
+    nan_helper,
     unify_length,
     xcorr,
 )
@@ -191,7 +194,7 @@ class StructureFactor:
 class CorrFunc:
     """Doc."""
 
-    # Initialize the software correlator
+    # Initialize the software correlator once (for all instances)
     SC = SoftwareCorrelator()
 
     run_duration: float
@@ -227,6 +230,7 @@ class CorrFunc:
             self.correlator_type,
             timebase_ms=1000 / self.laser_freq_hz,
             is_verbose=is_verbose,
+            **kwargs,
         )
         self.lag = max(output.lag_list, key=len)
 
@@ -262,7 +266,7 @@ class CorrFunc:
             if external_afterpulsing is not None:
                 self.afterpulse = external_afterpulsing
             else:
-                self.afterpulse = calculate_afterpulse(
+                self.afterpulse = calculate_calibrated_afterpulse(
                     self.lag, afterpulse_params, gate_ns, self.laser_freq_hz
                 )
 
@@ -1091,6 +1095,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         # TODO: gates should not be fixed - gate1 should start at the peak (or right before it) and the second should end before the detector width ends -
         # these choices are important for normalization
         inherent_afterpulsing_gates=(Limits(2.5, 10), Limits(30, 90)),
+        should_use_afterpulsing_filtering=False,
+        should_use_filter_gating=False,  # TESTESTEST
         should_subtract_bg_corr=True,
         is_verbose=False,
         min_time_frac=0.5,
@@ -1132,11 +1138,19 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 f"Correlating {self.scan_type} data ({self.name} [{gate_ns} ns gating]):", end=" "
             )
 
-        (
-            ts_split_list,
-            total_duration,
-            skipped_duration,
-        ) = self._prepare_corr_split_list(is_verbose=is_verbose, gate_ns=gate_ns)
+        (ts_split_list, total_duration, skipped_duration,) = self._prepare_corr_split_list(
+            is_verbose=is_verbose,
+            gate_ns=((np.NINF, np.inf) if should_use_filter_gating else gate_ns),
+        )  # TESTESTEST
+
+        # TESTESTEST
+
+        if should_use_filter_gating:
+            for ts_split in ts_split_list:
+                pass
+                # TODO: build the filter of 0 and 1 by knowing which timestamps are included and which are gated-out
+
+        # /TESTESTEST
 
         if self.scan_type in {"static", "circle"}:
             corr_type = CorrelatorType.PH_DELAY_CORRELATOR
@@ -1236,22 +1250,22 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                     file_skipped_duration += segment_time
                     continue
 
-                pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
+                segment_pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
 
                 # Gating
                 if hasattr(p, "delay_time"):
                     delay_time = p.delay_time[se_start : se_end + 1]
                     j_gate = gate_ns.valid_indices(delay_time)
-                    pulse_runtime = pulse_runtime[j_gate]
+                    segment_pulse_runtime = segment_pulse_runtime[j_gate]
 
-                elif gate_ns != (0, np.inf):  # TODO
+                elif gate_ns != (0, np.inf):
                     raise RuntimeError(
                         f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
                     )
 
                 # split into segments of approx time of run_duration
                 n_splits = div_ceil(segment_time, split_duration)
-                time_stamps = np.hstack(([0], np.diff(pulse_runtime).astype(np.int32)))
+                time_stamps = np.hstack(([0], np.diff(segment_pulse_runtime).astype(np.int32)))
 
                 for j in range(n_splits):
                     file_ts_split_list.append(
@@ -1537,7 +1551,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             valid[line_num == -idx - self.LINE_END_ADDER] = -2
 
             #  remove photons from wrong lines
-            if is_xcorr:  # 3-rows before adding 'valid' row
+            if is_xcorr:  # 3-row before adding 'valid' row
                 ts_out = ts_in[:, valid != 0]
             else:  # 1-row before adding 'valid' row
                 ts_out = ts_in[valid != 0]
@@ -1553,7 +1567,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
                 j_start = np.where(valid == -1)[0]
 
                 if len(j_start) > 0:
-                    if is_xcorr:  # 3-rows before adding 'valid' row
+                    if is_xcorr:  # 3-row before adding 'valid' row
                         ts_out = ts_out[:, j_start[0] :]
                     else:  # 1-row before adding 'valid' row
                         ts_out = ts_out[j_start[0] :]
@@ -1674,6 +1688,40 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
 
         return sbtrct_AB_BA_arr.mean(axis=0), (XCF_AB, XCF_BA)
+
+    def calculate_afterpulsing_filter(self):
+        """Doc."""
+
+        t_hist = self.tdc_calib.t_hist
+        all_hist = copy(self.tdc_calib.all_hist.astype(np.float64))
+        nonzero_idxs = self.tdc_calib.hist_weight > 0
+        all_hist[nonzero_idxs] /= self.tdc_calib.hist_weight[nonzero_idxs]  # weight the histogram
+
+        # interpolate over NaNs
+        all_hist[~nonzero_idxs] = np.nan  # NaN the zeros (for interpolation)
+        nans, x = nan_helper(all_hist)  # get nans and a way to interpolate over them later
+        all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
+
+        # normalize
+        norm_factor = all_hist.sum() / 1.4117  # TODO: why is this 1.4 factor needed??
+        all_hist_norm = all_hist / norm_factor
+
+        # calculate the baseline (which is assumed to be approximately the afterpulsing histogram)
+        baseline_limits = Limits(60, 78)
+        baseline_idxs = baseline_limits.valid_indices(t_hist)
+        baseline = np.mean(all_hist_norm[baseline_idxs])
+
+        # idc - ideal decay curve
+        M_j1 = all_hist_norm - baseline  # p1
+        M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
+        I_j = all_hist_norm
+
+        M = np.vstack((M_j1, M_j2)).T
+        inv_I = np.diag(1 / I_j)
+
+        F = inv(M.T @ inv_I @ M) @ M.T @ inv_I
+
+        return F[0]
 
     def dump_or_load_data(self, should_load: bool, method_name=None) -> None:
         """
@@ -1960,7 +2008,7 @@ class SFCSExperiment(TDCPhotonDataMixin):
         **kwargs,
     ):
         """Doc."""
-        # TODO: this should be a method of SolutionSFCSMeasurement
+        # TODO: this should be a method of SolutionSFCSMeasurement and here should be just a convenience method
 
         if not should_re_correlate and self.sted.cf.get(f"gSTED {gate_ns}"):
             print(f"gSTED gate {gate_ns} already exists. Skipping...")
@@ -2081,7 +2129,7 @@ def _sum_scan_circles(pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, circle_
     return img, samples_per_circle
 
 
-def calculate_afterpulse(
+def calculate_calibrated_afterpulse(
     lag: np.ndarray,
     afterpulse_params: tuple = file_utilities.default_system_info["afterpulse_params"],
     gate_ns: Union[tuple, Limits] = (0, np.inf),

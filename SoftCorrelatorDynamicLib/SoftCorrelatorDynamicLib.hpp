@@ -21,6 +21,7 @@
 #include "Correlator.h"
 #include "CountCorrelator.h"
 #include "CPhDelayCrossCorrelator.h"
+#include "CPhDelayLifeTimeCrossCorrelator.h"
 #include "CorrArray.h"
 //#include <afxtempl.h>  //support for array template
 //#include <afxwin.h>
@@ -30,6 +31,8 @@
 #define PhCountCrossCorrelator 4 // 1st column is photon arrival times, 2nd column boolean vector with 1s for photons arriving on the A channel and  0s otherwise, and the 3rd column is 1s for photons arriving on B channel and 0s otherwise
 #define PhDelayCorrelatorLines 5 // additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
 #define PhDelayCrossCorrelatorLines 6 // as PhCountCrossCorrelator with an additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
+#define PhDelayLifeTimeCrossCorrelator 7 // as PhCountCrossCorrelator but the data for photons are separate array of doubles with values determined from photon lifetimes as in Enderlein papers https://link.springer.com/content/pdf/10.1007/s10895-006-0145-1.pdf
+#define PhDelayLifeTimeAutoCorrelator 8 // as PhDelayLifeTimeCrossCorrelator but does autocorrelation https://link.springer.com/content/pdf/10.1007/s10895-006-0145-1.pdf
 
 #define ARRAY_MAXSIZE  50
 
@@ -47,6 +50,16 @@ extern "C" void softwareCorrelator(
     long *NoCorrChannels,           // number of correlator channels
     double* corr
 );
+
+extern "C" void softwareLifeTimeCorrelator(
+    int CorrelatorType,
+    long Nentries,  // number of supplied photons (rows in the array)
+    const EntryType *phHist,
+    const double *factorsLifeTime,
+    long *NoCorrChannels,           // number of correlator channels
+    double* corr
+);
+
 
 extern "C" void getCorrelatorParams(int* DoubSize, int* NumCorr);
 
