@@ -127,7 +127,7 @@ class SoftwareCorrelator:
                 corr_output = self.correlate(ts_split, *args, **kwargs)
                 correlator_output_list.append(corr_output)
                 if is_verbose:
-                    print(idx + 1, end=", ")
+                    print(idx + 1, end=(", " if idx < len(list_of_photon_arrays) - 1 else ""))
 
         return self.list_output(correlator_output_list)
 

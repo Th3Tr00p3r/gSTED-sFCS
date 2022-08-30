@@ -216,7 +216,6 @@ class CorrFunc:
     # Initialize the software correlator once (for all instances)
     SC = SoftwareCorrelator()
 
-    run_duration: float
     afterpulse: np.ndarray
     vt_um: np.ndarray
     cf_cr: np.ndarray
@@ -226,10 +225,7 @@ class CorrFunc:
         self.name = name
         self.correlator_type = correlator_type
         self.laser_freq_hz = laser_freq_hz
-
-        self.skipped_duration = 0
         self.fit_params: Dict[str, FitParams] = dict()
-        self.total_duration = 0
 
     def correlate_measurement(
         self,
@@ -254,7 +250,7 @@ class CorrFunc:
         self.lag = max(output.lag_list, key=len)
 
         if is_verbose:
-            print(". Processing...", end=" ")
+            print(". Processing correlator output...", end=" ")
 
         self._process_correlator_list_output(output, *args, **kwargs)
 
@@ -661,9 +657,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         except RuntimeWarning:  # single file
             self.std_cnt_rate_khz = 0.0
 
-        calc_duration_mins = (
-            sum([np.diff(p.pulse_runtime).sum() for p in self.data]) / self.laser_freq_hz / 60
-        )
+        calc_duration_mins = sum([p.duration_s for p in self.data]) / 60
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
                 print(
@@ -731,7 +725,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                     data.append(p)
 
         if run_duration is None:  # auto determination of run duration
-            self.run_duration = sum([p.duration_estimate for p in data])
+            self.run_duration = sum([p.duration_s for p in data])
         else:  # use supplied value
             self.run_duration = run_duration
 
@@ -1149,7 +1143,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 f"Correlating {self.scan_type} data ({self.name} [{gate_ns} ns gating]):", end=" "
             )
 
-        (ts_split_list, total_duration, skipped_duration,) = self._prepare_corr_split_list(
+        ts_split_list = self._prepare_corr_split_list(
             is_verbose=is_verbose,
             gate_ns=((np.NINF, np.inf) if should_use_filter_gating else gate_ns),
         )  # TESTESTEST
@@ -1179,21 +1173,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             **kwargs,
         )
 
-        try:
-            skipped_ratio = skipped_duration / total_duration
-        except RuntimeWarning:
-            print("Whole measurement was skipped! Something's wrong...", end=" ")
-        else:
-            if is_verbose:
-                if skipped_duration:
-                    print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
-                print("- Done.")
-
-        CF.total_duration = total_duration
         try:  # temporal to spatial conversion, if scanning
             CF.vt_um = self.v_um_ms * CF.lag
         except AttributeError:
             CF.vt_um = CF.lag  # static
+
+        if is_verbose:
+            print("- Done.")
 
         # name the Corrfunc object
         if cf_name is not None:
@@ -1210,26 +1196,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             print("Preparing files for software correlator...", end=" ")
 
         ts_split_list = []
-        total_duration = 0
-        total_skipped_duration = 0
-
         for p in self.data:
-            (
-                file_ts_split_list,
-                file_duration,
-                file_skipped_duration,
-            ) = self._prepare_file_corr_split_list(p, is_verbose=is_verbose, **kwargs)
-
-            ts_split_list += file_ts_split_list
-            total_duration += file_duration
-
-            total_skipped_duration += file_skipped_duration
+            ts_split_list += self._prepare_file_corr_split_list(p, is_verbose=is_verbose, **kwargs)
 
         if is_verbose:
             print("Done.")
 
-        # TODO: units
-        return ts_split_list, total_duration, total_skipped_duration
+        return ts_split_list
 
     def _prepare_file_corr_split_list(
         self,
@@ -1242,47 +1215,35 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
     ):
         """Doc."""
 
+        # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size. Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
+        split_duration = p.duration_s / n_splits_requested
         file_ts_split_list = []
-        file_duration = 0.0
         if self.scan_type in {"static", "circle"}:
-            split_duration = p.duration_estimate / n_splits_requested
-            file_skipped_duration = 0
-            # Ignore short segments (default is below half the run_duration)
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
-                segment_time = (
+                section_time = (
                     p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
                 ) / self.laser_freq_hz
-                if segment_time < min_time_frac * split_duration:
-                    if is_verbose:
-                        print(
-                            f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time * 1e3:.2f} ms).",
-                            end=" ",
-                        )
-                    file_skipped_duration += segment_time
-                    continue
-
-                segment_pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
+                section_pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
 
                 # Gating
                 if hasattr(p, "delay_time"):
                     delay_time = p.delay_time[se_start : se_end + 1]
                     j_gate = gate_ns.valid_indices(delay_time)
-                    segment_pulse_runtime = segment_pulse_runtime[j_gate]
+                    section_pulse_runtime = section_pulse_runtime[j_gate]
 
                 elif gate_ns != (0, np.inf):
                     raise RuntimeError(
                         f"A gate '{gate_ns}' was specified for uncalibrated TDC data."
                     )
 
-                # split into segments of approx time of run_duration
-                n_splits = div_ceil(segment_time, split_duration)
-                time_stamps = np.hstack(([0], np.diff(segment_pulse_runtime).astype(np.int32)))
+                # divide sections into 'splits'
+                n_splits = div_ceil(section_time, split_duration)
+                time_stamps = np.hstack(([0], np.diff(section_pulse_runtime).astype(np.int32)))
 
                 for j in range(n_splits):
                     file_ts_split_list.append(
                         self.prepare_timestamps(time_stamps, j, n_splits=n_splits)
                     )
-                    file_duration += self.get_split_duration(file_ts_split_list[-1])
 
         elif self.scan_type == "angular":
             line_num = p.line_num
@@ -1302,11 +1263,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 file_ts_split_list.append(
                     self.prepare_timestamps(time_stamps, j, line_num=line_num)
                 )
-                file_duration += self.get_split_duration(file_ts_split_list[-1])
-                # TODO: what's the difference between segment_time and file_duration?
-                file_skipped_duration = 0
 
-        return file_ts_split_list, file_duration, file_skipped_duration
+        return file_ts_split_list
 
     @file_utilities.rotate_data_to_disk()
     def cross_correlate_data(
@@ -1350,10 +1308,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 end=" ",
             )
 
-        (ts_split_lists_tuple, total_duration, skipped_duration,) = self._prepare_xcorr_split_list(
+        ts_split_list_AB, ts_split_list_AA, ts_split_list_BB = self._prepare_xcorr_split_list(
             is_verbose=is_verbose, gate1_ns=gate1_ns, gate2_ns=gate2_ns
         )
-        ts_split_list_AB, ts_split_list_AA, ts_split_list_BB = ts_split_lists_tuple
 
         if self.scan_type in {"static", "circle"}:
             ts_split_list_BA = [ts_split_AB[[0, 2, 1], :] for ts_split_AB in ts_split_list_AB]
@@ -1390,21 +1347,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 is_verbose=is_verbose,
                 **kwargs,
             )
-            CF.total_duration = total_duration
+
             try:  # temporal to spatial conversion, if scanning
                 CF.vt_um = self.v_um_ms * CF.lag
             except AttributeError:
                 CF.vt_um = CF.lag  # static
 
-        try:
-            skipped_ratio = skipped_duration / total_duration
-        except RuntimeWarning:
-            print("Whole measurement was skipped! Something's wrong...", end=" ")
-        else:
-            if is_verbose:
-                if skipped_duration:
-                    print(f"Skipped/total duration: {skipped_ratio:.1%}", end=" ")
-                print("- Done.")
+        if is_verbose:
+            print("- Done.")
 
         if should_add_to_xcf_dict:
             # name the Corrfunc object
@@ -1422,32 +1372,20 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         ts_split_list = []
         ts1_split_list = []
         ts2_split_list = []
-        total_duration = 0.0
-        total_skipped_duration = 0.0
-
         for p in self.data:
             (
-                (file_ts_split_list, file_ts1_split_list, file_ts2_split_list),
-                file_duration,
-                file_skipped_duration,
+                file_ts_split_list,
+                file_ts1_split_list,
+                file_ts2_split_list,
             ) = self._prepare_file_xcorr_split_list(p, is_verbose=is_verbose, **kwargs)
-
             ts_split_list += file_ts_split_list
             ts1_split_list += file_ts1_split_list
             ts2_split_list += file_ts2_split_list
 
-            total_duration += file_duration
-            total_skipped_duration += file_skipped_duration
-
         if is_verbose:
             print("Done.")
 
-        # TODO units??
-        return (
-            (ts_split_list, ts1_split_list, ts2_split_list),
-            total_duration,
-            total_skipped_duration,
-        )
+        return ts_split_list, ts1_split_list, ts2_split_list
 
     def _prepare_file_xcorr_split_list(
         self,
@@ -1464,23 +1402,14 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         file_ts_split_list = []
         file_ts1_split_list = []
         file_ts2_split_list = []
-        file_duration = 0.0
-        file_skipped_duration = 0.0
 
         if self.scan_type in {"static", "circle"}:
-            split_duration = p.duration_estimate / n_splits_requested
+            split_duration = p.duration_s / n_splits_requested
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
-                # split into segments of approx time of run_duration
-                segment_time = (
+                # split into sections of approx time of run_duration
+                section_time = (
                     p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
                 ) / self.laser_freq_hz
-                if segment_time < min_time_frac * split_duration:
-                    print(
-                        f"Skipping segment {se_idx} of file {p.file_num} - too short ({segment_time * 1e3:.2f} ms).",
-                        end=" ",
-                    )
-                    file_skipped_duration = file_skipped_duration + segment_time
-                    continue
 
                 pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
                 delay_time = p.delay_time[se_start : se_end + 1]
@@ -1497,15 +1426,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 ts1 = np.hstack(([0], np.diff(pulse_runtime1).astype(np.int32)))
                 ts2 = np.hstack(([0], np.diff(pulse_runtime2).astype(np.int32)))
 
-                n_splits = div_ceil(segment_time, split_duration)
+                n_splits = div_ceil(section_time, split_duration)
                 for j in range(n_splits):
                     file_ts_split_list.append(
                         self.prepare_timestamps(ts, j, is_xcorr=True, n_splits=n_splits)
                     )
                     file_ts1_split_list.append(self.prepare_timestamps(ts1, j, n_splits=n_splits))
                     file_ts2_split_list.append(self.prepare_timestamps(ts2, j, n_splits=n_splits))
-
-                    file_duration += self.get_split_duration(file_ts_split_list[-1])
 
         elif self.scan_type == "angular":
             line_num = np.around(p.line_num)
@@ -1535,16 +1462,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 file_ts1_split_list.append(self.prepare_timestamps(ts1, j, line_num=line_num1))
                 file_ts2_split_list.append(self.prepare_timestamps(ts2, j, line_num=line_num2))
 
-                file_duration += self.get_split_duration(file_ts_split_list[-1])
-
-                # TODO: what's the difference between segment_time and file_duration?
-                file_skipped_duration = 0
-
-        return (
-            (file_ts_split_list, file_ts1_split_list, file_ts2_split_list),
-            file_duration,
-            file_skipped_duration,
-        )
+        return file_ts_split_list, file_ts1_split_list, file_ts2_split_list
 
     def prepare_timestamps(self, ts_in, idx, is_xcorr=False, line_num=None, n_splits=None):
         """Doc."""

@@ -27,7 +27,7 @@ class TDCPhotonData:
     pulse_runtime: np.ndarray
     all_section_edges: np.ndarray
     size_estimate_mb: float
-    duration_estimate: float
+    duration_s: float
     skipped_duration: float
 
 
@@ -193,14 +193,13 @@ class TDCPhotonDataMixin:
             coarse2 = None
             fine = None
 
-        # Duration Estimate
+        # Duration calculation
         time_stamps = np.diff(pulse_runtime).astype(np.int32)
-        mu = np.median(time_stamps) / np.log(2)
-        duration_estimate = mu * len(pulse_runtime) / self.laser_freq_hz
+        duration_s = (time_stamps / self.laser_freq_hz).sum()
 
         if is_scan_continuous:  # relevant for static/circular data
             all_section_edges, skipped_duration = self.section_continuous_data(
-                pulse_runtime, time_stamps, duration_estimate, is_verbose=is_verbose, **kwargs
+                pulse_runtime, time_stamps, is_verbose=is_verbose, **kwargs
             )
         else:  # angular scan
             all_section_edges = None
@@ -215,7 +214,7 @@ class TDCPhotonDataMixin:
             pulse_runtime=pulse_runtime,
             all_section_edges=all_section_edges,
             size_estimate_mb=max(section_lengths) / 1e6,
-            duration_estimate=duration_estimate,
+            duration_s=duration_s,
             skipped_duration=skipped_duration,
         )
 
@@ -223,7 +222,6 @@ class TDCPhotonDataMixin:
         self,
         pulse_runtime,
         time_stamps,
-        duration_estimate,
         max_outlier_prob=1e-5,
         n_splits_requested=10,
         min_time_frac=0.5,
@@ -232,8 +230,11 @@ class TDCPhotonDataMixin:
     ):
         """Find outliers and create sections seperated by them. Short sections are discarded"""
 
+        mu = np.median(time_stamps) / np.log(2)
+        duration_estimate_s = mu * len(pulse_runtime) / self.laser_freq_hz
+
         # find additional outliers (improbably large time_stamps) and break into
-        # additional segments if they exist.
+        # additional sections if they exist.
         # for exponential distribution MEDIAN and MAD are the same, but for
         # biexponential MAD seems more sensitive
         mu = max(np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()) / np.log(
@@ -246,22 +247,22 @@ class TDCPhotonDataMixin:
         sec_edges = [0] + sec_edges + [len(time_stamps)]
         all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
 
-        # Filter short segments
+        # Filter short sections
         # TODO: duration limitation is unclear
-        split_duration = duration_estimate / n_splits_requested
+        split_duration = duration_estimate_s / n_splits_requested
         skipped_duration = 0
         all_section_edges_valid = []
-        # Ignore short segments (default is below half the run_duration)
+        # Ignore short sections (default is below half the run_duration)
         for se_idx, (se_start, se_end) in enumerate(all_section_edges):
-            segment_time = (pulse_runtime[se_end] - pulse_runtime[se_start]) / self.laser_freq_hz
-            if segment_time < min_time_frac * split_duration:
+            section_time = (pulse_runtime[se_end] - pulse_runtime[se_start]) / self.laser_freq_hz
+            if section_time < min_time_frac * split_duration:
                 if is_verbose:
                     print(
-                        f"Skipping segment {se_idx} - too short ({segment_time * 1e3:.2f} ms).",
+                        f"Skipping section {se_idx} - too short ({section_time * 1e3:.2f} ms).",
                         end=" ",
                     )
-                skipped_duration += segment_time
-            else:  # use segment
+                skipped_duration += section_time
+            else:  # use section
                 all_section_edges_valid.append((se_start, se_end))
 
         return np.array(all_section_edges_valid), skipped_duration
