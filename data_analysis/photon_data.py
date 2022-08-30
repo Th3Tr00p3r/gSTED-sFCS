@@ -35,7 +35,7 @@ class TDCCalibration:
 
     x_all: np.ndarray
     h_all: np.ndarray
-    bins: np.ndarray
+    coarse_bins: np.ndarray
     h: np.ndarray
     max_j: int
     coarse_calib_bins: Any
@@ -243,6 +243,8 @@ class TDCPhotonDataMixin:
 
         if not force_processing and hasattr(self, "tdc_calib"):
             print(f"\n{self.name}: TDC calibration exists, skipping.")
+            if should_plot:
+                self.plot_tdc_calibration()
             return
 
         print(f"\n{self.name}: Calibrating TDC...", end=" ")
@@ -255,20 +257,20 @@ class TDCPhotonDataMixin:
         if pick_valid_bins_according_to is None:
             h_all = h_all[coarse.min() :]
             x_all = np.arange(coarse.min(), coarse.max() + 1, dtype=np.uint8)
-            bins = x_all
+            coarse_bins = x_all
             h = h_all
         elif isinstance(pick_valid_bins_according_to, np.ndarray):
-            bins = sync_coarse_time_to
-            h = h_all[bins]
+            coarse_bins = sync_coarse_time_to
+            h = h_all[coarse_bins]
         elif isinstance(pick_valid_bins_according_to, TDCCalibration):
-            bins = sync_coarse_time_to.coarse_calib_bins
-            h = h_all[bins]
+            coarse_bins = sync_coarse_time_to.coarse_calib_bins
+            h = h_all[coarse_bins]
         else:
             raise TypeError(
-                f"Unknown type '{type(pick_valid_bins_according_to)}' for picking valid bins!"
+                f"Unknown type '{type(pick_valid_bins_according_to)}' for picking valid coarse_bins!"
             )
 
-        # rearranging the bins
+        # rearranging the coarse_bins
         if sync_coarse_time_to is None:
             max_j = np.argmax(h)
         elif isinstance(sync_coarse_time_to, int):
@@ -284,21 +286,21 @@ class TDCPhotonDataMixin:
 
         if pick_calib_bins_according_to is None:
             # pick data at more than 'calib_time_ns' delay from peak maximum
-            j = np.where(bins >= ((calib_time_ns * 1e-9) * self.fpga_freq_hz + 2))[0]
+            j = np.where(coarse_bins >= ((calib_time_ns * 1e-9) * self.fpga_freq_hz + 2))[0]
             if not j.any():
                 raise ValueError(f"Gate width is too narrow for calib_time_ns={calib_time_ns}!")
             j_calib = j_shift[j]
-            coarse_calib_bins = bins[j_calib]
+            coarse_calib_bins = coarse_bins[j_calib]
         elif isinstance(pick_calib_bins_according_to, (list, np.ndarray)):
             coarse_calib_bins = pick_calib_bins_according_to
         elif isinstance(pick_calib_bins_according_to, TDCCalibration):
             coarse_calib_bins = pick_calib_bins_according_to.coarse_calib_bins
         else:
             raise TypeError(
-                f"Unknown type '{type(pick_calib_bins_according_to)}' for picking calibration bins!"
+                f"Unknown type '{type(pick_calib_bins_according_to)}' for picking calibration coarse_bins!"
             )
 
-        # Don't use 'empty' bins for calibration
+        # Don't use 'empty' coarse_bins for calibration
         valid_cal_bins = np.nonzero(h_all > (np.median(h_all) / 100))[0]
         coarse_calib_bins = np.array(
             [bin_idx for bin_idx in coarse_calib_bins if bin_idx in valid_cal_bins]
@@ -323,7 +325,6 @@ class TDCPhotonDataMixin:
         else:
 
             fine_calib = fine[np.isin(coarse, coarse_calib_bins)]
-            fine_bins = np.arange(tdc_chain_length, dtype=np.uint8)
             h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length).astype(np.uint32)
 
             # find effective range of TDC by, say, finding 10 zeros in a row
@@ -351,14 +352,13 @@ class TDCPhotonDataMixin:
                 (1 - np.cumsum(h_tdc_calib) / np.sum(h_tdc_calib)) / self.fpga_freq_hz * 1e9
             )  # invert and to ns
 
-            coarse_len = bins.size
+            coarse_len = coarse_bins.size
 
             t_weight = np.tile(h_tdc_calib / np.mean(h_tdc_calib), coarse_len)
             coarse_times = (
                 np.tile(np.arange(coarse_len), [t_calib.size, 1]) / self.fpga_freq_hz * 1e9
             )
             delay_times = np.tile(t_calib, coarse_len) + coarse_times.flatten("F")
-            # initially delay times are piece wise inverted. After "flip" in line 323 there should be no need in sorting:
             j_sorted = np.argsort(delay_times)
             delay_times = delay_times[j_sorted]
 
@@ -366,11 +366,11 @@ class TDCPhotonDataMixin:
 
         # assign time delays to all photons
         total_laser_pulses = 0
-        first_coarse_bin, *_, last_coarse_bin = bins
+        first_coarse_bin, *_, last_coarse_bin = coarse_bins
         delay_time_list = []
         for p in self.data:
             p.delay_time = np.empty(p.coarse.shape, dtype=np.float64)
-            crs = np.minimum(p.coarse, last_coarse_bin) - bins[max_j - 1]
+            crs = np.minimum(p.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
             crs[crs < 0] = crs[crs < 0] + last_coarse_bin - first_coarse_bin + 1
 
             delta_coarse = p.coarse2 - p.coarse
@@ -397,22 +397,22 @@ class TDCPhotonDataMixin:
 
         delay_time = np.hstack(delay_time_list)
 
-        bin_edges = np.arange(
+        fine_bins = np.arange(
             -time_bins_for_hist_ns / 2,
             np.max(delay_time) + time_bins_for_hist_ns,
             time_bins_for_hist_ns,
             dtype=np.float16,
         )
 
-        t_hist = (bin_edges[:-1] + bin_edges[1:]) / 2
-        k = np.digitize(delay_times, bin_edges)  # starts from 1
+        t_hist = (fine_bins[:-1] + fine_bins[1:]) / 2
+        k = np.digitize(delay_times, fine_bins)
 
         hist_weight = np.empty(t_hist.shape, dtype=np.float64)
         for i in range(len(t_hist)):
             j = k == (i + 1)
             hist_weight[i] = np.sum(t_weight[j])
 
-        all_hist = np.histogram(delay_time, bins=bin_edges)[0].astype(np.uint32)
+        all_hist = np.histogram(delay_time, bins=fine_bins)[0].astype(np.uint32)
 
         all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
         error_all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
@@ -430,7 +430,7 @@ class TDCPhotonDataMixin:
         self.tdc_calib = TDCCalibration(
             x_all=x_all,
             h_all=h_all,
-            bins=bins,
+            coarse_bins=coarse_bins,
             h=h,
             max_j=max_j,
             coarse_calib_bins=coarse_calib_bins,
@@ -455,7 +455,7 @@ class TDCPhotonDataMixin:
         try:
             x_all = self.tdc_calib.x_all
             h_all = self.tdc_calib.h_all
-            bins = self.tdc_calib.bins
+            coase_bins = self.tdc_calib.coarse_bins
             h = self.tdc_calib.h
             coarse_calib_bins = self.tdc_calib.coarse_calib_bins
             t_calib = self.tdc_calib.t_calib
@@ -470,10 +470,10 @@ class TDCPhotonDataMixin:
             **plot_kwargs,
         ) as axes:
             axes[0, 0].semilogy(x_all, h_all, "-o", label="All Hist")
-            axes[0, 0].semilogy(bins, h, "o", label="Valid Bins")
+            axes[0, 0].semilogy(coase_bins, h, "o", label="Valid Bins")
             axes[0, 0].semilogy(
-                bins[np.isin(bins, coarse_calib_bins)],
-                h[np.isin(bins, coarse_calib_bins)],
+                coase_bins[np.isin(coase_bins, coarse_calib_bins)],
+                h[np.isin(coase_bins, coarse_calib_bins)],
                 "o",
                 markersize=4,
                 label="Calibration Bins",

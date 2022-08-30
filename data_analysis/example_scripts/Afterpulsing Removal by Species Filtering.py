@@ -27,6 +27,7 @@ from pathlib import Path
 from winsound import Beep
 from copy import deepcopy
 from types import SimpleNamespace
+from contextlib import suppress
 
 import matplotlib as mpl
 
@@ -50,7 +51,7 @@ except NameError:
 
 from data_analysis.correlation_function import (
     SFCSExperiment,
-    calculate_afterpulse,
+    calculate_calibrated_afterpulse,
 )
 from utilities.display import Plotter
 
@@ -69,9 +70,20 @@ DATA_TYPE = "solution"
 data_label_dict = {
     "300 bp": SimpleNamespace(
         date="03_07_2022",
-        template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+        sted_template=None,
         file_selection="Use All",
         force_processing=False,
+        should_subtract_afterpulse=False,
+        #         force_processing=True,
+    ),
+    "free ATTO": SimpleNamespace(
+        date="05_10_2021",
+        confocal_template="sol_static_exc_181325_*.pkl",
+        sted_template="sol_static_sted_183413_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+        should_subtract_afterpulse=True,
         #         force_processing=True,
     ),
 }
@@ -81,7 +93,13 @@ data_labels = list(data_label_dict.keys())
 n_meas = len(data_labels)
 
 template_paths = [
-    DATA_ROOT / data.date / DATA_TYPE / data.template for data in data_label_dict.values()
+    SimpleNamespace(
+        confocal_template=DATA_ROOT / data.date / DATA_TYPE / data.confocal_template,
+        sted_template=DATA_ROOT / data.date / DATA_TYPE / data.sted_template
+        if data.sted_template
+        else None,
+    )
+    for data in data_label_dict.values()
 ]
 
 # initialize the experiment dictionary, if it doens't already exist
@@ -94,7 +112,12 @@ for label in data_labels:
         exp_dict[label] = SFCSExperiment(name=label)
 
 label_load_kwargs_dict = {
-    label: dict(confocal_template=tmplt_path, file_selection=data.file_selection)
+    label: dict(
+        confocal_template=tmplt_path.confocal_template,
+        sted_template=tmplt_path.sted_template,
+        file_selection=data.file_selection,
+        should_subtract_afterpulse=data.should_subtract_afterpulse,
+    )
     for label, tmplt_path, data in zip(data_labels, template_paths, data_label_dict.values())
 }
 
@@ -127,14 +150,13 @@ for label in used_labels:
             should_plot=False,
             force_processing=data_label_dict[label].force_processing or FORCE_ALL,
             should_re_correlate=FORCE_ALL,
-            should_subtract_afterpulse=False,
-            should_unite_start_times=True,  # for uniting the two 5 kHz measurements
             **label_load_kwargs_dict[label],
         )
 
         # calibrate TDC
         exp_dict[label].calibrate_tdc(
-            should_plot=True, force_processing=data_label_dict[label].force_processing or FORCE_ALL
+            should_plot=True,
+            force_processing=data_label_dict[label].force_processing or FORCE_ALL,
         )
 
         # save processed data (to avoid re-processing)
@@ -144,8 +166,12 @@ for label in used_labels:
 
 # Present count-rates
 for label in used_labels:
-    meas = exp_dict[label].confocal
-    print(f"'{label}' countrate: {meas.avg_cnt_rate_khz:.2f} +/- {meas.std_cnt_rate_khz:.2f}")
+    exp = exp_dict[label]
+    print(f"'{label}' countrates:")
+    print(f"Confocal: {exp.confocal.avg_cnt_rate_khz:.2f} +/- {exp.confocal.std_cnt_rate_khz:.2f}")
+    with suppress(AttributeError):
+        print(f"STED: {exp.sted.avg_cnt_rate_khz:.2f} +/- {exp.sted.std_cnt_rate_khz:.2f}")
+    print()
 
 
 # %% [markdown]
@@ -177,7 +203,9 @@ def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
 
-label = "300 bp"
+# label = "300 bp"
+label = "free ATTO"
+
 tdc_calib = exp_dict[label].confocal.tdc_calib
 
 t_hist = tdc_calib.t_hist
@@ -191,8 +219,8 @@ nans, x = nan_helper(all_hist)  # get nans and a way to interpolate over them la
 all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
 
 # normalize
-norm_factor = all_hist.sum() / 1.4117
-# TODO: why is this 1.4 factor needed??
+norm_factor = all_hist.sum()  # / 1.4117
+# TODO: why is this 1.4 factor needed?? not needed for static?? or is it a new detector thing??
 all_hist_norm = all_hist / norm_factor
 
 # calculate the baseline (which is assumed to be approximately the afterpulsing histogram)
@@ -241,5 +269,45 @@ F @ M
 # and summing the filters should yield one for each channel $j$
 
 # %%
-print(F.sum(axis=0).mean())
-F.sum(axis=0)
+total_prob_j = F.sum(axis=0)
+print(f"{total_prob_j.mean()} +/- {total_prob_j.std()}")
+
+# %% [markdown]
+# ## Applying to correlation
+
+# %% [markdown]
+# We have designed a new correlator which accepts for each photon timestamp a filter value. The filter value is assigned according to which bin the photon timestamp belongs to and the value for that bin (given by the matrix $F$, built from the histogram).
+#
+# First, let's try assigning to each photon timestamp the correct bin -
+
+# %%
+# TESTESTEST
+
+# load data
+exp_dict[label].confocal.dump_or_load_data(should_load=True)
+data = exp_dict[label].confocal.data
+
+f_list = []
+for p in data:
+    print("len(p.delay_time): ", len(p.delay_time))
+    print("len(p.pulse_runtime): ", len(p.pulse_runtime))
+    bin_num = np.digitize(p.delay_time, tdc_calib.fine_bins)
+    print("len(bin_num): ", len(bin_num))
+    f = np.zeros((p.pulse_runtime.shape))
+    valid_indxs = (bin_num > 0) & (bin_num < len(tdc_calib.fine_bins))
+    f[valid_indxs] = F[0][bin_num[valid_indxs] - 1]
+    print("f.shape: ", f.shape)
+    f_list.append(f)
+
+# %%
+f_list
+
+# %% [markdown]
+# In order to test the lifetime correlation, let's attempt to use the filter as a gating mechanism - 0 for gated photon, 1 for included photon. We will need to use a circular-scan/static measurement with STED to notice the effects of gating, since there isn't a line correlator ready for lifetime correlation yet.
+#
+# Using a static atto STED measurement, let's try comparing gating in the regular way (by not correlating the gated photons at all) and gating by setting the filter values to 0/1:
+
+# %%
+exp = exp_dict["free ATTO"]
+
+exp.add_gate((3.61, 20))

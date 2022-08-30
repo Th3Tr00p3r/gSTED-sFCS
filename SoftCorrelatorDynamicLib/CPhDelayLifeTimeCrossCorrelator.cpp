@@ -1,10 +1,10 @@
-// CPhDelayCrossCorrelator.cpp: implementation of the CCorrelator class.
+// CPhDelayLifeTimeCrossCorrelator.cpp: implementation of the CCorrelator class.
 //
 // by Oleg Krichevsky, Ben-Gurion University, Sept. 2017
 // okrichev@bgu.ac.il
 //////////////////////////////////////////////////////////////////////
 
-#include "CPhDelayCrossCorrelator.h"
+#include "CPhDelayLifeTimeCrossCorrelator.h"
 //#include <math.h>
 #include <cmath>
 #include <cstdio>
@@ -13,12 +13,12 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CPhDelayCrossCorrelator::CPhDelayCrossCorrelator()
+CPhDelayLifeTimeCrossCorrelator::CPhDelayLifeTimeCrossCorrelator()
 {
 }
 
 
-CPhDelayCrossCorrelator::CPhDelayCrossCorrelator(long Stime, int Nchannels, double startTime)
+CPhDelayLifeTimeCrossCorrelator::CPhDelayLifeTimeCrossCorrelator(long Stime, int Nchannels, double startTime)
 {
 	smplTime = Stime;
 	NumOfAccumulators = Nchannels;
@@ -90,14 +90,14 @@ CPhDelayCrossCorrelator::CPhDelayCrossCorrelator(long Stime, int Nchannels, doub
 
 }
 
-CPhDelayCrossCorrelator::~CPhDelayCrossCorrelator()
+CPhDelayLifeTimeCrossCorrelator::~CPhDelayLifeTimeCrossCorrelator()
 {
 //		free(delayChannel);
 //		free(accumulator);
 //		mexPrintf("Destroying correlators\n");
 }
 
-void CPhDelayCrossCorrelator::ClearDelayChain()
+void CPhDelayLifeTimeCrossCorrelator::ClearDelayChain()
 {
     counterA = 0;
     counterB = 0;
@@ -113,7 +113,7 @@ void CPhDelayCrossCorrelator::ClearDelayChain()
         *tempDelayCh++ = 0;
 }
 
-void CPhDelayCrossCorrelator::GetCounterIn() // <A(0)*B(t)>
+void CPhDelayLifeTimeCrossCorrelator::GetCounterIn() // <A(0)*B(t)>
 {
 	if (cursor > delayChannel)
 		cursor--;
@@ -185,7 +185,7 @@ void CPhDelayCrossCorrelator::GetCounterIn() // <A(0)*B(t)>
 
 
 
-void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry, bool belongToAch, bool belongToBch)
+void CPhDelayLifeTimeCrossCorrelator::ProcessEntry(EntryType Entry, double belongToAch, double belongToBch)
 {
     if (DelayChainCleared)
     {
@@ -261,12 +261,12 @@ void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry, bool belongToAch, bo
 	}
 }
 
-void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry)
+void CPhDelayLifeTimeCrossCorrelator::ProcessEntry(EntryType Entry)
 {
     ProcessEntry(Entry, true, true);
 }
 
-void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry, bool Valid)
+void CPhDelayLifeTimeCrossCorrelator::ProcessEntry(EntryType Entry, bool Valid)
 {
     if (Valid)
     {
@@ -277,7 +277,7 @@ void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry, bool Valid)
 
 }
 
-void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry, bool belongToAch, bool belongToBch, long Valid)
+void CPhDelayLifeTimeCrossCorrelator::ProcessEntry(EntryType Entry, double belongToAch, double belongToBch, long Valid)
 {
     //mexPrintf("%d \n",  Valid);
     
@@ -301,8 +301,8 @@ void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry, bool belongToAch, bo
             break;
         default : //mexErrMsgIdAndTxt("CCorrelator::ProcessEntry(Entry, Valid)",
             //                 "Valid can only be 1, -1 or -2.");
-//            mexPrintf("CPhDelayCrossCorrelator::ProcessEntry(Entry, belongToAch, belongToBch, Valid) error: Valid can only be 1, -1 or -2.");
-            fprintf(stderr, "CPhDelayCrossCorrelator::ProcessEntry(Entry, belongToAch, belongToBch, Valid) error: Valid can only be 1, -1 or -2\n");
+//            mexPrintf("CPhDelayLifeTimeCrossCorrelator::ProcessEntry(Entry, belongToAch, belongToBch, Valid) error: Valid can only be 1, -1 or -2.");
+            fprintf(stderr, "CPhDelayLifeTimeCrossCorrelator::ProcessEntry(Entry, belongToAch, belongToBch, Valid) error: Valid can only be 1, -1 or -2\n");
               exit(1);
 
             
@@ -310,7 +310,7 @@ void CPhDelayCrossCorrelator::ProcessEntry(EntryType Entry, bool belongToAch, bo
 }
 
     
-void CPhDelayCrossCorrelator::GetAccumulators(double *accout)
+void CPhDelayLifeTimeCrossCorrelator::GetAccumulators(double *accout)
 {
     
     double accumTime = TotalSamplingTimes - NoChainClears*Delay;
