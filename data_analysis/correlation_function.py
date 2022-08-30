@@ -44,6 +44,25 @@ from utilities.helper import (
 # laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis/laser_pulse_tdc_calib.pkl")
 
 
+class CircularScanMixin:
+    """Doc."""
+
+    def _sum_scan_circles(self, pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, circle_freq_hz):
+        """Doc."""
+
+        # calculate the number of samples obtained at each photon arrival, since beginning of file
+        sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
+        # calculate to which pixel each photon belongs (possibly many samples per pixel)
+        samples_per_circle = int(ao_sampling_freq_hz / circle_freq_hz)
+        pixel_num = sample_runtime % samples_per_circle
+
+        # build the 'line image'
+        bins = np.arange(-0.5, samples_per_circle)
+        img, _ = np.histogram(pixel_num, bins=bins)
+
+        return img, samples_per_circle
+
+
 class AngularScanMixin:
     """Doc."""
 
@@ -567,7 +586,7 @@ class CorrFunc:
         return self.structure_factor
 
 
-class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
+class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScanMixin):
     """Doc."""
 
     NAN_PLACEBO: int
@@ -815,14 +834,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
             p.file_path = file_path
             print("Done.\n")
 
-        # Duration Estimate
-        try:  # TODO: TESTESTEST - does this makes sense? what causes p to not have pulse_runtime? state it.
-            time_stamps = np.diff(p.pulse_runtime).astype(np.int32)
-        except AttributeError:
-            return None
-        mu = np.median(time_stamps) / np.log(2)
-        p.duration_estimate = mu * len(p.pulse_runtime) / self.laser_freq_hz
-
         return p
 
     def _process_static_data_file(self, full_data, file_idx, **kwargs) -> TDCPhotonData:
@@ -834,7 +845,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         p = self.convert_fpga_data_to_photons(
             full_data["byte_data"],
             version=full_data["version"],
-            locate_outliers=True,
+            is_scan_continuous=True,
             **kwargs,
         )
 
@@ -852,7 +863,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
         p = self.convert_fpga_data_to_photons(
             full_data["byte_data"],
             version=full_data["version"],
-            locate_outliers=True,
+            is_scan_continuous=True,
             **kwargs,
         )
 
@@ -865,7 +876,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin):
 
         print("Converting circular scan to image...", end=" ")
         pulse_runtime = p.pulse_runtime
-        cnt, self.scan_settings["samples_per_circle"] = _sum_scan_circles(
+        cnt, self.scan_settings["samples_per_circle"] = self._sum_scan_circles(
             pulse_runtime,
             self.laser_freq_hz,
             p.ao_sampling_freq_hz,
@@ -2111,22 +2122,6 @@ class SFCSExperiment(TDCPhotonDataMixin):
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.dawsn.html
 
         pass
-
-
-def _sum_scan_circles(pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, circle_freq_hz):
-    """Doc."""
-
-    # calculate the number of samples obtained at each photon arrival, since beginning of file
-    sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
-    # calculate to which pixel each photon belongs (possibly many samples per pixel)
-    samples_per_circle = int(ao_sampling_freq_hz / circle_freq_hz)
-    pixel_num = sample_runtime % samples_per_circle
-
-    # build the 'line image'
-    bins = np.arange(-0.5, samples_per_circle)
-    img, _ = np.histogram(pixel_num, bins=bins)
-
-    return img, samples_per_circle
 
 
 def calculate_calibrated_afterpulse(
