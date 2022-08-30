@@ -328,6 +328,12 @@ void CCorrelator::GetAccumulators(double *accout)
     mexPrintf("avCountsSq: %g \n",  avCountsSq);
    */
     
+//    if (smplTime == 1){
+//         fprintf(stderr, "%ld\n", smplTime); //long
+//         fprintf(stderr,"%fL\n", TotalCounts);
+//         fprintf(stderr,"%fL\n", TotalSamplingTimes);
+//     };
+    
 	for (double* temp = accumulator; (temp < (accumulator + NumOfAccumulators)); )
 	{
         //*accout++ = *temp++/(avCountsSq*accumTime--) - 1;
