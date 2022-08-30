@@ -27,6 +27,8 @@ class TDCPhotonData:
     pulse_runtime: np.ndarray
     all_section_edges: np.ndarray
     size_estimate_mb: float
+    duration_estimate: float
+    skipped_duration: float
 
 
 @dataclass
@@ -72,6 +74,7 @@ class TDCPhotonDataMixin:
     scan_type: str
     NAN_PLACEBO: int
     fpga_freq_hz: int
+    laser_freq_hz: int
     template: str
     tdc_calib: TDCCalibration
     confocal: Any
@@ -82,8 +85,7 @@ class TDCPhotonDataMixin:
         byte_data,
         ignore_coarse_fine=False,
         version=3,
-        locate_outliers=False,
-        max_outlier_prob=1e-5,
+        is_scan_continuous=False,
         should_use_all_sections=True,
         len_factor=0.01,
         is_verbose=False,
@@ -191,26 +193,18 @@ class TDCPhotonDataMixin:
             coarse2 = None
             fine = None
 
+        # Duration Estimate
         time_stamps = np.diff(pulse_runtime).astype(np.int32)
+        mu = np.median(time_stamps) / np.log(2)
+        duration_estimate = mu * len(pulse_runtime) / self.laser_freq_hz
 
-        # find additional outliers (improbably large time_stamps) and break into
-        # additional segments if they exist.
-        # for exponential distribution MEDIAN and MAD are the same, but for
-        # biexponential MAD seems more sensitive
-        if locate_outliers:  # relevent for static data
-            mu = max(
-                np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()
-            ) / np.log(2)
-            max_time_stamp = scipy.stats.expon.ppf(
-                1 - max_outlier_prob / len(time_stamps), scale=mu
+        if is_scan_continuous:  # relevant for static/circular data
+            all_section_edges, skipped_duration = self.section_continuous_data(
+                pulse_runtime, time_stamps, duration_estimate, is_verbose=is_verbose, **kwargs
             )
-            sec_edges = (time_stamps > max_time_stamp).nonzero()[0].tolist()
-            if (n_outliers := len(sec_edges)) > 0:
-                print(f"found {n_outliers} outliers.", end=" ")
-            sec_edges = [0] + sec_edges + [len(time_stamps)]
-            all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
-        else:
+        else:  # angular scan
             all_section_edges = None
+            skipped_duration = 0
 
         return TDCPhotonData(
             version=version,
@@ -221,7 +215,56 @@ class TDCPhotonDataMixin:
             pulse_runtime=pulse_runtime,
             all_section_edges=all_section_edges,
             size_estimate_mb=max(section_lengths) / 1e6,
+            duration_estimate=duration_estimate,
+            skipped_duration=skipped_duration,
         )
+
+    def section_continuous_data(
+        self,
+        pulse_runtime,
+        time_stamps,
+        duration_estimate,
+        max_outlier_prob=1e-5,
+        n_splits_requested=10,
+        min_time_frac=0.5,
+        is_verbose=False,
+        **kwargs,
+    ):
+        """Find outliers and create sections seperated by them. Short sections are discarded"""
+
+        # find additional outliers (improbably large time_stamps) and break into
+        # additional segments if they exist.
+        # for exponential distribution MEDIAN and MAD are the same, but for
+        # biexponential MAD seems more sensitive
+        mu = max(np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()) / np.log(
+            2
+        )
+        max_time_stamp = scipy.stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
+        sec_edges = (time_stamps > max_time_stamp).nonzero()[0].tolist()
+        if (n_outliers := len(sec_edges)) > 0:
+            print(f"found {n_outliers} outliers.", end=" ")
+        sec_edges = [0] + sec_edges + [len(time_stamps)]
+        all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
+
+        # Filter short segments
+        # TODO: duration limitation is unclear
+        split_duration = duration_estimate / n_splits_requested
+        skipped_duration = 0
+        all_section_edges_valid = []
+        # Ignore short segments (default is below half the run_duration)
+        for se_idx, (se_start, se_end) in enumerate(all_section_edges):
+            segment_time = (pulse_runtime[se_end] - pulse_runtime[se_start]) / self.laser_freq_hz
+            if segment_time < min_time_frac * split_duration:
+                if is_verbose:
+                    print(
+                        f"Skipping segment {se_idx} - too short ({segment_time * 1e3:.2f} ms).",
+                        end=" ",
+                    )
+                skipped_duration += segment_time
+            else:  # use segment
+                all_section_edges_valid.append((se_start, se_end))
+
+        return np.array(all_section_edges_valid), skipped_duration
 
     @rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
