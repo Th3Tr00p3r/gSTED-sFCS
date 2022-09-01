@@ -1097,8 +1097,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         gating_mechanism="removal",
         external_afterpulse_params=None,
         external_afterpulsing=None,
-        # TODO: gates should not be fixed - gate1 should start at the peak (or right before it) and the second should end before the detector width ends -
-        # these choices are important for normalization
+        # TODO: gates should not be fixed - gate1 should start at the peak (or right before it) and the second should end before the detector width ends - these choices are important for normalization
         inherent_afterpulsing_gates=(Limits(2.5, 10), Limits(30, 90)),
         should_subtract_bg_corr=True,
         is_verbose=False,
@@ -1148,15 +1147,16 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             in_gate_idxs = gate_ns.valid_indices(split_delay_time)
             if is_filtered:
                 split_filter = np.zeros((dt_ts_split.shape[1],), dtype=float)
+                if gating_mechanism == "binary filter":
+                    # TESTESTEST - testing the new filtering approach by applying it to gating
+                    split_filter[in_gate_idxs] = 1
                 if afterpulsing_method == "filter (lifetime)":
                     # create a filter for genuine fluorscene (ignoring afterpulsing)
                     bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
-                    valid_indxs = (bin_num > 0) & (bin_num < len(self.tdc_calib.fine_bins))
+                    valid_indxs = (
+                        (bin_num > 0) & (bin_num < len(self.tdc_calib.fine_bins)) & in_gate_idxs
+                    )
                     split_filter[valid_indxs] = F[0][bin_num[valid_indxs] - 1]
-                if gating_mechanism == "binary filter":
-                    # TESTESTEST - testing the new filtering approach by applying it to gating
-                    split_filter[(split_filter == 0) & in_gate_idxs] = 0  # TESTESTEST - was 1
-                    split_filter[~in_gate_idxs] = 1  # TESTESTEST - was 0
                 corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
                 filter_input_list.append(split_filter)
             else:  # gating_mechanism == "removal"
@@ -1182,12 +1182,13 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
         # choose correct correlator type
         if self.scan_type in {"static", "circle"}:
-            if afterpulsing_method == "filter (lifetime)":
+            if is_filtered:
                 corr_type = CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR
             else:
                 corr_type = CorrelatorType.PH_DELAY_CORRELATOR
         elif self.scan_type == "angular":
-            if afterpulsing_method == "filter (lifetime)":
+            if is_filtered:
+                raise NotImplementedError("Waiting for Oleg")
                 corr_type = CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR_LINES
             else:
                 corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
@@ -1273,31 +1274,23 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 # divide sections into 'splits'
                 n_splits = div_ceil(section_time, split_duration)
                 section_time_stamps = np.hstack(([0], np.diff(section_pulse_runtime)))
-                dt_ts = np.vstack((section_delay_time, section_time_stamps))
+                section_dt_ts = np.vstack((section_delay_time, section_time_stamps))
 
                 for j in range(n_splits):
                     file_ts_split_list.append(
-                        self.prepare_correlator_input(dt_ts, j, n_splits=n_splits)
+                        self.prepare_correlator_input(section_dt_ts, j, n_splits=n_splits)
                     )
 
         # line correlation - each split is all photons of a single line (usually 13 lines)
         elif self.scan_type == "angular":
-            line_num = p.line_num
-            if hasattr(p, "delay_time"):  # if measurement is TDC-calibrated
-                # NaNs mark line starts/ends
-                j_gate = gate_ns.valid_indices(p.delay_time) | np.isnan(p.delay_time)
-                pulse_runtime = p.pulse_runtime[j_gate]
-                line_num = p.line_num[j_gate]
-
-            elif gate_ns != (0, np.inf):  # TODO
-                raise RuntimeError(f"A gate '{gate_ns}' was specified for uncalibrated TDC data.")
-            else:
-                pulse_runtime = p.pulse_runtime
-
-            time_stamps = np.hstack(([0], np.diff(pulse_runtime).astype(np.int32)))
+            time_stamps = np.hstack(([0], np.diff(p.pulse_runtime)))
+            try:
+                dt_ts = np.vstack((p.delay_time, time_stamps))
+            except AttributeError:
+                dt_ts = np.vstack((np.zeros(time_stamps.shape), time_stamps))
             for j in p.line_limits.as_range():
                 file_ts_split_list.append(
-                    self.prepare_correlator_input(time_stamps, j, line_num=line_num)
+                    self.prepare_correlator_input(dt_ts, j, line_num=p.line_num)
                 )
 
         return file_ts_split_list
@@ -1517,7 +1510,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             valid[line_num == -idx - self.LINE_END_ADDER] = -2
 
             #  remove photons from wrong lines
-            ts_out = dt_ts_in[:, valid != 0]
+            dt_ts_out = dt_ts_in[:, valid != 0]
             valid = valid[valid != 0]
 
             if not valid.any():
@@ -1530,7 +1523,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 j_start = np.where(valid == -1)[0]
 
                 if len(j_start) > 0:
-                    ts_out = ts_out[:, j_start[0] :]
+                    dt_ts_out = dt_ts_out[:, j_start[0] :]
                     valid = valid[j_start[0] :]
 
             # check that we stop with the line ending and not its beginning
@@ -1540,10 +1533,10 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
                 if len(j_end) > 0:
                     *_, j_end_last = j_end
-                    ts_out = ts_out[:, : j_end_last + 1]
+                    dt_ts_out = dt_ts_out[:, : j_end_last + 1]
                     valid = valid[: j_end_last + 1]
 
-            return np.vstack((ts_out, valid))
+            return np.vstack((dt_ts_out, valid))
 
     def get_split_duration(self, ts_split: np.ndarray) -> float:
         """Doc."""
