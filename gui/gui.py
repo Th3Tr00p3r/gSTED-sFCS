@@ -25,6 +25,9 @@ class MainWin(QtWidgets.QMainWindow):
         self.impl = impl.MainWin(self, app)
         self._loop = app.loop
 
+        # misc
+        self.selectOptionsButton.released.connect(self.impl.open_optwin)
+
         # graphics
         self.imgScanPlot = GuiDisplay(self.imageLayout, self)
         self.solScanAcf = GuiDisplay(self.solScanAcfLayout, self)
@@ -525,3 +528,26 @@ class SettWin(QtWidgets.QDialog):
 
         self.impl.check_on_close = False
         self.close()
+
+
+class ProcessingOptionsWindow(QtWidgets.QDialog):
+    """Doc."""
+
+    UI_PATH = "./gui/optionswindow.ui"
+
+    def __init__(self, app) -> None:
+        super(ProcessingOptionsWindow, self).__init__()
+        PyQt5.uic.loadUi(self.UI_PATH, self)
+        self.impl = impl.ProcessingOptionsWindow(self, app)
+
+    @QtCore.pyqtSlot()
+    def on_saveButton_released(self) -> None:
+        """Save settings."""
+
+        self.impl.save()
+
+    @QtCore.pyqtSlot()
+    def on_loadButton_released(self) -> None:
+        """load settings."""
+
+        self.impl.load()
