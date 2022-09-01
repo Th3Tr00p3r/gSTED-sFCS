@@ -19,7 +19,7 @@ class CorrelatorType:
     PH_DELAY_CORRELATOR_LINES = 5  # additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
     PH_DELAY_CROSS_CORRELATOR_LINES = 6  # as PH_COUNT_CROSS_CORRELATOR with an additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
     PH_DELAY_LIFETIME_CROSS_CORRELATOR = 7
-    PH_DELAY_LIFETIME_AUTO_CORRELATOR = 8
+    PH_DELAY_LIFETIME_CORRELATOR = 8
 
 
 @dataclass
@@ -66,7 +66,6 @@ class SoftwareCorrelator:
         self.num_of_correlators = num_corr[0]
         self.get_corr_params = get_corr_params
         self.tot_corr_chan_len = doub_size[0] * (num_corr[0] + 1) + 1
-        self.corr_py = np.zeros((3, self.tot_corr_chan_len), dtype=float)
 
         # Initialize correlators (C-lang)
 
@@ -138,6 +137,7 @@ class SoftwareCorrelator:
 
         self.corr_type = corr_type
 
+        # TODO: this could possibly be avoided by creating/casting photon_array to platform independent type 'int' (i.e. dtype=int)
         if sys.platform == "darwin":  # fix operation for Mac users
             photon_array = photon_array.astype(np.int64)
 
@@ -169,7 +169,7 @@ class SoftwareCorrelator:
         elif corr_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 3):
                 raise RuntimeError(
-                    f"Photon array {photon_array.shape} should have 3 rows for this correlator option! 0th row with photon delay times, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
+                    f"Photon array {photon_array.shape} should have 3 rows for this correlator option! 0th row with photon time-stamps, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
                 )
             duration_s = photon_array[0, :].sum() * timebase_ms / 1000
             countrate_a = photon_array[2, :].sum() / duration_s
@@ -179,7 +179,7 @@ class SoftwareCorrelator:
         elif corr_type == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
                 raise RuntimeError(
-                    f"Photon array {photon_array.shape} should have 2 rows for this correlator option! 0th row with photon delay times, 1st row is 1 for valid lines"
+                    f"Photon array {photon_array.shape} should have 2 rows for this correlator option! 0th row with photon time-stamps, 1st row is 1 for valid lines"
                 )
             valid = (photon_array[1, :] == 1) | (photon_array[1, :] == -2)
             duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
@@ -188,7 +188,7 @@ class SoftwareCorrelator:
         elif corr_type == CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES:
             if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 4):
                 raise RuntimeError(
-                    f"Photon array {photon_array.shape} should have 4 rows for this correlator option! 0th row with photon delay times, 1st (2nd) row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
+                    f"Photon array {photon_array.shape} should have 4 rows for this correlator option! 0th row with photon time-stamps, 1st (2nd) row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
                 )
             valid_timestamps = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
             valid_photons = photon_array[3, :] == 1
@@ -213,18 +213,16 @@ class SoftwareCorrelator:
             countrate_b = filter_array[1, :].sum() / duration_s
             countrate = CrossCorrCountRates(countrate_a, countrate_b)
 
-        elif corr_type == CorrelatorType.PH_DELAY_LIFETIME_AUTO_CORRELATOR:
+        elif corr_type == CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR:
             if len(photon_array.shape) != 1:
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should be 1D for this correlator option!"
                 )
-            if (len(filter_array.shape) == 1) or (filter_array.shape[0] != 1):
+            if len(filter_array.shape) != 1:
                 raise RuntimeError(
-                    f"Filter array {filter_array.shape} should be 1D for this correlator option! It should float filter values for fluorescence photons (as in not afterpulsing photons)"
+                    f"Filter array {filter_array.shape} should be 1D for this correlator option! It should contain float filter values for fluorescence photons (as in not afterpulsing photons)"
                 )
-            countrate = (
-                n_entries / filter_array.sum() / timebase_ms * 1000
-            )  # TODO: unsure about how the countrates should work here...
+            countrate = n_entries / photon_array.sum() / timebase_ms * 1000
 
         else:
             raise ValueError("Invalid correlator type!")
@@ -232,7 +230,7 @@ class SoftwareCorrelator:
         # Perform software correlation
         if corr_type in {
             CorrelatorType.PH_DELAY_LIFETIME_CROSS_CORRELATOR,
-            CorrelatorType.PH_DELAY_LIFETIME_AUTO_CORRELATOR,
+            CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR,
         }:  # lifetime corralation
             self.lt_soft_corr(corr_type, n_entries, ph_hist, filter, n_corr_channels, self.corr_py)
 

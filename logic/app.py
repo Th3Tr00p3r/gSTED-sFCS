@@ -24,6 +24,7 @@ class App:
     """Doc."""
 
     SETTINGS_DIR_PATH = Path("./settings/")
+    PROCESSING_OPTIONS_DIR_PATH = SETTINGS_DIR_PATH / "processing options"
     LOADOUT_DIR_PATH = SETTINGS_DIR_PATH / "loadouts/"
     DEFAULT_LOADOUT_FILE_PATH = LOADOUT_DIR_PATH / "default_loadout"
     DEFAULT_SETTINGS_FILE_PATH = SETTINGS_DIR_PATH / "default_settings"
@@ -65,9 +66,11 @@ class App:
         self.gui = SimpleNamespace(
             main=gui.gui.MainWin(self),
             settings=gui.gui.SettWin(self),
+            options=gui.gui.ProcessingOptionsWindow(self),
         )
         self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
         self.gui.settings.impl.load(self.default_settings_path())
+        self.gui.options.impl.load()
 
         # populate all widget collections in 'gui.widgets' with objects
         [

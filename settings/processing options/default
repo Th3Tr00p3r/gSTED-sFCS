@@ -1,0 +1,6 @@
+gatingMechanism,removal
+afterpulsingRemovalMethod,subtract calibrated
+useDefaultSysInfo,False
+subtractBgCorr,True
+fixShift,True
+autoRoi,True

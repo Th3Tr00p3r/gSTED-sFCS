@@ -450,6 +450,12 @@ class MainWin:
         self._app.gui.settings.show()
         self._app.gui.settings.activateWindow()
 
+    def open_optwin(self):
+        """Doc."""
+
+        self._app.gui.options.show()
+        self._app.gui.options.activateWindow()
+
     def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
 
@@ -1359,10 +1365,8 @@ class MainWin:
 
         loading_options["should_fix_shift"] = import_wdgts.fix_shift
         loading_options["roi_selection"] = "auto" if import_wdgts.should_auto_roi else "all"
-        loading_options["should_subtract_afterpulse"] = import_wdgts.should_subtract_afterpulse
-        loading_options[
-            "should_use_inherent_afterpulsing"
-        ] = import_wdgts.should_use_inherent_afterpulsing
+        loading_options["afterpulsing_method"] = import_wdgts.afterpulsing_method
+        loading_options["gating_mechanism"] = import_wdgts.gating_mechanism
         loading_options["should_subtract_bg_corr"] = import_wdgts.should_subtract_bg_corr
         loading_options["override_system_info"] = import_wdgts.override_system_info
 
@@ -1852,10 +1856,12 @@ class MainWin:
         ]
 
         experiment = self.get_experiment()
+        options_dict = self.get_loading_options_as_dict()
         kwargs = dict(
             gui_display=wdgt_coll.gui_display_sted_gating.obj,
             gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True),
             fontsize=10,
+            **options_dict,
         )
         try:
             experiment.add_gates(gate_list, **kwargs)
@@ -2008,3 +2014,27 @@ class SettWin:
             dvc_list.append(info_dict["description"].decode("utf-8"))
 
         self._gui.deviceDetails.setText("\n".join(dvc_list))
+
+
+class ProcessingOptionsWindow:
+    """Doc."""
+
+    def __init__(self, gui, app):
+        """Doc."""
+
+        self._app = app
+        self._gui = gui
+
+    def save(self) -> None:
+        """Save default options"""
+
+        file_path = self._app.PROCESSING_OPTIONS_DIR_PATH / "default"
+        wdgts.write_gui_to_file(self._gui.frame, wdgts.SETTINGS_TYPES, file_path)
+        logging.debug(f"Processing options file saved as: '{file_path}'")
+
+    def load(self):
+        """Load default options"""
+
+        file_path = self._app.PROCESSING_OPTIONS_DIR_PATH / "default"
+        wdgts.read_file_to_gui(file_path, self._gui.frame)
+        logging.debug(f"Processing options file loaded: '{file_path}'")
