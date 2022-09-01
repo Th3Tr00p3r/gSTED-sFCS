@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1731</width>
-    <height>939</height>
+    <height>956</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4965,7 +4965,7 @@ Pattern:</string>
              <enum>QLayout::SetDefaultConstraint</enum>
             </property>
             <item>
-             <layout class="QVBoxLayout" name="verticalLayout_64" stretch="1,1,10">
+             <layout class="QVBoxLayout" name="verticalLayout_64" stretch="0,0,1">
               <property name="spacing">
                <number>0</number>
               </property>
@@ -5497,11 +5497,11 @@ Measurement</string>
                       </widget>
                      </item>
                      <item row="0" column="0">
-                      <layout class="QGridLayout" name="gridLayout_10" rowstretch="1,0" columnstretch="10,0">
+                      <layout class="QGridLayout" name="gridLayout_10" rowstretch="1,0,0" columnstretch="10,0">
                        <property name="spacing">
                         <number>2</number>
                        </property>
-                       <item row="0" column="1" rowspan="2">
+                       <item row="0" column="1" rowspan="3">
                         <widget class="QPushButton" name="importSolData">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
@@ -5519,79 +5519,6 @@ Measurement</string>
                           <string>Process Solution
 Measurement</string>
                          </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QGroupBox" name="groupBox_2">
-                         <property name="title">
-                          <string>Processing Options</string>
-                         </property>
-                         <layout class="QGridLayout" name="gridLayout_38">
-                          <item row="0" column="0">
-                           <widget class="QCheckBox" name="solDataFixShift">
-                            <property name="font">
-                             <font>
-                              <pointsize>8</pointsize>
-                             </font>
-                            </property>
-                            <property name="text">
-                             <string>Fix Shift</string>
-                            </property>
-                            <property name="tristate">
-                             <bool>false</bool>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="1">
-                           <widget class="QCheckBox" name="solDataUseDefaultSysInfo">
-                            <property name="toolTip">
-                             <string>Use default system info instead of that saved in the file</string>
-                            </property>
-                            <property name="text">
-                             <string>Override Info</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="1">
-                           <widget class="QCheckBox" name="solDataSubtractAfterpulse">
-                            <property name="text">
-                             <string>Subtract
-Afterpulsing</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="2" column="1">
-                           <widget class="QCheckBox" name="solDataSubtractBgCorr">
-                            <property name="text">
-                             <string>Subtract
-Background</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="0">
-                           <widget class="QCheckBox" name="solDataAutoRoi">
-                            <property name="text">
-                             <string>Auto ROI</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="2" column="0">
-                           <widget class="QCheckBox" name="solDataUseInherentAfterpulse">
-                            <property name="font">
-                             <font>
-                              <pointsize>8</pointsize>
-                             </font>
-                            </property>
-                            <property name="text">
-                             <string>Inherent
-Afterpulsing</string>
-                            </property>
-                            <property name="tristate">
-                             <bool>false</bool>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
                         </widget>
                        </item>
                        <item row="0" column="0">
@@ -5714,6 +5641,13 @@ Afterpulsing</string>
                            </layout>
                           </item>
                          </layout>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QPushButton" name="selectOptionsButton">
+                         <property name="text">
+                          <string>Select Processing Options</string>
+                         </property>
                         </widget>
                        </item>
                       </layout>

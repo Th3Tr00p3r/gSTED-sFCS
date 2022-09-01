@@ -68,23 +68,25 @@ DATA_TYPE = "solution"
 
 # %%
 data_label_dict = {
-    "300 bp": SimpleNamespace(
-        date="03_07_2022",
-        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
-        sted_template=None,
-        file_selection="Use All",
-        force_processing=False,
-        should_subtract_afterpulse=False,
-        #         force_processing=True,
-    ),
+    #     "300 bp": SimpleNamespace(
+    #         date="03_07_2022",
+    #         confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+    #         sted_template=None,
+    #         file_selection="Use All",
+    #         force_processing=False,
+    #         should_subtract_afterpulse=False,
+    #         #         force_processing=True,
+    #     ),
     "free ATTO": SimpleNamespace(
         date="05_10_2021",
         confocal_template="sol_static_exc_181325_*.pkl",
         sted_template="sol_static_sted_183413_*.pkl",
-        file_selection="Use All",
+        file_selection="Use 1",
         force_processing=False,
-        should_subtract_afterpulse=True,
-        #         force_processing=True,
+        gating_mechanism="binary filter",
+        #          gating_mechanism="removal",
+        #         afterpulsing_method="filter (lifetime)",
+        afterpulsing_method="subtract calibrated",
     ),
 }
 
@@ -116,7 +118,8 @@ label_load_kwargs_dict = {
         confocal_template=tmplt_path.confocal_template,
         sted_template=tmplt_path.sted_template,
         file_selection=data.file_selection,
-        should_subtract_afterpulse=data.should_subtract_afterpulse,
+        gating_mechanism=data.gating_mechanism,
+        afterpulsing_method=data.afterpulsing_method,
     )
     for label, tmplt_path, data in zip(data_labels, template_paths, data_label_dict.values())
 }
@@ -128,14 +131,12 @@ print(template_paths)
 # Importing all needed data. Processing, correlating and averaging if no pre-processed measurement exist.
 
 # %%
-# FORCE_ALL = True
-FORCE_ALL = False
+FORCE_ALL = True
+# FORCE_ALL = False
 
 used_labels = data_labels
 # used_labels = [
-#     "White Noise 5 kHz",
-#     "White Noise 60 kHz",
-#     "White Noise 300 kHz",
+#    "sample"
 # ]
 
 # load experiment
@@ -278,29 +279,7 @@ print(f"{total_prob_j.mean()} +/- {total_prob_j.std()}")
 # %% [markdown]
 # We have designed a new correlator which accepts for each photon timestamp a filter value. The filter value is assigned according to which bin the photon timestamp belongs to and the value for that bin (given by the matrix $F$, built from the histogram).
 #
-# First, let's try assigning to each photon timestamp the correct bin -
-
-# %%
-# TESTESTEST
-
-# load data
-exp_dict[label].confocal.dump_or_load_data(should_load=True)
-data = exp_dict[label].confocal.data
-
-f_list = []
-for p in data:
-    print("len(p.delay_time): ", len(p.delay_time))
-    print("len(p.pulse_runtime): ", len(p.pulse_runtime))
-    bin_num = np.digitize(p.delay_time, tdc_calib.fine_bins)
-    print("len(bin_num): ", len(bin_num))
-    f = np.zeros((p.pulse_runtime.shape))
-    valid_indxs = (bin_num > 0) & (bin_num < len(tdc_calib.fine_bins))
-    f[valid_indxs] = F[0][bin_num[valid_indxs] - 1]
-    print("f.shape: ", f.shape)
-    f_list.append(f)
-
-# %%
-f_list
+# First, let's try assigning to each photon timestamp the correct bin
 
 # %% [markdown]
 # In order to test the lifetime correlation, let's attempt to use the filter as a gating mechanism - 0 for gated photon, 1 for included photon. We will need to use a circular-scan/static measurement with STED to notice the effects of gating, since there isn't a line correlator ready for lifetime correlation yet.
@@ -310,4 +289,4 @@ f_list
 # %%
 exp = exp_dict["free ATTO"]
 
-exp.add_gate((3.61, 20))
+exp.add_gate((3.61, 20), **label_load_kwargs_dict[label])
