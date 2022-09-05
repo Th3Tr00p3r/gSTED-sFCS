@@ -9,6 +9,7 @@ from copy import copy
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
@@ -1121,7 +1122,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
 
         # create list of split data for correlator
-        dt_ts_split_list = self._prepare_delay_timestamp_split_list()
+        dt_ts_split_list = self._prepare_timestamp_splits()
 
         # Gating
         # Unite TDC gate and detector gate
@@ -1183,15 +1184,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         # choose correct correlator type
         if self.scan_type in {"static", "circle"}:
             if is_filtered:
-                corr_type = CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR
+                correlator_option = CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR
             else:
-                corr_type = CorrelatorType.PH_DELAY_CORRELATOR
+                correlator_option = CorrelatorType.PH_DELAY_CORRELATOR
         elif self.scan_type == "angular":
             if is_filtered:
-                raise NotImplementedError("Waiting for Oleg")
-                corr_type = CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR_LINES
+                raise NotImplementedError(
+                    "PH_DELAY_LIFETIME_CORRELATOR_LINES not yet implemented (waiting for Oleg)."
+                )
+                correlator_option = CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR_LINES
             else:
-                corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
+                correlator_option = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
         if is_verbose:
             print(
@@ -1199,7 +1202,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             )
 
         # Correlate data
-        CF = CorrFunc(cf_name, corr_type, self.laser_freq_hz)
+        CF = CorrFunc(cf_name, correlator_option, self.laser_freq_hz)
         CF.correlate_measurement(
             corr_input_list,
             external_afterpulse_params
@@ -1229,23 +1232,25 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
         return CF
 
-    def _prepare_delay_timestamp_split_list(self, is_verbose=True, **kwargs):
+    def _prepare_timestamp_splits(self, is_verbose=True, **kwargs):
         """Doc."""
 
         if is_verbose:
             print("Preparing files for software correlator...", end=" ")
 
-        ts_split_list = []
+        dt_ts_split_list = []
         for p in self.data:
-            # TODO: this wrapper function is un-needed. move '_prepare_file_corr_split_list' inside the loop?
-            ts_split_list += self._prepare_file_corr_split_list(p, is_verbose=is_verbose, **kwargs)
+            # TODO: this wrapper function is un-needed. move '_prepare_file_timestamp_splits' inside the loop?
+            dt_ts_split_list += self._prepare_file_timestamp_splits(
+                p, is_verbose=is_verbose, **kwargs
+            )
 
         if is_verbose:
             print("Done.")
 
-        return ts_split_list
+        return dt_ts_split_list
 
-    def _prepare_file_corr_split_list(
+    def _prepare_file_timestamp_splits(
         self,
         p: TDCPhotonData,
         gate_ns=Limits(0, np.inf),
@@ -1258,9 +1263,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
         # continuous scan/static measurement - splits are arbitrarily cut along the measurement
         # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size. Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
-        split_duration = p.duration_s / n_splits_requested
-        file_ts_split_list = []
+        dt_ts_split_list = []
         if self.scan_type in {"static", "circle"}:
+            split_duration = p.duration_s / n_splits_requested
             for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
                 section_time = (
                     p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
@@ -1272,12 +1277,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                     section_delay_time = np.zeros((se_end + 1 - se_start,), dtype=np.int32)
 
                 # divide sections into 'splits'
-                n_splits = div_ceil(section_time, split_duration)
                 section_time_stamps = np.hstack(([0], np.diff(section_pulse_runtime)))
                 section_dt_ts = np.vstack((section_delay_time, section_time_stamps))
 
-                for j in range(n_splits):
-                    file_ts_split_list.append(
+                for j in range(n_splits := div_ceil(section_time, split_duration)):
+                    dt_ts_split_list.append(
                         self.prepare_correlator_input(section_dt_ts, j, n_splits=n_splits)
                     )
 
@@ -1286,19 +1290,19 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             time_stamps = np.hstack(([0], np.diff(p.pulse_runtime)))
             try:
                 dt_ts = np.vstack((p.delay_time, time_stamps))
-            except AttributeError:
+            except AttributeError:  # no TDC calibration
                 dt_ts = np.vstack((np.zeros(time_stamps.shape), time_stamps))
             for j in p.line_limits.as_range():
-                file_ts_split_list.append(
+                dt_ts_split_list.append(
                     self.prepare_correlator_input(dt_ts, j, line_num=p.line_num)
                 )
 
-        return file_ts_split_list
+        return dt_ts_split_list
 
     @file_utilities.rotate_data_to_disk()
     def cross_correlate_data(
         self,
-        corr_names=("AB", "BA"),
+        xcorr_types=["AB", "BA"],
         cf_name=None,
         gate1_ns=Limits(0, np.inf),
         gate2_ns=Limits(0, np.inf),
@@ -1308,12 +1312,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         min_time_frac=0.5,
         should_add_to_xcf_dict=True,
         **kwargs,
-    ) -> List[CorrFunc]:
-        """
-        High level function for correlating any type of data (e.g. static, angular scan, circular scan...)
-        Returns a 'CorrFunc' object.
-        Data attribute is possibly rotated from/to disk.
-        """
+    ) -> Dict[str, CorrFunc]:
+        """Doc."""
+
+        if is_verbose:
+            print("Preparing split data for correlator...", end=" ")
 
         # Unite TDC gates and detector gates
         gates = []
@@ -1328,47 +1331,55 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 gates.append(Limits(effective_lower_gate_ns, effective_upper_gate_ns))
         gate1_ns, gate2_ns = gates
 
+        # create list of split data for correlator
+        dt_ts_split_dict = self._prepare_xcorr_split_dict(
+            xcorr_types,
+            gate1_ns=gate1_ns,
+            gate2_ns=gate2_ns,
+            is_verbose=is_verbose,
+        )
+
+        # disregard the first line of each split (delay_time, used for gating in autocorrelation) and convert to int32 for correlator
+        corr_input_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
+        for xx in xcorr_types:
+            for split in dt_ts_split_dict[xx]:
+                corr_input_dict[xx].append(np.squeeze(split[1:].astype(np.int32)))
+
         # correlate data
         if is_verbose:
             print(
-                f"Cross-Correlating ({', '.join(corr_names)}) {self.scan_type} data ({self.name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
+                f"Correlating ({', '.join(xcorr_types)}) {self.scan_type} data ({self.name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
                 end=" ",
             )
 
-        ts_split_list_AB, ts_split_list_AA, ts_split_list_BB = self._prepare_xcorr_split_list(
-            is_verbose=is_verbose, gate1_ns=gate1_ns, gate2_ns=gate2_ns
-        )
-
         if self.scan_type in {"static", "circle"}:
-            ts_split_list_BA = [ts_split_AB[[0, 2, 1], :] for ts_split_AB in ts_split_list_AB]
-            corr_type = CorrelatorType.PH_DELAY_CORRELATOR
-            xcorr_type = CorrelatorType.PH_DELAY_CROSS_CORRELATOR
+            correlator_option = SimpleNamespace(
+                auto=CorrelatorType.PH_DELAY_CORRELATOR,
+                cross=CorrelatorType.PH_DELAY_CROSS_CORRELATOR,
+            )
         elif self.scan_type == "angular":
-            ts_split_list_BA = [ts_split_AB[[0, 2, 1, 3], :] for ts_split_AB in ts_split_list_AB]
-            corr_type = CorrelatorType.PH_DELAY_CORRELATOR_LINES
-            xcorr_type = CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES
+            correlator_option = SimpleNamespace(
+                auto=CorrelatorType.PH_DELAY_CORRELATOR_LINES,
+                cross=CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES,
+            )
 
-        CF_list = [
-            CorrFunc(
+        # create a dictionary with instantiated CorrFunc objects according to the needed 'xcorr_types'
+        CF_dict = {
+            xx: CorrFunc(
                 f"{cf_name}_{xx} ({gate1_ns} vs. {gate2_ns} ns)"
                 if cf_name is not None
                 else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
-                corr_type if xx in {"AA", "BB"} else xcorr_type,
+                correlator_option.auto if xx in {"AA", "BB"} else correlator_option.cross,
                 self.laser_freq_hz,
             )
-            for xx in corr_names
-        ]
-        all_ts_split_lists_dict = {
-            "AA": ts_split_list_AA,
-            "BB": ts_split_list_BB,
-            "AB": ts_split_list_AB,
-            "BA": ts_split_list_BA,
+            for xx in xcorr_types
         }
-        ts_split_lists = [all_ts_split_lists_dict[xx] for xx in corr_names]
 
-        for CF, ts_split_list in zip(CF_list, ts_split_lists):
+        # cross/auto-correlate
+        for xx in xcorr_types:
+            CF = CF_dict[xx]
             CF.correlate_measurement(
-                ts_split_list,
+                corr_input_dict[xx],
                 afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
                 getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
                 is_verbose=is_verbose,
@@ -1380,122 +1391,195 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             except AttributeError:
                 CF.vt_um = CF.lag  # static
 
+            if should_add_to_xcf_dict:
+                # name the Corrfunc object
+                self.xcf[CF.name] = CF
+
         if is_verbose:
             print("- Done.")
 
-        if should_add_to_xcf_dict:
-            # name the Corrfunc object
-            for xx, CF in zip(corr_names, CF_list):
-                self.xcf[CF.name] = CF
+        return CF_dict
 
-        return CF_list
-
-    def _prepare_xcorr_split_list(self, is_verbose=True, **kwargs):
+    def _prepare_xcorr_split_dict(
+        self, xcorr_types: List[str], is_verbose=True, **kwargs
+    ) -> Dict[str, List]:
         """Doc."""
 
         if is_verbose:
             print("Preparing files for software correlator...", end=" ")
 
-        ts_split_list = []
-        ts1_split_list = []
-        ts2_split_list = []
+        dt_ts_splits_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
         for p in self.data:
-            (
-                file_ts_split_list,
-                file_ts1_split_list,
-                file_ts2_split_list,
-            ) = self._prepare_file_xcorr_split_list(p, is_verbose=is_verbose, **kwargs)
-            ts_split_list += file_ts_split_list
-            ts1_split_list += file_ts1_split_list
-            ts2_split_list += file_ts2_split_list
+            file_dt_ts_splits_dict = self._prepare_file_xcorr_splits(
+                p, xcorr_types, is_verbose=is_verbose, **kwargs
+            )
+            for xx in xcorr_types:
+                dt_ts_splits_dict[xx] += file_dt_ts_splits_dict[xx]
 
         if is_verbose:
             print("Done.")
 
-        return ts_split_list, ts1_split_list, ts2_split_list
+        return dt_ts_splits_dict
 
-    def _prepare_file_xcorr_split_list(
+    def _prepare_file_xcorr_splits(
+        self,
+        *args,
+        **kwargs,
+    ):
+        """
+        Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
+        To perform autocorrelation, only one gate is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
+        """
+
+        if self.scan_type in {"static", "circle"}:
+            file_dt_ts_splits_dict = self._prepare_continuous_data_file_xcorr_splits(
+                *args, **kwargs
+            )
+
+        elif self.scan_type == "angular":
+            file_dt_ts_splits_dict = self._prepare_line_data_file_xcorr_splits(*args, **kwargs)
+
+        return file_dt_ts_splits_dict
+
+    def _prepare_continuous_data_file_xcorr_splits(
         self,
         p: TDCPhotonData,
+        xcorr_types: List[str],
+        *args,
         gate1_ns=Limits(0, np.inf),
         gate2_ns=Limits(0, np.inf),
-        min_time_frac=0.5,
         n_splits_requested=10,
-        is_verbose=False,
+        **kwargs,
+    ):
+        """Continuous scan/static measurement - splits are arbitrarily cut along the measurement"""
+
+        file_dt_ts_splits_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
+
+        # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size. Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
+        split_duration = p.duration_s / n_splits_requested
+        for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
+            # split into sections of approx time of run_duration
+            section_time = (
+                p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
+            ) / self.laser_freq_hz
+
+            section_pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
+            try:
+                section_delay_time = p.delay_time[se_start : se_end + 1]
+            except AttributeError:
+                section_delay_time = np.zeros((se_end + 1 - se_start,), dtype=np.int32)
+
+            # split the data into parts A/B according to gates
+            # TODO: in order to make this more general and use it with both auto and cross correlations, the function should optionally accept 2 seperate data,
+            # i.e. the split according to gates should be performed externally and beforehand.
+            if "A" in "".join(xcorr_types):
+                gate1_idxs = gate1_ns.valid_indices(section_delay_time)
+                section_prt1 = section_pulse_runtime[gate1_idxs]
+                section_ts1 = np.hstack(([0], np.diff(section_prt1)))
+                section_dt1 = section_delay_time[gate1_idxs]
+                section_dt_ts1 = np.vstack((section_dt1, section_ts1))
+            if "B" in "".join(xcorr_types):
+                gate2_idxs = gate2_ns.valid_indices(section_delay_time)
+                section_prt2 = section_pulse_runtime[gate2_idxs]
+                section_ts2 = np.hstack(([0], np.diff(section_prt2)))
+                section_dt2 = section_delay_time[gate2_idxs]
+                section_dt_ts2 = np.vstack((section_dt2, section_ts2))
+            if "AB" in xcorr_types or "BA" in xcorr_types:
+                section_ts12 = np.hstack(([0], np.diff(section_pulse_runtime)))
+                section_dt_ts12 = np.vstack(
+                    (section_delay_time, section_ts12, gate2_idxs, gate1_idxs)
+                )[:, gate1_idxs | gate2_idxs]
+
+            for j in range(n_splits := div_ceil(section_time, split_duration)):
+                for xx in xcorr_types:
+                    if xx == "AA":
+                        file_dt_ts_splits_dict[xx].append(
+                            self.prepare_correlator_input(section_dt_ts1, j, n_splits=n_splits)
+                        )
+                    if xx == "BB":
+                        file_dt_ts_splits_dict[xx].append(
+                            self.prepare_correlator_input(section_dt_ts2, j, n_splits=n_splits)
+                        )
+                    if xx == "AB":
+                        splitsAB = self.prepare_correlator_input(
+                            section_dt_ts12, j, n_splits=n_splits
+                        )
+                        file_dt_ts_splits_dict[xx].append(splitsAB)
+                    if xx == "BA":
+                        if "AB" in xcorr_types:
+                            file_dt_ts_splits_dict[xx].append(splitsAB[[0, 1, 3, 2], :])
+                        else:
+                            section_dt_ts21 = section_dt_ts12[[0, 1, 3, 2], :]
+                            file_dt_ts_splits_dict[xx].append(
+                                self.prepare_correlator_input(section_dt_ts21, j, n_splits=n_splits)
+                            )
+
+        return file_dt_ts_splits_dict
+
+    def _prepare_line_data_file_xcorr_splits(
+        self,
+        p: TDCPhotonData,
+        xcorr_types: List[str],
+        *args,
+        gate1_ns=Limits(0, np.inf),
+        gate2_ns=Limits(0, np.inf),
         **kwargs,
     ):
         """Doc."""
 
-        file_ts_split_list = []
-        file_ts1_split_list = []
-        file_ts2_split_list = []
+        file_dt_ts_splits_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
 
-        if self.scan_type in {"static", "circle"}:
-            split_duration = p.duration_s / n_splits_requested
-            for se_idx, (se_start, se_end) in enumerate(p.all_section_edges):
-                # split into sections of approx time of run_duration
-                section_time = (
-                    p.pulse_runtime[se_end] - p.pulse_runtime[se_start]
-                ) / self.laser_freq_hz
-
-                pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
-                delay_time = p.delay_time[se_start : se_end + 1]
-                j_gate1 = gate1_ns.valid_indices(delay_time)
-                j_gate2 = gate2_ns.valid_indices(delay_time)
-                pulse_runtime1 = pulse_runtime[j_gate1]
-                pulse_runtime2 = pulse_runtime[j_gate2]
-                pulse_runtime = np.vstack((pulse_runtime, j_gate2, j_gate1))
-                j_gate = j_gate1 | j_gate2
-                pulse_runtime = pulse_runtime[:, j_gate]
-                ts = pulse_runtime.astype(np.int32)
-                ts[0] = np.hstack(([0], np.diff(pulse_runtime[0]).astype(np.int32)))
-                ts = ts.astype(np.int32)
-                ts1 = np.hstack(([0], np.diff(pulse_runtime1).astype(np.int32)))
-                ts2 = np.hstack(([0], np.diff(pulse_runtime2).astype(np.int32)))
-
-                n_splits = div_ceil(section_time, split_duration)
-                for j in range(n_splits):
-                    file_ts_split_list.append(
-                        self.prepare_correlator_input(ts, j, n_splits=n_splits)
-                    )
-                    file_ts1_split_list.append(
-                        self.prepare_correlator_input(ts1, j, n_splits=n_splits)
-                    )
-                    file_ts2_split_list.append(
-                        self.prepare_correlator_input(ts2, j, n_splits=n_splits)
-                    )
-
-        elif self.scan_type == "angular":
-            line_num = np.around(p.line_num)
-            j_gate1 = gate1_ns.valid_indices(p.delay_time) | np.isnan(
+        # TODO: why is rounding needed here, and not in auto line correlation? possibly round during processing?
+        line_num = np.around(p.line_num)
+        if "A" in "".join(xcorr_types):
+            gate1_idxs = gate1_ns.valid_indices(p.delay_time) | np.isnan(
                 p.delay_time
             )  # NaNs mark line starts/ends
-            j_gate2 = gate2_ns.valid_indices(p.delay_time) | np.isnan(
+            dt1 = p.delay_time[gate1_idxs]
+            pulse_runtime1 = p.pulse_runtime[gate1_idxs]
+            ts1 = np.hstack(([0], np.diff(pulse_runtime1)))
+            dt_ts1 = np.vstack((dt1, ts1))
+            line_num1 = line_num[gate1_idxs]
+        if "B" in "".join(xcorr_types):
+            gate2_idxs = gate2_ns.valid_indices(p.delay_time) | np.isnan(
                 p.delay_time
             )  # NaNs mark line starts/ends
-            pulse_runtime1 = p.pulse_runtime[j_gate1]
-            pulse_runtime2 = p.pulse_runtime[j_gate2]
-            pulse_runtime = np.vstack((p.pulse_runtime, j_gate2, j_gate1))
-            j_gate = j_gate1 | j_gate2
-            pulse_runtime = pulse_runtime[:, j_gate]
-            ts = pulse_runtime.astype(np.int32)
-            ts[0] = np.hstack(([0], np.diff(pulse_runtime[0]).astype(np.int32)))
-            ts1 = np.hstack(([0], np.diff(pulse_runtime1).astype(np.int32)))
-            ts2 = np.hstack(([0], np.diff(pulse_runtime2).astype(np.int32)))
-            line_num1 = line_num[j_gate1]
-            line_num2 = line_num[j_gate2]
-            line_num = line_num[j_gate]
+            dt2 = p.delay_time[gate2_idxs]
+            pulse_runtime2 = p.pulse_runtime[gate2_idxs]
+            ts2 = np.hstack(([0], np.diff(pulse_runtime2)))
+            dt_ts2 = np.vstack((dt2, ts2))
+            line_num2 = line_num[gate2_idxs]
+        if "AB" in xcorr_types or "BA" in xcorr_types:
+            # NOTE: # gate2 is first in line to match how software correlator C code written
+            dt_ts12 = np.vstack((p.delay_time, p.pulse_runtime, gate2_idxs, gate1_idxs))[
+                :, gate1_idxs | gate2_idxs
+            ]
+            dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
+            line_num12 = line_num[gate1_idxs | gate2_idxs]
 
-            for j in p.line_limits.as_range():
-                file_ts_split_list.append(self.prepare_correlator_input(ts, j, line_num=line_num))
-                file_ts1_split_list.append(
-                    self.prepare_correlator_input(ts1, j, line_num=line_num1)
-                )
-                file_ts2_split_list.append(
-                    self.prepare_correlator_input(ts2, j, line_num=line_num2)
-                )
+        for j in p.line_limits.as_range():
+            for xx in xcorr_types:
+                if xx == "AA":
+                    file_dt_ts_splits_dict[xx].append(
+                        self.prepare_correlator_input(dt_ts1, j, line_num=line_num1)
+                    )
+                if xx == "BB":
+                    file_dt_ts_splits_dict[xx].append(
+                        self.prepare_correlator_input(dt_ts2, j, line_num=line_num2)
+                    )
+                if xx == "AB":
+                    splitsAB = self.prepare_correlator_input(dt_ts12, j, line_num=line_num12)
+                    file_dt_ts_splits_dict[xx].append(splitsAB)
+                if xx == "BA":
+                    if "AB" in xcorr_types:
+                        file_dt_ts_splits_dict[xx].append(splitsAB[[0, 1, 3, 2, 4], :])
+                    else:
+                        dt_ts21 = dt_ts12[[0, 1, 3, 2, 4], :]
+                        file_dt_ts_splits_dict[xx].append(
+                            self.prepare_correlator_input(dt_ts21, j, line_num=line_num12)
+                        )
 
-        return file_ts_split_list, file_ts1_split_list, file_ts2_split_list
+        return file_dt_ts_splits_dict
 
     def prepare_correlator_input(self, dt_ts_in, idx, line_num=None, n_splits=None):
         """Doc."""
@@ -1615,8 +1699,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
         if is_verbose:
             print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
-        XCF_AB, XCF_BA = self.cross_correlate_data(
-            corr_names=("AB", "BA"),
+        cf_dict = self.cross_correlate_data(
+            xcorr_types=["AB", "BA"],
             cf_name="Afterpulsing",
             gate1_ns=gate1_ns,
             gate2_ns=gate2_ns,
@@ -1626,6 +1710,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             should_add_to_xcf_dict=False,  # avoid saving to self
             is_verbose=is_verbose,
         )
+        XCF_AB, XCF_BA = cf_dict["AB"], cf_dict["BA"]
 
         # Averaging and normalizing properly the subtraction of BA from AB
         sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
