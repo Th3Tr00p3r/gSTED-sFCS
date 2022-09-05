@@ -8,6 +8,7 @@
 //#include <math.h>
 #include <cmath>
 #include <cstdio>
+#include <typeinfo>
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -34,7 +35,7 @@ CPhDelayLifeTimeCrossCorrelator::CPhDelayLifeTimeCrossCorrelator(long Stime, int
 	TotalSamplingTimes = 0;
     DelayChainCleared = true;
     NoChainClears = 1;
- 
+    
 	delayChannel = (double *)calloc( NumOfChannels, sizeof( double ) );
 	accumulator = (double *)calloc( NumOfAccumulators, sizeof( double ) );
 	lag = (double *)calloc( NumOfAccumulators, sizeof( double ) );
@@ -187,6 +188,12 @@ void CPhDelayLifeTimeCrossCorrelator::GetCounterIn() // <A(0)*B(t)>
 
 void CPhDelayLifeTimeCrossCorrelator::ProcessEntry(EntryType Entry, double belongToAch, double belongToBch)
 {
+//    if (smplTime == 1){
+//        fprintf(stderr, "Process entry\n");
+//        fprintf(stderr,"%fL\n", belongToAch);
+//        fprintf(stderr,"%s\n", typeid(belongToAch).name());
+//    };
+    
     if (DelayChainCleared)
     {
         //NoChainClears++;
@@ -326,10 +333,9 @@ void CPhDelayLifeTimeCrossCorrelator::GetAccumulators(double *accout)
    // mexPrintf("%f   ", TotalCountsB);
    // mexPrintf("%f\n", TotalSamplingTimes);
     
-//    if (smplTime == 1){
-//         fprintf(stderr, "%ld\n", smplTime); //long
+//    if (smplTime == 1){         fprintf(stderr, "%ld\n", smplTime); //long
 //         fprintf(stderr,"%fL\n", TotalCountsA);
-//         fprintf(stderr,"%fL\n", TotalCountsA);
+//        fprintf(stderr,"%fL\n", TotalCountsB);
 //         fprintf(stderr,"%fL\n", TotalSamplingTimes);
 //     };
 
