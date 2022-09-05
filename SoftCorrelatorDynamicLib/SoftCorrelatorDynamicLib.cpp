@@ -8,6 +8,7 @@
 
 //#include <iostream>
 #include "SoftCorrelatorDynamicLib.hpp"
+#include <cstdio>
 //#include "SoftCorrelatorDynamicLibPriv.hpp"
 
 /*
@@ -190,8 +191,13 @@ extern "C" void softwareLifeTimeCorrelator(
         const double* factor_Bch = factorsLifeTime;
         
         
-        for (; phHist < HistEnd; )
+        for (; phHist < HistEnd; ){
             CorrelatorArray.ProcessEntry(*phHist++, *factor_Ach++, *factor_Bch++);
+//            fprintf(stderr, "SoftCorrelator\n");
+//            fprintf(stderr,"%fL\n", fA);
+//            fprintf(stderr,"%s\n", typeid(fA).name());
+//            fprintf(stderr,"%s\n", typeid(*HistEnd).name());
+        }
         
         CorrelatorArray.GetAccumulators(corr);
         *NoCorrChannels = CorrelatorArray.TotalLength;

@@ -83,11 +83,11 @@ data_label_dict = {
         sted_template="sol_static_sted_183413_*.pkl",
         file_selection="Use 1",
         force_processing=False,
-        #         gating_mechanism="binary filter",
-        gating_mechanism="removal",
-        #         afterpulsing_method="filter (lifetime)",
+        gating_mechanism="binary filter",
+        #         gating_mechanism="removal",
+        afterpulsing_method="filter (lifetime)",
         #         afterpulsing_method="subtract calibrated",
-        afterpulsing_method="none",
+        #         afterpulsing_method="none",
     ),
 }
 
@@ -279,8 +279,9 @@ print(f"{total_prob_j.mean()} +/- {total_prob_j.std()}")
 
 # %% [markdown]
 # We have designed a new correlator which accepts for each photon timestamp a filter value. The filter value is assigned according to which bin the photon timestamp belongs to and the value for that bin (given by the matrix $F$, built from the histogram).
-#
-# First, let's try assigning to each photon timestamp the correct bin
+
+# %% [markdown]
+# ### Test filtering as gating mechanism
 
 # %% [markdown]
 # In order to test the lifetime correlation, let's attempt to use the filter as a gating mechanism - 0 for gated photon, 1 for included photon. We will need to use a circular-scan/static measurement with STED to notice the effects of gating, since there isn't a line correlator ready for lifetime correlation yet.
@@ -291,3 +292,127 @@ print(f"{total_prob_j.mean()} +/- {total_prob_j.std()}")
 exp = exp_dict["free ATTO"]
 
 exp.add_gate((3.61, 20), **label_load_kwargs_dict[label])
+
+# %% [markdown]
+# ### Test afterpulsing filtering
+# Now lets compare to regular subtraction of calibrated afterpulsing. First, load data with afterpulsing removed in both methods:
+
+# %%
+data_label_dict = {
+    "calibrated": SimpleNamespace(
+        date="05_10_2021",
+        confocal_template="sol_static_exc_181325_*.pkl",
+        sted_template="sol_static_sted_183413_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+        gating_mechanism="removal",
+        afterpulsing_method="subtract calibrated",
+    ),
+    "filtered": SimpleNamespace(
+        date="05_10_2021",
+        confocal_template="sol_static_exc_181325_*.pkl",
+        sted_template="sol_static_sted_183413_*.pkl",
+        file_selection="Use All",
+        force_processing=False,
+        gating_mechanism="removal",
+        afterpulsing_method="filter (lifetime)",
+    ),
+}
+
+data_labels = list(data_label_dict.keys())
+
+n_meas = len(data_labels)
+
+template_paths = [
+    SimpleNamespace(
+        confocal_template=DATA_ROOT / data.date / DATA_TYPE / data.confocal_template,
+        sted_template=DATA_ROOT / data.date / DATA_TYPE / data.sted_template
+        if data.sted_template
+        else None,
+    )
+    for data in data_label_dict.values()
+]
+
+# initialize the experiment dictionary
+exp_dict = {}
+
+
+for label in data_labels:
+    if label not in exp_dict:
+        exp_dict[label] = SFCSExperiment(name=label)
+
+label_load_kwargs_dict = {
+    label: dict(
+        confocal_template=tmplt_path.confocal_template,
+        sted_template=tmplt_path.sted_template,
+        file_selection=data.file_selection,
+        gating_mechanism=data.gating_mechanism,
+        afterpulsing_method=data.afterpulsing_method,
+    )
+    for label, tmplt_path, data in zip(data_labels, template_paths, data_label_dict.values())
+}
+
+# TEST
+print(template_paths)
+
+# load experiments
+FORCE_ALL = True
+# FORCE_ALL = False
+
+used_labels = data_labels
+
+# load experiment
+for label in used_labels:
+    # skip already loaded experiments, unless forced
+    if (
+        not hasattr(exp_dict[label], "confocal")
+        or data_label_dict[label].force_processing
+        or FORCE_ALL
+    ):
+        exp_dict[label].load_experiment(
+            should_plot=False,
+            force_processing=data_label_dict[label].force_processing or FORCE_ALL,
+            should_re_correlate=FORCE_ALL,
+            **label_load_kwargs_dict[label],
+        )
+
+        # calibrate TDC
+        exp_dict[label].calibrate_tdc(
+            should_plot=True,
+            force_processing=data_label_dict[label].force_processing or FORCE_ALL,
+        )
+
+        # save processed data (to avoid re-processing)
+        exp_dict[label].save_processed_measurements(
+            should_force=data_label_dict[label].force_processing or FORCE_ALL
+        )
+
+# Present count-rates
+for label in used_labels:
+    exp = exp_dict[label]
+    print(f"'{label}' countrates:")
+    print(f"Confocal: {exp.confocal.avg_cnt_rate_khz:.2f} +/- {exp.confocal.std_cnt_rate_khz:.2f}")
+    with suppress(AttributeError):
+        print(f"STED: {exp.sted.avg_cnt_rate_khz:.2f} +/- {exp.sted.std_cnt_rate_khz:.2f}")
+    print()
+
+# %% [markdown]
+# Plotting:
+
+# %%
+with Plotter(x_scale="log") as ax:
+    for label, exp in exp_dict.items():
+        conf_lag = exp.confocal.cf["confocal"].lag
+        conf_avg_cf_cr = exp.confocal.cf["confocal"].avg_cf_cr
+        sted_lag = exp.sted.cf["sted"].lag
+        sted_avg_cf_cr = exp.sted.cf["sted"].avg_cf_cr
+        ax.plot(conf_lag, conf_avg_cf_cr, label=label + " Confocal")
+        ax.plot(sted_lag, sted_avg_cf_cr, label=label + " STED")
+
+    ax.legend()
+#     ax.set_yscale("log")
+#     ax.plot(t_hist, I_j, label="I_j (raw histogram)")
+#     ax.plot(t_hist, baseline * np.ones(t_hist.shape), label="baseline")
+#     ax.plot(t_hist, M_j1, label="M_j1 (ideal fluorescence decay curve)")
+#     ax.plot(t_hist, M_j2, label="M_j2 (ideal afterpulsing 'decay' curve)")
+#     ax.legend()
