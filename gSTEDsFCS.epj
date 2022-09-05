@@ -1,8 +1,8 @@
 {
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
-    "copyright": "Copyright (C) 2021 idomic, ",
-    "saved": "2021-11-01, 11:55:57"
+    "copyright": "Copyright (C) 2022 idomic, ",
+    "saved": "2022-09-06, 00:05:04"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -107,7 +107,8 @@
     },
     "FORMS": [
       "gui/mainwindow.ui",
-      "gui/settingswindow.ui"
+      "gui/settingswindow.ui",
+      "gui/optionswindow.ui"
     ],
     "HASH": "c44c4f29a6e008d4372597d4bc4266d897948644",
     "IDLPARAMS": {
