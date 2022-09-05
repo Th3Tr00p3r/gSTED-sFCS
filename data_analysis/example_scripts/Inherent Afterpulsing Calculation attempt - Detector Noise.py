@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -58,7 +58,7 @@ from data_analysis.correlation_function import (
     CorrFunc,
     SFCSExperiment,
     SolutionSFCSMeasurement,
-    calculate_afterpulse,
+    calculate_calibrated_afterpulse,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities.display import Plotter, get_gradient_colormap
@@ -139,8 +139,8 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 # importing the data:
 
 # %%
-FORCE_PROCESSING = False
-# FORCE_PROCESSING = True
+# FORCE_PROCESSING = False
+FORCE_PROCESSING = True
 
 # load experiment
 new_det_atto300bp_exp = SFCSExperiment(name=label)
@@ -175,7 +175,7 @@ meas = new_det_atto300bp_exp.confocal
 
 lag = meas.cf["confocal"].lag
 pulse_period_ns = 100
-p_cal_ap = calculate_afterpulse(lag) * detector_gate_width_ns / pulse_period_ns
+p_cal_ap = calculate_calibrated_afterpulse(lag) * detector_gate_width_ns / pulse_period_ns
 
 # %% [markdown]
 # Get the current standard of inherent afterpulsing, and the XCF_AB/BA objects for testing a new method of calculating afterpulsing:

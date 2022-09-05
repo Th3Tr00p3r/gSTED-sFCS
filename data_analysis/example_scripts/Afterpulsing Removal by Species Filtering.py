@@ -83,10 +83,11 @@ data_label_dict = {
         sted_template="sol_static_sted_183413_*.pkl",
         file_selection="Use 1",
         force_processing=False,
-        gating_mechanism="binary filter",
-        #          gating_mechanism="removal",
+        #         gating_mechanism="binary filter",
+        gating_mechanism="removal",
         #         afterpulsing_method="filter (lifetime)",
-        afterpulsing_method="subtract calibrated",
+        #         afterpulsing_method="subtract calibrated",
+        afterpulsing_method="none",
     ),
 }
 
