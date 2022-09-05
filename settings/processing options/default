@@ -1,5 +1,5 @@
 gatingMechanism,removal
-afterpulsingRemovalMethod,subtract calibrated
+afterpulsingRemovalMethod,filter (lifetime)
 useDefaultSysInfo,False
 subtractBgCorr,True
 fixShift,True
