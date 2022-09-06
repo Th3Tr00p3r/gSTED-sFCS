@@ -90,6 +90,6 @@ Windows:
 
 2. add /bin to Path
 
-3. in cmd or PowerShell, cd to `/SoftCorrelatorDynamicLib/SoftCorrelatorDynamicLib`
+3. in cmd or PowerShell, cd to `/SoftCorrelatorDynamicLib`
 
-4. Compile: `g++ -o SoftCorrelatorDynamicLib.so -shared -fPIC -O2 SoftCorrelatorDynamicLib.cpp Correlator.cpp CountCorrelator.cpp CPhDelayCrossCorrelator.cpp`
+4. Compile: `g++ -o SoftCorrelatorDynamicLib_win32.so -shared -fPIC -O2 SoftCorrelatorDynamicLib.cpp Correlator.cpp CountCorrelator.cpp CPhDelayCrossCorrelator.cpp CPhDelayLifeTimeCrossCorrelator.cpp`

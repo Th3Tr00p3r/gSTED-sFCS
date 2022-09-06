@@ -203,12 +203,58 @@ extern "C" void softwareLifeTimeCorrelator(
         *NoCorrChannels = CorrelatorArray.TotalLength;
         
     }
+    else if (CorrelatorType == PhDelayLifeTimeCrossCorrelatorLines)
+        {
+            CCorrArray<CPhDelayLifeTimeCrossCorrelator, NumOfCorrelators> CorrelatorArray(NumOfCorrelators, DoublingSize);
+                    
+
+            const EntryType* HistEnd = phHist + Nentries;
+            const EntryType* valid = phHist + Nentries; // pointer to the validity column
+            const double* factor_Ach = factorsLifeTime;
+            const double* factor_Bch = factorsLifeTime + Nentries;
+            
+            
+            for (; phHist < HistEnd; ){
+                CorrelatorArray.ProcessEntry(*phHist++, *factor_Ach++, *factor_Bch++, *valid++);
+    //            fprintf(stderr, "SoftCorrelator\n");
+    //            fprintf(stderr,"%fL\n", fA);
+    //            fprintf(stderr,"%s\n", typeid(fA).name());
+    //            fprintf(stderr,"%s\n", typeid(*HistEnd).name());
+            }
+            
+            CorrelatorArray.GetAccumulators(corr);
+            *NoCorrChannels = CorrelatorArray.TotalLength;
+            
+        }
+    else if (CorrelatorType == PhDelayLifeTimeAutoCorrelatorLines)
+        {
+            CCorrArray<CPhDelayLifeTimeCrossCorrelator, NumOfCorrelators> CorrelatorArray(NumOfCorrelators, DoublingSize);
+                    
+
+            const EntryType* HistEnd = phHist + Nentries;
+            const EntryType* valid = phHist + Nentries; // pointer to the validity column
+            const double* factor_Ach = factorsLifeTime;
+            const double* factor_Bch = factorsLifeTime;
+            
+            
+            for (; phHist < HistEnd; ){
+                CorrelatorArray.ProcessEntry(*phHist++, *factor_Ach++, *factor_Bch++, *valid++);
+    //            fprintf(stderr, "SoftCorrelator\n");
+    //            fprintf(stderr,"%fL\n", fA);
+    //            fprintf(stderr,"%s\n", typeid(fA).name());
+    //            fprintf(stderr,"%s\n", typeid(*HistEnd).name());
+            }
+            
+            CorrelatorArray.GetAccumulators(corr);
+            *NoCorrChannels = CorrelatorArray.TotalLength;
+            
+        }
     else
-     {
-         fprintf(stderr, "Nonexistent correlator type!\n");
-               exit(1);
-    //     std::cout << "Size: " << size << "\n";
-     }
+         {
+             fprintf(stderr, "Nonexistent correlator type!\n");
+                   exit(1);
+        //     std::cout << "Size: " << size << "\n";
+         }
     
 }
  
