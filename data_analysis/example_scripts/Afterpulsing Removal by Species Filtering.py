@@ -410,9 +410,3 @@ with Plotter(x_scale="log") as ax:
         ax.plot(sted_lag, sted_avg_cf_cr, label=label + " STED")
 
     ax.legend()
-#     ax.set_yscale("log")
-#     ax.plot(t_hist, I_j, label="I_j (raw histogram)")
-#     ax.plot(t_hist, baseline * np.ones(t_hist.shape), label="baseline")
-#     ax.plot(t_hist, M_j1, label="M_j1 (ideal fluorescence decay curve)")
-#     ax.plot(t_hist, M_j2, label="M_j2 (ideal afterpulsing 'decay' curve)")
-#     ax.legend()

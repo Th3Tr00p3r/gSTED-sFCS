@@ -1234,6 +1234,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
     def _prepare_timestamp_splits(self, is_verbose=True, **kwargs):
         """Doc."""
+        # TODO: try using the cross correlation function with "AA" option only
 
         if is_verbose:
             print("Preparing files for software correlator...", end=" ")
@@ -1752,7 +1753,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         I_j = all_hist_norm
 
         M = np.vstack((M_j1, M_j2)).T
-        inv_I = np.diag(1 / I_j)
+        inv_I = np.diag(1 / I_j + EPS)
 
         F = inv(M.T @ inv_I @ M) @ M.T @ inv_I
 
