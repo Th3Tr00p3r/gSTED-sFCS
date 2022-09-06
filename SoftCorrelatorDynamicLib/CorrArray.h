@@ -35,6 +35,8 @@ public:
 	void ProcessEntry(EntryType Entry, bool isA, bool isB);
     void ProcessEntry(EntryType Entry, bool isA, bool isB, long Valid); // for use in image or angular scan cross correlation
     void ProcessEntry(EntryType Entry, double factA, double factB); // for afterpulse separation Enderlein papers
+    
+    void ProcessEntry(EntryType Entry, double factA, double factB, long Valid); // for afterpulse separation Enderlein papers + line scan correlation
 	CCorrArray();
 	CCorrArray(int NumOfCorrelators, int DoublingSize);
 	virtual ~CCorrArray();
@@ -180,6 +182,14 @@ void CCorrArray<CorrType, MAXSIZE>::ProcessEntry(EntryType Entry, double factA, 
     for (int i = 0; i < mSize; i++)
         x[i].ProcessEntry(Entry, factA, factB);
 
+}
+
+template <class CorrType, int MAXSIZE>
+void CCorrArray<CorrType, MAXSIZE>::ProcessEntry(EntryType Entry, double factA, double factB, long Valid)
+{
+    for (int i = 0; i < mSize; i++)
+        x[i].ProcessEntry(Entry, factA, factB, Valid);
+    
 }
 
 template <class CorrType, int MAXSIZE>
