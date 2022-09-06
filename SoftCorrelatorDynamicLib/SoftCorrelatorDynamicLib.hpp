@@ -33,6 +33,9 @@
 #define PhDelayCrossCorrelatorLines 6 // as PhCountCrossCorrelator with an additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
 #define PhDelayLifeTimeCrossCorrelator 7 // as PhCountCrossCorrelator but the data for photons are separate array of doubles with values determined from photon lifetimes as in Enderlein papers https://link.springer.com/content/pdf/10.1007/s10895-006-0145-1.pdf
 #define PhDelayLifeTimeAutoCorrelator 8 // as PhDelayLifeTimeCrossCorrelator but does autocorrelation https://link.springer.com/content/pdf/10.1007/s10895-006-0145-1.pdf
+#define PhDelayLifeTimeCrossCorrelatorLines 9 // as PhDelayLifeTimeCrossCorrelator but works with linear scans
+#define PhDelayLifeTimeAutoCorrelatorLines 10 // as PhDelayLifeTimeCrossCorrelatorLines but does autocorrelation
+
 
 #define ARRAY_MAXSIZE  50
 
