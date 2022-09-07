@@ -20,6 +20,8 @@ class CorrelatorType:
     PH_DELAY_CROSS_CORRELATOR_LINES = 6  # as PH_COUNT_CROSS_CORRELATOR with an additional column with 1s for photons that have to be counted, on 0s the delay chain is reset; used in image correlation and in angular scan
     PH_DELAY_LIFETIME_CROSS_CORRELATOR = 7
     PH_DELAY_LIFETIME_CORRELATOR = 8
+    PH_DELAY_LIFETIME_CROSS_CORRELATOR_LINES = 9
+    PH_DELAY_LIFETIME_CORRELATOR_LINES = 10
 
 
 @dataclass
@@ -171,11 +173,6 @@ class SoftwareCorrelator:
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should have 3 rows for this correlator option! 0th row with photon time-stamps, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
                 )
-
-            #            print("photon_array[0,:10]: ", photon_array[0,:10]) # TESTESTEST
-            #            print("photon_array[0,:10].sum(): ", photon_array[0,:10].sum()) # TESTESTEST
-            #            print("photon_array[0,:10].sum(): ", photon_array[0,:10].sum()) # TESTESTEST
-
             duration_s = photon_array[0, :].sum() * timebase_ms / 1000
             countrate_a = photon_array[2, :].sum() / duration_s
             countrate_b = photon_array[1, :].sum() / duration_s
@@ -212,10 +209,8 @@ class SoftwareCorrelator:
                     f"Filter array {filter_array.shape} should have 2 rows for this correlator option! 0th & 1st rows should contain float filter values for photons in channels A & B (respectively)"
                 )
             duration_s = photon_array[0, :].sum() * timebase_ms / 1000
-            countrate_a = (
-                filter_array[0, :].sum() / duration_s
-            )  # TODO: unsure about how the countrates should work here...
-            countrate_b = filter_array[1, :].sum() / duration_s
+            countrate_a = photon_array[2, :].sum() / duration_s
+            countrate_b = photon_array[1, :].sum() / duration_s
             countrate = CrossCorrCountRates(countrate_a, countrate_b)
 
         elif correlator_option == CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR:
@@ -229,6 +224,35 @@ class SoftwareCorrelator:
                 )
             countrate = n_entries / photon_array.sum() / timebase_ms * 1000
 
+        elif correlator_option == CorrelatorType.PH_DELAY_LIFETIME_CROSS_CORRELATOR_LINES:
+            if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 4):
+                raise RuntimeError(
+                    f"Photon array {photon_array.shape} should have 4 rows for this correlator option! 0th row with photon time-stamps, 1st (2nd) row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
+                )
+            if (len(filter_array.shape) == 1) or (filter_array.shape[0] != 2):
+                raise RuntimeError(
+                    f"Filter array {filter_array.shape} should have 2 rows for this correlator option! 0th & 1st rows should contain float filter values for photons in channels A & B (respectively)"
+                )
+            valid_timestamps = (photon_array[3, :] == 1) | (photon_array[3, :] == -2)
+            valid_photons = photon_array[3, :] == 1
+            duration_s = photon_array[0, valid_timestamps].sum() * timebase_ms / 1000
+            countrate_a = np.sum(photon_array[2, valid_photons] == 1) / duration_s
+            countrate_b = np.sum(photon_array[1, valid_photons] == 1) / duration_s
+            countrate = CrossCorrCountRates(countrate_a, countrate_b)
+
+        elif correlator_option == CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR_LINES:
+            if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
+                raise RuntimeError(
+                    f"Photon array {photon_array.shape} should have 2 rows for this correlator option! 0th row with photon time-stamps, 1st row is 1 for valid lines"
+                )
+            if len(filter_array.shape) != 1:
+                raise RuntimeError(
+                    f"Filter array {filter_array.shape} should be 1D for this correlator option! It should contain float filter values for fluorescence photons (as in not afterpulsing photons)"
+                )
+            valid = (photon_array[1, :] == 1) | (photon_array[1, :] == -2)
+            duration_s = photon_array[0, valid].sum() * timebase_ms / 1000
+            countrate = np.sum(photon_array[1, :] == 1) / duration_s
+
         else:
             raise ValueError("Invalid correlator type!")
 
@@ -236,6 +260,8 @@ class SoftwareCorrelator:
         if correlator_option in {
             CorrelatorType.PH_DELAY_LIFETIME_CROSS_CORRELATOR,
             CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR,
+            CorrelatorType.PH_DELAY_LIFETIME_CROSS_CORRELATOR_LINES,
+            CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR_LINES,
         }:  # lifetime corralation
             self.lt_soft_corr(
                 correlator_option, n_entries, ph_hist, filter, n_corr_channels, self.corr_py
