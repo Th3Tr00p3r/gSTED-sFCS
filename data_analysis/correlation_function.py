@@ -37,7 +37,9 @@ from utilities.helper import (
     div_ceil,
     extrapolate_over_noise,
     hankel_transform,
+    moving_average,
     nan_helper,
+    return_outlier_indices,
     unify_length,
     xcorr,
 )
@@ -67,7 +69,7 @@ class CircularScanMixin:
 class AngularScanMixin:
     """Doc."""
 
-    NAN_PLACEBO = -100
+    NAN_PLACEBO = -100  # marks starts/ends of lines
 
     def _convert_angular_scan_to_image(
         self, pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
@@ -1067,6 +1069,11 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         p.coarse2 = np.hstack((line_starts_nans, line_stops_nans, p.coarse2))[sorted_idxs]
         p.fine = np.hstack((line_starts_nans, line_stops_nans, p.fine))[sorted_idxs]
 
+        # initialize delay times with zeros (nans at line edges) - filled-in during TDC calibration
+        p.delay_time = np.zeros(p.pulse_runtime.shape, dtype=np.float16)
+        line_edge_idxs = p.fine == self.NAN_PLACEBO
+        p.delay_time[line_edge_idxs] = np.nan
+
         p.image = cnt
         p.roi = roi
 
@@ -1102,7 +1109,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         inherent_afterpulsing_gates=(Limits(2.5, 10), Limits(30, 90)),
         should_subtract_bg_corr=True,
         is_verbose=False,
-        min_time_frac=0.5,
         **kwargs,
     ) -> CorrFunc:
         """
@@ -1141,7 +1147,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         corr_input_list = []
         if is_filtered:
             if afterpulsing_method == "filter (lifetime)":
-                F = self.calculate_afterpulsing_filter()
+                F = self.calculate_afterpulsing_filter(**kwargs)
             filter_input_list = []
         for dt_ts_split in dt_ts_split_list:
             split_delay_time = dt_ts_split[0]
@@ -1189,9 +1195,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 correlator_option = CorrelatorType.PH_DELAY_CORRELATOR
         elif self.scan_type == "angular":
             if is_filtered:
-                raise NotImplementedError(
-                    "PH_DELAY_LIFETIME_CORRELATOR_LINES not yet implemented (waiting for Oleg)."
-                )
                 correlator_option = CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR_LINES
             else:
                 correlator_option = CorrelatorType.PH_DELAY_CORRELATOR_LINES
@@ -1242,7 +1245,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         afterpulse_params=None,
         should_subtract_bg_corr=True,
         is_verbose=False,
-        min_time_frac=0.5,
         should_add_to_xcf_dict=True,
         **kwargs,
     ) -> Dict[str, CorrFunc]:
@@ -1338,7 +1340,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
     ) -> Dict[str, List]:
         """
         Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
-        To perform autocorrelation, only one gate is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
+        To perform autocorrelation, only one "AA" is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
 
         if is_verbose:
@@ -1382,10 +1384,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             ) / self.laser_freq_hz
 
             section_pulse_runtime = p.pulse_runtime[se_start : se_end + 1]
-            try:
-                section_delay_time = p.delay_time[se_start : se_end + 1]
-            except AttributeError:
-                section_delay_time = np.zeros((se_end + 1 - se_start,), dtype=np.int32)
+            section_delay_time = p.delay_time[se_start : se_end + 1]
 
             # split the data into parts A/B according to gates
             # TODO: in order to make this more general and use it with both auto and cross correlations, the function should optionally accept 2 seperate data,
@@ -1442,7 +1441,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         gate2_ns=Limits(0, np.inf),
         **kwargs,
     ):
-        """Doc."""
+        """Splits are all photons belonging to each scan line."""
 
         # TODO: why is rounding needed here, and not in auto line correlation? possibly round during processing?
         line_num = np.around(p.line_num)
@@ -1637,8 +1636,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
         return sbtrct_AB_BA_arr.mean(axis=0), (XCF_AB, XCF_BA)
 
-    def calculate_afterpulsing_filter(self):
+    def calculate_afterpulsing_filter(self, baseline_method="auto", hist_norm_factor=1, **kwargs):
         """Doc."""
+        # TODO: add prints and tests
 
         t_hist = self.tdc_calib.t_hist
         all_hist = copy(self.tdc_calib.all_hist.astype(np.float64))
@@ -1651,13 +1651,28 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
 
         # normalize
-        norm_factor = all_hist.sum()  # / 1.4117  # TODO: why is this 1.4 factor needed??
-        all_hist_norm = all_hist / norm_factor
+        # TODO: why is a factor needed??
+        all_hist_norm = all_hist / all_hist.sum() * hist_norm_factor  # test_factor = 1.4117
 
-        # calculate the baseline (which is assumed to be approximately the afterpulsing histogram)
-        baseline_limits = Limits(60, 78)
-        baseline_idxs = baseline_limits.valid_indices(t_hist)
-        baseline = np.mean(all_hist_norm[baseline_idxs])
+        # get the baseline (which is assumed to be approximately the afterpulsing histogram)
+        if baseline_method == "manual":
+            # Using Plotter for manual selection
+            baseline_limits = Limits()
+            with Plotter(
+                super_title="Use the mouse to place 2 markers\nrepresenting the baseline:",
+                selection_limits=baseline_limits,
+                should_close_after_selection=True,
+            ) as ax:
+                ax.semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
+                ax.legend()
+
+            baseline_idxs = baseline_limits.valid_indices(t_hist)
+            baseline = np.mean(all_hist_norm[baseline_idxs])
+
+        elif baseline_method == "auto":
+            outlier_indxs = return_outlier_indices(all_hist_norm, m=2)
+            smoothed_robust_all_hist = moving_average(all_hist_norm[~outlier_indxs], n=100)
+            baseline = min(smoothed_robust_all_hist)
 
         # idc - ideal decay curve
         M_j1 = all_hist_norm - baseline  # p1
@@ -1665,9 +1680,17 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         I_j = all_hist_norm
 
         M = np.vstack((M_j1, M_j2)).T
-        inv_I = np.diag(1 / I_j + EPS)
+        inv_I = np.diag(1 / (I_j + EPS))
 
         F = inv(M.T @ inv_I @ M) @ M.T @ inv_I
+
+        # testing (mean sum should be 1 with very low error ~1e-6)
+        total_prob_j = F.sum(axis=0)
+        if abs(1 - total_prob_j.mean()) > 0.1 or total_prob_j.std() > 0.1:
+            print(
+                f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean()} +/- {total_prob_j.std()})"
+            )
+        #            raise RuntimeWarning(f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean()} +/- {total_prob_j.std()})")
 
         return F
 

@@ -1,15 +1,10 @@
-imgScanFileTemplate,gb
 solScanFileTemplate,
+imgScanFileTemplate,gb
 newTemplate,
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
 spadMode,Free Running
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 solScanFloatingAmp,0
 circAoSampFreq,10000
 circDiameter,50
@@ -25,6 +20,11 @@ maxScanFreq,40
 solPointsPerLine,149
 solTotPointsPerLine,183
 solNumLines,14
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 expStrctFctrRbstIntrpPnts,3
 tdcCalibGating,40
 tdcCalibGating_2,20
@@ -35,15 +35,15 @@ depCurr,1500
 stageSteps,250
 spadGateWidth,98
 spadEffGateWidth,98
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,10.0
-imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,6010.93
 solActualScanFreq,27.32
 solScanDur,10.0
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,10.0
+imgScanLinFrac,0.9
 expStrctFctrGMin,0.1
 customGateLifetimes,0.5
 solAnalysisRemoveOverSpinner,2.0
@@ -53,25 +53,25 @@ zAOV,5.0
 axisMoveUm,5.0
 psdDelay,0.0
 psdEffDelay,49.41
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - actual counts per pixel
 solMeasPreset,Standard Static
 solScanType,static
 solScanDurUnits,seconds
-dataMonth,8
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - actual counts per pixel
+dataMonth,7
 dataYear,2022
-dataDay,17
-dataTemplate1,halogen300khz_static_exc_124749_*.pkl
+dataDay,3
+dataTemplate1,bp300ATTO_20uW_angular_exc_153213_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
 loadedExperimentNames,
 assignedGates,
 availableGates,
-importedSolDataTemplates2,
+importedSolDataTemplates2,bp300ATTO_20uW_angular_exc_153213_*.pkl
 expPropGstedGate,Lifetime
-importedSolDataTemplates1,
+importedSolDataTemplates1,bp300ATTO_20uW_angular_exc_153213_*.pkl
 avgInterval,5000
 posAxis,X
 solScanParamsStacked,2
@@ -83,8 +83,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveOver,True
@@ -109,12 +109,6 @@ autoCrosshair,True
 alwaysSaveImg,False
 solImportReCorrelate,True
 solImportAutoLoadProcessed,False
-solDataFixShift,True
-solDataUseDefaultSysInfo,False
-solDataSubtractAfterpulse,True
-solDataSubtractBgCorr,True
-solDataAutoRoi,True
-solDataUseInherentAfterpulse,False
 autoExp1,False
 autoExp2,False
 scaleImgScan,292

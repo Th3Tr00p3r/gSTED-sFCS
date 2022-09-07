@@ -29,6 +29,7 @@ class TDCPhotonData:
     size_estimate_mb: float
     duration_s: float
     skipped_duration: float
+    delay_time: np.ndarray
 
 
 @dataclass
@@ -216,6 +217,7 @@ class TDCPhotonDataMixin:
             size_estimate_mb=max(section_lengths) / 1e6,
             duration_s=duration_s,
             skipped_duration=skipped_duration,
+            delay_time=np.zeros(pulse_runtime.shape, dtype=np.float16),
         )
 
     def section_continuous_data(
@@ -435,7 +437,6 @@ class TDCPhotonDataMixin:
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
             )
             total_laser_pulses += p.pulse_runtime[-1]
-            p.delay_time[~photon_idxs] = np.nan  # line ends/starts
 
             delay_time_list.append(p.delay_time[photon_idxs])
 
