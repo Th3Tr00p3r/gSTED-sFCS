@@ -144,6 +144,7 @@ class Plotter:
         self.y_scale: str = kwargs.get("y_scale")
         self.should_autoscale = kwargs.get("should_autoscale", False)
         self.selection_limits: helper.Limits = kwargs.get("selection_limits")
+        self.should_close_after_selection = kwargs.get("should_close_after_selection", False)
         self.subplot_kw = kwargs.get("subplot_kw", {})  # dict(projection='3d')
 
     def __enter__(self):
@@ -247,6 +248,8 @@ class Plotter:
                 if len(x_coords) < 2:
                     raise RuntimeError("Must select at least 2 points!")
                 self.selection_limits(min(x_coords), max(x_coords))
+                if self.should_close_after_selection:
+                    plt.close(self.fig)
                 return
 
         if self.parent_ax is None:  # set figure attributes, and show it (dealing with figure)

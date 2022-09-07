@@ -68,27 +68,30 @@ DATA_TYPE = "solution"
 
 # %%
 data_label_dict = {
-    #     "300 bp": SimpleNamespace(
-    #         date="03_07_2022",
-    #         confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
-    #         sted_template=None,
-    #         file_selection="Use All",
-    #         force_processing=False,
-    #         should_subtract_afterpulse=False,
-    #         #         force_processing=True,
-    #     ),
-    "free ATTO": SimpleNamespace(
-        date="05_10_2021",
-        confocal_template="sol_static_exc_181325_*.pkl",
-        sted_template="sol_static_sted_183413_*.pkl",
-        file_selection="Use 1",
+    "300 bp": SimpleNamespace(
+        date="03_07_2022",
+        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+        sted_template=None,
+        file_selection="Use All",
+        #         force_processing=True,
         force_processing=False,
         gating_mechanism="binary filter",
-        #         gating_mechanism="removal",
         afterpulsing_method="filter (lifetime)",
-        #         afterpulsing_method="subtract calibrated",
-        #         afterpulsing_method="none",
+        hist_norm_factor=1.4117,
     ),
+    #     "free ATTO": SimpleNamespace(
+    #         date="05_10_2021",
+    #         confocal_template="sol_static_exc_181325_*.pkl",
+    #         sted_template="sol_static_sted_183413_*.pkl",
+    #         file_selection="Use 1",
+    #         force_processing=False,
+    #         gating_mechanism="binary filter",
+    #         #         gating_mechanism="removal",
+    #         afterpulsing_method="filter (lifetime)",
+    #         #         afterpulsing_method="subtract calibrated",
+    #         #         afterpulsing_method="none",
+    #         hist_norm_factor=1,
+    #     ),
 }
 
 data_labels = list(data_label_dict.keys())
@@ -121,6 +124,7 @@ label_load_kwargs_dict = {
         file_selection=data.file_selection,
         gating_mechanism=data.gating_mechanism,
         afterpulsing_method=data.afterpulsing_method,
+        hist_norm_factor=data.hist_norm_factor,
     )
     for label, tmplt_path, data in zip(data_labels, template_paths, data_label_dict.values())
 }
@@ -205,8 +209,8 @@ def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
 
-# label = "300 bp"
-label = "free ATTO"
+label = "300 bp"
+# label = "free ATTO"
 
 tdc_calib = exp_dict[label].confocal.tdc_calib
 
@@ -221,14 +225,15 @@ nans, x = nan_helper(all_hist)  # get nans and a way to interpolate over them la
 all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
 
 # normalize
-norm_factor = all_hist.sum()  # / 1.4117
+norm_factor = 1
 # TODO: why is this 1.4 factor needed?? not needed for static?? or is it a new detector thing??
-all_hist_norm = all_hist / norm_factor
+all_hist_norm = all_hist / all_hist.sum() * norm_factor
 
 # calculate the baseline (which is assumed to be approximately the afterpulsing histogram)
 baseline_limits = Limits(60, 78)
 baseline_idxs = baseline_limits.valid_indices(t_hist)
 baseline = np.mean(all_hist_norm[baseline_idxs])
+print("baseline: ", baseline)
 
 # idc - ideal decay curve
 M_j1 = all_hist_norm - baseline  # p1
@@ -275,23 +280,37 @@ total_prob_j = F.sum(axis=0)
 print(f"{total_prob_j.mean()} +/- {total_prob_j.std()}")
 
 # %% [markdown]
+# ## interpolating the lifetime histogram
+
+# %%
+len(smoothed_all_hist)
+
+# %%
+sum(outlier_indxs)
+
+# %%
+from utilities.helper import robust_interpolation, moving_average, return_outlier_indices
+
+m = 2
+outlier_indxs = return_outlier_indices(all_hist, m)
+
+n = 100
+smoothed_all_hist = moving_average(all_hist[~outlier_indxs], n)
+
+with Plotter() as ax:
+    ax.semilogy(tdc_calib.t_hist, all_hist, label="all_hist")
+    ax.semilogy(
+        tdc_calib.t_hist[~outlier_indxs][n - 1 :], smoothed_all_hist, label="smoothed_all_hist"
+    )
+    ax.legend()
+
+print(min(smoothed_all_hist))
+
+# %% [markdown]
 # ## Applying to correlation
 
 # %% [markdown]
 # We have designed a new correlator which accepts for each photon timestamp a filter value. The filter value is assigned according to which bin the photon timestamp belongs to and the value for that bin (given by the matrix $F$, built from the histogram).
-
-# %% [markdown]
-# ### Test filtering as gating mechanism
-
-# %% [markdown]
-# In order to test the lifetime correlation, let's attempt to use the filter as a gating mechanism - 0 for gated photon, 1 for included photon. We will need to use a circular-scan/static measurement with STED to notice the effects of gating, since there isn't a line correlator ready for lifetime correlation yet.
-#
-# Using a static atto STED measurement, let's try comparing gating in the regular way (by not correlating the gated photons at all) and gating by setting the filter values to 0/1:
-
-# %%
-exp = exp_dict["free ATTO"]
-
-exp.add_gate((3.61, 20), **label_load_kwargs_dict[label])
 
 # %% [markdown]
 # ### Test afterpulsing filtering
@@ -299,24 +318,53 @@ exp.add_gate((3.61, 20), **label_load_kwargs_dict[label])
 
 # %%
 data_label_dict = {
-    "calibrated": SimpleNamespace(
-        date="05_10_2021",
-        confocal_template="sol_static_exc_181325_*.pkl",
-        sted_template="sol_static_sted_183413_*.pkl",
+    # 300 bp
+    "raw": SimpleNamespace(
+        date="03_07_2022",
+        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+        sted_template=None,
         file_selection="Use All",
-        force_processing=False,
-        gating_mechanism="removal",
+        force_processing=True,
+        gating_mechanism="binary filter",
+        afterpulsing_method="none",
+    ),
+    "calibrated": SimpleNamespace(
+        date="03_07_2022",
+        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+        sted_template=None,
+        file_selection="Use All",
+        force_processing=True,
+        gating_mechanism="binary filter",
         afterpulsing_method="subtract calibrated",
     ),
     "filtered": SimpleNamespace(
-        date="05_10_2021",
-        confocal_template="sol_static_exc_181325_*.pkl",
-        sted_template="sol_static_sted_183413_*.pkl",
+        date="03_07_2022",
+        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+        sted_template=None,
         file_selection="Use All",
-        force_processing=False,
-        gating_mechanism="removal",
+        force_processing=True,
+        gating_mechanism="binary filter",
         afterpulsing_method="filter (lifetime)",
     ),
+    #     #ATTO
+    #     "calibrated": SimpleNamespace(
+    #         date="05_10_2021",
+    #         confocal_template="sol_static_exc_181325_*.pkl",
+    #         sted_template="sol_static_sted_183413_*.pkl",
+    #         file_selection="Use All",
+    #         force_processing=False,
+    #         gating_mechanism="removal",
+    #         afterpulsing_method="subtract calibrated",
+    #     ),
+    #     "filtered": SimpleNamespace(
+    #         date="05_10_2021",
+    #         confocal_template="sol_static_exc_181325_*.pkl",
+    #         sted_template="sol_static_sted_183413_*.pkl",
+    #         file_selection="Use All",
+    #         force_processing=False,
+    #         gating_mechanism="removal",
+    #         afterpulsing_method="filter (lifetime)",
+    #     ),
 }
 
 data_labels = list(data_label_dict.keys())
@@ -374,6 +422,7 @@ for label in used_labels:
             force_processing=data_label_dict[label].force_processing or FORCE_ALL,
             should_re_correlate=FORCE_ALL,
             **label_load_kwargs_dict[label],
+            hist_norm_factor=1.4117,  # TESTESTEST
         )
 
         # calibrate TDC
@@ -397,16 +446,26 @@ for label in used_labels:
     print()
 
 # %% [markdown]
-# Plotting:
+# Plotting
 
 # %%
-with Plotter(x_scale="log") as ax:
+# # if has STED
+# with Plotter(x_scale="log") as ax:
+#     for label, exp in exp_dict.items():
+#         conf_lag = exp.confocal.cf["confocal"].lag
+#         conf_avg_cf_cr = exp.confocal.cf["confocal"].avg_cf_cr
+#         sted_lag = exp.sted.cf["sted"].lag
+#         sted_avg_cf_cr = exp.sted.cf["sted"].avg_cf_cr
+#         ax.plot(conf_lag, conf_avg_cf_cr, label=label + " Confocal")
+#         ax.plot(sted_lag, sted_avg_cf_cr, label=label + " STED")
+
+#     ax.legend()
+
+with Plotter(
+    x_scale="log", xlim=(2e-4, 1e0), ylim=(-10, 2e5), xlabel="Lag (ms)", ylabel="Mean CF_CR"
+) as ax:
     for label, exp in exp_dict.items():
         conf_lag = exp.confocal.cf["confocal"].lag
         conf_avg_cf_cr = exp.confocal.cf["confocal"].avg_cf_cr
-        sted_lag = exp.sted.cf["sted"].lag
-        sted_avg_cf_cr = exp.sted.cf["sted"].avg_cf_cr
-        ax.plot(conf_lag, conf_avg_cf_cr, label=label + " Confocal")
-        ax.plot(sted_lag, sted_avg_cf_cr, label=label + " STED")
-
+        ax.plot(conf_lag, conf_avg_cf_cr, label=label)
     ax.legend()

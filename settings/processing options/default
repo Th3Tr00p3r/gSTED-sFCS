@@ -1,4 +1,4 @@
-gatingMechanism,removal
+gatingMechanism,binary filter
 afterpulsingRemovalMethod,filter (lifetime)
 useDefaultSysInfo,False
 subtractBgCorr,True

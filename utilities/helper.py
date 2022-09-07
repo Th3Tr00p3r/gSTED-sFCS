@@ -284,6 +284,28 @@ def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
     return img, thresh
 
 
+def moving_average(a: np.ndarray, n: int = 3) -> np.ndarray:
+    """
+    Adapted from:
+    https://stackoverflow.com/questions/14313510/how-to-calculate-rolling-moving-average-using-python-numpy-scipy
+    """
+
+    ret = np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1 :] / n
+
+
+def return_outlier_indices(data, m=2.0):
+    """
+    Adapted from:
+    https://stackoverflow.com/questions/11686720/is-there-a-numpy-builtin-to-reject-outliers-from-a-list
+    """
+    d = np.abs(data - np.median(data))
+    mdev = np.median(d)
+    s = d / mdev if mdev else 0.0
+    return s >= m
+
+
 def robust_interpolation(
     x,  # x-values to interpolate onto
     xi,  # real x vals
