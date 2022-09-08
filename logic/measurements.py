@@ -619,7 +619,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.duration_s
             )  # TODO: this is a patch! run duration should be determined in 'correlation_function,py'
             s.data.append(p)
-            s.correlate_and_average(cf_name=self.laser_mode)
+            s.correlate_and_average(
+                cf_name=self.laser_mode, afterpulsing_method="subtract calibrated"
+            )
             return s
 
         try:
