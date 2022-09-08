@@ -189,6 +189,7 @@ class TDCPhotonDataMixin:
             else:
                 coarse = coarse
                 coarse2 = None
+        # only ignored during static alignment measurement
         else:
             coarse = None
             coarse2 = None
