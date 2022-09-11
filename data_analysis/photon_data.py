@@ -1,6 +1,7 @@
 """Raw data handling."""
 
 from contextlib import suppress
+from copy import copy
 from dataclasses import dataclass
 from itertools import count as infinite_range
 from typing import Any, List, Tuple, Union
@@ -12,7 +13,13 @@ from sklearn import linear_model
 from utilities.display import Plotter
 from utilities.file_utilities import rotate_data_to_disk
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
-from utilities.helper import Limits, div_ceil
+from utilities.helper import (
+    Limits,
+    div_ceil,
+    moving_average,
+    nan_helper,
+    return_outlier_indices,
+)
 
 
 @dataclass
@@ -701,6 +708,63 @@ class TDCPhotonDataMixin:
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params
+
+    def calculate_afterpulsing_filter(self, baseline_method="auto", hist_norm_factor=1, **kwargs):
+        """Doc."""
+
+        t_hist = self.tdc_calib.t_hist
+        all_hist = copy(self.tdc_calib.all_hist.astype(np.float64))
+        nonzero_idxs = self.tdc_calib.hist_weight > 0
+        all_hist[nonzero_idxs] /= self.tdc_calib.hist_weight[nonzero_idxs]  # weight the histogram
+
+        # interpolate over NaNs
+        all_hist[~nonzero_idxs] = np.nan  # NaN the zeros (for interpolation)
+        nans, x = nan_helper(all_hist)  # get nans and a way to interpolate over them later
+        all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
+
+        # normalize
+        # TODO: why is a factor needed??
+        all_hist_norm = all_hist / all_hist.sum() * hist_norm_factor  # test_factor = 1.4117
+
+        # get the baseline (which is assumed to be approximately the afterpulsing histogram)
+        if baseline_method == "manual":
+            # Using Plotter for manual selection
+            baseline_limits = Limits()
+            with Plotter(
+                super_title="Use the mouse to place 2 markers\nrepresenting the baseline:",
+                selection_limits=baseline_limits,
+                should_close_after_selection=True,
+            ) as ax:
+                ax.semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
+                ax.legend()
+
+            baseline_idxs = baseline_limits.valid_indices(t_hist)
+            baseline = np.mean(all_hist_norm[baseline_idxs])
+
+        elif baseline_method == "auto":
+            outlier_indxs = return_outlier_indices(all_hist_norm, m=2)
+            smoothed_robust_all_hist = moving_average(all_hist_norm[~outlier_indxs], n=100)
+            baseline = min(smoothed_robust_all_hist)
+
+        # define matrices and calculate F
+        M_j1 = all_hist_norm - baseline  # p1
+        M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
+        M = np.vstack((M_j1, M_j2)).T
+
+        I_j = all_hist_norm
+        I = np.diag(I_j)  # NOQA E741
+        inv_I = np.linalg.pinv(I)
+
+        F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
+
+        # testing (mean sum should be 1 with very low error ~1e-6)
+        total_prob_j = F.sum(axis=0)
+        if abs(1 - total_prob_j.mean()) > 0.1 or total_prob_j.std() > 0.1:
+            print(
+                f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean()} +/- {total_prob_j.std()})"
+            )
+
+        return F
 
     def _unite_coarse_fine_data(self):
         """Doc."""
