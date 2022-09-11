@@ -15,7 +15,6 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 import scipy
 import skimage
-from numpy.linalg import inv
 
 from data_analysis.photon_data import (
     CountsImageMixin,
@@ -1156,7 +1155,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 split_filter = np.zeros((dt_ts_split.shape[1],), dtype=float)
                 if gating_mechanism == "binary filter":
                     # TESTESTEST - testing the new filtering approach by applying it to gating
-                    split_filter[in_gate_idxs] = 1
+                    split_filter[in_gate_idxs] = 0.1
                 if afterpulsing_method == "filter (lifetime)":
                     # create a filter for genuine fluorscene (ignoring afterpulsing)
                     bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
@@ -1674,15 +1673,16 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             smoothed_robust_all_hist = moving_average(all_hist_norm[~outlier_indxs], n=100)
             baseline = min(smoothed_robust_all_hist)
 
-        # idc - ideal decay curve
+        # define matrices and calculate F
         M_j1 = all_hist_norm - baseline  # p1
         M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
-        I_j = all_hist_norm
-
         M = np.vstack((M_j1, M_j2)).T
-        inv_I = np.diag(1 / (I_j + EPS))
 
-        F = inv(M.T @ inv_I @ M) @ M.T @ inv_I
+        I_j = all_hist_norm
+        I = np.diag(I_j)  # NOQA E741
+        inv_I = np.linalg.pinv(I)
+
+        F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
 
         # testing (mean sum should be 1 with very low error ~1e-6)
         total_prob_j = F.sum(axis=0)
