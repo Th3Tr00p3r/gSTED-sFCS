@@ -50,7 +50,7 @@ except NameError:
 
 from data_analysis.correlation_function import (
     SFCSExperiment,
-    calculate_afterpulse,
+    calculate_calibrated_afterpulse,
 )
 from utilities.display import Plotter
 
@@ -262,7 +262,7 @@ with Plotter(
         cf = halogen_exp_dict[label].confocal.cf["confocal"]
         ax.plot(cf.lag, cf.avg_cf_cr, "x", label=label + " (data)", color=color)
         # calculate and plot afterpulsing
-        ap = calculate_afterpulse(lag, ("multi_exponent_fit", beta))
+        ap = calculate_calibrated_afterpulse(lag, ("multi_exponent_fit", beta))
         ax.plot(lag, ap, label=label + " (fit)", color=color)
     ax.legend()
 
@@ -295,7 +295,7 @@ with Plotter(
         cf = halogen_exp_dict[label].confocal.cf["confocal"]
         ax.plot(cf.lag, cf.avg_cf_cr, "x", label=label + " (data)", color=color)
         # calculate and plot afterpulsing
-        ap = calculate_afterpulse(lag, ("multi_exponent_fit", beta))
+        ap = calculate_calibrated_afterpulse(lag, ("multi_exponent_fit", beta))
         ax.plot(lag, ap, label="post-fix fit", color=color)
     ax.legend()
 

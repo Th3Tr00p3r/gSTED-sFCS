@@ -1,6 +1,7 @@
 """Raw data handling."""
 
 from contextlib import suppress
+from copy import copy
 from dataclasses import dataclass
 from itertools import count as infinite_range
 from typing import Any, List, Tuple, Union
@@ -12,7 +13,13 @@ from sklearn import linear_model
 from utilities.display import Plotter
 from utilities.file_utilities import rotate_data_to_disk
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
-from utilities.helper import Limits, div_ceil
+from utilities.helper import (
+    Limits,
+    div_ceil,
+    moving_average,
+    nan_helper,
+    return_outlier_indices,
+)
 
 
 @dataclass
@@ -378,13 +385,16 @@ class TDCPhotonDataMixin:
             mid_tdc = np.mean(fine_calib)
 
             # left TDC edge: zeros stretch closest to mid_tdc
-            left_tdc = np.max(zeros_tdc[zeros_tdc < mid_tdc]) + n_zeros_for_fine_bounds - 1
-            right_tdc = np.min(zeros_tdc[zeros_tdc > mid_tdc]) + 1
+            left_tdc = max(zeros_tdc[zeros_tdc < mid_tdc]) + n_zeros_for_fine_bounds - 1
+            right_tdc = min(zeros_tdc[zeros_tdc > mid_tdc]) + 1
 
             l_quarter_tdc = round(left_tdc + (right_tdc - left_tdc) / 4)
             r_quarter_tdc = round(right_tdc - (right_tdc - left_tdc) / 4)
 
             # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
+            if sum(h_tdc_calib[:left_tdc]) or sum(h_tdc_calib[right_tdc:]):
+                # TODO: delete the 'h_tdc_calib[:left_tdc] = 0' rows below if this error never shows
+                raise ValueError("SO THEY SHOULD BE ZEROED!!!")  # TESTESTEST
             h_tdc_calib[:left_tdc] = 0
             h_tdc_calib[right_tdc:] = 0
 
@@ -456,9 +466,14 @@ class TDCPhotonDataMixin:
         all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
         error_all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
         nonzero = hist_weight > 0
-        all_hist_norm[nonzero] = all_hist[nonzero] / hist_weight[nonzero] / total_laser_pulses
+        all_hist_norm[nonzero] = (
+            all_hist[nonzero] / hist_weight[nonzero] * np.mean(hist_weight) / total_laser_pulses
+        )
         error_all_hist_norm[nonzero] = (
-            np.sqrt(all_hist[nonzero]) / hist_weight[nonzero] / total_laser_pulses
+            np.sqrt(all_hist[nonzero])
+            / hist_weight[nonzero]
+            * np.mean(hist_weight)
+            / total_laser_pulses
         )
 
         if should_plot:
@@ -694,6 +709,66 @@ class TDCPhotonDataMixin:
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params
+
+    def calculate_afterpulsing_filter(self, baseline_method="auto", hist_norm_factor=1, **kwargs):
+        """Doc."""
+
+        t_hist = self.tdc_calib.t_hist
+        hist_weight = self.tdc_calib.hist_weight
+        all_hist = copy(self.tdc_calib.all_hist.astype(np.float64))
+        nonzero_idxs = hist_weight > 0
+        all_hist[nonzero_idxs] /= hist_weight[nonzero_idxs] * np.mean(
+            hist_weight
+        )  # weight the histogram
+
+        # interpolate over NaNs
+        all_hist[~nonzero_idxs] = np.nan  # NaN the zeros (for interpolation)
+        nans, x = nan_helper(all_hist)  # get nans and a way to interpolate over them later
+        all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
+
+        # normalize
+        # TODO: why is a factor needed??
+        all_hist_norm = all_hist / all_hist.sum() * hist_norm_factor
+
+        # get the baseline (which is assumed to be approximately the afterpulsing histogram)
+        if baseline_method == "manual":
+            # Using Plotter for manual selection
+            baseline_limits = Limits()
+            with Plotter(
+                super_title="Use the mouse to place 2 markers\nrepresenting the baseline:",
+                selection_limits=baseline_limits,
+                should_close_after_selection=True,
+            ) as ax:
+                ax.semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
+                ax.legend()
+
+            baseline_idxs = baseline_limits.valid_indices(t_hist)
+            baseline = np.mean(all_hist_norm[baseline_idxs])
+
+        elif baseline_method == "auto":
+            outlier_indxs = return_outlier_indices(all_hist_norm, m=2)
+            smoothed_robust_all_hist = moving_average(all_hist_norm[~outlier_indxs], n=100)
+            baseline = min(smoothed_robust_all_hist)
+
+        # define matrices and calculate F
+        M_j1 = all_hist_norm - baseline  # p1
+        M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
+        M = np.vstack((M_j1, M_j2)).T
+
+        I_j = all_hist_norm
+        I = np.diag(I_j)  # NOQA E741
+        inv_I = np.linalg.pinv(I)
+
+        F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
+
+        # testing (mean sum should be 1 with very low error ~1e-6)
+        total_prob_j = F.sum(axis=0)
+        if abs(1 - total_prob_j.mean()) > 0.1 or total_prob_j.std() > 0.1:
+            print(
+                f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean()} +/- {total_prob_j.std()})"
+            )
+
+        return F
 
     def _unite_coarse_fine_data(self):
         """Doc."""
