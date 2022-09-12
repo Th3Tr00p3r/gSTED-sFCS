@@ -203,7 +203,6 @@ SETTINGS_TYPES = [
     "QComboBox",
     "QRadioButton",
     "QCheckBox",
-    "QTabWidget",
 ]
 
 # What to do with each widget class

@@ -7957,7 +7957,7 @@ Experiment</string>
            </sizepolicy>
           </property>
           <property name="title">
-           <string>Average Coun Rate (kHz)</string>
+           <string>Count Rate (kHz)</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_44">
            <property name="leftMargin">
@@ -8002,7 +8002,7 @@ Experiment</string>
                   <enum>Qt::LeftToRight</enum>
                  </property>
                  <property name="text">
-                  <string>200 ms</string>
+                  <string>200 ms interval</string>
                  </property>
                  <property name="textFormat">
                   <enum>Qt::PlainText</enum>
@@ -8144,7 +8144,7 @@ Experiment</string>
                     <enum>Qt::LeftToRight</enum>
                    </property>
                    <property name="text">
-                    <string>ms</string>
+                    <string>ms interval</string>
                    </property>
                    <property name="textFormat">
                     <enum>Qt::PlainText</enum>

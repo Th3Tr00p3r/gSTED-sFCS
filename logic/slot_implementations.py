@@ -342,6 +342,7 @@ class MainWin:
                         app=self._app,
                         scan_params=scan_params,
                         laser_mode=laser_mode.lower(),
+                        processing_options=self.get_processing_options_as_dict(),
                         **kwargs,
                     )
 
@@ -1297,7 +1298,7 @@ class MainWin:
                     )
             with suppress(AttributeError):  # TODO: delete button should be disabled!
                 if import_wdgts.should_re_correlate:
-                    options_dict = self.get_loading_options_as_dict()
+                    options_dict = self.get_processing_options_as_dict()
                     # Inferring data_dype from template
                     data_type = self.infer_data_type_from_template(current_template)
 
@@ -1308,7 +1309,7 @@ class MainWin:
                     )
 
             if measurement is None:  # process data
-                options_dict = self.get_loading_options_as_dict()
+                options_dict = self.get_processing_options_as_dict()
 
                 # Inferring data_dype from template
                 data_type = self.infer_data_type_from_template(current_template)
@@ -1349,7 +1350,7 @@ class MainWin:
             self.toggle_save_processed_enabled()  # refresh save option
             self.toggle_load_processed_enabled(current_template)  # refresh load option
 
-    def get_loading_options_as_dict(self) -> dict:
+    def get_processing_options_as_dict(self) -> dict:
         """Doc."""
 
         loading_options = dict()
@@ -1525,7 +1526,7 @@ class MainWin:
             # KeyError, AttributeError - data deleted
             with self.get_measurement_from_template(imported_template) as measurement:
                 display = wdgts.SOL_MEAS_ANALYSIS_COLL.pattern_wdgt.obj
-                aox, aoy = measurement.scan_settings["ao"].T
+                aox, aoy, *_ = measurement.scan_settings["ao"].T
                 aix, aiy, _, aox_int, aoy_int, _ = measurement.scan_settings["ai"].T
                 display.display_patterns(
                     [(aox, aoy), (aox_int, aoy_int), (aix, aiy)],
@@ -1675,7 +1676,7 @@ class MainWin:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
-        options_dict = self.get_loading_options_as_dict()
+        options_dict = self.get_processing_options_as_dict()
 
         if wdgt_coll.should_assign_loaded:
             template = wdgt_coll.imported_templates.get()
@@ -1857,7 +1858,7 @@ class MainWin:
         ]
 
         experiment = self.get_experiment()
-        options_dict = self.get_loading_options_as_dict()
+        options_dict = self.get_processing_options_as_dict()
         kwargs = dict(
             gui_display=wdgt_coll.gui_display_sted_gating.obj,
             gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True),

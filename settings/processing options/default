@@ -1,4 +1,5 @@
-gatingMechanism,binary filter
+histNormFactor,1.0
+gatingMechanism,removal
 afterpulsingRemovalMethod,filter (lifetime)
 useDefaultSysInfo,False
 subtractBgCorr,True
