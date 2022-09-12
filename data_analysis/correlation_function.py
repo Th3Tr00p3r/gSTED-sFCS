@@ -701,7 +701,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         self,
         file_paths: List[Path],
         should_parallel_process: bool = False,
-        run_duration=None,
         **kwargs,
     ) -> List[TDCPhotonData]:
         """Doc."""
@@ -726,10 +725,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 if p is not None:
                     data.append(p)
 
-        if run_duration is None:  # auto determination of run duration
-            self.run_duration = sum([p.duration_s for p in data])
-        else:  # use supplied value
-            self.run_duration = run_duration
+        # auto determination of run duration
+        self.run_duration = sum([p.duration_s for p in data])
 
         return data
 
@@ -1147,7 +1144,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         corr_input_list = []
         if is_filtered:
             if afterpulsing_method == "filter (lifetime)":
-                F = self.calculate_afterpulsing_filter(**kwargs)
+                self.filter_matrix = self.calculate_afterpulsing_filter(**kwargs)
             filter_input_list = []
         for dt_ts_split in dt_ts_split_list:
             split_delay_time = dt_ts_split[0]
@@ -1163,7 +1160,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                     valid_indxs = (
                         (bin_num > 0) & (bin_num < len(self.tdc_calib.fine_bins)) & in_gate_idxs
                     )
-                    split_filter[valid_indxs] = F[0][bin_num[valid_indxs] - 1]
+                    split_filter[valid_indxs] = self.filter_matrix[0][bin_num[valid_indxs] - 1]
                 corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
                 filter_input_list.append(split_filter)
             else:  # gating_mechanism == "removal"
@@ -1340,7 +1337,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
     ) -> Dict[str, List]:
         """
         Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
-        To perform autocorrelation, only one "AA" is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
+        To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
 
         if is_verbose:
@@ -1638,7 +1635,6 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
     def calculate_afterpulsing_filter(self, baseline_method="auto", hist_norm_factor=1, **kwargs):
         """Doc."""
-        # TODO: add prints and tests
 
         t_hist = self.tdc_calib.t_hist
         all_hist = copy(self.tdc_calib.all_hist.astype(np.float64))

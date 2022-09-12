@@ -84,7 +84,6 @@ class TDCPhotonDataMixin:
     def convert_fpga_data_to_photons(
         self,
         byte_data,
-        ignore_coarse_fine=False,
         version=3,
         is_scan_continuous=False,
         should_use_all_sections=True,
@@ -177,23 +176,17 @@ class TDCPhotonDataMixin:
             pulse_runtime[i:] += maxval
 
         # handling coarse and fine times (for gating)
-        if not ignore_coarse_fine:
-            coarse = byte_data[photon_idxs + 4].astype(np.int16)
-            fine = byte_data[photon_idxs + 5].astype(np.int16)
+        coarse = byte_data[photon_idxs + 4].astype(np.int16)
+        fine = byte_data[photon_idxs + 5].astype(np.int16)
 
-            # some fix due to an issue in FPGA
-            if version >= 3:
-                coarse_mod64 = np.mod(coarse, 64)
-                coarse2 = coarse_mod64 - np.mod(coarse_mod64, 4) + (coarse // 64)
-                coarse = coarse_mod64
-            else:
-                coarse = coarse
-                coarse2 = None
-        # only ignored during static alignment measurement
+        # some fix due to an issue in FPGA
+        if version >= 3:
+            coarse_mod64 = np.mod(coarse, 64)
+            coarse2 = coarse_mod64 - np.mod(coarse_mod64, 4) + (coarse // 64)
+            coarse = coarse_mod64
         else:
-            coarse = None
+            coarse = coarse
             coarse2 = None
-            fine = None
 
         # Duration calculation
         time_stamps = np.diff(pulse_runtime).astype(np.int32)
@@ -454,7 +447,7 @@ class TDCPhotonDataMixin:
         k = np.digitize(delay_times, fine_bins)
 
         hist_weight = np.empty(t_hist.shape, dtype=np.float64)
-        for i in range(len(t_hist)):
+        for i in range(len(hist_weight)):
             j = k == (i + 1)
             hist_weight[i] = np.sum(t_weight[j])
 
