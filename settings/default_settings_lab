@@ -77,5 +77,3 @@ AOtriggerEdge,Rising
 AOwfType,Sine
 excTriggerSrc,External (TDC)
 counterCIdupCountPrevention,True
-tabWidget,1
-tabWidget_2,0

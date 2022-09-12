@@ -553,6 +553,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.tau_wdgt = kwargs["tau_wdgt"]
         self.plot_wdgt = kwargs["plot_wdgt"]
         self.fit_led = kwargs["fit_led"]
+        self.processing_options = kwargs["processing_options"]
 
         if self.scan_params.floating_z_amplitude_um != 0:
             self.scan_params.plane_orientation = "XYZ"
@@ -614,13 +615,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             """Doc."""
 
             s = SolutionSFCSMeasurement()
-            p = s.process_data_file(file_dict=self.prep_meas_dict(), ignore_coarse_fine=True)
-            s.run_duration = (
-                self.duration_s
-            )  # TODO: this is a patch! run duration should be determined in 'correlation_function,py'
+            p = s.process_data_file(file_dict=self.prep_meas_dict(), **self.processing_options)
             s.data.append(p)
             s.correlate_and_average(
-                cf_name=self.laser_mode, afterpulsing_method="subtract calibrated"
+                cf_name=self.laser_mode,
+                **self.processing_options,
             )
             return s
 
