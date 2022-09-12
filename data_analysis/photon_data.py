@@ -392,13 +392,16 @@ class TDCPhotonDataMixin:
             mid_tdc = np.mean(fine_calib)
 
             # left TDC edge: zeros stretch closest to mid_tdc
-            left_tdc = np.max(zeros_tdc[zeros_tdc < mid_tdc]) + n_zeros_for_fine_bounds - 1
-            right_tdc = np.min(zeros_tdc[zeros_tdc > mid_tdc]) + 1
+            left_tdc = max(zeros_tdc[zeros_tdc < mid_tdc]) + n_zeros_for_fine_bounds - 1
+            right_tdc = min(zeros_tdc[zeros_tdc > mid_tdc]) + 1
 
             l_quarter_tdc = round(left_tdc + (right_tdc - left_tdc) / 4)
             r_quarter_tdc = round(right_tdc - (right_tdc - left_tdc) / 4)
 
             # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
+            if sum(h_tdc_calib[:left_tdc]) or sum(h_tdc_calib[right_tdc:]):
+                # TODO: delete the 'h_tdc_calib[:left_tdc] = 0' rows below if this error never shows
+                raise ValueError("SO THEY SHOULD BE ZEROED!!!")  # TESTESTEST
             h_tdc_calib[:left_tdc] = 0
             h_tdc_calib[right_tdc:] = 0
 
@@ -470,9 +473,14 @@ class TDCPhotonDataMixin:
         all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
         error_all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
         nonzero = hist_weight > 0
-        all_hist_norm[nonzero] = all_hist[nonzero] / hist_weight[nonzero] / total_laser_pulses
+        all_hist_norm[nonzero] = (
+            all_hist[nonzero] / hist_weight[nonzero] * np.mean(hist_weight) / total_laser_pulses
+        )
         error_all_hist_norm[nonzero] = (
-            np.sqrt(all_hist[nonzero]) / hist_weight[nonzero] / total_laser_pulses
+            np.sqrt(all_hist[nonzero])
+            / hist_weight[nonzero]
+            * np.mean(hist_weight)
+            / total_laser_pulses
         )
 
         if should_plot:
@@ -713,9 +721,12 @@ class TDCPhotonDataMixin:
         """Doc."""
 
         t_hist = self.tdc_calib.t_hist
+        hist_weight = self.tdc_calib.hist_weight
         all_hist = copy(self.tdc_calib.all_hist.astype(np.float64))
-        nonzero_idxs = self.tdc_calib.hist_weight > 0
-        all_hist[nonzero_idxs] /= self.tdc_calib.hist_weight[nonzero_idxs]  # weight the histogram
+        nonzero_idxs = hist_weight > 0
+        all_hist[nonzero_idxs] /= hist_weight[nonzero_idxs] * np.mean(
+            hist_weight
+        )  # weight the histogram
 
         # interpolate over NaNs
         all_hist[~nonzero_idxs] = np.nan  # NaN the zeros (for interpolation)
@@ -724,7 +735,7 @@ class TDCPhotonDataMixin:
 
         # normalize
         # TODO: why is a factor needed??
-        all_hist_norm = all_hist / all_hist.sum() * hist_norm_factor  # test_factor = 1.4117
+        all_hist_norm = all_hist / all_hist.sum() * hist_norm_factor
 
         # get the baseline (which is assumed to be approximately the afterpulsing histogram)
         if baseline_method == "manual":
