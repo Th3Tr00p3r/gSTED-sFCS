@@ -1120,7 +1120,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                 self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
 
         # create list of split data for correlator
-        dt_ts_split_list = self._prepare_xcorr_splits_dict(["AA"])["AA"]
+        dt_ts_split_list = self._prepare_xcorr_splits_dict(["AA"], is_verbose=is_verbose)["AA"]
 
         # Gating
         # Unite TDC gate and detector gate

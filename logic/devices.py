@@ -836,11 +836,14 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     """ON/OFF device (excitation laser, depletion shutter, TDC)."""
 
+    OFF_TIMER_MIN = 60
+
     def __init__(self, param_dict):
         super().__init__(
             param_dict,
             task_types=("do",),
         )
+        self.turn_on_time = None
         with suppress(DeviceError):
             self.toggle(False)
 
@@ -857,6 +860,7 @@ class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         else:
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
+            self.turn_on_time = time.perf_counter() if is_being_switched_on else None
 
 
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
@@ -864,7 +868,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     update_interval_s = 0.3
     MIN_SHG_TEMP = 53  # Celsius
-    OFF_TIMER_MINUTES = 5
+    OFF_TIMER_MIN = 5
     power_limits_mW = Limits(99, 1000)
     current_limits_mA = Limits(1500, 2500)
 
@@ -913,10 +917,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         else:
             self.is_emission_on = is_being_switched_on
             self.change_icons("on" if is_being_switched_on else "off")
-            if is_being_switched_on:
-                self.turn_on_time = time.perf_counter()
-            else:
-                self.turn_on_time = None
+            self.turn_on_time = time.perf_counter() if is_being_switched_on else None
 
     def get_prop(self, prop):
         """Doc."""

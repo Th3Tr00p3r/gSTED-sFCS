@@ -47,7 +47,7 @@ class Timeout:
         try:
             await asyncio.gather(
                 self._read_ci_and_ai(),
-                self._update_dep(),
+                self._update_lasers(),
                 self._update_delayer_temperature(),
                 self._update_spad_status(),
                 self._update_main_gui(),
@@ -207,7 +207,7 @@ class Timeout:
 
             await asyncio.sleep(0.3)
 
-    async def _update_dep(self) -> None:
+    async def _update_lasers(self) -> None:
         """Update depletion laser GUI"""
 
         while self.not_finished:
@@ -232,13 +232,29 @@ class Timeout:
                             "background-color: white; color: black;"
                         )
 
-                    # automatic laser shutdown
-                    mins_since_turned_on = (time.perf_counter() - self.dep_dvc.turn_on_time) / 60
-                    if mins_since_turned_on > self.dep_dvc.OFF_TIMER_MINUTES:
+                    # automatic shutdown
+                    with suppress(TypeError):
+                        mins_since_turned_on = (
+                            time.perf_counter() - self.dep_dvc.turn_on_time
+                        ) / 60
+                        if mins_since_turned_on > self.dep_dvc.OFF_TIMER_MIN:
+                            logging.info(
+                                f"Shutting down {self.dep_dvc.log_ref} automatically (idle for {self.dep_dvc.OFF_TIMER_MIN} mins)"
+                            )
+                            self.dep_dvc.laser_toggle(False)
+
+            if (not self.exc_laser_dvc.error_dict) and (not self._app.meas.is_running):
+
+                # automatic shutdown
+                with suppress(TypeError):
+                    mins_since_turned_on = (
+                        time.perf_counter() - self.exc_laser_dvc.turn_on_time
+                    ) / 60
+                    if mins_since_turned_on > self.exc_laser_dvc.OFF_TIMER_MIN:
                         logging.info(
-                            f"Shutting down {self.dep_dvc.log_ref} automatically (idle for {self.dep_dvc.OFF_TIMER_MINUTES} mins)"
+                            f"Shutting down {self.exc_laser_dvc.log_ref} automatically (idle for {self.exc_laser_dvc.OFF_TIMER_MIN} mins)"
                         )
-                        self.dep_dvc.laser_toggle(False)
+                        self.exc_laser_dvc.toggle(False)
 
             await asyncio.sleep(self.dep_dvc.update_interval_s)
 
