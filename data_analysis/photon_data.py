@@ -393,10 +393,10 @@ class TDCPhotonDataMixin:
 
             # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
             if sum(h_tdc_calib[:left_tdc]) or sum(h_tdc_calib[right_tdc:]):
-                # TODO: delete the 'h_tdc_calib[:left_tdc] = 0' rows below if this error never shows
+                # TODO: delete the whole thing if error never shows
                 raise ValueError("SO THEY SHOULD BE ZEROED!!!")  # TESTESTEST
-            h_tdc_calib[:left_tdc] = 0
-            h_tdc_calib[right_tdc:] = 0
+                h_tdc_calib[:left_tdc] = 0
+                h_tdc_calib[right_tdc:] = 0
 
             t_calib = (
                 (1 - np.cumsum(h_tdc_calib) / np.sum(h_tdc_calib)) / self.fpga_freq_hz * 1e9
@@ -765,7 +765,7 @@ class TDCPhotonDataMixin:
         total_prob_j = F.sum(axis=0)
         if abs(1 - total_prob_j.mean()) > 0.1 or total_prob_j.std() > 0.1:
             print(
-                f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean()} +/- {total_prob_j.std()})"
+                f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean():.2f} +/- {total_prob_j.std():.2f})"
             )
 
         return F
