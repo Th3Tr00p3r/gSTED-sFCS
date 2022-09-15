@@ -657,7 +657,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 y_fit = fit_func(cf.lag, *fp.beta)
                 self.plot_wdgt.obj.plot(cf.lag, y_fit, "-.r")
                 logging.info(
-                    f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f}K, tau: {tau*1e3:.1f} us."
+                    f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f} K, tau: {tau*1e3:.1f} us."
                 )
 
     # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)

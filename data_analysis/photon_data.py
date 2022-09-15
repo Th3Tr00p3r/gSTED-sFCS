@@ -63,6 +63,130 @@ class TDCCalibration:
     error_all_hist_norm: Any
     t_weight: Any
 
+    def plot_tdc_calibration(self, parent_axes=None, **plot_kwargs) -> None:
+        """Doc."""
+
+        try:
+            x_all = self.x_all
+            h_all = self.h_all
+            coase_bins = self.coarse_bins
+            h = self.h
+            coarse_calib_bins = self.coarse_calib_bins
+            t_calib = self.t_calib
+            t_hist = self.t_hist
+            all_hist_norm = self.all_hist_norm
+        except AttributeError:
+            return
+
+        with Plotter(
+            parent_ax=parent_axes,
+            subplots=(2, 2),
+            **plot_kwargs,
+        ) as axes:
+            axes[0, 0].semilogy(x_all, h_all, "-o", label="All Hist")
+            axes[0, 0].semilogy(coase_bins, h, "o", label="Valid Bins")
+            axes[0, 0].semilogy(
+                coase_bins[np.isin(coase_bins, coarse_calib_bins)],
+                h[np.isin(coase_bins, coarse_calib_bins)],
+                "o",
+                markersize=4,
+                label="Calibration Bins",
+            )
+            axes[0, 0].legend()
+
+            axes[0, 1].plot(t_calib, "-o", label="TDC Calibration")
+            axes[0, 1].legend()
+
+            axes[1, 0].semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
+            axes[1, 0].legend()
+
+    def fit_lifetime_hist(
+        self,
+        fit_name="exponent_with_background_fit",
+        x_field="t_hist",
+        y_field="all_hist_norm",
+        y_error_field="error_all_hist_norm",
+        fit_param_estimate=[0.1, 4, 0.001],
+        fit_range=(3.5, 30),
+        x_scale="linear",
+        y_scale="log",
+        should_plot=False,
+    ) -> FitParams:
+        """Doc."""
+
+        is_finite_y = np.isfinite(getattr(self, y_field))
+
+        return curve_fit_lims(
+            FIT_NAME_DICT[fit_name],
+            fit_param_estimate,
+            xs=getattr(self, x_field)[is_finite_y],
+            ys=getattr(self, y_field)[is_finite_y],
+            ys_errors=getattr(self, y_error_field)[is_finite_y],
+            x_limits=Limits(fit_range),
+            should_plot=should_plot,
+            plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
+        )
+
+    def calculate_afterpulsing_filter(self, baseline_method="auto", hist_norm_factor=1, **kwargs):
+        """Doc."""
+
+        t_hist = self.t_hist
+        hist_weight = self.hist_weight
+        all_hist = copy(self.all_hist.astype(np.float64))
+        nonzero_idxs = hist_weight > 0
+        all_hist[nonzero_idxs] /= hist_weight[nonzero_idxs] * np.mean(
+            hist_weight
+        )  # weight the histogram
+
+        # interpolate over NaNs
+        all_hist[~nonzero_idxs] = np.nan  # NaN the zeros (for interpolation)
+        nans, x = nan_helper(all_hist)  # get nans and a way to interpolate over them later
+        all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
+
+        # normalize
+        # TODO: why is a factor needed??
+        all_hist_norm = all_hist / all_hist.sum() * hist_norm_factor
+
+        # get the baseline (which is assumed to be approximately the afterpulsing histogram)
+        if baseline_method == "manual":
+            # Using Plotter for manual selection
+            baseline_limits = Limits()
+            with Plotter(
+                super_title="Use the mouse to place 2 markers\nrepresenting the baseline:",
+                selection_limits=baseline_limits,
+                should_close_after_selection=True,
+            ) as ax:
+                ax.semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
+                ax.legend()
+
+            baseline_idxs = baseline_limits.valid_indices(t_hist)
+            baseline = np.mean(all_hist_norm[baseline_idxs])
+
+        elif baseline_method == "auto":
+            outlier_indxs = return_outlier_indices(all_hist_norm, m=2)
+            smoothed_robust_all_hist = moving_average(all_hist_norm[~outlier_indxs], n=100)
+            baseline = min(smoothed_robust_all_hist)
+
+        # define matrices and calculate F
+        M_j1 = all_hist_norm - baseline  # p1
+        M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
+        M = np.vstack((M_j1, M_j2)).T
+
+        I_j = all_hist_norm
+        I = np.diag(I_j)  # NOQA E741
+        inv_I = np.linalg.pinv(I)
+
+        F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
+
+        # testing (mean sum should be 1 with very low error ~1e-6)
+        total_prob_j = F.sum(axis=0)
+        if abs(1 - total_prob_j.mean()) > 0.1 or total_prob_j.std() > 0.1:
+            print(
+                f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean():.2f} +/- {total_prob_j.std():.2f})"
+            )
+
+        return F
+
 
 @dataclass
 class LifeTimeParams:
@@ -73,25 +197,27 @@ class LifeTimeParams:
     laser_pulse_delay_ns: float
 
 
-class TDCPhotonDataMixin:
-    """Methods for creating and analyzing TDCPhotonData objects"""
+class TDCPhotonDataProcessor:
+    """For processing raw bytes data"""
 
-    # NOTE: These are for mypy to be silent. The proper way to do it would be using abstract base classes (ABCs)
-    name: str
-    data: List
-    scan_type: str
-    NAN_PLACEBO: int
-    fpga_freq_hz: int
-    laser_freq_hz: int
-    template: str
-    tdc_calib: TDCCalibration
-    confocal: Any
-    sted: Any
+    GROUP_LEN: int = 7
+    MAX_VAL: int = 256 ** 3
+
+    def __init__(
+        self,
+        laser_freq_hz: int,
+        version: int,
+    ):
+        self.laser_freq_hz = laser_freq_hz
+
+        if version < 2:
+            raise ValueError(f"Data version ({version}) must be greater than 2 to be handled.")
+        else:
+            self.version = version
 
     def convert_fpga_data_to_photons(
         self,
         byte_data,
-        version=3,
         is_scan_continuous=False,
         should_use_all_sections=True,
         len_factor=0.01,
@@ -104,17 +230,11 @@ class TDCPhotonDataMixin:
         if is_verbose:
             print("Converting raw data to photons...", end=" ")
 
-        if version >= 2:
-            group_len = 7
-            maxval = 256 ** 3
-        else:
-            raise ValueError(f"Version ({version}) must be greater than 2")
-
         # option to use only certain parts of data (for testing)
         if byte_data_slice is not None:
             byte_data = byte_data[byte_data_slice]
 
-        section_edges, tot_single_errors = _find_all_section_edges(byte_data, group_len)
+        section_edges, tot_single_errors = self._find_all_section_edges(byte_data)
         section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
 
         if should_use_all_sections:
@@ -123,7 +243,7 @@ class TDCPhotonDataMixin:
             for start_idx, end_idx in section_edges:
                 if end_idx - start_idx > sum(section_lengths) * len_factor:
                     section_runtime_start = len(photon_idxs_list)
-                    section_photon_indxs = list(range(start_idx, end_idx, group_len))
+                    section_photon_indxs = list(range(start_idx, end_idx, self.GROUP_LEN))
                     section_runtime_end = section_runtime_start + len(section_photon_indxs)
                     photon_idxs_list += section_photon_indxs
                     section_runtime_edges.append((section_runtime_start, section_runtime_end))
@@ -132,7 +252,7 @@ class TDCPhotonDataMixin:
 
         else:  # using largest section only
             max_sec_start_idx, max_sec_end_idx = section_edges[np.argmax(section_lengths)]
-            photon_idxs = np.arange(max_sec_start_idx, max_sec_end_idx, group_len)
+            photon_idxs = np.arange(max_sec_start_idx, max_sec_end_idx, self.GROUP_LEN)
             section_runtime_edges = [(0, len(photon_idxs))]
 
         if is_verbose:
@@ -177,17 +297,17 @@ class TDCPhotonDataMixin:
             time_stamps[inv_idxs + 1] = np.ceil(temp).astype(np.int64)
             pulse_runtime[inv_idxs + 1] = pulse_runtime[inv_idxs + 2] - time_stamps[inv_idxs + 1]
 
-        # repairing drops in pulse_runtime (happens when number of laser pulses passes 'maxval')
+        # repairing drops in pulse_runtime (happens when number of laser pulses passes 'MAX_VAL')
         neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
         for i in neg_time_stamp_idxs + 1:
-            pulse_runtime[i:] += maxval
+            pulse_runtime[i:] += self.MAX_VAL
 
         # handling coarse and fine times (for gating)
         coarse = byte_data[photon_idxs + 4].astype(np.int16)
         fine = byte_data[photon_idxs + 5].astype(np.int16)
 
         # some fix due to an issue in FPGA
-        if version >= 3:
+        if self.version >= 3:
             coarse_mod64 = np.mod(coarse, 64)
             coarse2 = coarse_mod64 - np.mod(coarse_mod64, 4) + (coarse // 64)
             coarse = coarse_mod64
@@ -200,7 +320,7 @@ class TDCPhotonDataMixin:
         duration_s = (time_stamps / self.laser_freq_hz).sum()
 
         if is_scan_continuous:  # relevant for static/circular data
-            all_section_edges, skipped_duration = self.section_continuous_data(
+            all_section_edges, skipped_duration = self._section_continuous_data(
                 pulse_runtime, time_stamps, is_verbose=is_verbose, **kwargs
             )
         else:  # angular scan
@@ -208,7 +328,7 @@ class TDCPhotonDataMixin:
             skipped_duration = 0
 
         return TDCPhotonData(
-            version=version,
+            version=self.version,
             section_runtime_edges=section_runtime_edges,
             coarse=coarse,
             coarse2=coarse2,
@@ -221,7 +341,7 @@ class TDCPhotonDataMixin:
             delay_time=np.zeros(pulse_runtime.shape, dtype=np.float16),
         )
 
-    def section_continuous_data(
+    def _section_continuous_data(
         self,
         pulse_runtime,
         time_stamps,
@@ -270,6 +390,155 @@ class TDCPhotonDataMixin:
 
         return np.array(all_section_edges_valid), skipped_duration
 
+    def _find_all_section_edges(
+        self,
+        byte_data: np.ndarray,
+    ) -> Tuple[List[Tuple[int, int]], int]:
+        """Doc."""
+
+        section_edges = []
+        data_end = False
+        last_edge_stop = 0
+        total_single_errors = 0
+        while not data_end:
+            remaining_byte_data = byte_data[last_edge_stop:]
+            new_edge_start, new_edge_stop, data_end, n_single_errors = self._find_section_edges(
+                remaining_byte_data,
+            )
+            new_edge_start += last_edge_stop
+            new_edge_stop += last_edge_stop
+            section_edges.append((new_edge_start, new_edge_stop))
+            last_edge_stop = new_edge_stop
+            total_single_errors += n_single_errors
+
+        return section_edges, total_single_errors
+
+    def _find_section_edges(self, byte_data: np.ndarray):  # NOQA C901
+        """Doc."""
+
+        # find index of first complete photon (where 248 and 254 bytes are spaced exatly (GROUP_LEN -1) bytes apart)
+        if (edge_start := self._first_full_photon_idx(byte_data)) is None:
+            raise RuntimeError("No byte data found! Check detector and FPGA.")
+
+        # slice byte_data where assumed to be 248 and 254 (photon brackets)
+        data_presumed_248 = byte_data[edge_start :: self.GROUP_LEN]
+        data_presumed_254 = byte_data[(edge_start + self.GROUP_LEN - 1) :: self.GROUP_LEN]
+
+        # find indices where this assumption breaks
+        missed_248_idxs = np.where(data_presumed_248 != 248)[0]
+        tot_248s_missed = missed_248_idxs.size
+        missed_254_idxs = np.where(data_presumed_254 != 254)[0]
+        tot_254s_missed = missed_254_idxs.size
+
+        data_end = False
+        n_single_errors = 0
+        count = 0
+        for count, missed_248_idx in enumerate(missed_248_idxs):
+
+            # hold byte_data idx of current missing photon starting bracket
+            data_idx_of_missed_248 = edge_start + missed_248_idx * self.GROUP_LEN
+
+            # condition for ignoring single photon error (just test the most significant bytes of the pulse_runtime are close)
+            curr_runtime_msb = int(byte_data[data_idx_of_missed_248 + 1])
+            prev_runtime_msb = int(byte_data[data_idx_of_missed_248 - (self.GROUP_LEN - 1)])
+            ignore_single_error_cond = abs(curr_runtime_msb - prev_runtime_msb) < 3
+
+            # check that this is not a case of a singular mistake in 248 byte: happens very rarely but does happen
+            if tot_254s_missed < count + 1:
+                # no missing ending brackets, at least one missing starting bracket
+                if missed_248_idx == (len(data_presumed_248) - 1):
+                    # problem in the last photon in the file
+                    # Found single error in last photon of file, ignoring and finishing...
+                    edge_stop = data_idx_of_missed_248
+                    break
+
+                elif (tot_248s_missed == count + 1) or (
+                    np.diff(missed_248_idxs[count : (count + 2)]) > 1
+                ):
+                    if ignore_single_error_cond:
+                        # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                        n_single_errors += 1
+                    else:
+                        raise RuntimeError("Check byte data for strange section edges!")
+
+                else:
+                    raise RuntimeError(
+                        "Bizarre problem in byte data: 248 byte out of registry while 254 is in registry!"
+                    )
+
+            else:  # (tot_254s_missed >= count + 1)
+                # if (missed_248_idxs[count] == missed_254_idxs[count]), # likely a real section
+                if np.isin(missed_248_idx, missed_254_idxs):
+                    # Found a section, continuing...
+                    edge_stop = data_idx_of_missed_248
+                    if byte_data[edge_stop - 1] != 254:
+                        edge_stop = edge_stop - self.GROUP_LEN
+                    break
+
+                elif missed_248_idxs[count] == (
+                    missed_254_idxs[count] + 1
+                ):  # np.isin(missed_248_idx, (missed_254_idxs[count]+1)): # likely a real section ? why np.isin?
+                    # Found a section, continuing...
+                    edge_stop = data_idx_of_missed_248
+                    if byte_data[edge_stop - 1] != 254:
+                        edge_stop = edge_stop - self.GROUP_LEN
+                    break
+
+                elif missed_248_idx < missed_254_idxs[count]:  # likely a singular error on 248 byte
+                    if ignore_single_error_cond:
+                        # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                        n_single_errors += 1
+                        continue
+                    else:
+                        raise RuntimeError("Check byte data for strange section edges!")
+
+                else:  # likely a signular mistake on 254 byte
+                    if ignore_single_error_cond:
+                        # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
+                        n_single_errors += 1
+                        continue
+                    else:
+                        raise RuntimeError("Check byte data for strange section edges!")
+
+        # did reach the end of the loop without breaking?
+        were_no_breaks = not tot_248s_missed or (count == (missed_248_idxs.size - 1))
+        # case there were no problems
+        if were_no_breaks:
+            edge_stop = edge_start + (data_presumed_254.size - 1) * self.GROUP_LEN
+            data_end = True
+
+        return edge_start, edge_stop, data_end, n_single_errors
+
+    def _first_full_photon_idx(self, byte_data: np.ndarray) -> int:
+        """
+        Return the starting index of the first intact photon - a sequence of 'GROUP_LEN'
+        bytes starting with 248 and ending with 254. If no intact photons are found, returns 'None'
+        """
+
+        for idx in infinite_range():
+            try:
+                if (byte_data[idx] == 248) and (byte_data[idx + (self.GROUP_LEN - 1)] == 254):
+                    return idx
+            except IndexError:
+                break
+        return None
+
+
+class TDCPhotonDataMixin:
+    """Methods for creating and analyzing TDCPhotonData objects"""
+
+    # NOTE: These are for mypy to be silent. The proper way to do it would be using abstract base classes (ABCs)
+    name: str
+    data: List
+    scan_type: str
+    NAN_PLACEBO: int
+    fpga_freq_hz: int
+    laser_freq_hz: int
+    template: str
+    tdc_calib: TDCCalibration
+    confocal: Any
+    sted: Any
+
     @rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
         self,
@@ -284,6 +553,7 @@ class TDCPhotonDataMixin:
         should_plot=False,
         parent_axes=None,
         force_processing=True,
+        is_verbose=False,
         **kwargs,
     ) -> None:
         """Doc."""
@@ -291,10 +561,11 @@ class TDCPhotonDataMixin:
         if not force_processing and hasattr(self, "tdc_calib"):
             print(f"\n{self.name}: TDC calibration exists, skipping.")
             if should_plot:
-                self.plot_tdc_calibration()
+                self.tdc_calib.plot_tdc_calibration()
             return
 
-        print(f"\n{self.name}: Calibrating TDC...", end=" ")
+        if is_verbose:
+            print(f"\n{self.name}: Calibrating TDC...", end=" ")
 
         coarse, fine = self._unite_coarse_fine_data()
 
@@ -477,9 +748,10 @@ class TDCPhotonDataMixin:
         )
 
         if should_plot:
-            self.plot_tdc_calibration()
+            self.tdc_calib.plot_tdc_calibration()
 
-        print("Done.")
+        if is_verbose:
+            print("Done.")
 
         self.tdc_calib = TDCCalibration(
             x_all=x_all,
@@ -502,43 +774,6 @@ class TDCPhotonDataMixin:
             t_weight=t_weight,
             total_laser_pulses=total_laser_pulses,
         )
-
-    def plot_tdc_calibration(self, parent_axes=None, **plot_kwargs) -> None:
-        """Doc."""
-
-        try:
-            x_all = self.tdc_calib.x_all
-            h_all = self.tdc_calib.h_all
-            coase_bins = self.tdc_calib.coarse_bins
-            h = self.tdc_calib.h
-            coarse_calib_bins = self.tdc_calib.coarse_calib_bins
-            t_calib = self.tdc_calib.t_calib
-            t_hist = self.tdc_calib.t_hist
-            all_hist_norm = self.tdc_calib.all_hist_norm
-        except AttributeError:
-            return
-
-        with Plotter(
-            parent_ax=parent_axes,
-            subplots=(2, 2),
-            **plot_kwargs,
-        ) as axes:
-            axes[0, 0].semilogy(x_all, h_all, "-o", label="All Hist")
-            axes[0, 0].semilogy(coase_bins, h, "o", label="Valid Bins")
-            axes[0, 0].semilogy(
-                coase_bins[np.isin(coase_bins, coarse_calib_bins)],
-                h[np.isin(coase_bins, coarse_calib_bins)],
-                "o",
-                markersize=4,
-                label="Calibration Bins",
-            )
-            axes[0, 0].legend()
-
-            axes[0, 1].plot(t_calib, "-o", label="TDC Calibration")
-            axes[0, 1].legend()
-
-            axes[1, 0].semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
-            axes[1, 0].legend()
 
     def compare_lifetimes(
         self,
@@ -584,33 +819,6 @@ class TDCPhotonDataMixin:
             ax.set_ylabel("Frequency")
             ax.legend(labels)
 
-    def fit_lifetime_hist(
-        self,
-        fit_name="exponent_with_background_fit",
-        x_field="t_hist",
-        y_field="all_hist_norm",
-        y_error_field="error_all_hist_norm",
-        fit_param_estimate=[0.1, 4, 0.001],
-        fit_range=(3.5, 30),
-        x_scale="linear",
-        y_scale="log",
-        should_plot=False,
-    ) -> FitParams:
-        """Doc."""
-
-        is_finite_y = np.isfinite(getattr(self.tdc_calib, y_field))
-
-        return curve_fit_lims(
-            FIT_NAME_DICT[fit_name],
-            fit_param_estimate,
-            xs=getattr(self.tdc_calib, x_field)[is_finite_y],
-            ys=getattr(self.tdc_calib, y_field)[is_finite_y],
-            ys_errors=getattr(self.tdc_calib, y_error_field)[is_finite_y],
-            x_limits=Limits(fit_range),
-            should_plot=should_plot,
-            plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
-        )
-
     def get_lifetime_parameters(
         self,
         sted_field="symmetric",
@@ -646,7 +854,9 @@ class TDCPhotonDataMixin:
         if param_estimates is None:
             param_estimates = beta0
 
-        conf_params = conf.fit_lifetime_hist(fit_range=fit_range, fit_param_estimate=beta0)
+        conf_params = conf.tdc_calib.fit_lifetime_hist(
+            fit_range=fit_range, fit_param_estimate=beta0
+        )
 
         # remove background
         sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
@@ -709,66 +919,6 @@ class TDCPhotonDataMixin:
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params
-
-    def calculate_afterpulsing_filter(self, baseline_method="auto", hist_norm_factor=1, **kwargs):
-        """Doc."""
-
-        t_hist = self.tdc_calib.t_hist
-        hist_weight = self.tdc_calib.hist_weight
-        all_hist = copy(self.tdc_calib.all_hist.astype(np.float64))
-        nonzero_idxs = hist_weight > 0
-        all_hist[nonzero_idxs] /= hist_weight[nonzero_idxs] * np.mean(
-            hist_weight
-        )  # weight the histogram
-
-        # interpolate over NaNs
-        all_hist[~nonzero_idxs] = np.nan  # NaN the zeros (for interpolation)
-        nans, x = nan_helper(all_hist)  # get nans and a way to interpolate over them later
-        all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
-
-        # normalize
-        # TODO: why is a factor needed??
-        all_hist_norm = all_hist / all_hist.sum() * hist_norm_factor
-
-        # get the baseline (which is assumed to be approximately the afterpulsing histogram)
-        if baseline_method == "manual":
-            # Using Plotter for manual selection
-            baseline_limits = Limits()
-            with Plotter(
-                super_title="Use the mouse to place 2 markers\nrepresenting the baseline:",
-                selection_limits=baseline_limits,
-                should_close_after_selection=True,
-            ) as ax:
-                ax.semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
-                ax.legend()
-
-            baseline_idxs = baseline_limits.valid_indices(t_hist)
-            baseline = np.mean(all_hist_norm[baseline_idxs])
-
-        elif baseline_method == "auto":
-            outlier_indxs = return_outlier_indices(all_hist_norm, m=2)
-            smoothed_robust_all_hist = moving_average(all_hist_norm[~outlier_indxs], n=100)
-            baseline = min(smoothed_robust_all_hist)
-
-        # define matrices and calculate F
-        M_j1 = all_hist_norm - baseline  # p1
-        M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
-        M = np.vstack((M_j1, M_j2)).T
-
-        I_j = all_hist_norm
-        I = np.diag(I_j)  # NOQA E741
-        inv_I = np.linalg.pinv(I)
-
-        F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
-
-        # testing (mean sum should be 1 with very low error ~1e-6)
-        total_prob_j = F.sum(axis=0)
-        if abs(1 - total_prob_j.mean()) > 0.1 or total_prob_j.std() > 0.1:
-            print(
-                f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean():.2f} +/- {total_prob_j.std():.2f})"
-            )
-
-        return F
 
     def _unite_coarse_fine_data(self):
         """Doc."""
@@ -932,140 +1082,3 @@ class CountsImageMixin:
             norm_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].shape[1]
 
         return image_stack, norm_stack
-
-
-def _find_section_edges(byte_data: np.ndarray, group_len: int):  # NOQA C901
-    """
-    group_len: bytes per photon
-    """
-
-    # find index of first complete photon (where 248 and 254 bytes are spaced exatly (group_len -1) bytes apart)
-    if (edge_start := _first_full_photon_idx(byte_data, group_len)) is None:
-        raise RuntimeError("No byte data found! Check detector and FPGA.")
-
-    # slice byte_data where assumed to be 248 and 254 (photon brackets)
-    data_presumed_248 = byte_data[edge_start::group_len]
-    data_presumed_254 = byte_data[(edge_start + group_len - 1) :: group_len]
-
-    # find indices where this assumption breaks
-    missed_248_idxs = np.where(data_presumed_248 != 248)[0]
-    tot_248s_missed = missed_248_idxs.size
-    missed_254_idxs = np.where(data_presumed_254 != 254)[0]
-    tot_254s_missed = missed_254_idxs.size
-
-    data_end = False
-    n_single_errors = 0
-    count = 0
-    for count, missed_248_idx in enumerate(missed_248_idxs):
-
-        # hold byte_data idx of current missing photon starting bracket
-        data_idx_of_missed_248 = edge_start + missed_248_idx * group_len
-
-        # condition for ignoring single photon error (just test the most significant bytes of the pulse_runtime are close)
-        curr_runtime_msb = int(byte_data[data_idx_of_missed_248 + 1])
-        prev_runtime_msb = int(byte_data[data_idx_of_missed_248 - (group_len - 1)])
-        ignore_single_error_cond = abs(curr_runtime_msb - prev_runtime_msb) < 3
-
-        # check that this is not a case of a singular mistake in 248 byte: happens very rarely but does happen
-        if tot_254s_missed < count + 1:
-            # no missing ending brackets, at least one missing starting bracket
-            if missed_248_idx == (len(data_presumed_248) - 1):
-                # problem in the last photon in the file
-                # Found single error in last photon of file, ignoring and finishing...
-                edge_stop = data_idx_of_missed_248
-                break
-
-            elif (tot_248s_missed == count + 1) or (
-                np.diff(missed_248_idxs[count : (count + 2)]) > 1
-            ):
-                if ignore_single_error_cond:
-                    # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
-                    n_single_errors += 1
-                else:
-                    raise RuntimeError("Check byte data for strange section edges!")
-
-            else:
-                raise RuntimeError(
-                    "Bizarre problem in byte data: 248 byte out of registry while 254 is in registry!"
-                )
-
-        else:  # (tot_254s_missed >= count + 1)
-            # if (missed_248_idxs[count] == missed_254_idxs[count]), # likely a real section
-            if np.isin(missed_248_idx, missed_254_idxs):
-                # Found a section, continuing...
-                edge_stop = data_idx_of_missed_248
-                if byte_data[edge_stop - 1] != 254:
-                    edge_stop = edge_stop - group_len
-                break
-
-            elif missed_248_idxs[count] == (
-                missed_254_idxs[count] + 1
-            ):  # np.isin(missed_248_idx, (missed_254_idxs[count]+1)): # likely a real section ? why np.isin?
-                # Found a section, continuing...
-                edge_stop = data_idx_of_missed_248
-                if byte_data[edge_stop - 1] != 254:
-                    edge_stop = edge_stop - group_len
-                break
-
-            elif missed_248_idx < missed_254_idxs[count]:  # likely a singular error on 248 byte
-                if ignore_single_error_cond:
-                    # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
-                    n_single_errors += 1
-                    continue
-                else:
-                    raise RuntimeError("Check byte data for strange section edges!")
-
-            else:  # likely a signular mistake on 254 byte
-                if ignore_single_error_cond:
-                    # f"Found single photon error (byte_data[{data_idx_of_missed_248}]), ignoring and continuing..."
-                    n_single_errors += 1
-                    continue
-                else:
-                    raise RuntimeError("Check byte data for strange section edges!")
-
-    # did reach the end of the loop without breaking?
-    were_no_breaks = not tot_248s_missed or (count == (missed_248_idxs.size - 1))
-    # case there were no problems
-    if were_no_breaks:
-        edge_stop = edge_start + (data_presumed_254.size - 1) * group_len
-        data_end = True
-
-    return edge_start, edge_stop, data_end, n_single_errors
-
-
-def _first_full_photon_idx(byte_data: np.ndarray, group_len: int) -> int:
-    """
-    Return the starting index of the first intact photon - a sequence of 'group_len'
-    bytes starting with 248 and ending with 254. If no intact photons are found, returns 'None'
-    """
-
-    for idx in infinite_range():
-        try:
-            if (byte_data[idx] == 248) and (byte_data[idx + (group_len - 1)] == 254):
-                return idx
-        except IndexError:
-            break
-    return None
-
-
-def _find_all_section_edges(
-    byte_data: np.ndarray, group_len: int
-) -> Tuple[List[Tuple[int, int]], int]:
-    """Doc."""
-
-    section_edges = []
-    data_end = False
-    last_edge_stop = 0
-    total_single_errors = 0
-    while not data_end:
-        remaining_byte_data = byte_data[last_edge_stop:]
-        new_edge_start, new_edge_stop, data_end, n_single_errors = _find_section_edges(
-            remaining_byte_data, group_len
-        )
-        new_edge_start += last_edge_stop
-        new_edge_stop += last_edge_stop
-        section_edges.append((new_edge_start, new_edge_stop))
-        last_edge_stop = new_edge_stop
-        total_single_errors += n_single_errors
-
-    return section_edges, total_single_errors

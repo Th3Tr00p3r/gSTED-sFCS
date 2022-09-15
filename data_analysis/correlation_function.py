@@ -19,6 +19,7 @@ from data_analysis.photon_data import (
     CountsImageMixin,
     TDCPhotonData,
     TDCPhotonDataMixin,
+    TDCPhotonDataProcessor,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
@@ -806,56 +807,60 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         # File Processing
         full_data = file_dict["full_data"]
 
+        data_processor = TDCPhotonDataProcessor(
+            self.laser_freq_hz,
+            full_data["version"],
+        )
+
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
             if scan_settings["pattern"] == "circle":  # Circular sFCS
-                p = self._process_circular_scan_data_file(full_data, file_idx, **kwargs)
+                p = self._process_circular_scan_data_file(full_data, data_processor, **kwargs)
             elif scan_settings["pattern"] == "angular":  # Angular sFCS
-                p = self._process_angular_scan_data_file(full_data, file_idx, **kwargs)
+                p = self._process_angular_scan_data_file(full_data, data_processor, **kwargs)
 
         # FCS
         else:
             self.scan_type = "static"
-            p = self._process_static_data_file(full_data, file_idx, **kwargs)
+            p = self._process_static_data_file(full_data, data_processor, **kwargs)
 
         if file_path is not None and p is not None:
             p.file_path = file_path
+            p.file_num = file_idx
             print("Done.\n")
 
         return p
 
-    def _process_static_data_file(self, full_data, file_idx, **kwargs) -> TDCPhotonData:
+    def _process_static_data_file(self, full_data, data_processor, **kwargs) -> TDCPhotonData:
         """
         Processes a single static FCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
 
-        p = self.convert_fpga_data_to_photons(
+        p = data_processor.convert_fpga_data_to_photons(
             full_data["byte_data"],
-            version=full_data["version"],
             is_scan_continuous=True,
             **kwargs,
         )
 
-        p.file_num = file_idx
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         return p
 
-    def _process_circular_scan_data_file(self, full_data, file_idx, **kwargs) -> TDCPhotonData:
+    def _process_circular_scan_data_file(
+        self, full_data, data_processor, **kwargs
+    ) -> TDCPhotonData:
         """
         Processes a single circular sFCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
 
-        p = self.convert_fpga_data_to_photons(
+        p = data_processor.convert_fpga_data_to_photons(
             full_data["byte_data"],
-            version=full_data["version"],
             is_scan_continuous=True,
             **kwargs,
         )
 
-        p.file_num = file_idx
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         scan_settings = full_data["scan_settings"]
@@ -888,7 +893,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
     def _process_angular_scan_data_file(
         self,
         full_data,
-        file_idx,
+        data_processor,
         should_fix_shift=True,
         roi_selection="auto",
         **kwargs,
@@ -898,11 +903,8 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
 
-        p = self.convert_fpga_data_to_photons(
-            full_data["byte_data"], version=full_data["version"], is_verbose=True
-        )
+        p = data_processor.convert_fpga_data_to_photons(full_data["byte_data"], is_verbose=True)
 
-        p.file_num = file_idx
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
         scan_settings = full_data["scan_settings"]
@@ -1117,7 +1119,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
-                self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
+                self.calibrate_tdc(
+                    should_dump_data=False, is_verbose=is_verbose
+                )  # abort data rotation decorator
 
         # create list of split data for correlator
         dt_ts_split_list = self._prepare_xcorr_splits_dict(["AA"], is_verbose=is_verbose)["AA"]
@@ -1127,7 +1131,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         tdc_gate_ns = Limits(gate_ns)
         if tdc_gate_ns != Limits(0, np.inf) or self.detector_gate_ns != Limits(0, np.inf):
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
+                self.calibrate_tdc(
+                    should_dump_data=False, is_verbose=is_verbose
+                )  # abort data rotation decorator
             effective_lower_gate_ns = max(tdc_gate_ns.lower, self.detector_gate_ns.lower)
             effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
             gate_ns = Limits(effective_lower_gate_ns, effective_upper_gate_ns)
@@ -1139,7 +1145,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
         corr_input_list = []
         if is_filtered:
             if afterpulsing_method == "filter (lifetime)":
-                self.filter_matrix = self.calculate_afterpulsing_filter(**kwargs)
+                self.filter_matrix = self.tdc_calib.calculate_afterpulsing_filter(**kwargs)
             filter_input_list = []
         for dt_ts_split in dt_ts_split_list:
             split_delay_time = dt_ts_split[0]
@@ -1252,7 +1258,9 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
             tdc_gate_ns = Limits(gate_ns)
             if tdc_gate_ns != Limits(0, np.inf) or self.detector_gate_ns != Limits(0, np.inf):
                 if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                    self.calibrate_tdc(should_dump_data=False)  # abort data rotation decorator
+                    self.calibrate_tdc(
+                        should_dump_data=False, is_verbose=is_verbose
+                    )  # abort data rotation decorator
                 effective_lower_gate_ns = max(tdc_gate_ns.lower, self.detector_gate_ns.lower)
                 effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
                 gates.append(Limits(effective_lower_gate_ns, effective_upper_gate_ns))
@@ -1876,16 +1884,16 @@ class SFCSExperiment(TDCPhotonDataMixin):
                 self.sted, "scan_type"
             ):  # if both measurements quack as if loaded
                 with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
-                    self.confocal.plot_tdc_calibration(parent_axes=axes[:, :2])
-                    self.sted.plot_tdc_calibration(parent_axes=axes[:, 2:])
+                    self.confocal.tdc_calib.plot_tdc_calibration(parent_axes=axes[:, :2])
+                    self.sted.tdc_calib.plot_tdc_calibration(parent_axes=axes[:, 2:])
 
             # Confocal only
             elif hasattr(self.confocal, "scan_type"):  # STED measurement not loaded
-                self.confocal.plot_tdc_calibration(super_title=super_title, **kwargs)
+                self.confocal.tdc_calib.plot_tdc_calibration(super_title=super_title, **kwargs)
 
             # STED only
             else:
-                self.sted.plot_tdc_calibration(super_title=super_title, **kwargs)
+                self.sted.tdc_calib.plot_tdc_calibration(super_title=super_title, **kwargs)
 
     def compare_lifetimes(
         self,
