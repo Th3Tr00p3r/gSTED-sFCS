@@ -233,7 +233,7 @@ class Timeout:
                         )
 
                     # automatic shutdown
-                    with suppress(TypeError):
+                    if self.dep_dvc.is_emission_on:
                         mins_since_turned_on = (
                             time.perf_counter() - self.dep_dvc.turn_on_time
                         ) / 60
@@ -246,7 +246,7 @@ class Timeout:
             if (not self.exc_laser_dvc.error_dict) and (not self._app.meas.is_running):
 
                 # automatic shutdown
-                with suppress(TypeError):
+                if self.exc_laser_dvc.is_on:
                     mins_since_turned_on = (
                         time.perf_counter() - self.exc_laser_dvc.turn_on_time
                     ) / 60

@@ -1792,7 +1792,9 @@ class MainWin:
         experiment = self.get_experiment()
         try:
             display_kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
-            experiment.calibrate_tdc(calib_time_ns=wdgt_coll.calibration_gating, **display_kwargs)
+            experiment.calibrate_tdc(
+                calib_time_ns=wdgt_coll.calibration_gating, is_verbose=True, **display_kwargs
+            )
         except RuntimeError:  # confocal not loaded
             logging.info("Confocal measurement was not loaded - cannot calibrate TDC.")
         except AttributeError:
