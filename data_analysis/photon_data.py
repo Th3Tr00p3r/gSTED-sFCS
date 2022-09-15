@@ -40,6 +40,15 @@ class TDCPhotonData:
 
 
 @dataclass
+class LifeTimeParams:
+    """Doc."""
+
+    lifetime_ns: float
+    sigma_sted: Union[float, Tuple[float, float]]
+    laser_pulse_delay_ns: float
+
+
+@dataclass
 class TDCCalibration:
     """Doc."""
 
@@ -130,22 +139,14 @@ class TDCCalibration:
     def calculate_afterpulsing_filter(self, baseline_method="auto", hist_norm_factor=1, **kwargs):
         """Doc."""
 
-        t_hist = self.t_hist
-        hist_weight = self.hist_weight
-        all_hist = copy(self.all_hist.astype(np.float64))
-        nonzero_idxs = hist_weight > 0
-        all_hist[nonzero_idxs] /= hist_weight[nonzero_idxs] * np.mean(
-            hist_weight
-        )  # weight the histogram
-
         # interpolate over NaNs
-        all_hist[~nonzero_idxs] = np.nan  # NaN the zeros (for interpolation)
-        nans, x = nan_helper(all_hist)  # get nans and a way to interpolate over them later
-        all_hist[nans] = np.interp(x(nans), x(~nans), all_hist[~nans])
+        all_hist_norm = copy(self.all_hist_norm)  # copy so as to not change the original
+        nans, x = nan_helper(all_hist_norm)  # get nans and a way to interpolate over them later
+        all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
         # normalize
-        # TODO: why is a factor needed??
-        all_hist_norm = all_hist / all_hist.sum() * hist_norm_factor
+        # TODO: why is a hist_norm_factor needed??
+        all_hist_norm = all_hist_norm / all_hist_norm.sum() * hist_norm_factor
 
         # get the baseline (which is assumed to be approximately the afterpulsing histogram)
         if baseline_method == "manual":
@@ -156,10 +157,10 @@ class TDCCalibration:
                 selection_limits=baseline_limits,
                 should_close_after_selection=True,
             ) as ax:
-                ax.semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
+                ax.semilogy(self.t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
                 ax.legend()
 
-            baseline_idxs = baseline_limits.valid_indices(t_hist)
+            baseline_idxs = baseline_limits.valid_indices(self.t_hist)
             baseline = np.mean(all_hist_norm[baseline_idxs])
 
         elif baseline_method == "auto":
@@ -169,7 +170,7 @@ class TDCCalibration:
 
         # define matrices and calculate F
         M_j1 = all_hist_norm - baseline  # p1
-        M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
+        M_j2 = 1 / len(self.t_hist) * np.ones(self.t_hist.shape)  # p2
         M = np.vstack((M_j1, M_j2)).T
 
         I_j = all_hist_norm
@@ -186,15 +187,6 @@ class TDCCalibration:
             )
 
         return F
-
-
-@dataclass
-class LifeTimeParams:
-    """Doc."""
-
-    lifetime_ns: float
-    sigma_sted: Union[float, Tuple[float, float]]
-    laser_pulse_delay_ns: float
 
 
 class TDCPhotonDataProcessor:
