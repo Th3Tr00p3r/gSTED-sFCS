@@ -14,11 +14,13 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 import scipy
 import skimage
+from sklearn import linear_model
 
 from data_analysis.photon_data import (
     CountsImageMixin,
+    TDCCalibration,
+    TDCCalibrationGenerator,
     TDCPhotonData,
-    TDCPhotonDataMixin,
     TDCPhotonDataProcessor,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
@@ -207,6 +209,15 @@ class StructureFactor:
     sq: np.ndarray
     sq_lin_intrp: np.ndarray
     sq_error: np.ndarray
+
+
+@dataclass
+class LifeTimeParams:
+    """Doc."""
+
+    lifetime_ns: float
+    sigma_sted: Union[float, Tuple[float, float]]
+    laser_pulse_delay_ns: float
 
 
 class CorrFunc:
@@ -580,10 +591,11 @@ class CorrFunc:
         return self.structure_factor
 
 
-class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScanMixin):
+class SolutionSFCSMeasurement(AngularScanMixin, CircularScanMixin):
     """Doc."""
 
     NAN_PLACEBO: int
+    tdc_calib: TDCCalibration
 
     def __init__(self, name=""):
         self.name = name
@@ -1083,6 +1095,33 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
         return p
 
+    @file_utilities.rotate_data_to_disk(does_modify_data=True)
+    def calibrate_tdc(
+        self, force_processing=True, should_plot=False, is_verbose=False, **kwargs
+    ) -> None:
+        """Doc."""
+
+        if not force_processing and hasattr(self, "tdc_calib"):
+            print(f"\n{self.name}: TDC calibration exists, skipping.")
+            if should_plot:
+                self.tdc_calib.plot_tdc_calibration()
+            return
+
+        if is_verbose:
+            print(f"\n{self.name}: Calibrating TDC...", end=" ")
+
+        # perform actual TDC calibration
+        tdc_calib_gen = TDCCalibrationGenerator(
+            self.laser_freq_hz, self.fpga_freq_hz, self.NAN_PLACEBO
+        )
+        self.tdc_calib = tdc_calib_gen.calibrate_tdc(self.data, scan_type=self.scan_type, **kwargs)
+
+        if should_plot:
+            self.tdc_calib.plot_tdc_calibration()
+
+        if is_verbose:
+            print("Done.")
+
     def correlate_and_average(self, **kwargs) -> CorrFunc:
         """High level function for correlating and averaging any data."""
 
@@ -1574,6 +1613,50 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
 
         return legend_labels
 
+    def compare_lifetimes(
+        self,
+        legend_label: str,
+        compare_to: dict = None,
+        normalization_type="Per Time",
+        parent_ax=None,
+    ):
+        """
+        Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
+        and values are 'TDCPhotonDataMixin'-inheriting objects which are supposed to have their own TDC calibrations.
+        """
+
+        # add self (first) to compared TDC calibrations
+        compared = {**{legend_label: self}, **compare_to}
+
+        h = []
+        for label, measurement in compared.items():
+            with suppress(AttributeError):
+                # AttributeError - assume other tdc_objects that have tdc_calib structures
+                x = measurement.tdc_calib.t_hist
+                if normalization_type == "NO":
+                    y = measurement.tdc_calib.all_hist / measurement.tdc_calib.t_weight
+                elif normalization_type == "Per Time":
+                    y = measurement.tdc_calib.all_hist_norm
+                elif normalization_type == "By Sum":
+                    y = measurement.tdc_calib.all_hist_norm / np.sum(
+                        measurement.tdc_calib.all_hist_norm[
+                            np.isfinite(measurement.tdc_calib.all_hist_norm)
+                        ]
+                    )
+                else:
+                    raise ValueError(f"Unknown normalization type '{normalization_type}'.")
+                h.append((x, y, label))
+
+        with Plotter(parent_ax=parent_ax, super_title="Life Time Comparison") as ax:
+            labels = []
+            for tuple_ in h:
+                x, y, label = tuple_
+                labels.append(label)
+                ax.semilogy(x, y, "-o", label=label)
+            ax.set_xlabel("Life Time (ns)")
+            ax.set_ylabel("Frequency")
+            ax.legend(labels)
+
     def calculate_structure_factors(self, plot_kwargs={}, **kwargs) -> None:
         """Doc."""
 
@@ -1669,7 +1752,7 @@ class SolutionSFCSMeasurement(TDCPhotonDataMixin, AngularScanMixin, CircularScan
                     )
 
 
-class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
+class ImageSFCSMeasurement(CountsImageMixin):
     """Doc."""
 
     def __init__(self):
@@ -1695,7 +1778,7 @@ class ImageSFCSMeasurement(TDCPhotonDataMixin, CountsImageMixin):
         self.data = None
 
 
-class SFCSExperiment(TDCPhotonDataMixin):
+class SFCSExperiment:
     """Doc."""
 
     UPPERֹ_ֹGATE_NS = 20
@@ -1894,6 +1977,107 @@ class SFCSExperiment(TDCPhotonDataMixin):
             # STED only
             else:
                 self.sted.tdc_calib.plot_tdc_calibration(super_title=super_title, **kwargs)
+
+    def get_lifetime_parameters(
+        self,
+        sted_field="symmetric",
+        drop_idxs=[],
+        fit_range=None,
+        param_estimates=None,
+        bg_range=Limits(40, 60),
+        **kwargs,
+    ) -> LifeTimeParams:
+        """Doc."""
+
+        conf = self.confocal
+        sted = self.sted
+
+        conf_hist = conf.tdc_calib.all_hist_norm
+        conf_t = conf.tdc_calib.t_hist
+        conf_t = conf_t[np.isfinite(conf_hist)]
+        conf_hist = conf_hist[np.isfinite(conf_hist)]
+
+        sted_hist = sted.tdc_calib.all_hist_norm
+        sted_t = sted.tdc_calib.t_hist
+        sted_t = sted_t[np.isfinite(sted_hist)]
+        sted_hist = sted_hist[np.isfinite(sted_hist)]
+
+        h_max, j_max = conf_hist.max(), conf_hist.argmax()
+        t_max = conf_t[j_max]
+
+        beta0 = (h_max, 4, h_max * 1e-3)
+
+        if fit_range is None:
+            fit_range = Limits(t_max, 40)
+
+        if param_estimates is None:
+            param_estimates = beta0
+
+        conf_params = conf.tdc_calib.fit_lifetime_hist(
+            fit_range=fit_range, fit_param_estimate=beta0
+        )
+
+        # remove background
+        sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
+        conf_bg = np.mean(conf_hist[Limits(bg_range).valid_indices(conf_t)])
+        sted_hist = sted_hist - sted_bg
+        conf_hist = conf_hist - conf_bg
+
+        j = conf_t < 20
+        t = conf_t[j]
+        hist_ratio = conf_hist[j] / np.interp(t, sted_t, sted_hist, right=0)
+        if drop_idxs:
+            j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
+            t = t[j]
+            hist_ratio = hist_ratio[j]
+
+        title = "Robust Linear Fit of the Linear Part of the Histogram Ratio"
+        with Plotter(figsize=(11.25, 7.5), super_title=title, **kwargs) as ax:
+
+            # Using inner Plotter for manual selection
+            title = "Use the mouse to place 2 markers\nlimiting the linear range:"
+            linear_range = Limits()
+            with Plotter(
+                parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
+            ) as ax:
+                ax.plot(t, hist_ratio)
+                ax.legend(["hist_ratio"])
+
+            j_selected = linear_range.valid_indices(t)
+
+            if sted_field == "symmetric":
+                # Robustly fit linear model with RANSAC algorithm
+                ransac = linear_model.RANSACRegressor()
+                ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
+                p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
+
+                ax.plot(t[j_selected], hist_ratio[j_selected], "oy")
+                ax.plot(t[j_selected], np.polyval([p1, p0], t[j_selected]), "r")
+                ax.legend(["hist_ratio", "linear range", "robust fit"])
+
+                lifetime_ns = conf_params.beta[1]
+                sigma_sted = p1 * lifetime_ns
+                try:
+                    laser_pulse_delay_ns = (1 - p0) / p1
+                except RuntimeWarning:
+                    laser_pulse_delay_ns = None
+
+            elif sted_field == "paraboloid":
+                fit_params = curve_fit_lims(
+                    FIT_NAME_DICT["ratio_of_lifetime_histograms"],
+                    param_estimates=(2, 1, 1),
+                    xs=t[j_selected],
+                    ys=hist_ratio[j_selected],
+                    ys_errors=np.ones(j_selected.sum()),
+                    should_plot=True,
+                )
+
+                lifetime_ns = conf_params.beta[1]
+                sigma_sted = (fit_params.beta[0] * lifetime_ns, fit_params.beta[1] * lifetime_ns)
+                laser_pulse_delay_ns = fit_params.beta[2]
+
+        self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
+        return self.lifetime_params
 
     def compare_lifetimes(
         self,

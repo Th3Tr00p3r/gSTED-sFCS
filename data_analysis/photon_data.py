@@ -4,14 +4,12 @@ from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass
 from itertools import count as infinite_range
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Tuple
 
 import numpy as np
 import scipy
-from sklearn import linear_model
 
 from utilities.display import Plotter
-from utilities.file_utilities import rotate_data_to_disk
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
 from utilities.helper import (
     Limits,
@@ -37,15 +35,6 @@ class TDCPhotonData:
     duration_s: float
     skipped_duration: float
     delay_time: np.ndarray
-
-
-@dataclass
-class LifeTimeParams:
-    """Doc."""
-
-    lifetime_ns: float
-    sigma_sted: Union[float, Tuple[float, float]]
-    laser_pulse_delay_ns: float
 
 
 @dataclass
@@ -516,24 +505,17 @@ class TDCPhotonDataProcessor:
         return None
 
 
-class TDCPhotonDataMixin:
-    """Methods for creating and analyzing TDCPhotonData objects"""
+class TDCCalibrationGenerator:
+    """Doc."""
 
-    # NOTE: These are for mypy to be silent. The proper way to do it would be using abstract base classes (ABCs)
-    name: str
-    data: List
-    scan_type: str
-    NAN_PLACEBO: int
-    fpga_freq_hz: int
-    laser_freq_hz: int
-    template: str
-    tdc_calib: TDCCalibration
-    confocal: Any
-    sted: Any
+    def __init__(self, laser_freq_hz, fpga_freq_hz, nan_placebo):
+        self.laser_freq_hz = laser_freq_hz
+        self.fpga_freq_hz = fpga_freq_hz
+        self.nan_placebo = nan_placebo
 
-    @rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
         self,
+        data: List[TDCPhotonData],
         tdc_chain_length=128,
         pick_valid_bins_according_to=None,
         sync_coarse_time_to=None,
@@ -542,24 +524,12 @@ class TDCPhotonDataMixin:
         calib_time_ns=40,
         n_zeros_for_fine_bounds=10,
         time_bins_for_hist_ns=0.1,
-        should_plot=False,
         parent_axes=None,
-        force_processing=True,
-        is_verbose=False,
         **kwargs,
-    ) -> None:
+    ) -> TDCCalibration:
         """Doc."""
 
-        if not force_processing and hasattr(self, "tdc_calib"):
-            print(f"\n{self.name}: TDC calibration exists, skipping.")
-            if should_plot:
-                self.tdc_calib.plot_tdc_calibration()
-            return
-
-        if is_verbose:
-            print(f"\n{self.name}: Calibrating TDC...", end=" ")
-
-        coarse, fine = self._unite_coarse_fine_data()
+        coarse, fine = self._unite_coarse_fine_data(data, **kwargs)
 
         h_all = np.bincount(coarse).astype(np.uint32)
         x_all = np.arange(coarse.max() + 1, dtype=np.uint8)
@@ -629,8 +599,10 @@ class TDCPhotonDataMixin:
             delay_times = external_calib.delay_times
 
             with suppress(AttributeError):
-                l_quarter_tdc = self.tdc_calib.l_quarter_tdc
-                r_quarter_tdc = self.tdc_calib.r_quarter_tdc
+                # TODO: this will fail - why is it here?
+                raise AttributeError("FIGURE THIS OUT!")
+        #                l_quarter_tdc = self.tdc_calib.l_quarter_tdc
+        #                r_quarter_tdc = self.tdc_calib.r_quarter_tdc
 
         else:
 
@@ -681,7 +653,7 @@ class TDCPhotonDataMixin:
         total_laser_pulses = 0
         first_coarse_bin, *_, last_coarse_bin = coarse_bins
         delay_time_list = []
-        for p in self.data:
+        for p in data:
             p.delay_time = np.empty(p.coarse.shape, dtype=np.float64)
             crs = np.minimum(p.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
             crs[crs < 0] = crs[crs < 0] + last_coarse_bin - first_coarse_bin + 1
@@ -698,7 +670,7 @@ class TDCPhotonDataMixin:
             on_left_tdc = p.fine < l_quarter_tdc
             delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
 
-            photon_idxs = p.fine > self.NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
+            photon_idxs = p.fine > self.nan_placebo  # self.NAN_PLACEBO are starts/ends of lines
             p.delay_time[photon_idxs] = (
                 t_calib[p.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
@@ -739,13 +711,7 @@ class TDCPhotonDataMixin:
             / total_laser_pulses
         )
 
-        if should_plot:
-            self.tdc_calib.plot_tdc_calibration()
-
-        if is_verbose:
-            print("Done.")
-
-        self.tdc_calib = TDCCalibration(
+        return TDCCalibration(
             x_all=x_all,
             h_all=h_all,
             coarse_bins=coarse_bins,
@@ -767,167 +733,22 @@ class TDCPhotonDataMixin:
             total_laser_pulses=total_laser_pulses,
         )
 
-    def compare_lifetimes(
-        self,
-        legend_label: str,
-        compare_to: dict = None,
-        normalization_type="Per Time",
-        parent_ax=None,
-    ):
-        """
-        Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
-        and values are 'TDCPhotonDataMixin'-inheriting objects which are supposed to have their own TDC calibrations.
-        """
-
-        # add self (first) to compared TDC calibrations
-        compared = {**{legend_label: self}, **compare_to}
-
-        h = []
-        for label, measurement in compared.items():
-            with suppress(AttributeError):
-                # AttributeError - assume other tdc_objects that have tdc_calib structures
-                x = measurement.tdc_calib.t_hist
-                if normalization_type == "NO":
-                    y = measurement.tdc_calib.all_hist / measurement.tdc_calib.t_weight
-                elif normalization_type == "Per Time":
-                    y = measurement.tdc_calib.all_hist_norm
-                elif normalization_type == "By Sum":
-                    y = measurement.tdc_calib.all_hist_norm / np.sum(
-                        measurement.tdc_calib.all_hist_norm[
-                            np.isfinite(measurement.tdc_calib.all_hist_norm)
-                        ]
-                    )
-                else:
-                    raise ValueError(f"Unknown normalization type '{normalization_type}'.")
-                h.append((x, y, label))
-
-        with Plotter(parent_ax=parent_ax, super_title="Life Time Comparison") as ax:
-            labels = []
-            for tuple_ in h:
-                x, y, label = tuple_
-                labels.append(label)
-                ax.semilogy(x, y, "-o", label=label)
-            ax.set_xlabel("Life Time (ns)")
-            ax.set_ylabel("Frequency")
-            ax.legend(labels)
-
-    def get_lifetime_parameters(
-        self,
-        sted_field="symmetric",
-        drop_idxs=[],
-        fit_range=None,
-        param_estimates=None,
-        bg_range=Limits(40, 60),
-        **kwargs,
-    ) -> LifeTimeParams:
-        """Doc."""
-
-        conf = self.confocal
-        sted = self.sted
-
-        conf_hist = conf.tdc_calib.all_hist_norm
-        conf_t = conf.tdc_calib.t_hist
-        conf_t = conf_t[np.isfinite(conf_hist)]
-        conf_hist = conf_hist[np.isfinite(conf_hist)]
-
-        sted_hist = sted.tdc_calib.all_hist_norm
-        sted_t = sted.tdc_calib.t_hist
-        sted_t = sted_t[np.isfinite(sted_hist)]
-        sted_hist = sted_hist[np.isfinite(sted_hist)]
-
-        h_max, j_max = conf_hist.max(), conf_hist.argmax()
-        t_max = conf_t[j_max]
-
-        beta0 = (h_max, 4, h_max * 1e-3)
-
-        if fit_range is None:
-            fit_range = Limits(t_max, 40)
-
-        if param_estimates is None:
-            param_estimates = beta0
-
-        conf_params = conf.tdc_calib.fit_lifetime_hist(
-            fit_range=fit_range, fit_param_estimate=beta0
-        )
-
-        # remove background
-        sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
-        conf_bg = np.mean(conf_hist[Limits(bg_range).valid_indices(conf_t)])
-        sted_hist = sted_hist - sted_bg
-        conf_hist = conf_hist - conf_bg
-
-        j = conf_t < 20
-        t = conf_t[j]
-        hist_ratio = conf_hist[j] / np.interp(t, sted_t, sted_hist, right=0)
-        if drop_idxs:
-            j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
-            t = t[j]
-            hist_ratio = hist_ratio[j]
-
-        title = "Robust Linear Fit of the Linear Part of the Histogram Ratio"
-        with Plotter(figsize=(11.25, 7.5), super_title=title, **kwargs) as ax:
-
-            # Using inner Plotter for manual selection
-            title = "Use the mouse to place 2 markers\nlimiting the linear range:"
-            linear_range = Limits()
-            with Plotter(
-                parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
-            ) as ax:
-                ax.plot(t, hist_ratio)
-                ax.legend(["hist_ratio"])
-
-            j_selected = linear_range.valid_indices(t)
-
-            if sted_field == "symmetric":
-                # Robustly fit linear model with RANSAC algorithm
-                ransac = linear_model.RANSACRegressor()
-                ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
-                p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
-
-                ax.plot(t[j_selected], hist_ratio[j_selected], "oy")
-                ax.plot(t[j_selected], np.polyval([p1, p0], t[j_selected]), "r")
-                ax.legend(["hist_ratio", "linear range", "robust fit"])
-
-                lifetime_ns = conf_params.beta[1]
-                sigma_sted = p1 * lifetime_ns
-                try:
-                    laser_pulse_delay_ns = (1 - p0) / p1
-                except RuntimeWarning:
-                    laser_pulse_delay_ns = None
-
-            elif sted_field == "paraboloid":
-                fit_params = curve_fit_lims(
-                    FIT_NAME_DICT["ratio_of_lifetime_histograms"],
-                    param_estimates=(2, 1, 1),
-                    xs=t[j_selected],
-                    ys=hist_ratio[j_selected],
-                    ys_errors=np.ones(j_selected.sum()),
-                    should_plot=True,
-                )
-
-                lifetime_ns = conf_params.beta[1]
-                sigma_sted = (fit_params.beta[0] * lifetime_ns, fit_params.beta[1] * lifetime_ns)
-                laser_pulse_delay_ns = fit_params.beta[2]
-
-        self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
-        return self.lifetime_params
-
-    def _unite_coarse_fine_data(self):
+    def _unite_coarse_fine_data(self, data, scan_type: str, **kwargs):
         """Doc."""
 
         # keep pulse_runtime elements of each file for array size allocation
-        n_elem = np.cumsum([0] + [p.pulse_runtime.size for p in self.data])
+        n_elem = np.cumsum([0] + [p.pulse_runtime.size for p in data])
 
         # unite coarse and fine times from all files
         coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
         fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
-        for i, p in enumerate(self.data):
+        for i, p in enumerate(data):
             coarse[n_elem[i] : n_elem[i + 1]] = p.coarse
             fine[n_elem[i] : n_elem[i + 1]] = p.fine
 
         # remove line starts/ends from angular scan data
-        if self.scan_type == "angular":
-            photon_idxs = fine > self.NAN_PLACEBO
+        if scan_type == "angular":
+            photon_idxs = fine > self.nan_placebo
             coarse = coarse[photon_idxs]
             fine = fine[photon_idxs]
 
