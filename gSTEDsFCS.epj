@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2022 idomic, ",
-    "saved": "2022-09-18, 16:22:33"
+    "saved": "2022-09-18, 16:42:35"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -154,6 +154,7 @@
       "utilities/errors.py",
       "utilities/helper.py",
       "data_analysis/correlation_function.py",
+      "data_analysis/photon_data.py",
       "data_analysis/software_correlator.py",
       "utilities/file_utilities.py",
       "utilities/display.py",
