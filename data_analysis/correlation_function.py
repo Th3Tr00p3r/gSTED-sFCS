@@ -671,7 +671,7 @@ class SolutionSFCSMeasurement:
 
         print("Done.\n")
 
-        return data_processor.process(full_data)
+        return data_processor.process_data(full_data)
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
@@ -690,7 +690,8 @@ class SolutionSFCSMeasurement:
 
         # perform actual TDC calibration
         tdc_calib_gen = TDCCalibrationGenerator(
-            self.laser_freq_hz, self.fpga_freq_hz, self.NAN_PLACEBO
+            self.laser_freq_hz,
+            self.fpga_freq_hz,
         )
         self.tdc_calib = tdc_calib_gen.calibrate_tdc(self.data, scan_type=self.scan_type, **kwargs)
 
@@ -966,11 +967,9 @@ class SolutionSFCSMeasurement:
         dt_ts_splits_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
         for p in self.data:
             if self.scan_type in {"static", "circle"}:
-                p.add_continuous_data_file_xcorr_splits_to_dict(
-                    dt_ts_splits_dict, xcorr_types, **kwargs
-                )
+                p.add_continuous_xcorr_splits_to_dict(dt_ts_splits_dict, xcorr_types, **kwargs)
             elif self.scan_type == "angular":
-                p.add_line_data_file_xcorr_splits_to_dict(dt_ts_splits_dict, xcorr_types, **kwargs)
+                p.add_line_xcorr_splits_to_dict(dt_ts_splits_dict, xcorr_types, **kwargs)
 
         if is_verbose:
             print("Done.")
