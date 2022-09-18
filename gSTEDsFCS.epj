@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2022 idomic, ",
-    "saved": "2022-09-06, 00:05:04"
+    "saved": "2022-09-18, 15:23:31"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -166,7 +166,8 @@
       "tests/integration/__init__.py",
       "tests/unit/test_scan_patterns.py",
       "tests/unit/__init__.py",
-      "logic/slot_implementations.py"
+      "logic/slot_implementations.py",
+      "data_analysis/data_processing.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",

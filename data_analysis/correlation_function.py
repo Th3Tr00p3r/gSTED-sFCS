@@ -14,7 +14,7 @@ import numpy as np
 import scipy
 from sklearn import linear_model
 
-from data_analysis.photon_data import (
+from data_analysis.data_processing import (
     CountsImageMixin,
     TDCCalibration,
     TDCCalibrationGenerator,
@@ -444,7 +444,6 @@ class CorrFunc:
 class SolutionSFCSMeasurement:
     """Doc."""
 
-    NAN_PLACEBO: int
     tdc_calib: TDCCalibration
 
     def __init__(self, name=""):
@@ -671,7 +670,7 @@ class SolutionSFCSMeasurement:
 
         print("Done.\n")
 
-        return data_processor.process(full_data)
+        return data_processor.process_data(full_data)
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
@@ -690,7 +689,8 @@ class SolutionSFCSMeasurement:
 
         # perform actual TDC calibration
         tdc_calib_gen = TDCCalibrationGenerator(
-            self.laser_freq_hz, self.fpga_freq_hz, self.NAN_PLACEBO
+            self.laser_freq_hz,
+            self.fpga_freq_hz,
         )
         self.tdc_calib = tdc_calib_gen.calibrate_tdc(self.data, scan_type=self.scan_type, **kwargs)
 
@@ -965,12 +965,11 @@ class SolutionSFCSMeasurement:
 
         dt_ts_splits_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
         for p in self.data:
-            if self.scan_type in {"static", "circle"}:
-                p.add_continuous_data_file_xcorr_splits_to_dict(
-                    dt_ts_splits_dict, xcorr_types, **kwargs
-                )
-            elif self.scan_type == "angular":
-                p.add_line_data_file_xcorr_splits_to_dict(dt_ts_splits_dict, xcorr_types, **kwargs)
+            file_dt_ts_splits_dict = p.get_xcorr_splits_dict(
+                self.scan_type, xcorr_types, self.laser_freq_hz, **kwargs
+            )
+            for xx, split_list in file_dt_ts_splits_dict.items():
+                dt_ts_splits_dict[xx] += split_list
 
         if is_verbose:
             print("Done.")
