@@ -141,7 +141,7 @@ default_system_info = {
 
 def chunks(list_: list, n: int):
     """
-    Yield successive n-sized chunks from list_.
+    Generate n-sized chunks from list_.
     https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks?page=1&tab=votes#tab-top
     """
 
@@ -219,7 +219,7 @@ def save_object(
 
     # split iterables to chunks if possible
     if element_size_estimate_mb is not None:
-        MAX_CHUNK_MB = 500  # 2000 should be about optimized
+        MAX_CHUNK_MB = 500
         n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
         chunked_obj = list(chunks(obj, n_elem_per_chunk))
     else:  # obj isn't iterable - treat as a single chunk

@@ -177,7 +177,6 @@ class TDCPhotonData:
 
     # general
     version: int
-    scan_type: str
     section_runtime_edges: list
     coarse: np.ndarray
     coarse2: np.ndarray
@@ -217,12 +216,13 @@ class TDCPhotonData:
         """Doc."""
 
         if scan_type in {"static", "circle"}:
-            return self._get_continuous_xcorr_splits_dict(*args, **kwargs)
+            return self._get_continuous_xcorr_splits_dict(scan_type, *args, **kwargs)
         elif scan_type == "angular":
-            return self._get_line_xcorr_splits_dict(*args, **kwargs)
+            return self._get_line_xcorr_splits_dict(scan_type, *args, **kwargs)
 
     def _get_line_xcorr_splits_dict(
         self,
+        scan_type: str,
         xcorr_types: List[str],
         *args,
         gate1_ns=Limits(0, np.inf),
@@ -264,14 +264,16 @@ class TDCPhotonData:
             for xx in xcorr_types:
                 if xx == "AA":
                     dt_ts_splits_dict[xx].append(
-                        self._prepare_correlator_input(dt_ts1, j, line_num=line_num1)
+                        self._prepare_correlator_input(dt_ts1, j, scan_type, line_num=line_num1)
                     )
                 if xx == "BB":
                     dt_ts_splits_dict[xx].append(
-                        self._prepare_correlator_input(dt_ts2, j, line_num=line_num2)
+                        self._prepare_correlator_input(dt_ts2, j, scan_type, line_num=line_num2)
                     )
                 if xx == "AB":
-                    splitsAB = self._prepare_correlator_input(dt_ts12, j, line_num=line_num12)
+                    splitsAB = self._prepare_correlator_input(
+                        dt_ts12, j, scan_type, line_num=line_num12
+                    )
                     dt_ts_splits_dict[xx].append(splitsAB)
                 if xx == "BA":
                     if "AB" in xcorr_types:
@@ -279,16 +281,18 @@ class TDCPhotonData:
                     else:
                         dt_ts21 = dt_ts12[[0, 1, 3, 2, 4], :]
                         dt_ts_splits_dict[xx].append(
-                            self._prepare_correlator_input(dt_ts21, j, line_num=line_num12)
+                            self._prepare_correlator_input(
+                                dt_ts21, j, scan_type, line_num=line_num12
+                            )
                         )
 
         return dt_ts_splits_dict
 
     def _get_continuous_xcorr_splits_dict(
         self,
+        scan_type: str,
         xcorr_types: List[str],
         laser_freq_hz: int,
-        *args,
         gate1_ns=Limits(0, np.inf),
         gate2_ns=Limits(0, np.inf),
         n_splits_requested=10,
@@ -333,15 +337,22 @@ class TDCPhotonData:
                 for xx in xcorr_types:
                     if xx == "AA":
                         dt_ts_splits_dict[xx].append(
-                            self._prepare_correlator_input(section_dt_ts1, j, n_splits=n_splits)
+                            self._prepare_correlator_input(
+                                section_dt_ts1, j, scan_type, n_splits=n_splits
+                            )
                         )
                     if xx == "BB":
                         dt_ts_splits_dict[xx].append(
-                            self._prepare_correlator_input(section_dt_ts2, j, n_splits=n_splits)
+                            self._prepare_correlator_input(
+                                section_dt_ts2, j, scan_type, n_splits=n_splits
+                            )
                         )
                     if xx == "AB":
                         splitsAB = self._prepare_correlator_input(
-                            section_dt_ts12, j, n_splits=n_splits
+                            section_dt_ts12,
+                            j,
+                            scan_type,
+                            n_splits=n_splits,
                         )
                         dt_ts_splits_dict[xx].append(splitsAB)
                     if xx == "BA":
@@ -351,20 +362,25 @@ class TDCPhotonData:
                             section_dt_ts21 = section_dt_ts12[[0, 1, 3, 2], :]
                             dt_ts_splits_dict[xx].append(
                                 self._prepare_correlator_input(
-                                    section_dt_ts21, j, n_splits=n_splits
+                                    section_dt_ts21,
+                                    j,
+                                    scan_type,
+                                    n_splits=n_splits,
                                 )
                             )
 
         return dt_ts_splits_dict
 
-    def _prepare_correlator_input(self, dt_ts_in, idx, line_num=None, n_splits=None) -> np.ndarray:
+    def _prepare_correlator_input(
+        self, dt_ts_in, idx, scan_type, line_num=None, n_splits=None
+    ) -> np.ndarray:
         """Doc."""
 
-        if self.scan_type in {"static", "circle"}:
+        if scan_type in {"static", "circle"}:
             splits = np.linspace(0, dt_ts_in.shape[1], n_splits + 1, dtype=np.int32)
             return dt_ts_in[:, splits[idx] : splits[idx + 1]]
 
-        elif self.scan_type == "angular":
+        elif scan_type == "angular":
             valid = (line_num == idx).astype(np.int8)
             valid[line_num == -idx] = -1
             valid[line_num == -idx - self.LINE_END_ADDER] = -2
@@ -576,7 +592,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             )
 
         # add general properties
-        p.scan_type = scan_type
         p.version = version
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
