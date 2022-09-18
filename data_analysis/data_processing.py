@@ -1,4 +1,5 @@
-"""Raw data handling."""
+"""Data Processing."""
+
 from collections import deque
 from contextlib import suppress
 from copy import copy
@@ -45,6 +46,7 @@ class AngularScanDataMixin:
     """Doc."""
 
     NAN_PLACEBO = -100  # marks starts/ends of lines
+    LINE_END_ADDER = 1000
 
     def _convert_angular_scan_to_image(
         self, pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
@@ -204,14 +206,23 @@ class TDCPhotonData:
     n_lines: int
     roi: Dict[str, deque]
     bw_mask: np.ndarray
+    NAN_PLACEBO: int
+    LINE_END_ADDER: int
 
     def __init__(self, **kwargs):
-        for attr, val in kwargs:
+        for attr, val in kwargs.items():
             setattr(self, attr, val)
 
-    def add_line_xcorr_splits_to_dict(
+    def get_xcorr_splits_dict(self, scan_type: str, *args, **kwargs):
+        """Doc."""
+
+        if scan_type in {"static", "circle"}:
+            return self._get_continuous_xcorr_splits_dict(*args, **kwargs)
+        elif scan_type == "angular":
+            return self._get_line_xcorr_splits_dict(*args, **kwargs)
+
+    def _get_line_xcorr_splits_dict(
         self,
-        dt_ts_splits_dict: Dict[str, List],
         xcorr_types: List[str],
         *args,
         gate1_ns=Limits(0, np.inf),
@@ -248,6 +259,7 @@ class TDCPhotonData:
             dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
             line_num12 = line_num[gate1_idxs | gate2_idxs]
 
+        dt_ts_splits_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
         for j in self.line_limits.as_range():
             for xx in xcorr_types:
                 if xx == "AA":
@@ -270,9 +282,10 @@ class TDCPhotonData:
                             self._prepare_correlator_input(dt_ts21, j, line_num=line_num12)
                         )
 
-    def add_continuous_xcorr_splits_to_dict(
+        return dt_ts_splits_dict
+
+    def _get_continuous_xcorr_splits_dict(
         self,
-        dt_ts_splits_dict: Dict[str, List],
         xcorr_types: List[str],
         laser_freq_hz: int,
         *args,
@@ -315,6 +328,7 @@ class TDCPhotonData:
                     (section_delay_time, section_ts12, gate2_idxs, gate1_idxs)
                 )[:, gate1_idxs | gate2_idxs]
 
+            dt_ts_splits_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
             for j in range(n_splits := div_ceil(section_time, split_duration)):
                 for xx in xcorr_types:
                     if xx == "AA":
@@ -341,7 +355,9 @@ class TDCPhotonData:
                                 )
                             )
 
-    def _prepare_correlator_input(self, dt_ts_in, idx, line_num=None, n_splits=None):
+        return dt_ts_splits_dict
+
+    def _prepare_correlator_input(self, dt_ts_in, idx, line_num=None, n_splits=None) -> np.ndarray:
         """Doc."""
 
         if self.scan_type in {"static", "circle"}:
@@ -529,7 +545,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
     GROUP_LEN: int = 7
     MAX_VAL: int = 256 ** 3
-    LINE_END_ADDER = 1000
 
     def __init__(
         self,
@@ -564,6 +579,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         p.scan_type = scan_type
         p.version = version
         p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
+
+        # TODO: fix it so NAN_PLACEBO is only given to angular scans
+        p.NAN_PLACEBO = self.NAN_PLACEBO
 
         return p
 
@@ -1108,16 +1126,17 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             p.image, p.bw_mask, p.line_limits, p.ao_sampling_freq_hz
         )
 
+        p.LINE_END_ADDER = self.LINE_END_ADDER
+
         return p
 
 
 class TDCCalibrationGenerator:
     """Doc."""
 
-    def __init__(self, laser_freq_hz, fpga_freq_hz, nan_placebo):
+    def __init__(self, laser_freq_hz, fpga_freq_hz):
         self.laser_freq_hz = laser_freq_hz
         self.fpga_freq_hz = fpga_freq_hz
-        self.nan_placebo = nan_placebo
 
     def calibrate_tdc(
         self,
@@ -1276,7 +1295,7 @@ class TDCCalibrationGenerator:
             on_left_tdc = p.fine < l_quarter_tdc
             delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
 
-            photon_idxs = p.fine > self.nan_placebo  # self.NAN_PLACEBO are starts/ends of lines
+            photon_idxs = p.fine > p.NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
             p.delay_time[photon_idxs] = (
                 t_calib[p.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
@@ -1354,7 +1373,7 @@ class TDCCalibrationGenerator:
 
         # remove line starts/ends from angular scan data
         if scan_type == "angular":
-            photon_idxs = fine > self.nan_placebo
+            photon_idxs = fine > p.NAN_PLACEBO
             coarse = coarse[photon_idxs]
             fine = fine[photon_idxs]
 
