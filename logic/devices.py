@@ -743,7 +743,7 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         num_samps_read = self.counter_stream_read(self.cont_read_buffer)
-        self.ci_buffer += self.cont_read_buffer[:num_samps_read]
+        self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
         self.num_reads_since_avg += num_samps_read
 
     def average_counts(self, interval_s: float, rate=None) -> None:

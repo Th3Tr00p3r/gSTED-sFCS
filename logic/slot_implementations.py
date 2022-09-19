@@ -24,7 +24,7 @@ import gui.widgets as wdgts
 import logic.measurements as meas
 from data_analysis.correlation_function import (
     ImageSFCSMeasurement,
-    SFCSExperiment,
+    SolutionSFCSExperiment,
     SolutionSFCSMeasurement,
 )
 from logic.scan_patterns import ScanPatternAO
@@ -1741,7 +1741,7 @@ class MainWin:
         kwargs["fontsize"] = 10
         kwargs["should_plot_meas"] = False
 
-        experiment = SFCSExperiment(experiment_name)
+        experiment = SolutionSFCSExperiment(experiment_name)
         try:
             experiment.load_experiment(**kwargs)
         except RuntimeError as exc:
