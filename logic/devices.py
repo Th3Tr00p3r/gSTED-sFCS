@@ -1012,6 +1012,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
     DEFAULT_PARAM_DICT = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
+    PIXEL_SIZE_UM = 3.6
 
     def __init__(self, param_dict):
         super().__init__(
@@ -1042,15 +1043,15 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         try:
             if self.is_in_video_mode:
-                self.latest_image = np.flipud((self.get_latest_frame()))
+                self.last_snapshot = np.flipud((self.get_latest_frame()))
             else:
-                self.latest_image = np.flipud((self.grab_image()))
+                self.last_snapshot = np.flipud((self.grab_image()))
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             if should_display:
-                self.display.obj.display_image(self.latest_image, cursor=True)
-            return self.latest_image
+                self.display.obj.display_image(self.last_snapshot, cursor=True)
+            return self.last_snapshot
 
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
