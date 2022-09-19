@@ -1078,12 +1078,12 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw.shape)
                 line_stops_new = list(range(line_stops_new_idx, sample_runtime[-1], bw.size))
 
-                line_start_lables.extend([-row_idx for elem in range(len(line_starts_new))])
-                line_stop_labels.extend(
-                    [(-row_idx - self.LINE_END_ADDER) for elem in range(len(line_stops_new))]
-                )
-                line_starts.extend(line_starts_new)
-                line_stops.extend(line_stops_new)
+                line_start_lables += [-row_idx for elem in range(len(line_starts_new))]
+                line_stop_labels += [
+                    (-row_idx - self.LINE_END_ADDER) for elem in range(len(line_stops_new))
+                ]
+                line_starts += line_starts_new
+                line_stops += line_stops_new
 
         try:
             # repeat first point to close the polygon

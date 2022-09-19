@@ -347,7 +347,7 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             byte_array = self.read()
             await asyncio.sleep(TIMEOUT_INTERVAL)
 
-        self.data.extend(byte_array)
+        self.data += byte_array
         self.tot_bytes_read += len(byte_array)
 
     def init_data(self):
@@ -609,7 +609,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         read_samples = self.analog_read(task_name, n_samples)
         read_samples = self._diff_to_rse(read_samples)
-        self.ai_buffer.extend(read_samples)
+        self.ai_buffer += read_samples
 
     def _diff_to_rse(self, read_samples: np.ndarray) -> list:
         """Doc."""
@@ -743,7 +743,7 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         num_samps_read = self.counter_stream_read(self.cont_read_buffer)
-        self.ci_buffer.extend(self.cont_read_buffer[:num_samps_read])
+        self.ci_buffer += self.cont_read_buffer[:num_samps_read]
         self.num_reads_since_avg += num_samps_read
 
     def average_counts(self, interval_s: float, rate=None) -> None:
