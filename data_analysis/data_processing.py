@@ -584,7 +584,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # FCS
         else:
             scan_type = "static"
-            p = self.convert_fpga_data_to_photons(
+            p = self._convert_fpga_data_to_photons(
                 full_data["byte_data"],
                 version,
                 is_scan_continuous=True,
@@ -600,7 +600,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         return p
 
-    def convert_fpga_data_to_photons(
+    def _convert_fpga_data_to_photons(
         self,
         byte_data,
         version,
@@ -915,7 +915,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
 
-        p = self.convert_fpga_data_to_photons(
+        p = self._convert_fpga_data_to_photons(
             full_data["byte_data"],
             full_data["version"],
             is_scan_continuous=True,
@@ -963,7 +963,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
 
-        p = self.convert_fpga_data_to_photons(
+        p = self._convert_fpga_data_to_photons(
             full_data["byte_data"], full_data["version"], is_verbose=True
         )
 
@@ -1156,6 +1156,7 @@ class TDCCalibrationGenerator:
     def calibrate_tdc(
         self,
         data: List[TDCPhotonData],
+        scan_type,
         tdc_chain_length=128,
         pick_valid_bins_according_to=None,
         sync_coarse_time_to=None,
@@ -1169,7 +1170,7 @@ class TDCCalibrationGenerator:
     ) -> TDCCalibration:
         """Doc."""
 
-        coarse, fine = self._unite_coarse_fine_data(data, **kwargs)
+        coarse, fine = self._unite_coarse_fine_data(data, scan_type)
 
         h_all = np.bincount(coarse).astype(np.uint32)
         x_all = np.arange(coarse.max() + 1, dtype=np.uint8)
@@ -1373,7 +1374,7 @@ class TDCCalibrationGenerator:
             total_laser_pulses=total_laser_pulses,
         )
 
-    def _unite_coarse_fine_data(self, data, scan_type: str, **kwargs):
+    def _unite_coarse_fine_data(self, data, scan_type: str):
         """Doc."""
 
         # keep pulse_runtime elements of each file for array size allocation
