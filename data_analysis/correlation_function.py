@@ -478,7 +478,7 @@ class SolutionSFCSMeasurement:
         print(f"Files: {self.n_paths}, Selection: '{file_selection}'\n")
 
         # actual data processing
-        self.data = self.process_all_data(file_paths, **kwargs)
+        self.data = self._process_all_data(file_paths, **kwargs)
 
         # count the files and ensure there's at least one file
         self.n_files = len(self.data)
@@ -554,7 +554,7 @@ class SolutionSFCSMeasurement:
                 pass
             print("Done.\n")
 
-    def process_all_data(
+    def _process_all_data(
         self,
         file_paths: List[Path],
         should_parallel_process: bool = False,
@@ -691,7 +691,7 @@ class SolutionSFCSMeasurement:
             self.laser_freq_hz,
             self.fpga_freq_hz,
         )
-        self.tdc_calib = tdc_calib_gen.calibrate_tdc(self.data, scan_type=self.scan_type, **kwargs)
+        self.tdc_calib = tdc_calib_gen.calibrate_tdc(self.data, self.scan_type, **kwargs)
 
         if should_plot:
             self.tdc_calib.plot_tdc_calibration()
@@ -1175,7 +1175,7 @@ class ImageSFCSMeasurement(CountsImageMixin):
         self.data = None
 
 
-class SFCSExperiment:
+class SolutionSFCSExperiment:
     """Doc."""
 
     UPPERֹ_ֹGATE_NS = 20
