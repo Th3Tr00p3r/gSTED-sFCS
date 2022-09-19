@@ -9,13 +9,14 @@ import logging
 import pickle
 import re
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable, List, Tuple, Union
 
 import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import reverse_dict, timer
+from utilities.helper import Limits, reverse_dict, timer
 
 DUMP_PATH = Path("C:/temp_sfcs_data/")
 
@@ -139,7 +140,7 @@ default_system_info = {
 }
 
 
-def chunks(list_: list, n: int):
+def _chunks(list_: list, n: int):
     """
     Generate n-sized chunks from list_.
     https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks?page=1&tab=votes#tab-top
@@ -147,15 +148,6 @@ def chunks(list_: list, n: int):
 
     for i in range(0, len(list_), n):
         yield list_[i : i + n]
-
-
-def estimate_bytes(obj) -> int:
-    """Returns the estimated size in bytes."""
-
-    try:
-        return len(pickle.dumps(obj, protocol=-1))
-    except MemoryError:
-        raise MemoryError("Object is too big!")
 
 
 def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -> None:
@@ -168,7 +160,15 @@ def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -
     dse(obj) # TESTESTEST
     """
 
-    size_mb = estimate_bytes(obj) / 1e6
+    def _estimate_bytes(obj) -> int:
+        """Returns the estimated size in bytes."""
+
+        try:
+            return len(pickle.dumps(obj, protocol=-1))
+        except MemoryError:
+            raise MemoryError("Object is too big!")
+
+    size_mb = _estimate_bytes(obj) / 1e6
     if (size_mb > threshold_mb) and (level >= 0):
         if name is None:
             name = obj.__class__.__name__
@@ -221,7 +221,7 @@ def save_object(
     if element_size_estimate_mb is not None:
         MAX_CHUNK_MB = 500
         n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
-        chunked_obj = list(chunks(obj, n_elem_per_chunk))
+        chunked_obj = list(_chunks(obj, n_elem_per_chunk))
     else:  # obj isn't iterable - treat as a single chunk
         chunked_obj = [obj]
 
@@ -394,9 +394,9 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
     """
 
     if file_path.suffix == ".pkl":
-        file_dict = translate_dict_keys(load_object(file_path), legacy_python_trans_dict)
+        file_dict = _translate_dict_keys(load_object(file_path), legacy_python_trans_dict)
     elif file_path.suffix == ".mat":
-        file_dict = translate_dict_keys(load_mat(file_path), legacy_matlab_trans_dict)
+        file_dict = _translate_dict_keys(_load_mat(file_path), legacy_matlab_trans_dict)
     else:
         raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
 
@@ -478,7 +478,7 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
     return file_dict
 
 
-def translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
+def _translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
     """
     Updates keys of dict according to another dict:
     trans_dct.keys() are the keys to update,
@@ -493,12 +493,12 @@ def translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
             # if the original val is a dict
             if org_key in translation_dict.keys():
                 # if the dict name needs translation, translate it and then translate the sub_dict
-                translated_dict[translation_dict[org_key]] = translate_dict_keys(
+                translated_dict[translation_dict[org_key]] = _translate_dict_keys(
                     org_val, translation_dict
                 )
             else:
                 # translate the sub_dict
-                translated_dict[org_key] = translate_dict_keys(org_val, translation_dict)
+                translated_dict[org_key] = _translate_dict_keys(org_val, translation_dict)
         else:
             # translate the key if needed
             if org_key in translation_dict.keys():
@@ -509,43 +509,53 @@ def translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
     return translated_dict
 
 
-def convert_types_to_matlab_format(obj, key_name=None):
+def save_mat(file_path: Path) -> None:
     """
-    Recursively converts any list/tuple in dictionary and any sub-dictionaries to Numpy ndarrays.
-    Converts integers to floats.
+    Re-saves raw data at 'file_path' as .mat, in order to be loaded by old MATLAB analysis tools.
+    This takes care of converting all keys to legacy naming, converting 'AfterPulseParam' to old style (array only, no type),
+    and all lists to Numpy arrays.
     """
 
-    # stop condition
-    if not isinstance(obj, dict):
-        if isinstance(obj, (list, tuple)):
-            return np.array(obj, dtype=np.int64)
-        elif isinstance(obj, int):
-            return float(obj)
-        else:
-            return obj
+    def _convert_types_to_matlab_format(obj, key_name=None):
+        """
+        Recursively converts any list/tuple in dictionary and any sub-dictionaries to Numpy ndarrays.
+        Converts integers to floats.
+        """
 
-    # recursion
-    return {
-        key: convert_types_to_matlab_format(val, key_name=str(key))
-        for key, val in obj.items()
-        if val is not None
-    }
+        # stop condition
+        print(f"\n{key_name}: {obj.__class__.__name__}")  # TESTESTEST
+        if not isinstance(obj, dict):
+            if isinstance(obj, (list, tuple, Limits)):
+                return np.array(obj, dtype=np.int64)
+            elif isinstance(obj, int):
+                return float(obj)
+            elif isinstance(obj, SimpleNamespace):
+                obj = obj.__dict__
+            else:
+                return obj
 
+        # recursion
+        return {
+            key: _convert_types_to_matlab_format(val, key_name=str(key))
+            for key, val in obj.items()
+            if val is not None
+        }
 
-def save_mat(file_dict: dict, file_path: Path) -> None:
-    """
-    Saves 'file_dict' as 'file_path', after converting all keys to legacy naming,
-    takes care of converting 'AfterPulseParam' to old style (array only, no type),
-    and all lists to Numpy arrays."""
+    file_dict = load_file_dict(file_path)
+    mat_file_path_str = re.sub("\\.pkl", ".mat", str(file_path))
+    if "solution" in mat_file_path_str:
+        mat_file_path = Path(re.sub("solution", r"solution\\matlab", mat_file_path_str))
+    elif "image" in mat_file_path_str:
+        mat_file_path = Path(re.sub("image", r"image\\matlab", mat_file_path_str))
 
-    file_dict = translate_dict_keys(file_dict, reverse_dict(legacy_matlab_trans_dict))
+    file_dict = _translate_dict_keys(file_dict, reverse_dict(legacy_matlab_trans_dict))
     file_dict["SystemInfo"]["AfterPulseParam"] = file_dict["SystemInfo"]["AfterPulseParam"][1]
-    file_dict = convert_types_to_matlab_format(file_dict)
+    file_dict = _convert_types_to_matlab_format(file_dict)
     file_dict["python_converted"] = True  # mark as converted-from-Python MATLAB format
-    spio.savemat(file_path, file_dict)
+    spio.savemat(mat_file_path, file_dict)
 
 
-def load_mat(file_path):
+def _load_mat(file_path):
     """
     this function should be called instead of direct spio.loadmat
     as it cures the problem of not properly recovering python dictionaries

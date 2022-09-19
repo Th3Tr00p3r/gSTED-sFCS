@@ -477,7 +477,7 @@ class SolutionSFCSMeasurement:
         print(f"Template path: '{file_path_template}'")
         print(f"Files: {self.n_paths}, Selection: '{file_selection}'\n")
 
-        # data processing
+        # actual data processing
         self.data = self.process_all_data(file_paths, **kwargs)
 
         # count the files and ensure there's at least one file
@@ -562,7 +562,7 @@ class SolutionSFCSMeasurement:
     ) -> List[TDCPhotonData]:
         """Doc."""
 
-        self.get_general_properties(file_paths[0], **kwargs)
+        self._get_general_properties(file_paths[0], **kwargs)
 
         # parellel processing
         if should_parallel_process and len(file_paths) > 20:
@@ -578,6 +578,7 @@ class SolutionSFCSMeasurement:
             for file_path in file_paths:
                 # Processing data
                 p = self.process_data_file(file_path, is_verbose=True, **kwargs)
+                print("Done.\n")
                 # Appending data to self
                 if p is not None:
                     data.append(p)
@@ -587,7 +588,7 @@ class SolutionSFCSMeasurement:
 
         return data
 
-    def get_general_properties(
+    def _get_general_properties(
         self, file_path: Path = None, file_dict: dict = None, **kwargs
     ) -> None:
         """Get general measurement properties from the first data file"""
@@ -642,8 +643,13 @@ class SolutionSFCSMeasurement:
     ) -> TDCPhotonData:
         """Doc."""
 
+        if not file_path and not file_dict:
+            raise ValueError("Must supply either a valid path or a ")
+
+        # if using existing file_dict - usually during alignment measurements
         if file_dict is not None:
-            self.get_general_properties(file_dict=file_dict, **kwargs)
+            self._get_general_properties(file_dict=file_dict, **kwargs)
+            file_idx = 1
 
         # File Data Loading
         if file_path is not None:  # Loading file from disk
@@ -660,17 +666,10 @@ class SolutionSFCSMeasurement:
                 file_dict = file_utilities.load_file_dict(file_path)
             except FileNotFoundError:
                 print(f"File '{file_path}' not found. Ignoring.")
-        else:  # using supplied file_dict
-            file_idx = 1
 
         # File Processing
-        full_data = file_dict["full_data"]
-
         data_processor = TDCPhotonDataProcessor(self.laser_freq_hz)
-
-        print("Done.\n")
-
-        return data_processor.process_data(full_data)
+        return data_processor.process_data(file_dict["full_data"])
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
@@ -963,13 +962,18 @@ class SolutionSFCSMeasurement:
         if is_verbose:
             print("Preparing files for software correlator...", end=" ")
 
-        dt_ts_splits_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
-        for p in self.data:
-            file_dt_ts_splits_dict = p.get_xcorr_splits_dict(
-                self.scan_type, xcorr_types, self.laser_freq_hz, **kwargs
-            )
-            for xx, split_list in file_dt_ts_splits_dict.items():
-                dt_ts_splits_dict[xx] += split_list
+        file_splits_dict_list = [
+            p.get_xcorr_splits_dict(self.scan_type, xcorr_types, self.laser_freq_hz, **kwargs)
+            for p in self.data
+        ]
+        dt_ts_splits_dict = {
+            xx: [
+                dt_ts_split
+                for splits_dict in file_splits_dict_list
+                for dt_ts_split in splits_dict[xx]
+            ]
+            for xx in xcorr_types
+        }
 
         if is_verbose:
             print("Done.")

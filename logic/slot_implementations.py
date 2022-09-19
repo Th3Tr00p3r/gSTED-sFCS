@@ -1248,17 +1248,11 @@ class MainWin:
         unsorted_paths = list(current_dir_path.glob(current_template))
         file_paths = file_utilities.sort_file_paths_by_file_number(unsorted_paths)
 
-        print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
+        Path.mkdir(current_dir_path / "matlab", parents=True, exist_ok=True)
 
+        print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
         for idx, file_path in enumerate(file_paths):
-            file_dict = file_utilities.load_file_dict(file_path)
-            mat_file_path_str = re.sub("\\.pkl", ".mat", str(file_path))
-            if "solution" in mat_file_path_str:
-                mat_file_path = Path(re.sub("solution", r"solution\\matlab", mat_file_path_str))
-            elif "image" in mat_file_path_str:
-                mat_file_path = Path(re.sub("image", r"image\\matlab", mat_file_path_str))
-            Path.mkdir(current_dir_path / "matlab", parents=True, exist_ok=True)
-            file_utilities.save_mat(file_dict, mat_file_path)
+            file_utilities.save_mat(file_path)
             print(f"({idx+1})", end=" ")
 
         print("Done.")
@@ -2007,7 +2001,7 @@ class SettWin:
         # nidaqmx
         dvc_list.append("\nNI:")
         system = nisys.System.local()
-        dvc_list.extend(system.devices.device_names)
+        dvc_list += system.devices.device_names
 
         # ftd2xx
         dvc_list.append("\nFTDI:")
