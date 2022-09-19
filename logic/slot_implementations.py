@@ -735,8 +735,7 @@ class MainWin:
             # ValueError - new_image is None
             # DeviceError - error in camera
             camera.get_image()
-            if not camera.is_in_video_mode:  # snapshot
-                logging.debug(f"Camera {cam_num} photo taken")
+            logging.debug(f"Camera {cam_num} photo taken")
 
     def set_auto_exposure(self, cam_num: int, is_checked: bool):
         """Doc."""
@@ -755,6 +754,23 @@ class MainWin:
             param_dict = {name: value for name, value in zip(parameter_names, parameter_values)}
             with suppress(DeviceError):
                 camera.set_parameters(param_dict)
+
+    def get_gaussian_diameter(self, cam_num: int):
+        """Returns the Gaussian 1/e^2 diameter of a beam image"""
+
+        camera = self.cameras[cam_num - 1]
+        img = camera.last_snapshot
+
+        with suppress(fit_tools.FitError):
+            fit_params = fit_tools.fit_2d_gaussian_to_image(img)
+            _, x0, y0, sigma_x, sigma_y, *_ = fit_params.beta
+
+        sigma_mm = np.mean([sigma_x, sigma_y]) * camera.PIXEL_SIZE_UM
+        sigma_mm_err = np.std([sigma_x, sigma_y]) * camera.PIXEL_SIZE_UM
+
+        logging.info(
+            f"Camera {cam_num}: 1/e^2 width determined to be {sigma_mm:.2f} +/- {sigma_mm_err:.2f}"
+        )
 
     ####################
     ## Analysis Tab - Raw Data

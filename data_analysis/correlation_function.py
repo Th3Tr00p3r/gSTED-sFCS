@@ -1502,7 +1502,6 @@ class SFCSExperiment:
         **kwargs,
     ):
         """Doc."""
-        # TODO: this should be a method of SolutionSFCSMeasurement and here should be just a convenience method
 
         if not should_re_correlate and self.sted.cf.get(f"gSTED {gate_ns}"):
             print(f"gSTED gate {gate_ns} already exists. Skipping...")
