@@ -18,6 +18,7 @@ import nidaqmx.system as nisys
 import numpy as np
 import PIL
 import pyvisa
+from matplotlib.patches import Ellipse
 from PyQt5.QtWidgets import QFileDialog, QWidget
 
 import gui.dialog as dialog
@@ -776,21 +777,61 @@ class MainWin:
 
         camera = self.cameras[cam_num - 1]
         try:
-            img = np.asarray(PIL.Image.fromarray(camera.last_snapshot, mode="RGB").convert("L"))
+            gs_img = np.asarray(PIL.Image.fromarray(camera.last_snapshot, mode="RGB").convert("L"))
         #            img = camera.last_snapshot.max(axis=2)
         except AttributeError:
             return
 
-        with suppress(fit_tools.FitError):
-            fit_params = fit_tools.fit_2d_gaussian_to_image(img)
-            _, x0, y0, sigma_x, sigma_y, *_ = fit_params.beta
+        # cropping to square - assuming beam is centered, takes the same amount from both sides of the longer dimension
+        width, height = gs_img.size
+        dim_diff = abs(width - height)
+        if width > height:
+            crop_dims = (dim_diff / 2, 0, width - dim_diff / 2, height)
+            width = height
+        else:
+            crop_dims = (0, dim_diff / 2, width, height - dim_diff / 2)
+            height = width
+        cropped_gs_img = gs_img.crop(crop_dims)
 
-        sigma_mm = np.mean([sigma_x, sigma_y]) * camera.PIXEL_SIZE_UM * 1e-3
-        sigma_mm_err = np.std([sigma_x, sigma_y]) * camera.PIXEL_SIZE_UM * 1e-3
+        # resizing
+        SCALE_FACTOR = 0.1
+        resized_cropped_gs_img = cropped_gs_img.resize(
+            (round(width * SCALE_FACTOR), round(height * SCALE_FACTOR)), resample=PIL.Image.LANCZOS
+        )
+
+        # converting to Numpy array
+        resized_cropped_gs_img_arr = np.asarray(resized_cropped_gs_img)
+
+        # fitting
+        fit_params = file_utilities.fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
+        _, x0, y0, sigma_x, sigma_y, phi, _ = fit_params.beta
+
+        # calculating the FWHM
+        FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))
+        PIXEL_SIZE_UM = 3.6
+        sigma_mm = np.mean([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3 / SCALE_FACTOR
+        sigma_mm_err = (
+            np.std([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3 / SCALE_FACTOR
+        )
 
         logging.info(
-            f"Camera {cam_num}: 1/e^2 width determined to be {sigma_mm:.2f} +/- {sigma_mm_err:.2f}"
+            f"Camera {cam_num}: FWHM width determined to be {sigma_mm:.2f} +/- {sigma_mm_err:.2f}"
         )
+
+        # plotting the FWHM on top of the image
+        ellipse = Ellipse(
+            xy=(x0, y0),
+            width=sigma_y * FWHM_FACTOR,
+            height=sigma_x * FWHM_FACTOR,
+            angle=phi,
+        )
+
+        print(ellipse)  # TESTESTEST
+
+    #        ax.imshow(resized_cropped_gs_img_arr)
+    #        ax.add_artist(ellipse)
+    #        ellipse.set_facecolor((0,0,0,0))
+    #        ellipse.set_edgecolor("red")
 
     ####################
     ## Analysis Tab - Raw Data
