@@ -825,7 +825,6 @@ class MainWin:
         )
 
         # plotting the FWHM on top of the image
-        print((crop_delta_x, crop_delta_y))  # TESTESTEST
         ellipse = Ellipse(
             xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
             width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
