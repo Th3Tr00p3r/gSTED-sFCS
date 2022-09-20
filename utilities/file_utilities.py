@@ -523,7 +523,6 @@ def save_mat(file_path: Path) -> None:
         """
 
         # stop condition
-        print(f"\n{key_name}: {obj.__class__.__name__}")  # TESTESTEST
         if not isinstance(obj, dict):
             if isinstance(obj, (list, tuple, Limits)):
                 return np.array(obj, dtype=np.int64)
