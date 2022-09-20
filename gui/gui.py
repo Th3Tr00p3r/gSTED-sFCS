@@ -200,13 +200,16 @@ class MainWin(QtWidgets.QMainWindow):
         self.videoSwitch2.released.connect(
             lambda: self.impl.device_toggle("camera_2", "toggle_video", "is_in_video_mode")
         )
+        self.saveImage1.released.connect(lambda: self.impl.save_last_image(1))
+        self.saveImage2.released.connect(lambda: self.impl.save_last_image(2))
+        self.gaussDiameter1.released.connect(lambda: self.impl.get_gaussian_diameter(1))
+        self.gaussDiameter2.released.connect(lambda: self.impl.get_gaussian_diameter(2))
         self.autoExp1.toggled.connect(
             lambda: self.impl.set_auto_exposure(1, self.autoExp1.isChecked())
         )
         self.autoExp2.toggled.connect(
             lambda: self.impl.set_auto_exposure(2, self.autoExp2.isChecked())
         )
-
         self.pixel_clock1.valueChanged.connect(
             lambda: self.impl.set_parameter(1, "pixel_clock", self.pixel_clock1.value())
         )
