@@ -16,6 +16,7 @@ from typing import List, Tuple
 import ftd2xx
 import nidaqmx.system as nisys
 import numpy as np
+import PIL
 import pyvisa
 from PyQt5.QtWidgets import QFileDialog, QWidget
 
@@ -755,18 +756,37 @@ class MainWin:
             with suppress(DeviceError):
                 camera.set_parameters(param_dict)
 
+    def save_last_image(self, cam_num: int):
+        """Doc."""
+
+        camera = self.cameras[cam_num - 1]
+
+        file_path = Path(self._app.gui.settings.camDataPath.text()) / Path(
+            f"cam{cam_num}_" + dt.now().strftime("%d%m%y_%H%M%S") + ".pkl"
+        )
+        file_utilities.save_object(
+            camera.last_snapshot,
+            file_path,
+            compression_method="gzip",
+            obj_name=f"cam{cam_num}_image",
+        )
+
     def get_gaussian_diameter(self, cam_num: int):
         """Returns the Gaussian 1/e^2 diameter of a beam image"""
 
         camera = self.cameras[cam_num - 1]
-        img = camera.last_snapshot
+        try:
+            img = np.asarray(PIL.Image.fromarray(camera.last_snapshot, mode="RGB").convert("L"))
+        #            img = camera.last_snapshot.max(axis=2)
+        except AttributeError:
+            return
 
         with suppress(fit_tools.FitError):
             fit_params = fit_tools.fit_2d_gaussian_to_image(img)
             _, x0, y0, sigma_x, sigma_y, *_ = fit_params.beta
 
-        sigma_mm = np.mean([sigma_x, sigma_y]) * camera.PIXEL_SIZE_UM
-        sigma_mm_err = np.std([sigma_x, sigma_y]) * camera.PIXEL_SIZE_UM
+        sigma_mm = np.mean([sigma_x, sigma_y]) * camera.PIXEL_SIZE_UM * 1e-3
+        sigma_mm_err = np.std([sigma_x, sigma_y]) * camera.PIXEL_SIZE_UM * 1e-3
 
         logging.info(
             f"Camera {cam_num}: 1/e^2 width determined to be {sigma_mm:.2f} +/- {sigma_mm_err:.2f}"
