@@ -777,61 +777,65 @@ class MainWin:
 
         camera = self.cameras[cam_num - 1]
         try:
-            gs_img = np.asarray(PIL.Image.fromarray(camera.last_snapshot, mode="RGB").convert("L"))
-        #            img = camera.last_snapshot.max(axis=2)
+            img_arr = camera.last_snapshot
         except AttributeError:
             return
 
+        # properly convert to grayscale
+        gs_img = PIL.Image.fromarray(img_arr, mode="RGB").convert("L")
+
         # cropping to square - assuming beam is centered, takes the same amount from both sides of the longer dimension
         width, height = gs_img.size
-        dim_diff = abs(width - height)
-        if width > height:
-            crop_dims = (dim_diff / 2, 0, width - dim_diff / 2, height)
-            width = height
-        else:
-            crop_dims = (0, dim_diff / 2, width, height - dim_diff / 2)
-            height = width
+        crop_delta_x = abs(width - height) / 2 if width > height else 0
+        crop_delta_y = abs(width - height) / 2 if width < height else 0
+        crop_dims = (crop_delta_x, crop_delta_y, width - crop_delta_x, height - crop_delta_y)
         cropped_gs_img = gs_img.crop(crop_dims)
 
         # resizing
-        SCALE_FACTOR = 0.1
+        RESCALE_FACTOR = 10
         resized_cropped_gs_img = cropped_gs_img.resize(
-            (round(width * SCALE_FACTOR), round(height * SCALE_FACTOR)), resample=PIL.Image.LANCZOS
+            (
+                round(min(width, height) / RESCALE_FACTOR),
+                round(min(width, height) / RESCALE_FACTOR),
+            ),
+            resample=PIL.Image.LANCZOS,
         )
 
-        # converting to Numpy array
+        # converting back to Numpy array
         resized_cropped_gs_img_arr = np.asarray(resized_cropped_gs_img)
 
         # fitting
-        fit_params = file_utilities.fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
+        try:
+            fit_params = fit_tools.fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
+        except fit_tools.FitError as exc:
+            logging.info(f"Camera {cam_num}: Gaussian fit failed! [{exc}]")
+            return
         _, x0, y0, sigma_x, sigma_y, phi, _ = fit_params.beta
 
         # calculating the FWHM
         FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))
         PIXEL_SIZE_UM = 3.6
-        sigma_mm = np.mean([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3 / SCALE_FACTOR
+        sigma_mm = np.mean([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
         sigma_mm_err = (
-            np.std([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3 / SCALE_FACTOR
+            np.std([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
         )
 
         logging.info(
-            f"Camera {cam_num}: FWHM width determined to be {sigma_mm:.2f} +/- {sigma_mm_err:.2f}"
+            f"Camera {cam_num}: FWHM width determined to be {sigma_mm:.2f} +/- {sigma_mm_err:.2f} mm"
         )
 
         # plotting the FWHM on top of the image
+        print((crop_delta_x, crop_delta_y))  # TESTESTEST
         ellipse = Ellipse(
-            xy=(x0, y0),
-            width=sigma_y * FWHM_FACTOR,
-            height=sigma_x * FWHM_FACTOR,
+            xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
+            width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
+            height=sigma_x * FWHM_FACTOR * RESCALE_FACTOR,
             angle=phi,
         )
+        ellipse.set_facecolor((0, 0, 0, 0))
+        ellipse.set_edgecolor("red")
 
-        print(ellipse)  # TESTESTEST
-
-    #        ax.imshow(resized_cropped_gs_img_arr)
-    #        ax.add_artist(ellipse)
-    #        ellipse.set_facecolor((0,0,0,0))
-    #        ellipse.set_edgecolor("red")
+        camera.display.obj.add_artist(ellipse)
 
     ####################
     ## Analysis Tab - Raw Data

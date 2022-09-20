@@ -609,7 +609,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         read_samples = self.analog_read(task_name, n_samples)
         read_samples = self._diff_to_rse(read_samples)
-        self.ai_buffer += read_samples
+        self.ai_buffer.extend(read_samples)
 
     def _diff_to_rse(self, read_samples: np.ndarray) -> list:
         """Doc."""

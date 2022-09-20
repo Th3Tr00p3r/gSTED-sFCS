@@ -118,6 +118,13 @@ class GuiDisplay:
             ax.set_prop_cycle(color="k")
             ax.plot(x_arr, avg_cf_cr, lw=1.4)
 
+    def add_artist(self, artist):
+        """Add patches to existing Axes"""
+
+        with suppress(AttributeError):
+            self.axes[0].add_artist(artist)
+            self.canvas.draw_idle()
+
 
 class Plotter:
     """A generalized, hierarchical plotting tool, designed to work as a context manager."""
