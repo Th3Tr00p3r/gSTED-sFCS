@@ -118,11 +118,21 @@ class GuiDisplay:
             ax.set_prop_cycle(color="k")
             ax.plot(x_arr, avg_cf_cr, lw=1.4)
 
-    def add_artist(self, artist):
-        """Add patches to existing Axes"""
+    def add_patch(self, patch, should_clear=True):
+        """Add patches to existing Axes."""
+
+        if should_clear:
+            expandable_artists = [
+                artist
+                for artist in self.axes[0].get_children()
+                if artist.get_label() == "expandable"
+            ]
+            for artist in expandable_artists:
+                artist.remove()
 
         with suppress(AttributeError):
-            self.axes[0].add_artist(artist)
+            patch.set_label("expandable")
+            self.axes[0].add_artist(patch)
             self.canvas.draw_idle()
 
 

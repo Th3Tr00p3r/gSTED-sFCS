@@ -11211,7 +11211,7 @@ Disp. (um)</string>
              <number>0</number>
             </property>
             <item row="1" column="1">
-             <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="0,100">
+             <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="0,0,100">
               <property name="spacing">
                <number>0</number>
               </property>
@@ -11472,6 +11472,14 @@ Disp. (um)</string>
                  </layout>
                 </item>
                </layout>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="grayscaleMode1">
+                <property name="text">
+                 <string>Grayscale
+Mode</string>
+                </property>
+               </widget>
               </item>
               <item>
                <spacer name="horizontalSpacer_19">
@@ -11980,7 +11988,7 @@ Diameter</string>
              </layout>
             </item>
             <item row="1" column="1">
-             <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="0,10">
+             <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="0,0,10">
               <property name="spacing">
                <number>0</number>
               </property>
@@ -12241,6 +12249,14 @@ Diameter</string>
                  </layout>
                 </item>
                </layout>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="grayscaleMode2">
+                <property name="text">
+                 <string>Grayscale
+Mode</string>
+                </property>
+               </widget>
               </item>
               <item>
                <spacer name="horizontalSpacer_23">
