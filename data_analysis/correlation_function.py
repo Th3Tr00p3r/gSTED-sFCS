@@ -1452,7 +1452,7 @@ class SolutionSFCSExperiment:
                 ax.plot(t[j_selected], np.polyval([p1, p0], t[j_selected]), "r")
                 ax.legend(["hist_ratio", "linear range", "robust fit"])
 
-                lifetime_ns = conf_params.beta[1]
+                lifetime_ns = conf_params.beta["tau"]
                 sigma_sted = p1 * lifetime_ns
                 try:
                     laser_pulse_delay_ns = (1 - p0) / p1
@@ -1461,7 +1461,7 @@ class SolutionSFCSExperiment:
 
             elif sted_field == "paraboloid":
                 fit_params = curve_fit_lims(
-                    FIT_NAME_DICT["ratio_of_lifetime_histograms"],
+                    FIT_NAME_DICT["ratio_of_lifetime_histograms_fit"],
                     param_estimates=(2, 1, 1),
                     xs=t[j_selected],
                     ys=hist_ratio[j_selected],
@@ -1469,9 +1469,12 @@ class SolutionSFCSExperiment:
                     should_plot=True,
                 )
 
-                lifetime_ns = conf_params.beta[1]
-                sigma_sted = (fit_params.beta[0] * lifetime_ns, fit_params.beta[1] * lifetime_ns)
-                laser_pulse_delay_ns = fit_params.beta[2]
+                lifetime_ns = conf_params.beta["tau"]
+                sigma_sted = (
+                    fit_params.beta["sigma_x"] * lifetime_ns,
+                    fit_params.beta["sigma_y"] * lifetime_ns,
+                )
+                laser_pulse_delay_ns = fit_params.beta["t0"]
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params
