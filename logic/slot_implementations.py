@@ -535,12 +535,17 @@ class MainWin:
             """
 
             try:
-                fit_params = fit_tools.fit_2d_gaussian_to_image(image)
+                fp = fit_tools.fit_2d_gaussian_to_image(image)
             except fit_tools.FitError:
                 # Gaussian fit failed, using COM
                 return helper.center_of_mass(image)
             else:
-                _, x0, y0, sigma_x, sigma_y, *_ = fit_params.beta
+                x0, y0, sigma_x, sigma_y = (
+                    fp.beta["x0"],
+                    fp.beta["y0"],
+                    fp.beta["sigma_x"],
+                    fp.beta["sigma_y"],
+                )
                 height, width = image.shape
                 if (
                     (0 < x0 < width)
@@ -806,11 +811,24 @@ class MainWin:
 
         # fitting
         try:
-            fit_params = fit_tools.fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
+            fp = fit_tools.fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
         except fit_tools.FitError as exc:
             logging.info(f"Camera {cam_num}: Gaussian fit failed! [{exc}]")
             return
-        _, x0, y0, sigma_x, sigma_y, phi, _ = fit_params.beta
+        x0, y0, sigma_x, sigma_y, phi = (
+            fp.beta["x0"],
+            fp.beta["y0"],
+            fp.beta["sigma_x"],
+            fp.beta["sigma_y"],
+            fp.beta["phi"],
+        )
+
+        #        print("beta: ", fp.beta) # TESTESTEST
+        if x0 < 0 or y0 < 0 or abs(1 - sigma_x / sigma_y) > 2:
+            logging.info(
+                f"Camera {cam_num}: Gaussian fit\n({fp.beta})\nis irrational! Center on CCD and avoid saturation."
+            )
+            return
 
         # calculating the FWHM
         FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))
@@ -1169,8 +1187,8 @@ class MainWin:
                 err_hndlr(exc, sys._getframe(), locals())
                 g0, tau = (None, None)
             else:
-                fit_params = cf.fit_params["diffusion_3d_fit"]
-                g0, tau, _ = fit_params.beta
+                fp = cf.fit_params["diffusion_3d_fit"]
+                g0, tau = fp.beta["G0"], fp.beta["tau"]
 
         return g0, tau
 
@@ -1705,12 +1723,12 @@ class MainWin:
                         cf.g0,
                     )
                 else:  # fit succeeded
-                    fit_params = cf.fit_params["diffusion_3d_fit"]
-                    g0, tau, _ = fit_params.beta
-                    fit_func = getattr(fit_tools, fit_params.func_name)
+                    fp = cf.fit_params["diffusion_3d_fit"]
+                    g0, tau = fp.beta["G0"], fp.beta["tau"]
+                    fit_func = getattr(fit_tools, fp.func_name)
                     sol_data_analysis_wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
                     sol_data_analysis_wdgts.mean_tau.set(tau * 1e3)
-                    y_fit = fit_func(cf.lag, *fit_params.beta)
+                    y_fit = fit_func(cf.lag, *fp.beta.values())
                     sol_data_analysis_wdgts.row_acf_disp.obj.clear()
                     sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
                         (cf.lag, "lag"),
