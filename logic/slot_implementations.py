@@ -762,6 +762,15 @@ class MainWin:
             with suppress(DeviceError):
                 camera.set_parameters(param_dict)
 
+    def set_grayscale_mode(self, cam_num: int, is_checked: bool):
+        """Doc."""
+
+        if self.cameras is None:
+            return
+
+        camera = self.cameras[cam_num - 1]
+        camera.is_in_grayscale_mode = is_checked
+
     def save_last_image(self, cam_num: int):
         """Doc."""
 
@@ -786,8 +795,12 @@ class MainWin:
         except AttributeError:
             return
 
+        # TODO: ALL OF THIS IMAGE MANIPULATION SHOULD BE handled IN display.py or in helper.py
         # properly convert to grayscale
-        gs_img = PIL.Image.fromarray(img_arr, mode="RGB").convert("L")
+        if not camera.is_in_grayscale_mode:
+            gs_img = PIL.Image.fromarray(img_arr, mode="RGB").convert("L")
+        else:
+            gs_img = PIL.Image.fromarray(img_arr)
 
         # cropping to square - assuming beam is centered, takes the same amount from both sides of the longer dimension
         width, height = gs_img.size
@@ -832,14 +845,15 @@ class MainWin:
 
         # calculating the FWHM
         FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))
-        PIXEL_SIZE_UM = 3.6
-        sigma_mm = np.mean([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
-        sigma_mm_err = (
-            np.std([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
+        diameter_mm = (
+            np.mean([sigma_x, sigma_y]) * FWHM_FACTOR * camera.PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
+        )
+        diameter_mm_err = (
+            np.std([sigma_x, sigma_y]) * FWHM_FACTOR * camera.PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
         )
 
         logging.info(
-            f"Camera {cam_num}: FWHM width determined to be {sigma_mm:.2f} +/- {sigma_mm_err:.2f} mm"
+            f"Camera {cam_num}: FWHM width determined to be {diameter_mm:.2f} +/- {diameter_mm_err:.2f} mm"
         )
 
         # plotting the FWHM on top of the image
@@ -852,7 +866,7 @@ class MainWin:
         ellipse.set_facecolor((0, 0, 0, 0))
         ellipse.set_edgecolor("red")
 
-        camera.display.obj.add_artist(ellipse)
+        camera.display.obj.add_patch(ellipse)
 
     ####################
     ## Analysis Tab - Raw Data

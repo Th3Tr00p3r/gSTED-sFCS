@@ -200,8 +200,8 @@ class Timeout:
                     # DeviceError - camera error
                     # TypeError - .cameras not yet initialized
                     [
-                        self.main_gui.impl.display_image(idx + 1)
-                        for idx, camera in enumerate(self.main_gui.impl.cameras)
+                        self.main_gui.impl.display_image(cam_idx + 1)
+                        for cam_idx, camera in enumerate(self.main_gui.impl.cameras)
                         if camera.is_in_video_mode
                     ]
 
