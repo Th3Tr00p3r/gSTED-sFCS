@@ -204,6 +204,12 @@ class MainWin(QtWidgets.QMainWindow):
         self.saveImage2.released.connect(lambda: self.impl.save_last_image(2))
         self.gaussDiameter1.released.connect(lambda: self.impl.get_gaussian_diameter(1))
         self.gaussDiameter2.released.connect(lambda: self.impl.get_gaussian_diameter(2))
+        self.grayscaleMode1.toggled.connect(
+            lambda: self.impl.set_grayscale_mode(1, self.grayscaleMode1.isChecked())
+        )
+        self.grayscaleMode2.toggled.connect(
+            lambda: self.impl.set_grayscale_mode(2, self.grayscaleMode2.isChecked())
+        )
         self.autoExp1.toggled.connect(
             lambda: self.impl.set_auto_exposure(1, self.autoExp1.isChecked())
         )

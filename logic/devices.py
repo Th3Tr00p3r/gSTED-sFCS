@@ -13,6 +13,7 @@ from typing import List, Union
 
 import nidaqmx.constants as ni_consts
 import numpy as np
+import PIL
 from nidaqmx.errors import DaqError
 
 from gui.dialog import Error
@@ -1019,6 +1020,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             param_dict,
         )
         self.is_in_video_mode = False
+        self.is_in_grayscale_mode = True
         self.is_auto_exposure_on = False
 
         with suppress(DeviceError):
@@ -1043,15 +1045,20 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         try:
             if self.is_in_video_mode:
-                self.last_snapshot = np.flipud((self.get_latest_frame()))
+                img = self.get_latest_frame()
             else:
-                self.last_snapshot = np.flipud((self.grab_image()))
+                img = self.grab_image()
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
+            if self.is_in_grayscale_mode:
+                img = np.asarray(PIL.Image.fromarray(img, mode="RGB").convert("L"))
+
             if should_display:
-                self.display.obj.display_image(self.last_snapshot, cursor=True)
-            return self.last_snapshot
+                self.display.obj.display_image(img, cursor=True)
+
+            self.last_snapshot = img
+            return img
 
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""

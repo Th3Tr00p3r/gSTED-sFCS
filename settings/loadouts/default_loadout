@@ -1,15 +1,10 @@
-imgScanFileTemplate,gb
 solScanFileTemplate,
+imgScanFileTemplate,gb
 newTemplate,
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
 spadMode,Free Running
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 solScanFloatingAmp,0
 circAoSampFreq,10000
 circDiameter,50
@@ -25,6 +20,11 @@ maxScanFreq,40
 solPointsPerLine,149
 solTotPointsPerLine,183
 solNumLines,14
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 expStrctFctrRbstIntrpPnts,3
 tdcCalibGating,40
 tdcCalibGating_2,20
@@ -35,15 +35,15 @@ depCurr,1500
 stageSteps,250
 spadGateWidth,98
 spadEffGateWidth,98
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,10.0
-imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,6010.93
 solActualScanFreq,27.32
 solScanDur,10.0
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,10.0
+imgScanLinFrac,0.9
 expStrctFctrGMin,0.1
 customGateLifetimes,0.5
 solAnalysisRemoveOverSpinner,2.0
@@ -53,16 +53,16 @@ zAOV,5.0
 axisMoveUm,5.0
 psdDelay,0.0
 psdEffDelay,49.41
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - actual counts per pixel
 solMeasPreset,Standard Static
 solScanType,static
 solScanDurUnits,seconds
-dataMonth,8
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - actual counts per pixel
+dataMonth,9
 dataYear,2022
-dataDay,17
-dataTemplate1,halogen300khz_static_exc_124749_*.pkl
+dataDay,12
+dataTemplate1,atto_angular_exc_151953_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -94,12 +94,12 @@ solAveragingPlotSpatial,False
 currMode,True
 powMode,False
 numPlaneShownChoice,0
-pixel_clock1,99
-framerate1,99
-exposure1,99
-pixel_clock2,99
-framerate2,99
-exposure2,99
+pixel_clock1,2500
+framerate1,1500
+exposure1,6651
+pixel_clock2,2500
+framerate2,1500
+exposure2,5
 tabWidget,2
 tabWidget_2,0
 tabWidget_4,0
@@ -110,5 +110,7 @@ alwaysSaveImg,False
 solImportReCorrelate,True
 solImportAutoLoadProcessed,False
 autoExp1,False
+grayscaleMode1,True
 autoExp2,False
+grayscaleMode2,True
 scaleImgScan,292

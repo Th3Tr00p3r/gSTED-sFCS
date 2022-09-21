@@ -507,17 +507,23 @@ class Instrumental:
         """Doc."""
 
         try:
-            return self._inst.grab_image(copy=False, exposure_time=self._inst._get_exposure())
+            upside_down_image = self._inst.grab_image(
+                copy=False, exposure_time=self._inst._get_exposure()
+            )
         except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
+        else:
+            return np.flipud(upside_down_image)
 
     def get_latest_frame(self) -> np.ndarray:
         """Doc."""
 
         try:
-            return self._inst.latest_frame(copy=False)
+            upside_down_image = self._inst.latest_frame(copy=False)
         except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
+        else:
+            return np.flipud(upside_down_image)
 
     def update_parameter_ranges(self):
         """Doc."""
