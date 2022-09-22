@@ -1,6 +1,7 @@
 """Devices Module."""
 
 import asyncio
+import logging
 import re
 import sys
 import time
@@ -14,6 +15,7 @@ from typing import List, Union
 import nidaqmx.constants as ni_consts
 import numpy as np
 import PIL
+from matplotlib.patches import Ellipse
 from nidaqmx.errors import DaqError
 
 from gui.dialog import Error
@@ -22,7 +24,7 @@ from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
-from utilities.fit_tools import linear_fit
+from utilities.fit_tools import FitError, fit_2d_gaussian_to_image, linear_fit
 from utilities.helper import Limits, div_ceil, generate_numbers_from_string, number
 
 
@@ -1021,6 +1023,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         )
         self.is_in_video_mode = False
         self.is_in_grayscale_mode = True
+        self.should_get_diameter = True
         self.is_auto_exposure_on = False
 
         with suppress(DeviceError):
@@ -1057,6 +1060,9 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             if should_display:
                 self.display.obj.display_image(img, cursor=True)
 
+            if self.should_get_diameter:
+                self._get_beam_width(img)
+
             self.last_snapshot = img
             return img
 
@@ -1079,6 +1085,80 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         """Set pixel_clock, framerate and exposure"""
 
         [self.set_parameter(name, value) for name, value in param_dict.items()]
+
+    def _get_beam_width(self, img_arr):
+        """Doc."""
+
+        # properly convert to grayscale
+        if not self.is_in_grayscale_mode:
+            gs_img = PIL.Image.fromarray(img_arr, mode="RGB").convert("L")
+        else:
+            gs_img = PIL.Image.fromarray(img_arr)
+
+        # cropping to square - assuming beam is centered, takes the same amount from both sides of the longer dimension
+        width, height = gs_img.size
+        crop_delta_x = abs(width - height) / 2 if width > height else 0
+        crop_delta_y = abs(width - height) / 2 if width < height else 0
+        crop_dims = (crop_delta_x, crop_delta_y, width - crop_delta_x, height - crop_delta_y)
+        cropped_gs_img = gs_img.crop(crop_dims)
+
+        # resizing
+        RESCALE_FACTOR = 10
+        resized_cropped_gs_img = cropped_gs_img.resize(
+            (
+                round(min(width, height) / RESCALE_FACTOR),
+                round(min(width, height) / RESCALE_FACTOR),
+            ),
+            resample=PIL.Image.LANCZOS,
+        )
+
+        # converting back to Numpy array
+        resized_cropped_gs_img_arr = np.asarray(resized_cropped_gs_img)
+
+        # fitting
+        try:
+            fp = fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
+        except FitError as exc:
+            logging.debug(f"{self.log_ref}: Gaussian fit failed! [{exc}]")
+            return
+        x0, y0, sigma_x, sigma_y, phi = (
+            fp.beta["x0"],
+            fp.beta["y0"],
+            fp.beta["sigma_x"],
+            fp.beta["sigma_y"],
+            fp.beta["phi"],
+        )
+
+        #        print("beta: ", fp.beta) # TESTESTEST
+        if x0 < 0 or y0 < 0 or abs(1 - sigma_x / sigma_y) > 2:
+            print(
+                f"{self.log_ref}: Gaussian fit\n({fp.beta})\nis irrational! Center on CCD and avoid saturation."
+            )
+
+        # calculating the FWHM
+        FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))  # 1/e^2 width is FWHM * 1.699
+        diameter_mm = (
+            np.mean([sigma_x, sigma_y]) * FWHM_FACTOR * self.PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
+        )
+        diameter_mm_err = (
+            np.std([sigma_x, sigma_y]) * FWHM_FACTOR * self.PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
+        )
+
+        logging.info(
+            f"{self.log_ref}: FWHM width determined to be {diameter_mm:.2f} +/- {diameter_mm_err:.2f} mm"
+        )
+
+        # plotting the FWHM on top of the image
+        ellipse = Ellipse(
+            xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
+            width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
+            height=sigma_x * FWHM_FACTOR * RESCALE_FACTOR,
+            angle=phi,
+        )
+        ellipse.set_facecolor((0, 0, 0, 0))
+        ellipse.set_edgecolor("red")
+
+        self.display.obj.add_patch(ellipse)
 
 
 @dataclass

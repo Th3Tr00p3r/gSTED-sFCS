@@ -96,10 +96,10 @@ powMode,False
 numPlaneShownChoice,0
 pixel_clock1,2500
 framerate1,1500
-exposure1,6651
+exposure1,100
 pixel_clock2,2500
 framerate2,1500
-exposure2,5
+exposure2,6651
 tabWidget,2
 tabWidget_2,0
 tabWidget_4,0
@@ -111,6 +111,8 @@ solImportReCorrelate,True
 solImportAutoLoadProcessed,False
 autoExp1,False
 grayscaleMode1,True
+measureBeamDiameter1,True
 autoExp2,False
 grayscaleMode2,True
+measureBeamDiameter2,True
 scaleImgScan,292
