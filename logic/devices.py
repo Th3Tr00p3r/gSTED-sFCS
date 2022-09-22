@@ -1130,10 +1130,18 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         )
 
         #        print("beta: ", fp.beta) # TESTESTEST
-        if x0 < 0 or y0 < 0 or abs(1 - sigma_x / sigma_y) > 2:
+        max_sigma_y, max_sigma_x = resized_cropped_gs_img_arr.shape
+        if (
+            x0 < 0
+            or y0 < 0
+            or abs(1 - sigma_x / sigma_y) > 2
+            or sigma_x > max_sigma_x
+            or sigma_y > max_sigma_y
+        ):
             print(
                 f"{self.log_ref}: Gaussian fit\n({fp.beta})\nis irrational! Center on CCD and avoid saturation."
             )
+            return
 
         # calculating the FWHM
         FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))  # 1/e^2 width is FWHM * 1.699
