@@ -66,6 +66,7 @@ DATA_ROOT = Path("D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data")  # Laptop/Lab P
 DATA_TYPE = "solution"
 
 FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))
+RESCALE_FACTOR = 10
 
 # %% [markdown]
 # Loading excitation beam image
@@ -99,8 +100,8 @@ gs_img_arr = np.asarray(gs_img)
 plt.imshow(gs_img_arr)
 plt.show()
 
-fit_params = fit_2d_gaussian_to_image(gs_img_arr)
-_, x0, y0, sigma_x, sigma_y, *_ = fit_params.beta
+fp = fit_2d_gaussian_to_image(gs_img_arr)
+x0, y0, sigma_x, sigma_y = fp.beta["x0"], fp.beta["y0"], fp.beta["sigma_x"], fp.beta["sigma_y"]
 
 # %%
 x0
@@ -126,8 +127,8 @@ gb_image = image_meas.image_data.get_image("forward")
 gb_image.shape
 
 # %%
-fit_params = fit_2d_gaussian_to_image(gb_image)
-_, x0, y0, sigma_x, sigma_y, phi, _ = fit_params.beta
+fp = fit_2d_gaussian_to_image(gb_image)
+x0, y0, sigma_x, sigma_y = fp.beta["x0"], fp.beta["y0"], fp.beta["sigma_x"], fp.beta["sigma_y"]
 
 # %%
 PIXEL_SIZE_UM = 1 / 80  # 1 um scan (?) 80 pixels
@@ -138,18 +139,17 @@ print(f"FWHM width determined to be {sigma_nm:.3f} +/- {sigma_nm_err:.3f} nm")
 
 # %%
 ellipse = Ellipse(
-    xy=(x0, y0),
-    width=sigma_y * FWHM_FACTOR,
-    height=sigma_x * FWHM_FACTOR,
+    xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
+    width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
+    height=sigma_x * FWHM_FACTOR * RESCALE_FACTOR,
     angle=phi,
 )
+ellipse.set_facecolor((0, 0, 0, 0))
+ellipse.set_edgecolor("red")
 
 fig, ax = plt.subplots()
 ax.imshow(gb_image)
 ax.add_artist(ellipse)
-ellipse.set_facecolor((0, 0, 0, 0))
-ellipse.set_edgecolor("red")
-# ellipse.set_alpha(1)
 plt.show()
 
 # %% [markdown]
@@ -159,10 +159,10 @@ plt.show()
 
 # %%
 width, height = gs_img.size
-SCALE_FACTOR = 0.1
+RESCALE_FACTOR = 0.1
 
 resized_gs_img = gs_img.resize(
-    (round(width * SCALE_FACTOR), round(height * SCALE_FACTOR)), resample=PIL.Image.LANCZOS
+    (round(width * RESCALE_FACTOR), round(height * RESCALE_FACTOR)), resample=PIL.Image.LANCZOS
 )
 
 plt.imshow(resized_gs_img)
@@ -176,8 +176,8 @@ plt.show()
 resized_gs_img_arr = np.asarray(resized_gs_img)
 
 # fitting
-fit_params = fit_2d_gaussian_to_image(resized_gs_img_arr)
-_, x0, y0, sigma_x, sigma_y, phi, _ = fit_params.beta
+fp = fit_2d_gaussian_to_image(resized_gs_img_arr)
+x0, y0, sigma_x, sigma_y = fp.beta["x0"], fp.beta["y0"], fp.beta["sigma_x"], fp.beta["sigma_y"]
 
 # printing
 PIXEL_SIZE_UM = 3.6
@@ -189,17 +189,17 @@ print(f"FWHM width determined to be {sigma_mm:.3f} +/- {sigma_mm_err:.3f} mm")
 
 # plotting
 ellipse = Ellipse(
-    xy=(x0, y0),
-    width=sigma_y * FWHM_FACTOR,
-    height=sigma_x * FWHM_FACTOR,
+    xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
+    width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
+    height=sigma_x * FWHM_FACTOR * RESCALE_FACTOR,
     angle=phi,
 )
+ellipse.set_facecolor((0, 0, 0, 0))
+ellipse.set_edgecolor("red")
 
 fig, ax = plt.subplots()
 ax.imshow(resized_gs_img_arr)
 ax.add_artist(ellipse)
-ellipse.set_facecolor((0, 0, 0, 0))
-ellipse.set_edgecolor("red")
 plt.show()
 
 # %% [markdown]
@@ -220,7 +220,7 @@ cropped_gs_img = gs_img.crop(crop_dims)
 
 # resizing
 resized_cropped_gs_img = cropped_gs_img.resize(
-    (round(width * SCALE_FACTOR), round(height * SCALE_FACTOR)), resample=PIL.Image.LANCZOS
+    (round(width * RESCALE_FACTOR), round(height * RESCALE_FACTOR)), resample=PIL.Image.LANCZOS
 )
 
 # plotting
@@ -235,11 +235,11 @@ plt.show()
 resized_cropped_gs_img_arr = np.asarray(resized_cropped_gs_img)
 
 # fitting
-fit_params = fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
-_, x0, y0, sigma_x, sigma_y, phi, _ = fit_params.beta
+fp = fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
+x0, y0, sigma_x, sigma_y = fp.beta["x0"], fp.beta["y0"], fp.beta["sigma_x"], fp.beta["sigma_y"]
 
 # printing
-PIXEL_SIZE_UM = 3.6 / SCALE_FACTOR
+PIXEL_SIZE_UM = 3.6 / RESCALE_FACTOR
 sigma_mm = np.mean([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3
 sigma_mm_err = np.std([sigma_x, sigma_y]) * FWHM_FACTOR * PIXEL_SIZE_UM * 1e-3
 
@@ -248,17 +248,17 @@ print(f"FWHM width determined to be {sigma_mm:.3f} +/- {sigma_mm_err:.3f} mm")
 
 # plotting
 ellipse = Ellipse(
-    xy=(x0, y0),
-    width=sigma_y * FWHM_FACTOR,
-    height=sigma_x * FWHM_FACTOR,
+    xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
+    width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
+    height=sigma_x * FWHM_FACTOR * RESCALE_FACTOR,
     angle=phi,
 )
+ellipse.set_facecolor((0, 0, 0, 0))
+ellipse.set_edgecolor("red")
 
 fig, ax = plt.subplots()
 ax.imshow(resized_cropped_gs_img_arr)
 ax.add_artist(ellipse)
-ellipse.set_facecolor((0, 0, 0, 0))
-ellipse.set_edgecolor("red")
 plt.show()
 
 # %% [markdown]
@@ -269,8 +269,8 @@ plt.show()
 cropped_gs_img_arr = np.asarray(cropped_gs_img)
 
 # fitting
-fit_params = fit_2d_gaussian_to_image(cropped_gs_img_arr)
-_, x0, y0, sigma_x, sigma_y, phi, _ = fit_params.beta
+fp = fit_2d_gaussian_to_image(cropped_gs_img_arr)
+x0, y0, sigma_x, sigma_y = fp.beta["x0"], fp.beta["y0"], fp.beta["sigma_x"], fp.beta["sigma_y"]
 
 # printing
 PIXEL_SIZE_UM = 3.6
@@ -282,18 +282,27 @@ print(f"FWHM width determined to be {sigma_mm:.3f} +/- {sigma_mm_err:.3f} mm")
 
 # plotting
 ellipse = Ellipse(
-    xy=(x0, y0),
-    width=sigma_y * FWHM_FACTOR,
-    height=sigma_x * FWHM_FACTOR,
+    xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
+    width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
+    height=sigma_x * FWHM_FACTOR * RESCALE_FACTOR,
     angle=phi,
 )
+ellipse.set_facecolor((0, 0, 0, 0))
+ellipse.set_edgecolor("red")
 
 fig, ax = plt.subplots()
 ax.imshow(cropped_gs_img_arr)
 ax.add_artist(ellipse)
-ellipse.set_facecolor((0, 0, 0, 0))
-ellipse.set_edgecolor("red")
 plt.show()
+
+# %%
+dir(ellipse)
+# ellipse.get_center()
+ellipse.get_width()
 
 # %% [markdown]
 # So, pretty much the same estimate in a much shorter calculation! Let's use resizing!
+#
+# Lastly, let's take a look at how the fit "sits" with the data itself (smoothed, perhaps?) and calculate chi_squared:
+
+# %%
