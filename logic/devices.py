@@ -10,7 +10,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from string import ascii_letters, digits
 from types import SimpleNamespace
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -25,7 +25,21 @@ from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.fit_tools import FitError, fit_2d_gaussian_to_image, linear_fit
-from utilities.helper import Limits, div_ceil, generate_numbers_from_string, number
+from utilities.helper import (
+    Limits,
+    deep_getattr,
+    div_ceil,
+    generate_numbers_from_string,
+    number,
+)
+
+
+@dataclass
+class DeviceAttrs:
+    log_ref: str
+    param_widgets: QtWidgetCollection
+    led_color: str = "green"
+    synced_dvc_attrs: List[Tuple[str, str]] = None
 
 
 class BaseDevice:
@@ -33,9 +47,24 @@ class BaseDevice:
 
     log_ref: str
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, attrs, app, **kwargs):
+
+        param_dict = attrs.param_widgets.hold_widgets(app.gui).gui_to_obj(app.gui, "dict")
+        param_dict["log_ref"] = attrs.log_ref
+        param_dict["led_icon"] = app.icon_dict[f"led_{attrs.led_color}"]
+        param_dict["error_display"] = QtWidgetAccess(
+            "deviceErrorDisplay", "QLineEdit", "main", True
+        ).hold_widget(app.gui.main)
+
+        if attrs.synced_dvc_attrs:
+            for attr_name, deep_attr in attrs.synced_dvc_attrs:
+                param_dict[attr_name] = deep_getattr(app, deep_attr)
+        #            param_dict["x_args"] = [
+        #                deep_getattr(app, deep_attr) for deep_attr in attrs.synced_dvc_attrs
+        #            ]
+
         self.error_dict = None
-        super().__init__(*args, **kwargs)
+        super().__init__(param_dict, **kwargs)
         self.led_widget: QtWidgetAccess
         self.switch_widget: QtWidgetAccess
 
@@ -86,8 +115,52 @@ class BaseDevice:
             )
 
 
+class SimpleDODevice(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
+    """ON/OFF NIDAQmx-controlled device (excitation laser, depletion shutter, TDC)."""
+
+    OFF_TIMER_MIN = 60
+
+    def __init__(self, *args):
+        super().__init__(
+            *args,
+            task_types=("do",),
+        )
+        self.turn_on_time = None
+        with suppress(DeviceError):
+            self.toggle(False)
+
+    def toggle(self, is_being_switched_on):
+        """Doc."""
+
+        try:
+            self.digital_write(self.address, is_being_switched_on)
+        except DaqError:
+            exc = IOError(
+                f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
+            )
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            self.toggle_led_and_switch(is_being_switched_on)
+            self.is_on = is_being_switched_on
+            self.turn_on_time = time.perf_counter() if is_being_switched_on else None
+
+
 class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """Doc."""
+
+    attrs = DeviceAttrs(
+        log_ref="Fast-Gated SPAD",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledSPAD", "QIcon", "main", True),
+            gate_led_widget=("ledGate", "QIcon", "main", True),
+            set_gate_width_wdgt=("spadGateWidth", "QSpinBox", "main", True),
+            eff_gate_width_wdgt=("spadEffGateWidth", "QSpinBox", "main", True),
+            description=("spadDescription", "QLineEdit", "settings", False),
+            baud_rate=("spadBaudRate", "QSpinBox", "settings", False),
+            timeout_ms=("spadTimeout", "QSpinBox", "settings", False),
+            laser_freq_mhz=("TDClaserFreq", "QSpinBox", "settings", False),
+        ),
+    )
 
     update_interval_s = 1
     gate_width_limits = Limits(10000, 98000)
@@ -116,9 +189,10 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         "current_ma": (-0.45454545, 115.45454545),
     }
 
-    def __init__(self, param_dict):
+    def __init__(self, app):
         super().__init__(
-            param_dict=param_dict,
+            self.attrs,
+            app,
         )
         self.is_on = False
         try:
@@ -225,14 +299,32 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """Doc."""
 
+    attrs = DeviceAttrs(
+        log_ref="Pico-Second Delayer",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledPSD", "QIcon", "main", True),
+            switch_widget=("psdSwitch", "QIcon", "main", True),
+            set_delay_wdgt=("psdDelay", "QSpinBox", "main", True),
+            eff_delay_wdgt=("psdEffDelay", "QSpinBox", "main", True),
+            description=("psdDescription", "QLineEdit", "settings", False),
+            baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
+            timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
+            threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
+            freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
+            # sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
+            sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", False),
+        ),
+    )
+
     update_interval_s = 1
 
     psd_delay_limits_ps = Limits(1, 49090)
     pulsewidth_limits_ns = Limits(1, 250)
 
-    def __init__(self, param_dict):
+    def __init__(self, app):
         super().__init__(
-            param_dict=param_dict,
+            self.attrs,
+            app,
         )
         try:
             self.open_instrument()
@@ -318,15 +410,49 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         self.eff_delay_wdgt.set(effective_delay_ns)
 
 
+class TDC(SimpleDODevice):
+    """Controls time-to-digital converter ON/OFF switch"""
+
+    attrs = DeviceAttrs(
+        log_ref="TDC",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledTdc", "QIcon", "main", True),
+            address=("TDCaddress", "QLineEdit", "settings", False),
+            data_vrsn=("TDCdataVersion", "QLineEdit", "settings", False),
+            laser_freq_mhz=("TDClaserFreq", "QSpinBox", "settings", False),
+            fpga_freq_mhz=("TDCFPGAFreq", "QSpinBox", "settings", False),
+            tdc_vrsn=("TDCversion", "QSpinBox", "settings", False),
+        ),
+    )
+
+    def __init__(self, app):
+        super().__init__(self.attrs, app)
+
+
 class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     """
     Represents the FTDI chip used to transfer data from the FPGA
     to the PC.
     """
 
-    def __init__(self, param_dict):
+    attrs = DeviceAttrs(
+        log_ref="UM232H",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledUm232h", "QIcon", "main", True),
+            description=("um232Description", "QLineEdit", "settings", False),
+            bit_mode=("um232BitMode", "QLineEdit", "settings", False),
+            timeout_ms=("um232Timeout", "QSpinBox", "settings", False),
+            ltncy_tmr_val=("um232LatencyTimerVal", "QSpinBox", "settings", False),
+            flow_ctrl=("um232FlowControl", "QLineEdit", "settings", False),
+            tx_size=("um232TxSize", "QSpinBox", "settings", False),
+            n_bytes=("um232NumBytes", "QSpinBox", "settings", False),
+        ),
+    )
+
+    def __init__(self, app):
         super().__init__(
-            param_dict=param_dict,
+            self.attrs,
+            app,
         )
         try:
             self.open_instrument()
@@ -379,6 +505,39 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
     """
 
+    # TODO: for better modularity and simplicity, create a seperate class for each galvo and the piezo seperately, and have this class control all of them
+
+    attrs = DeviceAttrs(
+        log_ref="Scanners",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledScn", "QIcon", "main", True),
+            ao_x_init_vltg=("xAOV", "QDoubleSpinBox", "main", False),
+            ao_y_init_vltg=("yAOV", "QDoubleSpinBox", "main", False),
+            ao_z_init_vltg=("zAOV", "QDoubleSpinBox", "main", False),
+            x_origin=("xOrigin", "QDoubleSpinBox", "settings", False),
+            y_origin=("yOrigin", "QDoubleSpinBox", "settings", False),
+            z_origin=("zOrigin", "QDoubleSpinBox", "settings", False),
+            x_um2v_const=("xConv", "QDoubleSpinBox", "settings", False),
+            y_um2v_const=("yConv", "QDoubleSpinBox", "settings", False),
+            z_um2v_const=("zConv", "QDoubleSpinBox", "settings", False),
+            ai_x_addr=("AIXaddr", "QLineEdit", "settings", False),
+            ai_y_addr=("AIYaddr", "QLineEdit", "settings", False),
+            ai_z_addr=("AIZaddr", "QLineEdit", "settings", False),
+            ai_laser_mon_addr=("AIlaserMonAddr", "QLineEdit", "settings", False),
+            ai_clk_div=("AIclkDiv", "QSpinBox", "settings", False),
+            ai_trg_src=("AItrigSrc", "QLineEdit", "settings", False),
+            ao_x_addr=("AOXaddr", "QLineEdit", "settings", False),
+            ao_y_addr=("AOYaddr", "QLineEdit", "settings", False),
+            ao_z_addr=("AOZaddr", "QLineEdit", "settings", False),
+            ao_int_x_addr=("AOXintAddr", "QLineEdit", "settings", False),
+            ao_int_y_addr=("AOYintAddr", "QLineEdit", "settings", False),
+            ao_int_z_addr=("AOZintAddr", "QLineEdit", "settings", False),
+            ao_dig_trg_src=("AOdigTrigSrc", "QLineEdit", "settings", False),
+            ao_trg_edge=("AOtriggerEdge", "QComboBox", "settings", False),
+            ao_wf_type=("AOwfType", "QComboBox", "settings", False),
+        ),
+    )
+
     AXIS_INDEX = {"x": 0, "y": 1, "z": 2, "X": 0, "Y": 1, "Z": 2}
     AXES_TO_BOOL_TUPLE_DICT = {
         "X": (True, False, False),
@@ -394,9 +553,10 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     Z_AO_LIMITS = Limits(0.0, 10.0, ("min_val", "max_val"))
     AI_BUFFER_SIZE = int(1e4)
 
-    def __init__(self, param_dict):
+    def __init__(self, app):
         super().__init__(
-            param_dict,
+            self.attrs,
+            app,
             task_types=("ai", "ao"),
         )
         RSE = ni_consts.TerminalConfiguration.RSE
@@ -663,16 +823,40 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     fluorescence photons coming from the detector.
     """
 
+    attrs = DeviceAttrs(
+        log_ref="Photon Counter",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledCounter", "QIcon", "main", True),
+            pxl_clk=("counterPixelClockAddress", "QLineEdit", "settings", False),
+            pxl_clk_output=("pixelClockCounterIntOutputAddress", "QLineEdit", "settings", False),
+            trggr=("counterTriggerAddress", "QLineEdit", "settings", False),
+            trggr_armstart_digedge=(
+                "counterTriggerArmStartDigEdgeSrc",
+                "QLineEdit",
+                "settings",
+                False,
+            ),
+            trggr_edge=("counterTriggerEdge", "QComboBox", "settings", False),
+            address=("counterAddress", "QLineEdit", "settings", False),
+            CI_cnt_edges_term=("counterCIcountEdgesTerm", "QLineEdit", "settings", False),
+            CI_dup_prvnt=("counterCIdupCountPrevention", "QCheckBox", "settings", False),
+        ),
+        synced_dvc_attrs=[("scanners_ai_tasks", "devices.scanners.tasks.ai")],
+    )
+
     CI_BUFFER_SIZE = int(1e4)
 
-    def __init__(self, param_dict, scanners_ai_tasks):
+    def __init__(self, app):
         super().__init__(
-            param_dict,
+            self.attrs,
+            app,
             task_types=("ci",),
         )
 
         try:
-            cont_ai_task = [task for task in scanners_ai_tasks if (task.name == "Continuous AI")][0]
+            cont_ai_task = [
+                task for task in self.scanners_ai_tasks if (task.name == "Continuous AI")
+            ][0]
             self.ai_cont_rate = cont_ai_task.timing.samp_clk_rate
             self.ai_cont_src = cont_ai_task.timing.samp_clk_term
         except IndexError:
@@ -790,9 +974,24 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     have divisible frequencies for both the laser pulses and AI/AO.
     """
 
-    def __init__(self, param_dict):
+    attrs = DeviceAttrs(
+        log_ref="Pixel Clock",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledPxlClk", "QIcon", "main", True),
+            low_ticks=("pixelClockLowTicks", "QSpinBox", "settings", False),
+            high_ticks=("pixelClockHighTicks", "QSpinBox", "settings", False),
+            cntr_addr=("pixelClockCounterAddress", "QLineEdit", "settings", False),
+            tick_src=("pixelClockSrcOfTicks", "QLineEdit", "settings", False),
+            out_term=("pixelClockOutput", "QLineEdit", "settings", False),
+            out_ext_term=("pixelClockOutputExt", "QLineEdit", "settings", False),
+            freq_MHz=("pixelClockFreq", "QSpinBox", "settings", False),
+        ),
+    )
+
+    def __init__(self, app):
         super().__init__(
-            param_dict,
+            self.attrs,
+            app,
             task_types=("co",),
         )
 
@@ -836,34 +1035,25 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         self.start_tasks("co")
 
 
-class SimpleDO(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
-    """ON/OFF device (excitation laser, depletion shutter, TDC)."""
+class ExcitationLaser(SimpleDODevice):
+    """Controls excitation laser"""
 
-    OFF_TIMER_MIN = 60
+    attrs = DeviceAttrs(
+        log_ref="Excitation Laser",
+        led_color="blue",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledExc", "QIcon", "main", True),
+            switch_widget=("excOnButton", "QIcon", "main", True),
+            model=("excMod", "QLineEdit", "settings", False),
+            trg_src=("excTriggerSrc", "QComboBox", "settings", False),
+            ext_trg_addr=("excTriggerExtAddr", "QLineEdit", "settings", False),
+            int_trg_addr=("excTriggerIntAddr", "QLineEdit", "settings", False),
+            address=("excAddr", "QLineEdit", "settings", False),
+        ),
+    )
 
-    def __init__(self, param_dict):
-        super().__init__(
-            param_dict,
-            task_types=("do",),
-        )
-        self.turn_on_time = None
-        with suppress(DeviceError):
-            self.toggle(False)
-
-    def toggle(self, is_being_switched_on):
-        """Doc."""
-
-        try:
-            self.digital_write(self.address, is_being_switched_on)
-        except DaqError:
-            exc = IOError(
-                f"NI device address ({self.address}) is wrong, or data acquisition board is unplugged"
-            )
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-        else:
-            self.toggle_led_and_switch(is_being_switched_on)
-            self.is_on = is_being_switched_on
-            self.turn_on_time = time.perf_counter() if is_being_switched_on else None
+    def __init__(self, app):
+        super().__init__(self.attrs, app)
 
 
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
@@ -875,10 +1065,21 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     power_limits_mW = Limits(99, 1000)
     current_limits_mA = Limits(1500, 2500)
 
-    def __init__(self, param_dict):
+    attrs = DeviceAttrs(
+        log_ref="Depletion Laser",
+        led_color="orange",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledDep", "QIcon", "main", True),
+            switch_widget=("depEmissionOn", "QIcon", "main", True),
+            model_query=("depModelQuery", "QLineEdit", "settings", False),
+        ),
+    )
+
+    def __init__(self, app):
 
         super().__init__(
-            param_dict,
+            self.attrs,
+            app,
             read_termination="\r",
             write_termination="\r",
         )
@@ -973,14 +1174,39 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             Error(custom_txt=f"Current out of range {self.current_limits_mA}").display()
 
 
+class Shutter(SimpleDODevice):
+    """Controls depletion laser external shutter"""
+
+    attrs = DeviceAttrs(
+        log_ref="Shutter",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledShutter", "QIcon", "main", True),
+            switch_widget=("depShutterOn", "QIcon", "main", True),
+            address=("depShutterAddr", "QLineEdit", "settings", False),
+        ),
+    )
+
+    def __init__(self, app):
+        super().__init__(self.attrs, app)
+
+
 class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control stepper stage through Arduino chip using PyVISA."""
 
     # TODO: add support for saving all movements done since init
     # and add button to move back to origin. also save to file and rewrite only when moving after app opens again
 
-    def __init__(self, param_dict):
-        super().__init__(param_dict)
+    attrs = DeviceAttrs(
+        log_ref="Stage",
+        param_widgets=QtWidgetCollection(
+            led_widget=("ledStage", "QIcon", "main", True),
+            switch_widget=("stageOn", "QIcon", "main", True),
+            address=("arduinoAddr", "QLineEdit", "settings", False),
+        ),
+    )
+
+    def __init__(self, app):
+        super().__init__(self.attrs, app)
 
         with suppress(DeviceError):
             self.toggle(True)
@@ -1017,9 +1243,9 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     DEFAULT_PARAM_DICT = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
     PIXEL_SIZE_UM = 3.6
 
-    def __init__(self, param_dict):
+    def __init__(self, *args):
         super().__init__(
-            param_dict,
+            *args,
         )
         self.is_in_video_mode = False
         self.is_in_grayscale_mode = True
@@ -1169,86 +1395,10 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         self.display.obj.add_patch(ellipse)
 
 
-@dataclass
-class DeviceAttrs:
-    class_name: str
-    log_ref: str
-    param_widgets: QtWidgetCollection
-    led_color: str = "green"
-    cls_xtra_args: List[str] = None
+class Camera1(Camera):
+    """Doc."""
 
-
-DEVICE_ATTR_DICT = {
-    "exc_laser": DeviceAttrs(
-        class_name="SimpleDO",
-        log_ref="Excitation Laser",
-        led_color="blue",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledExc", "QIcon", "main", True),
-            switch_widget=("excOnButton", "QIcon", "main", True),
-            model=("excMod", "QLineEdit", "settings", False),
-            trg_src=("excTriggerSrc", "QComboBox", "settings", False),
-            ext_trg_addr=("excTriggerExtAddr", "QLineEdit", "settings", False),
-            int_trg_addr=("excTriggerIntAddr", "QLineEdit", "settings", False),
-            address=("excAddr", "QLineEdit", "settings", False),
-        ),
-    ),
-    "dep_shutter": DeviceAttrs(
-        class_name="SimpleDO",
-        log_ref="Shutter",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledShutter", "QIcon", "main", True),
-            switch_widget=("depShutterOn", "QIcon", "main", True),
-            address=("depShutterAddr", "QLineEdit", "settings", False),
-        ),
-    ),
-    "TDC": DeviceAttrs(
-        class_name="SimpleDO",
-        log_ref="TDC",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledTdc", "QIcon", "main", True),
-            address=("TDCaddress", "QLineEdit", "settings", False),
-            data_vrsn=("TDCdataVersion", "QLineEdit", "settings", False),
-            laser_freq_mhz=("TDClaserFreq", "QSpinBox", "settings", False),
-            fpga_freq_mhz=("TDCFPGAFreq", "QSpinBox", "settings", False),
-            tdc_vrsn=("TDCversion", "QSpinBox", "settings", False),
-        ),
-    ),
-    "dep_laser": DeviceAttrs(
-        class_name="DepletionLaser",
-        log_ref="Depletion Laser",
-        led_color="orange",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledDep", "QIcon", "main", True),
-            switch_widget=("depEmissionOn", "QIcon", "main", True),
-            model_query=("depModelQuery", "QLineEdit", "settings", False),
-        ),
-    ),
-    "stage": DeviceAttrs(
-        class_name="StepperStage",
-        log_ref="Stage",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledStage", "QIcon", "main", True),
-            switch_widget=("stageOn", "QIcon", "main", True),
-            address=("arduinoAddr", "QLineEdit", "settings", False),
-        ),
-    ),
-    "UM232H": DeviceAttrs(
-        class_name="UM232H",
-        log_ref="UM232H",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledUm232h", "QIcon", "main", True),
-            description=("um232Description", "QLineEdit", "settings", False),
-            bit_mode=("um232BitMode", "QLineEdit", "settings", False),
-            timeout_ms=("um232Timeout", "QSpinBox", "settings", False),
-            ltncy_tmr_val=("um232LatencyTimerVal", "QSpinBox", "settings", False),
-            flow_ctrl=("um232FlowControl", "QLineEdit", "settings", False),
-            tx_size=("um232TxSize", "QSpinBox", "settings", False),
-            n_bytes=("um232NumBytes", "QSpinBox", "settings", False),
-        ),
-    ),
-    "camera_1": DeviceAttrs(
-        class_name="Camera",
+    attrs = DeviceAttrs(
         log_ref="Camera 1",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCam1", "QIcon", "main", True),
@@ -1256,9 +1406,16 @@ DEVICE_ATTR_DICT = {
             display=("ImgDisp1", None, "main", True),
             serial=("cam1Serial", "QLineEdit", "settings", False),
         ),
-    ),
-    "camera_2": DeviceAttrs(
-        class_name="Camera",
+    )
+
+    def __init__(self, app):
+        super().__init__(self.attrs, app)
+
+
+class Camera2(Camera):
+    """Doc."""
+
+    attrs = DeviceAttrs(
         log_ref="Camera 2",
         param_widgets=QtWidgetCollection(
             led_widget=("ledCam2", "QIcon", "main", True),
@@ -1266,102 +1423,24 @@ DEVICE_ATTR_DICT = {
             display=("ImgDisp2", None, "main", True),
             serial=("cam2Serial", "QLineEdit", "settings", False),
         ),
-    ),
-    "scanners": DeviceAttrs(
-        class_name="Scanners",
-        log_ref="Scanners",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledScn", "QIcon", "main", True),
-            ao_x_init_vltg=("xAOV", "QDoubleSpinBox", "main", False),
-            ao_y_init_vltg=("yAOV", "QDoubleSpinBox", "main", False),
-            ao_z_init_vltg=("zAOV", "QDoubleSpinBox", "main", False),
-            x_origin=("xOrigin", "QDoubleSpinBox", "settings", False),
-            y_origin=("yOrigin", "QDoubleSpinBox", "settings", False),
-            z_origin=("zOrigin", "QDoubleSpinBox", "settings", False),
-            x_um2v_const=("xConv", "QDoubleSpinBox", "settings", False),
-            y_um2v_const=("yConv", "QDoubleSpinBox", "settings", False),
-            z_um2v_const=("zConv", "QDoubleSpinBox", "settings", False),
-            ai_x_addr=("AIXaddr", "QLineEdit", "settings", False),
-            ai_y_addr=("AIYaddr", "QLineEdit", "settings", False),
-            ai_z_addr=("AIZaddr", "QLineEdit", "settings", False),
-            ai_laser_mon_addr=("AIlaserMonAddr", "QLineEdit", "settings", False),
-            ai_clk_div=("AIclkDiv", "QSpinBox", "settings", False),
-            ai_trg_src=("AItrigSrc", "QLineEdit", "settings", False),
-            ao_x_addr=("AOXaddr", "QLineEdit", "settings", False),
-            ao_y_addr=("AOYaddr", "QLineEdit", "settings", False),
-            ao_z_addr=("AOZaddr", "QLineEdit", "settings", False),
-            ao_int_x_addr=("AOXintAddr", "QLineEdit", "settings", False),
-            ao_int_y_addr=("AOYintAddr", "QLineEdit", "settings", False),
-            ao_int_z_addr=("AOZintAddr", "QLineEdit", "settings", False),
-            ao_dig_trg_src=("AOdigTrigSrc", "QLineEdit", "settings", False),
-            ao_trg_edge=("AOtriggerEdge", "QComboBox", "settings", False),
-            ao_wf_type=("AOwfType", "QComboBox", "settings", False),
-        ),
-    ),
-    "photon_counter": DeviceAttrs(
-        class_name="PhotonCounter",
-        cls_xtra_args=["devices.scanners.tasks.ai"],
-        log_ref="Photon Counter",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledCounter", "QIcon", "main", True),
-            pxl_clk=("counterPixelClockAddress", "QLineEdit", "settings", False),
-            pxl_clk_output=("pixelClockCounterIntOutputAddress", "QLineEdit", "settings", False),
-            trggr=("counterTriggerAddress", "QLineEdit", "settings", False),
-            trggr_armstart_digedge=(
-                "counterTriggerArmStartDigEdgeSrc",
-                "QLineEdit",
-                "settings",
-                False,
-            ),
-            trggr_edge=("counterTriggerEdge", "QComboBox", "settings", False),
-            address=("counterAddress", "QLineEdit", "settings", False),
-            CI_cnt_edges_term=("counterCIcountEdgesTerm", "QLineEdit", "settings", False),
-            CI_dup_prvnt=("counterCIdupCountPrevention", "QCheckBox", "settings", False),
-        ),
-    ),
-    "pixel_clock": DeviceAttrs(
-        class_name="PixelClock",
-        log_ref="Pixel Clock",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledPxlClk", "QIcon", "main", True),
-            low_ticks=("pixelClockLowTicks", "QSpinBox", "settings", False),
-            high_ticks=("pixelClockHighTicks", "QSpinBox", "settings", False),
-            cntr_addr=("pixelClockCounterAddress", "QLineEdit", "settings", False),
-            tick_src=("pixelClockSrcOfTicks", "QLineEdit", "settings", False),
-            out_term=("pixelClockOutput", "QLineEdit", "settings", False),
-            out_ext_term=("pixelClockOutputExt", "QLineEdit", "settings", False),
-            freq_MHz=("pixelClockFreq", "QSpinBox", "settings", False),
-        ),
-    ),
-    "spad": DeviceAttrs(
-        class_name="FastGatedSPAD",
-        log_ref="Fast-Gated SPAD",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledSPAD", "QIcon", "main", True),
-            gate_led_widget=("ledGate", "QIcon", "main", True),
-            set_gate_width_wdgt=("spadGateWidth", "QSpinBox", "main", True),
-            eff_gate_width_wdgt=("spadEffGateWidth", "QSpinBox", "main", True),
-            description=("spadDescription", "QLineEdit", "settings", False),
-            baud_rate=("spadBaudRate", "QSpinBox", "settings", False),
-            timeout_ms=("spadTimeout", "QSpinBox", "settings", False),
-            laser_freq_mhz=("TDClaserFreq", "QSpinBox", "settings", False),
-        ),
-    ),
-    "delayer": DeviceAttrs(
-        class_name="PicoSecondDelayer",
-        log_ref="Pico-Second Delayer",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledPSD", "QIcon", "main", True),
-            switch_widget=("psdSwitch", "QIcon", "main", True),
-            set_delay_wdgt=("psdDelay", "QSpinBox", "main", True),
-            eff_delay_wdgt=("psdEffDelay", "QSpinBox", "main", True),
-            description=("psdDescription", "QLineEdit", "settings", False),
-            baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
-            timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
-            threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
-            freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
-            # sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
-            sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", False),
-        ),
-    ),
+    )
+
+    def __init__(self, app):
+        super().__init__(self.attrs, app)
+
+
+DEVICE_NICK_CLASS_DICT = {
+    "exc_laser": ExcitationLaser,
+    "dep_shutter": Shutter,
+    "TDC": TDC,
+    "dep_laser": DepletionLaser,
+    "stage": StepperStage,
+    "UM232H": UM232H,
+    "camera_1": Camera1,
+    "camera_2": Camera2,
+    "photon_counter": PhotonCounter,
+    "pixel_clock": PixelClock,
+    "spad": FastGatedSPAD,
+    "delayer": PicoSecondDelayer,
+    "scanners": Scanners,
 }

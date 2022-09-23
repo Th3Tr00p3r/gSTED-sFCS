@@ -13,9 +13,8 @@ import yaml
 import gui.dialog as dialog
 import gui.gui
 import gui.widgets as wdgts
-import logic.devices as dvcs
-import utilities.helper as helper
 from gui.icons import icons
+from logic.devices import DEVICE_NICK_CLASS_DICT
 from logic.timeout import Timeout
 from utilities.errors import DeviceError
 
@@ -63,18 +62,17 @@ class App:
 
         # init windows
         print("Initializing GUI...", end=" ")
-        self.gui = SimpleNamespace(
-            main=gui.gui.MainWin(self),
-            settings=gui.gui.SettWin(self),
-            options=gui.gui.ProcessingOptionsWindow(self),
-        )
+        self.gui = SimpleNamespace()
+        self.gui.main = gui.gui.MainWin(self)
+        self.gui.settings = gui.gui.SettWin(self)
+        self.gui.options = gui.gui.ProcessingOptionsWindow(self)
         self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
         self.gui.settings.impl.load(self.default_settings_path())
         self.gui.options.impl.load()
 
         # populate all widget collections in 'gui.widgets' with objects
         [
-            val.hold_widgets(app=self)
+            val.hold_widgets(self.gui)
             for val in wdgts.__dict__.values()
             if isinstance(val, wdgts.QtWidgetCollection)
         ]
@@ -89,6 +87,7 @@ class App:
 
         print("Done.")
 
+        # Initialize all devices
         print("Initializing Devices:")
         self.init_devices()
         print("        Done.")
@@ -101,7 +100,7 @@ class App:
 
         # init scan patterns
         self.gui.main.impl.disp_scn_pttrn("image")
-        sol_pattern = wdgts.SOL_MEAS_COLL.gui_to_obj(self).scan_type
+        sol_pattern = wdgts.SOL_MEAS_COLL.gui_to_obj(self.gui).scan_type
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
 
         # init last images deque
@@ -165,25 +164,9 @@ class App:
 
         self.devices = SimpleNamespace()
         for nick in self.DVC_NICKS:
-            dvc_attrs = dvcs.DEVICE_ATTR_DICT[nick]
-            print(f"        Initializing {dvc_attrs.log_ref}...", end=" ")
-            dvc_class = getattr(dvcs, dvc_attrs.class_name)
-            param_dict = dvc_attrs.param_widgets.hold_widgets(app=self).gui_to_obj(self, "dict")
-            param_dict["nick"] = nick
-            param_dict["log_ref"] = dvc_attrs.log_ref
-            param_dict["led_icon"] = self.icon_dict[f"led_{dvc_attrs.led_color}"]
-            param_dict["error_display"] = wdgts.QtWidgetAccess(
-                "deviceErrorDisplay", "QLineEdit", "main", True
-            ).hold_widget(self.gui.main)
-
-            if dvc_attrs.cls_xtra_args:
-                x_args = [
-                    helper.deep_getattr(self, deep_attr) for deep_attr in dvc_attrs.cls_xtra_args
-                ]
-                setattr(self.devices, nick, dvc_class(param_dict, *x_args))
-            else:
-                setattr(self.devices, nick, dvc_class(param_dict))
-
+            dvc_class = DEVICE_NICK_CLASS_DICT[nick]
+            print(f"        Initializing {dvc_class.attrs.log_ref}...", end=" ")
+            setattr(self.devices, nick, dvc_class(self))
             print("Done.")
 
     @contextmanager

@@ -39,11 +39,12 @@ class MainWin:
     ####################
     ## General
     ####################
-    def __init__(self, gui, app):
+    def __init__(self, main_gui, app):
         """Doc."""
 
         self._app = app
-        self._gui = gui
+        self._gui = app.gui
+        self.main_gui = main_gui
         self.cameras = None
 
     def close(self, event):
@@ -62,12 +63,12 @@ class MainWin:
         """Doc."""
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self._gui,
+            self.main_gui,
             "Save Loadout",
             str(self._app.LOADOUT_DIR_PATH),
         )
         if file_path != "":
-            wdgts.write_gui_to_file(self._gui, wdgts.MAIN_TYPES, file_path)
+            wdgts.write_gui_to_file(self.main_gui, wdgts.MAIN_TYPES, file_path)
             logging.debug(f"Loadout saved as: '{file_path}'")
 
     def load(self, file_path="") -> None:
@@ -75,12 +76,12 @@ class MainWin:
 
         if not file_path:
             file_path, _ = QFileDialog.getOpenFileName(
-                self._gui,
+                self.main_gui,
                 "Load Loadout",
                 str(self._app.LOADOUT_DIR_PATH),
             )
         if file_path != "":
-            wdgts.read_file_to_gui(file_path, self._gui)
+            wdgts.read_file_to_gui(file_path, self.main_gui)
             logging.debug(f"Loadout loaded: '{file_path}'")
 
     def device_toggle(
@@ -120,7 +121,7 @@ class MainWin:
                         if is_dvc_on := getattr(dvc, state_attr):
                             logging.debug(f"{dvc.log_ref} toggled ON")
                             if nick == "stage":
-                                self._gui.stageButtonsGroup.setEnabled(True)
+                                self.main_gui.stageButtonsGroup.setEnabled(True)
                             if nick == "delayer":
                                 self._app.devices.spad.toggle_mode("external")
                             was_toggled = True
@@ -136,7 +137,7 @@ class MainWin:
 
                         if nick == "stage":
                             # TODO: try to move this inside device (add widgets to device)
-                            self._gui.stageButtonsGroup.setEnabled(False)
+                            self.main_gui.stageButtonsGroup.setEnabled(False)
 
                         if nick == "delayer":
                             # TODO: try to move this inside device (add widgets to device)
@@ -145,8 +146,8 @@ class MainWin:
                         if nick == "dep_laser":
                             # TODO: try to move this inside device (add widgets to device)
                             # set curr/pow values to zero when depletion is turned OFF
-                            self._gui.depActualCurr.setValue(0)
-                            self._gui.depActualPow.setValue(0)
+                            self.main_gui.depActualCurr.setValue(0)
+                            self.main_gui.depActualPow.setValue(0)
 
                         was_toggled = True
 
@@ -183,11 +184,11 @@ class MainWin:
         """Doc."""
 
         with suppress(DeviceError):
-            if self._gui.currMode.isChecked():  # current mode
-                val = self._gui.depCurr.value()
+            if self.main_gui.currMode.isChecked():  # current mode
+                val = self.main_gui.depCurr.value()
                 self._app.devices.dep_laser.set_current(val)
             else:  # power mode
-                val = self._gui.depPow.value()
+                val = self.main_gui.depPow.value()
                 self._app.devices.dep_laser.set_power(val)
 
     def move_scanners(self, axes_used: str = "XYZ", destination=None) -> None:
@@ -197,7 +198,7 @@ class MainWin:
 
         if destination is None:
             # if no destination is specified, use the AO from the GUI
-            destination = tuple(getattr(self._gui, f"{ax}AOV").value() for ax in "xyz")
+            destination = tuple(getattr(self.main_gui, f"{ax}AOV").value() for ax in "xyz")
 
         data = []
         type_str = ""
@@ -226,7 +227,7 @@ class MainWin:
             scanners_dvc.origin,
         ):
             if is_chosen:
-                getattr(self._gui, f"{axis}AOV").setValue(org_axis_vltg)
+                getattr(self.main_gui, f"{axis}AOV").setValue(org_axis_vltg)
 
         self.move_scanners(which_axes)
 
@@ -235,11 +236,11 @@ class MainWin:
     def displace_scanner_axis(self, sign: int) -> None:
         """Doc."""
 
-        um_disp = sign * self._gui.axisMoveUm.value()
+        um_disp = sign * self.main_gui.axisMoveUm.value()
 
         if um_disp != 0.0:
             scanners_dvc = self._app.devices.scanners
-            axis = self._gui.posAxis.currentText()
+            axis = self.main_gui.posAxis.currentText()
             current_vltg = scanners_dvc.ai_buffer[-1][3:][scanners_dvc.AXIS_INDEX[axis]]
             um_v_ratio = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
             delta_vltg = um_disp / um_v_ratio
@@ -248,7 +249,7 @@ class MainWin:
                 (current_vltg + delta_vltg)
             )
 
-            getattr(self._gui, f"{axis.lower()}AOV").setValue(new_vltg)
+            getattr(self.main_gui, f"{axis.lower()}AOV").setValue(new_vltg)
             self.move_scanners(axis)
 
             logging.debug(
@@ -312,9 +313,9 @@ class MainWin:
     def show_stage_dock(self):
         """Make the laser dock visible (convenience)."""
 
-        if not self._gui.stepperDock.isVisible():
-            self._gui.stepperDock.setVisible(True)
-            self._gui.actionStepper_Stage_Control.setChecked(True)
+        if not self.main_gui.stepperDock.isVisible():
+            self.main_gui.stepperDock.setVisible(True)
+            self.main_gui.actionStepper_Stage_Control.setChecked(True)
 
     async def toggle_meas(self, meas_type, laser_mode):
         """Doc."""
@@ -324,11 +325,11 @@ class MainWin:
             if not self._app.meas.is_running:
                 # no meas running
                 if meas_type == "SFCSSolution":
-                    pattern = self._gui.solScanType.currentText()
+                    pattern = self.main_gui.solScanType.currentText()
                     if pattern == "angular":
-                        scan_params = wdgts.SOL_ANG_SCAN_COLL.gui_to_obj(self._app)
+                        scan_params = wdgts.SOL_ANG_SCAN_COLL.gui_to_obj(self._gui)
                     elif pattern == "circle":
-                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.gui_to_obj(self._app)
+                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.gui_to_obj(self._gui)
                     elif pattern == "static":
                         scan_params = SimpleNamespace()
 
@@ -346,16 +347,16 @@ class MainWin:
                         **kwargs,
                     )
 
-                    self._gui.startSolScanExc.setEnabled(False)
-                    self._gui.startSolScanDep.setEnabled(False)
-                    self._gui.startSolScanSted.setEnabled(False)
-                    getattr(self._gui, f"startSolScan{laser_mode}").setEnabled(True)
-                    getattr(self._gui, f"startSolScan{laser_mode}").setText("Stop \nScan")
+                    self.main_gui.startSolScanExc.setEnabled(False)
+                    self.main_gui.startSolScanDep.setEnabled(False)
+                    self.main_gui.startSolScanSted.setEnabled(False)
+                    getattr(self.main_gui, f"startSolScan{laser_mode}").setEnabled(True)
+                    getattr(self.main_gui, f"startSolScan{laser_mode}").setText("Stop \nScan")
 
-                    self._gui.solScanMaxFileSize.setEnabled(False)
-                    self._gui.solScanDur.setEnabled(self._gui.repeatSolMeas.isChecked())
-                    self._gui.solScanDurUnits.setEnabled(False)
-                    self._gui.solScanFileTemplate.setEnabled(False)
+                    self.main_gui.solScanMaxFileSize.setEnabled(False)
+                    self.main_gui.solScanDur.setEnabled(self.main_gui.repeatSolMeas.isChecked())
+                    self.main_gui.solScanDurUnits.setEnabled(False)
+                    self.main_gui.solScanFileTemplate.setEnabled(False)
 
                 elif meas_type == "SFCSImage":
 
@@ -363,16 +364,16 @@ class MainWin:
 
                     self._app.meas = meas.ImageMeasurementProcedure(
                         app=self._app,
-                        scan_params=wdgts.IMG_SCAN_COLL.gui_to_obj(self._app),
+                        scan_params=wdgts.IMG_SCAN_COLL.gui_to_obj(self._gui),
                         laser_mode=laser_mode.lower(),
                         **kwargs,
                     )
 
-                    self._gui.startImgScanExc.setEnabled(False)
-                    self._gui.startImgScanDep.setEnabled(False)
-                    self._gui.startImgScanSted.setEnabled(False)
-                    getattr(self._gui, f"startImgScan{laser_mode}").setEnabled(True)
-                    getattr(self._gui, f"startImgScan{laser_mode}").setText("Stop \nScan")
+                    self.main_gui.startImgScanExc.setEnabled(False)
+                    self.main_gui.startImgScanDep.setEnabled(False)
+                    self.main_gui.startImgScanSted.setEnabled(False)
+                    getattr(self.main_gui, f"startImgScan{laser_mode}").setEnabled(True)
+                    getattr(self.main_gui, f"startImgScan{laser_mode}").setText("Stop \nScan")
 
                 self._app.loop.create_task(self._app.meas.run())
             else:
@@ -384,21 +385,21 @@ class MainWin:
         else:  # current_type == meas_type
             # manual shutdown
             if meas_type == "SFCSSolution":
-                self._gui.startSolScanExc.setEnabled(True)
-                self._gui.startSolScanDep.setEnabled(True)
-                self._gui.startSolScanSted.setEnabled(True)
-                getattr(self._gui, f"startSolScan{laser_mode}").setText(f"{laser_mode} \nScan")
-                self._gui.impl.go_to_origin()
-                self._gui.solScanMaxFileSize.setEnabled(True)
-                self._gui.solScanDur.setEnabled(True)
-                self._gui.solScanDurUnits.setEnabled(True)
-                self._gui.solScanFileTemplate.setEnabled(True)
+                self.main_gui.startSolScanExc.setEnabled(True)
+                self.main_gui.startSolScanDep.setEnabled(True)
+                self.main_gui.startSolScanSted.setEnabled(True)
+                getattr(self.main_gui, f"startSolScan{laser_mode}").setText(f"{laser_mode} \nScan")
+                self.main_gui.impl.go_to_origin()
+                self.main_gui.solScanMaxFileSize.setEnabled(True)
+                self.main_gui.solScanDur.setEnabled(True)
+                self.main_gui.solScanDurUnits.setEnabled(True)
+                self.main_gui.solScanFileTemplate.setEnabled(True)
 
             elif meas_type == "SFCSImage":
-                self._gui.startImgScanExc.setEnabled(True)
-                self._gui.startImgScanDep.setEnabled(True)
-                self._gui.startImgScanSted.setEnabled(True)
-                getattr(self._gui, f"startImgScan{laser_mode}").setText(f"{laser_mode} \nScan")
+                self.main_gui.startImgScanExc.setEnabled(True)
+                self.main_gui.startImgScanDep.setEnabled(True)
+                self.main_gui.startImgScanSted.setEnabled(True)
+                getattr(self.main_gui, f"startImgScan{laser_mode}").setText(f"{laser_mode} \nScan")
 
             if self._app.meas.is_running:
                 # manual stop
@@ -409,27 +410,25 @@ class MainWin:
 
         if pattern == "image":
             scan_params_coll = wdgts.IMG_SCAN_COLL
-            plt_wdgt = self._gui.imgScanPattern
+            plt_wdgt = self.main_gui.imgScanPattern
         elif pattern == "angular":
             scan_params_coll = wdgts.SOL_ANG_SCAN_COLL
-            plt_wdgt = self._gui.solScanPattern
+            plt_wdgt = self.main_gui.solScanPattern
         elif pattern == "circle":
             scan_params_coll = wdgts.SOL_CIRC_SCAN_COLL
-            plt_wdgt = self._gui.solScanPattern
+            plt_wdgt = self.main_gui.solScanPattern
         elif pattern == "static":
             scan_params_coll = None
-            plt_wdgt = self._gui.solScanPattern
+            plt_wdgt = self.main_gui.solScanPattern
 
         if scan_params_coll:
-            scan_params = scan_params_coll.gui_to_obj(self._app)
+            scan_params = scan_params_coll.gui_to_obj(self._gui)
 
             with suppress(AttributeError, ZeroDivisionError, ValueError):
                 # AttributeError - devices not yet initialized
                 # ZeroDivisionError - loadout has bad values
                 um_v_ratio = self._app.devices.scanners.um_v_ratio
-                curr_ao_v = tuple(
-                    getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz"
-                )
+                curr_ao_v = tuple(getattr(self.main_gui, f"{ax}AOVint").value() for ax in "xyz")
                 ao, scan_params = ScanPatternAO(
                     pattern,
                     um_v_ratio,
@@ -439,7 +438,7 @@ class MainWin:
                 x_data, y_data = ao[0, :], ao[1, :]
                 plt_wdgt.display_patterns(x_data, y_data)
                 # display the calculated parameters
-                scan_params_coll.obj_to_gui(self._app, scan_params)
+                scan_params_coll.obj_to_gui(self._gui, scan_params)
 
         else:
             # no scan
@@ -448,14 +447,14 @@ class MainWin:
     def open_settwin(self):
         """Doc."""
 
-        self._app.gui.settings.show()
-        self._app.gui.settings.activateWindow()
+        self._gui.settings.show()
+        self._gui.settings.activateWindow()
 
     def open_optwin(self):
         """Doc."""
 
-        self._app.gui.options.show()
-        self._app.gui.options.activateWindow()
+        self._gui.options.show()
+        self._gui.options.activateWindow()
 
     def counts_avg_interval_changed(self, val: int) -> None:
         """Doc."""
@@ -470,7 +469,7 @@ class MainWin:
     def roi_to_scan(self):
         """Doc"""
 
-        plane_idx = self._gui.numPlaneShown.value()
+        plane_idx = self.main_gui.numPlaneShown.value()
         with suppress(AttributeError):
             # IndexError - 'App' object has no attribute 'curr_img_idx'
             image_tdc = ImageSFCSMeasurement()
@@ -482,7 +481,9 @@ class MainWin:
             row_ticks_v = image_data.row_ticks_v
             plane_ticks_v = image_data.plane_ticks_v
 
-            coord_1, coord_2 = (round(pos_i) for pos_i in self._gui.imgScanPlot.axes[0].cursor.pos)
+            coord_1, coord_2 = (
+                round(pos_i) for pos_i in self.main_gui.imgScanPlot.axes[0].cursor.pos
+            )
 
             dim_vltg = (line_ticks_v[coord_1], row_ticks_v[coord_2], plane_ticks_v[plane_idx])
 
@@ -490,7 +491,7 @@ class MainWin:
             vltgs = tuple(dim_vltg for _, dim_vltg in sorted(zip(image_data.dim_order, dim_vltg)))
 
             [
-                getattr(self._gui, f"{axis.lower()}AOV").setValue(vltg)
+                getattr(self.main_gui, f"{axis.lower()}AOV").setValue(vltg)
                 for axis, vltg in zip("XYZ", vltgs)
             ]
 
@@ -509,7 +510,9 @@ class MainWin:
             except (ZeroDivisionError, IndexError) as exc:
                 err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
 
-            self._gui.imgScanPlot.display_image(image, cursor=True, imshow_kwargs=dict(cmap="bone"))
+            self.main_gui.imgScanPlot.display_image(
+                image, cursor=True, imshow_kwargs=dict(cmap="bone")
+            )
 
     def disp_plane_img(self, img_idx=None, plane_idx=None, auto_cross=False):
         """Doc."""
@@ -564,7 +567,7 @@ class MainWin:
                 # .curr_img_idx not yet set
                 img_idx = 0
 
-        img_meas_wdgts = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
+        img_meas_wdgts = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
         disp_mthd = img_meas_wdgts.image_method
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
@@ -605,7 +608,7 @@ class MainWin:
             "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
         }
 
-        wdgts.IMG_SCAN_COLL.obj_to_gui(self._app, img_scn_wdgt_fillout_dict[curr_text])
+        wdgts.IMG_SCAN_COLL.obj_to_gui(self._gui, img_scn_wdgt_fillout_dict[curr_text])
         logging.debug(f"Image scan preset configuration chosen: '{curr_text}'")
 
     def cycle_through_image_scans(self, dir: str) -> None:
@@ -623,7 +626,7 @@ class MainWin:
     def save_current_image(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
 
         with suppress(AttributeError):
             file_dict = self._app.last_image_scans[self._app.curr_img_idx]
@@ -663,7 +666,7 @@ class MainWin:
             },
         }
 
-        wdgts.SOL_MEAS_COLL.obj_to_gui(self._app, sol_meas_wdgt_fillout_dict[curr_text])
+        wdgts.SOL_MEAS_COLL.obj_to_gui(self._gui, sol_meas_wdgt_fillout_dict[curr_text])
         logging.debug(f"Solution measurement preset configuration chosen: '{curr_text}'")
 
     ####################
@@ -673,7 +676,7 @@ class MainWin:
     def toggle_camera_dock(self, is_toggled_on: bool) -> None:
         """Doc."""
 
-        self._gui.cameraDock.setVisible(is_toggled_on)
+        self.main_gui.cameraDock.setVisible(is_toggled_on)
         if is_toggled_on:
             if self.cameras is None:
                 slider_const = 1e2
@@ -681,21 +684,21 @@ class MainWin:
                 for idx, camera in enumerate(self.cameras):
                     self.update_slider_range(cam_num=idx + 1)
                     [
-                        getattr(self._gui, f"{name}{idx+1}").setValue(val * slider_const)
+                        getattr(self.main_gui, f"{name}{idx+1}").setValue(val * slider_const)
                         for name, val in camera.DEFAULT_PARAM_DICT.items()
                     ]
-            self._gui.move(100, 30)
-            self._gui.setFixedSize(1661, 950)
+            self.main_gui.move(100, 30)
+            self.main_gui.setFixedSize(1661, 950)
         else:
-            self._gui.move(300, 30)
-            self._gui.setFixedSize(1211, 950)
+            self.main_gui.move(300, 30)
+            self.main_gui.setFixedSize(1211, 950)
             [
                 self.device_toggle(
                     f"camera_{cam_num}", "toggle_video", "is_in_video_mode", leave_off=True
                 )
                 for cam_num in (1, 2)
             ]
-        self._gui.setMaximumSize(int(1e5), int(1e5))
+        self.main_gui.setMaximumSize(int(1e5), int(1e5))
 
     def update_slider_range(self, cam_num: int) -> None:
         """Doc."""
@@ -708,7 +711,7 @@ class MainWin:
             # AttributeError - camera not properly initialized
             for name in ("pixel_clock", "framerate", "exposure"):
                 range = tuple(limit * slider_const for limit in getattr(camera, f"{name}_range"))
-                getattr(self._gui, f"{name}{cam_num}").setRange(*range)
+                getattr(self.main_gui, f"{name}{cam_num}").setRange(*range)
 
     def set_parameter(self, cam_num: int, param_name: str, value) -> None:
         """Doc."""
@@ -721,13 +724,13 @@ class MainWin:
         # convert from slider
         value /= slider_const
 
-        getattr(self._gui, f"{param_name}_val{cam_num}").setValue(value)
+        getattr(self.main_gui, f"{param_name}_val{cam_num}").setValue(value)
 
         camera = self.cameras[cam_num - 1]
         with suppress(DeviceError):
             # DeviceError - camera not properly initialized
             camera.set_parameters({param_name: value})
-            getattr(self._gui, f"autoExp{cam_num}").setChecked(False)
+            getattr(self.main_gui, f"autoExp{cam_num}").setChecked(False)
         self.update_slider_range(cam_num)
 
     def display_image(self, cam_num: int):
@@ -753,7 +756,7 @@ class MainWin:
         if not is_checked:
             parameter_names = ("pixel_clock", "framerate", "exposure")
             parameter_values = (
-                getattr(self._gui, f"{param_name}_val{cam_num}").value()
+                getattr(self.main_gui, f"{param_name}_val{cam_num}").value()
                 for param_name in parameter_names
             )
             param_dict = {name: value for name, value in zip(parameter_names, parameter_values)}
@@ -774,7 +777,7 @@ class MainWin:
 
         camera = self.cameras[cam_num - 1]
 
-        file_path = Path(self._app.gui.settings.camDataPath.text()) / Path(
+        file_path = Path(self._gui.settings.camDataPath.text()) / Path(
             f"cam{cam_num}_" + dt.now().strftime("%d%m%y_%H%M%S") + ".pkl"
         )
         file_utilities.save_object(
@@ -799,7 +802,7 @@ class MainWin:
         """Doc."""
 
         # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
 
         if DATA_IMPORT_COLL.is_image_type:
             DATA_IMPORT_COLL.import_stacked.set(0)
@@ -816,12 +819,12 @@ class MainWin:
         """Doc."""
 
         # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
 
         if type_ == "image":
-            save_path = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app).save_path
+            save_path = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui).save_path
         elif type_ == "solution":
-            save_path = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app).save_path
+            save_path = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui).save_path
         else:
             raise ValueError(
                 f"Data type '{type_}'' is not supported; use either 'image' or 'solution'."
@@ -843,12 +846,12 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
 
         if DATA_IMPORT_COLL.is_image_type:
-            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
+            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
         elif DATA_IMPORT_COLL.is_solution_type:
-            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
+            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -867,14 +870,14 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
         year = DATA_IMPORT_COLL.data_years.get()
         days_combobox = DATA_IMPORT_COLL.data_days.obj
 
         if DATA_IMPORT_COLL.is_image_type:
-            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
+            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
         elif DATA_IMPORT_COLL.is_solution_type:
-            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
+            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui)
         save_path = meas_sett.save_path
         sub_dir = meas_sett.sub_dir_name
 
@@ -1048,16 +1051,16 @@ class MainWin:
     def current_date_type_dir_path(self) -> Path:
         """Returns path to directory of currently selected date and measurement type"""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
 
         day = import_wdgts.data_days.get()
         year = import_wdgts.data_years.get()
         month = import_wdgts.data_months.get()
 
         if import_wdgts.is_image_type:
-            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
+            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
         elif import_wdgts.is_solution_type:
-            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
+            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui)
         save_path = Path(meas_settings.save_path)
         sub_dir = meas_settings.sub_dir_name
         return save_path / f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}" / sub_dir
@@ -1156,7 +1159,7 @@ class MainWin:
         if not template:
             return
 
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
         DATA_IMPORT_COLL.log_text.set("")  # clear first
 
         # get the log file path
@@ -1189,7 +1192,7 @@ class MainWin:
         if not template:
             return
 
-        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
 
         if data_import_wdgts.is_image_type:
             # import the data
@@ -1219,12 +1222,12 @@ class MainWin:
     def delete_all_processed_data(self) -> None:
         """Doc."""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
 
         if import_wdgts.is_image_type:
-            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app)
+            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
         elif import_wdgts.is_solution_type:
-            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app)
+            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui)
         save_path = Path(meas_settings.save_path)
 
         if processed_dir_paths := [
@@ -1242,23 +1245,23 @@ class MainWin:
             for dir_path in processed_dir_paths:
                 shutil.rmtree(dir_path, ignore_errors=True)
 
-            self._gui.solImportLoadProcessed.setEnabled(False)
+            self.main_gui.solImportLoadProcessed.setEnabled(False)
 
     def toggle_save_processed_enabled(self):
         """Doc."""
 
         with self.get_measurement_from_template() as measurement:
             if measurement is None:
-                self._gui.solImportSaveProcessed.setEnabled(False)
+                self.main_gui.solImportSaveProcessed.setEnabled(False)
             else:
-                self._gui.solImportSaveProcessed.setEnabled(True)
+                self.main_gui.solImportSaveProcessed.setEnabled(True)
 
     def toggle_load_processed_enabled(self, current_template: str):
         """Doc."""
 
         curr_dir = self.current_date_type_dir_path()
         file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
-        self._gui.solImportLoadProcessed.setEnabled(file_path.is_file())
+        self.main_gui.solImportLoadProcessed.setEnabled(file_path.is_file())
 
     def convert_files_to_matlab_format(self) -> None:
         """
@@ -1300,7 +1303,7 @@ class MainWin:
     def import_sol_data(self, should_load_processed=False) -> None:
         """Doc."""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
         current_template = import_wdgts.data_templates.get()
         curr_dir = self.current_date_type_dir_path()
 
@@ -1383,7 +1386,7 @@ class MainWin:
         """Doc."""
 
         loading_options = dict()
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
 
         # file selection
         if import_wdgts.sol_file_dicrimination.objectName() == "solImportUse":
@@ -1704,7 +1707,7 @@ class MainWin:
     def assign_measurement(self, meas_type: str) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
         options_dict = self.get_processing_options_as_dict()
 
         if wdgt_coll.should_assign_loaded:
@@ -1725,8 +1728,8 @@ class MainWin:
     def load_experiment(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
-        data_import_wdgt_coll = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
+        data_import_wdgt_coll = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
 
         if not (experiment_name := wdgt_coll.experiment_name.get()):
             logging.info("Can't load unnamed experiment!")
@@ -1815,7 +1818,7 @@ class MainWin:
     def calibrate_tdc(self, **kwargs) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
 
         display_kwargs = dict(gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True), fontsize=10)
         experiment = self.get_experiment()
@@ -1837,7 +1840,7 @@ class MainWin:
 
                 # display parameters in GUI
                 wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
-                calib_pulse_delay_ns = self._app.gui.settings.laserPulsePropTime.value()
+                calib_pulse_delay_ns = self._gui.settings.laserPulsePropTime.value()
                 calc_pulse_delay_ns = lt_params.laser_pulse_delay_ns
                 if abs(calc_pulse_delay_ns - calib_pulse_delay_ns) / calc_pulse_delay_ns > 0.1:
                     logging.info(
@@ -1851,7 +1854,7 @@ class MainWin:
     def assign_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
 
         gate_lt = wdgt_coll.custom_gate_to_assign_lt.get()
 
@@ -1870,7 +1873,7 @@ class MainWin:
     def remove_assigned_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
         wdgt = wdgt_coll.assigned_gates
         gate_to_remove = wdgt.get()
         # delete from GUI
@@ -1880,7 +1883,7 @@ class MainWin:
     def gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
 
         gates_combobox = wdgt_coll.assigned_gates.obj
         gate_list = [
@@ -1906,7 +1909,7 @@ class MainWin:
     def remove_available_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
         wdgt = wdgt_coll.available_gates
         gate_to_remove = wdgt.get()
         # delete from object
@@ -1933,7 +1936,7 @@ class MainWin:
     def calculate_structure_factors(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._app)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
         experiment = self.get_experiment()
         try:
             experiment.calculate_structure_factors(
@@ -1948,20 +1951,23 @@ class MainWin:
 class SettWin:
     """Doc."""
 
-    def __init__(self, gui, app):
+    def __init__(self, settings_gui, app):
         """Doc."""
 
         self._app = app
-        self._gui = gui
+        self._gui = app.gui
+        self.settings_gui = settings_gui
         self.check_on_close = True
 
     def clean_up(self):
         """Doc."""
 
         if self.check_on_close is True:
-            curr_file_path = self._gui.settingsFileName.text()
+            curr_file_path = self.settings_gui.settingsFileName.text()
 
-            current_state = set(wdgts.wdgt_items_to_text_lines(self._gui, wdgts.SETTINGS_TYPES))
+            current_state = set(
+                wdgts.wdgt_items_to_text_lines(self.settings_gui, wdgts.SETTINGS_TYPES)
+            )
             last_loaded_state = set(helper.file_to_list(curr_file_path))
 
             if not len(current_state) == len(last_loaded_state):
@@ -1978,7 +1984,7 @@ class SettWin:
                     "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
                 ).display()
                 if pressed == dialog.NO:
-                    self.load(self._gui.settingsFileName.text())
+                    self.load(self.settings_gui.settingsFileName.text())
 
         else:
             dialog.Notification("Using Current settings.").display()
@@ -1991,13 +1997,13 @@ class SettWin:
         """
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self._gui,
+            self.settings_gui,
             "Save Settings",
             str(self._app.SETTINGS_DIR_PATH),
         )
         if file_path != "":
-            self._gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
-            wdgts.write_gui_to_file(self._gui.frame, wdgts.SETTINGS_TYPES, file_path)
+            self.settings_gui.frame.findChild(QWidget, "settingsFileName").setText(file_path)
+            wdgts.write_gui_to_file(self.settings_gui.frame, wdgts.SETTINGS_TYPES, file_path)
             logging.debug(f"Settings file saved as: '{file_path}'")
 
     def load(self, file_path=""):
@@ -2009,13 +2015,13 @@ class SettWin:
 
         if not file_path:
             file_path, _ = QFileDialog.getOpenFileName(
-                self._gui,
+                self.settings_gui,
                 "Load Settings",
                 str(self._app.SETTINGS_DIR_PATH),
             )
         if file_path != "":
-            self._gui.frame.findChild(QWidget, "settingsFileName").setText(str(file_path))
-            wdgts.read_file_to_gui(file_path, self._gui.frame)
+            self.settings_gui.frame.findChild(QWidget, "settingsFileName").setText(str(file_path))
+            wdgts.read_file_to_gui(file_path, self.settings_gui.frame)
             logging.debug(f"Settings file loaded: '{file_path}'")
 
     def get_all_device_details(self):
@@ -2046,28 +2052,29 @@ class SettWin:
             info_dict = ftd2xx.getDeviceInfoDetail(devnum=idx)
             dvc_list.append(info_dict["description"].decode("utf-8"))
 
-        self._gui.deviceDetails.setText("\n".join(dvc_list))
+        self.settings_gui.deviceDetails.setText("\n".join(dvc_list))
 
 
 class ProcessingOptionsWindow:
     """Doc."""
 
-    def __init__(self, gui, app):
+    def __init__(self, processing_gui, app):
         """Doc."""
 
         self._app = app
-        self._gui = gui
+        self._gui = app.gui
+        self.processing_gui = processing_gui
 
     def save(self) -> None:
         """Save default options"""
 
         file_path = self._app.PROCESSING_OPTIONS_DIR_PATH / "default"
-        wdgts.write_gui_to_file(self._gui.frame, wdgts.SETTINGS_TYPES, file_path)
+        wdgts.write_gui_to_file(self.processing_gui.frame, wdgts.SETTINGS_TYPES, file_path)
         logging.debug(f"Processing options file saved as: '{file_path}'")
 
     def load(self):
         """Load default options"""
 
         file_path = self._app.PROCESSING_OPTIONS_DIR_PATH / "default"
-        wdgts.read_file_to_gui(file_path, self._gui.frame)
+        wdgts.read_file_to_gui(file_path, self.processing_gui.frame)
         logging.debug(f"Processing options file loaded: '{file_path}'")
