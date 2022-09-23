@@ -158,7 +158,7 @@ class NIDAQmx:
     CONT_READ_BFFR_SZ = int(1e5)
     AO_TIMEOUT = 0.1
 
-    def __init__(self, param_dict, task_types, **kwargs):
+    def __init__(self, param_dict, task_types):
         [setattr(self, key, val) for key, val in param_dict.items()]
         self.task_types = task_types
         self.tasks = SimpleNamespace(**{type: [] for type in task_types})

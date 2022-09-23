@@ -59,11 +59,11 @@ class QtWidgetCollection:
         for key, val in kwargs.items():
             setattr(self, key, QtWidgetAccess(*val))
 
-    def hold_widgets(self, app) -> QtWidgetCollection:
+    def hold_widgets(self, gui) -> QtWidgetCollection:
         """Stores the actual GUI object in all widgets (for which does_hold_obj is True)."""
 
         for wdgt_access in vars(self).values():
-            parent_gui = getattr(app.gui, wdgt_access.gui_parent_name)
+            parent_gui = getattr(gui, wdgt_access.gui_parent_name)
             wdgt_access.hold_widget(parent_gui)
         return self
 
@@ -75,7 +75,7 @@ class QtWidgetCollection:
                 with suppress(AttributeError):
                     wdgt_access.obj.clear()
 
-    def obj_to_gui(self, app, obj) -> None:
+    def obj_to_gui(self, gui, obj) -> None:
         """
         Fill widget collection with values from namespace/dict/list, or a single value for all.
         if obj is a list, the values will be inserted in the order of vars(self).keys().
@@ -94,15 +94,15 @@ class QtWidgetCollection:
                     AttributeError
                 ):  # obj contains key with no matching wdgt in coll (should this pass silently?)
                     wdgt = getattr(self, attr_name)
-                    parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                    parent_gui = getattr(gui, wdgt.gui_parent_name)
                     if not isinstance(val, QtWidgetAccess):
                         wdgt.set(val, parent_gui)
         else:
             for wdgt in vars(self).values():
-                parent_gui = getattr(app.gui, wdgt.gui_parent_name)
+                parent_gui = getattr(gui, wdgt.gui_parent_name)
                 wdgt.set(obj, parent_gui)
 
-    def gui_to_obj(self, app_obj, out="namespace") -> Union[SimpleNamespace, Dict[str, Any]]:
+    def gui_to_obj(self, gui, out="namespace") -> Union[SimpleNamespace, Dict[str, Any]]:
         """
         Read values from QtWidgetAccess objects, which are the attributes of self and return a namespace.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
@@ -114,7 +114,7 @@ class QtWidgetCollection:
             if hasattr(wdgt, "obj"):
                 setattr(wdgt_val, attr_name, wdgt)
             else:
-                parent_gui = getattr(app_obj.gui, wdgt.gui_parent_name)
+                parent_gui = getattr(gui, wdgt.gui_parent_name)
                 setattr(wdgt_val, attr_name, wdgt.get(parent_gui))
 
         if out == "namespace":
