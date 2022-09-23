@@ -19,7 +19,6 @@ from matplotlib.patches import Ellipse
 from nidaqmx.errors import DaqError
 
 from gui.dialog import Error
-from gui.icons import icons
 from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
@@ -48,6 +47,8 @@ class BaseDevice:
     log_ref: str
 
     def __init__(self, attrs, app, **kwargs):
+
+        self.icon_dict = app.icon_dict
 
         param_dict = attrs.param_widgets.hold_widgets(app.gui).gui_to_obj(app.gui, "dict")
         param_dict["log_ref"] = attrs.log_ref
@@ -79,10 +80,6 @@ class BaseDevice:
             getattr(self, led_widget_name).set(led_icon)
             if has_switch:
                 self.switch_widget.set(switch_icon)
-
-        if not hasattr(self, "icon_dict"):
-            # get icons
-            self.icon_dict = icons.get_icon_paths()
 
         has_switch = hasattr(self, "switch_widget")
         if command == "on":
