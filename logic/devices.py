@@ -1421,20 +1421,3 @@ class Camera2(Camera):
 
     def __init__(self, app):
         super().__init__(self.attrs, app)
-
-
-DEVICE_NICK_CLASS_DICT = {
-    "exc_laser": ExcitationLaser,
-    "dep_shutter": Shutter,
-    "TDC": TDC,
-    "dep_laser": DepletionLaser,
-    "stage": StepperStage,
-    "UM232H": UM232H,
-    "camera_1": Camera1,
-    "camera_2": Camera2,
-    "photon_counter": PhotonCounter,
-    "pixel_clock": PixelClock,
-    "spad": FastGatedSPAD,
-    "delayer": PicoSecondDelayer,
-    "scanners": Scanners,
-}
