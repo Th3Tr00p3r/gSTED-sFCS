@@ -52,13 +52,6 @@ class MainWin:
 
         self._app.exit_app(event)
 
-    def restart(self) -> None:
-        """Restart all devices (except camera) and the timeout loop."""
-
-        pressed = dialog.Question(txt="Are you sure?", title="Restarting Application").display()
-        if pressed == dialog.YES:
-            self._app.loop.create_task(self._app.clean_up_app(restart=True))
-
     def save(self) -> None:
         """Doc."""
 
@@ -157,28 +150,24 @@ class MainWin:
         """Doc."""
 
         led_name_to_nick_dict = {
-            "ledExc": "exc_laser",
-            "ledTdc": "TDC",
-            "ledDep": "dep_laser",
-            "ledShutter": "dep_shutter",
-            "ledStage": "stage",
-            "ledUm232h": "UM232H",
-            "ledScn": "scanners",
-            "ledCounter": "photon_counter",
-            "ledPxlClk": "pixel_clock",
-            "ledPSD": "delayer",
-            "ledSPAD": "spad",
-            "ledCam1": "camera_1",
-            "ledCam2": "camera_2",
+            helper.deep_getattr(dvc, "led_widget.obj_name"): nick
+            for nick, dvc in self._app.devices.__dict__.items()
         }
 
         dvc_nick = led_name_to_nick_dict[led_obj_name]
         error_dict = getattr(self._app.devices, dvc_nick).error_dict
         if error_dict is not None:
-            dialog.Error(
-                **error_dict,
-                custom_title=getattr(self._app.devices, dvc_nick).log_ref,
-            ).display()
+            # attempt to reconnect
+            setattr(
+                self._app.devices, dvc_nick, self._app.device_nick_class_dict[dvc_nick](self._app)
+            )
+            error_dict = getattr(self._app.devices, dvc_nick).error_dict
+            if error_dict is not None:
+                # show error dialog if reconnection fails
+                dialog.Error(
+                    **error_dict,
+                    custom_title=getattr(self._app.devices, dvc_nick).log_ref,
+                ).display()
 
     def dep_sett_apply(self):
         """Doc."""
