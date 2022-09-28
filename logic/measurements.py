@@ -15,7 +15,6 @@ import nidaqmx.constants as ni_consts
 import numpy as np
 
 from data_analysis.correlation_function import SolutionSFCSMeasurement
-from gui.icons import icons
 from logic.scan_patterns import ScanPatternAO
 from utilities import errors, file_utilities, fit_tools, helper
 
@@ -57,7 +56,7 @@ class MeasurementProcedure:
         self.save_path = save_path
         self.sub_dir_name = sub_dir_name
         self.prog_bar_wdgt = prog_bar_wdgt
-        self.icon_dict = icons.get_icon_paths()  # get icons
+        self.icon_dict = app.icon_dict  # get icons
         self.scan_params = scan_params
         self.um_v_ratio = self.scanners_dvc.um_v_ratio
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
