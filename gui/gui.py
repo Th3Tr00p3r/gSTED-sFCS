@@ -350,12 +350,6 @@ class MainWin(QtWidgets.QMainWindow):
         self.impl.close(event)
 
     @QtCore.pyqtSlot()
-    def on_actionRestart_triggered(self) -> None:
-        """Doc."""
-
-        self.impl.restart()
-
-    @QtCore.pyqtSlot()
     def on_actionLoadLoadout_triggered(self) -> None:
         """Doc."""
 

@@ -9074,7 +9074,6 @@ Experiment</string>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionRestart"/>
    <addaction name="actionSaveLoadout"/>
    <addaction name="actionLoadLoadout"/>
    <addaction name="actionSettings"/>
@@ -12996,21 +12995,6 @@ Gate Width (ns)</string>
     </layout>
    </widget>
   </widget>
-  <action name="actionRestart">
-   <property name="icon">
-    <iconset resource="icons/icons.qrc">
-     <normaloff>:/restart.png</normaloff>:/restart.png</iconset>
-   </property>
-   <property name="text">
-    <string>Restart Program</string>
-   </property>
-   <property name="toolTip">
-    <string>restart program</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+R</string>
-   </property>
-  </action>
   <action name="actionSettings">
    <property name="icon">
     <iconset resource="icons/icons.qrc">

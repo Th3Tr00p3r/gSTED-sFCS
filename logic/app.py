@@ -14,7 +14,21 @@ import gui.dialog as dialog
 import gui.gui
 import gui.widgets as wdgts
 from gui.icons import icons
-from logic.devices import DEVICE_NICK_CLASS_DICT
+from logic.devices import (
+    TDC,
+    UM232H,
+    Camera1,
+    Camera2,
+    DepletionLaser,
+    ExcitationLaser,
+    FastGatedSPAD,
+    PhotonCounter,
+    PicoSecondDelayer,
+    PixelClock,
+    Scanners,
+    Shutter,
+    StepperStage,
+)
 from logic.timeout import Timeout
 from utilities.errors import DeviceError
 
@@ -28,21 +42,21 @@ class App:
     DEFAULT_LOADOUT_FILE_PATH = LOADOUT_DIR_PATH / "default_loadout"
     DEFAULT_SETTINGS_FILE_PATH = SETTINGS_DIR_PATH / "default_settings"
     DEFAULT_LOG_PATH = Path("./log/")
-    DVC_NICKS = (
-        "exc_laser",
-        "dep_shutter",
-        "TDC",
-        "dep_laser",
-        "stage",
-        "UM232H",
-        "scanners",
-        "photon_counter",
-        "delayer",
-        "spad",
-        "pixel_clock",
-        "camera_1",
-        "camera_2",
-    )
+    device_nick_class_dict = {
+        "exc_laser": ExcitationLaser,
+        "dep_shutter": Shutter,
+        "TDC": TDC,
+        "dep_laser": DepletionLaser,
+        "stage": StepperStage,
+        "UM232H": UM232H,
+        "scanners": Scanners,
+        "photon_counter": PhotonCounter,
+        "delayer": PicoSecondDelayer,
+        "spad": FastGatedSPAD,
+        "pixel_clock": PixelClock,
+        "camera_1": Camera1,
+        "camera_2": Camera2,
+    }
 
     def __init__(self, loop):
         """Doc."""
@@ -163,8 +177,8 @@ class App:
         """
 
         self.devices = SimpleNamespace()
-        for nick in self.DVC_NICKS:
-            dvc_class = DEVICE_NICK_CLASS_DICT[nick]
+        for nick in self.device_nick_class_dict.keys():
+            dvc_class = self.device_nick_class_dict[nick]
             print(f"        Initializing {dvc_class.attrs.log_ref}...", end=" ")
             setattr(self.devices, nick, dvc_class(self))
             print("Done.")
@@ -194,13 +208,13 @@ class App:
                 self.devices.photon_counter.init_ci_buffer()
                 self.devices.photon_counter.start_tasks("ci")
 
-    async def clean_up_app(self, restart=False):
+    async def clean_up_app(self):
         """Doc."""
 
         def close_all_dvcs(app):
             """Doc."""
 
-            for nick in self.DVC_NICKS:
+            for nick in self.device_nick_class_dict.keys():
                 dvc = getattr(app.devices, nick)
                 with suppress(DeviceError):
                     dvc.close()
@@ -224,48 +238,20 @@ class App:
             wdgts.SWITCH_COLL.obj_to_gui(self, self.icon_dict["switch_off"])
             gui_wdgt.stageButtonsGroup.setEnabled(False)
 
-        if restart:
-            logging.info("Restarting application.")
+        # exiting
+        self.timeout_loop.not_finished = False
 
-            if self.meas.type is not None:
-                await self.gui.main.impl.toggle_meas(
-                    self.meas.type, self.meas.laser_mode.capitalize()
-                )
+        if self.meas.type is not None:
+            await self.gui.main.impl.toggle_meas(self.meas.type, self.meas.laser_mode.capitalize())
 
-            close_all_dvcs(self)
+        close_all_wins(self)
+        close_all_dvcs(self)
 
-            self.gui.main.deviceErrorDisplay.setText("")
+        # clear temp folder
+        shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True)  # TODO: make optional
 
-            self.timeout_loop.not_finished = False  # finish current timeout loop
-
-            lights_out(self.gui.main)
-            self.gui.main.depActualCurr.setValue(0)
-            self.gui.main.depActualPow.setValue(0)
-            self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
-
-            print("Initializing Devices:")
-            self.init_devices()
-            print("Done.")
-
-            # restart timeout loop
-            self.timeout_loop = Timeout(self)
-
-        else:  # exiting
-            self.timeout_loop.not_finished = False
-
-            if self.meas.type is not None:
-                await self.gui.main.impl.toggle_meas(
-                    self.meas.type, self.meas.laser_mode.capitalize()
-                )
-
-            close_all_wins(self)
-            close_all_dvcs(self)
-
-            # clear temp folder
-            shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True)  # TODO: make optional
-
-            logging.info("Quitting application.")
-            print("Application closed.")
+        logging.info("Quitting application.")
+        print("Application closed.")
 
     def exit_app(self, event):
         """Doc."""
