@@ -60,9 +60,6 @@ class BaseDevice:
         if attrs.synced_dvc_attrs:
             for attr_name, deep_attr in attrs.synced_dvc_attrs:
                 param_dict[attr_name] = deep_getattr(app, deep_attr)
-        #            param_dict["x_args"] = [
-        #                deep_getattr(app, deep_attr) for deep_attr in attrs.synced_dvc_attrs
-        #            ]
 
         self.error_dict = None
         super().__init__(param_dict, **kwargs)
@@ -1056,12 +1053,6 @@ class ExcitationLaser(SimpleDODevice):
 class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control depletion laser through pyVISA"""
 
-    update_interval_s = 0.3
-    MIN_SHG_TEMP = 53  # Celsius
-    OFF_TIMER_MIN = 5
-    power_limits_mW = Limits(99, 1000)
-    current_limits_mA = Limits(1500, 2500)
-
     attrs = DeviceAttrs(
         log_ref="Depletion Laser",
         led_color="orange",
@@ -1071,6 +1062,12 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             model_query=("depModelQuery", "QLineEdit", "settings", False),
         ),
     )
+
+    update_interval_s = 0.3
+    MIN_SHG_TEMP = 53  # Celsius
+    OFF_TIMER_MIN = 5
+    power_limits_mW = Limits(99, 1000)
+    current_limits_mA = Limits(1500, 2500)
 
     def __init__(self, app):
 
