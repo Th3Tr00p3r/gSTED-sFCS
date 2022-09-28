@@ -13,7 +13,6 @@ import yaml
 import gui.dialog as dialog
 import gui.gui
 import gui.widgets as wdgts
-from gui.icons import icons
 from logic.devices import (
     TDC,
     UM232H,
@@ -72,7 +71,7 @@ class App:
         )
 
         # get icons
-        self.icon_dict = icons.get_icon_paths()
+        self.icon_dict = gui.gui.get_icon_paths()
 
         # init windows
         print("Initializing GUI...", end=" ")

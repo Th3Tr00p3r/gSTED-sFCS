@@ -1,9 +1,11 @@
 """ GUI - signals and slots"""
 
+from pathlib import Path
+
 import PyQt5.uic
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtGui import QIcon
 
-# import gui.icons  # for initial icons loadout # NOQA
 import logic.slot_implementations as impl
 from utilities.display import GuiDisplay
 
@@ -11,6 +13,21 @@ try:
     from gui.icons import icons_rc  # for initial icons loadout # NOQA
 except ImportError:
     print("icons_rc.py was not found - icons will not initialize.", end=" ")
+
+ICONS_PATH = Path("./gui/icons")
+
+
+def get_icon_paths(dir_path: Path = ICONS_PATH, filetype="png"):
+    """Doc."""
+
+    icon_paths_dict = {}
+    icon_paths = dir_path.glob(f"*.{filetype}")
+    for icon_path in icon_paths:
+        *_, icon_fname = Path(icon_path).parts
+        icon_fname_no_extension = Path(icon_fname).stem
+        icon_paths_dict[icon_fname_no_extension] = f"{dir_path}/{icon_fname}"
+
+    return {key: QIcon(val) for key, val in icon_paths_dict.items()}
 
 
 class MainWin(QtWidgets.QMainWindow):
