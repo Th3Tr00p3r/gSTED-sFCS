@@ -9,7 +9,6 @@ from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
 from string import ascii_letters, digits
-from types import SimpleNamespace
 from typing import List, Tuple, Union
 
 import nidaqmx.constants as ni_consts
@@ -108,6 +107,13 @@ class BaseDevice:
                 f"{self.log_ref} switch is disabled due to device error. Press LED for details."
             )
 
+    def enable_switch(self) -> None:
+        """Disable the GUI switch for the device (used to avoid further errors)"""
+
+        with suppress(AttributeError):  # Device has no switch
+            self.switch_widget.obj.setEnabled(True)
+            self.switch_widget.obj.setToolTip(f"Toggle {self.log_ref}.")
+
 
 class SimpleDODevice(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     """ON/OFF NIDAQmx-controlled device (excitation laser, depletion shutter, TDC)."""
@@ -200,7 +206,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
             self.gate_ns = None
             self.is_paused = False  # used when ceding control to MPD interface
-            self.settings = SimpleNamespace()
+            self.settings = {}
 
     def close(self):
         """Doc."""
@@ -241,12 +247,12 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
                 # set attributes based on 'stats_dict'
                 self.is_on = bool(stats_dict["is_on"])
-                self.settings.mode = "free running" if stats_dict["mode"] == 1 else "external"
-                self.settings.input_thresh_mv = stats_dict["input_thresh_mv"]
-                self.settings.pulse_edge = "falling" if stats_dict["mode"] == 1 else "rising"
-                self.settings.gate_freq_mhz = stats_dict["gate_freq_hz"] * 1e-6
-                self.settings.gate_width_ns = stats_dict["gate_width_ps"] * 1e-3
-                self.settings.temperature_c = stats_dict["temperature"] / 10 - 273
+                self.settings["mode"] = "free running" if stats_dict["mode"] == 1 else "external"
+                self.settings["input_thresh_mv"] = stats_dict["input_thresh_mv"]
+                self.settings["pulse_edge"] = "falling" if stats_dict["mode"] == 1 else "rising"
+                self.settings["gate_freq_mhz"] = stats_dict["gate_freq_hz"] * 1e-6
+                self.settings["gate_width_ns"] = stats_dict["gate_width_ps"] * 1e-3
+                self.settings["temperature_c"] = stats_dict["temperature"] / 10 - 273
 
                 # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
                 # and using said fits to estimate the actual setting (returned values are module-specific)
@@ -254,7 +260,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                     _, response_name_flipped = attr_name[::-1].split("_", maxsplit=1)
                     response_name = response_name_flipped[::-1]
                     calc_value = round(linear_fit(stats_dict[response_name], *beta))
-                    setattr(self.settings, attr_name, calc_value)
+                    self.settings[attr_name] = calc_value
 
                 # raise error if one is encountered in the responses (else will raise KeyError and be suppressed
                 raise DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
@@ -323,12 +329,11 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         try:
             self.open_instrument()
         except IOError as exc:
+            #            self.reset_port()
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.purge(True)
-            self.settings = SimpleNamespace(
-                sync_delay_ns=self.sync_delay_ns,
-            )
+            self.settings = dict(sync_delay_ns=self.sync_delay_ns)
             try:
                 response, command = self.mpd_command(
                     [
@@ -341,14 +346,19 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 )
                 *_, delay_str, pulsewidth_str = response
             except ValueError as exc:
+                self.close_instrument()
                 exc = IOError(
                     f"{self.log_ref} did not respond to initialization commands ('{command}') [{exc}]"
                 )
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
                 self.effective_delay_ns = 0
+            except IOError as exc:
+                self.close_instrument()
+                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+                self.effective_delay_ns = 0
             else:
-                self.settings.delay_ps = int(delay_str)
-                self.settings.pulsewidth_ns = int(pulsewidth_str)
+                self.settings["delay_ps"] = int(delay_str)
+                self.settings["pulsewidth_ns"] = int(pulsewidth_str)
 
         self.is_on = False
 
@@ -382,26 +392,29 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
         """
 
-        req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
+        try:
+            req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
 
-        # ensure pulsewidth step doesn't go past 'req_delay_ns' by subtracting 5 ns (steps are 3 or 4 ns)
-        # yet stays close so all relevant gates are still reachable with the PSD delay (up to ~50 ns)
-        req_pulsewidth_ns = round((req_total_delay_ns - 5))
-        response, _ = self.mpd_command((f"SP{req_pulsewidth_ns}", self.pulsewidth_limits_ns))
-        pulsewidth_ns = int(response)
+            # ensure pulsewidth step doesn't go past 'req_delay_ns' by subtracting 5 ns (steps are 3 or 4 ns)
+            # yet stays close so all relevant gates are still reachable with the PSD delay (up to ~50 ns)
+            req_pulsewidth_ns = round((req_total_delay_ns - 5))
+            response, _ = self.mpd_command((f"SP{req_pulsewidth_ns}", self.pulsewidth_limits_ns))
+            pulsewidth_ns = int(response)
 
-        req_psd_delay_ps = round((req_total_delay_ns - pulsewidth_ns) * 1e3)
-        response, _ = self.mpd_command((f"SD{req_psd_delay_ps}", self.psd_delay_limits_ps))
-        psd_delay_ps = int(response)
+            req_psd_delay_ps = round((req_total_delay_ns - pulsewidth_ns) * 1e3)
+            response, _ = self.mpd_command((f"SD{req_psd_delay_ps}", self.psd_delay_limits_ps))
+            psd_delay_ps = int(response)
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            effective_delay_ns = pulsewidth_ns + psd_delay_ps * 1e-3
 
-        effective_delay_ns = pulsewidth_ns + psd_delay_ps * 1e-3
+            self.settings["pulsewidth_ns"] = pulsewidth_ns
+            self.settings["psd_delay_ns"] = psd_delay_ps * 1e-3
+            self.settings["effective_delay_ns"] = effective_delay_ns
 
-        self.settings.pulsewidth_ns = pulsewidth_ns
-        self.settings.psd_delay_ns = psd_delay_ps * 1e-3
-        self.settings.effective_delay_ns = effective_delay_ns
-
-        # Show delay in GUI
-        self.eff_delay_wdgt.set(effective_delay_ns)
+            # Show delay in GUI
+            self.eff_delay_wdgt.set(effective_delay_ns)
 
 
 class TDC(SimpleDODevice):

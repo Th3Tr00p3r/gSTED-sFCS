@@ -122,9 +122,9 @@ class Timeout:
             if not self.cntr_dvc.error_dict:
                 if meas.is_running and meas.scanning:
                     if meas.type == "SFCSSolution":
-                        rate = meas.scan_params.ao_sampling_freq_hz
+                        rate = meas.scan_params["ao_sampling_freq_hz"]
                     elif meas.type == "SFCSImage":
-                        rate = meas.scan_params.line_freq_hz * meas.scan_params.ppl
+                        rate = meas.scan_params["line_freq_hz"] * meas.scan_params["ppl"]
                 else:
                     # no scanning measurement running
                     rate = None
