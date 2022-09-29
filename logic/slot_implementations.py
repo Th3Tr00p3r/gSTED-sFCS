@@ -10,7 +10,6 @@ from collections import namedtuple
 from contextlib import contextmanager, suppress
 from datetime import datetime as dt
 from pathlib import Path
-from types import SimpleNamespace
 from typing import List, Tuple, cast
 
 import ftd2xx
@@ -116,7 +115,9 @@ class MainWin:
                             if nick == "stage":
                                 self.main_gui.stageButtonsGroup.setEnabled(True)
                             if nick == "delayer":
-                                self._app.devices.spad.toggle_mode("external")
+                                with suppress(DeviceError):
+                                    # TODO: try to move this inside device (add widgets to device)
+                                    self._app.devices.spad.toggle_mode("external")
                             was_toggled = True
 
                 # switch OFF
@@ -133,8 +134,9 @@ class MainWin:
                             self.main_gui.stageButtonsGroup.setEnabled(False)
 
                         if nick == "delayer":
-                            # TODO: try to move this inside device (add widgets to device)
-                            self._app.devices.spad.toggle_mode("free running")
+                            with suppress(DeviceError):
+                                # TODO: try to move this inside device (add widgets to device)
+                                self._app.devices.spad.toggle_mode("free running")
 
                         if nick == "dep_laser":
                             # TODO: try to move this inside device (add widgets to device)
@@ -155,19 +157,26 @@ class MainWin:
         }
 
         dvc_nick = led_name_to_nick_dict[led_obj_name]
-        error_dict = getattr(self._app.devices, dvc_nick).error_dict
+        dvc = getattr(self._app.devices, dvc_nick)
+        error_dict = dvc.error_dict
         if error_dict is not None:
             # attempt to reconnect
+            with suppress(DeviceError):
+                dvc.close()
             setattr(
                 self._app.devices, dvc_nick, self._app.device_nick_class_dict[dvc_nick](self._app)
             )
-            error_dict = getattr(self._app.devices, dvc_nick).error_dict
+            dvc = getattr(self._app.devices, dvc_nick)
+            error_dict = dvc.error_dict
             if error_dict is not None:
                 # show error dialog if reconnection fails
                 dialog.Error(
                     **error_dict,
-                    custom_title=getattr(self._app.devices, dvc_nick).log_ref,
+                    custom_title=dvc.log_ref,
                 ).display()
+            else:
+                dvc.change_icons("off")
+                dvc.enable_switch()
 
     def dep_sett_apply(self):
         """Doc."""
@@ -320,7 +329,7 @@ class MainWin:
                     elif pattern == "circle":
                         scan_params = wdgts.SOL_CIRC_SCAN_COLL.gui_to_dict(self._gui)
                     elif pattern == "static":
-                        scan_params = SimpleNamespace()
+                        scan_params = {}
 
                     scan_params["pattern"] = pattern
 
@@ -769,12 +778,13 @@ class MainWin:
         file_path = Path(self._gui.settings.camDataPath.text()) / Path(
             f"cam{cam_num}_" + dt.now().strftime("%d%m%y_%H%M%S") + ".pkl"
         )
-        file_utilities.save_object(
-            camera.last_snapshot,
-            file_path,
-            compression_method="gzip",
-            obj_name=f"cam{cam_num}_image",
-        )
+        with suppress(AttributeError):
+            file_utilities.save_object(
+                camera.last_snapshot,
+                file_path,
+                compression_method="gzip",
+                obj_name=f"cam{cam_num}_image",
+            )
 
     def get_gaussian_diameter(self, cam_num: int, is_checked: bool):
         """Returns the Gaussian FWHM diameter (mm) of a beam image"""

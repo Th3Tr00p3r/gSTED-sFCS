@@ -76,6 +76,7 @@ class App:
         # init windows
         print("Initializing GUI...", end=" ")
         self.gui = SimpleNamespace()
+        # TODO: widget collections from widget module should be part of the gui objects somehow - it's weird that they need to be supplied the gui object to read it - it should be a class method
         self.gui.main = gui.gui.MainWin(self)
         self.gui.settings = gui.gui.SettWin(self)
         self.gui.options = gui.gui.ProcessingOptionsWindow(self)
