@@ -94,7 +94,9 @@ class MeasurementProcedure:
                     self._app.gui.main.impl.go_to_origin()
                     type_ = "solution"
                 elif self.type == "SFCSImage":
-                    self._app.gui.main.impl.move_scanners(destination=self.scan_params.initial_ao)
+                    self._app.gui.main.impl.move_scanners(
+                        destination=self.scan_params["initial_ao"]
+                    )
                     type_ = "image"
 
             # TODO: make this more readable - the idea is that static measurements are also of type_ "solution"
@@ -108,6 +110,7 @@ class MeasurementProcedure:
         self.prog_bar_wdgt.set(0)
         self._app.gui.main.impl.populate_all_data_dates(type_)  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
+        self.type = None
 
     async def record_data(self, start_time: float, timed: bool = False, size_limited: bool = False):
         """
@@ -267,7 +270,7 @@ class MeasurementProcedure:
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
-            type=self.scan_params.plane_orientation,
+            type=self.scan_params["plane_orientation"],
             samp_clk_cnfg_xy={
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ao_sample_mode,
@@ -333,12 +336,12 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         self.image_method = kwargs["image_method"]
         self.scan_type = "image"
         self.scanning = True
-        self.scan_params.initial_ao = tuple(
+        self.scan_params["initial_ao"] = tuple(
             getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz"
         )
 
     def build_filename(self) -> str:
-        return f"{self.file_template}_{self.laser_mode}_{self.scan_params.plane_orientation}_{dt.now().strftime('%H%M%S')}"
+        return f"{self.file_template}_{self.laser_mode}_{self.scan_params['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
 
     def setup_scan(self):
         """Doc."""
@@ -361,41 +364,43 @@ class ImageMeasurementProcedure(MeasurementProcedure):
                 return helper.div_ceil(ppl, 2) * 2
 
         # fix line freq, pxl clk low ticks, and ppl
-        self.scan_params.line_freq_hz, clk_div = sync_line_freq(
-            self.scan_params.line_freq_hz,
-            self.scan_params.ppl,
+        self.scan_params["line_freq_hz"], clk_div = sync_line_freq(
+            self.scan_params["line_freq_hz"],
+            self.scan_params["ppl"],
             self.pxl_clk_dvc.freq_MHz * 1e6,
         )
         self.pxl_clk_dvc.low_ticks = clk_div - 2
         self.ppl = fix_ppl(
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
-            self.scan_params.line_freq_hz,
-            self.scan_params.ppl,
+            self.scan_params["line_freq_hz"],
+            self.scan_params["ppl"],
         )
         # create ao_buffer
         self.ao_buffer, self.scan_params = ScanPatternAO(
             "image",
             self.um_v_ratio,
-            self.scan_params.initial_ao,
+            self.scan_params["initial_ao"],
             self.scan_params,
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
-        self.est_plane_duration = self.n_ao_samps * self.scan_params.dt
-        self.est_total_duration_s = self.est_plane_duration * len(self.scan_params.set_pnts_planes)
-        self.plane_choice.obj.setMaximum(len(self.scan_params.set_pnts_planes) - 1)
+        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params["dt"] - 1.5e-7))
+        self.est_plane_duration = self.n_ao_samps * self.scan_params["dt"]
+        self.est_total_duration_s = self.est_plane_duration * len(
+            self.scan_params["set_pnts_planes"]
+        )
+        self.plane_choice.obj.setMaximum(len(self.scan_params["set_pnts_planes"]) - 1)
 
     def change_plane(self, plane_idx):
         """Doc."""
 
         for axis in "XYZ":
-            if axis not in self.scan_params.plane_orientation:
+            if axis not in self.scan_params["plane_orientation"]:
                 plane_axis = axis
                 break
 
         self.scanners_dvc.start_write_task(
-            ao_data=[[self.scan_params.set_pnts_planes[plane_idx]]],
+            ao_data=[[self.scan_params["set_pnts_planes"][plane_idx]]],
             type=plane_axis,
         )
 
@@ -424,20 +429,20 @@ class ImageMeasurementProcedure(MeasurementProcedure):
                 "version": self.tdc_dvc.tdc_vrsn,
             },
             "scan_settings": {
-                "set_pnts_lines_odd": self.scan_params.set_pnts_lines_odd,
-                "set_pnts_planes": self.scan_params.set_pnts_planes,
-                "dim1_um": self.scan_params.dim1_um,
-                "dim2_um": self.scan_params.dim2_um,
-                "dim3_um": self.scan_params.dim3_um,
-                "dim_order": self.scan_params.dim_order,
-                "n_lines": self.scan_params.n_lines,
-                "n_planes": self.scan_params.n_planes,
-                "line_freq_hz": self.scan_params.line_freq_hz,
-                "ppl": self.scan_params.ppl,
-                "plane_orientation": self.scan_params.plane_orientation,
-                "initial_ao": self.scan_params.initial_ao,
+                "set_pnts_lines_odd": self.scan_params["set_pnts_lines_odd"],
+                "set_pnts_planes": self.scan_params["set_pnts_planes"],
+                "dim1_um": self.scan_params["dim1_um"],
+                "dim2_um": self.scan_params["dim2_um"],
+                "dim3_um": self.scan_params["dim3_um"],
+                "dim_order": self.scan_params["dim_order"],
+                "n_lines": self.scan_params["n_lines"],
+                "n_planes": self.scan_params["n_planes"],
+                "line_freq_hz": self.scan_params["line_freq_hz"],
+                "ppl": self.scan_params["ppl"],
+                "plane_orientation": self.scan_params["plane_orientation"],
+                "initial_ao": self.scan_params["initial_ao"],
                 "what_stage": "Galvanometers",
-                "linear_frac": self.scan_params.linear_fraction,
+                "linear_frac": self.scan_params["linear_fraction"],
             },
         }
 
@@ -456,12 +461,11 @@ class ImageMeasurementProcedure(MeasurementProcedure):
 
         except (MeasurementError, errors.DeviceError) as exc:
             await self.stop()
-            self.type = None
             errors.err_hndlr(exc, sys._getframe(), locals())
             return
 
         else:
-            n_planes = self.scan_params.n_planes
+            n_planes = self.scan_params["n_planes"]
             self.plane_data = []
             self.start_time = time.perf_counter()
             self.time_passed_s = 0
@@ -512,16 +516,14 @@ class ImageMeasurementProcedure(MeasurementProcedure):
                 self.save_data(data_dict, self.build_filename())
             self.keep_last_meas(data_dict)
             # show middle plane
-            mid_plane = int(len(self.scan_params.set_pnts_planes) / 2)
+            mid_plane = int(len(self.scan_params["set_pnts_planes"]) / 2)
             self.plane_shown.set(mid_plane)
             self.plane_choice.set(mid_plane)
-            should_display_autocross = self.scan_params.auto_cross and (self.laser_mode == "exc")
+            should_display_autocross = self.scan_params["auto_cross"] and (self.laser_mode == "exc")
             self._app.gui.main.impl.disp_plane_img(auto_cross=should_display_autocross)
 
         if self.is_running:  # if not manually before completion
             await self.stop()
-
-        self.type = None
 
 
 class SolutionMeasurementProcedure(MeasurementProcedure):
@@ -554,13 +556,13 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.fit_led = kwargs["fit_led"]
         self.processing_options = kwargs["processing_options"]
 
-        if self.scan_params.floating_z_amplitude_um != 0:
-            self.scan_params.plane_orientation = "XYZ"
+        if self.scan_params["floating_z_amplitude_um"] != 0:
+            self.scan_params["plane_orientation"] = "XYZ"
         else:
-            self.scan_params.plane_orientation = "XY"
+            self.scan_params["plane_orientation"] = "XY"
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
-        self.scanning = not (self.scan_params.pattern == "static")
+        self.scanning = not (self.scan_params["pattern"] == "static")
         self._app.gui.main.impl.go_to_origin("XY")
 
     def build_filename(self, file_no: int) -> str:
@@ -587,25 +589,25 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         """Doc."""
 
         # make sure divisablility, then sync pixel clock with ao sample clock
-        if (self.pxl_clk_dvc.freq_MHz * 1e6) % self.scan_params.ao_sampling_freq_hz != 0:
+        if (self.pxl_clk_dvc.freq_MHz * 1e6) % self.scan_params["ao_sampling_freq_hz"] != 0:
             raise ValueError(
-                f"Pixel clock ({self.pxl_clk_dvc.freq_MHz} Hz) and ao samplng ({self.scan_params.ao_sampling_freq_hz} Hz) frequencies aren't divisible."
+                f"Pixel clock ({self.pxl_clk_dvc.freq_MHz} Hz) and ao samplng ({self.scan_params['ao_sampling_freq_hz']} Hz) frequencies aren't divisible."
             )
         else:
             self.pxl_clk_dvc.low_ticks = (
-                int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params.ao_sampling_freq_hz) - 2
+                int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params["ao_sampling_freq_hz"]) - 2
             )
         # create ao_buffer
         curr_ao_v = tuple(getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz")
         self.ao_buffer, self.scan_params = ScanPatternAO(
-            self.scan_params.pattern,
+            self.scan_params["pattern"],
             self.um_v_ratio,
             curr_ao_v,
             self.scan_params,
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params.dt - 1.5e-7))
+        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params["dt"] - 1.5e-7))
 
     def disp_ACF(self):
         """Doc."""
@@ -672,44 +674,44 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
             "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
             "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
-            "detector_settings": self.spad_dvc.settings,
+            "detector_settings": getattr(self.spad_dvc, "settings", {}),
         }
 
         if self.delayer_dvc.is_on:
             full_data["delayer_settings"] = self.delayer_dvc.settings
-            full_data["detector_settings"].is_gated = True
+            full_data["detector_settings"]["is_gated"] = True
         else:
             full_data["delayer_settings"] = None
-            full_data["detector_settings"].is_gated = False
+            full_data["detector_settings"]["is_gated"] = False
 
         if self.scanning:
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
             full_data["scan_settings"] = dict(
-                pattern=self.scan_params.pattern,
+                pattern=self.scan_params["pattern"],
                 ai=np.array(self.scanners_dvc.ai_buffer, dtype=np.float32),
                 ao=self.ao_buffer.T,
-                speed_um_s=self.scan_params.eff_speed_um_s,
-                ao_sampling_freq_hz=self.scan_params.ao_sampling_freq_hz,
+                speed_um_s=self.scan_params["eff_speed_um_s"],
+                ao_sampling_freq_hz=self.scan_params["ao_sampling_freq_hz"],
             )
-            if self.scan_params.pattern == "circle":
+            if self.scan_params["pattern"] == "circle":
                 full_data["scan_settings"].update(
-                    diameter_um=self.scan_params.diameter_um,
-                    n_circles=self.scan_params.n_circles,
+                    diameter_um=self.scan_params["diameter_um"],
+                    n_circles=self.scan_params["n_circles"],
                 )
-            elif self.scan_params.pattern == "angular":
+            elif self.scan_params["pattern"] == "angular":
                 full_data["scan_settings"].update(
-                    line_freq_hz=self.scan_params.line_freq_hz,
-                    samples_per_line=self.scan_params.samples_per_line,
-                    ppl=self.scan_params.ppl,
-                    n_lines=self.scan_params.n_lines,
-                    linear_len_um=self.scan_params.linear_len_um,
-                    max_line_length_um=self.scan_params.max_line_len_um,
-                    line_shift_um=self.scan_params.line_shift_um,
-                    angle_degrees=self.scan_params.angle_deg,
-                    linear_frac=self.scan_params.linear_fraction,
-                    linear_part=self.scan_params.linear_part,
-                    x_lim=self.scan_params.x_lim,
-                    y_lim=self.scan_params.y_lim,
+                    line_freq_hz=self.scan_params["line_freq_hz"],
+                    samples_per_line=self.scan_params["samples_per_line"],
+                    ppl=self.scan_params["ppl"],
+                    n_lines=self.scan_params["n_lines"],
+                    linear_len_um=self.scan_params["linear_len_um"],
+                    max_line_length_um=self.scan_params["max_line_len_um"],
+                    line_shift_um=self.scan_params["line_shift_um"],
+                    angle_degrees=self.scan_params["angle_deg"],
+                    linear_frac=self.scan_params["linear_fraction"],
+                    linear_part=self.scan_params["linear_part"],
+                    x_lim=self.scan_params["x_lim"],
+                    y_lim=self.scan_params["y_lim"],
                 )
 
         return {"full_data": full_data, "system_info": self.sys_info}
@@ -725,7 +727,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             await self.toggle_lasers()
         except (MeasurementError, errors.DeviceError) as exc:
             await self.stop()
-            self.type = None
             errors.err_hndlr(exc, sys._getframe(), locals())
             return
 
@@ -816,8 +817,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         if self.is_running:  # if not manually stopped
             await self.stop()
-
-        self.type = None
 
 
 class MeasurementError(Exception):

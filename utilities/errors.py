@@ -114,7 +114,14 @@ class DeviceCheckerMetaClass(type):
     with 'device_error_checker()'
     """
 
-    ignored_attributes = {"__init__", "__module__", "__doc__", "__qualname__", "__classcell__"}
+    ignored_attributes = {
+        "__init__",
+        "__module__",
+        "__doc__",
+        "__qualname__",
+        "__classcell__",
+        "close",
+    }
 
     def __new__(self, classname, bases, classDict):
         newClassDict = {}

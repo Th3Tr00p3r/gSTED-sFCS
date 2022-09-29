@@ -79,7 +79,9 @@ class Ftd2xx:
     def close_instrument(self) -> None:
         """Doc."""
 
-        self._inst.close()
+        with suppress(AttributeError):
+            self._inst.resetPort()
+            self._inst.close()
 
     def read(self) -> bytes:
         """Doc."""
@@ -118,7 +120,9 @@ class Ftd2xx:
         response = self.read().decode("utf-8").split(sep="#")
 
         if len(response) < len(command_list) - 1:
-            raise IOError(f"Got {len(response)} responses for {len(command_list)} commands...")
+            raise IOError(
+                f"Got {len(response)} responses for {len(command_list)} commands: {cmnd}..."
+            )
         # single commands
         if len(response) == 1 or (len(response) == 2 and response[-1] == ""):
             single_response = response[0]
@@ -141,9 +145,12 @@ class Ftd2xx:
     def purge(self, should_purge_write=False) -> None:
         """Doc."""
 
-        self._inst.purge(ftd2xx.defines.PURGE_RX)
-        if should_purge_write:
-            self._inst.purge(ftd2xx.defines.PURGE_TX)
+        try:
+            self._inst.purge(ftd2xx.defines.PURGE_RX)
+            if should_purge_write:
+                self._inst.purge(ftd2xx.defines.PURGE_TX)
+        except ftd2xx.ftd2xx.DeviceError as exc:
+            raise IOError(exc)
 
     def get_queue_status(self) -> None:
         """Doc."""
@@ -472,7 +479,7 @@ class Instrumental:
         """Doc."""
 
         try:
-            self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
+            self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="reuse")
             print(
                 f"(Instrumental SN: {self._inst._paramset['serial'].decode('utf-8')})...", end=" "
             )

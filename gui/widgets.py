@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import re
 from contextlib import suppress
-from types import SimpleNamespace
 from typing import Any, Dict, List, Tuple, Union
 
 import PyQt5.QtWidgets as QtWidgets
@@ -112,15 +111,15 @@ class QtWidgetCollection:
         QtWidgetAccess object itself instead of the value (for getting/setting live values).
         """
 
-        wdgt_val = SimpleNamespace()
+        wdgt_val = {}
         for attr_name, wdgt in vars(self).items():
             if hasattr(wdgt, "obj"):
-                setattr(wdgt_val, attr_name, wdgt)
+                wdgt_val[attr_name] = wdgt
             else:
                 parent_gui = getattr(gui, wdgt.gui_parent_name)
-                setattr(wdgt_val, attr_name, wdgt.get(parent_gui))
+                wdgt_val[attr_name] = wdgt.get(parent_gui)
 
-        return vars(wdgt_val).copy()
+        return wdgt_val
 
 
 def wdgt_items_to_text_lines(parent_wdgt, widget_types: list) -> List[str]:

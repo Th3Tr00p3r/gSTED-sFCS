@@ -608,16 +608,14 @@ class SolutionSFCSMeasurement:
             self.duration_min = full_data["duration_s"] / 60
 
         # Detector Gate (calibrated - actual gate can be inferred from TDC calibration and compared)
-        if self.delayer_settings is not None and getattr(self.detector_settings, "is_gated", False):
+        if self.delayer_settings is not None and self.detector_settings.get("is_gated", False):
             lower_detector_gate_ns = (
-                self.delayer_settings.effective_delay_ns - self.delayer_settings.sync_delay_ns
+                self.delayer_settings["effective_delay_ns"] - self.delayer_settings["sync_delay_ns"]
             )
         else:
             lower_detector_gate_ns = 0
-        if self.detector_settings is not None and getattr(
-            self.detector_settings, "is_gated", False
-        ):
-            self.gate_width_ns = self.detector_settings.gate_width_ns
+        if self.detector_settings is not None and self.detector_settings.get("is_gated", False):
+            self.gate_width_ns = self.detector_settings["gate_width_ns"]
             self.detector_gate_ns = Limits(
                 lower_detector_gate_ns, lower_detector_gate_ns + self.gate_width_ns
             )
