@@ -113,7 +113,7 @@ class App:
 
         # init scan patterns
         self.gui.main.impl.disp_scn_pttrn("image")
-        sol_pattern = wdgts.SOL_MEAS_COLL.gui_to_obj(self.gui).scan_type
+        sol_pattern = wdgts.SOL_MEAS_COLL.gui_to_dict(self.gui)["scan_type"]
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
 
         # init last images deque

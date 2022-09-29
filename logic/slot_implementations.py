@@ -11,7 +11,7 @@ from contextlib import contextmanager, suppress
 from datetime import datetime as dt
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List, Tuple
+from typing import List, Tuple, cast
 
 import ftd2xx
 import nidaqmx.system as nisys
@@ -316,17 +316,17 @@ class MainWin:
                 if meas_type == "SFCSSolution":
                     pattern = self.main_gui.solScanType.currentText()
                     if pattern == "angular":
-                        scan_params = wdgts.SOL_ANG_SCAN_COLL.gui_to_obj(self._gui)
+                        scan_params = wdgts.SOL_ANG_SCAN_COLL.gui_to_dict(self._gui)
                     elif pattern == "circle":
-                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.gui_to_obj(self._gui)
+                        scan_params = wdgts.SOL_CIRC_SCAN_COLL.gui_to_dict(self._gui)
                     elif pattern == "static":
                         scan_params = SimpleNamespace()
 
-                    scan_params.pattern = pattern
+                    scan_params["pattern"] = pattern
 
-                    kwargs = wdgts.SOL_MEAS_COLL.gui_to_obj(self._app, "dict")
+                    kwargs = wdgts.SOL_MEAS_COLL.gui_to_dict(self._app.gui)
 
-                    scan_params.floating_z_amplitude_um = kwargs["floating_z_amplitude_um"]
+                    scan_params["floating_z_amplitude_um"] = kwargs["floating_z_amplitude_um"]
 
                     self._app.meas = meas.SolutionMeasurementProcedure(
                         app=self._app,
@@ -349,11 +349,11 @@ class MainWin:
 
                 elif meas_type == "SFCSImage":
 
-                    kwargs = wdgts.IMG_MEAS_COLL.gui_to_obj(self._app, "dict")
+                    kwargs = wdgts.IMG_MEAS_COLL.gui_to_dict(self._app.gui)
 
                     self._app.meas = meas.ImageMeasurementProcedure(
                         app=self._app,
-                        scan_params=wdgts.IMG_SCAN_COLL.gui_to_obj(self._gui),
+                        scan_params=wdgts.IMG_SCAN_COLL.gui_to_dict(self._gui),
                         laser_mode=laser_mode.lower(),
                         **kwargs,
                     )
@@ -411,7 +411,7 @@ class MainWin:
             plt_wdgt = self.main_gui.solScanPattern
 
         if scan_params_coll:
-            scan_params = scan_params_coll.gui_to_obj(self._gui)
+            scan_params = scan_params_coll.gui_to_dict(self._gui)
 
             with suppress(AttributeError, ZeroDivisionError, ValueError):
                 # AttributeError - devices not yet initialized
@@ -556,8 +556,8 @@ class MainWin:
                 # .curr_img_idx not yet set
                 img_idx = 0
 
-        img_meas_wdgts = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
-        disp_mthd = img_meas_wdgts.image_method
+        img_meas_wdgts = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
+        disp_mthd = img_meas_wdgts["image_method"]
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
             image_tdc = ImageSFCSMeasurement()
@@ -569,11 +569,11 @@ class MainWin:
             image = image_data.get_image(method_dict[disp_mthd], plane_idx)
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
-            img_meas_wdgts.image_wdgt.obj.display_image(
+            img_meas_wdgts["image_wdgt"].obj.display_image(
                 image, cursor=True, imshow_kwargs=dict(cmap="bone")
             )
             if auto_cross and image.any():
-                img_meas_wdgts.image_wdgt.obj.axes[0].cursor.move_to_pos(
+                img_meas_wdgts["image_wdgt"].obj.axes[0].cursor.move_to_pos(
                     auto_crosshair_position(image)
                 )
 
@@ -615,12 +615,12 @@ class MainWin:
     def save_current_image(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
+        wdgt_coll = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
 
         with suppress(AttributeError):
             file_dict = self._app.last_image_scans[self._app.curr_img_idx]
-            file_name = f"{wdgt_coll.file_template}_{file_dict['laser_mode']}_{file_dict['scan_settings']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
-            today_dir = Path(wdgt_coll.save_path) / dt.now().strftime("%d_%m_%Y")
+            file_name = f"{wdgt_coll['file_template']}_{file_dict['laser_mode']}_{file_dict['scan_settings']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
+            today_dir = Path(wdgt_coll["save_path"]) / dt.now().strftime("%d_%m_%Y")
             dir_path = today_dir / "image"
             file_path = dir_path / (re.sub("\\s", "_", file_name) + ".pkl")
             file_utilities.save_object(
@@ -791,15 +791,15 @@ class MainWin:
         """Doc."""
 
         # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
 
-        if DATA_IMPORT_COLL.is_image_type:
-            DATA_IMPORT_COLL.import_stacked.set(0)
-            DATA_IMPORT_COLL.analysis_stacked.set(0)
+        if DATA_IMPORT_COLL["is_image_type"]:
+            DATA_IMPORT_COLL["import_stacked"].set(0)
+            DATA_IMPORT_COLL["analysis_stacked"].set(0)
             type_ = "image"
-        elif DATA_IMPORT_COLL.is_solution_type:
-            DATA_IMPORT_COLL.import_stacked.set(1)
-            DATA_IMPORT_COLL.analysis_stacked.set(1)
+        elif DATA_IMPORT_COLL["is_solution_type"]:
+            DATA_IMPORT_COLL["import_stacked"].set(1)
+            DATA_IMPORT_COLL["analysis_stacked"].set(1)
             type_ = "solution"
 
         self.populate_all_data_dates(type_)
@@ -808,12 +808,12 @@ class MainWin:
         """Doc."""
 
         # TODO: switch thses names e.g. DATA_IMPORT_COLL -> data_import_wdgts
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
 
         if type_ == "image":
-            save_path = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui).save_path
+            save_path = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)["save_path"]
         elif type_ == "solution":
-            save_path = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui).save_path
+            save_path = wdgts.SOL_MEAS_COLL.gui_to_dict(self._gui)["save_path"]
         else:
             raise ValueError(
                 f"Data type '{type_}'' is not supported; use either 'image' or 'solution'."
@@ -825,7 +825,7 @@ class MainWin:
             # no directories found... (dir_years is None or [])
             # FileNotFoundError - data directory deleted while app running!
             dir_years = helper.dir_date_parts(save_path, type_)
-            DATA_IMPORT_COLL.data_years.obj.addItems(dir_years)
+            DATA_IMPORT_COLL["data_years"].obj.addItems(dir_years)
 
     def populate_data_dates_from_year(self, year: str) -> None:
         """Doc."""
@@ -835,21 +835,21 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
 
-        if DATA_IMPORT_COLL.is_image_type:
-            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
-        elif DATA_IMPORT_COLL.is_solution_type:
-            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui)
-        save_path = meas_sett.save_path
-        sub_dir = meas_sett.sub_dir_name
+        if DATA_IMPORT_COLL["is_image_type"]:
+            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
+        elif DATA_IMPORT_COLL["is_solution_type"]:
+            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_dict(self._gui)
+        save_path = meas_sett["save_path"]
+        sub_dir = meas_sett["sub_dir_name"]
 
-        DATA_IMPORT_COLL.data_months.obj.clear()
+        DATA_IMPORT_COLL["data_months"].obj.clear()
 
         with suppress(TypeError, IndexError):
             # no directories found... (dir_years is None or [])
             dir_months = helper.dir_date_parts(save_path, sub_dir, year=year)
-            DATA_IMPORT_COLL.data_months.obj.addItems(dir_months)
+            DATA_IMPORT_COLL["data_months"].obj.addItems(dir_months)
 
     def populate_data_dates_from_month(self, month: str) -> None:
         """Doc."""
@@ -859,16 +859,16 @@ class MainWin:
             return
 
         # define widgets
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
-        year = DATA_IMPORT_COLL.data_years.get()
-        days_combobox = DATA_IMPORT_COLL.data_days.obj
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
+        year = DATA_IMPORT_COLL["data_years"].get()
+        days_combobox = DATA_IMPORT_COLL["data_days"].obj
 
-        if DATA_IMPORT_COLL.is_image_type:
-            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
-        elif DATA_IMPORT_COLL.is_solution_type:
-            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui)
-        save_path = meas_sett.save_path
-        sub_dir = meas_sett.sub_dir_name
+        if DATA_IMPORT_COLL["is_image_type"]:
+            meas_sett = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
+        elif DATA_IMPORT_COLL["is_solution_type"]:
+            meas_sett = wdgts.SOL_MEAS_COLL.gui_to_dict(self._gui)
+        save_path = meas_sett["save_path"]
+        sub_dir = meas_sett["sub_dir_name"]
 
         days_combobox.clear()
 
@@ -967,9 +967,9 @@ class MainWin:
         """Doc."""
 
         dir_path = self.current_date_type_dir_path()
-        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._app)
-        curr_template = data_import_wdgts.data_templates.get()
-        new_template_prefix = data_import_wdgts.new_template
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._app.gui)
+        curr_template = data_import_wdgts["data_templates"].get()
+        new_template_prefix = data_import_wdgts["new_template"]
 
         # cancel if no new prefix supplied
         if not new_template_prefix:
@@ -1034,24 +1034,24 @@ class MainWin:
             Path(current_log_filepath).rename(new_log_filepath)
 
         # refresh templates
-        day = data_import_wdgts.data_days
+        day = data_import_wdgts["data_days"]
         self.populate_data_templates_from_day(day)
 
     def current_date_type_dir_path(self) -> Path:
         """Returns path to directory of currently selected date and measurement type"""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
 
-        day = import_wdgts.data_days.get()
-        year = import_wdgts.data_years.get()
-        month = import_wdgts.data_months.get()
+        day = import_wdgts["data_days"].get()
+        year = import_wdgts["data_years"].get()
+        month = import_wdgts["data_months"].get()
 
-        if import_wdgts.is_image_type:
-            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
-        elif import_wdgts.is_solution_type:
-            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui)
-        save_path = Path(meas_settings.save_path)
-        sub_dir = meas_settings.sub_dir_name
+        if import_wdgts["is_image_type"]:
+            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
+        elif import_wdgts["is_solution_type"]:
+            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_dict(self._gui)
+        save_path = Path(meas_settings["save_path"])
+        sub_dir = meas_settings["sub_dir_name"]
         return save_path / f"{day.rjust(2, '0')}_{month.rjust(2, '0')}_{year}" / sub_dir
 
     def open_data_dir(self) -> None:
@@ -1067,8 +1067,8 @@ class MainWin:
         """Doc."""
 
         DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
-        text_lines = DATA_IMPORT_COLL.log_text.get().split("\n")
-        curr_template = DATA_IMPORT_COLL.data_templates.get()
+        text_lines = cast(str, DATA_IMPORT_COLL.log_text.get()).split("\n")
+        curr_template = cast(str, DATA_IMPORT_COLL.data_templates.get())
         log_filename = Path(curr_template).stem + ".log"
         with suppress(AttributeError, TypeError, FileNotFoundError):
             # no directories found
@@ -1148,13 +1148,13 @@ class MainWin:
         if not template:
             return
 
-        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
-        DATA_IMPORT_COLL.log_text.set("")  # clear first
+        DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
+        DATA_IMPORT_COLL["log_text"].set("")  # clear first
 
         # get the log file path
-        if DATA_IMPORT_COLL.is_solution_type:
+        if DATA_IMPORT_COLL["is_solution_type"]:
             log_filename = re.sub("_?\\*\\.\\w{3}", ".log", template)
-        elif DATA_IMPORT_COLL.is_image_type:
+        elif DATA_IMPORT_COLL["is_image_type"]:
             log_filename = re.sub("\\.\\w{3}", ".log", template)
         file_path = self.current_date_type_dir_path() / log_filename
 
@@ -1173,7 +1173,7 @@ class MainWin:
         finally:  # write file to widget
             with suppress(UnboundLocalError):
                 # UnboundLocalError
-                DATA_IMPORT_COLL.log_text.set("\n".join(text_lines))
+                DATA_IMPORT_COLL["log_text"].set("\n".join(text_lines))
 
     def preview_img_scan(self, template: str) -> None:
         """Doc."""
@@ -1181,9 +1181,9 @@ class MainWin:
         if not template:
             return
 
-        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
 
-        if data_import_wdgts.is_image_type:
+        if data_import_wdgts["is_image_type"]:
             # import the data
             try:
                 image_tdc = ImageSFCSMeasurement()
@@ -1194,7 +1194,7 @@ class MainWin:
             # get the center plane image, in "forward"
             image = image_tdc.image_data.get_image("forward")
             # plot it (below)
-            data_import_wdgts.img_preview_disp.obj.display_image(
+            data_import_wdgts["img_preview_disp"].obj.display_image(
                 image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
             )
 
@@ -1211,13 +1211,13 @@ class MainWin:
     def delete_all_processed_data(self) -> None:
         """Doc."""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
 
-        if import_wdgts.is_image_type:
-            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_obj(self._gui)
-        elif import_wdgts.is_solution_type:
-            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_obj(self._gui)
-        save_path = Path(meas_settings.save_path)
+        if import_wdgts["is_image_type"]:
+            meas_settings = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
+        elif import_wdgts["is_solution_type"]:
+            meas_settings = wdgts.SOL_MEAS_COLL.gui_to_dict(self._gui)
+        save_path = Path(meas_settings["save_path"])
 
         if processed_dir_paths := [
             item / "solution" / "processed"
@@ -1259,7 +1259,7 @@ class MainWin:
         """
 
         DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
-        current_template = DATA_IMPORT_COLL.data_templates.get()
+        current_template = cast(str, DATA_IMPORT_COLL.data_templates.get())
         current_dir_path = self.current_date_type_dir_path()
 
         if not current_template or current_template.endswith(".mat"):
@@ -1292,8 +1292,8 @@ class MainWin:
     def import_sol_data(self, should_load_processed=False) -> None:
         """Doc."""
 
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
-        current_template = import_wdgts.data_templates.get()
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
+        current_template = import_wdgts["data_templates"].get()
         curr_dir = self.current_date_type_dir_path()
 
         if self._app.analysis.loaded_measurements.get(current_template) is not None:
@@ -1304,7 +1304,7 @@ class MainWin:
 
             measurement = None
 
-            if should_load_processed or import_wdgts.auto_load_processed:
+            if should_load_processed or import_wdgts["auto_load_processed"]:
                 try:
                     file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
                     logging.info(f"Loading processed data '{current_template}' from hard drive...")
@@ -1318,7 +1318,7 @@ class MainWin:
                         f"Pre-processed measurement not found at: '{file_path}'. Processing data regularly."
                     )
             with suppress(AttributeError):  # TODO: delete button should be disabled!
-                if import_wdgts.should_re_correlate:
+                if import_wdgts["should_re_correlate"]:
                     options_dict = self.get_processing_options_as_dict()
                     # Inferring data_dype from template
                     data_type = self.infer_data_type_from_template(current_template)
@@ -1375,38 +1375,38 @@ class MainWin:
         """Doc."""
 
         loading_options = dict()
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
 
         # file selection
-        if import_wdgts.sol_file_dicrimination.objectName() == "solImportUse":
+        if import_wdgts["sol_file_dicrimination"].objectName() == "solImportUse":
             loading_options[
                 "file_selection"
-            ] = f"{import_wdgts.sol_file_use_or_dont} {import_wdgts.sol_file_selection}"
+            ] = f"{import_wdgts['sol_file_use_or_dont']} {import_wdgts['sol_file_selection']}"
         else:
             loading_options["file_selection"] = "Use All"
 
-        loading_options["should_fix_shift"] = import_wdgts.fix_shift
-        loading_options["roi_selection"] = "auto" if import_wdgts.should_auto_roi else "all"
-        loading_options["afterpulsing_method"] = import_wdgts.afterpulsing_method
-        loading_options["hist_norm_factor"] = import_wdgts.hist_norm_factor
-        loading_options["gating_mechanism"] = import_wdgts.gating_mechanism
-        loading_options["should_subtract_bg_corr"] = import_wdgts.should_subtract_bg_corr
-        loading_options["override_system_info"] = import_wdgts.override_system_info
+        loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
+        loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"
+        loading_options["afterpulsing_method"] = import_wdgts["afterpulsing_method"]
+        loading_options["hist_norm_factor"] = import_wdgts["hist_norm_factor"]
+        loading_options["gating_mechanism"] = import_wdgts["gating_mechanism"]
+        loading_options["should_subtract_bg_corr"] = import_wdgts["should_subtract_bg_corr"]
+        loading_options["override_system_info"] = import_wdgts["override_system_info"]
 
         return loading_options
 
     @contextmanager
     def get_measurement_from_template(
         self,
-        template: str = None,
+        template: str = "",
         should_load=False,
         does_modify_data: bool = False,
         **kwargs,
     ) -> SolutionSFCSMeasurement:
         """Doc."""
 
-        if template is None:
-            template = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.get()
+        if not template:
+            template = cast(str, wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.get())
         curr_data_type, *_ = re.split(" -", template)
         measurement = self._app.analysis.loaded_measurements.get(curr_data_type)
 
@@ -1441,29 +1441,29 @@ class MainWin:
     def populate_sol_meas_analysis(self, imported_template):
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_obj(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_dict(self._app.gui)
 
         with self.get_measurement_from_template(imported_template) as measurement:
             if measurement is None:
                 # no imported templates (deleted)
                 wdgts.SOL_MEAS_ANALYSIS_COLL.clear_all_objects()
-                sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, 1)
-                sol_data_analysis_wdgts.scan_img_file_num.set(1)
+                sol_data_analysis_wdgts["scan_img_file_num"].obj.setRange(1, 1)
+                sol_data_analysis_wdgts["scan_img_file_num"].set(1)
             else:
                 num_files = measurement.n_files
                 logging.debug("Populating analysis GUI...")
 
                 # populate general measurement properties
-                sol_data_analysis_wdgts.n_files.set(num_files)
-                sol_data_analysis_wdgts.scan_duration_min.set(measurement.duration_min)
-                sol_data_analysis_wdgts.avg_cnt_rate_khz.set(measurement.avg_cnt_rate_khz)
-                sol_data_analysis_wdgts.std_cnt_rate_khz.set(measurement.std_cnt_rate_khz)
+                sol_data_analysis_wdgts["n_files"].set(num_files)
+                sol_data_analysis_wdgts["scan_duration_min"].set(measurement.duration_min)
+                sol_data_analysis_wdgts["avg_cnt_rate_khz"].set(measurement.avg_cnt_rate_khz)
+                sol_data_analysis_wdgts["std_cnt_rate_khz"].set(measurement.std_cnt_rate_khz)
 
                 if measurement.scan_type == "circle":
                     # populate scan image tab
                     logging.debug("Displaying scan images...")
-                    sol_data_analysis_wdgts.scan_img_file_num.obj.setEnabled(False)
-                    sol_data_analysis_wdgts.scan_img_file_num.set(0)
+                    sol_data_analysis_wdgts["scan_img_file_num"].obj.setEnabled(False)
+                    sol_data_analysis_wdgts["scan_img_file_num"].set(0)
                     self.display_circular_scan_image(imported_template)
                     self.display_patterns(imported_template)
 
@@ -1482,9 +1482,9 @@ class MainWin:
                 if measurement.scan_type == "angular":
                     # populate scan images tab
                     logging.debug("Displaying scan images...")
-                    sol_data_analysis_wdgts.scan_img_file_num.obj.setEnabled(True)
-                    sol_data_analysis_wdgts.scan_img_file_num.obj.setRange(1, num_files)
-                    sol_data_analysis_wdgts.scan_img_file_num.set(1)
+                    sol_data_analysis_wdgts["scan_img_file_num"].obj.setEnabled(True)
+                    sol_data_analysis_wdgts["scan_img_file_num"].obj.setRange(1, num_files)
+                    sol_data_analysis_wdgts["scan_img_file_num"].set(1)
                     self.display_angular_scan_image(1, imported_template)
                     self.display_patterns(imported_template)
 
@@ -1507,7 +1507,7 @@ class MainWin:
                     wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj.clear()
                     wdgts.SOL_MEAS_ANALYSIS_COLL.pattern_wdgt.obj.clear()
 
-                sol_data_analysis_wdgts.scan_settings.set(scan_settings_text)
+                sol_data_analysis_wdgts["scan_settings"].set(scan_settings_text)
 
                 logging.debug("Done.")
 
@@ -1558,7 +1558,7 @@ class MainWin:
     def calculate_and_show_sol_mean_acf(self, imported_template: str = None) -> None:
         """Doc."""
 
-        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_obj(self._app)
+        sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_dict(self._app.gui)
 
         with self.get_measurement_from_template(imported_template) as measurement:
             if measurement is None:
@@ -1570,30 +1570,30 @@ class MainWin:
                 cf.average_correlation()
 
                 # setting values and plotting
-                if sol_data_analysis_wdgts.plot_spatial:
+                if sol_data_analysis_wdgts["plot_spatial"]:
                     x = (cf.vt_um, "disp")
                     x_label = r"disp. ($um^2$)"
                 else:
                     x = (cf.lag, "lag")
                     x_label = "lag (ms)"
 
-                sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
-                sol_data_analysis_wdgts.mean_tau.set(0)
-                sol_data_analysis_wdgts.row_acf_disp.obj.clear()
-                sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
+                sol_data_analysis_wdgts["mean_g0"].set(cf.g0 / 1e3)  # shown in thousands
+                sol_data_analysis_wdgts["mean_tau"].set(0)
+                sol_data_analysis_wdgts["row_acf_disp"].obj.clear()
+                sol_data_analysis_wdgts["row_acf_disp"].obj.plot_acfs(
                     x,
                     cf.avg_cf_cr,
                     cf.g0,
                 )
-                sol_data_analysis_wdgts.row_acf_disp.obj.entitle_and_label(x_label, "G0")
+                sol_data_analysis_wdgts["row_acf_disp"].obj.entitle_and_label(x_label, "G0")
 
             if measurement.scan_type == "angular":
-                row_disc_method = sol_data_analysis_wdgts.row_dicrimination.objectName()
+                row_disc_method = sol_data_analysis_wdgts["row_dicrimination"].objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
-                    avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts.remove_over)
+                    avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts["remove_over"])
                 elif row_disc_method == "solAnalysisRemoveWorst":
                     avg_corr_kwargs = dict(
-                        rejection=None, reject_n_worst=sol_data_analysis_wdgts.remove_worst.get()
+                        rejection=None, reject_n_worst=sol_data_analysis_wdgts["remove_worst"].get()
                     )
                 else:  # use all rows
                     avg_corr_kwargs = dict(rejection=None)
@@ -1610,27 +1610,27 @@ class MainWin:
                         )
                     cf.average_correlation(**avg_corr_kwargs)
 
-                    if sol_data_analysis_wdgts.plot_spatial:
+                    if sol_data_analysis_wdgts["plot_spatial"]:
                         x = (cf.vt_um, "disp")
                         x_label = r"squared displacement ($um^2$)"
                     else:
                         x = (cf.lag, "lag")
                         x_label = "lag (ms)"
 
-                    sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
+                    sol_data_analysis_wdgts["row_acf_disp"].obj.plot_acfs(
                         x,
                         cf.avg_cf_cr,
                         cf.g0,
                         cf.cf_cr[cf.j_good, :],
                     )
-                    sol_data_analysis_wdgts.row_acf_disp.obj.entitle_and_label(x_label, "G0")
+                    sol_data_analysis_wdgts["row_acf_disp"].obj.entitle_and_label(x_label, "G0")
 
-                    sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
-                    sol_data_analysis_wdgts.mean_tau.set(0)
+                    sol_data_analysis_wdgts["mean_g0"].set(cf.g0 / 1e3)  # shown in thousands
+                    sol_data_analysis_wdgts["mean_tau"].set(0)
 
-                    sol_data_analysis_wdgts.n_good_rows.set(n_good := len(cf.j_good))
-                    sol_data_analysis_wdgts.n_bad_rows.set(n_bad := len(cf.j_bad))
-                    sol_data_analysis_wdgts.remove_worst.obj.setMaximum(n_good + n_bad - 2)
+                    sol_data_analysis_wdgts["n_good_rows"].set(n_good := len(cf.j_good))
+                    sol_data_analysis_wdgts["n_bad_rows"].set(n_bad := len(cf.j_bad))
+                    sol_data_analysis_wdgts["remove_worst"].obj.setMaximum(n_good + n_bad - 2)
 
             elif measurement.scan_type == "static":
                 data_type = self.infer_data_type_from_template(measurement.template)
@@ -1643,10 +1643,10 @@ class MainWin:
                 except fit_tools.FitError as exc:
                     # fit failed, use g0 calculated in 'average_correlation()'
                     err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
-                    sol_data_analysis_wdgts.mean_g0.set(cf.g0 / 1e3)  # shown in thousands
-                    sol_data_analysis_wdgts.mean_tau.set(0)
-                    sol_data_analysis_wdgts.row_acf_disp.obj.clear()
-                    sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
+                    sol_data_analysis_wdgts["mean_g0"].set(cf.g0 / 1e3)  # shown in thousands
+                    sol_data_analysis_wdgts["mean_tau"].set(0)
+                    sol_data_analysis_wdgts["row_acf_disp"].obj.clear()
+                    sol_data_analysis_wdgts["row_acf_disp"].obj.plot_acfs(
                         (cf.lag, "lag"),
                         cf.avg_cf_cr,
                         cf.g0,
@@ -1655,16 +1655,16 @@ class MainWin:
                     fp = cf.fit_params["diffusion_3d_fit"]
                     g0, tau = fp.beta["G0"], fp.beta["tau"]
                     fit_func = getattr(fit_tools, fp.func_name)
-                    sol_data_analysis_wdgts.mean_g0.set(g0 / 1e3)  # shown in thousands
-                    sol_data_analysis_wdgts.mean_tau.set(tau * 1e3)
+                    sol_data_analysis_wdgts["mean_g0"].set(g0 / 1e3)  # shown in thousands
+                    sol_data_analysis_wdgts["mean_tau"].set(tau * 1e3)
                     y_fit = fit_func(cf.lag, *fp.beta.values())
-                    sol_data_analysis_wdgts.row_acf_disp.obj.clear()
-                    sol_data_analysis_wdgts.row_acf_disp.obj.plot_acfs(
+                    sol_data_analysis_wdgts["row_acf_disp"].obj.clear()
+                    sol_data_analysis_wdgts["row_acf_disp"].obj.plot_acfs(
                         (cf.lag, "lag"),
                         cf.avg_cf_cr,
                         cf.g0,
                     )
-                    sol_data_analysis_wdgts.row_acf_disp.obj.plot(cf.lag, y_fit, color="red")
+                    sol_data_analysis_wdgts["row_acf_disp"].obj.plot(cf.lag, y_fit, color="red")
 
     def assign_template(self, type) -> None:
         """Doc."""
@@ -1696,14 +1696,14 @@ class MainWin:
     def assign_measurement(self, meas_type: str) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
         options_dict = self.get_processing_options_as_dict()
 
-        if wdgt_coll.should_assign_loaded:
-            template = wdgt_coll.imported_templates.get()
+        if wdgt_coll["should_assign_loaded"]:
+            template = wdgt_coll["imported_templates"].get()
             method = "loaded"
-        elif wdgt_coll.should_assign_raw:
-            template = wdgt_coll.data_templates.get()
+        elif wdgt_coll["should_assign_raw"]:
+            template = wdgt_coll["data_templates"].get()
             method = "raw"
 
         MeasAssignParams = namedtuple("MeasAssignParams", "template method options")
@@ -1711,16 +1711,16 @@ class MainWin:
             template, method, options_dict
         )
 
-        wdgt_to_assign_to = getattr(wdgt_coll, f"assigned_{meas_type}_template")
+        wdgt_to_assign_to = wdgt_coll[f"assigned_{meas_type}_template"]
         wdgt_to_assign_to.set(template)
 
     def load_experiment(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
-        data_import_wdgt_coll = wdgts.DATA_IMPORT_COLL.gui_to_obj(self._gui)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
+        data_import_wdgt_coll = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
 
-        if not (experiment_name := wdgt_coll.experiment_name.get()):
+        if not (experiment_name := wdgt_coll["experiment_name"].get()):
             logging.info("Can't load unnamed experiment!")
             return
 
@@ -1730,7 +1730,7 @@ class MainWin:
 
                 if assignment_params.method == "loaded":
                     with self.get_measurement_from_template(
-                        getattr(wdgt_coll, f"assigned_{meas_type}_template").get(),
+                        wdgt_coll[f"assigned_{meas_type}_template"].get(),
                         should_load=True,
                         method_name="load_experiment",
                     ) as measurement:
@@ -1739,15 +1739,15 @@ class MainWin:
                 elif assignment_params.method == "raw":
                     curr_dir = self.current_date_type_dir_path()
                     kwargs[f"{meas_type}_template"] = (
-                        curr_dir / getattr(wdgt_coll, f"assigned_{meas_type}_template").get()
+                        curr_dir / wdgt_coll[f"assigned_{meas_type}_template"].get()
                     )
-                    kwargs["force_processing"] = not data_import_wdgt_coll.auto_load_processed
-                    kwargs["should_re_correlate"] = data_import_wdgt_coll.should_re_correlate
+                    kwargs["force_processing"] = not data_import_wdgt_coll["auto_load_processed"]
+                    kwargs["should_re_correlate"] = data_import_wdgt_coll["should_re_correlate"]
                 # get loading options as kwargs
                 kwargs[f"{meas_type}_kwargs"] = assignment_params.options
 
         # plotting properties
-        kwargs["gui_display"] = wdgt_coll.gui_display_loading.obj
+        kwargs["gui_display"] = wdgt_coll["gui_display_loading"].obj
         kwargs["gui_options"] = GuiDisplay.GuiDisplayOptions(show_axis=True)
         kwargs["fontsize"] = 10
         kwargs["should_plot_meas"] = False
@@ -1760,7 +1760,7 @@ class MainWin:
         else:
             # save experiment in memory and GUI
             self._app.analysis.loaded_experiments[experiment_name] = experiment
-            wdgt_coll.loaded_experiments.obj.addItem(experiment_name)
+            wdgt_coll["loaded_experiments"].obj.addItem(experiment_name)
 
             # save measurements seperately in memory and GUI
             for meas_type in ("confocal", "sted"):
@@ -1773,15 +1773,15 @@ class MainWin:
 
             # reset the dict and clear relevant widgets
             self._app.analysis.assigned_to_experiment = dict()
-            wdgt_coll.assigned_confocal_template.obj.clear()
-            wdgt_coll.assigned_sted_template.obj.clear()
-            wdgt_coll.experiment_name.obj.clear()
+            wdgt_coll["assigned_confocal_template"].obj.clear()
+            wdgt_coll["assigned_sted_template"].obj.clear()
+            wdgt_coll["experiment_name"].obj.clear()
 
             with suppress(IndexError):
                 # IndexError - either confocal or STED weren't loaded
                 conf_g0 = list(experiment.confocal.cf.values())[0].g0
                 sted_g0 = list(experiment.sted.cf.values())[0].g0
-                wdgt_coll.g0_ratio.set(conf_g0 / sted_g0)
+                wdgt_coll["g0_ratio"].set(conf_g0 / sted_g0)
             logging.info(f"Experiment '{experiment_name}' loaded successfully.")
 
     def remove_experiment(self) -> None:
@@ -1796,56 +1796,55 @@ class MainWin:
             logging.info(f"Experiment '{experiment_name}' removed.")
 
     def get_experiment(
-        self, experiment_name: str = None, should_load=False
+        self,
     ) -> SolutionSFCSMeasurement:
         """Doc."""
 
-        if experiment_name is None:
-            experiment_name = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments.get()
+        experiment_name = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments.get()
         return self._app.analysis.loaded_experiments.get(experiment_name)
 
     def calibrate_tdc(self, **kwargs) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
         display_kwargs = dict(gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True), fontsize=10)
         experiment = self.get_experiment()
         try:
-            display_kwargs["gui_display"] = wdgt_coll.gui_display_tdc_cal.obj
+            display_kwargs["gui_display"] = wdgt_coll["gui_display_tdc_cal"].obj
             experiment.calibrate_tdc(
-                calib_time_ns=wdgt_coll.calibration_gating, is_verbose=True, **display_kwargs
+                calib_time_ns=wdgt_coll["calibration_gating"], is_verbose=True, **display_kwargs
             )
         except RuntimeError:  # confocal not loaded
             logging.info("Confocal measurement was not loaded - cannot calibrate TDC.")
         except AttributeError:
             logging.info("Can't calibrate TDC, no experiment is loaded!")
         else:
-            display_kwargs["gui_display"] = wdgt_coll.gui_display_comp_lifetimes.obj
+            display_kwargs["gui_display"] = wdgt_coll["gui_display_comp_lifetimes"].obj
             experiment.compare_lifetimes(**display_kwargs)
 
             if hasattr(experiment.sted, "scan_type") and hasattr(experiment.confocal, "scan_type"):
                 lt_params = experiment.get_lifetime_parameters()
 
                 # display parameters in GUI
-                wdgt_coll.fluoresence_lifetime.set(lt_params.lifetime_ns)
+                wdgt_coll["fluoresence_lifetime"].set(lt_params.lifetime_ns)
                 calib_pulse_delay_ns = self._gui.settings.laserPulsePropTime.value()
                 calc_pulse_delay_ns = lt_params.laser_pulse_delay_ns
                 if abs(calc_pulse_delay_ns - calib_pulse_delay_ns) / calc_pulse_delay_ns > 0.1:
                     logging.info(
                         f"Calculated laser pulse delay time ({calc_pulse_delay_ns} ns) is very different from calibrated value. Using calibrated value ({calib_pulse_delay_ns} ns)"
                     )
-                    wdgt_coll.laser_pulse_delay.set(calib_pulse_delay_ns)
+                    wdgt_coll["laser_pulse_delay"].set(calib_pulse_delay_ns)
                     experiment.lifetime_params.laser_pulse_delay_ns = calib_pulse_delay_ns
                 else:
-                    wdgt_coll.laser_pulse_delay.set(calc_pulse_delay_ns)
+                    wdgt_coll["laser_pulse_delay"].set(calc_pulse_delay_ns)
 
     def assign_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
-        gate_lt = wdgt_coll.custom_gate_to_assign_lt.get()
+        gate_lt = wdgt_coll["custom_gate_to_assign_lt"].get()
 
         experiment = self.get_experiment()
         try:
@@ -1857,13 +1856,13 @@ class MainWin:
             lower_gate_ns = gate_lt * lifetime_ns + laser_pulse_delay_ns
             upper_gate_ns = experiment.UPPERֹ_ֹGATE_NS
             gate_ns = helper.Limits(lower_gate_ns, upper_gate_ns)
-            wdgt_coll.assigned_gates.obj.addItem(str(gate_ns))
+            wdgt_coll["assigned_gates"].obj.addItem(str(gate_ns))
 
     def remove_assigned_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
-        wdgt = wdgt_coll.assigned_gates
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
+        wdgt = wdgt_coll["assigned_gates"]
         gate_to_remove = wdgt.get()
         # delete from GUI
         wdgt.obj.removeItem(wdgt.obj.currentIndex())
@@ -1872,9 +1871,9 @@ class MainWin:
     def gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
-        gates_combobox = wdgt_coll.assigned_gates.obj
+        gates_combobox = wdgt_coll["assigned_gates"].obj
         gate_list = [
             helper.Limits(gates_combobox.itemText(i), from_string=True)
             for i in range(gates_combobox.count())
@@ -1883,7 +1882,7 @@ class MainWin:
         experiment = self.get_experiment()
         options_dict = self.get_processing_options_as_dict()
         kwargs = dict(
-            gui_display=wdgt_coll.gui_display_sted_gating.obj,
+            gui_display=wdgt_coll["gui_display_sted_gating"].obj,
             gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True),
             fontsize=10,
             **options_dict,
@@ -1893,13 +1892,13 @@ class MainWin:
         except AttributeError:
             logging.info("Can't gate, no experiment is loaded!")
         else:
-            wdgt_coll.available_gates.obj.addItems([str(gate) for gate in gate_list])
+            wdgt_coll["available_gates"].obj.addItems([str(gate) for gate in gate_list])
 
     def remove_available_gate(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
-        wdgt = wdgt_coll.available_gates
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
+        wdgt = wdgt_coll["available_gates"]
         gate_to_remove = wdgt.get()
         # delete from object
         experiment = self.get_experiment()
@@ -1913,7 +1912,7 @@ class MainWin:
         else:
             # re-plot
             kwargs = dict(
-                gui_display=wdgt_coll.gui_display_sted_gating.obj,
+                gui_display=wdgt_coll["gui_display_sted_gating"].obj,
                 gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True),
                 fontsize=10,
             )
@@ -1925,11 +1924,11 @@ class MainWin:
     def calculate_structure_factors(self) -> None:
         """Doc."""
 
-        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_obj(self._gui)
+        wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
         experiment = self.get_experiment()
         try:
             experiment.calculate_structure_factors(
-                g_min=wdgt_coll.g_min, n_robust=wdgt_coll.n_robust
+                g_min=wdgt_coll["g_min"], n_robust=wdgt_coll["n_robust"]
             )
         except AttributeError:
             logging.info("Can't calculate structure factors, no experiment is loaded!")

@@ -50,7 +50,7 @@ class BaseDevice:
 
         self.icon_dict = app.icon_dict
 
-        param_dict = attrs.param_widgets.hold_widgets(app.gui).gui_to_obj(app.gui, "dict")
+        param_dict = attrs.param_widgets.hold_widgets(app.gui).gui_to_dict(app.gui)
         param_dict["log_ref"] = attrs.log_ref
         param_dict["led_icon"] = app.icon_dict[f"led_{attrs.led_color}"]
         param_dict["error_display"] = QtWidgetAccess(

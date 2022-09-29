@@ -59,6 +59,9 @@ class QtWidgetCollection:
         for key, val in kwargs.items():
             setattr(self, key, QtWidgetAccess(*val))
 
+    def __getattr__(self, name: str) -> QtWidgetAccess:
+        ...
+
     def hold_widgets(self, gui) -> QtWidgetCollection:
         """Stores the actual GUI object in all widgets (for which does_hold_obj is True)."""
 
@@ -102,9 +105,9 @@ class QtWidgetCollection:
                 parent_gui = getattr(gui, wdgt.gui_parent_name)
                 wdgt.set(obj, parent_gui)
 
-    def gui_to_obj(self, gui, out="namespace") -> Union[SimpleNamespace, Dict[str, Any]]:
+    def gui_to_dict(self, gui) -> Dict[str, Any]:
         """
-        Read values from QtWidgetAccess objects, which are the attributes of self and return a namespace.
+        Read values from QtWidgetAccess objects, which are the attributes of self and return a dictionary.
         If a QtWidgetAccess object holds the actual GUI object, the dict will contain the
         QtWidgetAccess object itself instead of the value (for getting/setting live values).
         """
@@ -117,14 +120,7 @@ class QtWidgetCollection:
                 parent_gui = getattr(gui, wdgt.gui_parent_name)
                 setattr(wdgt_val, attr_name, wdgt.get(parent_gui))
 
-        if out == "namespace":
-            return wdgt_val
-        elif out == "dict":
-            return vars(wdgt_val).copy()
-        else:
-            raise ValueError(
-                f"Keyword argument 'out' ({out}) accepts either 'namespace' or 'dict'."
-            )
+        return vars(wdgt_val).copy()
 
 
 def wdgt_items_to_text_lines(parent_wdgt, widget_types: list) -> List[str]:
