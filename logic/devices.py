@@ -196,7 +196,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         )
         self.is_on = False
         try:
-            self.open_instrument()
+            self.toggle(True)
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
@@ -208,20 +208,21 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.is_paused = False  # used when ceding control to MPD interface
             self.settings = {}
 
-    def close(self):
+    def toggle(self, should_turn_on: bool):
         """Doc."""
 
-        self.close_instrument()
+        if should_turn_on:
+            self.open_instrument()
+        else:
+            self.close_instrument()
+        self.toggle_led_and_switch(should_turn_on)
 
     def pause(self, should_pause: bool) -> None:
         """Doc."""
 
         try:
             self.is_paused = should_pause
-            if should_pause:
-                self.close_instrument()
-            else:
-                self.open_instrument()
+            self.toggle(not should_pause)
         except IOError as exc:
             self.is_paused = not should_pause
             if not exc.__str__() == f"{self.log_ref} MPD interface not closed!":
@@ -235,7 +236,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except ValueError:
             print(f"{self.log_ref} did not respond to stats query ('{command}')")
         else:
-            with suppress(KeyError, TypeError):
+            with suppress(TypeError):
                 # get a dictionary of read values instead of codes
                 stats_dict = {
                     self.code_attr_dict[str_.rstrip(digits + "-")]: number(
@@ -244,6 +245,11 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                     for str_ in responses
                     if str_.startswith(tuple(self.code_attr_dict.keys()))
                 }
+
+                # raise error if one is encountered in the responses
+                if stats_dict.get("error"):
+                    self.change_icons("error")
+                    raise DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
 
                 # set attributes based on 'stats_dict'
                 self.is_on = bool(stats_dict["is_on"])
@@ -261,10 +267,6 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                     response_name = response_name_flipped[::-1]
                     calc_value = round(linear_fit(stats_dict[response_name], *beta))
                     self.settings[attr_name] = calc_value
-
-                # raise error if one is encountered in the responses (else will raise KeyError and be suppressed
-                raise DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
-                self.change_icons("error")
 
     def toggle_mode(self, mode: str) -> None:
         """Doc."""
@@ -345,13 +347,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                     ]
                 )
                 *_, delay_str, pulsewidth_str = response
-            except ValueError as exc:
-                self.close_instrument()
-                exc = IOError(
-                    f"{self.log_ref} did not respond to initialization commands ('{command}') [{exc}]"
-                )
-                err_hndlr(exc, sys._getframe(), locals(), dvc=self)
-                self.effective_delay_ns = 0
             except IOError as exc:
                 self.close_instrument()
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
@@ -1362,7 +1357,6 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             fp.beta["phi"],
         )
 
-        #        print("beta: ", fp.beta) # TESTESTEST
         max_sigma_y, max_sigma_x = resized_cropped_gs_img_arr.shape
         if (
             x0 < 0

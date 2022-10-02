@@ -286,14 +286,12 @@ class Timeout:
                 was_on = self.spad_dvc.is_on
                 self.spad_dvc.get_stats()
                 try:
-                    self.main_gui.spadMode.setText(self.spad_dvc.settings.mode.title())
-                except AttributeError:
+                    self.main_gui.spadMode.setText(self.spad_dvc.settings["mode"].title())
+                    self.main_gui.spadTemp.setValue(self.spad_dvc.settings["temperature_c"])
+                except KeyError:
                     self.main_gui.spadMode.setText("ERROR")
                 if was_on != self.spad_dvc.is_on:
                     self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
-
-                # display temperature
-                self.main_gui.spadTemp.setValue(self.spad_dvc.settings.temperature_c)
 
                 # gating
                 icon_name = "on" if self.delayer_dvc.is_on and self.exc_laser_dvc.is_on else "off"
