@@ -181,7 +181,6 @@ class App:
             dvc_class = self.device_nick_class_dict[nick]
             print(f"        Initializing {dvc_class.attrs.log_ref}...", end=" ")
             setattr(self.devices, nick, dvc_class(self))
-            print("Done.")
 
     @contextmanager
     def pause_ai_ci(self):

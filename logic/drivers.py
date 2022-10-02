@@ -16,10 +16,18 @@ from nidaqmx.stream_readers import (
 )
 
 from utilities.errors import IOError, err_hndlr
-from utilities.helper import Limits, generate_numbers_from_string
+from utilities.helper import Limits, generate_numbers_from_string, translate_dict_values
 
 
-class Ftd2xx:
+class BaseDriver:
+
+    log_ref: str
+
+    def __init__(self, param_dict):
+        [setattr(self, key, val) for key, val in param_dict.items()]
+
+
+class Ftd2xx(BaseDriver):
     """Doc."""
 
     ftd2xx_dict = {
@@ -29,8 +37,8 @@ class Ftd2xx:
     n_bytes: int = 200
 
     def __init__(self, param_dict):
-        param_dict = self._translate_dict_values(param_dict, self.ftd2xx_dict)
-        [setattr(self, key, val) for key, val in param_dict.items()]
+        param_dict = translate_dict_values(param_dict, self.ftd2xx_dict)
+        super().__init__(param_dict)
 
         # auto-find serial number from description
         num_devs = ftd2xx.createDeviceInfoList()
@@ -38,19 +46,7 @@ class Ftd2xx:
             info_dict = ftd2xx.getDeviceInfoDetail(devnum=idx)
             if info_dict["description"].decode("utf-8") == param_dict["description"]:
                 self.serial = info_dict["serial"]
-                print(f"(FTDI SN: {self.serial.decode('utf-8')})...", end=" ")
-
-    def _translate_dict_values(self, original_dict: dict, trans_dict: dict) -> dict:
-        """
-        Updates values of dict according to another dict:
-        val_trans_dct.keys() are the values to update,
-        and val_trans_dct.values() are the new values.
-        """
-
-        return {
-            key: (trans_dict[val] if val in trans_dict.keys() else val)
-            for key, val in original_dict.items()
-        }
+                print(f"(FTDI SN: {self.serial.decode('utf-8')} connection opened)")
 
     def open_instrument(self):
         """Doc."""
@@ -80,8 +76,11 @@ class Ftd2xx:
         """Doc."""
 
         with suppress(AttributeError):
-            self._inst.resetPort()
-            self._inst.close()
+            try:
+                self._inst.resetPort()
+                self._inst.close()
+            except ftd2xx.ftd2xx.DeviceError:
+                raise IOError(f"{self.log_ref} is not plugged in.")
 
     def read(self) -> bytes:
         """Doc."""
@@ -158,7 +157,7 @@ class Ftd2xx:
         return self._inst.getQueueStatus()
 
 
-class NIDAQmx:
+class NIDAQmx(BaseDriver):
     """Doc."""
 
     MIN_OUTPUT_RATE_Hz = int(1e3)
@@ -166,7 +165,7 @@ class NIDAQmx:
     AO_TIMEOUT = 0.1
 
     def __init__(self, param_dict, task_types):
-        [setattr(self, key, val) for key, val in param_dict.items()]
+        super().__init__(param_dict)
         self.task_types = task_types
         self.tasks = SimpleNamespace(**{type: [] for type in task_types})
 
@@ -176,7 +175,7 @@ class NIDAQmx:
             exc = IOError("National Instruments drivers not installed!")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            print("(NIDAQmx)...", end=" ")
+            print("(NIDAQmx connection opened.)")
 
     def start_tasks(self, task_type: str) -> None:
         """Doc."""
@@ -336,7 +335,7 @@ class NIDAQmx:
             do_task.write(_bool)
 
 
-class PyVISA:
+class PyVISA(BaseDriver):
     """Doc."""
 
     def __init__(
@@ -345,8 +344,7 @@ class PyVISA:
         read_termination="",
         write_termination="",
     ):
-        [setattr(self, key, val) for key, val in param_dict.items()]
-        self.log_ref = param_dict["log_ref"]
+        super().__init__(param_dict)
         self.read_termination = read_termination
         self.write_termination = write_termination
         self._rm = visa.ResourceManager()
@@ -409,7 +407,7 @@ class PyVISA:
                 open_timeout=50,  # ms
                 **kwargs,
             )
-            print(f"(VISA: {self._rsrc.resource_info.alias})...", end=" ")
+            print(f"(VISA: {self._rsrc.resource_info.alias} connection opened.)")
         except (AttributeError, visa.errors.VisaIOError, ValueError):
             # failed to auto-find address for VISA device
             raise IOError(
@@ -463,12 +461,11 @@ class PyVISA:
             raise IOError(f"{self.log_ref} disconnected! Reconnect and restart.")
 
 
-class Instrumental:
+class Instrumental(BaseDriver):
     """Doc."""
 
     def __init__(self, param_dict):
-        [setattr(self, key, val) for key, val in param_dict.items()]
-        self.log_ref = param_dict["log_ref"]
+        super().__init__(param_dict)
         self._inst = None
 
         if not list_instruments(module="cameras"):
@@ -479,9 +476,9 @@ class Instrumental:
         """Doc."""
 
         try:
-            self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="reuse")
+            self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
             print(
-                f"(Instrumental SN: {self._inst._paramset['serial'].decode('utf-8')})...", end=" "
+                f"(Instrumental SN: {self._inst._paramset['serial'].decode('utf-8')}) connection opened"
             )
         except Exception as exc:
             # general 'Exception' is unavoidable due to bad exception handeling in instrumental-lib...
