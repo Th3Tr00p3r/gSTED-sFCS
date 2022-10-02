@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2022 idomic, ",
-    "saved": "2022-09-19, 21:31:56"
+    "saved": "2022-10-02, 15:24:07"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -160,8 +160,6 @@
       "utilities/fit_tools.py",
       "gui/widgets.py",
       "gui/dialog.py",
-      "gui/icons/icons.py",
-      "gui/icons/__init__.py",
       "tests/integration/__init__.py",
       "tests/unit/test_scan_patterns.py",
       "tests/unit/__init__.py",

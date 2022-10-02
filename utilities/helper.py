@@ -772,6 +772,19 @@ def reverse_dict(dict_: dict) -> dict:
     return {val: key for key, val in dict_.items()}
 
 
+def translate_dict_values(original_dict: dict, trans_dict: dict) -> dict:
+    """
+    Updates values of dict according to another dict:
+    val_trans_dct.keys() are the values to update,
+    and val_trans_dct.values() are the new values.
+    """
+
+    return {
+        key: (trans_dict[val] if val in trans_dict.keys() else val)
+        for key, val in original_dict.items()
+    }
+
+
 def file_last_line(file_path) -> str:
     """
     Return the last line of a text file, quickly (seeks from end)
