@@ -162,7 +162,7 @@ class MainWin:
         if error_dict is not None:
             # attempt to reconnect
             with suppress(DeviceError):
-                dvc.close()
+                dvc.toggle(False)
             setattr(
                 self._app.devices, dvc_nick, self._app.device_nick_class_dict[dvc_nick](self._app)
             )
