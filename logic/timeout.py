@@ -31,9 +31,6 @@ class Timeout:
         self.exc_laser_dvc = self._app.devices.exc_laser
         self.cntr_dvc = self._app.devices.photon_counter
         self.scan_dvc = self._app.devices.scanners
-        self.dep_dvc = self._app.devices.dep_laser
-        self.delayer_dvc = self._app.devices.delayer
-        self.spad_dvc = self._app.devices.spad
 
         # start
         self.not_finished = True
@@ -212,20 +209,22 @@ class Timeout:
 
         while self.not_finished:
 
-            if (not self.dep_dvc.error_dict) and (not self._app.meas.is_running):
+            dep_dvc = self._app.devices.dep_laser
 
-                if self.dep_dvc.is_emission_on:
+            if (not dep_dvc.error_dict) and (not self._app.meas.is_running):
+
+                if dep_dvc.is_emission_on:
                     temp, pow, curr = (
-                        self.dep_dvc.get_prop("temp"),
-                        self.dep_dvc.get_prop("pow"),
-                        self.dep_dvc.get_prop("curr"),
+                        dep_dvc.get_prop("temp"),
+                        dep_dvc.get_prop("pow"),
+                        dep_dvc.get_prop("curr"),
                     )
 
                     self.main_gui.depTemp.setValue(temp)
                     self.main_gui.depActualPow.setValue(pow)
                     self.main_gui.depActualCurr.setValue(curr)
 
-                    if temp < self.dep_dvc.MIN_SHG_TEMP:
+                    if temp < dep_dvc.MIN_SHG_TEMP:
                         self.main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
                     else:
                         self.main_gui.depTemp.setStyleSheet(
@@ -233,15 +232,13 @@ class Timeout:
                         )
 
                     # automatic shutdown
-                    if self.dep_dvc.is_emission_on:
-                        mins_since_turned_on = (
-                            time.perf_counter() - self.dep_dvc.turn_on_time
-                        ) / 60
-                        if mins_since_turned_on > self.dep_dvc.OFF_TIMER_MIN:
+                    if dep_dvc.is_emission_on:
+                        mins_since_turned_on = (time.perf_counter() - dep_dvc.turn_on_time) / 60
+                        if mins_since_turned_on > dep_dvc.OFF_TIMER_MIN:
                             logging.info(
-                                f"Shutting down {self.dep_dvc.log_ref} automatically (idle for {self.dep_dvc.OFF_TIMER_MIN} mins)"
+                                f"Shutting down {dep_dvc.log_ref} automatically (idle for {dep_dvc.OFF_TIMER_MIN} mins)"
                             )
-                            self.dep_dvc.laser_toggle(False)
+                            dep_dvc.laser_toggle(False)
 
             if (not self.exc_laser_dvc.error_dict) and (not self._app.meas.is_running):
 
@@ -256,45 +253,46 @@ class Timeout:
                         )
                         self.exc_laser_dvc.toggle(False)
 
-            await asyncio.sleep(self.dep_dvc.update_interval_s)
+            await asyncio.sleep(dep_dvc.update_interval_s)
 
     async def _update_delayer_temperature(self) -> None:
         """Update delayer temperature"""
 
         while self.not_finished:
 
-            if (not self.delayer_dvc.error_dict) and (not self._app.meas.is_running):
-                if self.delayer_dvc.is_on:
+            delayer_dvc = self._app.devices.delayer
+
+            if (not delayer_dvc.error_dict) and (not self._app.meas.is_running):
+                if delayer_dvc.is_on:
                     with suppress(ValueError):
-                        temp, _ = self.delayer_dvc.mpd_command(("RT", None))
+                        temp, _ = delayer_dvc.mpd_command(("RT", None))
                         self.main_gui.psdTemp.setValue(float(temp))
 
-            await asyncio.sleep(self.delayer_dvc.update_interval_s)
+            await asyncio.sleep(delayer_dvc.update_interval_s)
 
     async def _update_spad_status(self) -> None:
         """Doc."""
 
         while self.not_finished:
 
-            if (
-                not self.spad_dvc.error_dict
-                and not self.spad_dvc.is_paused
-                and not self._app.meas.is_running
-            ):
+            spad_dvc = self._app.devices.spad
+            delayer_dvc = self._app.devices.delayer
+
+            if not spad_dvc.error_dict and not spad_dvc.is_paused and not self._app.meas.is_running:
 
                 # display status and mode
-                was_on = self.spad_dvc.is_on
-                self.spad_dvc.get_stats()
+                was_on = spad_dvc.is_on
+                spad_dvc.get_stats()
                 try:
-                    self.main_gui.spadMode.setText(self.spad_dvc.settings["mode"].title())
-                    self.main_gui.spadTemp.setValue(self.spad_dvc.settings["temperature_c"])
+                    self.main_gui.spadMode.setText(spad_dvc.settings["mode"].title())
+                    self.main_gui.spadTemp.setValue(spad_dvc.settings["temperature_c"])
                 except KeyError:
                     self.main_gui.spadMode.setText("ERROR")
-                if was_on != self.spad_dvc.is_on:
-                    self.spad_dvc.toggle_led_and_switch(self.spad_dvc.is_on)
+                if was_on != spad_dvc.is_on:
+                    spad_dvc.toggle_led_and_switch(spad_dvc.is_on)
 
                 # gating
-                icon_name = "on" if self.delayer_dvc.is_on and self.exc_laser_dvc.is_on else "off"
-                self.spad_dvc.change_icons(icon_name, led_widget_name="gate_led_widget")
+                icon_name = "on" if delayer_dvc.is_on and self.exc_laser_dvc.is_on else "off"
+                spad_dvc.change_icons(icon_name, led_widget_name="gate_led_widget")
 
-            await asyncio.sleep(self.spad_dvc.update_interval_s)
+            await asyncio.sleep(spad_dvc.update_interval_s)

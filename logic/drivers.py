@@ -37,8 +37,7 @@ class Ftd2xx(BaseDriver):
     n_bytes: int = 200
 
     def __init__(self, param_dict):
-        param_dict = translate_dict_values(param_dict, self.ftd2xx_dict)
-        super().__init__(param_dict)
+        super().__init__(translate_dict_values(param_dict, self.ftd2xx_dict))
 
         # auto-find serial number from description
         num_devs = ftd2xx.createDeviceInfoList()
@@ -100,7 +99,7 @@ class Ftd2xx(BaseDriver):
     ) -> Tuple[Union[List[str], str], str]:
         """Doc."""
 
-        self.purge()
+        self.purge(should_purge_write=True)
         if isinstance(command_list, tuple):  # single command
             command_list = [command_list]
         n_commands = len(command_list)
@@ -116,7 +115,10 @@ class Ftd2xx(BaseDriver):
         # I/O
         cmnd = ";".join(command_chain) + "#"
         self.write(cmnd.encode("utf-8"))
-        response = self.read().decode("utf-8").split(sep="#")
+        try:
+            response = self.read().decode("utf-8").split(sep="#")
+        except UnicodeDecodeError:
+            raise IOError(f"Got a partial byte response for commands: {cmnd} - unable to decode...")
 
         if len(response) < len(command_list) - 1:
             raise IOError(
