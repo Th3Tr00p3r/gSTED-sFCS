@@ -235,38 +235,43 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             responses, command = self.mpd_command([("AQ", None), ("DC", None)])
         except ValueError:
             print(f"{self.log_ref} did not respond to stats query ('{command}')")
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            with suppress(TypeError):
-                # get a dictionary of read values instead of codes
-                stats_dict = {
-                    self.code_attr_dict[str_.rstrip(digits + "-")]: number(
-                        str_.lstrip(ascii_letters)
-                    )
-                    for str_ in responses
-                    if str_.startswith(tuple(self.code_attr_dict.keys()))
-                }
+            if responses is None:
+                exc_ = DeviceError(f"{self.log_ref} is not responding to 'get_stats()'")
+                err_hndlr(exc_, sys._getframe(), locals(), dvc=self)
+                return
 
-                # raise error if one is encountered in the responses
-                if stats_dict.get("error"):
-                    self.change_icons("error")
-                    raise DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
+            # get a dictionary of read values instead of codes
+            stats_dict = {
+                self.code_attr_dict[str_.rstrip(digits + "-")]: number(str_.lstrip(ascii_letters))
+                for str_ in responses
+                if str_.startswith(tuple(self.code_attr_dict.keys()))
+            }
 
-                # set attributes based on 'stats_dict'
-                self.is_on = bool(stats_dict["is_on"])
-                self.settings["mode"] = "free running" if stats_dict["mode"] == 1 else "external"
-                self.settings["input_thresh_mv"] = stats_dict["input_thresh_mv"]
-                self.settings["pulse_edge"] = "falling" if stats_dict["mode"] == 1 else "rising"
-                self.settings["gate_freq_mhz"] = stats_dict["gate_freq_hz"] * 1e-6
-                self.settings["gate_width_ns"] = stats_dict["gate_width_ps"] * 1e-3
-                self.settings["temperature_c"] = stats_dict["temperature"] / 10 - 273
+            # raise error if one is encountered in the responses
+            if stats_dict.get("error"):
+                self.change_icons("error")
+                exc_ = DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
+                err_hndlr(exc_, sys._getframe(), locals(), dvc=self)
 
-                # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
-                # and using said fits to estimate the actual setting (returned values are module-specific)
-                for attr_name, beta in self.lin_fit_consts_dict.items():
-                    _, response_name_flipped = attr_name[::-1].split("_", maxsplit=1)
-                    response_name = response_name_flipped[::-1]
-                    calc_value = round(linear_fit(stats_dict[response_name], *beta))
-                    self.settings[attr_name] = calc_value
+            # set attributes based on 'stats_dict'
+            self.is_on = bool(stats_dict["is_on"])
+            self.settings["mode"] = "free running" if stats_dict["mode"] == 1 else "external"
+            self.settings["input_thresh_mv"] = stats_dict["input_thresh_mv"]
+            self.settings["pulse_edge"] = "falling" if stats_dict["mode"] == 1 else "rising"
+            self.settings["gate_freq_mhz"] = stats_dict["gate_freq_hz"] * 1e-6
+            self.settings["gate_width_ns"] = stats_dict["gate_width_ps"] * 1e-3
+            self.settings["temperature_c"] = stats_dict["temperature"] / 10 - 273
+
+            # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
+            # and using said fits to estimate the actual setting (returned values are module-specific)
+            for attr_name, beta in self.lin_fit_consts_dict.items():
+                _, response_name_flipped = attr_name[::-1].split("_", maxsplit=1)
+                response_name = response_name_flipped[::-1]
+                calc_value = round(linear_fit(stats_dict[response_name], *beta))
+                self.settings[attr_name] = calc_value
 
     def toggle_mode(self, mode: str) -> None:
         """Doc."""
