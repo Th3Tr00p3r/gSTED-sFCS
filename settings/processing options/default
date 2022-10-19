@@ -1,6 +1,6 @@
 histNormFactor,1.0
 gatingMechanism,removal
-afterpulsingRemovalMethod,filter (lifetime)
+afterpulsingRemovalMethod,subtract calibrated
 useDefaultSysInfo,False
 subtractBgCorr,True
 fixShift,True
