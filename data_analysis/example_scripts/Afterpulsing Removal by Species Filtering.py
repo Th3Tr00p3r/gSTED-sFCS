@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -50,7 +50,7 @@ except NameError:
     print("Working from: ", PROJECT_ROOT)
 
 from data_analysis.correlation_function import (
-    SFCSExperiment,
+    SolutionSFCSExperiment,
     calculate_calibrated_afterpulse,
 )
 from utilities.display import Plotter
@@ -115,7 +115,7 @@ if "exp_dict" not in locals():
 
 for label in data_labels:
     if label not in exp_dict:
-        exp_dict[label] = SFCSExperiment(name=label)
+        exp_dict[label] = SolutionSFCSExperiment(name=label)
 
 label_load_kwargs_dict = {
     label: dict(

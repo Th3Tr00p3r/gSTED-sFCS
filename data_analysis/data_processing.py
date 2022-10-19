@@ -503,7 +503,15 @@ class TDCCalibration:
             plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
         )
 
-    def calculate_afterpulsing_filter(self, baseline_method="auto", hist_norm_factor=1, **kwargs):
+    def calculate_afterpulsing_filter(
+        self,
+        baseline_method="auto",
+        baseline_range=Limits(60, 80),
+        hist_norm_factor=1,
+        get_afterpulsing_filter=False,
+        should_plot=False,
+        **kwargs,
+    ):
         """Doc."""
 
         # interpolate over NaNs
@@ -516,7 +524,11 @@ class TDCCalibration:
         all_hist_norm = all_hist_norm / all_hist_norm.sum() * hist_norm_factor
 
         # get the baseline (which is assumed to be approximately the afterpulsing histogram)
-        if baseline_method == "manual":
+        if baseline_method == "range":
+            # given range to average
+            baseline_idxs = baseline_range.valid_indices(self.t_hist)
+            baseline = np.mean(all_hist_norm[baseline_idxs])
+        elif baseline_method == "manual":
             # Using Plotter for manual selection
             baseline_limits = Limits()
             with Plotter(
@@ -531,9 +543,11 @@ class TDCCalibration:
             baseline = np.mean(all_hist_norm[baseline_idxs])
 
         elif baseline_method == "auto":
+            # evaluate heuristically
             outlier_indxs = return_outlier_indices(all_hist_norm, m=2)
             smoothed_robust_all_hist = moving_average(all_hist_norm[~outlier_indxs], n=100)
             baseline = min(smoothed_robust_all_hist)
+        #            print("baseline: ", baseline) # TESTESTEST
 
         # define matrices and calculate F
         M_j1 = all_hist_norm - baseline  # p1
@@ -553,7 +567,23 @@ class TDCCalibration:
                 f"Attention! F probabilities do not sum to 1 ({total_prob_j.mean():.2f} +/- {total_prob_j.std():.2f})"
             )
 
-        return F
+        if should_plot:
+            with Plotter(subplots=(1, 2)) as axes:
+                axes[0].set_title("Filter Ingredients")
+                axes[0].set_yscale("log")
+                axes[0].plot(self.t_hist, I_j, label="I_j (raw histogram)")
+                axes[0].plot(self.t_hist, baseline * np.ones(self.t_hist.shape), label="baseline")
+                axes[0].plot(self.t_hist, M_j1, label="M_j1 (ideal fluorescence decay curve)")
+                axes[0].plot(self.t_hist, M_j2, label="M_j2 (ideal afterpulsing 'decay' curve)")
+                axes[0].legend()
+
+                axes[1].set_title("Filter")
+                axes[1].set_ylim(-1, 2)
+                axes[1].plot(self.t_hist, F.T)
+                axes[1].plot(self.t_hist, F.sum(axis=0))
+                axes[1].legend(["F_1j", "F_2j", "F.sum(axis=0)"])
+
+        return F[1 if get_afterpulsing_filter else 0]
 
 
 class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
@@ -591,12 +621,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 **kwargs,
             )
 
-        # add general properties
-        p.version = version
-        p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
+        with suppress(AttributeError):
+            # add general properties
+            p.version = version
+            p.avg_cnt_rate_khz = full_data["avg_cnt_rate_khz"]
 
-        # TODO: fix it so NAN_PLACEBO is only given to angular scans
-        p.NAN_PLACEBO = self.NAN_PLACEBO
+            # TODO: fix it so NAN_PLACEBO is only given to angular scans
+            p.NAN_PLACEBO = self.NAN_PLACEBO
 
         return p
 
@@ -1149,9 +1180,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 class TDCCalibrationGenerator:
     """Doc."""
 
-    def __init__(self, laser_freq_hz, fpga_freq_hz):
+    def __init__(self, laser_freq_hz: int, fpga_freq_hz: int, detector_gate_width_ns: float):
         self.laser_freq_hz = laser_freq_hz
         self.fpga_freq_hz = fpga_freq_hz
+        self.detector_gate_width_ns = detector_gate_width_ns
 
     def calibrate_tdc(
         self,
@@ -1184,7 +1216,7 @@ class TDCCalibrationGenerator:
             coarse_bins = sync_coarse_time_to
             h = h_all[coarse_bins]
         elif isinstance(pick_valid_bins_according_to, TDCCalibration):
-            coarse_bins = sync_coarse_time_to.coarse_calib_bins
+            coarse_bins = sync_coarse_time_to.coarse_bins
             h = h_all[coarse_bins]
         else:
             raise TypeError(
@@ -1207,7 +1239,9 @@ class TDCCalibrationGenerator:
 
         if pick_calib_bins_according_to is None:
             # pick data at more than 'calib_time_ns' delay from peak maximum
-            j = np.where(coarse_bins >= ((calib_time_ns * 1e-9) * self.fpga_freq_hz + 2))[0]
+            min_calib_bin = (calib_time_ns * 1e-9) * self.fpga_freq_hz + 2
+            max_calib_bin = (self.detector_gate_width_ns * 1e-9) * self.fpga_freq_hz - 1
+            j = np.where((coarse_bins >= min_calib_bin) & (coarse_bins <= max_calib_bin))[0]
             if not j.any():
                 raise ValueError(f"Gate width is too narrow for calib_time_ns={calib_time_ns}!")
             j_calib = j_shift[j]

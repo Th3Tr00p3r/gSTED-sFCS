@@ -308,7 +308,6 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
             )
 
     except EOFError:
-
         if should_track_progress:
             print(f" - Done ({len(loaded_data)} chunks)")
 
@@ -386,19 +385,8 @@ def load_processed_solution_measurement(file_path: Path, file_template: str, sho
     return meas
 
 
-def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
-    """
-    Load files according to extension.
-    Allows backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files).
-    Uses defaults for legacy files where 'system_info' or 'afterpulse_params' is not iterable (therefore old).
-    """
-
-    if file_path.suffix == ".pkl":
-        file_dict = _translate_dict_keys(load_object(file_path), legacy_python_trans_dict)
-    elif file_path.suffix == ".mat":
-        file_dict = _translate_dict_keys(_load_mat(file_path), legacy_matlab_trans_dict)
-    else:
-        raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
+def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
+    """Fixes data saved in varios legacy formats in-place"""
 
     # patches for legacy Python files (almost non-existant)
     if (
@@ -455,8 +443,13 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
 
     # legacy detector/delayer settings placement
     if file_dict["system_info"].get("detector_settings") is not None:
-        full_data["detector_settings"] = file_dict["system_info"]["detector_settings"]
-        full_data["delayer_settings"] = file_dict["system_info"]["delayer_settings"]
+        full_data["detector_settings"] = file_dict["system_info"]["detector_settings"].__dict__
+        full_data["delayer_settings"] = file_dict["system_info"]["delayer_settings"].__dict__
+    # namespaces to dicts
+    if isinstance(full_data.get("detector_settings"), SimpleNamespace):
+        full_data["detector_settings"] = full_data.get("detector_settings").__dict__
+    if isinstance(full_data.get("delayer_settings"), SimpleNamespace):
+        full_data["delayer_settings"] = full_data.get("delayer_settings").__dict__
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["afterpulse_params"], tuple):
         if file_dict.get("python_converted"):
@@ -474,6 +467,23 @@ def load_file_dict(file_path: Path, override_system_info=False, **kwargs):
             full_data["scan_settings"]["ai"] = np.hstack(
                 (full_data["scan_settings"]["ai"], np.full((n_samples, 4), np.nan))
             )
+
+
+def load_file_dict(file_path: Path, **kwargs):
+    """
+    Load files according to extension.
+    Allows backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files).
+    Uses defaults for legacy files where 'system_info' or 'afterpulse_params' is not iterable (therefore old).
+    """
+
+    if file_path.suffix == ".pkl":
+        file_dict = _translate_dict_keys(load_object(file_path), legacy_python_trans_dict)
+    elif file_path.suffix == ".mat":
+        file_dict = _translate_dict_keys(_load_mat(file_path), legacy_matlab_trans_dict)
+    else:
+        raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
+
+    _handle_legacy_file_dict(file_dict)
 
     return file_dict
 
