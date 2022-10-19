@@ -607,21 +607,12 @@ class SolutionSFCSMeasurement:
         with suppress(KeyError):
             self.duration_min = full_data["duration_s"] / 60
 
-        # Detector Gate (calibrated - actual gate can be inferred from TDC calibration and compared)
-        if self.delayer_settings is not None and self.detector_settings.get("is_gated", False):
-            lower_detector_gate_ns = (
-                self.delayer_settings["effective_delay_ns"] - self.delayer_settings["sync_delay_ns"]
-            )
-        else:
-            lower_detector_gate_ns = 0
-        if self.detector_settings is not None and self.detector_settings.get("is_gated", False):
-            self.gate_width_ns = self.detector_settings["gate_width_ns"]
-            self.detector_gate_ns = Limits(
-                lower_detector_gate_ns, lower_detector_gate_ns + self.gate_width_ns
-            )
-        else:
-            self.gate_width_ns = 100
-            self.detector_gate_ns = Limits(0, np.inf)
+        # Set detector settings to default old detector settings in case none are defined
+        # TODO: this should be done in legacy file loading
+        if self.detector_settings is None:
+            self.detector_settings = dict(model="PDM", gate_width_ns=100, is_gated=False)
+        if not self.detector_settings["is_gated"]:
+            self.detector_settings["gate_ns"] = Limits(0, np.inf)
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -667,7 +658,7 @@ class SolutionSFCSMeasurement:
 
         # File Processing
         data_processor = TDCPhotonDataProcessor(self.laser_freq_hz)
-        return data_processor.process_data(file_dict["full_data"])
+        return data_processor.process_data(file_dict["full_data"], **kwargs)
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
@@ -686,8 +677,7 @@ class SolutionSFCSMeasurement:
 
         # perform actual TDC calibration
         tdc_calib_gen = TDCCalibrationGenerator(
-            self.laser_freq_hz,
-            self.fpga_freq_hz,
+            self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_width_ns"]
         )
         self.tdc_calib = tdc_calib_gen.calibrate_tdc(self.data, self.scan_type, **kwargs)
 
@@ -743,13 +733,19 @@ class SolutionSFCSMeasurement:
         # Gating
         # Unite TDC gate and detector gate
         tdc_gate_ns = Limits(gate_ns)
-        if tdc_gate_ns != Limits(0, np.inf) or self.detector_gate_ns != Limits(0, np.inf):
+        if tdc_gate_ns != Limits(0, np.inf) or self.detector_settings["gate_ns"] != Limits(
+            0, np.inf
+        ):
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 self.calibrate_tdc(
                     should_dump_data=False, is_verbose=is_verbose
                 )  # abort data rotation decorator
-            effective_lower_gate_ns = max(tdc_gate_ns.lower, self.detector_gate_ns.lower)
-            effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
+            effective_lower_gate_ns = max(
+                tdc_gate_ns.lower, self.detector_settings["gate_ns"].lower
+            )
+            effective_upper_gate_ns = min(
+                tdc_gate_ns.upper, self.detector_settings["gate_ns"].upper
+            )
             gate_ns = Limits(effective_lower_gate_ns, effective_upper_gate_ns)
 
         # Apply gate and/or filter to correlator input
@@ -759,7 +755,7 @@ class SolutionSFCSMeasurement:
         corr_input_list = []
         if is_filtered:
             if afterpulsing_method == "filter (lifetime)":
-                self.filter_matrix = self.tdc_calib.calculate_afterpulsing_filter(**kwargs)
+                filter = self.tdc_calib.calculate_afterpulsing_filter(**kwargs)
             filter_input_list = []
         for dt_ts_split in dt_ts_split_list:
             split_delay_time = dt_ts_split[0]
@@ -768,23 +764,18 @@ class SolutionSFCSMeasurement:
                 split_filter = np.zeros((dt_ts_split.shape[1],), dtype=float)
                 if gating_mechanism == "binary filter":
                     # TESTESTEST - testing the new filtering approach by applying it to gating
-                    split_filter[in_gate_idxs] = 0.1
+                    split_filter[in_gate_idxs] = 1  # was 0.1 (by "mistake"?)
                 if afterpulsing_method == "filter (lifetime)":
                     # create a filter for genuine fluorscene (ignoring afterpulsing)
                     bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
                     valid_indxs = (
                         (bin_num > 0) & (bin_num < len(self.tdc_calib.fine_bins)) & in_gate_idxs
                     )
-                    split_filter[valid_indxs] = self.filter_matrix[0][bin_num[valid_indxs] - 1]
+                    split_filter[valid_indxs] = filter[bin_num[valid_indxs] - 1]
                 corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
                 filter_input_list.append(split_filter)
             else:  # gating_mechanism == "removal"
                 corr_input_list.append(np.squeeze(dt_ts_split[1:, in_gate_idxs].astype(np.int32)))
-
-        kwargs["should_subtract_afterpulsing"] = afterpulsing_method in {
-            "subtract calibrated",
-            "subtract inherent (xcorr)",
-        }
 
         if afterpulsing_method == "subtract inherent (xcorr)":
             # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
@@ -828,6 +819,8 @@ class SolutionSFCSMeasurement:
             external_afterpulsing=external_afterpulsing,
             gate_ns=gate_ns,
             list_of_filter_arrays=filter_input_list if is_filtered else None,
+            should_subtract_afterpulsing=afterpulsing_method
+            in {"subtract calibrated", "subtract inherent (xcorr)"},
             **kwargs,
         )
 
@@ -870,13 +863,19 @@ class SolutionSFCSMeasurement:
         for i in (1, 2):
             gate_ns = locals()[f"gate{i}_ns"]
             tdc_gate_ns = Limits(gate_ns)
-            if tdc_gate_ns != Limits(0, np.inf) or self.detector_gate_ns != Limits(0, np.inf):
+            if tdc_gate_ns != Limits(0, np.inf) or self.detector_settings["gate_ns"] != Limits(
+                0, np.inf
+            ):
                 if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                     self.calibrate_tdc(
                         should_dump_data=False, is_verbose=is_verbose
                     )  # abort data rotation decorator
-                effective_lower_gate_ns = max(tdc_gate_ns.lower, self.detector_gate_ns.lower)
-                effective_upper_gate_ns = min(tdc_gate_ns.upper, self.detector_gate_ns.upper)
+                effective_lower_gate_ns = max(
+                    tdc_gate_ns.lower, self.detector_settings["gate_ns"].lower
+                )
+                effective_upper_gate_ns = min(
+                    tdc_gate_ns.upper, self.detector_settings["gate_ns"].upper
+                )
                 gates.append(Limits(effective_lower_gate_ns, effective_upper_gate_ns))
         gate1_ns, gate2_ns = gates
 
@@ -1113,6 +1112,15 @@ class SolutionSFCSMeasurement:
             sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
 
         return sbtrct_AB_BA_arr.mean(axis=0), (XCF_AB, XCF_BA)
+
+    def calculate_filtered_afterpulse(self):
+        """Get the afterpulsing by filtering the raw data"""
+
+        self.correlate_and_average(
+            cf_name="afterpulsing",
+            afterpulsing_method="filter (lifetime)",
+            get_afterpulsing_filter=True,
+        )
 
     def dump_or_load_data(self, should_load: bool, method_name=None) -> None:
         """
