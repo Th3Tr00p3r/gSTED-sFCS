@@ -78,7 +78,7 @@ Eric IDE is notoriously complicated to install properly. I've tried to make it e
    
    * Run install.py from the distribution (still in the virtual environment) e.g. `python C:\temporary folder\eric6-20.10\install.py`.
    
-   * To have access to Qt Designer from within Eric IDE, copy the contents of `\eric_env\Lib\site-packages\qt5_applications\Qt\bin` into `\eric_env\Lib\site-packages\PyQt5\Qt\bin`
+   * To have access to Qt Designer from within Eric IDE, go to 'settings' --> 'Qt' --> 'Qt Tools' and set 'Tools Directory' to `\eric_env\Lib\site-packages\qt5_applications\Qt\bin`.
 
 3. That's it, icons should appear on desktop.
 

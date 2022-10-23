@@ -520,7 +520,7 @@ class SolutionSFCSMeasurement:
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
                 print(
-                    f"Attention! calculated duration ({calc_duration_mins} mins) is significantly different than the set duration ({self.duration_min} min). Using calculated.\n"
+                    f"Attention! calculated duration ({calc_duration_mins:.1f} mins) is significantly different than the set duration ({self.duration_min} min). Using calculated.\n"
                 )
         else:
             print(f"Calculating duration (not supplied): {calc_duration_mins:.1f} mins\n")
@@ -657,7 +657,9 @@ class SolutionSFCSMeasurement:
                 print(f"File '{file_path}' not found. Ignoring.")
 
         # File Processing
-        data_processor = TDCPhotonDataProcessor(self.laser_freq_hz)
+        data_processor = TDCPhotonDataProcessor(
+            self.laser_freq_hz, self.detector_settings["gate_ns"].lower
+        )
         return data_processor.process_data(file_dict["full_data"], **kwargs)
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
@@ -669,7 +671,7 @@ class SolutionSFCSMeasurement:
         if not force_processing and hasattr(self, "tdc_calib"):
             print(f"\n{self.name}: TDC calibration exists, skipping.")
             if should_plot:
-                self.tdc_calib.plot_tdc_calibration()
+                self.tdc_calib.plot()
             return
 
         if is_verbose:
@@ -677,12 +679,14 @@ class SolutionSFCSMeasurement:
 
         # perform actual TDC calibration
         tdc_calib_gen = TDCCalibrationGenerator(
-            self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_width_ns"]
+            self.laser_freq_hz,
+            self.fpga_freq_hz,
+            self.detector_settings["gate_ns"],
         )
         self.tdc_calib = tdc_calib_gen.calibrate_tdc(self.data, self.scan_type, **kwargs)
 
         if should_plot:
-            self.tdc_calib.plot_tdc_calibration()
+            self.tdc_calib.plot()
 
         if is_verbose:
             print("Done.")
@@ -703,8 +707,10 @@ class SolutionSFCSMeasurement:
         gating_mechanism="removal",
         external_afterpulse_params=None,
         external_afterpulsing=None,
+        external_ap_filter=None,
         # TODO: gates should not be fixed - gate1 should start at the peak (or right before it) and the second should end before the detector width ends - these choices are important for normalization
         inherent_afterpulsing_gates=(Limits(2.5, 10), Limits(30, 90)),
+        get_afterpulsing=True,
         should_subtract_bg_corr=True,
         is_verbose=False,
         **kwargs,
@@ -719,12 +725,15 @@ class SolutionSFCSMeasurement:
             print("Preparing split data for correlator...", end=" ")
 
         # the following afterpulsing removal methods require TDC calibration before creating splits
-        if afterpulsing_method in {"subtract inherent (xcorr)", "filter (lifetime)"}:
+        if (
+            afterpulsing_method in {"subtract inherent (xcorr)", "filter (lifetime)"}
+            or self.detector_settings["is_gated"]
+        ):
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
                 self.calibrate_tdc(
-                    should_dump_data=False, is_verbose=is_verbose
+                    should_dump_data=False, is_verbose=is_verbose, **kwargs
                 )  # abort data rotation decorator
 
         # create list of split data for correlator
@@ -755,7 +764,13 @@ class SolutionSFCSMeasurement:
         corr_input_list = []
         if is_filtered:
             if afterpulsing_method == "filter (lifetime)":
-                filter = self.tdc_calib.calculate_afterpulsing_filter(**kwargs)
+                if external_ap_filter is not None:
+                    self.afterpulsing_filter = external_ap_filter
+                else:
+                    self.afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
+                        **kwargs
+                    )
+            filter = self.afterpulsing_filter[int(not get_afterpulsing)]
             filter_input_list = []
         for dt_ts_split in dt_ts_split_list:
             split_delay_time = dt_ts_split[0]
@@ -1119,7 +1134,7 @@ class SolutionSFCSMeasurement:
         self.correlate_and_average(
             cf_name="afterpulsing",
             afterpulsing_method="filter (lifetime)",
-            get_afterpulsing_filter=True,
+            get_afterpulsing=True,
         )
 
     def dump_or_load_data(self, should_load: bool, method_name=None) -> None:
@@ -1370,16 +1385,16 @@ class SolutionSFCSExperiment:
                 self.sted, "scan_type"
             ):  # if both measurements quack as if loaded
                 with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
-                    self.confocal.tdc_calib.plot_tdc_calibration(parent_axes=axes[:, :2])
-                    self.sted.tdc_calib.plot_tdc_calibration(parent_axes=axes[:, 2:])
+                    self.confocal.tdc_calib.plot(parent_axes=axes[:, :2])
+                    self.sted.tdc_calib.plot(parent_axes=axes[:, 2:])
 
             # Confocal only
             elif hasattr(self.confocal, "scan_type"):  # STED measurement not loaded
-                self.confocal.tdc_calib.plot_tdc_calibration(super_title=super_title, **kwargs)
+                self.confocal.tdc_calib.plot(super_title=super_title, **kwargs)
 
             # STED only
             else:
-                self.sted.tdc_calib.plot_tdc_calibration(super_title=super_title, **kwargs)
+                self.sted.tdc_calib.plot(super_title=super_title, **kwargs)
 
     def get_lifetime_parameters(
         self,

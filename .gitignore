@@ -19,6 +19,8 @@ delete_me/
 
 # eric project folder (idomich)
 .eric6project
+.eric7project
+.jedi
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

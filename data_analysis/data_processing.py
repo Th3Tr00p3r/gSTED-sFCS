@@ -174,6 +174,7 @@ class TDCPhotonData:
     """Holds a single file's worth of processed, TDC-based, temporal photon data"""
 
     # TODO: separate file data from photon data?
+    # TODO: strive to make this a dataclass
 
     # general
     version: int
@@ -439,7 +440,7 @@ class TDCCalibration:
     error_all_hist_norm: Any
     t_weight: Any
 
-    def plot_tdc_calibration(self, parent_axes=None, **plot_kwargs) -> None:
+    def plot(self, parent_axes=None, **plot_kwargs) -> None:
         """Doc."""
 
         try:
@@ -508,7 +509,6 @@ class TDCCalibration:
         baseline_method="auto",
         baseline_range=Limits(60, 80),
         hist_norm_factor=1,
-        get_afterpulsing_filter=False,
         should_plot=False,
         **kwargs,
     ):
@@ -583,7 +583,7 @@ class TDCCalibration:
                 axes[1].plot(self.t_hist, F.sum(axis=0))
                 axes[1].legend(["F_1j", "F_2j", "F.sum(axis=0)"])
 
-        return F[1 if get_afterpulsing_filter else 0]
+        return F
 
 
 class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
@@ -595,8 +595,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
     def __init__(
         self,
         laser_freq_hz: int,
+        lower_detector_gate_ns: float,
     ):
         self.laser_freq_hz = laser_freq_hz
+        self.lower_detector_gate_ns = lower_detector_gate_ns
 
     def process_data(self, full_data, **kwargs) -> TDCPhotonData:
         """Doc."""
@@ -755,7 +757,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             size_estimate_mb=max(section_lengths) / 1e6,
             duration_s=duration_s,
             skipped_duration=skipped_duration,
-            delay_time=np.zeros(pulse_runtime.shape, dtype=np.float16),
+            delay_time=np.full(pulse_runtime.shape, self.lower_detector_gate_ns, dtype=np.float16),
         )
 
     def _section_continuous_data(
@@ -1154,8 +1156,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         p.coarse2 = np.hstack((line_starts_nans, line_stops_nans, p.coarse2))[sorted_idxs]
         p.fine = np.hstack((line_starts_nans, line_stops_nans, p.fine))[sorted_idxs]
 
-        # initialize delay times with zeros (nans at line edges) - filled-in during TDC calibration
-        p.delay_time = np.zeros(p.pulse_runtime.shape, dtype=np.float16)
+        # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
+        p.delay_time = np.full(p.pulse_runtime.shape, self.lower_detector_gate_ns, dtype=np.float16)
         line_edge_idxs = p.fine == self.NAN_PLACEBO
         p.delay_time[line_edge_idxs] = np.nan
 
@@ -1180,10 +1182,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 class TDCCalibrationGenerator:
     """Doc."""
 
-    def __init__(self, laser_freq_hz: int, fpga_freq_hz: int, detector_gate_width_ns: float):
+    def __init__(self, laser_freq_hz: int, fpga_freq_hz: int, detector_gate_ns: Limits):
         self.laser_freq_hz = laser_freq_hz
         self.fpga_freq_hz = fpga_freq_hz
-        self.detector_gate_width_ns = detector_gate_width_ns
+        self.detector_gate_ns = detector_gate_ns
 
     def calibrate_tdc(
         self,
@@ -1201,6 +1203,8 @@ class TDCCalibrationGenerator:
         **kwargs,
     ) -> TDCCalibration:
         """Doc."""
+
+        # TODO: consider what will be needed for detector gated STED measurements (which are synced to confocal)
 
         coarse, fine = self._unite_coarse_fine_data(data, scan_type)
 
@@ -1225,22 +1229,28 @@ class TDCCalibrationGenerator:
 
         # rearranging the coarse_bins
         if sync_coarse_time_to is None:
-            max_j = np.argmax(h)
+            if (lower_detector_gate_ns := self.detector_gate_ns.lower) > 0:  # detector gating
+                max_j = np.argmax(h) - round((lower_detector_gate_ns * 1e-9) * self.fpga_freq_hz)
+            else:
+                max_j = np.argmax(h)
         elif isinstance(sync_coarse_time_to, int):
             max_j = sync_coarse_time_to
         elif isinstance(sync_coarse_time_to, TDCCalibration):
             max_j = sync_coarse_time_to.max_j
         else:
-            raise ValueError(
-                "Syncing coarse time is possible to either a number or a 'TDCCalibration' object!"
+            raise TypeError(
+                f"sync_coarse_time_to must be either a number or a 'TDCCalibration' object! Type '{type(sync_coarse_time_to).name}' was supplied."
             )
+
+        #        print(f"Syncing to {sync_coarse_time_to} ns (bin #{max_j})") # TESTESTEST
 
         j_shift = np.roll(np.arange(len(h)), -max_j + 2)
 
         if pick_calib_bins_according_to is None:
             # pick data at more than 'calib_time_ns' delay from peak maximum
             min_calib_bin = (calib_time_ns * 1e-9) * self.fpga_freq_hz + 2
-            max_calib_bin = (self.detector_gate_width_ns * 1e-9) * self.fpga_freq_hz - 1
+            detector_gate_width_ns = self.detector_gate_ns.interval()
+            max_calib_bin = (detector_gate_width_ns * 1e-9) * self.fpga_freq_hz - 1
             j = np.where((coarse_bins >= min_calib_bin) & (coarse_bins <= max_calib_bin))[0]
             if not j.any():
                 raise ValueError(f"Gate width is too narrow for calib_time_ns={calib_time_ns}!")
@@ -1349,7 +1359,7 @@ class TDCCalibrationGenerator:
             p.delay_time[photon_idxs] = (
                 t_calib[p.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
-            )
+            )  # + self.lower_detector_gate_ns
             total_laser_pulses += p.pulse_runtime[-1]
 
             delay_time_list.append(p.delay_time[photon_idxs])
@@ -1428,6 +1438,11 @@ class TDCCalibrationGenerator:
             fine = fine[photon_idxs]
 
         return coarse, fine
+
+    def _time_ns_to_bin_num(self):
+        """Convenience method"""
+
+        ...
 
 
 @dataclass
