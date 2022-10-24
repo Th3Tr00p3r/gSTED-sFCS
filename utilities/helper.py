@@ -105,13 +105,13 @@ class Limits:
         return not self.__eq__(other)
 
     def __gt__(self, other):
-        if isinstance(other, int, float):
+        if isinstance(other, (int, float)):
             return other < self.lower
         if isinstance(other, Limits):
             return other.upper < self.lower
 
     def __lt__(self, other):
-        if isinstance(other, int, float):
+        if isinstance(other, (int, float)):
             return other > self.upper
         if isinstance(other, Limits):
             return other.lower > self.upper
@@ -183,7 +183,7 @@ class Limits:
     def clamp(self, obj):
         """Force limit range on object"""
 
-        if isinstance(obj, int, float):
+        if isinstance(obj, (int, float)):
             return max(min(self.upper, obj), self.lower)
         elif hasattr(obj, "lower") and hasattr(obj, "upper"):
             return Limits(self.clamp(obj.lower), self.clamp(obj.upper))
