@@ -17,7 +17,6 @@ from sklearn import linear_model
 from data_analysis.data_processing import (
     CountsImageMixin,
     TDCCalibration,
-    TDCCalibrationGenerator,
     TDCPhotonData,
     TDCPhotonDataProcessor,
 )
@@ -564,6 +563,11 @@ class SolutionSFCSMeasurement:
 
         self._get_general_properties(file_paths[0], **kwargs)
 
+        # initialize data processor
+        self.data_processor = TDCPhotonDataProcessor(
+            self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
+        )
+
         # parellel processing
         if should_parallel_process and len(file_paths) > 20:
             N_CORES = mp.cpu_count() // 2 - 1  # /2 due to hyperthreading, -1 to leave one free
@@ -657,10 +661,14 @@ class SolutionSFCSMeasurement:
                 print(f"File '{file_path}' not found. Ignoring.")
 
         # File Processing
-        data_processor = TDCPhotonDataProcessor(
-            self.laser_freq_hz, self.detector_settings["gate_ns"].lower
-        )
-        return data_processor.process_data(file_dict["full_data"], **kwargs)
+        try:
+            p = self.data_processor.process_data(file_dict["full_data"], **kwargs)
+        except AttributeError:
+            data_processor = TDCPhotonDataProcessor(
+                self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
+            )
+            p = data_processor.process_data(file_dict["full_data"], **kwargs)
+        return p
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
@@ -678,12 +686,7 @@ class SolutionSFCSMeasurement:
             print(f"\n{self.name}: Calibrating TDC...", end=" ")
 
         # perform actual TDC calibration
-        tdc_calib_gen = TDCCalibrationGenerator(
-            self.laser_freq_hz,
-            self.fpga_freq_hz,
-            self.detector_settings["gate_ns"],
-        )
-        self.tdc_calib = tdc_calib_gen.calibrate_tdc(self.data, self.scan_type, **kwargs)
+        self.tdc_calib = self.data_processor.calibrate_tdc(self.data, self.scan_type, **kwargs)
 
         if should_plot:
             self.tdc_calib.plot()

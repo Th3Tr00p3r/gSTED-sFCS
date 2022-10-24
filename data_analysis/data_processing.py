@@ -592,13 +592,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
     GROUP_LEN: int = 7
     MAX_VAL: int = 256 ** 3
 
-    def __init__(
-        self,
-        laser_freq_hz: int,
-        lower_detector_gate_ns: float,
-    ):
+    def __init__(self, laser_freq_hz: int, fpga_freq_hz: int, detector_gate_ns: Limits):
         self.laser_freq_hz = laser_freq_hz
-        self.lower_detector_gate_ns = lower_detector_gate_ns
+        self.fpga_freq_hz = fpga_freq_hz
+        self.detector_gate_ns = detector_gate_ns
 
     def process_data(self, full_data, **kwargs) -> TDCPhotonData:
         """Doc."""
@@ -757,7 +754,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             size_estimate_mb=max(section_lengths) / 1e6,
             duration_s=duration_s,
             skipped_duration=skipped_duration,
-            delay_time=np.full(pulse_runtime.shape, self.lower_detector_gate_ns, dtype=np.float16),
+            delay_time=np.full(pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16),
         )
 
     def _section_continuous_data(
@@ -1159,7 +1156,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         p.fine = np.hstack((line_starts_nans, line_stops_nans, p.fine))[sorted_idxs]
 
         # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
-        p.delay_time = np.full(p.pulse_runtime.shape, self.lower_detector_gate_ns, dtype=np.float16)
+        p.delay_time = np.full(p.pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16)
         line_edge_idxs = p.fine == self.NAN_PLACEBO
         p.delay_time[line_edge_idxs] = np.nan
 
@@ -1179,15 +1176,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         p.LINE_END_ADDER = self.LINE_END_ADDER
 
         return p
-
-
-class TDCCalibrationGenerator:
-    """Doc."""
-
-    def __init__(self, laser_freq_hz: int, fpga_freq_hz: int, detector_gate_ns: Limits):
-        self.laser_freq_hz = laser_freq_hz
-        self.fpga_freq_hz = fpga_freq_hz
-        self.detector_gate_ns = detector_gate_ns
 
     def calibrate_tdc(
         self,
@@ -1363,7 +1351,7 @@ class TDCCalibrationGenerator:
             p.delay_time[photon_idxs] = (
                 t_calib[p.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
-            )  # + self.lower_detector_gate_ns
+            )
             total_laser_pulses += p.pulse_runtime[-1]
 
             delay_time_list.append(p.delay_time[photon_idxs])
@@ -1442,11 +1430,6 @@ class TDCCalibrationGenerator:
             fine = fine[photon_idxs]
 
         return coarse, fine
-
-    def _time_ns_to_bin_num(self):
-        """Convenience method"""
-
-        ...
 
 
 @dataclass
