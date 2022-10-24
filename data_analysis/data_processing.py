@@ -5,7 +5,7 @@ from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass
 from itertools import count as infinite_range
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import scipy
@@ -511,7 +511,7 @@ class TDCCalibration:
         hist_norm_factor=1,
         should_plot=False,
         **kwargs,
-    ):
+    ) -> np.ndarray:
         """Doc."""
 
         # interpolate over NaNs
@@ -947,6 +947,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         Processes a single circular sFCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
+        # TODO: can this method be moved to the appropriate Mixin class?
 
         p = self._convert_fpga_data_to_photons(
             full_data["byte_data"],
@@ -995,6 +996,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         Processes a single angular sFCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
+        # TODO: can this method be moved to the appropriate Mixin class?
 
         p = self._convert_fpga_data_to_photons(
             full_data["byte_data"], full_data["version"], is_verbose=True
@@ -1196,7 +1198,7 @@ class TDCCalibrationGenerator:
         sync_coarse_time_to=None,
         pick_calib_bins_according_to=None,
         external_calib=None,
-        calib_time_ns=40,
+        calib_range_ns: Union[Limits, tuple] = Limits(40, 80),
         n_zeros_for_fine_bounds=10,
         time_bins_for_hist_ns=0.1,
         parent_axes=None,
@@ -1248,12 +1250,14 @@ class TDCCalibrationGenerator:
 
         if pick_calib_bins_according_to is None:
             # pick data at more than 'calib_time_ns' delay from peak maximum
-            min_calib_bin = (calib_time_ns * 1e-9) * self.fpga_freq_hz + 2
-            detector_gate_width_ns = self.detector_gate_ns.interval()
-            max_calib_bin = (detector_gate_width_ns * 1e-9) * self.fpga_freq_hz - 1
-            j = np.where((coarse_bins >= min_calib_bin) & (coarse_bins <= max_calib_bin))[0]
+            calib_range_bins = (
+                ((Limits(calib_range_ns) & self.detector_gate_ns) + self.detector_gate_ns.lower)
+                * 1e-9
+                * self.fpga_freq_hz
+            )
+            j = calib_range_bins.valid_indices(coarse_bins)
             if not j.any():
-                raise ValueError(f"Gate width is too narrow for calib_time_ns={calib_time_ns}!")
+                raise ValueError(f"Gate width is too narrow for calib_time_ns={calib_range_ns}!")
             j_calib = j_shift[j]
             coarse_calib_bins = coarse_bins[j_calib]
         elif isinstance(pick_calib_bins_according_to, (list, np.ndarray)):
