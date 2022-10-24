@@ -67,15 +67,15 @@ DATA_TYPE = "solution"
 # Choosing the data templates:
 
 # %%
-# FORCE_ALL = True
-FORCE_ALL = False
+FORCE_ALL = True
+# FORCE_ALL = False
 
 data_label_kwargs = {
     "gated 12 uW": dict(
         date="18_10_2022",
         confocal_template="gated_15ns_angular_exc_161655_*.pkl",
         sted_template=None,
-        #         file_selection="Use 1-5",
+        file_selection="Use 1-5",
         force_processing=False or FORCE_ALL,
         afterpulsing_method="filter (lifetime)",
     ),
@@ -83,7 +83,7 @@ data_label_kwargs = {
         date="18_10_2022",
         confocal_template="25XDilutedConcentratedSample_200nW_exc_noGating_angular_exc_152653_*.pkl",
         sted_template=None,
-        #         file_selection="Use 1-2",
+        file_selection="Use 1-2",
         force_processing=False or FORCE_ALL,
         afterpulsing_method="filter (lifetime)",
     ),

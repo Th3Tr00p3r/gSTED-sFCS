@@ -28,7 +28,7 @@ from utilities.helper import (
     deep_getattr,
     div_ceil,
     generate_numbers_from_string,
-    number,
+    str_to_num,
 )
 
 
@@ -245,7 +245,9 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
             # get a dictionary of read values instead of codes
             stats_dict = {
-                self.code_attr_dict[str_.rstrip(digits + "-")]: number(str_.lstrip(ascii_letters))
+                self.code_attr_dict[str_.rstrip(digits + "-")]: str_to_num(
+                    str_.lstrip(ascii_letters)
+                )
                 for str_ in responses
                 if str_.startswith(tuple(self.code_attr_dict.keys()))
             }

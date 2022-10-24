@@ -8,8 +8,9 @@ import os
 import sys
 import time
 from contextlib import suppress
+from copy import copy
 from types import SimpleNamespace
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Tuple, TypeVar
 
 import numpy as np
 import scipy
@@ -23,6 +24,7 @@ import utilities.display as display
 # print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms") # TESTING
 
 EPS = sys.float_info.epsilon
+Number = TypeVar("Number", int, float)
 
 
 class Limits:
@@ -89,8 +91,8 @@ class Limits:
     def __and__(self, other):
         self = self if self is not None else Limits()
         other = other if other is not None else Limits()
-        lower = max(self[0], other[0])
-        upper = min(self[1], other[1])
+        lower = max(self.lower, other.lower)
+        upper = min(self.upper, other.upper)
         return Limits(lower, upper)
 
     def __eq__(self, other):
@@ -103,13 +105,13 @@ class Limits:
         return not self.__eq__(other)
 
     def __gt__(self, other):
-        if isinstance(other, (int, float)):
+        if isinstance(other, int, float):
             return other < self.lower
         if isinstance(other, Limits):
             return other.upper < self.lower
 
     def __lt__(self, other):
-        if isinstance(other, (int, float)):
+        if isinstance(other, int, float):
             return other > self.upper
         if isinstance(other, Limits):
             return other.lower > self.upper
@@ -135,10 +137,26 @@ class Limits:
                         "Can only compare Limits to other instances or 2-iterable objects."
                     )
 
+    def __add__(self, other: Number):
+        if isinstance(other, (int, float)):
+            self_copy = copy(self)
+            self_copy.lower += other
+            self_copy.upper += other
+            return self_copy
+
+    def __mul__(self, other: Number):
+        if isinstance(other, (int, float)):
+            self_copy = copy(self)
+            self_copy.lower *= other
+            self_copy.upper *= other
+            return self_copy
+
+    __rmul__ = __mul__
+
     def valid_indices(self, arr: np.ndarray, as_bool=True):
         """
-        Checks whether each element is contained and returns a boolean array of same shape.
-        __contains__ must return a single boolean array, otherwise would be included there.
+        Returns indices of array elements within the limits.
+        Optionally, can return a boolean array of same shape instead.
         """
         if isinstance(arr, np.ndarray):
             if as_bool:
@@ -165,7 +183,7 @@ class Limits:
     def clamp(self, obj):
         """Force limit range on object"""
 
-        if isinstance(obj, (int, float)):
+        if isinstance(obj, int, float):
             return max(min(self.upper, obj), self.lower)
         elif hasattr(obj, "lower") and hasattr(obj, "upper"):
             return Limits(self.clamp(obj.lower), self.clamp(obj.upper))
@@ -670,8 +688,8 @@ def can_float(value: Any) -> bool:
         return False
 
 
-def number(x):
-    """Attempts to convert 'x' into an integer, a float if that fails."""
+def str_to_num(x):
+    """Attempts to convert 'x' into an integer, or a float if that fails."""
 
     try:
         return int(x)
@@ -688,7 +706,7 @@ def generate_numbers_from_string(source_str):
         while (j < len(source_str) + 1) and can_float(source_str[i:j]):
             j += 1
         with suppress(TypeError, ValueError):
-            yield number(source_str[i : j - 1])
+            yield str_to_num(source_str[i : j - 1])
         i = j
 
 
