@@ -30,7 +30,7 @@ class QtWidgetAccess:
             self.obj = getattr(parent_gui, self.obj_name)
         return self
 
-    def get(self, parent_gui=None) -> Union[int, float, str]:
+    def get(self, parent_gui=None) -> Union[helper.Number, str]:
         """Get widget value"""
 
         if self.getter is not None:
