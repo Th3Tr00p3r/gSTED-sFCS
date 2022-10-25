@@ -20,7 +20,7 @@ FIT_NAME_DICT = globals()
 
 
 class FitError(Exception):
-    pass
+    ...
 
 
 @dataclass
@@ -70,10 +70,17 @@ def curve_fit_lims(
 
     if should_plot:
         with Plotter(super_title=f"Curve Fit ({fit_func.__name__})", **plot_kwargs) as ax:
-            ax.plot(xs[in_lims], ys[in_lims], ".k")
-            ax.plot(xs[in_lims], fit_func(xs[in_lims], *fit_params.beta.values()), "--r")
+            ax.plot(xs[in_lims], ys[in_lims], ".k", label="Data", zorder=1)
             if should_plot_errorbars:
-                ax.errorbar(xs, ys, ys_errors, fmt=".")
+                ax.errorbar(xs, ys, ys_errors, fmt=".", label="Error", zorder=2)
+            ax.plot(
+                xs[in_lims],
+                fit_func(xs[in_lims], *fit_params.beta.values()),
+                "--r",
+                label="Fit",
+                zorder=3,
+            )
+            ax.legend()
 
     return fit_params
 

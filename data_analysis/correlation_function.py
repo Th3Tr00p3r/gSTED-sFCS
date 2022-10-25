@@ -713,7 +713,7 @@ class SolutionSFCSMeasurement:
         external_ap_filter=None,
         # TODO: gates should not be fixed - gate1 should start at the peak (or right before it) and the second should end before the detector width ends - these choices are important for normalization
         inherent_afterpulsing_gates=(Limits(2.5, 10), Limits(30, 90)),
-        get_afterpulsing=True,
+        get_afterpulsing=False,
         should_subtract_bg_corr=True,
         is_verbose=False,
         **kwargs,
@@ -749,16 +749,8 @@ class SolutionSFCSMeasurement:
             0, np.inf
         ):
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                self.calibrate_tdc(
-                    should_dump_data=False, is_verbose=is_verbose
-                )  # abort data rotation decorator
-            effective_lower_gate_ns = max(
-                tdc_gate_ns.lower, self.detector_settings["gate_ns"].lower
-            )
-            effective_upper_gate_ns = min(
-                tdc_gate_ns.upper, self.detector_settings["gate_ns"].upper
-            )
-            gate_ns = Limits(effective_lower_gate_ns, effective_upper_gate_ns)
+                self.calibrate_tdc(should_dump_data=False, is_verbose=is_verbose)
+            gate_ns = tdc_gate_ns & self.detector_settings["gate_ns"]
 
         # Apply gate and/or filter to correlator input
         is_filtered = (
@@ -768,13 +760,15 @@ class SolutionSFCSMeasurement:
         if is_filtered:
             if afterpulsing_method == "filter (lifetime)":
                 if external_ap_filter is not None:
-                    self.afterpulsing_filter = external_ap_filter
+                    filter = external_ap_filter[int(get_afterpulsing)]
                 else:
-                    self.afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
-                        **kwargs
-                    )
-            filter = self.afterpulsing_filter[int(not get_afterpulsing)]
+                    if not hasattr(self.tdc_calib, "afterpulsing_filter"):
+                        self.tdc_calib.calculate_afterpulsing_filter(
+                            self.detector_settings["gate_ns"], **kwargs
+                        )
+                    filter = self.tdc_calib.afterpulsing_filter[int(get_afterpulsing)]
             filter_input_list = []
+
         for dt_ts_split in dt_ts_split_list:
             split_delay_time = dt_ts_split[0]
             in_gate_idxs = gate_ns.valid_indices(split_delay_time)
@@ -794,6 +788,9 @@ class SolutionSFCSMeasurement:
                 filter_input_list.append(split_filter)
             else:  # gating_mechanism == "removal"
                 corr_input_list.append(np.squeeze(dt_ts_split[1:, in_gate_idxs].astype(np.int32)))
+
+        #        if get_afterpulsing: # TESTESTEST
+        #            print("corr_input_list: ", corr_input_list) # TESTESTEST
 
         if afterpulsing_method == "subtract inherent (xcorr)":
             # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
@@ -1131,13 +1128,16 @@ class SolutionSFCSMeasurement:
 
         return sbtrct_AB_BA_arr.mean(axis=0), (XCF_AB, XCF_BA)
 
-    def calculate_filtered_afterpulse(self):
-        """Get the afterpulsing by filtering the raw data"""
+    def calculate_filtered_afterpulsing(self, **kwargs):
+        """Get the afterpulsing by filtering the raw data."""
+        # TODO: this will fail if called prior to both TDC calibraiton AND afterpulsing filter calculation
 
         self.correlate_and_average(
             cf_name="afterpulsing",
             afterpulsing_method="filter (lifetime)",
             get_afterpulsing=True,
+            external_ap_filter=self.tdc_calib.afterpulsing_filter,
+            **kwargs,
         )
 
     def dump_or_load_data(self, should_load: bool, method_name=None) -> None:
