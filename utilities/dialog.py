@@ -37,7 +37,7 @@ class Dialog:
         return self._msg_box.exec_()  # warning: blocks!
 
 
-class Error(Dialog):
+class ErrorDialog(Dialog):
     """Doc."""
 
     def __init__(self, type="", loc="", msg="", tb="", custom_txt="", custom_title=""):
@@ -58,7 +58,7 @@ class Error(Dialog):
             )
 
 
-class Question(Dialog):
+class QuestionDialog(Dialog):
     """Doc."""
 
     def __init__(self, txt, title="User Input Needed"):
@@ -68,7 +68,7 @@ class Question(Dialog):
         self._msg_box.setDefaultButton(NO)
 
 
-class Notification(Dialog):
+class NotificationDialog(Dialog):
     """Doc."""
 
     def __init__(self, txt, title="Notification"):

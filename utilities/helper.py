@@ -2,7 +2,6 @@
 
 import asyncio
 import functools
-import logging
 import math
 import os
 import sys
@@ -710,22 +709,21 @@ def generate_numbers_from_string(source_str):
         i = j
 
 
-def center_of_mass_of_dimension(arr: np.ndarray, dim: int = 0) -> float:
-    """
-    Returns the center of mass of an Numpy along a specific axis.
-    Default axis is 0 (easier calling for 1d arrays)
+def center_of_mass(arr: np.ndarray) -> Tuple[float, ...]:
+    """Returns the center of mass coordinates of a Numpy ndarray as a tuple"""
 
-    Based on the COM formula: 1/M * \\Sigma_i (m_i * x_i)
-    """
+    def center_of_mass_of_dimension(arr: np.ndarray, dim: int = 0) -> float:
+        """
+        Returns the center of mass of an Numpy along a specific axis.
+        Default axis is 0 (easier calling for 1d arrays)
 
-    total_mass = arr.sum()
-    displacements = np.arange(arr.shape[dim])
-    masses_at_displacements = np.atleast_2d(arr).sum(axis=dim)
-    return 1 / total_mass * np.dot(displacements, masses_at_displacements)
+        Based on the COM formula: 1/M * \\Sigma_i (m_i * x_i)
+        """
 
-
-def center_of_mass(arr: np.ndarray) -> Tuple:
-    """Returns the center of mass coordinates of a Numpy ndarray"""
+        total_mass = arr.sum()
+        displacements = np.arange(arr.shape[dim])
+        masses_at_displacements = np.atleast_2d(arr).sum(axis=dim)
+        return 1 / total_mass * np.dot(displacements, masses_at_displacements)
 
     return tuple(center_of_mass_of_dimension(arr, dim) for dim in range(len(arr.shape)))
 
@@ -755,33 +753,21 @@ def bool_str(str_: str):
         raise ValueError(f"'{str_}' is neither 'True' nor 'False'.")
 
 
-def deep_getattr(obj, deep_attr_name: str, default=None, recursion=False):
+def deep_getattr(obj, deep_attr_name: str, default=None):
     """
     Get deep attribute of obj. Useful for dynamically-set deep attributes.
     Example usage: a = deep_getattr(obj, "sobj.ssobj.a")
     """
 
-    if recursion:
-        try:
-            next_attr_name, deep_attr_name = deep_attr_name.split(".", maxsplit=1)
-        except ValueError:
-            # end condition - only one level of attributes left
-            return getattr(obj, deep_attr_name, default)
-        else:
-            # recursion
-            return deep_getattr(getattr(obj, next_attr_name), deep_attr_name, default)
-
-    else:
-        # loop version, faster
-        for attr_name in deep_attr_name.split("."):
-            obj = getattr(obj, attr_name, default)
-        return obj
+    for attr_name in deep_attr_name.split("."):
+        obj = getattr(obj, attr_name, default)
+    return obj
 
 
 def div_ceil(x: int, y: int) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
-    return int(-(-x // y))  # TODO: test me!
+    return int(-(-x // y))
 
 
 def reverse_dict(dict_: dict) -> dict:
@@ -816,8 +802,6 @@ def file_last_line(file_path) -> str:
                 f.seek(-2, os.SEEK_CUR)
             last_line = f.readline().decode()
     except OSError:
-        # File empty and was just created
-        logging.info("Log file initialized.")
         return None
     else:
         return last_line

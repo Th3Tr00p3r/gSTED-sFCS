@@ -18,9 +18,9 @@ import numpy as np
 import pyvisa
 from PyQt5.QtWidgets import QFileDialog, QWidget
 
-import gui.dialog as dialog
 import gui.widgets as wdgts
 import logic.measurements as meas
+import utilities.dialog as dialog
 from data_analysis.correlation_function import (
     ImageSFCSMeasurement,
     SolutionSFCSExperiment,
@@ -170,7 +170,7 @@ class MainWin:
             error_dict = dvc.error_dict
             if error_dict is not None:
                 # show error dialog if reconnection fails
-                dialog.Error(
+                dialog.ErrorDialog(
                     **error_dict,
                     custom_title=dvc.log_ref,
                 ).display()
@@ -1015,7 +1015,7 @@ class MainWin:
             logging.warning("Current template is missing! (Probably manually deleted)")
             return
 
-        pressed = dialog.Question(
+        pressed = dialog.QuestionDialog(
             txt=f"Change current template from:\n{curr_template}\nto:\n{new_template}\n?",
             title="Edit File Template",
         ).display()
@@ -1234,7 +1234,7 @@ class MainWin:
             for item in save_path.iterdir()
             if (item / "solution" / "processed").is_dir()
         ]:
-            pressed = dialog.Question(
+            pressed = dialog.QuestionDialog(
                 txt="Are you sure you wish to delete all processed data?",
                 title="Clearing Processed Data",
             ).display()
@@ -1275,7 +1275,7 @@ class MainWin:
         if not current_template or current_template.endswith(".mat"):
             return
 
-        pressed = dialog.Question(
+        pressed = dialog.QuestionDialog(
             txt=f"Are you sure you wish to convert '{current_template}'?",
             title="Conversion to .mat Format",
         ).display()
@@ -1978,14 +1978,14 @@ class SettWin:
                 )
 
             if current_state != last_loaded_state:
-                pressed = dialog.Question(
+                pressed = dialog.QuestionDialog(
                     "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
                 ).display()
                 if pressed == dialog.NO:
                     self.load(self.settings_gui.settingsFileName.text())
 
         else:
-            dialog.Notification("Using Current settings.").display()
+            dialog.NotificationDialog("Using Current settings.").display()
 
     def save(self) -> None:
         """

@@ -17,10 +17,10 @@ import PIL
 from matplotlib.patches import Ellipse
 from nidaqmx.errors import DaqError
 
-from gui.dialog import Error
 from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
 from logic.timeout import TIMEOUT_INTERVAL
+from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.fit_tools import FitError, fit_2d_gaussian_to_image, linear_fit
 from utilities.helper import (
@@ -1166,7 +1166,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             cmnd = f"setpower 0 {value_mW}"
             self.write(cmnd)
         else:
-            Error(custom_txt=f"Power out of range {self.power_limits_mW}").display()
+            ErrorDialog(custom_txt=f"Power out of range {self.power_limits_mW}").display()
 
     def set_current(self, value_mA):
         """Doc."""
@@ -1180,7 +1180,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             cmnd = f"setLDcur 1 {value_mA}"
             self.write(cmnd)
         else:
-            Error(custom_txt=f"Current out of range {self.current_limits_mA}").display()
+            ErrorDialog(custom_txt=f"Current out of range {self.current_limits_mA}").display()
 
 
 class Shutter(SimpleDODevice):
