@@ -10,9 +10,9 @@ from types import SimpleNamespace
 
 import yaml
 
-import gui.dialog as dialog
 import gui.gui
 import gui.widgets as wdgts
+import utilities.dialog as dialog
 from logic.devices import (
     TDC,
     UM232H,
@@ -257,7 +257,7 @@ class App:
 
         try:
             if not self.exiting:
-                pressed = dialog.Question(
+                pressed = dialog.QuestionDialog(
                     txt="Are you sure you want to quit?", title="Quitting Program"
                 ).display()
                 if pressed == dialog.YES:

@@ -302,11 +302,6 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
                             if should_track_progress:
                                 print("O", end="")
 
-        except OSError as exc:  # not fully downloaded from cloud
-            raise OSError(
-                f"File was not fully downloaded from cloud (check that cloud is synchronizing), or is missing. [{exc}]"
-            )
-
     except EOFError:
         if should_track_progress:
             print(f" - Done ({len(loaded_data)} chunks)")
@@ -476,12 +471,18 @@ def load_file_dict(file_path: Path, **kwargs):
     Uses defaults for legacy files where 'system_info' or 'afterpulse_params' is not iterable (therefore old).
     """
 
-    if file_path.suffix == ".pkl":
-        file_dict = _translate_dict_keys(load_object(file_path), legacy_python_trans_dict)
-    elif file_path.suffix == ".mat":
-        file_dict = _translate_dict_keys(_load_mat(file_path), legacy_matlab_trans_dict)
-    else:
-        raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
+    try:
+        if file_path.suffix == ".pkl":
+            file_dict = _translate_dict_keys(load_object(file_path), legacy_python_trans_dict)
+        elif file_path.suffix == ".mat":
+            file_dict = _translate_dict_keys(_load_mat(file_path), legacy_matlab_trans_dict)
+        else:
+            raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
+
+    except OSError as exc:
+        raise OSError(
+            f"File was not fully downloaded from cloud (check that cloud is synchronizing), or is missing. [{exc}]"
+        )
 
     _handle_legacy_file_dict(file_dict)
 

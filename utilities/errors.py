@@ -9,7 +9,7 @@ from pathlib import Path
 from types import FunctionType
 from typing import Any, Callable, Dict
 
-from gui.dialog import Error
+from utilities.dialog import ErrorDialog
 
 
 def build_error_dict(exc: Exception) -> Dict[str, Any]:
@@ -67,9 +67,10 @@ def err_hndlr(exc, func_frame, func_locals, dvc=None, lvl="error", disp=False) -
             dvc.disable_switch()
 
     else:  # logic eror
+        # TODO: this module shouldn't import the gui module...
         log_str = f"{error_dict['type']}: {error_dict['msg']} ({func_string}, {location_string})"
         if disp:
-            Error(**error_dict).display()
+            ErrorDialog(**error_dict).display()
 
     getattr(logging, lvl)(log_str, exc_info=False)
 
