@@ -1854,18 +1854,33 @@ class MainWin:
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
-        gate_lt = wdgt_coll["custom_gate_to_assign_lt"].get()
+        gate = helper.Limits(
+            wdgt_coll["custom_gate_to_assign_lower"],
+            wdgt_coll["custom_gate_to_assign_upper"],
+        )
 
-        experiment = self.get_experiment()
-        try:
-            laser_pulse_delay_ns = experiment.lifetime_params.laser_pulse_delay_ns
-            lifetime_ns = experiment.lifetime_params.lifetime_ns
-        except AttributeError:  # TDC not calibrated!
-            logging.info("Cannot gate if TDC isn't calibrated!")
+        if wdgt_coll["gate_units"] == "lifetimes":
+            experiment = self.get_experiment()
+            try:
+                laser_pulse_delay_ns = experiment.lifetime_params.laser_pulse_delay_ns
+                lifetime_ns = experiment.lifetime_params.lifetime_ns
+            except AttributeError:
+                logging.info(
+                    "Cannot use lifetime gate if no STED measurement was loaded prior to TDC calibration! (laser pulse time and fluorophore lifetime are derived there)"
+                )
+                return
+            else:
+                gate_ns = gate * lifetime_ns + laser_pulse_delay_ns
         else:
-            lower_gate_ns = gate_lt * lifetime_ns + laser_pulse_delay_ns
-            upper_gate_ns = experiment.UPPERֹ_ֹGATE_NS
-            gate_ns = helper.Limits(lower_gate_ns, upper_gate_ns)
+            gate_ns = gate
+
+        gates_combobox = wdgt_coll["assigned_gates"].obj
+        existing_gate_list = [
+            helper.Limits(gates_combobox.itemText(i), from_string=True)
+            for i in range(gates_combobox.count())
+        ]
+
+        if gate_ns not in existing_gate_list:  # add only new gates
             wdgt_coll["assigned_gates"].obj.addItem(str(gate_ns))
 
     def remove_assigned_gate(self) -> None:
@@ -1873,10 +1888,10 @@ class MainWin:
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
         wdgt = wdgt_coll["assigned_gates"]
-        gate_to_remove = wdgt.get()
-        # delete from GUI
-        wdgt.obj.removeItem(wdgt.obj.currentIndex())
-        logging.info(f"Gate '{gate_to_remove}' was unassigned.")
+        if gate_to_remove := wdgt.get():
+            # delete from GUI
+            wdgt.obj.removeItem(wdgt.obj.currentIndex())
+            logging.info(f"Gate '{gate_to_remove}' was unassigned.")
 
     def gate(self) -> None:
         """Doc."""
@@ -1890,12 +1905,13 @@ class MainWin:
         ]
 
         experiment = self.get_experiment()
-        options_dict = self.get_processing_options_as_dict()
+        proc_options_dict = self.get_processing_options_as_dict()
         kwargs = dict(
             gui_display=wdgt_coll["gui_display_sted_gating"].obj,
             gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True),
             fontsize=10,
-            **options_dict,
+            meas_type=wdgt_coll["gate_meas_type"].lower(),
+            **proc_options_dict,
         )
         try:
             experiment.add_gates(gate_list, **kwargs)
@@ -1913,11 +1929,16 @@ class MainWin:
         # delete from object
         experiment = self.get_experiment()
         try:
-            experiment.sted.cf.pop(f"gSTED {gate_to_remove}")
+            meas_type = wdgt_coll["gate_meas_type"].lower()
+            getattr(experiment, meas_type).cf.pop(f"gated {meas_type} {gate_to_remove}")
         except AttributeError:  # no experiment loaded or no STED
-            logging.info("Can't remove gate.")
+            # TODO: this shouldn't happen - the list of gates needs to be cleared when experiment is cleared
+            logging.info(
+                "Can't remove gate. (this shouldn't happen - the list of gates needs to be cleared when experiment is cleared)"
+            )
         except KeyError:  # no assigned gate
             # TODO: clear the available_gates when removing experiment!
+            print("THIS SHOULD NOT HAPPEN! (remove_available_gate)")
             pass
         else:
             # re-plot

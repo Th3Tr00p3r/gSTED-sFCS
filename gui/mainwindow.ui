@@ -5690,7 +5690,7 @@ Measurement</string>
                   <item row="0" column="0">
                    <widget class="QTabWidget" name="tabWidget_2">
                     <property name="currentIndex">
-                     <number>0</number>
+                     <number>1</number>
                     </property>
                     <widget class="QWidget" name="tab_3">
                      <attribute name="title">
@@ -6960,7 +6960,7 @@ Experiment</string>
                                <number>0</number>
                               </property>
                               <item>
-                               <layout class="QHBoxLayout" name="horizontalLayout_58" stretch="1,1,10,0,0">
+                               <layout class="QHBoxLayout" name="horizontalLayout_58" stretch="1,1,10">
                                 <property name="spacing">
                                  <number>2</number>
                                 </property>
@@ -7019,47 +7019,6 @@ Over (ns)</string>
                                   </property>
                                  </spacer>
                                 </item>
-                                <item>
-                                 <widget class="QPushButton" name="calibrateTdc_2">
-                                  <property name="sizePolicy">
-                                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                   </sizepolicy>
-                                  </property>
-                                  <property name="text">
-                                   <string>Set Default
-Upper Gate</string>
-                                  </property>
-                                 </widget>
-                                </item>
-                                <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_154">
-                                  <property name="spacing">
-                                   <number>0</number>
-                                  </property>
-                                  <item>
-                                   <widget class="QLabel" name="label_30">
-                                    <property name="text">
-                                     <string>Upper Gate (ns)</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item>
-                                   <widget class="QSpinBox" name="tdcCalibGating_2">
-                                    <property name="suffix">
-                                     <string/>
-                                    </property>
-                                    <property name="maximum">
-                                     <number>999</number>
-                                    </property>
-                                    <property name="value">
-                                     <number>20</number>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                 </layout>
-                                </item>
                                </layout>
                               </item>
                               <item>
@@ -7115,7 +7074,7 @@ Upper Gate</string>
                           </widget>
                           <widget class="QWidget" name="tab_9">
                            <attribute name="title">
-                            <string>gSTED Gating</string>
+                            <string>TDC Gating</string>
                            </attribute>
                            <layout class="QGridLayout" name="gridLayout_46">
                             <item row="0" column="0">
@@ -7155,30 +7114,90 @@ Upper Gate</string>
                                       <number>0</number>
                                      </property>
                                      <item>
-                                      <widget class="QDoubleSpinBox" name="customGateLifetimes">
-                                       <property name="suffix">
-                                        <string> lifetimes</string>
-                                       </property>
-                                       <property name="decimals">
+                                      <layout class="QHBoxLayout" name="horizontalLayout_79">
+                                       <property name="spacing">
                                         <number>2</number>
                                        </property>
-                                       <property name="singleStep">
-                                        <double>0.010000000000000</double>
-                                       </property>
-                                      </widget>
-                                     </item>
-                                     <item>
-                                      <widget class="QPushButton" name="AddCustomGate">
-                                       <property name="sizePolicy">
-                                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-                                         <horstretch>0</horstretch>
-                                         <verstretch>0</verstretch>
-                                        </sizepolicy>
-                                       </property>
-                                       <property name="text">
-                                        <string>Assign Gate</string>
-                                       </property>
-                                      </widget>
+                                       <item>
+                                        <layout class="QHBoxLayout" name="horizontalLayout_80">
+                                         <property name="spacing">
+                                          <number>6</number>
+                                         </property>
+                                         <item>
+                                          <widget class="QDoubleSpinBox" name="customGateLifetimesLower">
+                                           <property name="buttonSymbols">
+                                            <enum>QAbstractSpinBox::NoButtons</enum>
+                                           </property>
+                                           <property name="suffix">
+                                            <string/>
+                                           </property>
+                                           <property name="decimals">
+                                            <number>2</number>
+                                           </property>
+                                           <property name="singleStep">
+                                            <double>0.010000000000000</double>
+                                           </property>
+                                          </widget>
+                                         </item>
+                                         <item>
+                                          <widget class="QLabel" name="label_38">
+                                           <property name="text">
+                                            <string>-</string>
+                                           </property>
+                                           <property name="alignment">
+                                            <set>Qt::AlignCenter</set>
+                                           </property>
+                                          </widget>
+                                         </item>
+                                         <item>
+                                          <widget class="QDoubleSpinBox" name="customGateLifetimesUpper">
+                                           <property name="buttonSymbols">
+                                            <enum>QAbstractSpinBox::NoButtons</enum>
+                                           </property>
+                                           <property name="suffix">
+                                            <string/>
+                                           </property>
+                                           <property name="decimals">
+                                            <number>2</number>
+                                           </property>
+                                           <property name="singleStep">
+                                            <double>0.010000000000000</double>
+                                           </property>
+                                           <property name="value">
+                                            <double>7.000000000000000</double>
+                                           </property>
+                                          </widget>
+                                         </item>
+                                         <item>
+                                          <widget class="QComboBox" name="gateUnits">
+                                           <item>
+                                            <property name="text">
+                                             <string>ns</string>
+                                            </property>
+                                           </item>
+                                           <item>
+                                            <property name="text">
+                                             <string>lifetimes</string>
+                                            </property>
+                                           </item>
+                                          </widget>
+                                         </item>
+                                        </layout>
+                                       </item>
+                                       <item>
+                                        <widget class="QPushButton" name="AddCustomGate">
+                                         <property name="sizePolicy">
+                                          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                                           <horstretch>0</horstretch>
+                                           <verstretch>0</verstretch>
+                                          </sizepolicy>
+                                         </property>
+                                         <property name="text">
+                                          <string>Assign Gate</string>
+                                         </property>
+                                        </widget>
+                                       </item>
+                                      </layout>
                                      </item>
                                     </layout>
                                    </item>
@@ -7237,27 +7256,54 @@ Upper Gate</string>
                                  </widget>
                                 </item>
                                 <item>
-                                 <layout class="QVBoxLayout" name="verticalLayout_87">
+                                 <layout class="QVBoxLayout" name="verticalLayout_161">
                                   <property name="spacing">
-                                   <number>0</number>
+                                   <number>2</number>
                                   </property>
                                   <item>
-                                   <widget class="QPushButton" name="addGates">
-                                    <property name="sizePolicy">
-                                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                                      <horstretch>0</horstretch>
-                                      <verstretch>0</verstretch>
-                                     </sizepolicy>
+                                   <layout class="QHBoxLayout" name="horizontalLayout_72">
+                                    <property name="spacing">
+                                     <number>2</number>
                                     </property>
-                                    <property name="text">
-                                     <string>Add Assigned Gates</string>
-                                    </property>
-                                   </widget>
+                                    <item>
+                                     <widget class="QPushButton" name="addGates">
+                                      <property name="sizePolicy">
+                                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                       </sizepolicy>
+                                      </property>
+                                      <property name="text">
+                                       <string>Gate</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QComboBox" name="gateMeasType">
+                                      <property name="sizePolicy">
+                                       <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+                                        <horstretch>0</horstretch>
+                                        <verstretch>0</verstretch>
+                                       </sizepolicy>
+                                      </property>
+                                      <item>
+                                       <property name="text">
+                                        <string>STED</string>
+                                       </property>
+                                      </item>
+                                      <item>
+                                       <property name="text">
+                                        <string>Confocal</string>
+                                       </property>
+                                      </item>
+                                     </widget>
+                                    </item>
+                                   </layout>
                                   </item>
                                   <item>
-                                   <layout class="QHBoxLayout" name="horizontalLayout_64">
+                                   <layout class="QHBoxLayout" name="horizontalLayout_75">
                                     <property name="spacing">
-                                     <number>0</number>
+                                     <number>2</number>
                                     </property>
                                     <item>
                                      <widget class="QComboBox" name="availableGates">
