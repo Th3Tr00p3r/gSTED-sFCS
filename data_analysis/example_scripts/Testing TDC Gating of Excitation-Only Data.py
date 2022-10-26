@@ -67,15 +67,15 @@ DATA_TYPE = "solution"
 # Choosing the data templates:
 
 # %%
-# FORCE_ALL = True
-FORCE_ALL = False
+FORCE_ALL = True
+# FORCE_ALL = False
 
 data_label_kwargs = {
     "Old Det. 300 bp ATTO": dict(
         date="10_05_2018",
         confocal_template="bp300_angular_exc_*.mat",
         sted_template=None,
-        #         file_selection="Use 1-2",
+        file_selection="Use 1-5",
         force_processing=False or FORCE_ALL,
         afterpulsing_method="filter (lifetime)",
         #         baseline_method="fit",
@@ -86,7 +86,7 @@ data_label_kwargs = {
         date="03_07_2022",
         confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
         sted_template=None,
-        #         file_selection="Use 1-2",
+        file_selection="Use 1-5",
         force_processing=False or FORCE_ALL,
         afterpulsing_method="filter (lifetime)",
         #         baseline_method="fit",
@@ -97,7 +97,7 @@ data_label_kwargs = {
         date="05_07_2022",
         confocal_template="bp300YOYO_TEST_diluted_12uW_angular_exc_145527_*.pkl",
         sted_template=None,
-        #         file_selection="Use 1-2",
+        file_selection="Use 1-5",
         force_processing=False or FORCE_ALL,
         afterpulsing_method="filter (lifetime)",
         #         baseline_method="fit",
@@ -236,4 +236,4 @@ with Plotter(
 # ## Testing the effect of TDC gating on confocal measurements when using Enderlein-filtering of afterpulsing
 
 # %%
-exp_dict["Old Det. 300 bp ATTO"].add_gate((5, np.inf))
+exp_dict["Old Det. 300 bp ATTO"].add_gate((5, 20), meas_type="confocal")

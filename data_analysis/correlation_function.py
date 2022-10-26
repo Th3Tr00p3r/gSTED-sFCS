@@ -789,9 +789,6 @@ class SolutionSFCSMeasurement:
             else:  # gating_mechanism == "removal"
                 corr_input_list.append(np.squeeze(dt_ts_split[1:, in_gate_idxs].astype(np.int32)))
 
-        #        if get_afterpulsing: # TESTESTEST
-        #            print("corr_input_list: ", corr_input_list) # TESTESTEST
-
         if afterpulsing_method == "subtract inherent (xcorr)":
             # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
             if external_afterpulsing is None:
@@ -869,6 +866,7 @@ class SolutionSFCSMeasurement:
         **kwargs,
     ) -> Dict[str, CorrFunc]:
         """Doc."""
+        # TODO: currently does not support 'Enderlein-filtering' - needs new correlator types built and code here fixed according to 'correlate_data'
 
         if is_verbose:
             print("Preparing split data for correlator...", end=" ")
@@ -991,6 +989,17 @@ class SolutionSFCSMeasurement:
             print("Done.")
 
         return dt_ts_splits_dict
+
+    def add_tdc_gate(
+        self,
+        gate_ns: Tuple[float, float],
+        **kwargs,
+    ):
+        """A convenience method for TDC-gating."""
+
+        self.correlate_and_average(
+            cf_name=f"gated {self.name} {gate_ns}", gate_ns=gate_ns, **kwargs
+        )
 
     def plot_correlation_functions(
         self,
@@ -1130,7 +1139,7 @@ class SolutionSFCSMeasurement:
 
     def calculate_filtered_afterpulsing(self, is_verbose=True, **kwargs):
         """Get the afterpulsing by filtering the raw data."""
-        # TODO: this will fail if called prior to both TDC calibraiton AND afterpulsing filter calculation
+        # TODO: this might fail if called prior to either TDC calibration or afterpulsing filter calculation
 
         self.correlate_and_average(
             cf_name="afterpulsing",
@@ -1202,8 +1211,6 @@ class ImageSFCSMeasurement(CountsImageMixin):
 
 class SolutionSFCSExperiment:
     """Doc."""
-
-    UPPERֹ_ֹGATE_NS = 20
 
     def __init__(self, name):
         self.name = name
@@ -1524,6 +1531,7 @@ class SolutionSFCSExperiment:
     def add_gate(
         self,
         gate_ns: Tuple[float, float],
+        meas_type="sted",
         should_plot=True,
         should_re_correlate=False,
         is_verbose=True,
@@ -1536,9 +1544,10 @@ class SolutionSFCSExperiment:
             return
 
         try:
-            self.sted.correlate_and_average(
-                cf_name=f"gSTED {gate_ns}", gate_ns=gate_ns, is_verbose=is_verbose, **kwargs
-            )
+            if meas_type == "confocal":
+                self.confocal.add_tdc_gate(gate_ns, is_verbose=is_verbose, **kwargs)
+            else:
+                self.sted.add_tdc_gate(gate_ns, is_verbose=is_verbose, **kwargs)
             if should_plot:
                 super_title = f"Experiment '{self.name.capitalize()}' - All ACFs"
                 with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
@@ -1554,8 +1563,8 @@ class SolutionSFCSExperiment:
                     )
         except AttributeError:
             # STED measurement not loaded
-            raise RuntimeError(
-                "Cannot add a gate if there's no STED measurement loaded to the experiment!"
+            logging.info(
+                "Cannot add STED gate if there's no STED measurement loaded to the experiment!"
             )
 
     def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=True, **kwargs):
