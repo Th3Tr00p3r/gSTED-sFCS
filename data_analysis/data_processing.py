@@ -1345,10 +1345,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             l_quarter_tdc = round(left_tdc + (right_tdc - left_tdc) / 4)
             r_quarter_tdc = round(right_tdc - (right_tdc - left_tdc) / 4)
 
-            # zero those out of TDC: I think h_tdc_calib[left_tdc] = 0, so does not actually need to be set to 0
+            # zero those out of TDC (happened at least once, for old detector data from 10/05/2018)
             if sum(h_tdc_calib[:left_tdc]) or sum(h_tdc_calib[right_tdc:]):
-                # TODO: delete the whole thing if error never shows
-                raise ValueError("SO THEY SHOULD BE ZEROED!!!")  # TESTESTEST
                 h_tdc_calib[:left_tdc] = 0
                 h_tdc_calib[right_tdc:] = 0
 

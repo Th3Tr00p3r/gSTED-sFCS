@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2022 idomic, ",
-    "saved": "2022-10-02, 15:24:07"
+    "saved": "2022-10-26, 13:19:13"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -83,6 +83,7 @@
     "DOCSTRING": "",
     "DOCUMENTATIONPARMS": {},
     "EMAIL": "",
+    "EMBEDDED_VENV": false,
     "EOL": 0,
     "FILETYPES": {
       "*.e4p": "OTHERS",
@@ -107,8 +108,8 @@
     },
     "FORMS": [
       "gui/mainwindow.ui",
-      "gui/settingswindow.ui",
-      "gui/optionswindow.ui"
+      "gui/optionswindow.ui",
+      "gui/settingswindow.ui"
     ],
     "HASH": "c44c4f29a6e008d4372597d4bc4266d897948644",
     "IDLPARAMS": {
@@ -118,6 +119,7 @@
     },
     "INTERFACES": [],
     "LEXERASSOCS": {},
+    "LICENSE": "",
     "MAINSCRIPT": "main.py",
     "MAKEPARAMS": {
       "MakeEnabled": false,
@@ -143,32 +145,34 @@
     },
     "RESOURCES": [],
     "SOURCES": [
+      "data_analysis/correlation_function.py",
+      "data_analysis/data_processing.py",
+      "data_analysis/software_correlator.py",
+      "gui/dialog.py",
       "gui/gui.py",
+      "gui/widgets.py",
       "logic/app.py",
       "logic/devices.py",
       "logic/drivers.py",
       "logic/measurements.py",
       "logic/scan_patterns.py",
+      "logic/slot_implementations.py",
       "logic/timeout.py",
       "main.py",
-      "utilities/errors.py",
-      "utilities/helper.py",
-      "data_analysis/correlation_function.py",
-      "data_analysis/software_correlator.py",
-      "utilities/file_utilities.py",
-      "utilities/display.py",
-      "utilities/fit_tools.py",
-      "gui/widgets.py",
-      "gui/dialog.py",
       "tests/integration/__init__.py",
-      "tests/unit/test_scan_patterns.py",
       "tests/unit/__init__.py",
-      "logic/slot_implementations.py",
-      "data_analysis/data_processing.py"
+      "tests/unit/test_scan_patterns.py",
+      "utilities/dialog.py",
+      "utilities/display.py",
+      "utilities/errors.py",
+      "utilities/file_utilities.py",
+      "utilities/fit_tools.py",
+      "utilities/helper.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",
     "SPELLWORDS": "",
+    "TESTING_FRAMEWORK": "",
     "TRANSLATIONEXCEPTIONS": [],
     "TRANSLATIONPATTERN": "",
     "TRANSLATIONS": [],

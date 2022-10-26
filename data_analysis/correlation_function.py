@@ -1128,7 +1128,7 @@ class SolutionSFCSMeasurement:
 
         return sbtrct_AB_BA_arr.mean(axis=0), (XCF_AB, XCF_BA)
 
-    def calculate_filtered_afterpulsing(self, **kwargs):
+    def calculate_filtered_afterpulsing(self, is_verbose=True, **kwargs):
         """Get the afterpulsing by filtering the raw data."""
         # TODO: this will fail if called prior to both TDC calibraiton AND afterpulsing filter calculation
 
@@ -1137,6 +1137,7 @@ class SolutionSFCSMeasurement:
             afterpulsing_method="filter (lifetime)",
             get_afterpulsing=True,
             external_ap_filter=self.tdc_calib.afterpulsing_filter,
+            is_verbose=is_verbose,
             **kwargs,
         )
 
