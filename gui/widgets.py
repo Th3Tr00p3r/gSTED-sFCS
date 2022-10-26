@@ -316,9 +316,12 @@ SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
     gui_display_tdc_cal=("solExpTDC1", None, "main", True),
     gui_display_comp_lifetimes=("solExpTDC2", None, "main", True),
     # gating
-    custom_gate_to_assign_lt=("customGateLifetimes", "QDoubleSpinBox", "main", True),
+    custom_gate_to_assign_lower=("customGateLifetimesLower", "QDoubleSpinBox", "main", False),
+    custom_gate_to_assign_upper=("customGateLifetimesUpper", "QDoubleSpinBox", "main", False),
+    gate_units=("gateUnits", "QComboBox", "main", False),
     assigned_gates=("assignedGates", "QComboBox", "main", True),
     available_gates=("availableGates", "QComboBox", "main", True),
+    gate_meas_type=("gateMeasType", "QComboBox", "main", False),
     gui_display_sted_gating=("solExpGSTED", None, "main", True),
     # structure factor
     g_min=("expStrctFctrGMin", "QDoubleSpinBox", "main", False),
