@@ -774,15 +774,12 @@ class SolutionSFCSMeasurement:
         # build correlator input
         corr_input_list = []
         for dt_ts_split in dt_ts_split_list:
-            split_delay_time = dt_ts_split[0]
+            corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
             if is_filtered:
                 # create a filter for genuine fluorscene (ignoring afterpulsing)
+                split_delay_time = dt_ts_split[0]
                 bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
-                corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
                 filter_input_list.append(filter[bin_num - 1])
-            else:
-                #                corr_input_list.append(np.squeeze(dt_ts_split[1:, in_gate_idxs].astype(np.int32))) # TESTESTEST - RETURNED IN_GATE_IDXS
-                corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
 
         if afterpulsing_method == "subtract inherent (xcorr)":
             # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
