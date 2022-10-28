@@ -464,7 +464,7 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
             )
 
 
-def load_file_dict(file_path: Path, **kwargs):
+def load_file_dict(file_path: Path):
     """
     Load files according to extension.
     Allows backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files).
@@ -708,15 +708,11 @@ def rotate_data_to_disk(does_modify_data: bool = False) -> Callable:
 
     def outer_wrapper(method) -> Callable:
         @functools.wraps(method)
-        def method_wrapper(self, *args, should_dump_data=True, **kwargs):
+        def method_wrapper(self, *args, **kwargs):
             self.dump_or_load_data(should_load=True, method_name=method.__name__)
             value = method(self, *args, **kwargs)
-            if should_dump_data:
-                if does_modify_data:
-                    self.dump_or_load_data(should_load=False, method_name=method.__name__)
-                else:
-                    self.data = []
-                    self.is_data_dumped = True
+            if does_modify_data:
+                self.dump_or_load_data(should_load=False, method_name=method.__name__, **kwargs)
             return value
 
         return method_wrapper

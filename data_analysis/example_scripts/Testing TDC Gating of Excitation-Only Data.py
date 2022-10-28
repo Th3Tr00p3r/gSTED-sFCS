@@ -70,39 +70,37 @@ DATA_TYPE = "solution"
 FORCE_ALL = True
 # FORCE_ALL = False
 
+# general options
+# AP_METHOD = "none"
+# AP_METHOD = "subtract calibrated"
+AP_METHOD = "filter (lifetime)"
+FILES = "Use 1-5"
+# FILES = "Use All"
+
 data_label_kwargs = {
     "Old Det. 300 bp ATTO": dict(
         date="10_05_2018",
         confocal_template="bp300_angular_exc_*.mat",
         sted_template=None,
-        file_selection="Use 1-5",
+        file_selection=FILES,
         force_processing=False or FORCE_ALL,
-        afterpulsing_method="filter (lifetime)",
-        #         baseline_method="fit",
-        #         baseline_method="external",
-        #         external_baseline=3.5e-4,
+        afterpulsing_method=AP_METHOD,
     ),
     "New Det. 300 bp ATTO": dict(
         date="03_07_2022",
         confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
         sted_template=None,
-        file_selection="Use 1-5",
+        file_selection=FILES,
         force_processing=False or FORCE_ALL,
-        afterpulsing_method="filter (lifetime)",
-        #         baseline_method="fit",
-        #         baseline_method="external",
-        #         external_baseline=3.5e-4,
+        afterpulsing_method=AP_METHOD,
     ),
     "New Det. 300 bp YOYO": dict(
         date="05_07_2022",
         confocal_template="bp300YOYO_TEST_diluted_12uW_angular_exc_145527_*.pkl",
         sted_template=None,
-        file_selection="Use 1-5",
+        file_selection=FILES,
         force_processing=False or FORCE_ALL,
-        afterpulsing_method="filter (lifetime)",
-        #         baseline_method="fit",
-        #         baseline_method="external",
-        #         external_baseline=3.5e-4,
+        afterpulsing_method=AP_METHOD,
     ),
 }
 
@@ -144,26 +142,31 @@ used_labels = data_labels
 # ]
 
 # load experiment
-for label in used_labels:
+for label, exp in exp_dict.items():
     # skip already loaded experiments, unless forced
     if not hasattr(exp_dict[label], "confocal") or data_label_kwargs[label]["force_processing"]:
-        exp_dict[label].load_experiment(
+        exp.load_experiment(
             should_plot=False,
             should_re_correlate=FORCE_ALL,
             **data_label_kwargs[label],
         )
 
+        #         # calibrate TDC # TESTESTEST
+        #         exp.confocal.calibrate_tdc(**data_label_kwargs[label])
+
         # plot TDC calibration
-        exp_dict[label].confocal.tdc_calib.plot()
+        try:
+            exp.confocal.tdc_calib.plot()
+        except AttributeError:
+            print("NO TDC CALIBRATION TO PLOT!")
 
         # save processed data (to avoid re-processing)
-        exp_dict[label].save_processed_measurements(
+        exp.save_processed_measurements(
             should_force=FORCE_ALL,
         )
 
 # Present count-rates
-for label in used_labels:
-    exp = exp_dict[label]
+for label, exp in exp_dict.items():
     print(f"'{label}' countrates:")
     print(
         f"Confocal: {exp.confocal.avg_cnt_rate_khz:.2f} +/- {exp.confocal.std_cnt_rate_khz:.2f} kHz"
@@ -185,12 +188,15 @@ for label in used_labels:
 # %%
 if FORCE_ALL:
     for label, exp in exp_dict.items():
-        exp.confocal.calculate_filtered_afterpulsing()
-
-        # save processed data (to avoid re-processing)
-        exp.save_processed_measurements(
-            should_force=True,
-        )
+        try:
+            exp.confocal.calculate_filtered_afterpulsing()
+        except AttributeError:
+            print("NO TDC CALIBRATION!")
+        else:
+            # save processed data (to avoid re-processing)
+            exp.save_processed_measurements(
+                should_force=True,
+            )
 else:
     print("Using pre-processed...")
 
@@ -209,16 +215,19 @@ with Plotter(
         meas = exp.confocal
         # plot the filters
         print()
-        meas.tdc_calib.calculate_afterpulsing_filter(
-            meas.detector_settings["gate_ns"],
-            should_plot=True,
-            **data_label_kwargs[label],
-            #             baseline_method="fit",
-            #             baseline_method="external",
-            #             external_baseline=1 # 2.7e-4,
-            #             baseline_method="range",
-            #             baseline_range=(30, 100),
-        )
+        try:
+            meas.tdc_calib.calculate_afterpulsing_filter(
+                meas.detector_settings["gate_ns"],
+                should_plot=True,
+                **data_label_kwargs[label],
+                #             baseline_method="fit",
+                #             baseline_method="external",
+                #             external_baseline=1 # 2.7e-4,
+                #             baseline_method="range",
+                #             baseline_range=(30, 100),
+            )
+        except AttributeError:
+            print("NO TDC CALIBRATION!")
         cf_dict = meas.cf
         for cf_label, cf in cf_dict.items():
             ax.plot(
@@ -233,7 +242,90 @@ with Plotter(
     ax.legend()
 
 # %% [markdown]
-# ## Testing the effect of TDC gating on confocal measurements when using Enderlein-filtering of afterpulsing
+# ## Testing the effect of TDC gating on confocal measurements
+
+# %% [markdown]
+# Gating
 
 # %%
-exp_dict["Old Det. 300 bp ATTO"].add_gate((5, 20), meas_type="confocal")
+tdc_gates_ns = [
+    (7.5, 30),
+    (7.5, np.inf),
+]
+
+for label, exp in exp_dict.items():
+    for tdc_gate_ns in tdc_gates_ns:
+        exp.add_gate(
+            tdc_gate_ns, meas_type="confocal", should_plot=False, **data_label_kwargs[label]
+        )
+
+# %% [markdown]
+# Plotting together:
+
+# %%
+# TODOף TOO MANY CURVES IN ONE AXES - SEPARATE INTO 3 GRAPHS ׂ (ATTO OLD, ATTO NEW,
+# EACH SHOWING EACH GATE AND ITS AFTERPULSING (SOLID FOR SIGNAL, DASHED FOR AFTERPULSING)
+
+with Plotter(
+    x_scale="log",
+    xlim=(1e-4, 1),
+    ylim=(0, 8.5e4),
+    xlabel="lagׂ (ms)",
+    ylabel="Avg. CF_CR",
+) as ax:
+    colors = ["tab:blue", "tab:orange", "tab:green"]
+    for (label, exp), color in zip(exp_dict.items(), colors):
+        for cf_label, cf in exp.confocal.cf.items():
+            if cf_label == "confocal":
+                ax.plot(cf.lag, cf.avg_cf_cr, label=f"{label}: {cf_label}", color=color)
+                with suppress(AttributeError):
+                    ax.plot(
+                        cf.lag,
+                        cf.subtracted_afterpulsing,
+                        linestyle="dotted",
+                        label=f"{label}: afterpulsing",
+                        color=color,
+                    )
+            elif "(7.5, inf)" in cf_label:
+                ax.plot(
+                    cf.lag,
+                    cf.avg_cf_cr,
+                    linestyle="dashed",
+                    label=f"{label}: {cf_label}",
+                    color=color,
+                )
+            elif "(7.5, 30)" in cf_label:
+                ax.plot(
+                    cf.lag,
+                    cf.avg_cf_cr,
+                    linestyle="dashdot",
+                    label=f"{label}: {cf_label}",
+                    color=color,
+                )
+            elif cf_label == "afterpulsing":
+                ax.plot(
+                    cf.lag,
+                    cf.avg_cf_cr,
+                    linestyle="dotted",
+                    label=f"{label}: {cf_label}",
+                    color=color,
+                )
+
+    ax.legend()
+
+# %% [markdown]
+# ## Checking TDC calibrations
+
+# %%
+for label, exp in exp_dict.items():
+    meas = exp.confocal
+    print(label)
+    for cf_label, cf in meas.cf.items():
+        print(f"{cf_label}: {cf.countrate}")
+    meas.tdc_calib.plot()
+
+# %% [markdown]
+# Beep when done
+
+# %%
+Beep(4000, 1000)
