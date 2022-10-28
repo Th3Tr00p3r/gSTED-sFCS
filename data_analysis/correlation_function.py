@@ -137,9 +137,9 @@ class CorrFunc:
         # subtract afterpulsing
         if should_subtract_afterpulsing:
             if external_afterpulsing is not None:
-                self.afterpulse = external_afterpulsing
+                self.subtracted_afterpulsing = external_afterpulsing
             else:
-                self.afterpulse = calculate_calibrated_afterpulse(
+                self.subtracted_afterpulsing = calculate_calibrated_afterpulse(
                     self.lag, afterpulse_params, gate_ns, self.laser_freq_hz
                 )
 
@@ -158,9 +158,9 @@ class CorrFunc:
                 self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
             except ValueError:  # Cross-correlation - countrate is a 2-tuple
                 self.cf_cr[idx] = corr_output.countrate_list[idx].a * self.corrfunc[idx]
-            with suppress(AttributeError):  # no .afterpulse attribute
+            with suppress(AttributeError):  # no .subtracted_afterpulsing attribute
                 # ext. afterpulse might be shorter/longer
-                self.cf_cr[idx] -= unify_length(self.afterpulse, lag_len)
+                self.cf_cr[idx] -= unify_length(self.subtracted_afterpulsing, lag_len)
 
         self.countrate_list = corr_output.countrate_list
         try:  # xcorr
@@ -453,6 +453,7 @@ class SolutionSFCSMeasurement:
         self.is_data_dumped = False
         self.scan_type: str
         self.duration_min: float = None
+        self.is_loaded = False
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def read_fpga_data(
@@ -460,12 +461,12 @@ class SolutionSFCSMeasurement:
         file_path_template: Union[str, Path],
         file_selection: str = "Use All",
         should_plot=False,
-        **kwargs,
+        **proc_options,
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
 
         file_paths = file_utilities.prepare_file_paths(
-            Path(file_path_template), file_selection, **kwargs
+            Path(file_path_template), file_selection, **proc_options
         )
         self.n_paths = len(file_paths)
         self.file_path_template = file_path_template
@@ -477,7 +478,7 @@ class SolutionSFCSMeasurement:
         print(f"Files: {self.n_paths}, Selection: '{file_selection}'\n")
 
         # actual data processing
-        self.data = self._process_all_data(file_paths, **kwargs)
+        self.data = self._process_all_data(file_paths, **proc_options)
 
         # count the files and ensure there's at least one file
         self.n_files = len(self.data)
@@ -527,6 +528,7 @@ class SolutionSFCSMeasurement:
         self.duration_min = calc_duration_mins
 
         # done with loading
+        self.is_loaded = True
         print(f"Finished loading FPGA data ({self.n_files}/{self.n_paths} files used).\n")
 
         # plotting of scan image and ROI
@@ -557,11 +559,11 @@ class SolutionSFCSMeasurement:
         self,
         file_paths: List[Path],
         should_parallel_process: bool = False,
-        **kwargs,
+        **proc_options,
     ) -> List[TDCPhotonData]:
         """Doc."""
 
-        self._get_general_properties(file_paths[0], **kwargs)
+        self._get_general_properties(file_paths[0])
 
         # initialize data processor
         self.data_processor = TDCPhotonDataProcessor(
@@ -571,7 +573,7 @@ class SolutionSFCSMeasurement:
         # parellel processing
         if should_parallel_process and len(file_paths) > 20:
             N_CORES = mp.cpu_count() // 2 - 1  # /2 due to hyperthreading, -1 to leave one free
-            func = partial(self.process_data_file, is_verbose=True, **kwargs)
+            func = partial(self.process_data_file, is_verbose=True, **proc_options)
             print(f"Parallel processing using {N_CORES} CPUs/processes.")
             with mp.get_context("spawn").Pool(N_CORES) as pool:
                 data = list(pool.map(func, file_paths))
@@ -581,7 +583,7 @@ class SolutionSFCSMeasurement:
             data = []
             for file_path in file_paths:
                 # Processing data
-                p = self.process_data_file(file_path, is_verbose=True, **kwargs)
+                p = self.process_data_file(file_path, is_verbose=True, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
@@ -593,12 +595,14 @@ class SolutionSFCSMeasurement:
         return data
 
     def _get_general_properties(
-        self, file_path: Path = None, file_dict: dict = None, **kwargs
+        self,
+        file_path: Path = None,
+        file_dict: dict = None,
     ) -> None:
         """Get general measurement properties from the first data file"""
 
         if file_path is not None:  # Loading file from disk
-            file_dict = file_utilities.load_file_dict(file_path, **kwargs)
+            file_dict = file_utilities.load_file_dict(file_path)
 
         full_data = file_dict["full_data"]
 
@@ -632,7 +636,7 @@ class SolutionSFCSMeasurement:
             self.scan_type = "static"
 
     def process_data_file(
-        self, file_path: Path = None, file_dict: dict = None, **kwargs
+        self, file_path: Path = None, file_dict: dict = None, **proc_options
     ) -> TDCPhotonData:
         """Doc."""
 
@@ -641,7 +645,7 @@ class SolutionSFCSMeasurement:
 
         # if using existing file_dict - usually during alignment measurements
         if file_dict is not None:
-            self._get_general_properties(file_dict=file_dict, **kwargs)
+            self._get_general_properties(file_dict=file_dict)
             file_idx = 1
 
         # File Data Loading
@@ -662,12 +666,12 @@ class SolutionSFCSMeasurement:
 
         # File Processing
         try:
-            p = self.data_processor.process_data(file_dict["full_data"], **kwargs)
+            p = self.data_processor.process_data(file_dict["full_data"], **proc_options)
         except AttributeError:
             data_processor = TDCPhotonDataProcessor(
                 self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
             )
-            p = data_processor.process_data(file_dict["full_data"], **kwargs)
+            p = data_processor.process_data(file_dict["full_data"], **proc_options)
         return p
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
@@ -705,7 +709,7 @@ class SolutionSFCSMeasurement:
     def correlate_data(  # NOQA C901
         self,
         cf_name=None,
-        gate_ns=Limits(0, np.inf),
+        tdc_gate_ns=Limits(0, np.inf),  # TODO: change to 'tdc_gate_ns' all over
         afterpulsing_method="none",
         gating_mechanism="removal",
         external_afterpulse_params=None,
@@ -716,7 +720,7 @@ class SolutionSFCSMeasurement:
         get_afterpulsing=False,
         should_subtract_bg_corr=True,
         is_verbose=False,
-        **kwargs,
+        **corr_options,
     ) -> CorrFunc:
         """
         High level function for correlating any type of data (e.g. static, angular scan, circular scan...)
@@ -727,74 +731,65 @@ class SolutionSFCSMeasurement:
         if is_verbose:
             print("Preparing split data for correlator...", end=" ")
 
-        # the following afterpulsing removal methods require TDC calibration before creating splits
+        # ensure use of Limits class
+        tdc_gate_ns = Limits(tdc_gate_ns)
+
+        # the following conditions require TDC calibration prior to creating splits
         if (
             afterpulsing_method in {"subtract inherent (xcorr)", "filter (lifetime)"}
             or self.detector_settings["is_gated"]
+            or tdc_gate_ns
         ):
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
                 self.calibrate_tdc(
-                    should_dump_data=False, is_verbose=is_verbose, **kwargs
+                    should_keep_data=True, is_verbose=is_verbose, **corr_options
                 )  # abort data rotation decorator
 
-        # create list of split data for correlator
-        dt_ts_split_list = self._prepare_xcorr_splits_dict(["AA"], is_verbose=is_verbose)["AA"]
-
-        # Gating
         # Unite TDC gate and detector gate
-        tdc_gate_ns = Limits(gate_ns)
-        if tdc_gate_ns != Limits(0, np.inf) or self.detector_settings["gate_ns"] != Limits(
-            0, np.inf
-        ):
-            if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                self.calibrate_tdc(should_dump_data=False, is_verbose=is_verbose)
-            gate_ns = tdc_gate_ns & self.detector_settings["gate_ns"]
+        gate_ns = tdc_gate_ns & self.detector_settings["gate_ns"]
 
-        # Apply gate and/or filter to correlator input
-        is_filtered = (
-            afterpulsing_method == "filter (lifetime)" or gating_mechanism == "binary filter"
-        )
-        corr_input_list = []
+        # create list of split data for correlator - TDC-gating is performed here
+        dt_ts_split_list = self._prepare_xcorr_splits_dict(
+            ["AA"], gate1_ns=gate_ns, is_verbose=is_verbose
+        )["AA"]
+
+        # Afterpulsing filter (optional)
+        is_filtered = afterpulsing_method == "filter (lifetime)"
         if is_filtered:
-            if afterpulsing_method == "filter (lifetime)":
-                if external_ap_filter is not None:
-                    filter = external_ap_filter[int(get_afterpulsing)]
-                else:
-                    if not hasattr(self.tdc_calib, "afterpulsing_filter"):
-                        self.tdc_calib.calculate_afterpulsing_filter(
-                            self.detector_settings["gate_ns"], **kwargs
-                        )
-                    filter = self.tdc_calib.afterpulsing_filter[int(get_afterpulsing)]
+            if external_ap_filter is not None:
+                filter = external_ap_filter[int(get_afterpulsing)]
+            else:
+                if not hasattr(self.tdc_calib, "afterpulsing_filter"):
+                    self.tdc_calib.calculate_afterpulsing_filter(
+                        self.detector_settings["gate_ns"], **corr_options
+                    )
+                filter = self.tdc_calib.afterpulsing_filter[int(get_afterpulsing)]
+            # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
+            filter = np.hstack((filter, [0]))
+
             filter_input_list = []
 
+        # build correlator input
+        corr_input_list = []
         for dt_ts_split in dt_ts_split_list:
             split_delay_time = dt_ts_split[0]
-            in_gate_idxs = gate_ns.valid_indices(split_delay_time)
             if is_filtered:
-                split_filter = np.zeros((dt_ts_split.shape[1],), dtype=float)
-                if gating_mechanism == "binary filter":
-                    # TESTESTEST - testing the new filtering approach by applying it to gating
-                    split_filter[in_gate_idxs] = 1  # was 0.1 (by "mistake"?)
-                if afterpulsing_method == "filter (lifetime)":
-                    # create a filter for genuine fluorscene (ignoring afterpulsing)
-                    bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
-                    valid_indxs = (
-                        (bin_num > 0) & (bin_num < len(self.tdc_calib.fine_bins)) & in_gate_idxs
-                    )
-                    split_filter[valid_indxs] = filter[bin_num[valid_indxs] - 1]
+                # create a filter for genuine fluorscene (ignoring afterpulsing)
+                bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
                 corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
-                filter_input_list.append(split_filter)
-            else:  # gating_mechanism == "removal"
-                corr_input_list.append(np.squeeze(dt_ts_split[1:, in_gate_idxs].astype(np.int32)))
+                filter_input_list.append(filter[bin_num - 1])
+            else:
+                #                corr_input_list.append(np.squeeze(dt_ts_split[1:, in_gate_idxs].astype(np.int32))) # TESTESTEST - RETURNED IN_GATE_IDXS
+                corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
 
         if afterpulsing_method == "subtract inherent (xcorr)":
             # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
             if external_afterpulsing is None:
                 external_afterpulsing, _ = self.calculate_inherent_afterpulsing(
                     *inherent_afterpulsing_gates,
-                    **kwargs,
+                    **corr_options,
                 )
             else:
                 print(
@@ -833,7 +828,7 @@ class SolutionSFCSMeasurement:
             list_of_filter_arrays=filter_input_list if is_filtered else None,
             should_subtract_afterpulsing=afterpulsing_method
             in {"subtract calibrated", "subtract inherent (xcorr)"},
-            **kwargs,
+            **corr_options,
         )
 
         try:  # temporal to spatial conversion, if scanning
@@ -876,13 +871,9 @@ class SolutionSFCSMeasurement:
         for i in (1, 2):
             gate_ns = locals()[f"gate{i}_ns"]
             tdc_gate_ns = Limits(gate_ns)
-            if tdc_gate_ns != Limits(0, np.inf) or self.detector_settings["gate_ns"] != Limits(
-                0, np.inf
-            ):
+            if tdc_gate_ns or self.detector_settings["gate_ns"] != Limits(0, np.inf):
                 if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                    self.calibrate_tdc(
-                        should_dump_data=False, is_verbose=is_verbose
-                    )  # abort data rotation decorator
+                    self.calibrate_tdc(should_keep_data=True, is_verbose=is_verbose)
                 effective_lower_gate_ns = max(
                     tdc_gate_ns.lower, self.detector_settings["gate_ns"].lower
                 )
@@ -972,6 +963,9 @@ class SolutionSFCSMeasurement:
         if is_verbose:
             print("Preparing files for software correlator...", end=" ")
 
+        #        print(self.data[0].delay_time[:10]) # TESTESTEST
+        #        print(self.data[0].delay_time.size) # TESTESTEST
+
         file_splits_dict_list = [
             p.get_xcorr_splits_dict(self.scan_type, xcorr_types, self.laser_freq_hz, **kwargs)
             for p in self.data
@@ -992,13 +986,13 @@ class SolutionSFCSMeasurement:
 
     def add_tdc_gate(
         self,
-        gate_ns: Tuple[float, float],
-        **kwargs,
+        tdc_gate_ns: Tuple[float, float],
+        **corr_options,
     ):
         """A convenience method for TDC-gating."""
 
         self.correlate_and_average(
-            cf_name=f"gated {self.name} {gate_ns}", gate_ns=gate_ns, **kwargs
+            cf_name=f"gated {self.name} {tdc_gate_ns}", tdc_gate_ns=tdc_gate_ns, **corr_options
         )
 
     def plot_correlation_functions(
@@ -1119,7 +1113,7 @@ class SolutionSFCSMeasurement:
             gate2_ns=gate2_ns,
             should_subtract_afterpulsing=False,
             #                should_subtract_bg_corr=False,
-            should_dump_data=False,  # abort data rotation decorator
+            should_keep_data=True,  # abort data rotation decorator
             should_add_to_xcf_dict=False,  # avoid saving to self
             is_verbose=is_verbose,
         )
@@ -1150,7 +1144,9 @@ class SolutionSFCSMeasurement:
             **kwargs,
         )
 
-    def dump_or_load_data(self, should_load: bool, method_name=None) -> None:
+    def dump_or_load_data(
+        self, should_load: bool, should_keep_data=False, method_name=None, **kwargs
+    ) -> None:
         """
         Load or save the 'data' attribute.
         (relieve RAM - important during multiple-experiment analysis)
@@ -1175,7 +1171,7 @@ class SolutionSFCSMeasurement:
                     obj_name="dumped data array",
                     element_size_estimate_mb=self.data[0].size_estimate_mb,
                 )
-                if is_saved:
+                if is_saved and not should_keep_data:
                     self.data = []
                     self.is_data_dumped = True
                     logging.debug(
@@ -1261,7 +1257,7 @@ class SolutionSFCSExperiment:
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
         if should_plot:
-            super_title = f"Experiment '{self.name.capitalize()}' - All ACFs"
+            super_title = f"Experiment '{self.name}' - All ACFs"
             with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
                 self.plot_correlation_functions(
                     parent_ax=axes[0],
@@ -1354,7 +1350,7 @@ class SolutionSFCSExperiment:
         """Doc."""
 
         print("Saving processed measurements to disk...", end=" ")
-        if hasattr(self.confocal, "scan_type"):
+        if self.confocal.is_loaded:
             if file_utilities.save_processed_solution_meas(
                 self.confocal, self.confocal.file_path_template.parent, **kwargs
             ):
@@ -1364,7 +1360,7 @@ class SolutionSFCSExperiment:
                     "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
                     end=" ",
                 )
-        if hasattr(self.sted, "scan_type"):
+        if self.sted.is_loaded:
             if file_utilities.save_processed_solution_meas(
                 self.sted, self.sted.file_path_template.parent, **kwargs
             ):
@@ -1380,9 +1376,9 @@ class SolutionSFCSExperiment:
         """Doc."""
 
         # calibrate excitation measurement first, and sync STED to it if STED exists
-        if hasattr(self.confocal, "scan_type"):
+        if self.confocal.is_loaded:
             self.confocal.calibrate_tdc(**kwargs)
-            if hasattr(self.sted, "scan_type"):  # if both measurements quack as if loaded
+            if self.sted.is_loaded:  # if both measurements quack as if loaded
                 self.sted.calibrate_tdc(sync_coarse_time_to=self.confocal.tdc_calib, **kwargs)
 
         # calibrate STED only
@@ -1400,7 +1396,7 @@ class SolutionSFCSExperiment:
                     self.sted.tdc_calib.plot(parent_axes=axes[:, 2:])
 
             # Confocal only
-            elif hasattr(self.confocal, "scan_type"):  # STED measurement not loaded
+            elif self.confocal.is_loaded:  # STED measurement not loaded
                 self.confocal.tdc_calib.plot(super_title=super_title, **kwargs)
 
             # STED only
@@ -1530,50 +1526,53 @@ class SolutionSFCSExperiment:
 
     def add_gate(
         self,
-        gate_ns: Tuple[float, float],
+        tdc_gate_ns: Tuple[float, float],
         meas_type="sted",
         should_plot=True,
         should_re_correlate=False,
         is_verbose=True,
         **kwargs,
-    ):
+    ) -> None:
         """Doc."""
 
-        if not should_re_correlate and self.sted.cf.get(f"gSTED {gate_ns}"):
-            print(f"gSTED gate {gate_ns} already exists. Skipping...")
+        if not should_re_correlate and getattr(self, meas_type).cf.get(
+            f"gated {meas_type} {tdc_gate_ns}"
+        ):
+            print(f"{meas_type}: gate {tdc_gate_ns} already exists. Skipping...")
             return
 
-        try:
-            if meas_type == "confocal":
-                self.confocal.add_tdc_gate(gate_ns, is_verbose=is_verbose, **kwargs)
-            else:
-                self.sted.add_tdc_gate(gate_ns, is_verbose=is_verbose, **kwargs)
-            if should_plot:
-                super_title = f"Experiment '{self.name.capitalize()}' - All ACFs"
-                with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
-                    self.plot_correlation_functions(
-                        parent_ax=axes[0],
-                        y_field="avg_cf_cr",
-                        x_scale="log",
-                        xlim=None,  # autoscale x axis
-                    )
-
-                    self.plot_correlation_functions(
-                        parent_ax=axes[1],
-                    )
-        except AttributeError:
+        if meas_type == "confocal":
+            self.confocal.add_tdc_gate(tdc_gate_ns, is_verbose=is_verbose, **kwargs)
+        elif self.sted.is_loaded:
+            self.sted.add_tdc_gate(tdc_gate_ns, is_verbose=is_verbose, **kwargs)
+        else:
             # STED measurement not loaded
             logging.info(
                 "Cannot add STED gate if there's no STED measurement loaded to the experiment!"
             )
+            return
+
+        if should_plot:
+            super_title = f"Experiment '{self.name}' - All ACFs"
+            with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
+                self.plot_correlation_functions(
+                    parent_ax=axes[0],
+                    y_field="avg_cf_cr",
+                    x_scale="log",
+                    xlim=None,  # autoscale x axis
+                )
+
+                self.plot_correlation_functions(
+                    parent_ax=axes[1],
+                )
 
     def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=True, **kwargs):
         """A convecience method for adding multiple gates."""
 
-        for gate_ns in gate_list:
-            self.add_gate(gate_ns, should_plot=False, **kwargs)
+        for tdc_gate_ns in gate_list:
+            self.add_gate(tdc_gate_ns, should_plot=False, **kwargs)
         if should_plot:
-            super_title = f"Experiment '{self.name.capitalize()}' - All ACFs"
+            super_title = f"Experiment '{self.name}' - All ACFs"
             with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
                 self.plot_correlation_functions(
                     parent_ax=axes[0],
@@ -1589,7 +1588,7 @@ class SolutionSFCSExperiment:
     def plot_correlation_functions(self, **kwargs):
         """Doc."""
 
-        if hasattr(self.confocal, "scan_type"):
+        if self.confocal.is_loaded:
             ref_meas = self.confocal
         else:
             ref_meas = self.sted
@@ -1602,7 +1601,7 @@ class SolutionSFCSExperiment:
                 kwargs["ylim"] = Limits(-1e3, ref_meas.cf[ref_meas.name].g0 * 1.5)
 
         with Plotter(
-            super_title=f"'{self.name.capitalize()}' Experiment - All ACFs",
+            super_title=f"'{self.name}' Experiment - All ACFs",
             **kwargs,
         ) as ax:
             legend_label_lists = [
@@ -1673,7 +1672,9 @@ def calculate_calibrated_afterpulse(
 ) -> np.ndarray:
     """Doc."""
 
-    gate_pulse_period_ratio = min(1.0, Limits(gate_ns).interval() / 1e9 * laser_freq_hz)
+    gate_pulse_period_ratio = (
+        Limits(gate_ns).interval(upper_max=1e9 / laser_freq_hz) / 1e9 * laser_freq_hz
+    )
     fit_name, beta = afterpulse_params
     if fit_name == "multi_exponent_fit":
         # work with any number of exponents
