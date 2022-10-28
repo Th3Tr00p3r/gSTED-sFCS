@@ -709,7 +709,7 @@ class SolutionSFCSMeasurement:
     def correlate_data(  # NOQA C901
         self,
         cf_name=None,
-        tdc_gate_ns=Limits(0, np.inf),  # TODO: change to 'tdc_gate_ns' all over
+        tdc_gate_ns=Limits(0, np.inf),
         afterpulsing_method="none",
         gating_mechanism="removal",
         external_afterpulse_params=None,
@@ -731,24 +731,17 @@ class SolutionSFCSMeasurement:
         if is_verbose:
             print("Preparing split data for correlator...", end=" ")
 
-        # ensure use of Limits class
-        tdc_gate_ns = Limits(tdc_gate_ns)
+        # Unite TDC gate and detector gate
+        gate_ns = Limits(tdc_gate_ns) & self.detector_settings["gate_ns"]
 
         # the following conditions require TDC calibration prior to creating splits
-        if (
-            afterpulsing_method in {"subtract inherent (xcorr)", "filter (lifetime)"}
-            or self.detector_settings["is_gated"]
-            or tdc_gate_ns
-        ):
+        if afterpulsing_method in {"subtract inherent (xcorr)", "filter (lifetime)"} or gate_ns:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
                 self.calibrate_tdc(
                     should_keep_data=True, is_verbose=is_verbose, **corr_options
                 )  # abort data rotation decorator
-
-        # Unite TDC gate and detector gate
-        gate_ns = tdc_gate_ns & self.detector_settings["gate_ns"]
 
         # create list of split data for correlator - TDC-gating is performed here
         dt_ts_split_list = self._prepare_xcorr_splits_dict(
@@ -774,15 +767,12 @@ class SolutionSFCSMeasurement:
         # build correlator input
         corr_input_list = []
         for dt_ts_split in dt_ts_split_list:
-            split_delay_time = dt_ts_split[0]
+            corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
             if is_filtered:
                 # create a filter for genuine fluorscene (ignoring afterpulsing)
+                split_delay_time = dt_ts_split[0]
                 bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
-                corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
                 filter_input_list.append(filter[bin_num - 1])
-            else:
-                #                corr_input_list.append(np.squeeze(dt_ts_split[1:, in_gate_idxs].astype(np.int32))) # TESTESTEST - RETURNED IN_GATE_IDXS
-                corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
 
         if afterpulsing_method == "subtract inherent (xcorr)":
             # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
