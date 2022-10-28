@@ -72,8 +72,8 @@ FORCE_ALL = True
 
 # general options
 # AP_METHOD = "none"
-# AP_METHOD = "subtract calibrated"
-AP_METHOD = "filter (lifetime)"
+AP_METHOD = "subtract calibrated"
+# AP_METHOD = "filter (lifetime)"
 FILES = "Use 1-5"
 # FILES = "Use All"
 
