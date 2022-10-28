@@ -233,33 +233,31 @@ class TDCPhotonData:
     ):
         """Splits are all photons belonging to each scan line."""
 
-        # TODO: why is rounding needed here, and not in auto line correlation? possibly round during processing?
-        line_num = np.around(self.line_num)
+        # NaNs mark line starts/ends (used to create valid = -1/-2 needed in C code)
+        nan_idxs = np.isnan(self.delay_time)
         if "A" in "".join(xcorr_types):
-            gate1_idxs = gate1_ns.valid_indices(self.delay_time) | np.isnan(
-                self.delay_time
-            )  # NaNs mark line starts/ends
-            dt1 = self.delay_time[gate1_idxs]
-            pulse_runtime1 = self.pulse_runtime[gate1_idxs]
+            gate1_idxs = gate1_ns.valid_indices(self.delay_time)
+            valid_idxs1 = gate1_idxs | nan_idxs
+            dt1 = self.delay_time[valid_idxs1]
+            pulse_runtime1 = self.pulse_runtime[valid_idxs1]
             ts1 = np.hstack(([0], np.diff(pulse_runtime1)))
             dt_ts1 = np.vstack((dt1, ts1))
-            line_num1 = line_num[gate1_idxs]
+            line_num1 = self.line_num[valid_idxs1]
         if "B" in "".join(xcorr_types):
-            gate2_idxs = gate2_ns.valid_indices(self.delay_time) | np.isnan(
-                self.delay_time
-            )  # NaNs mark line starts/ends
-            dt2 = self.delay_time[gate2_idxs]
-            pulse_runtime2 = self.pulse_runtime[gate2_idxs]
+            gate2_idxs = gate2_ns.valid_indices(self.delay_time)
+            valid_idxs2 = gate2_idxs | nan_idxs
+            dt2 = self.delay_time[valid_idxs2]
+            pulse_runtime2 = self.pulse_runtime[valid_idxs2]
             ts2 = np.hstack(([0], np.diff(pulse_runtime2)))
             dt_ts2 = np.vstack((dt2, ts2))
-            line_num2 = line_num[gate2_idxs]
+            line_num2 = self.line_num[valid_idxs2]
         if "AB" in xcorr_types or "BA" in xcorr_types:
             # NOTE: # gate2 is first in line to match how software correlator C code written
-            dt_ts12 = np.vstack((self.delay_time, self.pulse_runtime, gate2_idxs, gate1_idxs))[
-                :, gate1_idxs | gate2_idxs
+            dt_ts12 = np.vstack((self.delay_time, self.pulse_runtime, valid_idxs2, valid_idxs1))[
+                :, valid_idxs1 | valid_idxs2
             ]
             dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
-            line_num12 = line_num[gate1_idxs | gate2_idxs]
+            line_num12 = self.line_num[valid_idxs1 | valid_idxs2]
 
         dt_ts_splits_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
         for j in self.line_limits.as_range():
@@ -585,7 +583,6 @@ class TDCCalibration:
                 plot_kwargs=dict(y_scale="log"),
             )
             baseline = fp.beta["bg"]
-        #        print(f"baseline: {baseline:.2e}") # TESTESTEST
 
         # define matrices and calculate F
         M_j1 = all_hist_norm - baseline  # p1
@@ -641,7 +638,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self.fpga_freq_hz = fpga_freq_hz
         self.detector_gate_ns = detector_gate_ns
 
-    def process_data(self, full_data, **kwargs) -> TDCPhotonData:
+    def process_data(self, full_data, **proc_options) -> TDCPhotonData:
         """Doc."""
 
         if (version := full_data["version"]) < 2:
@@ -650,9 +647,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
             if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
-                p = self._process_circular_scan_data_file(full_data, **kwargs)
+                p = self._process_circular_scan_data_file(full_data, **proc_options)
             elif scan_type == "angular":  # Angular sFCS
-                p = self._process_angular_scan_data_file(full_data, **kwargs)
+                p = self._process_angular_scan_data_file(full_data, **proc_options)
 
         # FCS
         else:
@@ -661,7 +658,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 full_data["byte_data"],
                 version,
                 is_scan_continuous=True,
-                **kwargs,
+                **proc_options,
             )
 
         with suppress(AttributeError):
@@ -683,7 +680,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         len_factor=0.01,
         is_verbose=False,
         byte_data_slice=None,
-        **kwargs,
+        **proc_options,
     ) -> TDCPhotonData:
         """Doc."""
 
@@ -781,7 +778,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         if is_scan_continuous:  # relevant for static/circular data
             all_section_edges, skipped_duration = self._section_continuous_data(
-                pulse_runtime, time_stamps, is_verbose=is_verbose, **kwargs
+                pulse_runtime, time_stamps, is_verbose=is_verbose, **proc_options
             )
         else:  # angular scan
             all_section_edges = None
@@ -983,7 +980,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 break
         return None
 
-    def _process_circular_scan_data_file(self, full_data, **kwargs) -> TDCPhotonData:
+    def _process_circular_scan_data_file(self, full_data, **proc_options) -> TDCPhotonData:
         """
         Processes a single circular sFCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
@@ -994,7 +991,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             full_data["byte_data"],
             full_data["version"],
             is_scan_continuous=True,
-            **kwargs,
+            **proc_options,
         )
 
         scan_settings = full_data["scan_settings"]
@@ -1237,7 +1234,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         **kwargs,
     ) -> TDCCalibration:
         """Doc."""
-
         # TODO: consider what will be needed for detector gated STED measurements (which are synced to confocal)
 
         coarse, fine = self._unite_coarse_fine_data(data, scan_type)
@@ -1371,7 +1367,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         first_coarse_bin, *_, last_coarse_bin = coarse_bins
         delay_time_list = []
         for p in data:
-            p.delay_time = np.empty(p.coarse.shape, dtype=np.float64)
+            p.delay_time = np.full(p.coarse.shape, np.nan, dtype=np.float64)
             crs = np.minimum(p.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
             crs[crs < 0] = crs[crs < 0] + last_coarse_bin - first_coarse_bin + 1
 
@@ -1387,7 +1383,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             on_left_tdc = p.fine < l_quarter_tdc
             delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
 
-            photon_idxs = p.fine > p.NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
+            photon_idxs = p.fine != p.NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
             p.delay_time[photon_idxs] = (
                 t_calib[p.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9

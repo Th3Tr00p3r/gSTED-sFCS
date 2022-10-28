@@ -152,6 +152,9 @@ class Limits:
 
     __rmul__ = __mul__
 
+    def __bool__(self):
+        return not ((self.lower == 0 or self.lower == np.NINF) and (self.upper == np.inf))
+
     def valid_indices(self, arr: np.ndarray, as_bool=True):
         """
         Returns indices of array elements within the limits.
@@ -171,8 +174,8 @@ class Limits:
         else:
             return {key: val for key, val in zip(("lower", "upper"), (self.lower, self.upper))}
 
-    def interval(self):
-        return abs(self.upper - self.lower)
+    def interval(self, upper_max=np.inf):
+        return abs(min(self.upper, upper_max) - self.lower)
 
     def center(self):
         """Get the center of the range"""

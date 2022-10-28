@@ -70,6 +70,8 @@ DATA_TYPE = "solution"
 FORCE_ALL = True
 # FORCE_ALL = False
 
+GATE_NS = (7.5, 20)
+
 data_label_kwargs = {
     "200 nW": dict(
         date="18_10_2022",
@@ -78,9 +80,11 @@ data_label_kwargs = {
         file_selection="Use 1-2",
         force_processing=False or FORCE_ALL,
         afterpulsing_method="filter (lifetime)",
+        #         afterpulsing_method="subtract calibrated",
         #         baseline_method="fit",
         baseline_method="external",
         external_baseline=3.5e-4,
+        #         gate_ns=GATE_NS # TESTESTEST
     ),
     "gated 12 uW": dict(
         date="18_10_2022",
@@ -89,9 +93,11 @@ data_label_kwargs = {
         file_selection="Use 1-5",
         force_processing=False or FORCE_ALL,
         afterpulsing_method="filter (lifetime)",
+        #         afterpulsing_method="subtract calibrated",
         #         baseline_method="fit",
         baseline_method="external",
         external_baseline=2.7e-4,
+        tdc_gate_ns=GATE_NS,  # TESTESTEST
     ),
 }
 
@@ -183,11 +189,9 @@ with Plotter() as ax:
 # %%
 if FORCE_ALL:
     for label, exp in exp_dict.items():
-        exp.confocal.calculate_filtered_afterpulsing()
+        exp.confocal.calculate_filtered_afterpulsing(tdc_gate_ns=GATE_NS)
 
 # %%
-FACTOR = 1  # 1.45
-
 with Plotter(
     xlim=(5e-4, 1),
     ylim=(0, 1.1e4),
@@ -213,9 +217,7 @@ with Plotter(
         for cf_label, cf in cf_dict.items():
             ax.plot(
                 cf.lag,
-                cf.avg_cf_cr * FACTOR
-                if label == "gated 12 uW" and cf_label == "confocal"
-                else cf.avg_cf_cr,
+                cf.avg_cf_cr,
                 label=f"{label}: {cf_label}",
             )
     ax.legend()
