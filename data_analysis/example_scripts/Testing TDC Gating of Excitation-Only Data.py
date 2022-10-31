@@ -260,7 +260,7 @@ SHOULD_CHANGE_NORM_RANGE = True
 
 if SHOULD_CHANGE_NORM_RANGE:
 
-    NORM_RANGE_ = (6e-3, 9e-3)
+    NORM_RANGE_ = (7e-3, 9e-3)
 
     for label, exp in exp_dict.items():
         for cf in exp.confocal.cf.values():
@@ -277,16 +277,17 @@ SUP_TITLE = (
     else "AP Removal by Filtering"
 )
 
-# Y_FIELD = "avg_cf_cr"
-Y_FIELD = "normalized"
+X_FIELD = "lag"
+Y_FIELD = "avg_cf_cr"
+# Y_FIELD = "normalized"
 
 with Plotter(
     super_title=SUP_TITLE,
     subplots=(len(exp_dict), 1),
     x_scale="log",
     xlim=(1e-4, 1),
-    xlabel="lagׂ (ms)",
-    ylabel="Avg. CF_CR",
+    xlabel=X_FIELD,
+    ylabel=Y_FIELD,
 ) as axes:
     for (label, exp), ax in zip(exp_dict.items(), axes):
         # create pairs of signal and afterpulsing and plot them together with matching colors
@@ -303,11 +304,14 @@ with Plotter(
         # plotting
         for (signal_cf, ap_cf), color in zip(signal_ap_pairs, colors):
             ax.plot(
-                signal_cf.lag, getattr(signal_cf, Y_FIELD), label=f"{signal_cf.name}", color=color
+                getattr(signal_cf, X_FIELD),
+                getattr(signal_cf, Y_FIELD),
+                label=f"{signal_cf.name}",
+                color=color,
             )
             if Y_FIELD == "avg_cf_cr":
                 ax.plot(
-                    ap_cf.lag,
+                    getattr(ap_cf, X_FIELD),
                     getattr(ap_cf, Y_FIELD),
                     label=f"{ap_cf.name}",
                     color=color,
@@ -316,10 +320,8 @@ with Plotter(
 
         # adjusting ylims
         if Y_FIELD == "avg_cf_cr":
-            try:
-                ax.set_ylim(0, exp.confocal.cf["confocal"].g0 * 1.5)
-            except KeyError:
-                ax.set_ylim(0, signal_cf.g0 * 1)
+            # choose the first "signal" cf's g0
+            ax.set_ylim(0, signal_ap_pairs[0][0].g0 * 1.5)
         elif Y_FIELD == "normalized":
             ax.set_ylim(-0.05, 1.3)
 
