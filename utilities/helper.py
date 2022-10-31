@@ -142,6 +142,8 @@ class Limits:
             self_copy.lower += other
             self_copy.upper += other
             return self_copy
+        else:
+            raise TypeError("'other' must be a scalar")
 
     def __mul__(self, other: Number):
         if isinstance(other, (int, float)):
@@ -149,6 +151,8 @@ class Limits:
             self_copy.lower *= other
             self_copy.upper *= other
             return self_copy
+        else:
+            raise TypeError("'other' must be a scalar")
 
     __rmul__ = __mul__
 
@@ -220,7 +224,7 @@ class Gate(Limits):
             )
 
     def __bool__(self):
-        return not ((self.lower == 0 or self.lower == np.NINF) and (self.upper == np.inf))
+        return not ((self.lower == 0) and (self.upper == np.inf))
 
     def __repr__(self):
         return super().__repr__().replace("Limits", "Gate")

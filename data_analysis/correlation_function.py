@@ -707,7 +707,7 @@ class SolutionSFCSMeasurement:
     def correlate_data(  # NOQA C901
         self,
         cf_name="unnamed",
-        tdc_gate_ns=Limits(0, np.inf),
+        tdc_gate_ns=Gate(),
         afterpulsing_method="none",
         gating_mechanism="removal",
         external_afterpulse_params=None,
@@ -727,10 +727,13 @@ class SolutionSFCSMeasurement:
         """
 
         if is_verbose:
-            print("Preparing split data for correlator...", end=" ")
+            print(
+                f"{self.name} - Preparing split data ({len(self.data)} files) for software correlator...",
+                end=" ",
+            )
 
         # Unite TDC gate and detector gate
-        gate_ns = Limits(tdc_gate_ns) & self.detector_settings["gate_ns"]
+        gate_ns = Gate(tdc_gate_ns) & self.detector_settings["gate_ns"]
 
         #  add gate to cf_name
         if gate_ns:
@@ -748,8 +751,12 @@ class SolutionSFCSMeasurement:
 
         # create list of split data for correlator - TDC-gating is performed here
         dt_ts_split_list = self._prepare_xcorr_splits_dict(
-            ["AA"], gate1_ns=gate_ns, is_verbose=is_verbose
+            ["AA"],
+            gate1_ns=gate_ns,
         )["AA"]
+
+        if is_verbose:
+            print("Done.")
 
         # Afterpulsing filter (optional)
         is_filtered = afterpulsing_method == "filter (lifetime)"
@@ -803,7 +810,7 @@ class SolutionSFCSMeasurement:
                 correlator_option = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
         if is_verbose:
-            print(f"{self.name} - Correlating {self.scan_type} data ({cf_name}):", end=" ")
+            print(f"Correlating {self.scan_type} data ({cf_name}):", end=" ")
 
         # Correlate data
         CF = CorrFunc(cf_name, correlator_option, self.laser_freq_hz)
@@ -840,8 +847,8 @@ class SolutionSFCSMeasurement:
         self,
         xcorr_types=["AB", "BA"],
         cf_name=None,
-        gate1_ns=Limits(0, np.inf),
-        gate2_ns=Limits(0, np.inf),
+        gate1_ns=Gate(),
+        gate2_ns=Gate(),
         afterpulse_params=None,
         should_subtract_bg_corr=True,
         is_verbose=False,
@@ -852,14 +859,17 @@ class SolutionSFCSMeasurement:
         # TODO: currently does not support 'Enderlein-filtering' - needs new correlator types built and code here fixed according to 'correlate_data'
 
         if is_verbose:
-            print("Preparing split data for correlator...", end=" ")
+            print(
+                f"{self.name} - Preparing split data ({len(self.data)} files) for software correlator...",
+                end=" ",
+            )
 
         # Unite TDC gates and detector gates
         gates = []
         for i in (1, 2):
             gate_ns = locals()[f"gate{i}_ns"]
-            tdc_gate_ns = Limits(gate_ns)
-            if tdc_gate_ns or self.detector_settings["gate_ns"] != Limits(0, np.inf):
+            tdc_gate_ns = Gate(gate_ns)
+            if tdc_gate_ns or self.detector_settings["gate_ns"]:
                 if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                     self.calibrate_tdc(should_keep_data=True, is_verbose=is_verbose)
                 effective_lower_gate_ns = max(
@@ -876,8 +886,10 @@ class SolutionSFCSMeasurement:
             xcorr_types,
             gate1_ns=gate1_ns,
             gate2_ns=gate2_ns,
-            is_verbose=is_verbose,
         )
+
+        if is_verbose:
+            print("Done.")
 
         # disregard the first line of each split (delay_time, used for gating in autocorrelation) and convert to int32 for correlator
         corr_input_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
@@ -888,7 +900,7 @@ class SolutionSFCSMeasurement:
         # correlate data
         if is_verbose:
             print(
-                f"{self.name} Correlating ({', '.join(xcorr_types)}) {self.scan_type} data ({cf_name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
+                f"Correlating ({', '.join(xcorr_types)}) {self.scan_type} data ({cf_name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
                 end=" ",
             )
 
@@ -940,16 +952,11 @@ class SolutionSFCSMeasurement:
 
         return CF_dict
 
-    def _prepare_xcorr_splits_dict(
-        self, xcorr_types: List[str], is_verbose=True, **kwargs
-    ) -> Dict[str, List]:
+    def _prepare_xcorr_splits_dict(self, xcorr_types: List[str], **kwargs) -> Dict[str, List]:
         """
         Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
         To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
-
-        if is_verbose:
-            print("Preparing files for software correlator...", end=" ")
 
         file_splits_dict_list = [
             p.get_xcorr_splits_dict(self.scan_type, xcorr_types, self.laser_freq_hz, **kwargs)
@@ -963,9 +970,6 @@ class SolutionSFCSMeasurement:
             ]
             for xx in xcorr_types
         }
-
-        if is_verbose:
-            print("Done.")
 
         return dt_ts_splits_dict
 
