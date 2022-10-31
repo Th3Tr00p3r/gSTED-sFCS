@@ -152,8 +152,8 @@ class Limits:
 
     __rmul__ = __mul__
 
-    def __bool__(self):
-        return not ((self.lower == 0 or self.lower == np.NINF) and (self.upper == np.inf))
+    #    def __bool__(self):
+    #        return not ((self.lower == 0 or self.lower == np.NINF) and (self.upper == np.inf))
 
     def valid_indices(self, arr: np.ndarray, as_bool=True):
         """
@@ -196,6 +196,50 @@ class Limits:
         """Get a Python 'range' (generator)"""
 
         return range(self.lower, self.upper)
+
+
+class Gate(Limits):
+    """Convenience class for defining time-gates in ns using the Limits class"""
+
+    def __init__(self, *args, is_hard: bool = False, hard_gate=None, units: str = "ns", **kwargs):
+        if not args:
+            args = (0, np.inf)
+        super().__init__(*args, **kwargs)  # initialize self as Limits
+        self.hard_gate = self if is_hard else hard_gate
+        self.units = units
+
+        if self.lower < 0:
+            raise ValueError(f"Gating limits {self} must be between 0 and positive infinity.")
+
+        if is_hard and self.upper == np.inf:
+            raise ValueError("Hardware gating must have a finite upper limit.")
+
+        if self.lower > self.upper:
+            raise ValueError(
+                f"Lower limit ({self.lower}) must be lower than upper limit ({self.upper})"
+            )
+
+    def __bool__(self):
+        return not ((self.lower == 0 or self.lower == np.NINF) and (self.upper == np.inf))
+
+    def __repr__(self):
+        return super().__repr__().replace("Limits", "Gate")
+
+    def __str__(self):
+        return f"{super().__str__()}{f' {self.units}' if self.units else ''}"
+
+    def __and__(self, other):
+        self = self if self is not None else Gate()
+        other = other if other is not None else Gate()
+        lower = max(self.lower, other.lower)
+        upper = min(self.upper, other.upper)
+        hard_gate = None
+        if self.hard_gate:
+            hard_gate = self.hard_gate
+        elif other.hard_gate:
+            hard_gate = other.hard_gate
+
+        return Gate(lower, upper, hard_gate=hard_gate)
 
 
 def nan_helper(y):

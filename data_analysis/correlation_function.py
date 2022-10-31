@@ -31,6 +31,7 @@ from utilities.fit_tools import (
 )
 from utilities.helper import (
     EPS,
+    Gate,
     Limits,
     extrapolate_over_noise,
     hankel_transform,
@@ -117,7 +118,7 @@ class CorrFunc:
         corr_output,
         afterpulse_params,
         bg_corr_list,
-        gate_ns=Limits(0, np.inf),
+        gate_ns=Gate(),
         should_subtract_afterpulsing: bool = False,
         external_afterpulsing: np.ndarray = None,
         **kwargs,
@@ -616,11 +617,8 @@ class SolutionSFCSMeasurement:
             self.duration_min = full_data["duration_s"] / 60
 
         # Set detector settings to default old detector settings in case none are defined
-        # TODO: this should be done in legacy file loading
-        if self.detector_settings is None:
-            self.detector_settings = dict(model="PDM", gate_width_ns=100, is_gated=False)
         if not self.detector_settings["is_gated"]:
-            self.detector_settings["gate_ns"] = Limits(0, np.inf)
+            self.detector_settings["gate_ns"] = Gate()
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -708,7 +706,7 @@ class SolutionSFCSMeasurement:
     @file_utilities.rotate_data_to_disk()
     def correlate_data(  # NOQA C901
         self,
-        cf_name=None,
+        cf_name="unnamed",
         tdc_gate_ns=Limits(0, np.inf),
         afterpulsing_method="none",
         gating_mechanism="removal",
@@ -733,6 +731,11 @@ class SolutionSFCSMeasurement:
 
         # Unite TDC gate and detector gate
         gate_ns = Limits(tdc_gate_ns) & self.detector_settings["gate_ns"]
+
+        #  add gate to cf_name
+        if gate_ns:
+            # TODO: cf_name should not contain any description other than gate and "afterpulsing" yes/no (description is in self.name)
+            cf_name = f"gated {cf_name} {gate_ns} ns"
 
         # the following conditions require TDC calibration prior to creating splits
         if afterpulsing_method in {"subtract inherent (xcorr)", "filter (lifetime)"} or gate_ns:
@@ -800,9 +803,7 @@ class SolutionSFCSMeasurement:
                 correlator_option = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
         if is_verbose:
-            print(
-                f"Correlating {self.scan_type} data ({self.name} [{gate_ns} ns gating]):", end=" "
-            )
+            print(f"{self.name} - Correlating {self.scan_type} data ({cf_name}):", end=" ")
 
         # Correlate data
         CF = CorrFunc(cf_name, correlator_option, self.laser_freq_hz)
@@ -830,10 +831,7 @@ class SolutionSFCSMeasurement:
             print("- Done.")
 
         # name the Corrfunc object
-        if cf_name is not None:
-            self.cf[cf_name] = CF
-        else:
-            self.cf[f"gSTED {gate_ns}"] = CF
+        self.cf[cf_name] = CF
 
         return CF
 
@@ -890,7 +888,7 @@ class SolutionSFCSMeasurement:
         # correlate data
         if is_verbose:
             print(
-                f"Correlating ({', '.join(xcorr_types)}) {self.scan_type} data ({self.name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
+                f"{self.name} Correlating ({', '.join(xcorr_types)}) {self.scan_type} data ({cf_name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
                 end=" ",
             )
 
@@ -953,9 +951,6 @@ class SolutionSFCSMeasurement:
         if is_verbose:
             print("Preparing files for software correlator...", end=" ")
 
-        #        print(self.data[0].delay_time[:10]) # TESTESTEST
-        #        print(self.data[0].delay_time.size) # TESTESTEST
-
         file_splits_dict_list = [
             p.get_xcorr_splits_dict(self.scan_type, xcorr_types, self.laser_freq_hz, **kwargs)
             for p in self.data
@@ -981,9 +976,7 @@ class SolutionSFCSMeasurement:
     ):
         """A convenience method for TDC-gating."""
 
-        self.correlate_and_average(
-            cf_name=f"gated {self.name} {tdc_gate_ns}", tdc_gate_ns=tdc_gate_ns, **corr_options
-        )
+        self.correlate_and_average(tdc_gate_ns=tdc_gate_ns, **corr_options)
 
     def plot_correlation_functions(
         self,
@@ -1121,7 +1114,9 @@ class SolutionSFCSMeasurement:
 
         return sbtrct_AB_BA_arr.mean(axis=0), (XCF_AB, XCF_BA)
 
-    def calculate_filtered_afterpulsing(self, is_verbose=True, **kwargs):
+    def calculate_filtered_afterpulsing(
+        self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
+    ):
         """Get the afterpulsing by filtering the raw data."""
         # TODO: this might fail if called prior to either TDC calibration or afterpulsing filter calculation
 
@@ -1131,6 +1126,7 @@ class SolutionSFCSMeasurement:
             get_afterpulsing=True,
             external_ap_filter=self.tdc_calib.afterpulsing_filter,
             is_verbose=is_verbose,
+            tdc_gate_ns=Gate(tdc_gate_ns),
             **kwargs,
         )
 
@@ -1276,7 +1272,6 @@ class SolutionSFCSExperiment:
                 kwargs["cf_name"] = "confocal"
             else:  # sted
                 kwargs["cf_name"] = "sted"
-        cf_name = kwargs["cf_name"]
 
         if kwargs.get(f"{meas_type}_file_selection"):
             kwargs["file_selection"] = kwargs[f"{meas_type}_file_selection"]
@@ -1309,7 +1304,7 @@ class SolutionSFCSExperiment:
             )
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
-            measurement.correlate_and_average(is_verbose=True, **kwargs)
+            cf = measurement.correlate_and_average(is_verbose=True, **kwargs)
 
         if should_plot:
 
@@ -1321,15 +1316,15 @@ class SolutionSFCSExperiment:
 
             with Plotter(
                 super_title=f"'{self.name.capitalize()}' Experiment\n'{measurement.name.capitalize()}' Measurement - ACFs",
-                ylim=(-100, list(measurement.cf.values())[0].g0 * 1.5),
+                ylim=(-100, cf.g0 * 1.5),
             ) as ax:
-                measurement.cf[cf_name].plot_correlation_function(
+                cf.plot_correlation_function(
                     parent_ax=ax,
                     y_field="average_all_cf_cr",
                     x_field=x_field,
                     plot_kwargs=plot_kwargs,
                 )
-                measurement.cf[cf_name].plot_correlation_function(
+                cf.plot_correlation_function(
                     parent_ax=ax, y_field="avg_cf_cr", x_field=x_field, plot_kwargs=plot_kwargs
                 )
                 ax.legend(["average_all_cf_cr", "avg_cf_cr"])
@@ -1532,9 +1527,11 @@ class SolutionSFCSExperiment:
             return
 
         if meas_type == "confocal":
-            self.confocal.add_tdc_gate(tdc_gate_ns, is_verbose=is_verbose, **kwargs)
+            self.confocal.add_tdc_gate(
+                tdc_gate_ns, cf_name=meas_type, is_verbose=is_verbose, **kwargs
+            )
         elif self.sted.is_loaded:
-            self.sted.add_tdc_gate(tdc_gate_ns, is_verbose=is_verbose, **kwargs)
+            self.sted.add_tdc_gate(tdc_gate_ns, cf_name=meas_type, is_verbose=is_verbose, **kwargs)
         else:
             # STED measurement not loaded
             logging.info(
@@ -1657,13 +1654,13 @@ class SolutionSFCSExperiment:
 def calculate_calibrated_afterpulse(
     lag: np.ndarray,
     afterpulse_params: tuple = file_utilities.default_system_info["afterpulse_params"],
-    gate_ns: Union[tuple, Limits] = (0, np.inf),
+    gate_ns: Tuple[float, float] = (0, np.inf),
     laser_freq_hz: float = 1e7,
 ) -> np.ndarray:
     """Doc."""
 
     gate_pulse_period_ratio = (
-        Limits(gate_ns).interval(upper_max=1e9 / laser_freq_hz) / 1e9 * laser_freq_hz
+        Gate(gate_ns).interval(upper_max=1e9 / laser_freq_hz) / 1e9 * laser_freq_hz
     )
     fit_name, beta = afterpulse_params
     if fit_name == "multi_exponent_fit":
