@@ -731,7 +731,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             return
 
         try:
-            # TODO: enable "static" floating Z (for testing)
             if self.scanning:
                 self.setup_scan()
                 self._app.gui.main.impl.device_toggle("pixel_clock", leave_on=True)

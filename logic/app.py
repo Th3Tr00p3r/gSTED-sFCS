@@ -142,7 +142,7 @@ class App:
         """
 
         Path.mkdir(self.DEFAULT_LOG_PATH, parents=True, exist_ok=True)
-        init_log_file_list = ["debug", "log"]
+        init_log_file_list = ["debug.txt", "log.txt"]
         for init_log_file in init_log_file_list:
             file_path = self.DEFAULT_LOG_PATH / init_log_file
             open(file_path, "a").close()
