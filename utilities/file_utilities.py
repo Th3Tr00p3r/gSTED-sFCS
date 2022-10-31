@@ -20,9 +20,37 @@ from utilities.helper import Limits, reverse_dict, timer
 
 DUMP_PATH = Path("C:/temp_sfcs_data/")
 
+# TODO: this should be defined elsewhere (devices? app?)
 with open("FastGatedSPAD_AP.pkl", "rb") as f:
     beta = pickle.load(f)
+
+# NEW DETECTOR AFTERPULSING (Excess Bias 7 V, Hold-Off 81 ns, Avalanch Threshold 12 mV)
 FAST_GATED_SPAD_AP = ("multi_exponent_fit", beta)
+
+# OLD DETECTOR AFTERPULSING
+PDM_SPAD_AP = (
+    "multi_exponent_fit",
+    np.array(
+        [
+            114424.39560026,
+            10895.53707084,
+            12817.86449556,
+            1766.32335809,
+            119012.66649389,
+            10895.66339894,
+            1518.68623068,
+            315.70074808,
+        ]
+    ),
+)
+
+# TODO: this should be defined elsewhere (devices? app?)
+default_system_info = {
+    "setup": "STED with galvos",
+    "afterpulse_params": FAST_GATED_SPAD_AP,  # PDM_SPAD_AP
+    "ai_scaling_xyz": (1.243, 1.239, 1),
+    "xyz_um_to_v": (70.81, 82.74, 10.0),
+}
 
 legacy_matlab_trans_dict = {
     # Solution Scan
@@ -118,25 +146,6 @@ legacy_python_trans_dict = {
     "scan_param": "scan_settings",
     "scan_params": "scan_settings",
     "after_pulse_param": "afterpulse_params",
-}
-
-default_system_info = {
-    "setup": "STED with galvos",
-    # NEW DETECTOR AFTERPULSING (Excess Bias 7 V, Hold-Off 81 ns, Avalanch Threshold 12 mV)
-    "afterpulse_params": FAST_GATED_SPAD_AP,
-    #        np.array( # OLD DETECTOR
-    #            [
-    #                114424.39560026,
-    #                10895.53707084,
-    #                12817.86449556,
-    #                1766.32335809,
-    #                119012.66649389,
-    #                10895.66339894,
-    #                1518.68623068,
-    #                315.70074808,
-    #            ]
-    "ai_scaling_xyz": (1.243, 1.239, 1),
-    "xyz_um_to_v": (70.81, 82.74, 10.0),
 }
 
 
