@@ -619,7 +619,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             p = s.process_data_file(file_dict=self.prep_meas_dict(), **self.processing_options)
             s.data.append(p)
             s.correlate_and_average(
-                cf_name=self.laser_mode,
+                cf_name=f"{self.laser_mode} alignment",
                 **self.processing_options,
             )
             return s

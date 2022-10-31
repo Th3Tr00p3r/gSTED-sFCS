@@ -297,7 +297,9 @@ class MainWin:
             # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
             gate_width_ns = laser_period_ns - lower_gate_ns - 2
             spad_dvc.set_gate_width(gate_width_ns)
-            spad_dvc.settings.gate_ns = helper.Limits(lower_gate_ns, lower_gate_ns + gate_width_ns)
+            spad_dvc.settings.gate_ns = helper.Gate(
+                lower_gate_ns, lower_gate_ns + gate_width_ns, is_hard=True
+            )
 
     def set_spad_gatewidth(self):
         """Doc."""
@@ -1109,7 +1111,7 @@ class MainWin:
                     date_dir_path / template,
                     should_plot=False,
                 )
-                measurement.correlate_and_average(cf_name=data_type)
+                measurement.correlate_and_average(cf_name=f"{data_type} alignment")
 
             except AttributeError:
                 # No directories found
@@ -1614,7 +1616,7 @@ class MainWin:
                     try:
                         cf = measurement.cf[data_type]
                     except KeyError:
-                        cf = list(measurement.cf.values())[0]
+                        cf = list(measurement.cf.values())[-1]
                         print(
                             "Warning! data type was errorneously inferred from template - possible bad template naming..."
                         )
@@ -1854,9 +1856,10 @@ class MainWin:
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
-        gate = helper.Limits(
+        gate = helper.Gate(
             wdgt_coll["custom_gate_to_assign_lower"],
             wdgt_coll["custom_gate_to_assign_upper"],
+            units=None,
         )
 
         if wdgt_coll["gate_units"] == "lifetimes":
@@ -1876,7 +1879,7 @@ class MainWin:
 
         gates_combobox = wdgt_coll["assigned_gates"].obj
         existing_gate_list = [
-            helper.Limits(gates_combobox.itemText(i), from_string=True)
+            helper.Gate(gates_combobox.itemText(i), from_string=True)
             for i in range(gates_combobox.count())
         ]
 
@@ -1900,7 +1903,7 @@ class MainWin:
 
         gates_combobox = wdgt_coll["assigned_gates"].obj
         gate_list = [
-            helper.Limits(gates_combobox.itemText(i), from_string=True)
+            helper.Gate(gates_combobox.itemText(i), from_string=True)
             for i in range(gates_combobox.count())
         ]
 

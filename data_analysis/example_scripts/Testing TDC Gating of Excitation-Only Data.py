@@ -71,11 +71,16 @@ FORCE_ALL = True
 # FORCE_ALL = False
 
 # general options
+
 # AP_METHOD = "none"
-AP_METHOD = "subtract calibrated"
-# AP_METHOD = "filter (lifetime)"
-FILES = "Use 1-5"
-# FILES = "Use All"
+# AP_METHOD = "subtract calibrated"
+AP_METHOD = "filter (lifetime)"
+
+NORM_RANGE = (4e-3, 6e-3)
+
+# FILES = "Use 1"
+# FILES = "Use 1-5"
+FILES = "Use All"
 
 data_label_kwargs = {
     "Old Det. 300 bp ATTO": dict(
@@ -85,6 +90,7 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
+        norm_range=NORM_RANGE,
     ),
     "New Det. 300 bp ATTO": dict(
         date="03_07_2022",
@@ -93,6 +99,7 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
+        norm_range=NORM_RANGE,
     ),
     "New Det. 300 bp YOYO": dict(
         date="05_07_2022",
@@ -101,12 +108,18 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
+        norm_range=NORM_RANGE,
+    ),
+    "15 ns Gated New Det. 25X Diluted Conc. Sample YOYO": dict(
+        date="18_10_2022",
+        confocal_template="gated_15ns_angular_exc_161655_*.pkl",
+        sted_template=None,
+        file_selection=FILES,
+        force_processing=False or FORCE_ALL,
+        afterpulsing_method=AP_METHOD,
+        norm_range=NORM_RANGE,
     ),
 }
-
-data_labels = list(data_label_kwargs.keys())
-
-n_meas = len(data_labels)
 
 # build proper paths
 for data in data_label_kwargs.values():
@@ -122,7 +135,7 @@ if "exp_dict" not in locals():
     print("resetting 'exp_dict'")
     exp_dict = {}
 
-for label in data_labels:
+for label in list(data_label_kwargs.keys()):
     if label not in exp_dict:
         exp_dict[label] = SolutionSFCSExperiment(name=label)
 
@@ -136,11 +149,6 @@ print(data_label_kwargs)
 # Importing all needed data. Processing, correlating and averaging if no pre-processed measurement exist.
 
 # %%
-used_labels = data_labels
-# used_labels = [
-#    "sample"
-# ]
-
 # load experiment
 for label, exp in exp_dict.items():
     # skip already loaded experiments, unless forced
@@ -160,10 +168,10 @@ for label, exp in exp_dict.items():
         except AttributeError:
             print("NO TDC CALIBRATION TO PLOT!")
 
-        # save processed data (to avoid re-processing)
-        exp.save_processed_measurements(
-            should_force=FORCE_ALL,
-        )
+#         # save processed data (to avoid re-processing)
+#         exp.save_processed_measurements(
+#             should_force=FORCE_ALL,
+#         )
 
 # Present count-rates
 for label, exp in exp_dict.items():
@@ -183,135 +191,141 @@ for label, exp in exp_dict.items():
 # ## Comparing afterpulsing removal by filtering
 
 # %% [markdown]
-# Calculate the filtered afterpulsings
+# Displaying filters
 
 # %%
-if FORCE_ALL:
-    for label, exp in exp_dict.items():
-        try:
-            exp.confocal.calculate_filtered_afterpulsing()
-        except AttributeError:
-            print("NO TDC CALIBRATION!")
-        else:
-            # save processed data (to avoid re-processing)
-            exp.save_processed_measurements(
-                should_force=True,
-            )
-else:
-    print("Using pre-processed...")
-
-# %% [markdown]
-# Plotting all ACFs and afterpulsings
-
-# %%
-with Plotter(
-    xlim=(1e-4, 1),
-    x_scale="log",
-    xlabel="lag (ms)",
-    ylabel="Avg. CF x CR",
-) as ax:
-    max_g0 = 0
-    for label, exp in exp_dict.items():
-        meas = exp.confocal
-        # plot the filters
-        print()
-        try:
-            meas.tdc_calib.calculate_afterpulsing_filter(
-                meas.detector_settings["gate_ns"],
-                should_plot=True,
-                **data_label_kwargs[label],
-                #             baseline_method="fit",
-                #             baseline_method="external",
-                #             external_baseline=1 # 2.7e-4,
-                #             baseline_method="range",
-                #             baseline_range=(30, 100),
-            )
-        except AttributeError:
-            print("NO TDC CALIBRATION!")
-        cf_dict = meas.cf
-        for cf_label, cf in cf_dict.items():
-            ax.plot(
-                cf.lag,
-                cf.avg_cf_cr if label == "gated 12 uW" and cf_label == "confocal" else cf.avg_cf_cr,
-                label=f"{label}: {cf_label}",
-            )
-            if cf_label == "confocal":
-                max_g0 = max(max_g0, cf.g0 * 1.5)
-
-    ax.set_ylim(0, max_g0)
-    ax.legend()
+for label, exp in exp_dict.items():
+    meas = exp.confocal
+    # plot the filters
+    print()
+    try:
+        meas.tdc_calib.calculate_afterpulsing_filter(
+            meas.detector_settings["gate_ns"],
+            should_plot=True,
+            **data_label_kwargs[label],
+            #             baseline_method="fit",
+            #             baseline_method="external",
+            #             external_baseline=1 # 2.7e-4,
+            #             baseline_method="range",
+            #             baseline_range=(30, 100),
+        )
+    except AttributeError:
+        print("NO TDC CALIBRATION!")
 
 # %% [markdown]
 # ## Testing the effect of TDC gating on confocal measurements
 
 # %% [markdown]
-# Gating
+# Gating and calculating the gated filtered afterpulsings
 
 # %%
+# CHOOSE GATES
 tdc_gates_ns = [
+    #     (0, np.inf),
     (7.5, 30),
     (7.5, np.inf),
 ]
 
+# GATE AND CALCULATE GATED APs
 for label, exp in exp_dict.items():
-    for tdc_gate_ns in tdc_gates_ns:
-        exp.add_gate(
-            tdc_gate_ns, meas_type="confocal", should_plot=False, **data_label_kwargs[label]
-        )
+    if FORCE_ALL:
+        try:
+            # CALCULATE UNGATED AP
+            exp.confocal.calculate_filtered_afterpulsing()
+
+            # GATE & CALCULATE GATED APs
+            for tdc_gate_ns in tdc_gates_ns:
+                exp.add_gate(
+                    tdc_gate_ns, meas_type="confocal", should_plot=False, **data_label_kwargs[label]
+                )
+                exp.confocal.calculate_filtered_afterpulsing(tdc_gate_ns=tdc_gate_ns)
+
+        except AttributeError:
+            print("NO TDC CALIBRATION!")
+
+    #         else:
+    #             # save processed data (to avoid re-processing)
+    #             exp.save_processed_measurements(
+    #                 should_force=True,
+    #             )
+    else:
+        print("Using pre-processed...")
+
+# %% [markdown]
+# Adjusting normalization range if needed:
+
+# %%
+# SHOULD_CHANGE_NORM_RANGE = False
+SHOULD_CHANGE_NORM_RANGE = True
+
+if SHOULD_CHANGE_NORM_RANGE:
+
+    NORM_RANGE_ = (6e-3, 9e-3)
+
+    for label, exp in exp_dict.items():
+        for cf in exp.confocal.cf.values():
+            cf.average_correlation(norm_range=NORM_RANGE_)
 
 # %% [markdown]
 # Plotting together:
 
 # %%
-# TODOף TOO MANY CURVES IN ONE AXES - SEPARATE INTO 3 GRAPHS ׂ (ATTO OLD, ATTO NEW,
-# EACH SHOWING EACH GATE AND ITS AFTERPULSING (SOLID FOR SIGNAL, DASHED FOR AFTERPULSING)
+colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple"]
+SUP_TITLE = (
+    "AP Removal by Calibration Subtraction"
+    if AP_METHOD == "subtract calibrated"
+    else "AP Removal by Filtering"
+)
+
+# Y_FIELD = "avg_cf_cr"
+Y_FIELD = "normalized"
 
 with Plotter(
+    super_title=SUP_TITLE,
+    subplots=(len(exp_dict), 1),
     x_scale="log",
     xlim=(1e-4, 1),
-    ylim=(0, 8.5e4),
     xlabel="lagׂ (ms)",
     ylabel="Avg. CF_CR",
-) as ax:
-    colors = ["tab:blue", "tab:orange", "tab:green"]
-    for (label, exp), color in zip(exp_dict.items(), colors):
-        for cf_label, cf in exp.confocal.cf.items():
-            if cf_label == "confocal":
-                ax.plot(cf.lag, cf.avg_cf_cr, label=f"{label}: {cf_label}", color=color)
-                with suppress(AttributeError):
-                    ax.plot(
-                        cf.lag,
-                        cf.subtracted_afterpulsing,
-                        linestyle="dotted",
-                        label=f"{label}: afterpulsing",
-                        color=color,
-                    )
-            elif "(7.5, inf)" in cf_label:
+) as axes:
+    for (label, exp), ax in zip(exp_dict.items(), axes):
+        # create pairs of signal and afterpulsing and plot them together with matching colors
+        signal_ap_pairs = []
+        for cf in exp.confocal.cf.values():
+            if not "afterpulsing" in cf.name:
+                for other_cf in exp.confocal.cf.values():
+                    if "afterpulsing" in other_cf.name:
+                        if other_cf.name.replace("afterpulsing", "confocal") == cf.name or (
+                            cf.name == "confocal" and other_cf.name == "afterpulsing"
+                        ):
+                            signal_ap_pairs.append((cf, other_cf))
+
+        # plotting
+        for (signal_cf, ap_cf), color in zip(signal_ap_pairs, colors):
+            ax.plot(
+                signal_cf.lag, getattr(signal_cf, Y_FIELD), label=f"{signal_cf.name}", color=color
+            )
+            if Y_FIELD == "avg_cf_cr":
                 ax.plot(
-                    cf.lag,
-                    cf.avg_cf_cr,
+                    ap_cf.lag,
+                    getattr(ap_cf, Y_FIELD),
+                    label=f"{ap_cf.name}",
+                    color=color,
                     linestyle="dashed",
-                    label=f"{label}: {cf_label}",
-                    color=color,
-                )
-            elif "(7.5, 30)" in cf_label:
-                ax.plot(
-                    cf.lag,
-                    cf.avg_cf_cr,
-                    linestyle="dashdot",
-                    label=f"{label}: {cf_label}",
-                    color=color,
-                )
-            elif cf_label == "afterpulsing":
-                ax.plot(
-                    cf.lag,
-                    cf.avg_cf_cr,
-                    linestyle="dotted",
-                    label=f"{label}: {cf_label}",
-                    color=color,
                 )
 
-    ax.legend()
+        # adjusting ylims
+        if Y_FIELD == "avg_cf_cr":
+            try:
+                ax.set_ylim(0, exp.confocal.cf["confocal"].g0 * 1.5)
+            except KeyError:
+                ax.set_ylim(0, signal_cf.g0 * 1)
+        elif Y_FIELD == "normalized":
+            ax.set_ylim(-0.05, 1.3)
+
+        # title and legend
+        ax.set_title(label)
+        ax.legend()
 
 # %% [markdown]
 # ## Checking TDC calibrations
