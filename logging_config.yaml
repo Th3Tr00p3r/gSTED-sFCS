@@ -21,14 +21,14 @@ handlers:
         class: logging.handlers.RotatingFileHandler
         level: DEBUG
         formatter: debug_file_frmt
-        filename: ./log/debug
+        filename: ./log/debug.txt
         maxBytes: 999999
         backupCount: 10
     log_file:
         class: logging.handlers.RotatingFileHandler
         level: INFO
         formatter: log_file_frmt
-        filename: ./log/log
+        filename: ./log/log.txt
         maxBytes: 999999
         backupCount: 10
 root:

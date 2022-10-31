@@ -50,7 +50,7 @@ AIlaserMonAddr,Dev3/ai3
 spadBaudRate,115200
 spadTimeout,100
 psdBaudRate,115200
-psdTimeout,10
+psdTimeout,100
 psdThreshold_mV,-500
 psdFreqDiv,1
 um232Timeout,2
@@ -70,7 +70,7 @@ xOrigin,0.0
 yOrigin,0.0
 zOrigin,5.0
 xConv,70.81
-yConv,82.74
+yConv,20.0
 zConv,10.0
 counterTriggerEdge,Rising
 excTriggerSrc,External (TDC)

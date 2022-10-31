@@ -8,6 +8,7 @@ Created on Fri Apr 23 14:10:22 2021
 """
 
 import os
+
 # import h5py
 import sys
 
@@ -17,8 +18,7 @@ from matplotlib import pyplot as plt
 
 # from data_analysis.correlation_function import CorrFuncTDC
 from data_analysis.correlation_function import SFCSExperiment
-from data_analysis.software_correlator import (CorrelatorType,
-                                               SoftwareCorrelator)
+from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities.helper import Limits
 
 sys.path.insert(0, os.path.dirname(__file__))
