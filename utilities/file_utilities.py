@@ -345,6 +345,7 @@ def save_processed_solution_meas(meas, dir_path: Path, should_force=False) -> bo
 
         # save the data separately
         data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
+        # TODO: find out what is causes the PermissionError (notebooks)
         has_saved_data = save_object(
             data_copy,
             data_path,
@@ -440,6 +441,8 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
     if file_dict["system_info"].get("detector_settings") is not None:
         full_data["detector_settings"] = file_dict["system_info"]["detector_settings"].__dict__
         full_data["delayer_settings"] = file_dict["system_info"]["delayer_settings"].__dict__
+    elif not full_data.get("detector_settings"):  # OLD DETECTOR
+        full_data["detector_settings"] = dict(model="PDM", gate_width_ns=100, is_gated=False)
     # namespaces to dicts
     if isinstance(full_data.get("detector_settings"), SimpleNamespace):
         full_data["detector_settings"] = full_data.get("detector_settings").__dict__

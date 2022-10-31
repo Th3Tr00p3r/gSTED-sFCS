@@ -70,7 +70,17 @@ DATA_TYPE = "solution"
 FORCE_ALL = True
 # FORCE_ALL = False
 
-GATE_NS = (7.5, 20)
+# general options
+
+# AP_METHOD = "none"
+# AP_METHOD = "subtract calibrated"
+AP_METHOD = "filter (lifetime)"
+
+# FILES = "Use 1"
+# FILES = "Use 1-5"
+FILES = "Use All"
+
+TDC_GATE_NS = (7.5, 20)
 
 data_label_kwargs = {
     "200 nW": dict(

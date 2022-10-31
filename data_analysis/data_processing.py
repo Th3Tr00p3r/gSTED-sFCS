@@ -15,6 +15,7 @@ import skimage
 from utilities.display import Plotter
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
 from utilities.helper import (
+    Gate,
     Limits,
     div_ceil,
     moving_average,
@@ -227,8 +228,8 @@ class TDCPhotonData:
         scan_type: str,
         xcorr_types: List[str],
         *args,
-        gate1_ns=Limits(0, np.inf),
-        gate2_ns=Limits(0, np.inf),
+        gate1_ns=Gate(),
+        gate2_ns=Gate(),
         **kwargs,
     ):
         """Splits are all photons belonging to each scan line."""
@@ -293,8 +294,8 @@ class TDCPhotonData:
         scan_type: str,
         xcorr_types: List[str],
         laser_freq_hz: int,
-        gate1_ns=Limits(0, np.inf),
-        gate2_ns=Limits(0, np.inf),
+        gate1_ns=Gate(),
+        gate2_ns=Gate(),
         n_splits_requested=10,
         **kwargs,
     ):
@@ -633,7 +634,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
     GROUP_LEN: int = 7
     MAX_VAL: int = 256 ** 3
 
-    def __init__(self, laser_freq_hz: int, fpga_freq_hz: int, detector_gate_ns: Limits):
+    def __init__(self, laser_freq_hz: int, fpga_freq_hz: int, detector_gate_ns: Gate):
         self.laser_freq_hz = laser_freq_hz
         self.fpga_freq_hz = fpga_freq_hz
         self.detector_gate_ns = detector_gate_ns
