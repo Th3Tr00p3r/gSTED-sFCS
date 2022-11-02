@@ -14,15 +14,7 @@ import skimage
 
 from utilities.display import Plotter
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
-from utilities.helper import (
-    Gate,
-    Limits,
-    div_ceil,
-    moving_average,
-    nan_helper,
-    return_outlier_indices,
-    xcorr,
-)
+from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
 
 
 class CircularScanDataMixin:
@@ -506,9 +498,10 @@ class TDCCalibration:
     def calculate_afterpulsing_filter(
         self,
         detector_gate_ns,
-        baseline_method="auto",
+        baseline_method="fit",
         baseline_range=Limits(60, 80),
         external_baseline=None,
+        medfilt_kernel_size=55,
         hist_norm_factor=1,
         should_plot=False,
         **kwargs,
@@ -566,12 +559,6 @@ class TDCCalibration:
             baseline_idxs = baseline_limits.valid_indices(t_hist)
             baseline = np.mean(all_hist_norm[baseline_idxs])
 
-        elif baseline_method == "auto":
-            # evaluate heuristically
-            outlier_indxs = return_outlier_indices(all_hist_norm, m=2)
-            smoothed_robust_all_hist = moving_average(all_hist_norm[~outlier_indxs], n=100)
-            baseline = min(smoothed_robust_all_hist)
-
         elif baseline_method == "fit":
             # Use exponential fit
             fp = curve_fit_lims(
@@ -579,7 +566,7 @@ class TDCCalibration:
                 [1e-2, 4, 1e-4],
                 xs=t_hist,
                 ys=all_hist_norm,
-                x_limits=Limits(peak_idx / 10 + 2.5, peak_idx / 10 + 2.5 + 10),
+                x_limits=Limits(peak_idx / 10 + 2.5, np.inf),
                 should_plot=should_plot,
                 plot_kwargs=dict(y_scale="log"),
             )
@@ -595,6 +582,10 @@ class TDCCalibration:
         inv_I = np.linalg.pinv(I)
 
         F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
+
+        # apply median filter to ignore outliers
+        if medfilt_kernel_size > 1:
+            F = scipy.signal.medfilt(F, kernel_size=(1, medfilt_kernel_size))
 
         # Return the filter to original dimensions by adding zeros in the detector-gated zone
         if detector_gate_ns.lower > 0:

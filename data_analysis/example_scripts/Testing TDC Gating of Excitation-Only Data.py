@@ -76,11 +76,14 @@ FORCE_ALL = True
 # AP_METHOD = "subtract calibrated"
 AP_METHOD = "filter (lifetime)"
 
-NORM_RANGE = (4e-3, 6e-3)
+# KERNEL_SIZE = 1
+KERNEL_SIZE = 55
+
+NORM_RANGE = (7e-3, 9e-3)
 
 # FILES = "Use 1"
-# FILES = "Use 1-5"
-FILES = "Use All"
+FILES = "Use 1-5"
+# FILES = "Use All"
 
 data_label_kwargs = {
     "Old Det. 300 bp ATTO": dict(
@@ -90,6 +93,7 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
+        medfilt_kernel_size=KERNEL_SIZE,
         norm_range=NORM_RANGE,
     ),
     "New Det. 300 bp ATTO": dict(
@@ -99,6 +103,7 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
+        medfilt_kernel_size=KERNEL_SIZE,
         norm_range=NORM_RANGE,
     ),
     "New Det. 300 bp YOYO": dict(
@@ -108,6 +113,7 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
+        medfilt_kernel_size=KERNEL_SIZE,
         norm_range=NORM_RANGE,
     ),
     "15 ns Gated New Det. 25X Diluted Conc. Sample YOYO": dict(
@@ -117,6 +123,7 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
+        medfilt_kernel_size=KERNEL_SIZE,
         norm_range=NORM_RANGE,
     ),
 }
@@ -202,12 +209,9 @@ for label, exp in exp_dict.items():
         meas.tdc_calib.calculate_afterpulsing_filter(
             meas.detector_settings["gate_ns"],
             should_plot=True,
-            **data_label_kwargs[label],
-            #             baseline_method="fit",
-            #             baseline_method="external",
-            #             external_baseline=1 # 2.7e-4,
-            #             baseline_method="range",
-            #             baseline_range=(30, 100),
+            #             **data_label_kwargs[label],
+            should_medfilt=True,
+            medfilt_kernel_size=55,
         )
     except AttributeError:
         print("NO TDC CALIBRATION!")
@@ -255,16 +259,20 @@ for label, exp in exp_dict.items():
 # Adjusting normalization range if needed:
 
 # %%
-# SHOULD_CHANGE_NORM_RANGE = False
-SHOULD_CHANGE_NORM_RANGE = True
+SHOULD_CHANGE_NORM_RANGE = False
+# SHOULD_CHANGE_NORM_RANGE = True
 
 if SHOULD_CHANGE_NORM_RANGE:
+
+    print("Renormalizing...", end=" ")
 
     NORM_RANGE_ = (7e-3, 9e-3)
 
     for label, exp in exp_dict.items():
         for cf in exp.confocal.cf.values():
             cf.average_correlation(norm_range=NORM_RANGE_)
+
+    print("Done.")
 
 # %% [markdown]
 # Plotting together:
@@ -279,7 +287,7 @@ SUP_TITLE = (
 
 X_FIELD = "lag"
 Y_FIELD = "avg_cf_cr"
-# Y_FIELD = "normalized"
+Y_FIELD = "normalized"
 
 with Plotter(
     super_title=SUP_TITLE,
@@ -289,6 +297,8 @@ with Plotter(
     xlabel=X_FIELD,
     ylabel=Y_FIELD,
 ) as axes:
+    if len(exp_dict) == 1:
+        axes = [axes]
     for (label, exp), ax in zip(exp_dict.items(), axes):
         # create pairs of signal and afterpulsing and plot them together with matching colors
         signal_ap_pairs = []
@@ -330,15 +340,23 @@ with Plotter(
         ax.legend()
 
 # %% [markdown]
-# ## Checking TDC calibrations
+# ## Smoothing the noisy afterpulsing filters in an attempt to solve the normalized ACF discrepancy between 30 ns and "infinity" upper gates
 
 # %%
+from scipy.signal import medfilt
+
 for label, exp in exp_dict.items():
     meas = exp.confocal
-    print(label)
-    for cf_label, cf in meas.cf.items():
-        print(f"{cf_label}: {cf.countrate}")
-    meas.tdc_calib.plot()
+    test_t_hist = meas.tdc_calib.t_hist
+    #     test_signal_filter = meas.tdc_calib.afterpulsing_filter[0]
+    test_filter = meas.tdc_calib.afterpulsing_filter
+    break
+
+med_filter = medfilt(test_filter, kernel_size=(1, 15))
+
+with Plotter() as ax:
+    ax.plot(test_t_hist, test_filter[0])
+    ax.plot(test_t_hist, med_filter[1])
 
 # %% [markdown]
 # Beep when done
