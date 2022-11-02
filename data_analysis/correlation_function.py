@@ -187,7 +187,9 @@ class CorrFunc:
         self.delete_list = delete_list
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, axis=0)
-        jj = Limits(self.norm_range.upper, 100).valid_indices(self.lag)  # work in the relevant part
+        jj = Limits(self.norm_range.upper, np.inf).valid_indices(
+            self.lag
+        )  # work in the relevant part
 
         try:
             self.score = (
@@ -619,6 +621,9 @@ class SolutionSFCSMeasurement:
         # Set detector settings to default old detector settings in case none are defined
         if not self.detector_settings["is_gated"]:
             self.detector_settings["gate_ns"] = Gate()
+        else:
+            # TODO: this should be done in legacy file handling?
+            self.detector_settings["gate_ns"] = Gate(self.detector_settings["gate_ns"])
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -838,6 +843,7 @@ class SolutionSFCSMeasurement:
             print("- Done.")
 
         # name the Corrfunc object
+        # TODO: this should be eventually a list, not a dict (only first element and all together are ever interesting)
         self.cf[cf_name] = CF
 
         return CF
@@ -945,6 +951,7 @@ class SolutionSFCSMeasurement:
 
             if should_add_to_xcf_dict:
                 # name the Corrfunc object
+                # TODO: this should be eventually a list, not a dict (only first element and all together are ever interesting)
                 self.xcf[CF.name] = CF
 
         if is_verbose:
@@ -1589,7 +1596,9 @@ class SolutionSFCSExperiment:
 
         if kwargs.get("ylim") is None:
             if kwargs.get("y_field") in {"average_all_cf_cr", "avg_cf_cr"}:
-                kwargs["ylim"] = Limits(-1e3, ref_meas.cf[ref_meas.name].g0 * 1.5)
+                # TODO: perhaps cf attricute should be a list and not a dict? all I'm really ever interested in is either showing the first or all together (names are in each CF anyway)
+                first_cf = list(ref_meas.cf.values())[0]
+                kwargs["ylim"] = Limits(-1e3, first_cf.g0 * 1.5)
 
         with Plotter(
             super_title=f"'{self.name}' Experiment - All ACFs",
