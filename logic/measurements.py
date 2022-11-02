@@ -618,14 +618,14 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             s = SolutionSFCSMeasurement()
             p = s.process_data_file(file_dict=self.prep_meas_dict(), **self.processing_options)
             s.data.append(p)
-            s.correlate_and_average(
+            cf = s.correlate_and_average(
                 cf_name=f"{self.laser_mode} alignment",
                 **self.processing_options,
             )
-            return s
+            return cf
 
         try:
-            s = compute_acf(self.data_dvc.data)
+            cf = compute_acf(self.data_dvc.data)
         except (RuntimeError, RuntimeWarning) as exc:
             # RuntimeWarning - some sort of zero-division in _calculate_weighted_avg
             # (due to invalid data during beam obstruction)
@@ -635,7 +635,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             print(f"THIS SHOULD NOT HAPPEN, HANDLE THE EXCEPTION PROPERLY! [{exc}]")
             errors.err_hndlr(exc, sys._getframe(), locals())
         else:
-            cf = s.cf[self.laser_mode]
             try:
                 cf.fit_correlation_function()
             except fit_tools.FitError as exc:
