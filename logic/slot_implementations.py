@@ -1,5 +1,6 @@
 """ GUI windows implementations module. """
 
+import asyncio
 import logging
 import os
 import re
@@ -105,7 +106,16 @@ class MainWin:
                 # switch ON
                 if not is_dvc_on:
                     try:
-                        getattr(dvc, toggle_mthd)(True)
+                        if asyncio.iscoroutinefunction(getattr(dvc, toggle_mthd)):
+                            self._app.loop.create_task(getattr(dvc, toggle_mthd)(True))
+                            if nick == "delayer":
+                                with suppress(DeviceError):
+                                    # TODO: try to move this inside device (add widgets to device)
+                                    self._app.loop.create_task(
+                                        self._app.devices.spad.toggle_mode("external")
+                                    )
+                        else:
+                            getattr(dvc, toggle_mthd)(True)
                     except DeviceError as exc:
                         err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
                     else:
@@ -114,16 +124,21 @@ class MainWin:
                             logging.debug(f"{dvc.log_ref} toggled ON")
                             if nick == "stage":
                                 self.main_gui.stageButtonsGroup.setEnabled(True)
-                            if nick == "delayer":
-                                with suppress(DeviceError):
-                                    # TODO: try to move this inside device (add widgets to device)
-                                    self._app.devices.spad.toggle_mode("external")
                             was_toggled = True
 
                 # switch OFF
                 else:
                     with suppress(DeviceError):
-                        getattr(dvc, toggle_mthd)(False)
+                        if asyncio.iscoroutinefunction(getattr(dvc, toggle_mthd)):
+                            self._app.loop.create_task(getattr(dvc, toggle_mthd)(False))
+                        if nick == "delayer":
+                            with suppress(DeviceError):
+                                # TODO: try to move this inside device (add widgets to device)
+                                self._app.loop.create_task(
+                                    self._app.devices.spad.toggle_mode("free running")
+                                )
+                        else:
+                            getattr(dvc, toggle_mthd)(False)
 
                     if not (is_dvc_on := getattr(dvc, state_attr)):
                         # if managed to turn OFF
@@ -132,11 +147,6 @@ class MainWin:
                         if nick == "stage":
                             # TODO: try to move this inside device (add widgets to device)
                             self.main_gui.stageButtonsGroup.setEnabled(False)
-
-                        if nick == "delayer":
-                            with suppress(DeviceError):
-                                # TODO: try to move this inside device (add widgets to device)
-                                self._app.devices.spad.toggle_mode("free running")
 
                         if nick == "dep_laser":
                             # TODO: try to move this inside device (add widgets to device)
@@ -289,14 +299,14 @@ class MainWin:
             # set the lower gate using the delayer
             delayer_dvc = self._app.devices.delayer
             lower_gate_ns = delayer_dvc.set_delay_wdgt.get()
-            delayer_dvc.set_lower_gate(lower_gate_ns)
+            self._app.loop.create_task(delayer_dvc.set_lower_gate(lower_gate_ns))
 
             # set the maximum possible gate width according to the lower gate chosen
             spad_dvc = self._app.devices.spad
             laser_period_ns = round(1 / (spad_dvc.laser_freq_mhz * 1e6) * 1e9)
             # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
             gate_width_ns = laser_period_ns - lower_gate_ns - 2
-            spad_dvc.set_gate_width(gate_width_ns)
+            self._app.loop.create_task(spad_dvc.set_gate_width(gate_width_ns))
             spad_dvc.settings.gate_ns = helper.Gate(
                 lower_gate_ns, lower_gate_ns + gate_width_ns, is_hard=True
             )
@@ -307,8 +317,8 @@ class MainWin:
         with suppress(AttributeError, ValueError, DeviceError):
             # AttributeError - device not yet defined
             # ValueError:  writing/reading PSD too fast!
-            delayer_dvc = self._app.devices.spad
-            delayer_dvc.set_gate_width()
+            spad_dvc = self._app.devices.spad
+            self._app.loop.create_task(spad_dvc.set_gate_width())
 
     def show_stage_dock(self):
         """Make the laser dock visible (convenience)."""

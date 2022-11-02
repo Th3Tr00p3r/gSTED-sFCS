@@ -264,8 +264,8 @@ class Timeout:
 
             if (not delayer_dvc.error_dict) and (not self._app.meas.is_running):
                 if delayer_dvc.is_on:
-                    with suppress(ValueError):
-                        temp, _ = delayer_dvc.mpd_command(("RT", None))
+                    with suppress(ValueError, TypeError):
+                        temp, _ = await delayer_dvc.mpd_command(("RT", None))
                         self.main_gui.psdTemp.setValue(float(temp))
 
             await asyncio.sleep(delayer_dvc.update_interval_s)
@@ -282,7 +282,8 @@ class Timeout:
 
                 # display status and mode
                 was_on = spad_dvc.is_on
-                spad_dvc.get_stats()
+                await spad_dvc.get_stats()
+                #                self._app.loop.create_task(spad_dvc.get_stats()) # TESTESTEST - create_task instead of 'await' to avoid interfering with sleeping coroutines
                 try:
                     self.main_gui.spadMode.setText(spad_dvc.settings["mode"].title())
                     self.main_gui.spadTemp.setValue(spad_dvc.settings["temperature_c"])

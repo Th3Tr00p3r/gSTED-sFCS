@@ -61,6 +61,7 @@ class BaseDevice:
                 param_dict[attr_name] = deep_getattr(app, deep_attr)
 
         self.error_dict = None
+        self.loop = app.loop
         super().__init__(param_dict, **kwargs)
         self.led_widget: QtWidgetAccess
         self.switch_widget: QtWidgetAccess
@@ -201,8 +202,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.purge(True)
-            self.toggle_mode("free running")
-            self.toggle_mode("free running")  # TODO: a repeat is needed for some reason...
+            self.loop.create_task(self.toggle_mode("free running"))
 
             self.gate_ns = None
             self.is_paused = False  # used when ceding control to MPD interface
@@ -228,68 +228,67 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             if not exc.__str__() == f"{self.log_ref} MPD interface not closed!":
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
-    def get_stats(self) -> None:
+    async def get_stats(self) -> None:
         """Doc."""
 
         try:
-            responses, command = self.mpd_command([("AQ", None), ("DC", None)])
+            responses, command = await self.mpd_command([("AQ", None), ("DC", None)])
         except ValueError:
             print(f"{self.log_ref} did not respond to stats query ('{command}')")
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            if responses is None:
-                exc_ = DeviceError(f"{self.log_ref} is not responding to 'get_stats()'")
-                err_hndlr(exc_, sys._getframe(), locals(), dvc=self)
-                return
-
             # get a dictionary of read values instead of codes
-            stats_dict = {
-                self.code_attr_dict[str_.rstrip(digits + "-")]: str_to_num(
-                    str_.lstrip(ascii_letters)
-                )
-                for str_ in responses
-                if str_.startswith(tuple(self.code_attr_dict.keys()))
-            }
+            with suppress(TypeError, KeyError):
+                stats_dict = {
+                    self.code_attr_dict[str_.rstrip(digits + "-")]: str_to_num(
+                        str_.lstrip(ascii_letters)
+                    )
+                    for str_ in responses
+                    if str_.startswith(tuple(self.code_attr_dict.keys()))
+                }
 
-            # raise error if one is encountered in the responses
-            if stats_dict.get("error"):
-                self.change_icons("error")
-                exc_ = DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
-                err_hndlr(exc_, sys._getframe(), locals(), dvc=self)
+                # raise error if one is encountered in the responses
+                if stats_dict.get("error"):
+                    self.change_icons("error")
+                    exc_ = DeviceError(f"{self.log_ref} error number {stats_dict['error']}.")
+                    err_hndlr(exc_, sys._getframe(), locals(), dvc=self)
 
-            # set attributes based on 'stats_dict'
-            self.is_on = bool(stats_dict["is_on"])
-            self.settings["mode"] = "free running" if stats_dict["mode"] == 1 else "external"
-            self.settings["input_thresh_mv"] = stats_dict["input_thresh_mv"]
-            self.settings["pulse_edge"] = "falling" if stats_dict["mode"] == 1 else "rising"
-            self.settings["gate_freq_mhz"] = stats_dict["gate_freq_hz"] * 1e-6
-            self.settings["gate_width_ns"] = stats_dict["gate_width_ps"] * 1e-3
-            self.settings["temperature_c"] = stats_dict["temperature"] / 10 - 273
+                # set attributes based on 'stats_dict'
+                self.is_on = bool(stats_dict["is_on"])
+                self.settings["mode"] = "free running" if stats_dict["mode"] == 1 else "external"
+                self.settings["input_thresh_mv"] = stats_dict["input_thresh_mv"]
+                self.settings["pulse_edge"] = "falling" if stats_dict["mode"] == 1 else "rising"
+                self.settings["gate_freq_mhz"] = stats_dict["gate_freq_hz"] * 1e-6
+                self.settings["gate_width_ns"] = stats_dict["gate_width_ps"] * 1e-3
+                self.settings["temperature_c"] = stats_dict["temperature"] / 10 - 273
 
-            # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
-            # and using said fits to estimate the actual setting (returned values are module-specific)
-            for attr_name, beta in self.lin_fit_consts_dict.items():
-                _, response_name_flipped = attr_name[::-1].split("_", maxsplit=1)
-                response_name = response_name_flipped[::-1]
-                calc_value = round(linear_fit(stats_dict[response_name], *beta))
-                self.settings[attr_name] = calc_value
+                # The following properties are derived from fitting set values (in MPD interface) to obtained values from 'DC' command,
+                # and using said fits to estimate the actual setting (returned values are module-specific)
+                for attr_name, beta in self.lin_fit_consts_dict.items():
+                    _, response_name_flipped = attr_name[::-1].split("_", maxsplit=1)
+                    response_name = response_name_flipped[::-1]
+                    calc_value = round(linear_fit(stats_dict[response_name], *beta))
+                    self.settings[attr_name] = calc_value
 
-    def toggle_mode(self, mode: str) -> None:
+    async def toggle_mode(self, mode: str) -> None:
         """Doc."""
 
         mode_cmnd_dict = {"free running": "FR", "external": "GM"}
         with suppress(IOError):  # TESTESTEST
-            self.mpd_command([("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)])
+            await self.mpd_command(
+                [("TS0", Limits(0, 1)), (mode_cmnd_dict[mode], None), ("AD", None)]
+            )
 
-    def set_gate_width(self, gate_width_ns=None):
+    async def set_gate_width(self, gate_width_ns=None):
         """Doc."""
 
         if gate_width_ns is None:  # Manually set from GUI (needed?)
             gate_width_ps = int(self.set_gate_width_wdgt.get() * 1e3)
         else:
             gate_width_ps = gate_width_ns * 1e3
-        response, _ = self.mpd_command(
+
+        response, _ = await self.mpd_command(
             [
                 (f"TO{gate_width_ps}", self.gate_width_limits),
                 ("AD", None),
@@ -331,44 +330,36 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     pulsewidth_limits_ns = Limits(1, 250)
 
     def __init__(self, app):
-        super().__init__(
-            self.attrs,
-            app,
-        )
+        super().__init__(self.attrs, app)
         try:
             self.open_instrument()
         except IOError as exc:
-            #            self.reset_port()
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.purge(True)
             self.settings = dict(sync_delay_ns=self.sync_delay_ns)
             try:
-                response, command = self.mpd_command(
-                    [
-                        ("EM0", Limits(0, 1)),  # cancel echo mode
-                        (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
-                        (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
-                        ("RD", None),  # request initial delay
-                        ("RP", None),  # request initial pulsewidth
-                    ]
+                self.loop.create_task(
+                    self.mpd_command(
+                        [
+                            ("EM0", Limits(0, 1)),  # cancel echo mode
+                            (f"SH{self.threshold_mV}", Limits(-2000, 2000)),  # set input threshold
+                            (f"SV{self.freq_divider}", Limits(1, 999)),  # set frequency divider
+                        ]
+                    )
                 )
-                *_, delay_str, pulsewidth_str = response
-            except IOError as exc:
-                self.close_instrument()
+            except ValueError as exc:
+                exc = IOError(f"{self.log_ref} did not respond to initialization commands [{exc}]")
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
                 self.effective_delay_ns = 0
-            else:
-                self.settings["delay_ps"] = int(delay_str)
-                self.settings["pulsewidth_ns"] = int(pulsewidth_str)
 
         self.is_on = False
 
-    def toggle(self, is_being_switched_on: bool):
+    async def toggle(self, is_being_switched_on: bool):
         """Doc."""
 
         try:
-            self.mpd_command(
+            await self.mpd_command(
                 (f"EO{int(is_being_switched_on)}", Limits(0, 1))
             )  # enable/disable output
         except IOError as exc:
@@ -377,14 +368,14 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
 
-    def close(self):
+    async def close(self):
         """Doc."""
 
-        self.toggle(False)
-        self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
+        await self.toggle(False)
+        await self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
-    def set_lower_gate(self, lower_gate_ns: float):
+    async def set_lower_gate(self, lower_gate_ns: float):
         """
         Set the delay according to the chosen lower gate in ns.
         This is achieved by a combination of setting the pulse width as a mechanism of coarse delay,
@@ -400,11 +391,15 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             # ensure pulsewidth step doesn't go past 'req_delay_ns' by subtracting 5 ns (steps are 3 or 4 ns)
             # yet stays close so all relevant gates are still reachable with the PSD delay (up to ~50 ns)
             req_pulsewidth_ns = round((req_total_delay_ns - 5))
-            response, _ = self.mpd_command((f"SP{req_pulsewidth_ns}", self.pulsewidth_limits_ns))
+            response, _ = await self.mpd_command(
+                (f"SP{req_pulsewidth_ns}", self.pulsewidth_limits_ns)
+            )
             pulsewidth_ns = int(response)
 
             req_psd_delay_ps = round((req_total_delay_ns - pulsewidth_ns) * 1e3)
-            response, _ = self.mpd_command((f"SD{req_psd_delay_ps}", self.psd_delay_limits_ps))
+            response, _ = await self.mpd_command(
+                (f"SD{req_psd_delay_ps}", self.psd_delay_limits_ps)
+            )
             psd_delay_ps = int(response)
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
@@ -498,14 +493,6 @@ class UM232H(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         self.purge()
-
-    def get_status(self):
-        """Doc."""
-
-        try:
-            return self.get_queue_status()
-        except Exception as exc:
-            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
 
 class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):

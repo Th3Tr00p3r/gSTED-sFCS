@@ -1,5 +1,6 @@
 """Logic Module."""
 
+import asyncio
 import logging
 import logging.config
 import shutil
@@ -216,7 +217,10 @@ class App:
             for nick in self.device_nick_class_dict.keys():
                 dvc = getattr(app.devices, nick)
                 with suppress(DeviceError):
-                    dvc.close()
+                    if asyncio.iscoroutinefunction(dvc.close):
+                        self.loop.create_task(dvc.close())
+                    else:
+                        dvc.close()
 
         def close_all_wins(app):
             """Doc."""
