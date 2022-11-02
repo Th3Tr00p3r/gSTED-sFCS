@@ -156,8 +156,8 @@ class Limits:
 
     __rmul__ = __mul__
 
-    #    def __bool__(self):
-    #        return not ((self.lower == 0 or self.lower == np.NINF) and (self.upper == np.inf))
+    def __bool__(self):
+        return not ((self.lower == np.NINF) and (self.upper == np.inf))
 
     def valid_indices(self, arr: np.ndarray, as_bool=True):
         """
