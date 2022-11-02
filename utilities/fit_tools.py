@@ -46,7 +46,7 @@ def curve_fit_lims(
     ys_errors=None,
     x_limits=Limits(),
     y_limits=Limits(),
-    should_plot=True,
+    should_plot=False,
     plot_kwargs=dict(x_scale="log"),
     **kwargs,
 ) -> FitParams:

@@ -82,40 +82,40 @@ KERNEL_SIZE = 55
 NORM_RANGE = (7e-3, 9e-3)
 
 # FILES = "Use 1"
-FILES = "Use 1-5"
-# FILES = "Use All"
+# FILES = "Use 1-5"
+FILES = "Use All"
 
 data_label_kwargs = {
-    "Old Det. 300 bp ATTO": dict(
-        date="10_05_2018",
-        confocal_template="bp300_angular_exc_*.mat",
-        sted_template=None,
-        file_selection=FILES,
-        force_processing=False or FORCE_ALL,
-        afterpulsing_method=AP_METHOD,
-        medfilt_kernel_size=KERNEL_SIZE,
-        norm_range=NORM_RANGE,
-    ),
-    "New Det. 300 bp ATTO": dict(
-        date="03_07_2022",
-        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
-        sted_template=None,
-        file_selection=FILES,
-        force_processing=False or FORCE_ALL,
-        afterpulsing_method=AP_METHOD,
-        medfilt_kernel_size=KERNEL_SIZE,
-        norm_range=NORM_RANGE,
-    ),
-    "New Det. 300 bp YOYO": dict(
-        date="05_07_2022",
-        confocal_template="bp300YOYO_TEST_diluted_12uW_angular_exc_145527_*.pkl",
-        sted_template=None,
-        file_selection=FILES,
-        force_processing=False or FORCE_ALL,
-        afterpulsing_method=AP_METHOD,
-        medfilt_kernel_size=KERNEL_SIZE,
-        norm_range=NORM_RANGE,
-    ),
+    #     "Old Det. 300 bp ATTO": dict(
+    #         date="10_05_2018",
+    #         confocal_template="bp300_angular_exc_*.mat",
+    #         sted_template=None,
+    #         file_selection=FILES,
+    #         force_processing=False or FORCE_ALL,
+    #         afterpulsing_method=AP_METHOD,
+    #         medfilt_kernel_size=KERNEL_SIZE,
+    #         norm_range=NORM_RANGE,
+    #     ),
+    #     "New Det. 300 bp ATTO": dict(
+    #         date="03_07_2022",
+    #         confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+    #         sted_template=None,
+    #         file_selection=FILES,
+    #         force_processing=False or FORCE_ALL,
+    #         afterpulsing_method=AP_METHOD,
+    #         medfilt_kernel_size=KERNEL_SIZE,
+    #         norm_range=NORM_RANGE,
+    #     ),
+    #     "New Det. 300 bp YOYO": dict(
+    #         date="05_07_2022",
+    #         confocal_template="bp300YOYO_TEST_diluted_12uW_angular_exc_145527_*.pkl",
+    #         sted_template=None,
+    #         file_selection=FILES,
+    #         force_processing=False or FORCE_ALL,
+    #         afterpulsing_method=AP_METHOD,
+    #         medfilt_kernel_size=KERNEL_SIZE,
+    #         norm_range=NORM_RANGE,
+    #     ),
     "15 ns Gated New Det. 25X Diluted Conc. Sample YOYO": dict(
         date="18_10_2022",
         confocal_template="gated_15ns_angular_exc_161655_*.pkl",
@@ -211,7 +211,7 @@ for label, exp in exp_dict.items():
             should_plot=True,
             #             **data_label_kwargs[label],
             should_medfilt=True,
-            medfilt_kernel_size=55,
+            medfilt_kernel_size=1,
         )
     except AttributeError:
         print("NO TDC CALIBRATION!")
@@ -224,25 +224,28 @@ for label, exp in exp_dict.items():
 
 # %%
 # CHOOSE GATES
-tdc_gates_ns = [
-    #     (0, np.inf),
-    (7.5, 30),
-    (7.5, np.inf),
-]
+# UPPER_GATES = [30, np.inf]
+UPPER_GATES = [20, 30, 40, 50, 60, 70, 80, 90, np.inf]
+
+SHOULD_CALCULATE_AP = False
+# SHOULD_CALCULATE_AP = True
 
 # GATE AND CALCULATE GATED APs
+tdc_gates_ns = [(7.5, upper_gate) for upper_gate in UPPER_GATES]
 for label, exp in exp_dict.items():
     if FORCE_ALL:
         try:
             # CALCULATE UNGATED AP
-            exp.confocal.calculate_filtered_afterpulsing()
+            if SHOULD_CALCULATE_AP:
+                exp.confocal.calculate_filtered_afterpulsing()
 
             # GATE & CALCULATE GATED APs
             for tdc_gate_ns in tdc_gates_ns:
                 exp.add_gate(
                     tdc_gate_ns, meas_type="confocal", should_plot=False, **data_label_kwargs[label]
                 )
-                exp.confocal.calculate_filtered_afterpulsing(tdc_gate_ns=tdc_gate_ns)
+                if SHOULD_CALCULATE_AP:
+                    exp.confocal.calculate_filtered_afterpulsing(tdc_gate_ns=tdc_gate_ns)
 
         except AttributeError:
             print("NO TDC CALIBRATION!")
@@ -278,7 +281,11 @@ if SHOULD_CHANGE_NORM_RANGE:
 # Plotting together:
 
 # %%
-colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple"]
+from utilities.display import get_gradient_colormap
+from collections import deque
+
+# colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple"]
+
 SUP_TITLE = (
     "AP Removal by Calibration Subtraction"
     if AP_METHOD == "subtract calibrated"
@@ -301,17 +308,24 @@ with Plotter(
         axes = [axes]
     for (label, exp), ax in zip(exp_dict.items(), axes):
         # create pairs of signal and afterpulsing and plot them together with matching colors
-        signal_ap_pairs = []
+        signal_ap_pairs = deque([])
+        n_lines = 0
         for cf in exp.confocal.cf.values():
             if not "afterpulsing" in cf.name:
-                for other_cf in exp.confocal.cf.values():
-                    if "afterpulsing" in other_cf.name:
-                        if other_cf.name.replace("afterpulsing", "confocal") == cf.name or (
-                            cf.name == "confocal" and other_cf.name == "afterpulsing"
-                        ):
-                            signal_ap_pairs.append((cf, other_cf))
+                n_lines += 1
+                if SHOULD_CALCULATE_AP:
+                    for other_cf in exp.confocal.cf.values():
+                        if "afterpulsing" in other_cf.name:
+                            if other_cf.name.replace("afterpulsing", "confocal") == cf.name or (
+                                cf.name == "confocal" and other_cf.name == "afterpulsing"
+                            ):
+                                signal_ap_pairs.append((cf, other_cf))
+                else:
+                    signal_ap_pairs.append((cf, None))
 
         # plotting
+        colors = get_gradient_colormap(n_lines + 1)
+        signal_ap_pairs.rotate(-1)  # TESTESTEST roll list
         for (signal_cf, ap_cf), color in zip(signal_ap_pairs, colors):
             ax.plot(
                 getattr(signal_cf, X_FIELD),
@@ -319,7 +333,7 @@ with Plotter(
                 label=f"{signal_cf.name}",
                 color=color,
             )
-            if Y_FIELD == "avg_cf_cr":
+            if Y_FIELD == "avg_cf_cr" and not SHOULD_CALCULATE_AP:
                 ax.plot(
                     getattr(ap_cf, X_FIELD),
                     getattr(ap_cf, Y_FIELD),
@@ -338,25 +352,6 @@ with Plotter(
         # title and legend
         ax.set_title(label)
         ax.legend()
-
-# %% [markdown]
-# ## Smoothing the noisy afterpulsing filters in an attempt to solve the normalized ACF discrepancy between 30 ns and "infinity" upper gates
-
-# %%
-from scipy.signal import medfilt
-
-for label, exp in exp_dict.items():
-    meas = exp.confocal
-    test_t_hist = meas.tdc_calib.t_hist
-    #     test_signal_filter = meas.tdc_calib.afterpulsing_filter[0]
-    test_filter = meas.tdc_calib.afterpulsing_filter
-    break
-
-med_filter = medfilt(test_filter, kernel_size=(1, 15))
-
-with Plotter() as ax:
-    ax.plot(test_t_hist, test_filter[0])
-    ax.plot(test_t_hist, med_filter[1])
 
 # %% [markdown]
 # Beep when done

@@ -719,7 +719,7 @@ class SolutionSFCSMeasurement:
         external_afterpulsing=None,
         external_ap_filter=None,
         # TODO: gates should not be fixed - gate1 should start at the peak (or right before it) and the second should end before the detector width ends - these choices are important for normalization
-        inherent_afterpulsing_gates=(Limits(2.5, 10), Limits(30, 90)),
+        inherent_afterpulsing_gates=(Gate(2.5, 10), Gate(30, 90)),
         get_afterpulsing=False,
         should_subtract_bg_corr=True,
         is_verbose=False,
@@ -743,7 +743,7 @@ class SolutionSFCSMeasurement:
         #  add gate to cf_name
         if gate_ns:
             # TODO: cf_name should not contain any description other than gate and "afterpulsing" yes/no (description is in self.name)
-            cf_name = f"gated {cf_name} {gate_ns} ns"
+            cf_name = f"gated {cf_name} {gate_ns}"
 
         # the following conditions require TDC calibration prior to creating splits
         if afterpulsing_method in {"subtract inherent (xcorr)", "filter (lifetime)"} or gate_ns:
@@ -906,7 +906,7 @@ class SolutionSFCSMeasurement:
         # correlate data
         if is_verbose:
             print(
-                f"Correlating ({', '.join(xcorr_types)}) {self.scan_type} data ({cf_name} [{gate1_ns} ns vs. {gate2_ns} ns]):",
+                f"Correlating ({', '.join(xcorr_types)}) {self.scan_type} data ({cf_name} [{gate1_ns} vs. {gate2_ns}]):",
                 end=" ",
             )
 
