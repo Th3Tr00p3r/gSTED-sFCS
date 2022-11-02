@@ -1,5 +1,6 @@
 """Drivers Module."""
 
+import asyncio
 import sys
 from contextlib import suppress
 from types import SimpleNamespace
@@ -94,46 +95,57 @@ class Ftd2xx(BaseDriver):
 
         return self._inst.write(byte_data)
 
-    def mpd_command(
+    async def mpd_command(
         self, command_list: Union[List[Tuple[str, Limits]], Tuple[str, Limits]]
     ) -> Tuple[Union[List[str], str], str]:
         """Doc."""
 
+        # purge buffers before writing
         self.purge(should_purge_write=True)
+
+        # convert (command, limt) list to MPD format
         if isinstance(command_list, tuple):  # single command
             command_list = [command_list]
-        n_commands = len(command_list)
-
-        command_chain = []
-        for idx, (command, limits) in zip(range(n_commands), command_list):
-            if limits is not None:
-                value, *_ = generate_numbers_from_string(command)
-                command_chain.append(f"{command[:2]}{limits.clamp(value)}")
-            else:
-                command_chain.append(command)
+        cmnd_str = self.limit_and_convert_to_mpd_format(command_list)
 
         # I/O
-        cmnd = ";".join(command_chain) + "#"
-        self.write(cmnd.encode("utf-8"))
+        self.write(cmnd_str.encode("utf-8"))
+
+        await asyncio.sleep(0.1)
+
         try:
             response = self.read().decode("utf-8").split(sep="#")
         except UnicodeDecodeError:
-            raise IOError(f"Got a partial byte response for commands: {cmnd} - unable to decode...")
+            raise IOError(
+                f"Got a partial byte response for commands: {cmnd_str} - unable to decode..."
+            )
 
         if len(response) < len(command_list) - 1:
             raise IOError(
-                f"Got {len(response)} responses for {len(command_list)} commands: {cmnd}..."
+                f"Got {len(response)} responses for {len(command_list)} commands: {cmnd_str}..."
             )
         # single commands
         if len(response) == 1 or (len(response) == 2 and response[-1] == ""):
             single_response = response[0]
             if single_response:
-                return single_response, cmnd
+                return single_response, cmnd_str
             else:
-                return None, cmnd
+                return None, cmnd_str
         # multiple commands
         else:
-            return [elem for elem in response if elem], cmnd
+            return [elem for elem in response if elem], cmnd_str
+
+    def limit_and_convert_to_mpd_format(self, command_list: List[Tuple[str, Limits]]) -> str:
+        """helper function"""
+
+        command_chain = []
+        for command, limits in command_list:
+            if limits:
+                value, *_ = generate_numbers_from_string(command)
+                command_chain.append(f"{command[:2]}{limits.clamp(value)}")
+            else:
+                command_chain.append(command)
+        return ";".join(command_chain) + "#"
 
     async def async_read(self) -> bytes:
         """Doc."""
@@ -152,11 +164,6 @@ class Ftd2xx(BaseDriver):
                 self._inst.purge(ftd2xx.defines.PURGE_TX)
         except ftd2xx.ftd2xx.DeviceError as exc:
             raise IOError(exc)
-
-    def get_queue_status(self) -> None:
-        """Doc."""
-
-        return self._inst.getQueueStatus()
 
 
 class NIDAQmx(BaseDriver):
