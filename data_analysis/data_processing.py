@@ -567,7 +567,6 @@ class TDCCalibration:
                 xs=t_hist,
                 ys=all_hist_norm,
                 x_limits=Limits(peak_idx / 10 + 2.5, np.inf),
-                should_plot=should_plot,
                 plot_kwargs=dict(y_scale="log"),
             )
             baseline = fp.beta["bg"]
