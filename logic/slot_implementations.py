@@ -172,7 +172,12 @@ class MainWin:
         if error_dict is not None:
             # attempt to reconnect
             with suppress(DeviceError):
-                dvc.toggle(False)
+                if asyncio.iscoroutinefunction(dvc.close):
+                    self._app.loop.create_task(
+                        dvc.close()
+                    )  # TESTESTEST - was toggle instead of close
+                else:
+                    dvc.close()
             setattr(
                 self._app.devices, dvc_nick, self._app.device_nick_class_dict[dvc_nick](self._app)
             )
@@ -307,7 +312,7 @@ class MainWin:
             # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
             gate_width_ns = laser_period_ns - lower_gate_ns - 2
             self._app.loop.create_task(spad_dvc.set_gate_width(gate_width_ns))
-            spad_dvc.settings.gate_ns = helper.Gate(
+            spad_dvc.settings["gate_ns"] = helper.Gate(
                 lower_gate_ns, lower_gate_ns + gate_width_ns, is_hard=True
             )
 
