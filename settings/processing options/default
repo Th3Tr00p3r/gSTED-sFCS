@@ -1,6 +1,4 @@
-histNormFactor,1.0
-gatingMechanism,removal
-afterpulsingRemovalMethod,filter (lifetime)
+afterpulsingRemovalMethod,filter
 useDefaultSysInfo,False
 subtractBgCorr,True
 fixShift,True
