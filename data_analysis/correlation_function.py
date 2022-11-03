@@ -668,6 +668,11 @@ class SolutionSFCSMeasurement:
                 print(f"File '{file_path}' not found. Ignoring.")
 
         # File Processing
+        # initialize data processor if needed (only during alignment)
+        if not hasattr(self, "data_processor"):
+            self.data_processor = TDCPhotonDataProcessor(
+                self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
+            )
         try:
             p = self.data_processor.process_data(file_dict["full_data"], **proc_options)
         except AttributeError:
@@ -714,7 +719,6 @@ class SolutionSFCSMeasurement:
         cf_name="unnamed",
         tdc_gate_ns=Gate(),
         afterpulsing_method="none",
-        gating_mechanism="removal",
         external_afterpulse_params=None,
         external_afterpulsing=None,
         external_ap_filter=None,
@@ -746,7 +750,7 @@ class SolutionSFCSMeasurement:
             cf_name = f"gated {cf_name} {gate_ns}"
 
         # the following conditions require TDC calibration prior to creating splits
-        if afterpulsing_method in {"subtract inherent (xcorr)", "filter (lifetime)"} or gate_ns:
+        if afterpulsing_method in {"subtract inherent (xcorr)", "filter"} or gate_ns:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
@@ -764,7 +768,7 @@ class SolutionSFCSMeasurement:
             print("Done.")
 
         # Afterpulsing filter (optional)
-        is_filtered = afterpulsing_method == "filter (lifetime)"
+        is_filtered = afterpulsing_method == "filter"
         if is_filtered:
             if external_ap_filter is not None:
                 filter = external_ap_filter[int(get_afterpulsing)]
@@ -1133,7 +1137,7 @@ class SolutionSFCSMeasurement:
 
         self.correlate_and_average(
             cf_name="afterpulsing",
-            afterpulsing_method="filter (lifetime)",
+            afterpulsing_method="filter",
             get_afterpulsing=True,
             external_ap_filter=self.tdc_calib.afterpulsing_filter,
             is_verbose=is_verbose,

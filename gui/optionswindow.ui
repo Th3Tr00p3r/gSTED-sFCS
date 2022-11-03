@@ -52,116 +52,42 @@ Background</string>
           </widget>
          </item>
          <item>
-          <layout class="QVBoxLayout" name="verticalLayout_5">
+          <layout class="QVBoxLayout" name="verticalLayout_4">
            <property name="spacing">
             <number>2</number>
            </property>
            <item>
-            <widget class="QLabel" name="label_2">
+            <widget class="QLabel" name="label">
              <property name="text">
-              <string>Gating Mechanism</string>
+              <string>Afterpulsing Removal Method</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QComboBox" name="gatingMechanism">
+            <widget class="QComboBox" name="afterpulsingRemovalMethod">
              <item>
               <property name="text">
-               <string>removal</string>
+               <string>none</string>
               </property>
              </item>
              <item>
               <property name="text">
-               <string>binary filter</string>
+               <string>subtract calibrated</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>subtract inherent (xcorr)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>filter</string>
               </property>
              </item>
             </widget>
            </item>
           </layout>
-         </item>
-         <item>
-          <widget class="QGroupBox" name="groupBox_3">
-           <property name="title">
-            <string>Afterpulsing</string>
-           </property>
-           <layout class="QVBoxLayout" name="verticalLayout">
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_4">
-              <property name="spacing">
-               <number>2</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="label">
-                <property name="text">
-                 <string>Removal Method</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="afterpulsingRemovalMethod">
-                <item>
-                 <property name="text">
-                  <string>none</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>subtract calibrated</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>subtract inherent (xcorr)</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>filter (lifetime)</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_6">
-              <property name="spacing">
-               <number>2</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="label_3">
-                <property name="text">
-                 <string>Histogram
-Normalization Factor</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QDoubleSpinBox" name="histNormFactor">
-                <property name="buttonSymbols">
-                 <enum>QAbstractSpinBox::NoButtons</enum>
-                </property>
-                <property name="decimals">
-                 <number>4</number>
-                </property>
-                <property name="minimum">
-                 <double>-100.000000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>100.000000000000000</double>
-                </property>
-                <property name="singleStep">
-                 <double>0.010000000000000</double>
-                </property>
-                <property name="value">
-                 <double>1.000000000000000</double>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </widget>
          </item>
         </layout>
        </widget>

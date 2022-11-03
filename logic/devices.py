@@ -1360,7 +1360,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             or sigma_y > max_sigma_y
         ):
             print(
-                f"{self.log_ref}: Gaussian fit\n({fp.beta})\nis irrational! Center on CCD and avoid saturation."
+                f"{self.log_ref}: Gaussian fit is irrational! Center on CCD and avoid saturation.\n({fp.beta})"
             )
             return
 
