@@ -1126,7 +1126,9 @@ class MainWin:
                     date_dir_path / template,
                     should_plot=False,
                 )
-                measurement.correlate_and_average(cf_name=f"{data_type} alignment")
+                measurement.correlate_and_average(
+                    cf_name=f"{data_type} alignment", afterpulsing_method="filter"
+                )
 
             except AttributeError:
                 # No directories found
@@ -1135,15 +1137,16 @@ class MainWin:
             except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                 err_hndlr(exc, sys._getframe(), locals())
 
-            cf = measurement.cf[data_type]
+            first_cf = list(measurement.cf.values())[0]
+            #            cf = measurement.cf[data_type]
 
             try:
-                cf.fit_correlation_function()
+                first_cf.fit_correlation_function()
             except fit_tools.FitError as exc:
                 err_hndlr(exc, sys._getframe(), locals())
                 g0, tau = (None, None)
             else:
-                fp = cf.fit_params["diffusion_3d_fit"]
+                fp = first_cf.fit_params["diffusion_3d_fit"]
                 g0, tau = fp.beta["G0"], fp.beta["tau"]
 
         return g0, tau
@@ -1415,8 +1418,6 @@ class MainWin:
         loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
         loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"
         loading_options["afterpulsing_method"] = import_wdgts["afterpulsing_method"]
-        loading_options["hist_norm_factor"] = import_wdgts["hist_norm_factor"]
-        loading_options["gating_mechanism"] = import_wdgts["gating_mechanism"]
         loading_options["should_subtract_bg_corr"] = import_wdgts["should_subtract_bg_corr"]
         loading_options["override_system_info"] = import_wdgts["override_system_info"]
 
