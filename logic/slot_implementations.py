@@ -297,13 +297,14 @@ class MainWin:
     def set_detector_gate(self):
         """Doc."""
 
-        with suppress(AttributeError, ValueError, DeviceError):
+        with suppress(AttributeError, DeviceError):
             # AttributeError - device not yet defined
-            # ValueError:  writing/reading PSD too fast!
 
             # set the lower gate using the delayer
             delayer_dvc = self._app.devices.delayer
-            lower_gate_ns = delayer_dvc.set_delay_wdgt.get()
+            lower_gate_ns = (
+                delayer_dvc.set_delay_wdgt.get()
+            )  # TODO: this should happen inside the device!
             self._app.loop.create_task(delayer_dvc.set_lower_gate(lower_gate_ns))
 
             # set the maximum possible gate width according to the lower gate chosen

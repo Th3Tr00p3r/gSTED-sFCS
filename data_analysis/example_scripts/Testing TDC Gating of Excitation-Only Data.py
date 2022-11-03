@@ -211,7 +211,7 @@ for label, exp in exp_dict.items():
             should_plot=True,
             #             **data_label_kwargs[label],
             should_medfilt=True,
-            medfilt_kernel_size=1,
+            medfilt_kernel_size=15,
         )
     except AttributeError:
         print("NO TDC CALIBRATION!")
