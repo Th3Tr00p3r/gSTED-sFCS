@@ -319,8 +319,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
-            # sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
-            sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", False),
+            # NOTE: sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
+            # NOTE: the sync delay might be better calibrated by setting the delay so that there is no change in countrate when switching from free-running mode to gated mode
+            sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", True),
         ),
     )
 
@@ -386,7 +387,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """
 
         try:
-            req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
+            req_total_delay_ns = self.sync_delay_ns.get() + lower_gate_ns
 
             # ensure pulsewidth step doesn't go past 'req_delay_ns' by subtracting 5 ns (steps are 3 or 4 ns)
             # yet stays close so all relevant gates are still reachable with the PSD delay (up to ~50 ns)

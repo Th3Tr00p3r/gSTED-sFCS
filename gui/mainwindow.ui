@@ -12530,8 +12530,8 @@ Diameter</string>
                    </font>
                   </property>
                   <property name="text">
-                   <string>Set Detector
-Gate (ns)</string>
+                   <string>Detector
+Lowe Gate (ns)</string>
                   </property>
                  </widget>
                 </item>
@@ -12556,10 +12556,20 @@ Gate (ns)</string>
                    <enum>QAbstractSpinBox::UpDownArrows</enum>
                   </property>
                   <property name="minimum">
-                   <double>-5.000000000000000</double>
+                   <double>-50.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>50.000000000000000</double>
                   </property>
                   <property name="singleStep">
-                   <double>0.500000000000000</double>
+                   <double>0.100000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="setPsdDelay">
+                  <property name="text">
+                   <string>Set</string>
                   </property>
                  </widget>
                 </item>
@@ -12609,11 +12619,21 @@ Delay (ns)</string>
                   <property name="buttonSymbols">
                    <enum>QAbstractSpinBox::NoButtons</enum>
                   </property>
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
                   <property name="maximum">
-                   <double>999.000000000000000</double>
+                   <double>9999.000000000000000</double>
                   </property>
                   <property name="singleStep">
                    <double>0.500000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="calSyncDelay">
+                  <property name="text">
+                   <string>Calibrate</string>
                   </property>
                  </widget>
                 </item>
