@@ -164,7 +164,8 @@ class MainWin(QtWidgets.QMainWindow):
         )
 
         # Delayer
-        self.psdDelay.valueChanged.connect(self.impl.set_detector_gate)
+        self.setPsdDelay.released.connect(self.impl.set_detector_gate)
+        self.calSyncDelay.released.connect(self.impl.calibrate_pulse_sync_delay)
 
         # SPAD
         self.spadGateWidth.valueChanged.connect(self.impl.set_spad_gatewidth)

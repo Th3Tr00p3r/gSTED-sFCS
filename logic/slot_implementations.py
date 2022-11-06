@@ -302,9 +302,7 @@ class MainWin:
 
             # set the lower gate using the delayer
             delayer_dvc = self._app.devices.delayer
-            lower_gate_ns = (
-                delayer_dvc.set_delay_wdgt.get()
-            )  # TODO: this should happen inside the device!
+            lower_gate_ns = delayer_dvc.set_delay_wdgt.get()
             self._app.loop.create_task(delayer_dvc.set_lower_gate(lower_gate_ns))
 
             # set the maximum possible gate width according to the lower gate chosen
@@ -325,6 +323,23 @@ class MainWin:
             # ValueError:  writing/reading PSD too fast!
             spad_dvc = self._app.devices.spad
             self._app.loop.create_task(spad_dvc.set_gate_width())
+
+    def calibrate_pulse_sync_delay(self):
+        """Doc."""
+
+        delayer_dvc = self._app.devices.delayer
+        current_sync_time_ns = delayer_dvc.sync_delay_ns.get()
+        new_sync_time_ns = delayer_dvc.eff_delay_wdgt.get()
+
+        pressed = dialog.QuestionDialog(
+            txt=f"Are you sure you wish to calibrate the new value of {new_sync_time_ns} ns as the new 'zero-gating' time? (current value is {current_sync_time_ns} ns)",
+            title="Re-Calibrate Delayer Synchronization Time",
+        ).display()
+        if pressed == dialog.NO:
+            return
+        else:
+            delayer_dvc.sync_delay_ns.set(new_sync_time_ns)
+            self._gui.settings.impl.save()
 
     def show_stage_dock(self):
         """Make the laser dock visible (convenience)."""
