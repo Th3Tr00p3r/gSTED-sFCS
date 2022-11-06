@@ -213,7 +213,11 @@ class Gate(Limits):
         self.units = units
 
         if self.lower < 0:
-            raise ValueError(f"Gating limits {self} must be between 0 and positive infinity.")
+            print(
+                "WARNING: LOWER GATE IS LOWER THAN 0! CLIPPING TO ZERO IN CASE THIS WAS INTERNTIONAL"
+            )
+            self.lower = 0  # TESTESTEST
+        #            raise ValueError(f"Gating limits {self} must be between 0 and positive infinity.")
 
         if is_hard and self.upper == np.inf:
             raise ValueError("Hardware gating must have a finite upper limit.")
