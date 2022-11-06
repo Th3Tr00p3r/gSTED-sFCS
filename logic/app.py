@@ -145,8 +145,8 @@ class App:
         Path.mkdir(self.DEFAULT_LOG_PATH, parents=True, exist_ok=True)
         init_log_file_list = ["debug.txt", "log.txt"]
         for init_log_file in init_log_file_list:
-            file_path = self.DEFAULT_LOG_PATH / init_log_file
-            open(file_path, "a").close()
+            self.log_file_path = self.DEFAULT_LOG_PATH / init_log_file
+            open(self.log_file_path, "a").close()
 
         with open("logging_config.yaml", "r") as f:
             config = yaml.safe_load(f.read())
