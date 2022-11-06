@@ -1,6 +1,5 @@
 """Data Processing."""
 
-import logging
 from collections import deque
 from contextlib import suppress
 from copy import copy
@@ -409,6 +408,48 @@ class TDCPhotonData:
 
 
 @dataclass
+class AfterulsingFilter:
+    """Doc."""
+
+    t_hist: np.ndarray
+    baseline: float
+    I_j: np.ndarray
+    M: np.ndarray
+    filter: np.ndarray
+
+    def plot(self, parent_axes=None, **plot_kwargs):
+        """Doc."""
+
+        n = len(self.I_j)
+
+        with Plotter(
+            parent_ax=parent_axes,
+            subplots=(1, 2),
+            **plot_kwargs,
+        ) as axes:
+            axes[0].set_title("Filter Ingredients")
+            axes[0].set_yscale("log")
+            axes[0].plot(self.t_hist[:n], self.I_j, label="I_j (raw histogram)")
+            axes[0].plot(
+                self.t_hist[:n], self.baseline * np.ones(self.t_hist[:n].shape), label="baseline"
+            )
+            axes[0].plot(
+                self.t_hist[:n], self.M.T[0], label="M_j1 (ideal fluorescence decay curve)"
+            )
+            axes[0].plot(
+                self.t_hist[:n], self.M.T[1], label="M_j2 (ideal afterpulsing 'decay' curve)"
+            )
+            axes[0].legend()
+            axes[0].set_ylim(self.baseline / 10, None)
+
+            axes[1].set_title("Filter")
+            axes[1].set_ylim(-1, 2)
+            axes[1].plot(self.t_hist, self.filter.T)
+            axes[1].plot(self.t_hist, self.filter.sum(axis=0))
+            axes[1].legend(["F_1j (signal)", "F_2j (afterpulsing)", "F.sum(axis=0)"])
+
+
+@dataclass
 class TDCCalibration:
     """Doc."""
 
@@ -498,10 +539,6 @@ class TDCCalibration:
     def calculate_afterpulsing_filter(
         self,
         detector_gate_ns,
-        baseline_method="fit",
-        baseline_range=Limits(60, 80),
-        external_baseline=None,
-        medfilt_kernel_size=55,
         hist_norm_factor=1,
         should_plot=False,
         **kwargs,
@@ -517,7 +554,6 @@ class TDCCalibration:
             peak_idx = round(detector_gate_ns.lower * 10)  # x step is 0.1 ns
             all_hist_norm = np.roll(all_hist_norm, -peak_idx)[:-peak_idx]
             t_hist = np.roll(t_hist, -peak_idx)[:-peak_idx]
-            #            F_gated = np.full((2, peak_idx), EPS)
             F_gated = np.full((2, peak_idx), np.nan)
         else:
             peak_idx = 0
@@ -532,44 +568,17 @@ class TDCCalibration:
         all_hist_norm = all_hist_norm / all_hist_norm.sum() * hist_norm_factor
 
         # get the baseline (which is assumed to be approximately the afterpulsing histogram)
-        if baseline_method == "external":
-            if external_baseline is not None:
-                baseline = external_baseline
-            else:
-                raise ValueError(
-                    f"Baseline method is '{baseline_method}' yet 'external_baseline' was not supplied."
-                )
-
-        elif baseline_method == "range":
-            # given range to average
-            baseline_idxs = Limits(baseline_range).valid_indices(t_hist)
-            baseline = np.mean(all_hist_norm[baseline_idxs])
-
-        elif baseline_method == "manual":
-            # Using Plotter for manual selection
-            baseline_limits = Limits()
-            with Plotter(
-                super_title="Use the mouse to place 2 markers\nrepresenting the baseline:",
-                selection_limits=baseline_limits,
-                should_close_after_selection=True,
-            ) as ax:
-                ax.semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
-                ax.legend()
-
-            baseline_idxs = baseline_limits.valid_indices(t_hist)
-            baseline = np.mean(all_hist_norm[baseline_idxs])
-
-        elif baseline_method == "fit":
-            # Use exponential fit
-            fp = curve_fit_lims(
-                FIT_NAME_DICT["exponent_with_background_fit"],
-                [1e-2, 4, 1e-4],
-                xs=t_hist,
-                ys=all_hist_norm,
-                x_limits=Limits(peak_idx / 10 + 2.5, np.inf),
-                plot_kwargs=dict(y_scale="log"),
-            )
-            baseline = fp.beta["bg"]
+        # Use exponential fit
+        fp = curve_fit_lims(
+            (fit_func := FIT_NAME_DICT["exponent_with_background_fit"]),
+            [1e-2, 4, 1e-4],
+            xs=t_hist,
+            ys=all_hist_norm,
+            x_limits=Limits(peak_idx / 10 + 2.5, np.inf),
+            plot_kwargs=dict(y_scale="log"),
+        )
+        baseline = fp.beta["bg"]
+        all_hist_norm = fit_func(t_hist.astype(np.float64), *fp.beta.values())
 
         # define matrices and calculate F
         M_j1 = all_hist_norm - baseline  # p1
@@ -582,40 +591,18 @@ class TDCCalibration:
 
         F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
 
-        # apply median filter to ignore outliers
-        if medfilt_kernel_size > 1:
-            F = scipy.signal.medfilt(F, kernel_size=(1, medfilt_kernel_size))
-
         # Return the filter to original dimensions by adding zeros in the detector-gated zone
         if detector_gate_ns.lower > 0:
-            self.afterpulsing_filter = np.hstack((F_gated, F))
+            F = np.hstack((F_gated, F))
         else:
-            self.afterpulsing_filter = F
+            F = F
 
-        # testing (mean sum should be 1 with very low error ~1e-6)
-        total_prob_j = F[:, peak_idx:].sum(axis=0)
-        tot_prob_j_mean = np.nanmean(total_prob_j)
-        tot_prob_j_std = np.nanstd(total_prob_j)
-        if abs(1 - tot_prob_j_mean) > 0.1 or tot_prob_j_std > 0.1:
-            logging.debug(
-                f"Attention! F probabilities do not sum to 1 ({tot_prob_j_mean:.2f} +/- {tot_prob_j_std:.2f})"
-            )
+        ap_filter = AfterulsingFilter(self.t_hist, baseline, I_j, M, F)
 
         if should_plot:
-            with Plotter(subplots=(1, 2)) as axes:
-                axes[0].set_title("Filter Ingredients")
-                axes[0].set_yscale("log")
-                axes[0].plot(t_hist, I_j, label="I_j (raw histogram)")
-                axes[0].plot(t_hist, baseline * np.ones(t_hist.shape), label="baseline")
-                axes[0].plot(t_hist, M_j1, label="M_j1 (ideal fluorescence decay curve)")
-                axes[0].plot(t_hist, M_j2, label="M_j2 (ideal afterpulsing 'decay' curve)")
-                axes[0].legend()
+            ap_filter.plot()
 
-                axes[1].set_title("Filter")
-                axes[1].set_ylim(-1, 2)
-                axes[1].plot(self.t_hist, self.afterpulsing_filter.T)
-                axes[1].plot(self.t_hist, self.afterpulsing_filter.sum(axis=0))
-                axes[1].legend(["F_1j (signal)", "F_2j (afterpulsing)", "F.sum(axis=0)"])
+        return ap_filter
 
 
 class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
