@@ -74,10 +74,7 @@ FORCE_ALL = True
 
 # AP_METHOD = "none"
 # AP_METHOD = "subtract calibrated"
-AP_METHOD = "filter (lifetime)"
-
-# KERNEL_SIZE = 1
-KERNEL_SIZE = 55
+AP_METHOD = "filter"
 
 NORM_RANGE = (7e-3, 9e-3)
 
@@ -86,36 +83,33 @@ NORM_RANGE = (7e-3, 9e-3)
 FILES = "Use All"
 
 data_label_kwargs = {
-    #     "Old Det. 300 bp ATTO": dict(
-    #         date="10_05_2018",
-    #         confocal_template="bp300_angular_exc_*.mat",
-    #         sted_template=None,
-    #         file_selection=FILES,
-    #         force_processing=False or FORCE_ALL,
-    #         afterpulsing_method=AP_METHOD,
-    #         medfilt_kernel_size=KERNEL_SIZE,
-    #         norm_range=NORM_RANGE,
-    #     ),
-    #     "New Det. 300 bp ATTO": dict(
-    #         date="03_07_2022",
-    #         confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
-    #         sted_template=None,
-    #         file_selection=FILES,
-    #         force_processing=False or FORCE_ALL,
-    #         afterpulsing_method=AP_METHOD,
-    #         medfilt_kernel_size=KERNEL_SIZE,
-    #         norm_range=NORM_RANGE,
-    #     ),
-    #     "New Det. 300 bp YOYO": dict(
-    #         date="05_07_2022",
-    #         confocal_template="bp300YOYO_TEST_diluted_12uW_angular_exc_145527_*.pkl",
-    #         sted_template=None,
-    #         file_selection=FILES,
-    #         force_processing=False or FORCE_ALL,
-    #         afterpulsing_method=AP_METHOD,
-    #         medfilt_kernel_size=KERNEL_SIZE,
-    #         norm_range=NORM_RANGE,
-    #     ),
+    "Old Det. 300 bp ATTO": dict(
+        date="10_05_2018",
+        confocal_template="bp300_angular_exc_*.mat",
+        sted_template=None,
+        file_selection=FILES,
+        force_processing=False or FORCE_ALL,
+        afterpulsing_method=AP_METHOD,
+        norm_range=NORM_RANGE,
+    ),
+    "New Det. 300 bp ATTO": dict(
+        date="03_07_2022",
+        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+        sted_template=None,
+        file_selection=FILES,
+        force_processing=False or FORCE_ALL,
+        afterpulsing_method=AP_METHOD,
+        norm_range=NORM_RANGE,
+    ),
+    "New Det. 300 bp YOYO": dict(
+        date="05_07_2022",
+        confocal_template="bp300YOYO_TEST_diluted_12uW_angular_exc_145527_*.pkl",
+        sted_template=None,
+        file_selection=FILES,
+        force_processing=False or FORCE_ALL,
+        afterpulsing_method=AP_METHOD,
+        norm_range=NORM_RANGE,
+    ),
     "15 ns Gated New Det. 25X Diluted Conc. Sample YOYO": dict(
         date="18_10_2022",
         confocal_template="gated_15ns_angular_exc_161655_*.pkl",
@@ -123,7 +117,6 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
-        medfilt_kernel_size=KERNEL_SIZE,
         norm_range=NORM_RANGE,
     ),
 }
@@ -225,7 +218,7 @@ for label, exp in exp_dict.items():
 # %%
 # CHOOSE GATES
 # UPPER_GATES = [30, np.inf]
-UPPER_GATES = [20, 30, 40, 50, 60, 70, 80, 90, np.inf]
+UPPER_GATES = [20, 40, 60, 80, np.inf]
 
 SHOULD_CALCULATE_AP = False
 # SHOULD_CALCULATE_AP = True
