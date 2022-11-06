@@ -721,9 +721,6 @@ class SolutionSFCSMeasurement:
         afterpulsing_method="none",
         external_afterpulse_params=None,
         external_afterpulsing=None,
-        external_ap_filter=None,
-        # TODO: gates should not be fixed - gate1 should start at the peak (or right before it) and the second should end before the detector width ends - these choices are important for normalization
-        inherent_afterpulsing_gates=(Gate(2.5, 10), Gate(30, 90)),
         get_afterpulsing=False,
         should_subtract_bg_corr=True,
         is_verbose=False,
@@ -750,7 +747,9 @@ class SolutionSFCSMeasurement:
             cf_name = f"gated {cf_name} {gate_ns}"
 
         # the following conditions require TDC calibration prior to creating splits
-        if afterpulsing_method in {"subtract inherent (xcorr)", "filter"} or gate_ns:
+        if afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
+            raise ValueError(f"Invalid afterpulsing_method chosen: {afterpulsing_method}.")
+        elif (is_filtered := afterpulsing_method == "filter") or gate_ns:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
@@ -768,19 +767,10 @@ class SolutionSFCSMeasurement:
             print("Done.")
 
         # Afterpulsing filter (optional)
-        is_filtered = afterpulsing_method == "filter"
         if is_filtered:
-            if external_ap_filter is not None:
-                filter = external_ap_filter[int(get_afterpulsing)]
-            else:
-                if not hasattr(self.tdc_calib, "afterpulsing_filter"):
-                    self.tdc_calib.calculate_afterpulsing_filter(
-                        self.detector_settings["gate_ns"], **corr_options
-                    )
-                filter = self.tdc_calib.afterpulsing_filter[int(get_afterpulsing)]
-            # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
-            filter = np.hstack((filter, [0]))
-
+            self.afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
+                self.detector_settings["gate_ns"], **corr_options
+            )
             filter_input_list = []
 
         # build correlator input
@@ -788,23 +778,14 @@ class SolutionSFCSMeasurement:
         for dt_ts_split in dt_ts_split_list:
             corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
             if is_filtered:
+                filter = self.afterpulsing_filter.filter[int(get_afterpulsing)]
                 # create a filter for genuine fluorscene (ignoring afterpulsing)
                 split_delay_time = dt_ts_split[0]
                 bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
+                # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
+                filter = np.hstack((filter, [0]))
+                # add the relevent filter values to the correlator filter input list
                 filter_input_list.append(filter[bin_num - 1])
-
-        if afterpulsing_method == "subtract inherent (xcorr)":
-            # Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)
-            if external_afterpulsing is None:
-                external_afterpulsing, _ = self.calculate_inherent_afterpulsing(
-                    *inherent_afterpulsing_gates,
-                    **corr_options,
-                )
-            else:
-                print(
-                    "Warning: external_afterpulsing was given and afterpulsing_method == 'subtract inherent (xcorr)'! Using external_afterpulsing...",
-                    end=" ",
-                )
 
         # choose correct correlator type
         if self.scan_type in {"static", "circle"}:
@@ -833,8 +814,7 @@ class SolutionSFCSMeasurement:
             external_afterpulsing=external_afterpulsing,
             gate_ns=gate_ns,
             list_of_filter_arrays=filter_input_list if is_filtered else None,
-            should_subtract_afterpulsing=afterpulsing_method
-            in {"subtract calibrated", "subtract inherent (xcorr)"},
+            should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
             **corr_options,
         )
 
@@ -984,15 +964,6 @@ class SolutionSFCSMeasurement:
 
         return dt_ts_splits_dict
 
-    def add_tdc_gate(
-        self,
-        tdc_gate_ns: Tuple[float, float],
-        **corr_options,
-    ):
-        """A convenience method for TDC-gating."""
-
-        self.correlate_and_average(tdc_gate_ns=tdc_gate_ns, **corr_options)
-
     def plot_correlation_functions(
         self,
         x_field="lag",
@@ -1093,42 +1064,6 @@ class SolutionSFCSMeasurement:
             ax.set_ylabel("$S(q)$")
             ax.legend(legend_labels)
 
-    def calculate_inherent_afterpulsing(
-        self,
-        gate1_ns,
-        gate2_ns,
-        is_verbose=False,
-        **kwargs,
-    ) -> Tuple[np.ndarray, Tuple[CorrFunc, CorrFunc]]:
-        """Calculate inherent afterpulsing by cross-correlating the fluorscent photons (peak) with the white-noise ones (tail)"""
-
-        if is_verbose:
-            print("Calculating inherent afterpulsing from cross-correlation...", end=" ")
-        cf_dict = self.cross_correlate_data(
-            xcorr_types=["AB", "BA"],
-            cf_name="Afterpulsing",
-            gate1_ns=gate1_ns,
-            gate2_ns=gate2_ns,
-            should_subtract_afterpulsing=False,
-            #                should_subtract_bg_corr=False,
-            should_keep_data=True,  # abort data rotation decorator
-            should_add_to_xcf_dict=False,  # avoid saving to self
-            is_verbose=is_verbose,
-        )
-        XCF_AB, XCF_BA = cf_dict["AB"], cf_dict["BA"]
-
-        # Averaging and normalizing properly the subtraction of BA from AB
-        sbtrct_AB_BA_arr = np.empty(XCF_AB.corrfunc.shape)
-        for idx, (corrfunc_AB, corrfunc_BA, countrate_pair) in enumerate(
-            zip(XCF_AB.corrfunc, XCF_BA.corrfunc, XCF_AB.countrate_list)
-        ):
-            norm_factor = self.pulse_period_ns / (
-                gate2_ns.interval() / countrate_pair.b - gate1_ns.interval() / countrate_pair.a
-            )
-            sbtrct_AB_BA_arr[idx] = norm_factor * (corrfunc_AB - corrfunc_BA)
-
-        return sbtrct_AB_BA_arr.mean(axis=0), (XCF_AB, XCF_BA)
-
     def calculate_filtered_afterpulsing(
         self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
     ):
@@ -1139,7 +1074,6 @@ class SolutionSFCSMeasurement:
             cf_name="afterpulsing",
             afterpulsing_method="filter",
             get_afterpulsing=True,
-            external_ap_filter=self.tdc_calib.afterpulsing_filter,
             is_verbose=is_verbose,
             tdc_gate_ns=Gate(tdc_gate_ns),
             **kwargs,
@@ -1542,11 +1476,13 @@ class SolutionSFCSExperiment:
             return
 
         if meas_type == "confocal":
-            self.confocal.add_tdc_gate(
-                tdc_gate_ns, cf_name=meas_type, is_verbose=is_verbose, **kwargs
+            self.confocal.correlate_and_average(
+                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, is_verbose=is_verbose, **kwargs
             )
         elif self.sted.is_loaded:
-            self.sted.add_tdc_gate(tdc_gate_ns, cf_name=meas_type, is_verbose=is_verbose, **kwargs)
+            self.sted.correlate_and_average(
+                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, is_verbose=is_verbose, **kwargs
+            )
         else:
             # STED measurement not loaded
             logging.info(
