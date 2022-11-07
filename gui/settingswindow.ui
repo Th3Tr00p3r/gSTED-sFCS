@@ -95,7 +95,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -722,6 +722,43 @@ Details</string>
                           </item>
                          </layout>
                         </item>
+                        <item row="1" column="0">
+                         <layout class="QVBoxLayout" name="verticalLayout_71">
+                          <item>
+                           <widget class="QLabel" name="label_63">
+                            <property name="maximumSize">
+                             <size>
+                              <width>16777215</width>
+                              <height>20</height>
+                             </size>
+                            </property>
+                            <property name="text">
+                             <string>Idle Shutdown
+Timer (min)</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QDoubleSpinBox" name="excIdleTimer">
+                            <property name="buttonSymbols">
+                             <enum>QAbstractSpinBox::NoButtons</enum>
+                            </property>
+                            <property name="decimals">
+                             <number>0</number>
+                            </property>
+                            <property name="minimum">
+                             <double>1.000000000000000</double>
+                            </property>
+                            <property name="maximum">
+                             <double>120.000000000000000</double>
+                            </property>
+                            <property name="value">
+                             <double>60.000000000000000</double>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </item>
                        </layout>
                       </widget>
                      </item>
@@ -840,6 +877,43 @@ Details</string>
                          </property>
                          <property name="text">
                           <string>getmodel</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item row="0" column="1">
+                      <layout class="QVBoxLayout" name="verticalLayout_67">
+                       <item>
+                        <widget class="QLabel" name="label_61">
+                         <property name="maximumSize">
+                          <size>
+                           <width>16777215</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Idle Shutdown
+Timer (min)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QDoubleSpinBox" name="depIdleTimer">
+                         <property name="buttonSymbols">
+                          <enum>QAbstractSpinBox::NoButtons</enum>
+                         </property>
+                         <property name="decimals">
+                          <number>0</number>
+                         </property>
+                         <property name="minimum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>120.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>10.000000000000000</double>
                          </property>
                         </widget>
                        </item>

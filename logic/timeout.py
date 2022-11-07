@@ -209,6 +209,7 @@ class Timeout:
         while self.not_finished:
 
             dep_dvc = self._app.devices.dep_laser
+            dep_shutter_dvc = self._app.devices.dep_shutter
 
             if (not dep_dvc.error_dict) and (not self._app.meas.is_running):
 
@@ -223,7 +224,7 @@ class Timeout:
                     self.main_gui.depActualPow.setValue(pow)
                     self.main_gui.depActualCurr.setValue(curr)
 
-                    if temp < dep_dvc.MIN_SHG_TEMP:
+                    if temp < dep_dvc.MIN_SHG_TEMP_C:
                         self.main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
                     else:
                         self.main_gui.depTemp.setStyleSheet(
@@ -233,11 +234,12 @@ class Timeout:
                     # automatic shutdown
                     if dep_dvc.is_emission_on:
                         mins_since_turned_on = (time.perf_counter() - dep_dvc.turn_on_time) / 60
-                        if mins_since_turned_on > dep_dvc.OFF_TIMER_MIN:
+                        if mins_since_turned_on > dep_dvc.off_timer_min:
                             logging.info(
-                                f"Shutting down {dep_dvc.log_ref} automatically (idle for {dep_dvc.OFF_TIMER_MIN} mins)"
+                                f"Shutting down {dep_dvc.log_ref} automatically (idle for {dep_dvc.off_timer_min} mins)"
                             )
                             dep_dvc.laser_toggle(False)
+                            dep_shutter_dvc.toggle(False)
 
             if (not self.exc_laser_dvc.error_dict) and (not self._app.meas.is_running):
 
@@ -246,9 +248,9 @@ class Timeout:
                     mins_since_turned_on = (
                         time.perf_counter() - self.exc_laser_dvc.turn_on_time
                     ) / 60
-                    if mins_since_turned_on > self.exc_laser_dvc.OFF_TIMER_MIN:
+                    if mins_since_turned_on > self.exc_laser_dvc.off_timer_min:
                         logging.info(
-                            f"Shutting down {self.exc_laser_dvc.log_ref} automatically (idle for {self.exc_laser_dvc.OFF_TIMER_MIN} mins)"
+                            f"Shutting down {self.exc_laser_dvc.log_ref} automatically (idle for {self.exc_laser_dvc.off_timer_min} mins)"
                         )
                         self.exc_laser_dvc.toggle(False)
 
