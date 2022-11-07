@@ -119,7 +119,7 @@ class BaseDevice:
 class SimpleDODevice(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     """ON/OFF NIDAQmx-controlled device (excitation laser, depletion shutter, TDC)."""
 
-    OFF_TIMER_MIN = 60
+    off_timer_min = 60
 
     def __init__(self, *args):
         super().__init__(
@@ -1046,6 +1046,7 @@ class ExcitationLaser(SimpleDODevice):
             ext_trg_addr=("excTriggerExtAddr", "QLineEdit", "settings", False),
             int_trg_addr=("excTriggerIntAddr", "QLineEdit", "settings", False),
             address=("excAddr", "QLineEdit", "settings", False),
+            off_timer_min=("excIdleTimer", "QSpinBox", "settings", False),
         ),
     )
 
@@ -1063,12 +1064,12 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             led_widget=("ledDep", "QIcon", "main", True),
             switch_widget=("depEmissionOn", "QIcon", "main", True),
             model_query=("depModelQuery", "QLineEdit", "settings", False),
+            off_timer_min=("depIdleTimer", "QSpinBox", "settings", False),
         ),
     )
 
     update_interval_s = 0.3
-    MIN_SHG_TEMP = 53  # Celsius
-    OFF_TIMER_MIN = 5
+    MIN_SHG_TEMP_C = 53  # Celsius # TODO: move to settings
     power_limits_mW = Limits(99, 1000)
     current_limits_mA = Limits(1500, 2500)
 
