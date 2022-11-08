@@ -1128,6 +1128,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             "temp": "SHGtemp",
             "curr": "LDcurrent 1",
             "pow": "power 0",
+            "on_time": "GETTIMEOP",
         }
         cmnd = prop_cmnd_dict[prop]
 
@@ -1135,7 +1136,8 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             self.flush()  # get fresh response
             response = self.query(cmnd)
             try:
-                extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
+                extracted_float_string = generate_numbers_from_string(response)
+            #                extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
             except IndexError:  # rarely happens
                 return 0
             else:
