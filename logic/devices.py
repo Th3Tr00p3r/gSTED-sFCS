@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import re
 import sys
 import time
 from collections import deque
@@ -1063,13 +1062,14 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         param_widgets=QtWidgetCollection(
             led_widget=("ledDep", "QIcon", "main", True),
             switch_widget=("depEmissionOn", "QIcon", "main", True),
+            hours_of_operation_widget=("depTimeOfOperation", "QSpinBox", "main", True),
             model_query=("depModelQuery", "QLineEdit", "settings", False),
             off_timer_min=("depIdleTimer", "QSpinBox", "settings", False),
         ),
     )
 
     update_interval_s = 0.3
-    MIN_SHG_TEMP_C = 53  # Celsius # TODO: move to settings
+    MIN_SHG_TEMP_C = 45  # Celsius # was 53 for old laser # TODO: move to settings
     power_limits_mW = Limits(99, 1000)
     current_limits_mA = Limits(1500, 2500)
 
@@ -1085,6 +1085,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         self.is_on = None
         self.is_emission_on = None
         self.turn_on_time = None
+        self.time_of_operation_hr = None
 
         with suppress(DeviceError):
             self.toggle(True, should_change_icons=False)
@@ -1133,15 +1134,13 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         cmnd = prop_cmnd_dict[prop]
 
         try:
-            self.flush()  # get fresh response
             response = self.query(cmnd)
             try:
-                extracted_float_string = generate_numbers_from_string(response)
-            #                extracted_float_string = re.findall(r"-?\d+\.?\d*", response)[0]
-            except IndexError:  # rarely happens
+                number, *_ = generate_numbers_from_string(response)
+            except ValueError:
                 return 0
             else:
-                return float(extracted_float_string)
+                return number
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 

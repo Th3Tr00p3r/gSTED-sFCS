@@ -213,23 +213,23 @@ class Timeout:
 
             if (not dep_dvc.error_dict) and (not self._app.meas.is_running):
 
+                # get time of operation of laser head (once)
+                if dep_dvc.time_of_operation_hr is None:
+                    dep_dvc.time_of_operation_hr = dep_dvc.get_prop("on_time")
+                    dep_dvc.hours_of_operation_widget.set(dep_dvc.time_of_operation_hr)
+
+                # Track SHG temperature at all times
+                self.main_gui.depTemp.setValue(temp := dep_dvc.get_prop("temp"))
+                if temp < dep_dvc.MIN_SHG_TEMP_C:
+                    self.main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
+                else:
+                    self.main_gui.depTemp.setStyleSheet("background-color: white; color: black;")
+
                 if dep_dvc.is_emission_on:
-                    temp, pow, curr = (
-                        dep_dvc.get_prop("temp"),
-                        dep_dvc.get_prop("pow"),
-                        dep_dvc.get_prop("curr"),
-                    )
-
-                    self.main_gui.depTemp.setValue(temp)
-                    self.main_gui.depActualPow.setValue(pow)
-                    self.main_gui.depActualCurr.setValue(curr)
-
-                    if temp < dep_dvc.MIN_SHG_TEMP_C:
-                        self.main_gui.depTemp.setStyleSheet("background-color: red; color: white;")
-                    else:
-                        self.main_gui.depTemp.setStyleSheet(
-                            "background-color: white; color: black;"
-                        )
+                    # TODO: can commands to dep be united as in MPD commands?
+                    # TODO: these widgets should belong to device and set by it, possibly inside 'get_prop'.
+                    self.main_gui.depActualPow.setValue(dep_dvc.get_prop("pow"))
+                    self.main_gui.depActualCurr.setValue(dep_dvc.get_prop("curr"))
 
                     # automatic shutdown
                     if dep_dvc.is_emission_on:
