@@ -38,8 +38,6 @@ from utilities.helper import (
     unify_length,
 )
 
-# laser_pulse_tdc_calib = file_utilities.load_object("./data_analysis/laser_pulse_tdc_calib.pkl")
-
 
 @dataclass
 class StructureFactor:
