@@ -393,7 +393,7 @@ def load_processed_solution_measurement(file_path: Path, file_template: str, sho
 def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
     """Fixes data saved in varios legacy formats in-place"""
 
-    # patches for legacy Python files (almost non-existant)
+    # patches for legacy Python files
     if (
         file_dict.get("system_info") is None or override_system_info
     ):  # missing/overriden system_info
@@ -437,6 +437,19 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
             full_data["scan_settings"].pop("y", None)
             full_data.pop("ao")
             full_data.pop("ai")
+
+        # legacy detector/delayer settings placement
+        if file_dict["system_info"].get("detector_settings") is not None:
+            full_data["detector_settings"] = file_dict["system_info"]["detector_settings"].__dict__
+            full_data["delayer_settings"] = file_dict["system_info"]["delayer_settings"].__dict__
+        elif not full_data.get("detector_settings"):  # OLD DETECTOR
+            full_data["detector_settings"] = dict(model="PDM", gate_width_ns=100, is_gated=False)
+        # namespaces to dicts
+        if isinstance(full_data.get("detector_settings"), SimpleNamespace):
+            full_data["detector_settings"] = full_data.get("detector_settings").__dict__
+        if isinstance(full_data.get("delayer_settings"), SimpleNamespace):
+            full_data["delayer_settings"] = full_data.get("delayer_settings").__dict__
+
     if scan_settings := file_dict.get("scan_settings"):  # legacy image scan
         if scan_settings.get("plane_orientation") and not scan_settings.get("dim_order"):
             if scan_settings["plane_orientation"] == "XY":
@@ -446,17 +459,6 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
             elif scan_settings["plane_orientation"] == "XZ":
                 scan_settings["dim_order"] = (0, 2, 1)
 
-    # legacy detector/delayer settings placement
-    if file_dict["system_info"].get("detector_settings") is not None:
-        full_data["detector_settings"] = file_dict["system_info"]["detector_settings"].__dict__
-        full_data["delayer_settings"] = file_dict["system_info"]["delayer_settings"].__dict__
-    elif not full_data.get("detector_settings"):  # OLD DETECTOR
-        full_data["detector_settings"] = dict(model="PDM", gate_width_ns=100, is_gated=False)
-    # namespaces to dicts
-    if isinstance(full_data.get("detector_settings"), SimpleNamespace):
-        full_data["detector_settings"] = full_data.get("detector_settings").__dict__
-    if isinstance(full_data.get("delayer_settings"), SimpleNamespace):
-        full_data["delayer_settings"] = full_data.get("delayer_settings").__dict__
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["afterpulse_params"], tuple):
         if file_dict.get("python_converted"):
