@@ -455,6 +455,7 @@ class PyVISA(BaseDriver):
     def query(self, cmnd: str) -> str:
         """Doc."""
 
+        self.flush()  # get fresh response
         try:
             return self._rsrc.query(cmnd)
         except visa.errors.VisaIOError:
