@@ -92,9 +92,8 @@ class QtWidgetCollection:
 
         if isinstance(obj, dict):
             for attr_name, val in obj.items():
-                with suppress(
-                    AttributeError
-                ):  # obj contains key with no matching wdgt in coll (should this pass silently?)
+                with suppress(AttributeError):
+                    # AttributeError - obj contains key with no matching wdgt in coll
                     wdgt = getattr(self, attr_name)
                     parent_gui = getattr(gui, wdgt.gui_parent_name)
                     if not isinstance(val, QtWidgetAccess):

@@ -26,6 +26,7 @@ class GuiDisplay:
     )
 
     def __init__(self, layout, gui_parent=None):
+        self.plotter = None
         self.figure = plt.figure(constrained_layout=True)
         self.canvas = FigureCanvasQTAgg(self.figure)
         if gui_parent is not None:
@@ -69,7 +70,7 @@ class GuiDisplay:
                 ax.plot(xy_pairs_list, *args, "k", lw=0.3)
             ax.set_aspect("equal")
 
-    def display_image(self, image: np.ndarray, imshow_kwargs=dict(), **kwargs):
+    def display_image(self, image: np.ndarray, reuse_plotter=True, imshow_kwargs=dict(), **kwargs):
         """Doc."""
 
         if not isinstance(image, np.ndarray):
@@ -81,7 +82,12 @@ class GuiDisplay:
             scroll_zoom=kwargs.get("scroll_zoom", True),
             cursor=kwargs.get("cursor", False),
         )
-        with Plotter(gui_display=self, gui_options=options) as ax:
+
+        # optionally reuse plotter instance
+        if not reuse_plotter or self.plotter is None:
+            self.plotter = Plotter(gui_display=self, gui_options=options)
+
+        with self.plotter as ax:
             ax.imshow(image, interpolation="none", **imshow_kwargs)
 
     def plot_acfs(
@@ -410,9 +416,10 @@ def force_aspect(ax, aspect=1) -> None:
     https://stackoverflow.com/questions/7965743/how-can-i-set-the-aspect-ratio-in-matplotlib
     """
 
-    img, *_ = ax.get_images()
-    extent = img.get_extent()
-    ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
+    with suppress(ValueError):
+        img, *_ = ax.get_images()
+        extent = img.get_extent()
+        ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
 
 
 def get_gradient_colormap(n_lines, color_list=["magenta", "lime", "cyan"]) -> np.ndarray:

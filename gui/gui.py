@@ -210,8 +210,8 @@ class MainWin(QtWidgets.QMainWindow):
         self.ImgDisp1 = GuiDisplay(self.imageDisplayLayout1, self)
         self.ImgDisp2 = GuiDisplay(self.imageDisplayLayout2, self)
 
-        self.shootButton1.released.connect(lambda: self.impl.display_image(1))
-        self.shootButton2.released.connect(lambda: self.impl.display_image(2))
+        self.shootButton1.released.connect(lambda: self.impl.take_and_show_image(1))
+        self.shootButton2.released.connect(lambda: self.impl.take_and_show_image(2))
         self.videoSwitch1.released.connect(
             lambda: self.impl.device_toggle("camera_1", "toggle_video", "is_in_video_mode")
         )

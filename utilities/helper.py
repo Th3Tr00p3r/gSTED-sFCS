@@ -15,7 +15,6 @@ import numpy as np
 import scipy
 from sklearn import linear_model
 
-# from utilities.display import display.Plotter
 import utilities.display as display
 
 # import time # TESTING
