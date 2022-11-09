@@ -60,7 +60,8 @@ class BaseDevice:
                 param_dict[attr_name] = deep_getattr(app, deep_attr)
 
         self.error_dict = None
-        self.loop = app.loop
+        self._app_loop = app.loop
+        self._app_gui = app.gui
         super().__init__(param_dict, **kwargs)
         self.led_widget: QtWidgetAccess
         self.switch_widget: QtWidgetAccess
@@ -155,6 +156,8 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             gate_led_widget=("ledGate", "QIcon", "main", True),
             set_gate_width_wdgt=("spadGateWidth", "QSpinBox", "main", True),
             eff_gate_width_wdgt=("spadEffGateWidth", "QSpinBox", "main", True),
+            mode=("spadMode", "QLineEdit", "main", True),
+            temperature_c=("spadTemp", "QDoubleSpinBox", "main", True),
             description=("spadDescription", "QLineEdit", "settings", False),
             baud_rate=("spadBaudRate", "QSpinBox", "settings", False),
             timeout_ms=("spadTimeout", "QSpinBox", "settings", False),
@@ -201,7 +204,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.purge(True)
-            self.loop.create_task(self.toggle_mode("free running"))
+            self._app_loop.create_task(self.toggle_mode("free running"))
 
             self.gate_ns = None
             self.is_paused = False  # used when ceding control to MPD interface
@@ -229,6 +232,8 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     async def get_stats(self) -> None:
         """Doc."""
+
+        was_on = self.is_on
 
         try:
             responses, command = await self.mpd_command([("AQ", None), ("DC", None)])
@@ -269,6 +274,12 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                     response_name = response_name_flipped[::-1]
                     calc_value = round(linear_fit(stats_dict[response_name], *beta))
                     self.settings[attr_name] = calc_value
+
+                # Write to widgets
+                self.attrs.param_widgets.obj_to_gui(self._app_gui, self.settings)
+
+        if was_on != self.is_on:
+            self.toggle_led_and_switch(self.is_on)
 
     async def toggle_mode(self, mode: str) -> None:
         """Doc."""
@@ -339,7 +350,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.purge(True)
             self.settings = dict(sync_delay_ns=self.sync_delay_ns)
             try:
-                self.loop.create_task(
+                self._app_loop.create_task(
                     self.mpd_command(
                         [
                             ("EM0", Limits(0, 1)),  # cancel echo mode
@@ -1068,7 +1079,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         ),
     )
 
-    update_interval_s = 0.3
+    update_interval_s = 0.5
     MIN_SHG_TEMP_C = 45  # Celsius # was 53 for old laser # TODO: move to settings
     power_limits_mW = Limits(99, 1000)
     current_limits_mA = Limits(1500, 2500)
@@ -1246,10 +1257,12 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         super().__init__(
             *args,
         )
+        # TODO: Get these from the widgets during initialization!
         self.is_in_video_mode = False
         self.is_in_grayscale_mode = True
-        self.should_get_diameter = True
+        self.should_get_diameter = False
         self.is_auto_exposure_on = False
+        self.last_snapshot = np.zeros((100, 100))
 
         with suppress(DeviceError):
             self.open()
@@ -1268,28 +1281,36 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         self.close_instrument()
 
-    def get_image(self, should_display=True) -> np.ndarray:
+    async def get_image(self, should_display=True) -> None:
         """Doc."""
 
         try:
             if self.is_in_video_mode:
-                img = self.get_latest_frame()
+                img = await self.get_latest_frame()  # fast (~0.3 ms)
             else:
-                img = self.grab_image()
+                img = self.capture_image()  # slow (~70 ms)
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            if self.is_in_grayscale_mode:
-                img = np.asarray(PIL.Image.fromarray(img, mode="RGB").convert("L"))
+            self.last_snapshot = img
 
             if should_display:
-                self.display.obj.display_image(img, cursor=True)
+                self._display_last_img()
+
+    def _display_last_img(self) -> None:
+        """Doc."""
+
+        if self.last_snapshot is not None:
+            img_arr = self.last_snapshot
+
+            if self.is_in_grayscale_mode:
+                img_arr = np.asarray(PIL.Image.fromarray(img_arr, mode="RGB").convert("L"))
+
+            # display in GUI
+            self.display.obj.display_image(img_arr, cursor=True, reuse_plotter=True)
 
             if self.should_get_diameter:
-                self._get_beam_width(img)
-
-            self.last_snapshot = img
-            return img
+                self._get_beam_width(img_arr)
 
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
@@ -1334,7 +1355,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
                 round(min(width, height) / RESCALE_FACTOR),
                 round(min(width, height) / RESCALE_FACTOR),
             ),
-            resample=PIL.Image.LANCZOS,
+            resample=PIL.Image.NEAREST,
         )
 
         # converting back to Numpy array
