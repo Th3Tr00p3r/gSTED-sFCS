@@ -608,7 +608,7 @@ class MainWin:
             if plane_idx is None:
                 # use center plane if not supplied
                 plane_idx = int(image_data.n_planes / 2)
-            image = image_data.get_image(method_dict[disp_mthd], plane_idx)
+            image = image_data.construct_image(method_dict[disp_mthd], plane_idx)
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
             img_meas_wdgts["image_wdgt"].obj.display_image(
@@ -764,7 +764,7 @@ class MainWin:
             getattr(self.main_gui, f"autoExp{cam_num}").setChecked(False)
         self.update_slider_range(cam_num)
 
-    def display_image(self, cam_num: int):
+    def take_and_show_image(self, cam_num: int):
         """Doc."""
 
         camera = self.cameras[cam_num - 1]
@@ -773,7 +773,7 @@ class MainWin:
             # TODO: not sure if 'suppress' is necessary
             # ValueError - new_image is None
             # DeviceError - error in camera
-            camera.get_image()
+            self._app.loop.create_task(camera.get_image())
             logging.debug(f"Camera {cam_num} photo taken")
 
     def set_auto_exposure(self, cam_num: int, is_checked: bool):
@@ -1238,7 +1238,7 @@ class MainWin:
                 self.switch_data_type()
                 return
             # get the center plane image, in "forward"
-            image = image_tdc.image_data.get_image("forward")
+            image = image_tdc.image_data.construct_image("forward")
             # plot it (below)
             data_import_wdgts["img_preview_disp"].obj.display_image(
                 image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False

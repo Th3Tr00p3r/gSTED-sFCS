@@ -59,10 +59,10 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,5
-dataYear,2018
-dataDay,10
-dataTemplate1,bp300_angular_exc_*.mat
+dataMonth,11
+dataYear,2022
+dataDay,3
+dataTemplate1,bp300ATTO_FR_angular_exc_144716_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -73,7 +73,7 @@ assignedGates,
 gateMeasType,Confocal
 availableGates,
 importedSolDataTemplates2,
-expPropGstedGate,
+expPropGstedGate,Lifetime
 avgInterval,5000
 posAxis,X
 solScanParamsStacked,2
@@ -96,11 +96,11 @@ assignRawData,True
 currMode,True
 powMode,False
 numPlaneShownChoice,0
-pixel_clock1,99
-framerate1,99
+pixel_clock1,500
+framerate1,100
 exposure1,99
-pixel_clock2,99
-framerate2,99
+pixel_clock2,500
+framerate2,100
 exposure2,99
 tabWidget,2
 tabWidget_2,1
@@ -113,8 +113,8 @@ solImportReCorrelate,True
 solImportAutoLoadProcessed,False
 autoExp1,False
 grayscaleMode1,True
-measureBeamDiameter1,True
+measureBeamDiameter1,False
 autoExp2,False
 grayscaleMode2,True
-measureBeamDiameter2,True
+measureBeamDiameter2,False
 scaleImgScan,292

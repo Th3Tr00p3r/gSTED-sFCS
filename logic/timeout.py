@@ -10,7 +10,7 @@ from contextlib import suppress
 import utilities.helper as helper
 from utilities.errors import DeviceError, err_hndlr
 
-TIMEOUT_INTERVAL = 0.005  # 5 ms
+TIMEOUT_INTERVAL = 0.02  # 20 ms
 GUI_UPDATE_INTERVAL = 0.2  # 200 ms
 
 
@@ -195,13 +195,12 @@ class Timeout:
                 with suppress(DeviceError, TypeError):
                     # DeviceError - camera error
                     # TypeError - .cameras not yet initialized
-                    [
-                        self.main_gui.impl.display_image(cam_idx + 1)
-                        for cam_idx, camera in enumerate(self.main_gui.impl.cameras)
-                        if camera.is_in_video_mode
-                    ]
+                    video_cams = [cam for cam in self.main_gui.impl.cameras if cam.is_in_video_mode]
+                    for video_cam in video_cams:
+                        if not video_cam.is_waiting_for_frame:
+                            self._app.loop.create_task(video_cam.get_image())
 
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(GUI_UPDATE_INTERVAL)
 
     async def _update_lasers(self) -> None:
         """Update depletion laser GUI"""
@@ -266,8 +265,8 @@ class Timeout:
             if (not delayer_dvc.error_dict) and (not self._app.meas.is_running):
                 if delayer_dvc.is_on:
                     with suppress(ValueError, TypeError):
-                        temp, _ = await delayer_dvc.mpd_command(("RT", None))
-                        self.main_gui.psdTemp.setValue(float(temp))
+                        self._app.loop.create_task(delayer_dvc.mpd_command(("RT", None)))
+            #                        self.main_gui.psdTemp.setValue(float(temp)) # TODO: move this within the device
 
             await asyncio.sleep(delayer_dvc.update_interval_s)
 
@@ -282,16 +281,7 @@ class Timeout:
             if not spad_dvc.error_dict and not spad_dvc.is_paused and not self._app.meas.is_running:
 
                 # display status and mode
-                was_on = spad_dvc.is_on
-                await spad_dvc.get_stats()
-                #                self._app.loop.create_task(spad_dvc.get_stats()) # TESTESTEST - create_task instead of 'await' to avoid interfering with sleeping coroutines
-                try:
-                    self.main_gui.spadMode.setText(spad_dvc.settings["mode"].title())
-                    self.main_gui.spadTemp.setValue(spad_dvc.settings["temperature_c"])
-                except KeyError:
-                    self.main_gui.spadMode.setText("ERROR")
-                if was_on != spad_dvc.is_on:
-                    spad_dvc.toggle_led_and_switch(spad_dvc.is_on)
+                self._app.loop.create_task(spad_dvc.get_stats())
 
                 # gating
                 icon_name = "on" if delayer_dvc.is_on and self.exc_laser_dvc.is_on else "off"

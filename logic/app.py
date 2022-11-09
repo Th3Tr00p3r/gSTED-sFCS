@@ -250,6 +250,9 @@ class App:
         close_all_wins(self)
         close_all_dvcs(self)
 
+        # stopping the event loop
+        self.loop.stop()
+
         # clear temp folder
         shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True)  # TODO: make optional
 
@@ -270,6 +273,6 @@ class App:
                 else:
                     event.ignore()
         except AttributeError:
-            # this is to save defining the 'self.exiting' flag at __init__
+            # this is to save defining the 'self.exiting' flag at __init__ ('exiting' attribute doesn't exist)
             self.exiting = False
             self.exit_app(event)

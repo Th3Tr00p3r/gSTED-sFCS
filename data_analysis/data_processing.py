@@ -1464,7 +1464,7 @@ class CountsImageStackData:
     plane_orientation: str
     dim_order: Tuple[int, int, int]
 
-    def get_image(self, method: str, plane_idx: int = None) -> np.ndarray:
+    def construct_image(self, method: str, plane_idx: int = None) -> np.ndarray:
         """Doc."""
 
         if plane_idx is None:

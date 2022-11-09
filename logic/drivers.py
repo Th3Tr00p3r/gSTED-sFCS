@@ -12,6 +12,7 @@ import nidaqmx as ni
 import numpy as np
 import pyvisa as visa
 from instrumental import list_instruments
+from instrumental.errors import TimeoutError
 from nidaqmx.stream_readers import (
     CounterReader,  # AnalogMultiChannelReader for AI, if ever
 )
@@ -477,6 +478,7 @@ class Instrumental(BaseDriver):
     def __init__(self, param_dict):
         super().__init__(param_dict)
         self._inst = None
+        self.is_waiting_for_frame = False
 
         if not list_instruments(module="cameras"):
             exc = IOError("No UC480 cameras detected.")
@@ -517,7 +519,7 @@ class Instrumental(BaseDriver):
         else:
             self.is_in_video_mode = should_turn_on
 
-    def grab_image(self) -> np.ndarray:
+    def capture_image(self) -> np.ndarray:
         """Doc."""
 
         try:
@@ -526,18 +528,31 @@ class Instrumental(BaseDriver):
             )
         except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
+        except TimeoutError:
+            raise IOError(f"{self.log_ref} timed out.")
         else:
             return np.flipud(upside_down_image)
 
-    def get_latest_frame(self) -> np.ndarray:
+    async def get_latest_frame(self) -> np.ndarray:
         """Doc."""
 
         try:
-            upside_down_image = self._inst.latest_frame(copy=False)
+            for _ in range(5):
+                if not self._inst.wait_for_frame("5ms"):
+                    # frame not ready
+                    self.is_waiting_for_frame = True
+                    await asyncio.sleep(0.1)  # TODO: define value somewhere
+                else:
+                    # frame ready
+                    self.is_waiting_for_frame = False
+                    break
+            if not self.is_waiting_for_frame:
+                return np.flipud(self._inst.latest_frame(copy=False))
+            else:  # timeout (loop finished)
+                self.is_waiting_for_frame = False
+                return np.zeros((100, 100))
         except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
-        else:
-            return np.flipud(upside_down_image)
 
     def update_parameter_ranges(self):
         """Doc."""

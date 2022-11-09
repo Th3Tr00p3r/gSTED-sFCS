@@ -112,11 +112,12 @@ class MeasurementProcedure:
         logging.info(f"{self.type} measurement stopped")
         self.type = None
 
-    async def record_data(self, start_time: float, timed: bool = False, size_limited: bool = False):
+    async def record_data(
+        self, start_time: float, timed: bool = False, size_limited: bool = False
+    ) -> None:
         """
         Turn ON the TDC (FPGA), read while conditions are met,
-        turn OFF TDC and read leftover data,
-        return the time it took (seconds).
+        turn OFF TDC and read leftover data.
         """
 
         self._app.gui.main.impl.device_toggle("TDC", leave_on=True)
