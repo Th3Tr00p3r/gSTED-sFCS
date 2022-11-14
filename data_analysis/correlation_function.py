@@ -279,7 +279,10 @@ class CorrFunc:
         **kwargs,
     ) -> None:
 
-        x = getattr(self, x_field)
+        if x_field == "vt_um_sq":
+            x = self.vt_um ** 2
+        else:
+            x = getattr(self, x_field)
         y = getattr(self, y_field)
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
@@ -769,7 +772,7 @@ class SolutionSFCSMeasurement:
 
         # Afterpulsing filter (optional)
         if is_filtered:
-            self.afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
+            self._afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
                 self.detector_settings["gate_ns"], **corr_options
             )
             filter_input_list = []
@@ -779,7 +782,7 @@ class SolutionSFCSMeasurement:
         for dt_ts_split in dt_ts_split_list:
             corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
             if is_filtered:
-                filter = self.afterpulsing_filter.filter[int(get_afterpulsing)]
+                filter = self._afterpulsing_filter.filter[int(get_afterpulsing)]
                 # create a filter for genuine fluorscene (ignoring afterpulsing)
                 split_delay_time = dt_ts_split[0]
                 bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
@@ -971,6 +974,7 @@ class SolutionSFCSMeasurement:
         y_field="normalized",
         x_scale="log",
         y_scale="linear",
+        xlim=(1e-4, 1),
         ylim=(-0.20, 1.4),
         plot_kwargs={},
         **kwargs,
@@ -986,6 +990,7 @@ class SolutionSFCSMeasurement:
                     y_field=y_field,
                     x_scale=x_scale,
                     y_scale=y_scale,
+                    xlim=xlim,
                     ylim=ylim,
                     plot_kwargs=plot_kwargs,
                     **kwargs,
@@ -994,6 +999,14 @@ class SolutionSFCSMeasurement:
             ax.legend(legend_labels)
 
         return legend_labels
+
+    def plot_afterpulsing_filter(
+        self,
+        **kwargs,
+    ):
+        """Plot afterpulsing filter"""
+
+        self._afterpulsing_filter.plot(**kwargs)
 
     def compare_lifetimes(
         self,
@@ -1281,6 +1294,13 @@ class SolutionSFCSExperiment:
 
         setattr(self, meas_type, measurement)
 
+    def renormalize_all(self, norm_range: Tuple[float, float], **kwargs):
+        """Doc."""
+
+        for meas_type in ("confocal", "sted"):
+            for cf in getattr(self, meas_type).cf.values():
+                cf.average_correlation(norm_range=norm_range, **kwargs)
+
     def save_processed_measurements(self, **kwargs):
         """Doc."""
 
@@ -1524,7 +1544,15 @@ class SolutionSFCSExperiment:
                     parent_ax=axes[1],
                 )
 
-    def plot_correlation_functions(self, **kwargs):
+    def plot_correlation_functions(
+        self,
+        xlim=(1e-5, 1),
+        x_field="vt_um",
+        y_field="normalized",
+        x_scale="linear",
+        y_scale="linear",
+        **kwargs,
+    ):
         """Doc."""
 
         if self.confocal.is_loaded:
@@ -1533,7 +1561,8 @@ class SolutionSFCSExperiment:
             ref_meas = self.sted
 
         if ref_meas.scan_type == "static":
-            kwargs["x_field"] = "lag"
+            # TODO: not good pratice - user might be surprised thinking he controls 'x_field' by kwargs
+            x_field = "lag"
 
         if kwargs.get("ylim") is None:
             if kwargs.get("y_field") in {"average_all_cf_cr", "avg_cf_cr"}:
@@ -1545,21 +1574,30 @@ class SolutionSFCSExperiment:
             super_title=f"'{self.name}' Experiment - All ACFs",
             **kwargs,
         ) as ax:
+            with suppress(KeyError):
+                kwargs.pop("parent_ax")
+
             legend_label_lists = [
                 getattr(self, meas_type).plot_correlation_functions(
                     parent_ax=ax,
-                    x_field=kwargs.get("x_field", "vt_um"),
-                    y_field=kwargs.get("y_field", "normalized"),
-                    x_scale=kwargs.get("x_scale", "linear"),
-                    y_scale=kwargs.get("y_scale", "linear"),
-                    xlim=kwargs.get("xlim", (0, 1)),
-                    ylim=kwargs.get("ylim", (-0.20, 1.4)),
-                    plot_kwargs=kwargs.get("plot_kwargs", {}),
+                    x_field=x_field,
+                    y_field=y_field,
+                    x_scale=x_scale,
+                    **kwargs,
                 )
                 for meas_type in ("confocal", "sted")
             ]
             confocal_legend_labels, sted_legend_labels = legend_label_lists
             ax.legend(confocal_legend_labels + sted_legend_labels)
+
+    def plot_afterpulsing_filters(self, **kwargs) -> None:
+        """Plot afterpulsing filters each measurement"""
+        # TODO: this can be improved, (plot both in single figure - plot method of AfterpulsingFilter doesn't match this)
+
+        for meas_type in ("confocal", "sted"):
+            getattr(self, meas_type).plot_afterpulsing_filter(
+                super_title=meas_type.capitalize(), **kwargs
+            )
 
     def calculate_structure_factors(self, **kwargs) -> None:
         """Doc."""
@@ -1574,6 +1612,7 @@ class SolutionSFCSExperiment:
             getattr(self, meas_type).calculate_structure_factors(**kwargs)
 
         # plot them
+        # TODO: instead of coding the plot here, add a 'plot' method to the StructureFactor class and use it here
         with Plotter(
             subplots=(1, 2),
             super_title=f"Experiment '{self.name.capitalize()}':\nStructure Factors",

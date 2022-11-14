@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -79,8 +79,8 @@ AP_METHOD = "filter"
 NORM_RANGE = (7e-3, 9e-3)
 
 # FILES = "Use 1"
-# FILES = "Use 1-5"
-FILES = "Use All"
+FILES = "Use 1-5"
+# FILES = "Use All"
 
 data_label_kwargs = {
     "300 bp ATTO Free-Running": dict(
@@ -192,7 +192,7 @@ for label, exp in exp_dict.items():
             print("NO TDC CALIBRATION TO PLOT!")
 
         # keep signal filters
-        ap_filter_list.append(exp.confocal.afterpulsing_filter)
+        ap_filter_list.append(exp.confocal._afterpulsing_filter)
 
 #         # save processed data (to avoid re-processing)
 #         exp.save_processed_measurements(
@@ -273,19 +273,13 @@ for label, exp in exp_dict.items():
 # ## Comparing the filters calculated for free-running measurements to those of 0 ns in gated mode
 
 # %%
-# FACTOR = 5.17
-# DELTA = -4.15
-FACTOR = 1
-DELTA = 0
-
 with Plotter(ylim=(-2, 2)) as ax:
     for label, exp in exp_dict.items():
         t_hist = exp.confocal.tdc_calib.t_hist
-        if label == "300 bp ATTO Hard-Gated ~0 ns":
-            ap_filter = exp.confocal.afterpulsing_filter.filter[0] * FACTOR + DELTA
-        else:
-            ap_filter = exp.confocal.afterpulsing_filter.filter[0]
-        ax.plot(t_hist, ap_filter)
+        ap_filter = exp.confocal._afterpulsing_filter.filter[0]
+        ax.plot(t_hist, ap_filter, label=label)
+
+    ax.legend()
 
 
 # %% [markdown]
