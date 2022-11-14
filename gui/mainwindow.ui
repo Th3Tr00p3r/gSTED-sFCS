@@ -11588,7 +11588,7 @@ Disp. (um)</string>
                 <item>
                  <widget class="QCheckBox" name="grayscaleMode1">
                   <property name="text">
-                   <string>Grayscale
+                   <string>Normalized
 Mode</string>
                   </property>
                  </widget>
@@ -11596,8 +11596,8 @@ Mode</string>
                 <item>
                  <widget class="QCheckBox" name="measureBeamDiameter1">
                   <property name="text">
-                   <string>Beam
-Diameter</string>
+                   <string>Gaussian
+Fit</string>
                   </property>
                  </widget>
                 </item>
@@ -12328,7 +12328,7 @@ Diameter</string>
                 <item>
                  <widget class="QCheckBox" name="grayscaleMode2">
                   <property name="text">
-                   <string>Grayscale
+                   <string>Normalized
 Mode</string>
                   </property>
                  </widget>
@@ -12336,8 +12336,8 @@ Mode</string>
                 <item>
                  <widget class="QCheckBox" name="measureBeamDiameter2">
                   <property name="text">
-                   <string>Beam
-Diameter</string>
+                   <string>Gaussian
+Fit</string>
                   </property>
                  </widget>
                 </item>

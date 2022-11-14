@@ -124,7 +124,7 @@ class GuiDisplay:
             ax.set_prop_cycle(color="k")
             ax.plot(x_arr, avg_cf_cr, lw=1.4)
 
-    def add_patch(self, patch, should_clear=True):
+    def add_patch(self, patch, annotation=None, should_clear=True):
         """Add patches to existing Axes."""
 
         if should_clear:
@@ -138,7 +138,19 @@ class GuiDisplay:
 
         with suppress(AttributeError):
             patch.set_label("expandable")
+            # plot patch
             self.axes[0].add_artist(patch)
+            # annotate
+            if annotation:
+                self.axes[0].annotate(
+                    annotation,
+                    patch._center,
+                    color="w",
+                    weight="bold",
+                    fontsize=11,
+                    ha="center",
+                    va="center",
+                )
             self.canvas.draw_idle()
 
 
