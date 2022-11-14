@@ -1307,10 +1307,10 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
                 img_arr = np.asarray(PIL.Image.fromarray(img_arr, mode="RGB").convert("L"))
 
             # display in GUI
-            self.display.obj.display_image(img_arr, cursor=True, reuse_plotter=True)
+            self.display.obj.display_image(img_arr, cursor=True)
 
             if self.should_get_diameter:
-                self._get_beam_width(img_arr)
+                self.get_and_display_beam_width(img_arr)
 
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
@@ -1332,7 +1332,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         [self.set_parameter(name, value) for name, value in param_dict.items()]
 
-    def _get_beam_width(self, img_arr):
+    def get_and_display_beam_width(self, img_arr):
         """Doc."""
 
         # properly convert to grayscale
@@ -1390,15 +1390,24 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
 
         # calculating the FWHM
         FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))  # 1/e^2 width is FWHM * 1.699
+        one_over_e2_factor = 1.699 * FWHM_FACTOR
         diameter_mm = (
-            np.mean([sigma_x, sigma_y]) * FWHM_FACTOR * self.PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
+            np.mean([sigma_x, sigma_y])
+            * one_over_e2_factor
+            * self.PIXEL_SIZE_UM
+            * 1e-3
+            * RESCALE_FACTOR
         )
         diameter_mm_err = (
-            np.std([sigma_x, sigma_y]) * FWHM_FACTOR * self.PIXEL_SIZE_UM * 1e-3 * RESCALE_FACTOR
+            np.std([sigma_x, sigma_y])
+            * one_over_e2_factor
+            * self.PIXEL_SIZE_UM
+            * 1e-3
+            * RESCALE_FACTOR
         )
 
-        logging.info(
-            f"{self.log_ref}: FWHM width determined to be {diameter_mm:.2f} +/- {diameter_mm_err:.2f} mm"
+        logging.debug(
+            f"{self.log_ref}: 1/e^2 width determined to be {diameter_mm:.2f} +/- {diameter_mm_err:.2f} mm"
         )
 
         # plotting the FWHM on top of the image
@@ -1411,7 +1420,10 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         ellipse.set_facecolor((0, 0, 0, 0))
         ellipse.set_edgecolor("red")
 
-        self.display.obj.add_patch(ellipse)
+        self.display.obj.add_patch(
+            ellipse,
+            annotation=f"$1/e^2$: {diameter_mm:.2f}$\\pm${diameter_mm_err:.2f} mm\n$\\chi^2$={fp.chi_sq_norm:.2f}",
+        )
 
 
 class Camera1(Camera):

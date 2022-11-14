@@ -77,11 +77,6 @@ Background</string>
              </item>
              <item>
               <property name="text">
-               <string>subtract inherent (xcorr)</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
                <string>filter</string>
               </property>
              </item>

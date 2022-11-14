@@ -491,7 +491,10 @@ class SolutionSFCSMeasurement:
         # aggregate images and ROIs for sFCS
         if self.scan_type == "circle":
             self.scan_image = np.vstack(tuple(p.image for p in self.data))
-            bg_corr_array = np.empty((len(self.data), self.scan_settings["samples_per_circle"]))
+            samples_per_circle = int(
+                self.scan_settings["ao_sampling_freq_hz"] / self.scan_settings["circle_freq_hz"]
+            )
+            bg_corr_array = np.empty((len(self.data), samples_per_circle))
             for idx, p in enumerate(self.data):
                 bg_corr_array[idx] = p.bg_line_corr[0]["corrfunc"]
             avg_bg_corr = bg_corr_array.mean(axis=0)

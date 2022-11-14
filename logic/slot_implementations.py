@@ -1112,7 +1112,7 @@ class MainWin:
         DATA_IMPORT_COLL = wdgts.DATA_IMPORT_COLL
         text_lines = cast(str, DATA_IMPORT_COLL.log_text.get()).split("\n")
         curr_template = cast(str, DATA_IMPORT_COLL.data_templates.get())
-        log_filename = Path(curr_template).stem + ".log"
+        log_filename = Path(curr_template).stem.replace("_*", ".log")
         with suppress(AttributeError, TypeError, FileNotFoundError):
             # no directories found
             file_path = self.current_date_type_dir_path() / log_filename
