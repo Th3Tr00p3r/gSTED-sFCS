@@ -475,6 +475,8 @@ class PyVISA(BaseDriver):
 class Instrumental(BaseDriver):
     """Doc."""
 
+    last_snapshot: np.ndarray  # for mypy
+
     def __init__(self, param_dict):
         super().__init__(param_dict)
         self._inst = None
@@ -550,7 +552,7 @@ class Instrumental(BaseDriver):
                 return np.flipud(self._inst.latest_frame(copy=False))
             else:  # timeout (loop finished)
                 self.is_waiting_for_frame = False
-                return np.zeros((100, 100))
+                return self.last_snapshot
         except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
 

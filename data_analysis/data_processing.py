@@ -539,7 +539,6 @@ class TDCCalibration:
     def calculate_afterpulsing_filter(
         self,
         detector_gate_ns,
-        hist_norm_factor=1,
         should_plot=False,
         **kwargs,
     ) -> np.ndarray:
@@ -564,11 +563,10 @@ class TDCCalibration:
         all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
         # normalize
-        # TODO: why is a hist_norm_factor needed??
-        all_hist_norm = all_hist_norm / all_hist_norm.sum() * hist_norm_factor
+        all_hist_norm = all_hist_norm / all_hist_norm.sum()
 
-        # get the baseline (which is assumed to be approximately the afterpulsing histogram)
-        # Use exponential fit
+        # Use exponential fit to get the underlying exponentioal decay and background (Smoothing is what's really essential here)
+        # TODO: for STED measurement I will need a different fit - decay is no longer purely exponential
         fp = curve_fit_lims(
             (fit_func := FIT_NAME_DICT["exponent_with_background_fit"]),
             [1e-2, 4, 1e-4],
