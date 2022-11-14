@@ -417,13 +417,13 @@ class AfterulsingFilter:
     M: np.ndarray
     filter: np.ndarray
 
-    def plot(self, parent_axes=None, **plot_kwargs):
+    def plot(self, parent_ax=None, **plot_kwargs):
         """Doc."""
 
         n = len(self.I_j)
 
         with Plotter(
-            parent_ax=parent_axes,
+            parent_ax=parent_ax,
             subplots=(1, 2),
             **plot_kwargs,
         ) as axes:
