@@ -156,9 +156,10 @@ class MeasurementProcedure:
         """
         Create a directory of today's date, and there
         save measurement data as a .pkl file.
-
-        Note: does not handle overnight measurements during which the date changes
         """
+        # TODO: does not handle overnight measurements during which the date changes.
+        # To do that, one would need to keep the starting date and ensure overnight measurements
+        # are still save in their original date folder
 
         today_dir = Path(self.save_path) / dt.now().strftime("%d_%m_%Y")
 
