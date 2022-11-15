@@ -12,7 +12,7 @@ import scipy
 import skimage
 
 from utilities.display import Plotter
-from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
+from utilities.fit_tools import FIT_NAME_DICT, FitError, FitParams, curve_fit_lims
 from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
 
 
@@ -412,8 +412,10 @@ class AfterulsingFilter:
     """Doc."""
 
     t_hist: np.ndarray
+    all_hist_norm: np.ndarray
     baseline: float
     I_j: np.ndarray
+    norm_factor: float
     M: np.ndarray
     filter: np.ndarray
 
@@ -429,9 +431,14 @@ class AfterulsingFilter:
         ) as axes:
             axes[0].set_title("Filter Ingredients")
             axes[0].set_yscale("log")
-            axes[0].plot(self.t_hist[:n], self.I_j, label="I_j (raw histogram)")
             axes[0].plot(
-                self.t_hist[:n], self.baseline * np.ones(self.t_hist[:n].shape), label="baseline"
+                self.t_hist[:n], self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
+            )
+            axes[0].plot(self.t_hist[:n], self.I_j / self.norm_factor, label="norm. I_j (fit)")
+            axes[0].plot(
+                self.t_hist[:n],
+                self.baseline / self.norm_factor * np.ones(self.t_hist[:n].shape),
+                label="norm. baseline",
             )
             axes[0].plot(
                 self.t_hist[:n], self.M.T[0], label="M_j1 (ideal fluorescence decay curve)"
@@ -440,10 +447,9 @@ class AfterulsingFilter:
                 self.t_hist[:n], self.M.T[1], label="M_j2 (ideal afterpulsing 'decay' curve)"
             )
             axes[0].legend()
-            axes[0].set_ylim(self.baseline / 10, None)
+            axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
 
             axes[1].set_title("Filter")
-            axes[1].set_ylim(-1, 2)
             axes[1].plot(self.t_hist, self.filter.T)
             axes[1].plot(self.t_hist, self.filter.sum(axis=0))
             axes[1].legend(["F_1j (signal)", "F_2j (afterpulsing)", "F.sum(axis=0)"])
@@ -538,7 +544,7 @@ class TDCCalibration:
 
     def calculate_afterpulsing_filter(
         self,
-        detector_gate_ns,
+        gate_ns,
         should_plot=False,
         **kwargs,
     ) -> np.ndarray:
@@ -548,54 +554,65 @@ class TDCCalibration:
         all_hist_norm = copy(self.all_hist_norm)
         t_hist = copy(self.t_hist)
 
-        # crop-out the detector-gated part so it does not interfere wth filter creation
-        if detector_gate_ns.lower > 0:
-            peak_idx = round(detector_gate_ns.lower * 10)  # x step is 0.1 ns
-            all_hist_norm = np.roll(all_hist_norm, -peak_idx)[:-peak_idx]
-            t_hist = np.roll(t_hist, -peak_idx)[:-peak_idx]
-            F_gated = np.full((2, peak_idx), np.nan)
+        # crop-out the gated part of the histogram
+        if gate_ns:
+            in_gate_idxs = gate_ns.valid_indices(t_hist)
+            t_hist = t_hist[in_gate_idxs]
+            all_hist_norm = all_hist_norm[in_gate_idxs]
+            lower_idx = round(gate_ns.lower * 10)
+            F_pad_before = np.full((2, lower_idx), np.nan)
+            try:
+                upper_idx = round(gate_ns.upper * 10)
+                F_pad_after = np.full((2, len(self.t_hist) - upper_idx - 1), np.nan)
+            except (OverflowError, ValueError):
+                # OverflowError: gate_ns.upper == np.inf
+                # ValueError: len(self.t_hist) == upper_idx
+                F_pad_after = np.array([[], []])
         else:
-            peak_idx = 0
+            lower_idx = 0
 
         # interpolate over NaNs
         nans, x = nan_helper(all_hist_norm)  # get nans and a way to interpolate over them later
         #        print("nans: ", nans.sum()) # TESTESTEST - why always 23?
         all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
-        # normalize
-        all_hist_norm = all_hist_norm / all_hist_norm.sum()
-
         # Use exponential fit to get the underlying exponentioal decay and background (Smoothing is what's really essential here)
         # TODO: for STED measurement I will need a different fit - decay is no longer purely exponential
-        fp = curve_fit_lims(
-            (fit_func := FIT_NAME_DICT["exponent_with_background_fit"]),
-            [1e-2, 4, 1e-4],
-            xs=t_hist,
-            ys=all_hist_norm,
-            x_limits=Limits(peak_idx / 10 + 2.5, np.inf),
-            plot_kwargs=dict(y_scale="log"),
-        )
+        fit_lower_x_limit = t_hist[np.argmax(all_hist_norm)] + 2
+        try:
+            fp = curve_fit_lims(
+                (fit_func := FIT_NAME_DICT["exponent_with_background_fit"]),
+                [1e-2, 4, 1e-4],
+                xs=t_hist,
+                ys=all_hist_norm,
+                x_limits=Limits(fit_lower_x_limit, np.inf),
+                plot_kwargs=dict(y_scale="log"),
+            )
+        except FitError as exc:
+            raise ValueError(f"Gate {gate_ns} is too narrow! [{exc}]")
+
         baseline = fp.beta["bg"]
-        all_hist_norm = fit_func(t_hist.astype(np.float64), *fp.beta.values())
+        fitted_all_hist_norm = fit_func(t_hist.astype(np.float64), *fp.beta.values())
+
+        # normalization factor
+        norm_factor = (fitted_all_hist_norm - baseline).sum()
 
         # define matrices and calculate F
-        M_j1 = all_hist_norm - baseline  # p1
+        M_j1 = (fitted_all_hist_norm - baseline) / norm_factor  # p1
         M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
         M = np.vstack((M_j1, M_j2)).T
 
-        I_j = all_hist_norm
+        I_j = fitted_all_hist_norm  # / norm_factor
         I = np.diag(I_j)  # NOQA E741
         inv_I = np.linalg.pinv(I)
 
         F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
 
         # Return the filter to original dimensions by adding zeros in the detector-gated zone
-        if detector_gate_ns.lower > 0:
-            F = np.hstack((F_gated, F))
-        else:
-            F = F
+        if gate_ns:
+            F = np.hstack((F_pad_before, F, F_pad_after))
 
-        ap_filter = AfterulsingFilter(self.t_hist, baseline, I_j, M, F)
+        ap_filter = AfterulsingFilter(self.t_hist, all_hist_norm, baseline, I_j, norm_factor, M, F)
 
         if should_plot:
             ap_filter.plot()

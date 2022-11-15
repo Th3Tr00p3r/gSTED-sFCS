@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -78,8 +78,8 @@ AP_METHOD = "filter"
 
 NORM_RANGE = (7e-3, 9e-3)
 
-# FILES = "Use 1"
-FILES = "Use 1-5"
+FILES = "Use 1"
+# FILES = "Use 1-5"
 # FILES = "Use All"
 
 data_label_kwargs = {
@@ -158,20 +158,9 @@ print(data_label_kwargs)
 # Importing all needed data. Processing, correlating and averaging if no pre-processed measurement exist.
 
 # %%
-SHOULD_USE_FIRST_AP_FILTER = False
-
 # load experiment
 ap_filter_list = []
 for label, exp in exp_dict.items():
-
-    # use external filter if available
-    try:
-        if SHOULD_USE_FIRST_AP_FILTER:
-            ext_filter = ap_filter_list[0]
-        else:
-            ext_filter = None
-    except IndexError:
-        ext_filter = None
 
     # skip already loaded experiments, unless forced
     if not hasattr(exp_dict[label], "confocal") or data_label_kwargs[label]["force_processing"]:
@@ -179,20 +168,13 @@ for label, exp in exp_dict.items():
             should_plot=False,
             should_re_correlate=FORCE_ALL,
             **data_label_kwargs[label],
-            external_ap_filter=ext_filter,
         )
-
-        #         # calibrate TDC # TESTESTEST
-        #         exp.confocal.calibrate_tdc(**data_label_kwargs[label])
 
         # plot TDC calibration
         try:
             exp.confocal.tdc_calib.plot()
         except AttributeError:
             print("NO TDC CALIBRATION TO PLOT!")
-
-        # keep signal filters
-        ap_filter_list.append(exp.confocal._afterpulsing_filter)
 
 #         # save processed data (to avoid re-processing)
 #         exp.save_processed_measurements(
@@ -270,51 +252,25 @@ for label, exp in exp_dict.items():
         print("NO TDC CALIBRATION!")
 
 # %% [markdown]
-# ## Comparing the filters calculated for free-running measurements to those of 0 ns in gated mode
-
-# %%
-with Plotter(ylim=(-2, 2)) as ax:
-    for label, exp in exp_dict.items():
-        t_hist = exp.confocal.tdc_calib.t_hist
-        ap_filter = exp.confocal._afterpulsing_filter.filter[0]
-        ax.plot(t_hist, ap_filter, label=label)
-
-    ax.legend()
-
-
-# %% [markdown]
 # ## Testing the effect of TDC gating on confocal measurements
 
 # %% [markdown]
 # Gating and calculating the gated filtered afterpulsings
 
 # %%
-# CHOOSE GATES
-# UPPER_GATES = [30, np.inf]
-UPPER_GATES = [20, 40, 60, 80, np.inf]
+from itertools import product
 
-SHOULD_CALCULATE_AP = False
-# SHOULD_CALCULATE_AP = True
+lower_gate_list = [7.5]
+upper_gate_list = [20, 60, np.inf]
 
-# GATE AND CALCULATE GATED APs
-tdc_gates_ns = [(7.5, upper_gate) for upper_gate in UPPER_GATES]
+gate_list = [gate_ns for gate_ns in product(lower_gate_list, upper_gate_list)]
+
 for label, exp in exp_dict.items():
     if FORCE_ALL:
-        try:
-            # CALCULATE UNGATED AP
-            if SHOULD_CALCULATE_AP:
-                exp.confocal.calculate_filtered_afterpulsing()
-
-            # GATE & CALCULATE GATED APs
-            for tdc_gate_ns in tdc_gates_ns:
-                exp.add_gate(
-                    tdc_gate_ns, meas_type="confocal", should_plot=False, **data_label_kwargs[label]
-                )
-                if SHOULD_CALCULATE_AP:
-                    exp.confocal.calculate_filtered_afterpulsing(tdc_gate_ns=tdc_gate_ns)
-
-        except AttributeError:
-            print("NO TDC CALIBRATION!")
+        # GATE
+        exp.add_gates(
+            gate_list, meas_type="confocal", should_plot=False, **data_label_kwargs[label]
+        )
 
     #         else:
     #             # save processed data (to avoid re-processing)
