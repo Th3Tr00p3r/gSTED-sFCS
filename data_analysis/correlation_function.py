@@ -79,11 +79,12 @@ class CorrFunc:
     cf_cr: np.ndarray
     g0: float
 
-    def __init__(self, name: str, correlator_type: int, laser_freq_hz):
+    def __init__(self, name: str, correlator_type: int, laser_freq_hz, afterpulsing_filter=None):
         self.name = name
         self.correlator_type = correlator_type
         self.laser_freq_hz = laser_freq_hz
         self.fit_params: Dict[str, FitParams] = dict()
+        self.afterpulsing_filter = afterpulsing_filter
 
     def correlate_measurement(
         self,
@@ -722,7 +723,7 @@ class SolutionSFCSMeasurement:
         self,
         cf_name="unnamed",
         tdc_gate_ns=Gate(),
-        afterpulsing_method="none",
+        afterpulsing_method="filter",
         external_afterpulse_params=None,
         external_afterpulsing=None,
         get_afterpulsing=False,
@@ -742,6 +743,10 @@ class SolutionSFCSMeasurement:
                 end=" ",
             )
 
+        # keep afterpulsing method for consistency with future gating
+        if not hasattr(self, "afterpulsing_method"):
+            self.afterpulsing_method = afterpulsing_method
+
         # Unite TDC gate and detector gate
         gate_ns = Gate(tdc_gate_ns) & self.detector_settings["gate_ns"]
 
@@ -751,9 +756,9 @@ class SolutionSFCSMeasurement:
             cf_name = f"gated {cf_name} {gate_ns}"
 
         # the following conditions require TDC calibration prior to creating splits
-        if afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
-            raise ValueError(f"Invalid afterpulsing_method chosen: {afterpulsing_method}.")
-        elif (is_filtered := afterpulsing_method == "filter") or gate_ns:
+        if self.afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
+            raise ValueError(f"Invalid afterpulsing_method chosen: {self.afterpulsing_method}.")
+        elif (is_filtered := self.afterpulsing_method == "filter") or gate_ns:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
@@ -770,19 +775,19 @@ class SolutionSFCSMeasurement:
         if is_verbose:
             print("Done.")
 
-        # Afterpulsing filter (optional)
+        # Calculate afterpulsing filter if doesn't alreay exist (optional)
         if is_filtered:
-            self._afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
-                self.detector_settings["gate_ns"], **corr_options
+            afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
+                gate_ns, **corr_options
             )
-            filter_input_list = []
 
         # build correlator input
         corr_input_list = []
+        filter_input_list = []
         for dt_ts_split in dt_ts_split_list:
             corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
             if is_filtered:
-                filter = self._afterpulsing_filter.filter[int(get_afterpulsing)]
+                filter = afterpulsing_filter.filter[int(get_afterpulsing)]
                 # create a filter for genuine fluorscene (ignoring afterpulsing)
                 split_delay_time = dt_ts_split[0]
                 bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
@@ -807,7 +812,12 @@ class SolutionSFCSMeasurement:
             print(f"Correlating {self.scan_type} data ({cf_name}):", end=" ")
 
         # Correlate data
-        CF = CorrFunc(cf_name, correlator_option, self.laser_freq_hz)
+        CF = CorrFunc(
+            cf_name,
+            correlator_option,
+            self.laser_freq_hz,
+            afterpulsing_filter if is_filtered else None,
+        )
         CF.correlate_measurement(
             corr_input_list,
             external_afterpulse_params
@@ -818,7 +828,7 @@ class SolutionSFCSMeasurement:
             external_afterpulsing=external_afterpulsing,
             gate_ns=gate_ns,
             list_of_filter_arrays=filter_input_list if is_filtered else None,
-            should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
+            should_subtract_afterpulsing=self.afterpulsing_method == "subtract calibrated",
             **corr_options,
         )
 
@@ -999,14 +1009,6 @@ class SolutionSFCSMeasurement:
             ax.legend(legend_labels)
 
         return legend_labels
-
-    def plot_afterpulsing_filter(
-        self,
-        **kwargs,
-    ):
-        """Plot afterpulsing filter"""
-
-        self._afterpulsing_filter.plot(**kwargs)
 
     def compare_lifetimes(
         self,
@@ -1528,6 +1530,7 @@ class SolutionSFCSExperiment:
     def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=True, **kwargs):
         """A convecience method for adding multiple gates."""
 
+        print(f"Adding multiple gates for experiment '{self.name}'...")
         for tdc_gate_ns in gate_list:
             self.add_gate(tdc_gate_ns, should_plot=False, **kwargs)
         if should_plot:
@@ -1583,6 +1586,7 @@ class SolutionSFCSExperiment:
                     x_field=x_field,
                     y_field=y_field,
                     x_scale=x_scale,
+                    y_scale=y_scale,
                     **kwargs,
                 )
                 for meas_type in ("confocal", "sted")
@@ -1595,9 +1599,12 @@ class SolutionSFCSExperiment:
         # TODO: this can be improved, (plot both in single figure - plot method of AfterpulsingFilter doesn't match this)
 
         for meas_type in ("confocal", "sted"):
-            getattr(self, meas_type).plot_afterpulsing_filter(
-                super_title=meas_type.capitalize(), **kwargs
-            )
+            with suppress(AttributeError):
+                for cf in getattr(self, meas_type).cf.values():
+                    cf.afterpulsing_filter.plot(
+                        super_title=f"Afterpulsing Filter\n{meas_type.capitalize()}: {cf.name}",
+                        **kwargs,
+                    )
 
     def calculate_structure_factors(self, **kwargs) -> None:
         """Doc."""
