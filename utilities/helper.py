@@ -155,6 +155,12 @@ class Limits:
 
     __rmul__ = __mul__
 
+    def __round__(self):
+        self_copy = copy(self)
+        self_copy.lower = round(self.lower)
+        self_copy.upper = round(self.upper)
+        return
+
     def __bool__(self):
         return not ((self.lower == np.NINF) and (self.upper == np.inf))
 
@@ -196,9 +202,9 @@ class Limits:
             raise TypeError("Clamped object must be either a Limits instance or a number!")
 
     def as_range(self) -> range:
-        """Get a Python 'range' (generator)"""
+        """Get a Python 'range' (generator), rounding first to have integers"""
 
-        return range(self.lower, self.upper)
+        return range(round(self.lower), round(self.upper))
 
 
 class Gate(Limits):
@@ -230,7 +236,9 @@ class Gate(Limits):
         return not ((self.lower == 0) and (self.upper == np.inf))
 
     def __repr__(self):
-        return super().__repr__().replace("Limits", "Gate")
+        return f"Gate(lower={self.lower}, upper={self.upper}" + (
+            f", hard_gate={self.hard_gate})" if self.hard_gate is not None else ")"
+        )
 
     def __str__(self):
         return f"{super().__str__()}{f' {self.units}' if self.units else ''}"
