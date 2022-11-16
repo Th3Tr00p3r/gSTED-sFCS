@@ -701,6 +701,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 full_data["scan_settings"].update(
                     diameter_um=self.scan_params["diameter_um"],
                     n_circles=self.scan_params["n_circles"],
+                    circle_freq_hz=self.scan_params["circle_freq_hz"],
                 )
             elif self.scan_params["pattern"] == "angular":
                 full_data["scan_settings"].update(
