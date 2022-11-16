@@ -28,10 +28,10 @@ class MeasurementProcedure:
         type: str,
         scan_params,
         laser_mode,
-        file_template,
-        save_path,
-        sub_dir_name,
-        prog_bar_wdgt,
+        file_template=None,
+        save_path=None,
+        sub_dir_name=None,
+        prog_bar_wdgt=None,
         **kwargs,
     ):
 
@@ -107,7 +107,9 @@ class MeasurementProcedure:
 
         self.is_running = False
         await self._app.gui.main.impl.toggle_meas(self.type, self.laser_mode.capitalize())
-        self.prog_bar_wdgt.set(0)
+        with suppress(AttributeError):
+            # AttributeError: no widget
+            self.prog_bar_wdgt.set(0)
         self._app.gui.main.impl.populate_all_data_dates(type_)  # refresh saved measurements
         logging.info(f"{self.type} measurement stopped")
         self.type = None
@@ -541,24 +543,23 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         super().__init__(app=app, type="SFCSSolution", scan_params=scan_params, **kwargs)
         # TODO: would make more sense if these were in a specified dict rather than in the kwargs dict...
         self.scan_type = kwargs["scan_type"]
-        self.regular = kwargs["regular"]
         self.repeat = kwargs["repeat"]
         self.final = kwargs["final"]
-        self.max_file_size_mb = kwargs["max_file_size_mb"]
+        self.max_file_size_mb = kwargs.get("max_file_size_mb", 20)
         self.duration = kwargs["duration"]
         self.duration_units = kwargs["duration_units"]
-        self.start_time_wdgt = kwargs["start_time_wdgt"]
-        self.end_time_wdgt = kwargs["end_time_wdgt"]
-        self.time_left_wdgt = kwargs["time_left_wdgt"]
-        self.file_num_wdgt = kwargs["file_num_wdgt"]
-        self.pattern_wdgt = kwargs["pattern_wdgt"]
-        self.g0_wdgt = kwargs["g0_wdgt"]
-        self.tau_wdgt = kwargs["tau_wdgt"]
-        self.plot_wdgt = kwargs["plot_wdgt"]
-        self.fit_led = kwargs["fit_led"]
-        self.processing_options = kwargs["processing_options"]
+        self.start_time_wdgt = kwargs.get("start_time_wdgt")
+        self.end_time_wdgt = kwargs.get("end_time_wdgt")
+        self.time_left_wdgt = kwargs.get("time_left_wdgt")
+        self.file_num_wdgt = kwargs.get("file_num_wdgt")
+        self.pattern_wdgt = kwargs.get("pattern_wdgt")
+        self.g0_wdgt = kwargs.get("g0_wdgt")
+        self.tau_wdgt = kwargs.get("tau_wdgt")
+        self.plot_wdgt = kwargs.get("plot_wdgt")
+        self.fit_led = kwargs.get("fit_led")
+        self.processing_options = kwargs.get("processing_options")
 
-        if self.scan_params["floating_z_amplitude_um"] != 0:
+        if self.scan_params.get("floating_z_amplitude_um", 0) != 0:
             self.scan_params["plane_orientation"] = "XYZ"
         else:
             self.scan_params["plane_orientation"] = "XY"
@@ -584,8 +585,10 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         curr_datetime = dt.now()
         self.start_time_str = curr_datetime.strftime("%H%M%S")
         end_datetime = curr_datetime + datetime.timedelta(seconds=int(self.duration_s))
-        self.start_time_wdgt.set(curr_datetime.time())
-        self.end_time_wdgt.set(end_datetime.time())
+        with suppress(AttributeError):
+            # AttributeError: no widgets
+            self.start_time_wdgt.set(curr_datetime.time())
+            self.end_time_wdgt.set(end_datetime.time())
 
     def setup_scan(self):
         """Doc."""
@@ -717,7 +720,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         return {"full_data": full_data, "system_info": self.sys_info}
 
-    async def run(self):
+    async def run(self, should_save=True):
         """Doc."""
 
         # initialize gui start/end times
@@ -769,7 +772,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 else:
                     self.scanners_dvc.init_ai_buffer()
 
-                self.file_num_wdgt.set(file_num)
+                with suppress(AttributeError):
+                    # AttributeError: no widget
+                    self.file_num_wdgt.set(file_num)
 
                 logging.debug("FPGA reading starts.")
 
@@ -796,15 +801,17 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 # case final alignment and not manually stopped
                 elif self.final and self.is_running:
                     self.disp_ACF()
-                    self.save_data(self.prep_meas_dict(), self.build_filename(0))
+                    if should_save:
+                        self.save_data(self.prep_meas_dict(), self.build_filename(0))
 
                 # case regular measurement and finished file or measurement
                 elif not self.repeat:
-                    self.save_data(self.prep_meas_dict(), self.build_filename(file_num))
-                    if self.scanning:
-                        self.scanners_dvc.init_ai_buffer(
-                            type="circular", size=self.ao_buffer.shape[1]
-                        )
+                    if should_save:
+                        self.save_data(self.prep_meas_dict(), self.build_filename(file_num))
+                        if self.scanning:
+                            self.scanners_dvc.init_ai_buffer(
+                                type="circular", size=self.ao_buffer.shape[1]
+                            )
 
                 file_num += 1
 
@@ -816,6 +823,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             errors.err_hndlr(exc, sys._getframe(), locals())
 
         if self.is_running:  # if not manually stopped
+            if not should_save:
+                # if not saving a file, keep the last measurement in memory
+                self._app.last_meas_data = self.prep_meas_dict()
             await self.stop()
 
 
