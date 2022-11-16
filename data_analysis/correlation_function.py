@@ -237,7 +237,6 @@ class CorrFunc:
                 1 / self.error_cf_cr[j_t] ** 2
             ).sum()
         except RuntimeWarning:  # division by zero
-            # TODO: why does this happen?
             self.g0 = (self.avg_cf_cr[j_t] / (self.error_cf_cr[j_t] + EPS) ** 2).sum() / (
                 1 / (self.error_cf_cr[j_t] + EPS) ** 2
             ).sum()
