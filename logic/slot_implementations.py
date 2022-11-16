@@ -419,7 +419,10 @@ class MainWin:
                 self.main_gui.startSolScanExc.setEnabled(True)
                 self.main_gui.startSolScanDep.setEnabled(True)
                 self.main_gui.startSolScanSted.setEnabled(True)
-                getattr(self.main_gui, f"startSolScan{laser_mode}").setText(f"{laser_mode} \nScan")
+                if laser_mode != "Nolaser":
+                    getattr(self.main_gui, f"startSolScan{laser_mode}").setText(
+                        f"{laser_mode} \nScan"
+                    )
                 self.main_gui.impl.go_to_origin()
                 self.main_gui.solScanMaxFileSize.setEnabled(True)
                 self.main_gui.solScanDur.setEnabled(True)
@@ -2107,6 +2110,42 @@ class SettWin:
             dvc_list.append(info_dict["description"].decode("utf-8"))
 
         self.settings_gui.deviceDetails.setText("\n".join(dvc_list))
+
+    async def disp_circular_scan_ai(self):
+        """
+        Perform a circular scan using current um/Volt calibration parameters
+        and display analog I/O in order to gauge said calibration.
+        """
+
+        # perform a short circular scan
+        self._app.meas = meas.SolutionMeasurementProcedure(
+            app=self._app,
+            scan_type="circle",
+            scan_params=dict(
+                pattern="circle",
+                ao_sampling_freq_hz=10000,
+                diameter_um=20,
+                speed_um_s=6000,
+                n_circles=960,
+            ),
+            laser_mode="nolaser",
+            duration=0.3,
+            duration_units="seconds",
+            final=False,
+            repeat=False,  # TODO: why are both final and repeat needed? aren't they mutually exclusive?
+        )
+
+        await self._app.meas.run(should_save=False)
+
+        # display the AO_ext and AI in the appointed widget
+        display = self.settings_gui.xyCalibDisplay
+        ai_buffer = self._app.last_meas_data["full_data"]["scan_settings"]["ai"]
+        aix, aiy, _, aox_int, aoy_int, _ = ai_buffer.T
+        display.display_patterns(
+            [(aox_int, aoy_int), (aix, aiy)],
+            labels=["AO_int", "AI"],
+            scroll_zoom=True,
+        )
 
 
 class ProcessingOptionsWindow:

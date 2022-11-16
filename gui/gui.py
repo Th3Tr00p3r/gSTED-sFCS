@@ -526,8 +526,15 @@ class SettWin(QtWidgets.QDialog):
         super(SettWin, self).__init__()
         PyQt5.uic.loadUi(self.UI_PATH, self)
         self.impl = impl.SettWin(self, app)
+        self._loop = app.loop
 
         self.getDeviceDetails.released.connect(self.impl.get_all_device_details)
+
+        # XY calibration using circular scan
+        self.xyCalibDisplay = GuiDisplay(self.xyPatternCalibLayout)
+        self.testXYCal.released.connect(
+            lambda: self._loop.create_task(self.impl.disp_circular_scan_ai())
+        )
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
         """Doc."""

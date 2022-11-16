@@ -4,12 +4,8 @@ newTemplate,
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
-spadMode,Free Running
+spadMode,free running
 solScanFloatingAmp,0
-circAoSampFreq,10000
-circDiameter,50
-circSpeed,6000
-numOfCircles,1
 maxLineLen,100
 angAoSampFreq,10000
 angle,120
@@ -20,6 +16,10 @@ maxScanFreq,40
 solPointsPerLine,149
 solTotPointsPerLine,183
 solNumLines,14
+circAoSampFreq,10000
+circDiameter,20
+circSpeed,6000
+numOfCircles,960
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
@@ -61,8 +61,8 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,11
 dataYear,2022
-dataDay,3
-dataTemplate1,bp300ATTO_FR_angular_exc_144716_*.pkl
+dataDay,16
+dataTemplate1,test_circle_exc_102930_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -96,11 +96,11 @@ assignRawData,True
 currMode,True
 powMode,False
 numPlaneShownChoice,0
-pixel_clock1,500
-framerate1,100
+pixel_clock1,99
+framerate1,99
 exposure1,99
-pixel_clock2,500
-framerate2,100
+pixel_clock2,99
+framerate2,99
 exposure2,99
 tabWidget,2
 tabWidget_2,1
