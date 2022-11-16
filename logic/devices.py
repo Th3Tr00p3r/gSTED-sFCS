@@ -524,9 +524,9 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             x_origin=("xOrigin", "QDoubleSpinBox", "settings", False),
             y_origin=("yOrigin", "QDoubleSpinBox", "settings", False),
             z_origin=("zOrigin", "QDoubleSpinBox", "settings", False),
-            x_um2v_const=("xConv", "QDoubleSpinBox", "settings", False),
-            y_um2v_const=("yConv", "QDoubleSpinBox", "settings", False),
-            z_um2v_const=("zConv", "QDoubleSpinBox", "settings", False),
+            x_um2v_const=("xConv", "QDoubleSpinBox", "settings", True),
+            y_um2v_const=("yConv", "QDoubleSpinBox", "settings", True),
+            z_um2v_const=("zConv", "QDoubleSpinBox", "settings", True),
             ai_x_addr=("AIXaddr", "QLineEdit", "settings", False),
             ai_y_addr=("AIYaddr", "QLineEdit", "settings", False),
             ai_z_addr=("AIZaddr", "QLineEdit", "settings", False),
@@ -596,11 +596,16 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             for axis, inst in zip("xyz", ("galvo", "galvo", "piezo"))
         ]
         self.origin = tuple(getattr(self, f"{ax}_origin") for ax in "xyz")
-        self.um_v_ratio = tuple(getattr(self, f"{ax}_um2v_const") for ax in "xyz")
         self.ai_buffer: Union[list, deque]
 
         with suppress(DeviceError):
             self.start_continuous_read_task()
+
+    @property
+    def um_v_ratio(self):
+        """Get this property from the GUI dynamically"""
+
+        return tuple(getattr(self, f"{ax}_um2v_const").get() for ax in "xyz")
 
     def close(self):
         """Doc."""

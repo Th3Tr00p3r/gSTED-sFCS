@@ -364,7 +364,6 @@ SOL_MEAS_COLL = QtWidgetCollection(
     prog_bar_wdgt=("solScanProgressBar", "QSlider", "main", True),
     scan_type=("solScanType", "QComboBox", "main", False),
     floating_z_amplitude_um=("solScanFloatingAmp", "QSpinBox", "main", False),
-    regular=("regularSolMeas", "QRadioButton", "main", False),
     repeat=("repeatSolMeas", "QRadioButton", "main", False),
     final=("finalSolMeas", "QRadioButton", "main", False),
     max_file_size_mb=("solScanMaxFileSize", "QDoubleSpinBox", "main", False),
