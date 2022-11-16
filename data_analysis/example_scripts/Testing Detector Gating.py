@@ -78,9 +78,9 @@ AP_METHOD = "filter"
 
 NORM_RANGE = (7e-3, 9e-3)
 
-FILES = "Use 1"
+# FILES = "Use 1"
 # FILES = "Use 1-5"
-# FILES = "Use All"
+FILES = "Use All"
 
 data_label_kwargs = {
     "300 bp ATTO Free-Running": dict(
@@ -260,8 +260,8 @@ for label, exp in exp_dict.items():
 # %%
 from itertools import product
 
-lower_gate_list = [7.5]
-upper_gate_list = [20, 60, np.inf]
+lower_gate_list = [5]
+upper_gate_list = [25, 60, np.inf]
 
 gate_list = [gate_ns for gate_ns in product(lower_gate_list, upper_gate_list)]
 
@@ -335,15 +335,7 @@ with Plotter(
         for cf in exp.confocal.cf.values():
             if not "afterpulsing" in cf.name:
                 n_lines += 1
-                if SHOULD_CALCULATE_AP:
-                    for other_cf in exp.confocal.cf.values():
-                        if "afterpulsing" in other_cf.name:
-                            if other_cf.name.replace("afterpulsing", "confocal") == cf.name or (
-                                cf.name == "confocal" and other_cf.name == "afterpulsing"
-                            ):
-                                signal_ap_pairs.append((cf, other_cf))
-                else:
-                    signal_ap_pairs.append((cf, None))
+                signal_ap_pairs.append((cf, None))
 
         # plotting
         colors = get_gradient_colormap(n_lines + 1)
