@@ -1701,7 +1701,7 @@ class MainWin:
                 else:  # fit succeeded
                     fp = cf.fit_params["diffusion_3d_fit"]
                     g0, tau = fp.beta["G0"], fp.beta["tau"]
-                    fit_func = getattr(fit_tools, fp.func_name)
+                    fit_func = fp.fit_func
                     sol_data_analysis_wdgts["mean_g0"].set(g0 / 1e3)  # shown in thousands
                     sol_data_analysis_wdgts["mean_tau"].set(tau * 1e3)
                     y_fit = fit_func(cf.lag, *fp.beta.values())
