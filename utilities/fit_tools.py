@@ -4,7 +4,7 @@ import sys
 import warnings
 from dataclasses import dataclass, field
 from string import ascii_lowercase
-from typing import Dict
+from typing import Callable, Dict
 
 import numpy as np
 import scipy.optimize as opt
@@ -28,16 +28,16 @@ class FitError(Exception):
 class FitParams:
     """Doc."""
 
-    func_name: str = None
-    beta: Dict[str, float] = None
-    beta_error: Dict[str, float] = None
-    beta_estimate: Dict[str, float] = None
-    x: np.ndarray = None
-    y: np.ndarray = None
-    sigma: np.ndarray = None
+    fit_func: Callable
+    beta: Dict[str, float]
+    beta_error: Dict[str, float]
+    beta_estimate: Dict[str, float]
+    x: np.ndarray
+    y: np.ndarray
+    sigma: np.ndarray
+    chi_sq_norm: float
     x_limits: Limits = field(default_factory=Limits)
     y_limits: Limits = field(default_factory=Limits)
-    chi_sq_norm: float = None
 
 
 def curve_fit_lims(
@@ -103,6 +103,39 @@ def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
     return _fit_and_get_param_dict(gaussian_2d_fit, (x1, x2), y, p0)
 
 
+def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
+    """Doc."""
+    # TODO: Merge - have 'fit_lifetime_hist' method of 'TDCCalibration' use this.
+
+    if meas_type == "confocal":
+        fp = curve_fit_lims(
+            FIT_NAME_DICT["exponent_with_background_fit"],
+            [ys.max(), 3.5, ys.min() * 10],  # TODO: choose better starting values?
+            bounds=([0] * 3, [np.inf, 10, np.inf]),
+            xs=xs,
+            ys=ys,
+            x_limits=Limits(xs[np.argmax(ys)], np.inf),
+            plot_kwargs=dict(y_scale="log"),
+            **kwargs,
+        )
+    elif meas_type == "sted":
+        fp = curve_fit_lims(
+            FIT_NAME_DICT["sted_hist_fit"],
+            # A, tau, sigma0, sigma, bg
+            [ys.max(), 1, 1e-5, 1, ys.min() * 10],  # TODO: choose better starting values?
+            bounds=([0] * 5, [np.inf, 10, 1, np.inf, np.inf]),
+            xs=xs,
+            ys=ys,
+            x_limits=Limits(xs[np.argmax(ys)], np.inf),
+            plot_kwargs=dict(y_scale="log"),
+            **kwargs,
+        )
+    else:
+        raise ValueError(f"Invalid measurement type: {meas_type}")
+
+    return fp
+
+
 def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
     """Doc."""
 
@@ -111,7 +144,6 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
     except (RuntimeWarning, RuntimeError, opt.OptimizeWarning, ValueError) as exc:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
 
-    func_name = fit_func.__name__
     param_names = fit_func.__code__.co_varnames[: fit_func.__code__.co_argcount][1:]
     if param_names == ():
         param_names = (letter for _, letter in zip(p0, ascii_lowercase))
@@ -129,16 +161,16 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
 
     return FitParams(
-        func_name,
+        fit_func,
         beta,
         beta_error,
         beta_estimate,
         x,
         y,
         sigma,
+        chi_sq_norm,
         kwargs.get("x_limits", Limits()),
         kwargs.get("y_limits", Limits()),
-        chi_sq_norm,
     )
 
 

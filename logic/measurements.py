@@ -661,7 +661,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.fit_led.set(self.icon_dict["led_off"])
                 fp = cf.fit_params["diffusion_3d_fit"]
                 g0, tau = fp.beta["G0"], fp.beta["tau"]
-                fit_func = getattr(fit_tools, fp.func_name)
+                fit_func = fp.fit_func
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(tau * 1e3)
                 self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
