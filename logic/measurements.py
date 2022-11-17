@@ -620,7 +620,13 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         def compute_acf(data):
             """Doc."""
 
-            s = SolutionSFCSMeasurement()
+            meas_laser_type_dict = dict(
+                exc="confocal",
+                dep="depletion",
+                sted="sted",
+            )
+
+            s = SolutionSFCSMeasurement(meas_laser_type_dict[self.laser_mode])
             p = s.process_data_file(file_dict=self.prep_meas_dict(), **self.processing_options)
             s.data.append(p)
             cf = s.correlate_and_average(

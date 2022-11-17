@@ -414,15 +414,18 @@ class AfterulsingFilter:
     t_hist: np.ndarray
     all_hist_norm: np.ndarray
     baseline: float
+    fit_ys: np.ndarray
     I_j: np.ndarray
     norm_factor: float
+    gate_ns: np.ndarray
+    fit_params: FitParams
     M: np.ndarray
     filter: np.ndarray
 
     def plot(self, parent_ax=None, **plot_kwargs):
         """Doc."""
 
-        n = len(self.I_j)
+        in_gate_idxs = self.gate_ns.valid_indices(self.t_hist)
 
         with Plotter(
             parent_ax=parent_ax,
@@ -432,22 +435,29 @@ class AfterulsingFilter:
             axes[0].set_title("Filter Ingredients")
             axes[0].set_yscale("log")
             axes[0].plot(
-                self.t_hist[:n], self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
+                self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
             )
-            axes[0].plot(self.t_hist[:n], self.I_j / self.norm_factor, label="norm. I_j (fit)")
+            axes[0].plot(self.t_hist, self.fit_ys / self.norm_factor, label="histogram fit")
+            axes[0].plot(self.t_hist[in_gate_idxs], self.I_j / self.norm_factor, label="norm. I_j")
             axes[0].plot(
-                self.t_hist[:n],
-                self.baseline / self.norm_factor * np.ones(self.t_hist[:n].shape),
+                self.t_hist[in_gate_idxs],
+                self.baseline / self.norm_factor * np.ones(self.t_hist[in_gate_idxs].shape),
                 label="norm. baseline",
             )
             axes[0].plot(
-                self.t_hist[:n], self.M.T[0], label="M_j1 (ideal fluorescence decay curve)"
+                self.t_hist[in_gate_idxs],
+                self.M.T[0],
+                label="M_j1 (ideal fluorescence decay curve)",
             )
             axes[0].plot(
-                self.t_hist[:n], self.M.T[1], label="M_j2 (ideal afterpulsing 'decay' curve)"
+                self.t_hist[in_gate_idxs],
+                self.M.T[1],
+                label="M_j2 (ideal afterpulsing 'decay' curve)",
             )
             axes[0].legend()
             axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
+            if self.gate_ns.upper != np.inf:
+                axes[0].set_xlim(*self.gate_ns)
 
             axes[1].set_title("Filter")
             axes[1].plot(self.t_hist, self.filter.T)
@@ -544,7 +554,8 @@ class TDCCalibration:
 
     def calculate_afterpulsing_filter(
         self,
-        gate_ns,
+        gate_ns: Gate,
+        meas_type: str,
         should_plot=False,
         **kwargs,
     ) -> np.ndarray:
@@ -555,18 +566,16 @@ class TDCCalibration:
         t_hist = copy(self.t_hist)
 
         # crop-out the gated part of the histogram
+        in_gate_idxs = gate_ns.valid_indices(t_hist)
         if gate_ns:
-            in_gate_idxs = gate_ns.valid_indices(t_hist)
-            t_hist = t_hist[in_gate_idxs]
-            all_hist_norm = all_hist_norm[in_gate_idxs]
             lower_idx = round(gate_ns.lower * 10)
             F_pad_before = np.full((2, lower_idx), np.nan)
             try:
                 upper_idx = round(gate_ns.upper * 10)
-                F_pad_after = np.full((2, len(self.t_hist) - upper_idx - 1), np.nan)
+                F_pad_after = np.full((2, len(t_hist) - upper_idx - 1), np.nan)
             except (OverflowError, ValueError):
                 # OverflowError: gate_ns.upper == np.inf
-                # ValueError: len(self.t_hist) == upper_idx
+                # ValueError: len(t_hist) == upper_idx
                 F_pad_after = np.array([[], []])
         else:
             lower_idx = 0
@@ -576,33 +585,48 @@ class TDCCalibration:
         #        print("nans: ", nans.sum()) # TESTESTEST - why always 23?
         all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
-        # Use exponential fit to get the underlying exponentioal decay and background (Smoothing is what's really essential here)
-        # TODO: for STED measurement I will need a different fit - decay is no longer purely exponential
-        fit_lower_x_limit = t_hist[np.argmax(all_hist_norm)] + 2
+        # Use fitting to get the underlying decay and background
+        xs = t_hist.astype(np.int64)
+        ys = all_hist_norm
         try:
-            fp = curve_fit_lims(
-                (fit_func := FIT_NAME_DICT["exponent_with_background_fit"]),
-                [1e-2, 4, 1e-4],
-                xs=t_hist,
-                ys=all_hist_norm,
-                x_limits=Limits(fit_lower_x_limit, np.inf),
-                plot_kwargs=dict(y_scale="log"),
-            )
+            if meas_type == "confocal":
+                fp = curve_fit_lims(
+                    (fit_func := FIT_NAME_DICT["exponent_with_background_fit"]),
+                    [ys.max(), 3.5, ys.min() * 10],  # TODO: choose better starting values?
+                    bounds=([0] * 3, [np.inf, 10, np.inf]),
+                    xs=xs,
+                    ys=ys,
+                    x_limits=Limits(xs[np.argmax(ys)], np.inf),
+                    plot_kwargs=dict(y_scale="log"),
+                )
+            elif meas_type == "sted":
+                fp = curve_fit_lims(
+                    (fit_func := FIT_NAME_DICT["sted_hist_fit"]),
+                    # A, tau, sigma0, sigma, bg
+                    [ys.max(), 1, 1e-5, 1, ys.min() * 10],  # TODO: choose better starting values?
+                    bounds=([0] * 5, [np.inf, 10, 1, np.inf, np.inf]),
+                    xs=xs,
+                    ys=ys,
+                    x_limits=Limits(xs[np.argmax(ys)], np.inf),
+                    plot_kwargs=dict(y_scale="log"),
+                )
+            else:
+                raise ValueError(f"Invalid measurement type: {meas_type}")
         except FitError as exc:
             raise ValueError(f"Gate {gate_ns} is too narrow! [{exc}]")
 
-        baseline = fp.beta["bg"]
         fitted_all_hist_norm = fit_func(t_hist.astype(np.float64), *fp.beta.values())
+        baseline = fp.beta["bg"]
 
         # normalization factor
-        norm_factor = (fitted_all_hist_norm - baseline).sum()
+        norm_factor = (fitted_all_hist_norm[in_gate_idxs] - baseline).sum()
 
         # define matrices and calculate F
-        M_j1 = (fitted_all_hist_norm - baseline) / norm_factor  # p1
-        M_j2 = 1 / len(t_hist) * np.ones(t_hist.shape)  # p2
+        M_j1 = (fitted_all_hist_norm[in_gate_idxs] - baseline) / norm_factor  # p1
+        M_j2 = 1 / len(t_hist[in_gate_idxs]) * np.ones(t_hist[in_gate_idxs].shape)  # p2
         M = np.vstack((M_j1, M_j2)).T
 
-        I_j = fitted_all_hist_norm  # / norm_factor
+        I_j = fitted_all_hist_norm[in_gate_idxs]
         I = np.diag(I_j)  # NOQA E741
         inv_I = np.linalg.pinv(I)
 
@@ -612,7 +636,18 @@ class TDCCalibration:
         if gate_ns:
             F = np.hstack((F_pad_before, F, F_pad_after))
 
-        ap_filter = AfterulsingFilter(self.t_hist, all_hist_norm, baseline, I_j, norm_factor, M, F)
+        ap_filter = AfterulsingFilter(
+            t_hist,
+            all_hist_norm,
+            baseline,
+            fitted_all_hist_norm,
+            I_j,
+            norm_factor,
+            gate_ns,
+            fp,
+            M,
+            F,
+        )
 
         if should_plot:
             ap_filter.plot()
@@ -993,7 +1028,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         print("Converting circular scan to image...", end=" ")
         pulse_runtime = p.pulse_runtime
-        cnt, _ = self._sum_scan_circles(  # TODO: test circualr scan - made a change here
+        cnt, _ = self._sum_scan_circles(
             pulse_runtime,
             self.laser_freq_hz,
             p.ao_sampling_freq_hz,
@@ -1306,14 +1341,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             h = external_calib.h
             delay_times = external_calib.delay_times
 
-            with suppress(AttributeError):
-                # TODO: this will fail - why is it here?
-                raise AttributeError("FIGURE THIS OUT!")
-        #                l_quarter_tdc = self.tdc_calib.l_quarter_tdc
-        #                r_quarter_tdc = self.tdc_calib.r_quarter_tdc
-
         else:
-
             fine_calib = fine[np.isin(coarse, coarse_calib_bins)]
             h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length).astype(np.uint32)
 

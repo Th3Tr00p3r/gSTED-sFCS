@@ -449,8 +449,8 @@ class SolutionSFCSMeasurement:
 
     tdc_calib: TDCCalibration
 
-    def __init__(self, name=""):
-        self.name = name
+    def __init__(self, type):
+        self.type = type
         self.data: list = []  # list to hold the data of each file
         self.cf: dict = dict()
         self.xcf: dict = dict()
@@ -552,7 +552,7 @@ class SolutionSFCSMeasurement:
                     for file_idx, (ax, image, roi) in enumerate(
                         zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
                     ):
-                        ax.set_title(f"file #{file_idx+1} of\n'{self.name}' measurement")
+                        ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
                         ax.set_xlabel("Pixel Number")
                         ax.set_ylabel("Line Number")
                         ax.imshow(image, interpolation="none")
@@ -693,13 +693,13 @@ class SolutionSFCSMeasurement:
         """Doc."""
 
         if not force_processing and hasattr(self, "tdc_calib"):
-            print(f"\n{self.name}: TDC calibration exists, skipping.")
+            print(f"\n{self.type}: TDC calibration exists, skipping.")
             if should_plot:
                 self.tdc_calib.plot()
             return
 
         if is_verbose:
-            print(f"\n{self.name}: Calibrating TDC...", end=" ")
+            print(f"\n{self.type}: Calibrating TDC...", end=" ")
 
         # perform actual TDC calibration
         self.tdc_calib = self.data_processor.calibrate_tdc(self.data, self.scan_type, **kwargs)
@@ -738,7 +738,7 @@ class SolutionSFCSMeasurement:
 
         if is_verbose:
             print(
-                f"{self.name} - Preparing split data ({len(self.data)} files) for software correlator...",
+                f"{self.type} - Preparing split data ({len(self.data)} files) for software correlator...",
                 end=" ",
             )
 
@@ -751,7 +751,7 @@ class SolutionSFCSMeasurement:
 
         #  add gate to cf_name
         if gate_ns:
-            # TODO: cf_name should not contain any description other than gate and "afterpulsing" yes/no (description is in self.name)
+            # TODO: cf_name should not contain any description other than gate and "afterpulsing" yes/no (description is in self.type)
             cf_name = f"gated {cf_name} {gate_ns}"
 
         # the following conditions require TDC calibration prior to creating splits
@@ -777,7 +777,7 @@ class SolutionSFCSMeasurement:
         # Calculate afterpulsing filter if doesn't alreay exist (optional)
         if is_filtered:
             afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
-                gate_ns, **corr_options
+                gate_ns, self.type, **corr_options
             )
 
         # build correlator input
@@ -863,7 +863,7 @@ class SolutionSFCSMeasurement:
 
         if is_verbose:
             print(
-                f"{self.name} - Preparing split data ({len(self.data)} files) for software correlator...",
+                f"{self.type} - Preparing split data ({len(self.data)} files) for software correlator...",
                 end=" ",
             )
 
@@ -990,7 +990,7 @@ class SolutionSFCSMeasurement:
     ) -> List[str]:
         """Doc."""
 
-        with Plotter(super_title=f"'{self.name.capitalize()}' - ACFs", **kwargs) as ax:
+        with Plotter(super_title=f"'{self.type.capitalize()}' - ACFs", **kwargs) as ax:
             legend_labels = []
             kwargs["parent_ax"] = ax
             for cf_name, cf in {**self.cf, **self.xcf}.items():
@@ -1059,7 +1059,7 @@ class SolutionSFCSMeasurement:
         #  calculation and plotting
         with Plotter(
             #            xlim=Limits(q[1], np.pi / min(w_xy)),
-            super_title=f"{self.name.capitalize()}: Structure Factor ($S(q)$)",
+            super_title=f"{self.type.capitalize()}: Structure Factor ($S(q)$)",
             **kwargs,
         ) as ax:
             legend_labels = []
@@ -1170,7 +1170,6 @@ class SolutionSFCSExperiment:
         confocal=None,
         sted=None,
         should_plot=True,
-        should_plot_meas=True,
         confocal_kwargs={},
         sted_kwargs={},
         **kwargs,
@@ -1196,29 +1195,18 @@ class SolutionSFCSExperiment:
                     self.load_measurement(
                         meas_type=meas_type,
                         file_path_template=meas_template,
-                        should_plot=should_plot_meas,
+                        should_plot=should_plot,
                         **meas_kwargs,
                         **kwargs,
                     )
                 else:  # Use empty measuremnt by default
-                    setattr(self, meas_type, SolutionSFCSMeasurement(name=meas_type))
+                    setattr(self, meas_type, SolutionSFCSMeasurement(meas_type))
             else:  # use supllied measurement
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
         if should_plot:
-            super_title = f"Experiment '{self.name}' - All ACFs"
-            with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
-                self.plot_correlation_functions(
-                    parent_ax=axes[0],
-                    y_field="avg_cf_cr",
-                    x_scale="log",
-                    xlim=None,  # autoscale x axis
-                )
-
-                self.plot_correlation_functions(
-                    parent_ax=axes[1],
-                )
+            self.plot_standard(**kwargs)
 
     def load_measurement(
         self,
@@ -1228,6 +1216,7 @@ class SolutionSFCSExperiment:
         plot_kwargs: dict = {},
         force_processing=True,
         should_re_correlate=False,
+        afterpulsing_method="filter",
         **kwargs,
     ):
 
@@ -1240,7 +1229,9 @@ class SolutionSFCSExperiment:
         if kwargs.get(f"{meas_type}_file_selection"):
             kwargs["file_selection"] = kwargs[f"{meas_type}_file_selection"]
 
-        measurement = SolutionSFCSMeasurement(name=meas_type)
+        # create measurement and set as attribute
+        measurement = SolutionSFCSMeasurement(meas_type)
+        setattr(self, meas_type, measurement)
 
         if not force_processing:  # Use pre-processed
             try:
@@ -1253,7 +1244,7 @@ class SolutionSFCSExperiment:
                     file_template,
                     should_load_data=should_re_correlate,
                 )
-                measurement.name = meas_type
+                measurement.type = meas_type
                 print(f"Loaded pre-processed {meas_type} measurement: '{file_path}'")
             except OSError:
                 print(
@@ -1266,6 +1257,11 @@ class SolutionSFCSExperiment:
                 should_plot=should_plot,
                 **kwargs,
             )
+        # Calibrate TDC (sync with confocal) before correlating if using afterpulsing filtering
+        if afterpulsing_method == "filter" and meas_type == "sted" and self.confocal.is_loaded:
+            print(f"{self.name}: Calibrating TDC first (syncing with confocal)...", end=" ")
+            self.calibrate_tdc(should_plot=should_plot, **kwargs)
+            print("Done.")
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
             cf = measurement.correlate_and_average(is_verbose=True, **kwargs)
@@ -1279,7 +1275,7 @@ class SolutionSFCSExperiment:
                     x_field = "vt_um"
 
             with Plotter(
-                super_title=f"'{self.name.capitalize()}' Experiment\n'{measurement.name.capitalize()}' Measurement - ACFs",
+                super_title=f"'{self.name.capitalize()}' Experiment\n'{measurement.type.capitalize()}' Measurement - ACFs",
                 ylim=(-100, cf.g0 * 1.5),
             ) as ax:
                 cf.plot_correlation_function(
@@ -1292,8 +1288,6 @@ class SolutionSFCSExperiment:
                     parent_ax=ax, y_field="avg_cf_cr", x_field=x_field, plot_kwargs=plot_kwargs
                 )
                 ax.legend(["average_all_cf_cr", "avg_cf_cr"])
-
-        setattr(self, meas_type, measurement)
 
     def renormalize_all(self, norm_range: Tuple[float, float], **kwargs):
         """Doc."""
@@ -1513,18 +1507,7 @@ class SolutionSFCSExperiment:
             return
 
         if should_plot:
-            super_title = f"Experiment '{self.name}' - All ACFs"
-            with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
-                self.plot_correlation_functions(
-                    parent_ax=axes[0],
-                    y_field="avg_cf_cr",
-                    x_scale="log",
-                    xlim=None,  # autoscale x axis
-                )
-
-                self.plot_correlation_functions(
-                    parent_ax=axes[1],
-                )
+            self.plot_standard(**kwargs)
 
     def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=True, **kwargs):
         """A convecience method for adding multiple gates."""
@@ -1533,26 +1516,31 @@ class SolutionSFCSExperiment:
         for tdc_gate_ns in gate_list:
             self.add_gate(tdc_gate_ns, should_plot=False, **kwargs)
         if should_plot:
-            super_title = f"Experiment '{self.name}' - All ACFs"
-            with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
-                self.plot_correlation_functions(
-                    parent_ax=axes[0],
-                    y_field="avg_cf_cr",
-                    x_scale="log",
-                    xlim=None,  # autoscale x axis
-                )
+            self.plot_standard(**kwargs)
 
-                self.plot_correlation_functions(
-                    parent_ax=axes[1],
-                )
+    def plot_standard(self, **kwargs):
+        """Doc."""
+
+        super_title = f"Experiment '{self.name}' - All ACFs"
+        with Plotter(subplots=(1, 2), super_title=super_title, **kwargs) as axes:
+            self.plot_correlation_functions(
+                parent_ax=axes[0],
+                y_field="avg_cf_cr",
+                x_field="lag",
+            )
+
+            self.plot_correlation_functions(
+                parent_ax=axes[1],
+            )
 
     def plot_correlation_functions(
         self,
-        xlim=(1e-5, 1),
-        x_field="vt_um",
-        y_field="normalized",
+        xlim=(5e-5, 1),
+        ylim=None,
+        x_field=None,
+        y_field=None,
         x_scale="linear",
-        y_scale="linear",
+        y_scale=None,
         **kwargs,
     ):
         """Doc."""
@@ -1562,15 +1550,39 @@ class SolutionSFCSExperiment:
         else:
             ref_meas = self.sted
 
-        if ref_meas.scan_type == "static":
-            # TODO: not good pratice - user might be surprised thinking he controls 'x_field' by kwargs
-            x_field = "lag"
+        # auto x_field/x_scale determination
+        if x_field is None:
+            if ref_meas.scan_type == "static":
+                x_field = "lag"
+                x_scale = "log"
+            else:
+                x_field = "vt_um"
+                x_scale = "linear"
+        elif x_field in {"vt_um", "vt_um_sq"}:
+            x_scale = "linear"
+        elif x_field == "lag":
+            x_scale = "log"
 
-        if kwargs.get("ylim") is None:
-            if kwargs.get("y_field") in {"average_all_cf_cr", "avg_cf_cr"}:
+        # auto y_field/y_scale determination
+        if y_field is None:
+            y_field = "normalized"
+            if y_scale is None:
+                if x_field == "vt_um_sq":
+                    y_scale = "log"
+                else:
+                    y_scale = "linear"
+
+        # auto ylim determination
+        if ylim is None:
+            if y_field == "normalized":
+                if y_scale == "log":
+                    ylim = (1e-3, 1)
+                else:
+                    ylim = (0, 1)
+            elif y_field in {"average_all_cf_cr", "avg_cf_cr"}:
                 # TODO: perhaps cf attricute should be a list and not a dict? all I'm really ever interested in is either showing the first or all together (names are in each CF anyway)
                 first_cf = list(ref_meas.cf.values())[0]
-                kwargs["ylim"] = Limits(-1e3, first_cf.g0 * 1.5)
+                ylim = Limits(-1e3, first_cf.g0 * 1.2)
 
         with Plotter(
             super_title=f"'{self.name}' Experiment - All ACFs",
@@ -1583,8 +1595,10 @@ class SolutionSFCSExperiment:
                 getattr(self, meas_type).plot_correlation_functions(
                     parent_ax=ax,
                     x_field=x_field,
-                    y_field=y_field,
+                    xlim=xlim,
                     x_scale=x_scale,
+                    y_field=y_field,
+                    ylim=ylim,
                     y_scale=y_scale,
                     **kwargs,
                 )

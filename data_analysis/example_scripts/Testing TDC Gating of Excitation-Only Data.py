@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
@@ -78,47 +79,43 @@ AP_METHOD = "filter"
 
 NORM_RANGE = (7e-3, 9e-3)
 
-# FILES = "Use 1"
+FILES = "Use 1"
 # FILES = "Use 1-5"
-FILES = "Use All"
+# FILES = "Use All"
 
 data_label_kwargs = {
     "Old Det. 300 bp ATTO": dict(
         date="10_05_2018",
         confocal_template="bp300_angular_exc_*.mat",
-        sted_template=None,
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
         norm_range=NORM_RANGE,
     ),
-    "New Det. 300 bp ATTO": dict(
-        date="03_07_2022",
-        confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
-        sted_template=None,
-        file_selection=FILES,
-        force_processing=False or FORCE_ALL,
-        afterpulsing_method=AP_METHOD,
-        norm_range=NORM_RANGE,
-    ),
-    "New Det. 300 bp YOYO": dict(
-        date="05_07_2022",
-        confocal_template="bp300YOYO_TEST_diluted_12uW_angular_exc_145527_*.pkl",
-        sted_template=None,
-        file_selection=FILES,
-        force_processing=False or FORCE_ALL,
-        afterpulsing_method=AP_METHOD,
-        norm_range=NORM_RANGE,
-    ),
-    "15 ns Gated New Det. 25X Diluted Conc. Sample YOYO": dict(
-        date="18_10_2022",
-        confocal_template="gated_15ns_angular_exc_161655_*.pkl",
-        sted_template=None,
-        file_selection=FILES,
-        force_processing=False or FORCE_ALL,
-        afterpulsing_method=AP_METHOD,
-        norm_range=NORM_RANGE,
-    ),
+    #      "New Det. 300 bp ATTO": dict(
+    #          date="03_07_2022",
+    #          confocal_template="bp300ATTO_20uW_angular_exc_153213_*.pkl",
+    #          file_selection=FILES,
+    #          force_processing=False or FORCE_ALL,
+    #          afterpulsing_method=AP_METHOD,
+    #          norm_range=NORM_RANGE,
+    #      ),
+    #      "New Det. 300 bp YOYO": dict(
+    #          date="05_07_2022",
+    #          confocal_template="bp300YOYO_TEST_diluted_12uW_angular_exc_145527_*.pkl",
+    #          file_selection=FILES,
+    #          force_processing=False or FORCE_ALL,
+    #          afterpulsing_method=AP_METHOD,
+    #          norm_range=NORM_RANGE,
+    #      ),
+    #     "15 ns Gated New Det. 25X Diluted Conc. Sample YOYO": dict(
+    #         date="18_10_2022",
+    #         confocal_template="gated_15ns_angular_exc_161655_*.pkl",
+    #         file_selection=FILES,
+    #         force_processing=False or FORCE_ALL,
+    #         afterpulsing_method=AP_METHOD,
+    #         norm_range=NORM_RANGE,
+    #     ),
 }
 
 # build proper paths
@@ -126,7 +123,7 @@ for data in data_label_kwargs.values():
     data["confocal_template"] = DATA_ROOT / data["date"] / DATA_TYPE / data["confocal_template"]
     data["sted_template"] = (
         DATA_ROOT / data["date"] / DATA_TYPE / data["sted_template"]
-        if data["sted_template"]
+        if data.get("sted_template")
         else None
     )
 
@@ -159,9 +156,6 @@ for label, exp in exp_dict.items():
             **data_label_kwargs[label],
         )
 
-        #         # calibrate TDC # TESTESTEST
-        #         exp.confocal.calibrate_tdc(**data_label_kwargs[label])
-
         # plot TDC calibration
         try:
             exp.confocal.tdc_calib.plot()
@@ -191,25 +185,6 @@ for label, exp in exp_dict.items():
 # ## Comparing afterpulsing removal by filtering
 
 # %% [markdown]
-# Displaying filters
-
-# %%
-for label, exp in exp_dict.items():
-    meas = exp.confocal
-    # plot the filters
-    print()
-    try:
-        meas.tdc_calib.calculate_afterpulsing_filter(
-            meas.detector_settings["gate_ns"],
-            should_plot=True,
-            #             **data_label_kwargs[label],
-            should_medfilt=True,
-            medfilt_kernel_size=15,
-        )
-    except AttributeError:
-        print("NO TDC CALIBRATION!")
-
-# %% [markdown]
 # ## Testing the effect of TDC gating on confocal measurements
 
 # %% [markdown]
@@ -218,13 +193,13 @@ for label, exp in exp_dict.items():
 # %%
 # CHOOSE GATES
 # UPPER_GATES = [30, np.inf]
-UPPER_GATES = [20, 40, 60, 80, np.inf]
+UPPER_GATES = [20]
 
 SHOULD_CALCULATE_AP = False
 # SHOULD_CALCULATE_AP = True
 
 # GATE AND CALCULATE GATED APs
-tdc_gates_ns = [(7.5, upper_gate) for upper_gate in UPPER_GATES]
+tdc_gates_ns = [(5, upper_gate) for upper_gate in UPPER_GATES]
 for label, exp in exp_dict.items():
     if FORCE_ALL:
         try:
@@ -235,7 +210,9 @@ for label, exp in exp_dict.items():
             # GATE & CALCULATE GATED APs
             for tdc_gate_ns in tdc_gates_ns:
                 exp.add_gate(
-                    tdc_gate_ns, meas_type="confocal", should_plot=False, **data_label_kwargs[label]
+                    tdc_gate_ns,
+                    meas_type="confocal",
+                    should_plot=False,
                 )
                 if SHOULD_CALCULATE_AP:
                     exp.confocal.calculate_filtered_afterpulsing(tdc_gate_ns=tdc_gate_ns)
@@ -252,6 +229,14 @@ for label, exp in exp_dict.items():
         print("Using pre-processed...")
 
 # %% [markdown]
+# Displaying filters
+
+# %%
+for label, exp in exp_dict.items():
+    print(f"{label}:")
+    exp.plot_afterpulsing_filters()
+
+# %% [markdown]
 # Adjusting normalization range if needed:
 
 # %%
@@ -263,6 +248,7 @@ if SHOULD_CHANGE_NORM_RANGE:
     print("Renormalizing...", end=" ")
 
     NORM_RANGE_ = (7e-3, 9e-3)
+    #     NORM_RANGE_ = (1e-3, 2e-3)
 
     for label, exp in exp_dict.items():
         for cf in exp.confocal.cf.values():
