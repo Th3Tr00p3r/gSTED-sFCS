@@ -3,6 +3,7 @@
 import sys
 import warnings
 from dataclasses import dataclass, field
+from string import ascii_lowercase
 from typing import Dict
 
 import numpy as np
@@ -30,6 +31,7 @@ class FitParams:
     func_name: str = None
     beta: Dict[str, float] = None
     beta_error: Dict[str, float] = None
+    beta_estimate: Dict[str, float] = None
     x: np.ndarray = None
     y: np.ndarray = None
     sigma: np.ndarray = None
@@ -111,6 +113,8 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
 
     func_name = fit_func.__name__
     param_names = fit_func.__code__.co_varnames[: fit_func.__code__.co_argcount][1:]
+    if param_names == ():
+        param_names = (letter for _, letter in zip(p0, ascii_lowercase))
     chi_sq_arr = np.square((fit_func(x, *popt) - y) / sigma)
     try:
         chi_sq_norm = chi_sq_arr.sum() / x.size
@@ -118,15 +122,17 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
         chi_sq_norm = chi_sq_arr.sum() / x[0].size
 
     beta = {name: val for name, val in zip(param_names, popt)}
+    beta_estimate = {name: val for name, val in zip(param_names, p0)}
     try:
         beta_error = {name: error for name, error in zip(param_names, np.sqrt(np.diag(pcov)))}
-    except Exception as exc:
+    except RuntimeError as exc:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
 
     return FitParams(
         func_name,
         beta,
         beta_error,
+        beta_estimate,
         x,
         y,
         sigma,
@@ -162,12 +168,27 @@ def power_fit(t, a, n):
     return a * t ** n
 
 
+def polynomial_fit(t, *beta):
+    """
+    Work with polynomial of any degree, i.e.:
+    y = beta[0] + beta[1]*t + beta[2]*t**2 + ... + beta[n]*t**n
+    """
+
+    amplitude_row_vec = np.array(beta)[:, np.newaxis].T
+    power_column_vec = np.array([t ** n for n in range(len(beta))])
+    return (amplitude_row_vec @ power_column_vec).squeeze()
+
+
 def diffusion_3d_fit(t, G0, tau, w_sq):
     return G0 / (1 + t / tau) / np.sqrt(1 + t / tau / w_sq)
 
 
 def exponent_with_background_fit(t, A, tau, bg):
     return A * np.exp(-t / tau) + bg
+
+
+def sted_hist_fit(t, A, tau, sigma0, sigma, bg):
+    return A / tau * np.exp(-(sigma0 + 1) * t / tau) / (1 + sigma * t / tau) + bg
 
 
 def multi_exponent_fit(t, *beta):

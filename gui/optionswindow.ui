@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>225</width>
+    <width>240</width>
     <height>443</height>
    </rect>
   </property>
@@ -88,7 +88,7 @@ Background</string>
        </widget>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,10">
         <property name="spacing">
          <number>0</number>
         </property>

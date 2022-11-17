@@ -1139,7 +1139,7 @@ class MainWin:
             # Inferring data_dype from template
             data_type = self.infer_data_type_from_template(template)
 
-            measurement = SolutionSFCSMeasurement()
+            measurement = SolutionSFCSMeasurement(data_type)
             try:
                 measurement.read_fpga_data(
                     date_dir_path / template,
@@ -1388,7 +1388,7 @@ class MainWin:
                 try:
                     with suppress(AttributeError):
                         # AttributeError - No directories found
-                        measurement = SolutionSFCSMeasurement()
+                        measurement = SolutionSFCSMeasurement(data_type)
                         measurement.read_fpga_data(
                             curr_dir / current_template,
                             **options_dict,
