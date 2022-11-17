@@ -12,7 +12,13 @@ import scipy
 import skimage
 
 from utilities.display import Plotter
-from utilities.fit_tools import FIT_NAME_DICT, FitError, FitParams, curve_fit_lims
+from utilities.fit_tools import (
+    FIT_NAME_DICT,
+    FitError,
+    FitParams,
+    curve_fit_lims,
+    fit_lifetime_histogram,
+)
 from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
 
 
@@ -586,37 +592,15 @@ class TDCCalibration:
         all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
         # Use fitting to get the underlying decay and background
-        xs = t_hist.astype(np.int64)
+        xs = t_hist
         ys = all_hist_norm
         try:
-            if meas_type == "confocal":
-                fp = curve_fit_lims(
-                    (fit_func := FIT_NAME_DICT["exponent_with_background_fit"]),
-                    [ys.max(), 3.5, ys.min() * 10],  # TODO: choose better starting values?
-                    bounds=([0] * 3, [np.inf, 10, np.inf]),
-                    xs=xs,
-                    ys=ys,
-                    x_limits=Limits(xs[np.argmax(ys)], np.inf),
-                    plot_kwargs=dict(y_scale="log"),
-                )
-            elif meas_type == "sted":
-                fp = curve_fit_lims(
-                    (fit_func := FIT_NAME_DICT["sted_hist_fit"]),
-                    # A, tau, sigma0, sigma, bg
-                    [ys.max(), 1, 1e-5, 1, ys.min() * 10],  # TODO: choose better starting values?
-                    bounds=([0] * 5, [np.inf, 10, 1, np.inf, np.inf]),
-                    xs=xs,
-                    ys=ys,
-                    x_limits=Limits(xs[np.argmax(ys)], np.inf),
-                    plot_kwargs=dict(y_scale="log"),
-                )
-            else:
-                raise ValueError(f"Invalid measurement type: {meas_type}")
+            fp = fit_lifetime_histogram(xs, ys, meas_type)
         except FitError as exc:
-            raise ValueError(f"Gate {gate_ns} is too narrow! [{exc}]")
-
-        fitted_all_hist_norm = fit_func(t_hist.astype(np.float64), *fp.beta.values())
-        baseline = fp.beta["bg"]
+            raise FitError(f"Fit failed! Gate {gate_ns} might be too narrow! [{exc}]")
+        else:
+            fitted_all_hist_norm = fp.fit_func(t_hist.astype(np.float64), *fp.beta.values())
+            baseline = fp.beta["bg"]
 
         # normalization factor
         norm_factor = (fitted_all_hist_norm[in_gate_idxs] - baseline).sum()
