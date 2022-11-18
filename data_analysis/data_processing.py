@@ -12,13 +12,7 @@ import scipy
 import skimage
 
 from utilities.display import Plotter
-from utilities.fit_tools import (
-    FIT_NAME_DICT,
-    FitError,
-    FitParams,
-    curve_fit_lims,
-    fit_lifetime_histogram,
-)
+from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
 from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
 
 
@@ -420,11 +414,9 @@ class AfterulsingFilter:
     t_hist: np.ndarray
     all_hist_norm: np.ndarray
     baseline: float
-    fit_ys: np.ndarray
     I_j: np.ndarray
     norm_factor: float
     gate_ns: np.ndarray
-    fit_params: FitParams
     M: np.ndarray
     filter: np.ndarray
 
@@ -443,7 +435,6 @@ class AfterulsingFilter:
             axes[0].plot(
                 self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
             )
-            axes[0].plot(self.t_hist, self.fit_ys / self.norm_factor, label="histogram fit")
             axes[0].plot(self.t_hist[in_gate_idxs], self.I_j / self.norm_factor, label="norm. I_j")
             axes[0].plot(
                 self.t_hist[in_gate_idxs],
@@ -563,6 +554,7 @@ class TDCCalibration:
         gate_ns: Gate,
         meas_type: str,
         should_plot=False,
+        kernel_size=51,  # TESTESTEST
         **kwargs,
     ) -> np.ndarray:
         """Doc."""
@@ -571,7 +563,7 @@ class TDCCalibration:
         all_hist_norm = copy(self.all_hist_norm)
         t_hist = copy(self.t_hist)
 
-        # crop-out the gated part of the histogram
+        # prepare padding for the gated-out part of the histogram
         in_gate_idxs = gate_ns.valid_indices(t_hist)
         if gate_ns:
             lower_idx = round(gate_ns.lower * 10)
@@ -583,34 +575,29 @@ class TDCCalibration:
                 # OverflowError: gate_ns.upper == np.inf
                 # ValueError: len(t_hist) == upper_idx
                 F_pad_after = np.array([[], []])
-        else:
-            lower_idx = 0
 
         # interpolate over NaNs
         nans, x = nan_helper(all_hist_norm)  # get nans and a way to interpolate over them later
         #        print("nans: ", nans.sum()) # TESTESTEST - why always 23?
         all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
-        # Use fitting to get the underlying decay and background
-        xs = t_hist
-        ys = all_hist_norm
-        try:
-            fp = fit_lifetime_histogram(xs, ys, meas_type)
-        except FitError as exc:
-            raise FitError(f"Fit failed! Gate {gate_ns} might be too narrow! [{exc}]")
+        # calculate the baseline using the mean of the last third of the (hard-gate-limited) histogram
+        if gate_ns.hard_gate:
+            in_hard_gate_idxs = gate_ns.hard_gate.valid_indices(t_hist)
         else:
-            fitted_all_hist_norm = fp.fit_func(t_hist.astype(np.float64), *fp.beta.values())
-            baseline = fp.beta["bg"]
+            # use all indices
+            in_hard_gate_idxs = slice(None)
+        baseline = all_hist_norm[in_hard_gate_idxs][-round(len(t_hist) / 3) :].mean()
 
         # normalization factor
-        norm_factor = (fitted_all_hist_norm[in_gate_idxs] - baseline).sum()
+        norm_factor = (all_hist_norm[in_gate_idxs] - baseline).sum()
 
         # define matrices and calculate F
-        M_j1 = (fitted_all_hist_norm[in_gate_idxs] - baseline) / norm_factor  # p1
+        M_j1 = (all_hist_norm[in_gate_idxs] - baseline) / norm_factor  # p1
         M_j2 = 1 / len(t_hist[in_gate_idxs]) * np.ones(t_hist[in_gate_idxs].shape)  # p2
         M = np.vstack((M_j1, M_j2)).T
 
-        I_j = fitted_all_hist_norm[in_gate_idxs]
+        I_j = all_hist_norm[in_gate_idxs]
         I = np.diag(I_j)  # NOQA E741
         inv_I = np.linalg.pinv(I)
 
@@ -624,11 +611,9 @@ class TDCCalibration:
             t_hist,
             all_hist_norm,
             baseline,
-            fitted_all_hist_norm,
             I_j,
             norm_factor,
             gate_ns,
-            fp,
             M,
             F,
         )

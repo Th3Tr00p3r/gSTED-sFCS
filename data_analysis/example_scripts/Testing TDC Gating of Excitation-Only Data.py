@@ -1,18 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:percent
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.13.8
-#   kernelspec:
-#     display_name: Python 3 (ipykernel)
-#     language: python
-#     name: python3
-# ---
-
 # %% [markdown]
 # We begin by moving to the project **directory**, loading neccessary **packages and modules**, and **defining constants**:
 
@@ -77,11 +62,9 @@ FORCE_ALL = True
 # AP_METHOD = "subtract calibrated"
 AP_METHOD = "filter"
 
-NORM_RANGE = (7e-3, 9e-3)
-
-FILES = "Use 1"
+# FILES = "Use 1"
 # FILES = "Use 1-5"
-# FILES = "Use All"
+FILES = "Use All"
 
 data_label_kwargs = {
     "Old Det. 300 bp ATTO": dict(
@@ -90,7 +73,6 @@ data_label_kwargs = {
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method=AP_METHOD,
-        norm_range=NORM_RANGE,
     ),
     #      "New Det. 300 bp ATTO": dict(
     #          date="03_07_2022",
@@ -98,7 +80,6 @@ data_label_kwargs = {
     #          file_selection=FILES,
     #          force_processing=False or FORCE_ALL,
     #          afterpulsing_method=AP_METHOD,
-    #          norm_range=NORM_RANGE,
     #      ),
     #      "New Det. 300 bp YOYO": dict(
     #          date="05_07_2022",
@@ -106,7 +87,6 @@ data_label_kwargs = {
     #          file_selection=FILES,
     #          force_processing=False or FORCE_ALL,
     #          afterpulsing_method=AP_METHOD,
-    #          norm_range=NORM_RANGE,
     #      ),
     #     "15 ns Gated New Det. 25X Diluted Conc. Sample YOYO": dict(
     #         date="18_10_2022",
@@ -114,7 +94,6 @@ data_label_kwargs = {
     #         file_selection=FILES,
     #         force_processing=False or FORCE_ALL,
     #         afterpulsing_method=AP_METHOD,
-    #         norm_range=NORM_RANGE,
     #     ),
 }
 
@@ -240,14 +219,15 @@ for label, exp in exp_dict.items():
 # Adjusting normalization range if needed:
 
 # %%
-SHOULD_CHANGE_NORM_RANGE = False
-# SHOULD_CHANGE_NORM_RANGE = True
+# SHOULD_CHANGE_NORM_RANGE = False
+SHOULD_CHANGE_NORM_RANGE = True
 
 if SHOULD_CHANGE_NORM_RANGE:
 
     print("Renormalizing...", end=" ")
 
-    NORM_RANGE_ = (7e-3, 9e-3)
+    #     NORM_RANGE_ = (7e-3, 9e-3)
+    NORM_RANGE_ = (2e-3, 3e-3)
     #     NORM_RANGE_ = (1e-3, 2e-3)
 
     for label, exp in exp_dict.items():
