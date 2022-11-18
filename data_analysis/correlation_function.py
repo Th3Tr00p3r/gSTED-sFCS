@@ -623,20 +623,16 @@ class SolutionSFCSMeasurement:
             self.duration_min = full_data["duration_s"] / 60
 
         # Set detector settings to default old detector settings in case none are defined
-        if not self.detector_settings["is_gated"]:
+        if not self.detector_settings["is_gated"] and not self.detector_settings.get("gate_ns"):
             self.detector_settings["gate_ns"] = Gate()
-        else:
-            # TODO: this should be done in legacy file handling?
-            try:
-                self.detector_settings["gate_ns"] = Gate(self.detector_settings["gate_ns"])
-            except KeyError as exc:
-                # TODO: this should not happen
-                print(f"This should not happen (missing detector gate) [{exc}]")
-                self.detector_settings["gate_ns"] = Gate(
-                    98 - self.detector_settings["gate_width_ns"],
-                    self.detector_settings["gate_width_ns"],
-                    is_hard=True,
-                )
+        elif self.detector_settings.get("gate_ns") or self.detector_settings["is_gated"]:
+            # TODO: find a better way (start by defining the detector gate in the measurement file_dict itself)
+            print("This should not happen (missing detector gate)")
+            self.detector_settings["gate_ns"] = Gate(
+                98 - self.detector_settings["gate_width_ns"],
+                self.detector_settings["gate_width_ns"],
+                is_hard=True,
+            )
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -1228,6 +1224,8 @@ class SolutionSFCSExperiment:
         afterpulsing_method="filter",
         **kwargs,
     ):
+        """Doc."""
+        # TODO: avoid saveing and re-loading data during loading of measurement (cancel data rotation in all stages except the last)
 
         if "cf_name" not in kwargs:
             if meas_type == "confocal":

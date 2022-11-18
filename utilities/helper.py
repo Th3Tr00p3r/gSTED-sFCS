@@ -338,31 +338,6 @@ def timer(threshold_ms: float = 0.0) -> Callable:
     return outer_wrapper
 
 
-# TODO: this needs testing - not working as expected! copy it to Jupyter and test there using
-# saved images
-def my_threshold(img: np.ndarray) -> Tuple[np.ndarray, float]:
-    """
-    Applies custom thresholding (idomic) to an image.
-    Returns the thresholded image and the threshold.
-    """
-
-    n, bin_edges = np.histogram(img.ravel())
-    thresh_idx = 1
-    for i in range(1, len(n)):
-        if n[i] <= n.max() * 0.1:
-            if n[i + 1] >= n[i] * 10:
-                continue
-            else:
-                thresh_idx = i
-                break
-        else:
-            continue
-    thresh = (bin_edges[thresh_idx] - bin_edges[thresh_idx - 1]) / 2
-    img[img < thresh] = 0
-
-    return img, thresh
-
-
 def robust_interpolation(
     x,  # x-values to interpolate onto
     xi,  # real x vals
