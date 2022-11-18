@@ -688,6 +688,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         }
 
         if self.delayer_dvc.is_on:
+            # TODO: there are definitely redundencies here. decide on a single guarantee that detector gating is happening and fix where nescessary
             full_data["delayer_settings"] = self.delayer_dvc.settings
             full_data["detector_settings"]["is_gated"] = True
         else:
