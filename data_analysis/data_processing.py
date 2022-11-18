@@ -416,14 +416,14 @@ class AfterulsingFilter:
     baseline: float
     I_j: np.ndarray
     norm_factor: float
-    gate_ns: np.ndarray
+    valid_limits: Limits
     M: np.ndarray
     filter: np.ndarray
 
     def plot(self, parent_ax=None, **plot_kwargs):
         """Doc."""
 
-        in_gate_idxs = self.gate_ns.valid_indices(self.t_hist)
+        valid_idxs = self.valid_limits.valid_indices(self.t_hist)
 
         with Plotter(
             parent_ax=parent_ax,
@@ -435,31 +435,33 @@ class AfterulsingFilter:
             axes[0].plot(
                 self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
             )
-            axes[0].plot(self.t_hist[in_gate_idxs], self.I_j / self.norm_factor, label="norm. I_j")
+            axes[0].plot(self.t_hist[valid_idxs], self.I_j / self.norm_factor, label="norm. I_j")
             axes[0].plot(
-                self.t_hist[in_gate_idxs],
-                self.baseline / self.norm_factor * np.ones(self.t_hist[in_gate_idxs].shape),
+                self.t_hist[valid_idxs],
+                self.baseline / self.norm_factor * np.ones(self.t_hist[valid_idxs].shape),
                 label="norm. baseline",
             )
             axes[0].plot(
-                self.t_hist[in_gate_idxs],
+                self.t_hist[valid_idxs],
                 self.M.T[0],
                 label="M_j1 (ideal fluorescence decay curve)",
             )
             axes[0].plot(
-                self.t_hist[in_gate_idxs],
+                self.t_hist[valid_idxs],
                 self.M.T[1],
                 label="M_j2 (ideal afterpulsing 'decay' curve)",
             )
             axes[0].legend()
             axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
-            if self.gate_ns.upper != np.inf:
-                axes[0].set_xlim(*self.gate_ns)
 
             axes[1].set_title("Filter")
             axes[1].plot(self.t_hist, self.filter.T)
             axes[1].plot(self.t_hist, self.filter.sum(axis=0))
             axes[1].legend(["F_1j (signal)", "F_2j (afterpulsing)", "F.sum(axis=0)"])
+
+            if self.valid_limits.upper != np.inf:
+                axes[0].set_xlim(*self.valid_limits)
+                axes[1].set_xlim(*self.valid_limits)
 
 
 @dataclass
@@ -554,7 +556,6 @@ class TDCCalibration:
         gate_ns: Gate,
         meas_type: str,
         should_plot=False,
-        kernel_size=51,  # TESTESTEST
         **kwargs,
     ) -> np.ndarray:
         """Doc."""
@@ -563,18 +564,23 @@ class TDCCalibration:
         all_hist_norm = copy(self.all_hist_norm)
         t_hist = copy(self.t_hist)
 
-        # prepare padding for the gated-out part of the histogram
-        in_gate_idxs = gate_ns.valid_indices(t_hist)
-        if gate_ns:
-            lower_idx = round(gate_ns.lower * 10)
-            F_pad_before = np.full((2, lower_idx), np.nan)
-            try:
-                upper_idx = round(gate_ns.upper * 10)
-                F_pad_after = np.full((2, len(t_hist) - upper_idx - 1), np.nan)
-            except (OverflowError, ValueError):
-                # OverflowError: gate_ns.upper == np.inf
-                # ValueError: len(t_hist) == upper_idx
-                F_pad_after = np.array([[], []])
+        # prepare padding for the gated-out/noisy part of the histogram
+        peak_bin = max(np.nanargmax(all_hist_norm) - 2, 0)
+        peak_to_end_limits = Limits(t_hist[peak_bin], np.inf)
+        valid_limits = peak_to_end_limits & gate_ns
+        lower_idx = round(valid_limits.lower * 10)
+        F_pad_before = np.zeros((2, lower_idx))
+        #        F_pad_before = np.full((2, lower_idx), np.nan)
+        try:
+            upper_idx = round(valid_limits.upper * 10)
+            F_pad_after = np.zeros((2, len(t_hist) - upper_idx - 1))
+        #            F_pad_after = np.full((2, len(t_hist) - upper_idx - 1), np.nan)
+        except (OverflowError, ValueError):
+            # OverflowError: gate_ns.upper == np.inf
+            # ValueError: len(t_hist) == upper_idx
+            F_pad_after = np.array([[], []])
+        # define valid bins to work with
+        valid_idxs = valid_limits.valid_indices(t_hist)
 
         # interpolate over NaNs
         nans, x = nan_helper(all_hist_norm)  # get nans and a way to interpolate over them later
@@ -590,22 +596,21 @@ class TDCCalibration:
         baseline = all_hist_norm[in_hard_gate_idxs][-round(len(t_hist) / 3) :].mean()
 
         # normalization factor
-        norm_factor = (all_hist_norm[in_gate_idxs] - baseline).sum()
+        norm_factor = (all_hist_norm[valid_idxs] - baseline).sum()
 
         # define matrices and calculate F
-        M_j1 = (all_hist_norm[in_gate_idxs] - baseline) / norm_factor  # p1
-        M_j2 = 1 / len(t_hist[in_gate_idxs]) * np.ones(t_hist[in_gate_idxs].shape)  # p2
+        M_j1 = (all_hist_norm[valid_idxs] - baseline) / norm_factor  # p1
+        M_j2 = 1 / len(t_hist[valid_idxs]) * np.ones(t_hist[valid_idxs].shape)  # p2
         M = np.vstack((M_j1, M_j2)).T
 
-        I_j = all_hist_norm[in_gate_idxs]
+        I_j = all_hist_norm[valid_idxs]
         I = np.diag(I_j)  # NOQA E741
         inv_I = np.linalg.pinv(I)
 
         F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
 
         # Return the filter to original dimensions by adding zeros in the detector-gated zone
-        if gate_ns:
-            F = np.hstack((F_pad_before, F, F_pad_after))
+        F = np.hstack((F_pad_before, F, F_pad_after))
 
         ap_filter = AfterulsingFilter(
             t_hist,
@@ -613,7 +618,7 @@ class TDCCalibration:
             baseline,
             I_j,
             norm_factor,
-            gate_ns,
+            valid_limits,
             M,
             F,
         )
