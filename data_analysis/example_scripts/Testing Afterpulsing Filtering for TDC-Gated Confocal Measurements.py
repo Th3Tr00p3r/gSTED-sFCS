@@ -75,11 +75,10 @@ FORCE_ALL = True
 AP_METHOD = "filter"
 # AP_METHOD = "none"
 # AP_METHOD = "subtract calibrated"
-NORM_RANGE = (1e-3, 2e-3)
 
-FILES = "Use 1"
+# FILES = "Use 1"
 # FILES = "Use 1-5"
-# FILES = "Use All"
+FILES = "Use All"
 
 data_label_kwargs = {
     #     "300 bp ATTO PDM - no ap rmvl": dict(
@@ -89,7 +88,6 @@ data_label_kwargs = {
     #         file_selection=FILES,
     #         force_processing=False or FORCE_ALL,
     #         afterpulsing_method="none",
-    #         norm_range=NORM_RANGE,
     #     ),
     #     "300 bp ATTO PDM - cal. subt.": dict(
     #         date="10_05_2018",
@@ -98,43 +96,38 @@ data_label_kwargs = {
     #         file_selection=FILES,
     #         force_processing=False or FORCE_ALL,
     #         afterpulsing_method="subtract calibrated",
-    #         norm_range=NORM_RANGE,
     #     ),
-    #     "300 bp ATTO PDM - filtering": dict(
-    #         date="10_05_2018",
-    #         confocal_template="bp300_angular_exc_*.mat",
-    #         sted_template="bp300_angular_sted_*.mat",
-    #         file_selection=FILES,
-    #         force_processing=False or FORCE_ALL,
-    #         afterpulsing_method="filter",
-    #         norm_range=NORM_RANGE,
-    #     ),
-    #     "300 bp ATTO FastGatedSPAD - no ap rmvl": dict(
-    #         date="13_11_2022",
-    #         confocal_template="ATTO300bp_circle_exc_144136_*.pkl",
-    # #         sted_template="ATTO300bp_circle_sted_151001_*.pkl",
-    #         file_selection=FILES,
-    #         force_processing=False or FORCE_ALL,
-    #         afterpulsing_method="none",
-    #         norm_range=NORM_RANGE,
-    #     ),
-    #     "300 bp ATTO FastGatedSPAD - cal. subt.": dict(
-    #         date="13_11_2022",
-    #         confocal_template="ATTO300bp_circle_exc_144136_*.pkl",
-    # #         sted_template="ATTO300bp_circle_sted_151001_*.pkl",
-    #         file_selection=FILES,
-    #         force_processing=False or FORCE_ALL,
-    #         afterpulsing_method="subtract calibrated",
-    #         norm_range=NORM_RANGE,
-    #     ),
-    "300 bp ATTO FastGatedSPAD - filtering": dict(
-        date="13_11_2022",
-        confocal_template="ATTO300bp_circle_exc_144136_*.pkl",
-        #         sted_template="ATTO300bp_circle_sted_151001_*.pkl",
+    "300 bp ATTO PDM - filtering": dict(
+        date="10_05_2018",
+        confocal_template="bp300_angular_exc_*.mat",
+        sted_template="bp300_angular_sted_*.mat",
         file_selection=FILES,
         force_processing=False or FORCE_ALL,
         afterpulsing_method="filter",
-        norm_range=NORM_RANGE,
+    ),
+    #     "300 bp ATTO FastGatedSPAD - no ap rmvl": dict(
+    #         date="16_11_2022",
+    #         confocal_template="ATTO300bp_circle_exc_162743_*.pkl",
+    #         sted_template="ATTO300bp_circle_sted_165440_*.pkl",
+    #         file_selection=FILES,
+    #         force_processing=False or FORCE_ALL,
+    #         afterpulsing_method="none",
+    #     ),
+    #     "300 bp ATTO FastGatedSPAD - cal. subt.": dict(
+    #         date="16_11_2022",
+    #         confocal_template="ATTO300bp_circle_exc_162743_*.pkl",
+    #         sted_template="ATTO300bp_circle_sted_165440_*.pkl",
+    #         file_selection=FILES,
+    #         force_processing=False or FORCE_ALL,
+    #         afterpulsing_method="subtract calibrated",
+    #     ),
+    "300 bp ATTO FastGatedSPAD - filtering": dict(
+        date="16_11_2022",
+        confocal_template="ATTO300bp_circle_exc_162743_*.pkl",
+        sted_template="ATTO300bp_circle_sted_165440_*.pkl",
+        file_selection=FILES,
+        force_processing=False or FORCE_ALL,
+        afterpulsing_method="filter",
     ),
 }
 
@@ -175,12 +168,6 @@ for label, exp in exp_dict.items():
             **data_label_kwargs[label],
         )
 
-        # plot TDC calibration
-        try:
-            exp.confocal.tdc_calib.plot()
-        except AttributeError:
-            print("NO TDC CALIBRATION TO PLOT!")
-
 #         # save processed data (to avoid re-processing)
 #         exp.save_processed_measurements(
 #             should_force=FORCE_ALL,
@@ -201,14 +188,6 @@ for label, exp in exp_dict.items():
 # ## Comparing afterpulsing removal by filtering
 
 # %% [markdown]
-# Displaying filters
-
-# %%
-for label, exp in exp_dict.items():
-    print(f"{label}:")
-    exp.plot_afterpulsing_filters()
-
-# %% [markdown]
 # TDC Gating:
 
 # %%
@@ -216,8 +195,8 @@ from itertools import product
 
 # CHOOSE GATES
 # lower_gate_list = [3.3] # PDM
-lower_gate_list = [0, 5]  # FastGatedSPAD
-upper_gate_list = [20, 60, np.inf]
+lower_gate_list = [5]  # FastGatedSPAD
+upper_gate_list = [20]
 
 gate_list = [gate_ns for gate_ns in product(lower_gate_list, upper_gate_list)]
 
@@ -225,9 +204,9 @@ gate_list = [gate_ns for gate_ns in product(lower_gate_list, upper_gate_list)]
 for label, exp in exp_dict.items():
     if FORCE_ALL:
         # gate STED
-        #         exp.add_gates([(lower, UPPER) for lower in lower_gate_list], should_plot=False)
+        exp.add_gates(gate_list, should_plot=False)
         # gate confocal
-        exp.add_gates(gate_list, meas_type="confocal", should_plot=False)
+    #         exp.add_gates(gate_list, meas_type="confocal", should_plot=False)
     else:
         print("Using pre-processed...")
 
@@ -237,8 +216,10 @@ for label, exp in exp_dict.items():
 # %%
 # SHOULD_CHANGE_NORM_RANGE = False
 SHOULD_CHANGE_NORM_RANGE = True
-NORM_RANGE_ = (7e-3, 9e-3)
+
 # NORM_RANGE_ = (1e-3, 2e-3)
+NORM_RANGE_ = (2e-3, 3e-3)
+# NORM_RANGE_ = (7e-3, 9e-3)
 
 for label, exp in exp_dict.items():
 
@@ -270,6 +251,8 @@ with Plotter(
     #     ylabel="Normalized",
     ylabel="Avg. CFxCR",
 ) as axes:
+    if len(gate_list) == 1:
+        axes = [axes]
     for idx, ax in enumerate(axes):
         linewidth = 20
         for label, exp in exp_dict.items():
@@ -318,8 +301,8 @@ for label, exp in exp_dict.items():
         print(f"===== {label} =====")
         with Plotter(subplots=(len(gate_list), 2)) as axes:
             for idx, cf in enumerate(exp.confocal.cf.values()):
-                cf.afterpulsing_filter.plot(parent_ax=axes[idx])
-                axes[idx][0].set_ylabel(cf.name)
+                cf.afterpulsing_filter.plot(parent_ax=axes)
+                axes[0].set_ylabel(cf.name)
 
 # %% [markdown]
 # Beep when done

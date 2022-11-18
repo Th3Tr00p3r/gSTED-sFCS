@@ -527,7 +527,7 @@ class SolutionSFCSMeasurement:
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
                 print(
-                    f"Attention! calculated duration ({calc_duration_mins:.1f} mins) is significantly different than the set duration ({self.duration_min} min). Using calculated.\n"
+                    f"Attention! calculated duration ({calc_duration_mins:.1f} mins) is significantly different than the set duration ({self.duration_min} min). Using calculated duration.\n"
                 )
         else:
             print(f"Calculating duration (not supplied): {calc_duration_mins:.1f} mins\n")
@@ -627,7 +627,16 @@ class SolutionSFCSMeasurement:
             self.detector_settings["gate_ns"] = Gate()
         else:
             # TODO: this should be done in legacy file handling?
-            self.detector_settings["gate_ns"] = Gate(self.detector_settings["gate_ns"])
+            try:
+                self.detector_settings["gate_ns"] = Gate(self.detector_settings["gate_ns"])
+            except KeyError as exc:
+                # TODO: this should not happen
+                print(f"This should not happen (missing detector gate) [{exc}]")
+                self.detector_settings["gate_ns"] = Gate(
+                    98 - self.detector_settings["gate_width_ns"],
+                    self.detector_settings["gate_width_ns"],
+                    is_hard=True,
+                )
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -1264,7 +1273,9 @@ class SolutionSFCSExperiment:
             print("Done.")
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
-            cf = measurement.correlate_and_average(is_verbose=True, **kwargs)
+            cf = measurement.correlate_and_average(
+                is_verbose=True, afterpulsing_method=afterpulsing_method, **kwargs
+            )
 
         if should_plot:
 
