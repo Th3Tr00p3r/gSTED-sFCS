@@ -1262,12 +1262,13 @@ class SolutionSFCSExperiment:
             measurement.read_fpga_data(
                 file_path_template,
                 should_plot=should_plot,
+                should_keep_data=True,
                 **kwargs,
             )
         # Calibrate TDC (sync with confocal) before correlating if using afterpulsing filtering
         if afterpulsing_method == "filter" and meas_type == "sted" and self.confocal.is_loaded:
             print(f"{self.name}: Calibrating TDC first (syncing with confocal)...", end=" ")
-            self.calibrate_tdc(should_plot=should_plot, **kwargs)
+            self.calibrate_tdc(should_plot=should_plot, should_keep_data=True, **kwargs)
             print("Done.")
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
