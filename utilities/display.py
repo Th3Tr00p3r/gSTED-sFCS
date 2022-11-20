@@ -14,6 +14,7 @@ from skimage.filters import threshold_yen
 import utilities.helper as helper
 
 plt.rcParams.update({"figure.max_open_warning": 100})
+default_colors = tuple(plt.rcParams["axes.prop_cycle"].by_key()["color"])
 
 
 class GuiDisplay:

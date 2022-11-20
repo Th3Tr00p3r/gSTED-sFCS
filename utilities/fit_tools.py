@@ -32,12 +32,47 @@ class FitParams:
     beta: Dict[str, float]
     beta_error: Dict[str, float]
     beta_estimate: Dict[str, float]
-    x: np.ndarray
-    y: np.ndarray
-    sigma: np.ndarray
+    xs: np.ndarray
+    ys: np.ndarray
+    ys_errors: np.ndarray
+    valid_idxs: np.ndarray
     chi_sq_norm: float
     x_limits: Limits = field(default_factory=Limits)
     y_limits: Limits = field(default_factory=Limits)
+
+    def __post_init__(self):
+        self.x = self.xs[self.valid_idxs]
+        self.y = self.ys[self.valid_idxs]
+        self.sigma = self.ys_errors[self.valid_idxs]
+
+    def plot(self, color=None, **kwargs):
+        """Doc."""
+
+        with Plotter(
+            super_title=f"Curve Fit ({self.fit_func.__name__})",
+            xlim=(min(self.x), max(self.x)),
+            ylim=(min(self.y), max(self.y)),
+            **kwargs,
+        ) as ax:
+            ax.plot(
+                self.xs,
+                self.ys,
+                ".",
+                label="Data",
+                zorder=1,
+                color=color if color is not None else "k",
+            )
+            if not (self.sigma == 1).all():
+                ax.errorbar(self.xs, self.ys, self.ys_errors, fmt=".", label="Error", zorder=2)
+            ax.plot(
+                self.x,
+                self.fit_func(self.x, *self.beta.values()),
+                "--",
+                label="Fit",
+                zorder=3,
+                color=color if color is not None else "r",
+            )
+            ax.legend()
 
 
 def curve_fit_lims(
@@ -54,37 +89,28 @@ def curve_fit_lims(
 ) -> FitParams:
     """Doc."""
 
-    should_plot_errorbars = True
-
     if ys_errors is None:
-        should_plot_errorbars = False
         ys_errors = np.ones(ys.shape)
 
     in_lims = x_limits.valid_indices(xs) & y_limits.valid_indices(ys)
     is_finite_err = (ys_errors > 0) & np.isfinite(ys_errors)
-    x = xs[in_lims & is_finite_err]
-    y = ys[in_lims & is_finite_err]
-    y_err = ys_errors[in_lims & is_finite_err]
+    valid_idxs = in_lims & is_finite_err
 
-    fit_params = _fit_and_get_param_dict(
-        fit_func, x, y, param_estimates, sigma=y_err, absolute_sigma=True, **kwargs
+    FP = _fit_and_get_param_dict(
+        fit_func,
+        xs,
+        ys,
+        param_estimates,
+        ys_errors=ys_errors,
+        valid_idxs=valid_idxs,
+        absolute_sigma=True,
+        **kwargs,
     )
 
     if should_plot:
-        with Plotter(super_title=f"Curve Fit ({fit_func.__name__})", **plot_kwargs) as ax:
-            ax.plot(xs[in_lims], ys[in_lims], ".k", label="Data", zorder=1)
-            if should_plot_errorbars:
-                ax.errorbar(xs, ys, ys_errors, fmt=".", label="Error", zorder=2)
-            ax.plot(
-                xs[in_lims],
-                fit_func(xs[in_lims], *fit_params.beta.values()),
-                "--r",
-                label="Fit",
-                zorder=3,
-            )
-            ax.legend()
+        FP.plot(**plot_kwargs, **kwargs)
 
-    return fit_params
+    return FP
 
 
 def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
@@ -136,8 +162,14 @@ def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
     return fp
 
 
-def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
+def _fit_and_get_param_dict(
+    fit_func, xs, ys, p0, ys_errors=1, valid_idxs=slice(None), **kwargs
+) -> FitParams:
     """Doc."""
+
+    x = xs[valid_idxs]
+    y = ys[valid_idxs]
+    sigma = ys_errors[valid_idxs]
 
     try:
         popt, pcov = opt.curve_fit(fit_func, x, y, p0=p0, **kwargs)
@@ -165,13 +197,22 @@ def _fit_and_get_param_dict(fit_func, x, y, p0, sigma=1, **kwargs) -> FitParams:
         beta,
         beta_error,
         beta_estimate,
-        x,
-        y,
-        sigma,
+        xs,
+        ys,
+        ys_errors,
+        valid_idxs,
         chi_sq_norm,
         kwargs.get("x_limits", Limits()),
         kwargs.get("y_limits", Limits()),
     )
+
+
+def gaussian_1d_fit(t, A, mu, sigma, bg):
+    return A * np.exp(-1 / 2 * ((t - mu) / sigma) ** 2) + bg
+
+
+def zero_centered_gaussian_1d_fit(t, A, sigma, bg):
+    return gaussian_1d_fit(t, A, 0, sigma, bg)
 
 
 def gaussian_2d_fit(xy_tuple, amplitude, x0, y0, sigma_x, sigma_y, phi, offset):
