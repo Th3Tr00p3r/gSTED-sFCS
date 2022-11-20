@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Iterator, List, Tuple, Union
 
 import numpy as np
 import scipy
@@ -22,7 +22,7 @@ from data_analysis.data_processing import (
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
-from utilities.display import Plotter
+from utilities.display import Plotter, default_colors
 from utilities.fit_tools import (
     FIT_NAME_DICT,
     FitParams,
@@ -299,13 +299,13 @@ class CorrFunc:
 
     def fit_correlation_function(
         self,
-        x_field="lag",
-        y_field="avg_cf_cr",
-        y_error_field="error_cf_cr",
         fit_name="diffusion_3d_fit",
+        x_field=None,
+        y_field=None,
+        y_error_field=None,
         fit_param_estimate=None,
         fit_range=(1e-3, 100),
-        x_scale="log",
+        x_scale=None,
         y_scale="linear",
         bounds=None,
         max_nfev=int(1e4),
@@ -313,8 +313,26 @@ class CorrFunc:
         **kwargs,
     ) -> None:
 
-        if fit_param_estimate is None:
+        if fit_name == "diffusion_3d_fit" and fit_param_estimate is None:
             fit_param_estimate = (self.g0, 0.035, 30.0)
+            bounds = (  # a, tau, w_sq
+                [0, 0, 0],
+                [1e7, 10, np.inf],
+            )
+            x_field = "lag"
+            x_scale = "log"
+            y_field = "avg_cf_cr"
+            y_error_field = "error_cf_cr"
+        elif fit_name == "zero_centered_gaussian_1d_fit" and fit_param_estimate is None:
+            fit_param_estimate = (1, 0.1, 0)
+            bounds = (  # A, sigma, bg
+                [0, 0, -1e3],
+                [2, 1, 1e3],
+            )
+            x_field = "vt_um"
+            x_scale = "linear"
+            y_field = "normalized"
+            y_error_field = "error_normalized"
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
@@ -324,14 +342,7 @@ class CorrFunc:
             y = y[1:]
             error_y = error_y[1:]
 
-        # set bounds for parameters
-        if fit_name == "diffusion_3d_fit":
-            bounds = (  # a, tau, w_sq
-                [0, 0, 0],
-                [1e7, 10, np.inf],
-            )
-
-        self.fit_params[fit_name] = curve_fit_lims(
+        return curve_fit_lims(
             FIT_NAME_DICT[fit_name],
             fit_param_estimate,
             x,
@@ -1014,6 +1025,45 @@ class SolutionSFCSMeasurement:
 
         return legend_labels
 
+    def estimate_spatial_resolution(
+        self, fit_range=(0.02, 0.4), color_generator=None, **kwargs
+    ) -> Tuple[List[str], Iterator[str]]:
+        """
+        Perform Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions in the measurement
+        in order to estimate the resolution improvement. This is relevant only for calibration experiments (i.e. 300 bp samples).
+        Returns the legend labels for suse with higher-level Plotter instance in SolutionSFCSExperiment.
+        """
+
+        HWHM_FACTOR = np.sqrt(2 * np.log(2))
+
+        cf_fp_dict = {}
+        for CF in self.cf.values():
+            cf_fp_dict[CF] = CF.fit_correlation_function(
+                fit_name="zero_centered_gaussian_1d_fit", fit_range=fit_range, should_plot=False
+            )
+
+        with Plotter(
+            super_title=f"Resolution fits (Gaussian) for '{self.type}' measurement.",
+            xlim=fit_range,
+            ylim=(0, 1),
+            **kwargs,
+        ) as ax:
+            legend_labels = []
+            # TODO: line below - this issue (line colors in hierarchical plotting) may be general and should be solved in Plotter class (?)
+            color_generator = (
+                color_generator if color_generator is not None else iter(default_colors)
+            )
+            for (CF, FP), color in zip(cf_fp_dict.items(), color_generator):
+                FP.plot(parent_ax=ax, color=color)
+                legend_labels += [
+                    CF.name,
+                    f"Gaussian fit: HWHM={FP.beta['sigma'] * 1e3 * HWHM_FACTOR:.0f} nm. $\\chi^2$={FP.chi_sq_norm:.2f}",
+                ]
+
+            ax.legend(legend_labels)
+
+        return legend_labels, color_generator
+
     def compare_lifetimes(
         self,
         legend_label: str,
@@ -1487,7 +1537,7 @@ class SolutionSFCSExperiment:
     def add_gate(
         self,
         tdc_gate_ns: Tuple[float, float],
-        meas_type="sted",
+        meas_type: str,
         should_plot=True,
         should_re_correlate=False,
         is_verbose=True,
@@ -1519,12 +1569,20 @@ class SolutionSFCSExperiment:
         if should_plot:
             self.plot_standard(**kwargs)
 
-    def add_gates(self, gate_list: List[Tuple[float, float]], should_plot=True, **kwargs):
-        """A convecience method for adding multiple gates."""
+    def add_gates(
+        self, gate_list: List[Tuple[float, float]], should_plot=True, meas_type="sted", **kwargs
+    ):
+        """
+        A convecience method for adding multiple gates. This also avoids data saving/loading between gates.
+        """
 
-        print(f"Adding multiple gates for experiment '{self.name}'...")
+        print(f"Adding multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'...")
         for tdc_gate_ns in gate_list:
-            self.add_gate(tdc_gate_ns, should_plot=False, **kwargs)
+            self.add_gate(
+                tdc_gate_ns, meas_type, should_plot=False, should_keep_data=True, **kwargs
+            )
+        getattr(self, meas_type).dump_or_load_data(False)  # dump data in the end
+
         if should_plot:
             self.plot_standard(**kwargs)
 
@@ -1616,6 +1674,25 @@ class SolutionSFCSExperiment:
             ]
             confocal_legend_labels, sted_legend_labels = legend_label_lists
             ax.legend(confocal_legend_labels + sted_legend_labels)
+
+    def estimate_spatial_resolution(self, fit_range=(0.02, 0.4), **kwargs):
+        """
+        High-level method for performing Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions
+        (confocal, sted and any gates) in order to estimate the resolution improvement.
+        This is relevant only for calibration experiments (i.e. 300 bp samples).
+        """
+
+        with Plotter(**kwargs, xlim=fit_range, ylim=(0, 1)) as ax:
+            confocal_labels, remaining_color_generator = self.confocal.estimate_spatial_resolution(
+                parent_ax=ax, color_generator=iter(default_colors), fit_range=fit_range, **kwargs
+            )
+            sted_labels, _ = self.sted.estimate_spatial_resolution(
+                parent_ax=ax,
+                color_generator=remaining_color_generator,
+                fit_range=fit_range,
+                **kwargs,
+            )
+            ax.legend(confocal_labels + sted_labels)
 
     def plot_afterpulsing_filters(self, **kwargs) -> None:
         """Plot afterpulsing filters each measurement"""

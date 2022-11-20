@@ -1159,12 +1159,11 @@ class MainWin:
             #            cf = measurement.cf[data_type]
 
             try:
-                first_cf.fit_correlation_function()
+                fp = first_cf.fit_correlation_function()
             except fit_tools.FitError as exc:
                 err_hndlr(exc, sys._getframe(), locals())
                 g0, tau = (None, None)
             else:
-                fp = first_cf.fit_params["diffusion_3d_fit"]
                 g0, tau = fp.beta["G0"], fp.beta["tau"]
 
         return g0, tau
@@ -1686,7 +1685,7 @@ class MainWin:
                 ]  # TODO: keyerror might result from testing (using confocal as STED)
                 cf.average_correlation()
                 try:
-                    cf.fit_correlation_function()
+                    fp = cf.fit_correlation_function()
                 except fit_tools.FitError as exc:
                     # fit failed, use g0 calculated in 'average_correlation()'
                     err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
@@ -1699,7 +1698,6 @@ class MainWin:
                         cf.g0,
                     )
                 else:  # fit succeeded
-                    fp = cf.fit_params["diffusion_3d_fit"]
                     g0, tau = fp.beta["G0"], fp.beta["tau"]
                     fit_func = fp.fit_func
                     sol_data_analysis_wdgts["mean_g0"].set(g0 / 1e3)  # shown in thousands

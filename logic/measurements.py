@@ -647,7 +647,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             errors.err_hndlr(exc, sys._getframe(), locals())
         else:
             try:
-                cf.fit_correlation_function()
+                fp = cf.fit_correlation_function()
             except fit_tools.FitError as exc:
                 # fit failed
                 errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
@@ -659,7 +659,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             else:
                 # fit succeeded
                 self.fit_led.set(self.icon_dict["led_off"])
-                fp = cf.fit_params["diffusion_3d_fit"]
                 g0, tau = fp.beta["G0"], fp.beta["tau"]
                 fit_func = fp.fit_func
                 self.g0_wdgt.set(g0)
