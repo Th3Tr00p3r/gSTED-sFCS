@@ -555,6 +555,7 @@ class TDCCalibration:
         self,
         gate_ns: Gate,
         meas_type: str,
+        baseline_tail_perc=0.3,
         should_plot=False,
         **kwargs,
     ) -> np.ndarray:
@@ -587,13 +588,15 @@ class TDCCalibration:
         #        print("nans: ", nans.sum()) # TESTESTEST - why always 23?
         all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
-        # calculate the baseline using the mean of the last third of the (hard-gate-limited) histogram
+        # calculate the baseline using the mean of the tail of the (hard-gate-limited) histogram
         if gate_ns.hard_gate:
             in_hard_gate_idxs = gate_ns.hard_gate.valid_indices(t_hist)
         else:
             # use all indices
             in_hard_gate_idxs = slice(None)
-        baseline = all_hist_norm[in_hard_gate_idxs][-round(len(t_hist) / 3) :].mean()
+        baseline = all_hist_norm[in_hard_gate_idxs][
+            -round(len(t_hist) * baseline_tail_perc) :
+        ].mean()
 
         # normalization factor
         norm_factor = (all_hist_norm[valid_idxs] - baseline).sum()
