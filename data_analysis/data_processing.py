@@ -455,9 +455,9 @@ class AfterulsingFilter:
             axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
 
             axes[1].set_title("Filter")
-            axes[1].plot(self.t_hist, self.filter.T)
-            axes[1].plot(self.t_hist, self.filter.sum(axis=0))
-            axes[1].legend(["F_1j (signal)", "F_2j (afterpulsing)", "F.sum(axis=0)"])
+            axes[1].plot(self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"])
+            axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
+            axes[1].legend()
 
             if self.valid_limits.upper != np.inf:
                 axes[0].set_xlim(*self.valid_limits)
