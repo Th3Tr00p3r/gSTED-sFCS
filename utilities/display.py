@@ -256,26 +256,7 @@ class Plotter:
                     ax.axis(self.gui_options.show_axis)
 
         for ax in self.axes.flatten().tolist():  # set ax attributes
-            if self.should_force_aspect:
-                force_aspect(ax, aspect=1)
-            if self.should_autoscale:
-                ax.autoscale()
-            if self.xlim is not None:
-                ax.set_xlim(self.xlim)
-            if self.ylim is not None:
-                ax.set_ylim(self.ylim)
-            if self.x_scale is not None:
-                ax.set_xscale(self.x_scale)
-            if self.y_scale is not None:
-                ax.set_yscale(self.y_scale)
-            if self.xlabel is not None:
-                ax.set_xlabel(self.xlabel)
-            if self.ylabel is not None:
-                ax.set_ylabel(self.ylabel)
-            [
-                text.set_fontsize(self.fontsize)
-                for text in [ax.title, ax.xaxis.label, ax.yaxis.label]
-            ]
+            self._set_axis_attributes(ax)
             if self.selection_limits is not None:  # manual selection
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
@@ -296,6 +277,30 @@ class Plotter:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
                 self.fig.canvas.draw_idle()
+
+    def _set_axis_attributes(self, ax):
+        """Doc."""
+
+        if self.should_force_aspect:
+            force_aspect(ax, aspect=1)
+        if self.should_autoscale:
+            ax.autoscale()
+        if self.xlim is not None:
+            ax.set_xlim(self.xlim)
+        if self.ylim is not None:
+            ax.set_ylim(self.ylim)
+        if self.x_scale is not None:
+            if self.x_scale == "quadratic":
+                ax.set_xscale("function", functions=(lambda x: x ** 2, lambda x: x ** (1 / 2)))
+            else:
+                ax.set_xscale(self.x_scale)
+        if self.y_scale is not None:
+            ax.set_yscale(self.y_scale)
+        if self.xlabel is not None:
+            ax.set_xlabel(self.xlabel)
+        if self.ylabel is not None:
+            ax.set_ylabel(self.ylabel)
+        [text.set_fontsize(self.fontsize) for text in [ax.title, ax.xaxis.label, ax.yaxis.label]]
 
 
 class NavigationToolbar(NavigationToolbar2QT):
