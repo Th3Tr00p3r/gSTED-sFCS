@@ -1637,6 +1637,11 @@ class SolutionSFCSExperiment:
             super_title=f"'{self.name}' Experiment - All ACFs",
             **kwargs,
         ) as ax:
+
+            if (parent_ax := kwargs.get("parent_ax")) is not None:
+                # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
+                existing_lines = parent_ax.get_lines()
+
             with suppress(KeyError):
                 kwargs.pop("parent_ax")
 
@@ -1654,8 +1659,7 @@ class SolutionSFCSExperiment:
 
             # add experiment name to labels if plotted hierarchically (multiple experiments)
             # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
-            if (parent_ax := kwargs.get("parent_ax")) is not None:
-                existing_lines = parent_ax.get_lines()
+            if parent_ax is not None:
                 for line in ax.get_lines():
                     if line not in existing_lines:
                         label = line.get_label()
@@ -1672,6 +1676,11 @@ class SolutionSFCSExperiment:
         """
 
         with Plotter(xlim=(1e-2, 1), ylim=(0, 1), parent_ax=parent_ax, **kwargs) as ax:
+
+            if parent_ax is not None:
+                # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
+                existing_lines = parent_ax.get_lines()
+
             colors = colors if colors is not None else iter(default_colors)
             remaining_colors = self.confocal.estimate_spatial_resolution(
                 parent_ax=ax, colors=colors, **kwargs
@@ -1685,7 +1694,6 @@ class SolutionSFCSExperiment:
             # add experiment name to labels if plotted hierarchically (multiple experiments)
             # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
             if parent_ax is not None:
-                existing_lines = parent_ax.get_lines()
                 for line in ax.get_lines():
                     if line not in existing_lines:
                         label = line.get_label()
