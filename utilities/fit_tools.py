@@ -46,7 +46,7 @@ class FitParams:
         self.y = self.ys[self.valid_idxs]
         self.sigma = self.ys_errors[self.valid_idxs]
 
-    def plot(self, color=None, **kwargs):
+    def plot(self, color=None, fit_label="Fit", **kwargs):
         """Doc."""
 
         with Plotter(
@@ -59,7 +59,7 @@ class FitParams:
                 self.xs,
                 self.ys,
                 ".",
-                label="Data",
+                label="_Data",
                 zorder=1,
                 markersize=2,
                 color=color if color is not None else "k",
@@ -70,7 +70,7 @@ class FitParams:
                     self.ys,
                     self.ys_errors,
                     fmt="none",
-                    label="Error",
+                    label="_Error",
                     elinewidth=0.5,
                     zorder=2,
                     color=color if color is not None else "k",
@@ -79,11 +79,11 @@ class FitParams:
                 self.x,
                 self.fit_func(self.x, *self.beta.values()),
                 "--",
-                label="Fit",
+                label=fit_label,
                 zorder=3,
                 color=color if color is not None else "r",
             )
-            ax.legend()
+            ax.legend(["Data", "Error", "Fit"])
 
 
 def curve_fit_lims(

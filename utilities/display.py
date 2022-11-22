@@ -65,8 +65,8 @@ class GuiDisplay:
         ) as ax:
             try:
                 for x, y in xy_pairs_list:
-                    ax.plot(x, y, lw=0.4)
-                    ax.legend(labels, fontsize=6)
+                    ax.plot(x, y, lw=0.4, labels=labels)
+                    ax.legend(fontsize=6)
             except TypeError:  # xy_pairs_list is a really 'x', 'y' is in args
                 ax.plot(xy_pairs_list, *args, "k", lw=0.3)
             ax.set_aspect("equal")
@@ -255,9 +255,11 @@ class Plotter:
                 with suppress(TypeError):  # TODO: test this (is type error correct?)
                     ax.axis(self.gui_options.show_axis)
 
-        for ax in self.axes.flatten().tolist():  # set ax attributes
+        for ax in self.axes.flatten().tolist():
+            # set ax attributes
             self._set_axis_attributes(ax)
-            if self.selection_limits is not None:  # manual selection
+            # manual selection
+            if self.selection_limits is not None:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
                 selected_points_list = self.fig.ginput(n=-1, timeout=-1)
