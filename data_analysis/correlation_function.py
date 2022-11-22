@@ -276,6 +276,7 @@ class CorrFunc:
         y_field="avg_cf_cr",
         x_scale="log",
         y_scale="linear",
+        label=None,
         **kwargs,
     ) -> None:
 
@@ -283,6 +284,9 @@ class CorrFunc:
         y = getattr(self, y_field)
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
+
+        if label is None:
+            label = self.name
 
         with Plotter(
             x_scale=x_scale,
@@ -292,7 +296,7 @@ class CorrFunc:
         ) as ax:
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
-            ax.plot(x, y, "-", **kwargs.get("plot_kwargs", {}))
+            ax.plot(x, y, "-", label=label, **kwargs.get("plot_kwargs", {}))
 
     def fit_correlation_function(
         self,
@@ -333,7 +337,7 @@ class CorrFunc:
                 y_field = "normalized"
                 y_scale = "linear"
                 y_error_field = "error_normalized"
-                if fit_range != (np.NINF, np.inf):
+                if fit_range == (np.NINF, np.inf):
                     fit_range = (1e-2, 100)
 
         x = getattr(self, x_field)
@@ -1008,11 +1012,10 @@ class SolutionSFCSMeasurement:
         ylim=(-0.20, 1.4),
         plot_kwargs={},
         **kwargs,
-    ) -> List[str]:
+    ):
         """Doc."""
 
         with Plotter(super_title=f"'{self.type.capitalize()}' - ACFs", **kwargs) as ax:
-            legend_labels = []
             kwargs["parent_ax"] = ax
             for cf_name, cf in {**self.cf, **self.xcf}.items():
                 cf.plot_correlation_function(
@@ -1025,12 +1028,9 @@ class SolutionSFCSMeasurement:
                     plot_kwargs=plot_kwargs,
                     **kwargs,
                 )
-                legend_labels.append(cf_name)
-            ax.legend(legend_labels)
+            ax.legend()
 
-        return legend_labels
-
-    def estimate_spatial_resolution(self, colors=None, **kwargs) -> Tuple[List[str], Iterator[str]]:
+    def estimate_spatial_resolution(self, colors=None, **kwargs) -> Iterator[str]:
         """
         Perform Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions in the measurement
         in order to estimate the resolution improvement. This is relevant only for calibration experiments (i.e. 300 bp samples).
@@ -1046,29 +1046,25 @@ class SolutionSFCSMeasurement:
             )
 
         with Plotter(
-            super_title=f"Resolution fits (Gaussian) for '{self.type}' measurement.",
+            super_title=f"Resolution Estimation\nGaussian fitting (HWHM) for '{self.type}' ACF(s)",
             xlim=(1e-2, 1),
             ylim=(5e-3, 1),
             **kwargs,
         ) as ax:
-            legend_labels = []
             # TODO: line below - this issue (line colors in hierarchical plotting) may be general and should be solved in Plotter class (?)
             colors = colors if colors is not None else iter(default_colors)
             for CF, color in zip(self.cf.values(), colors):
                 FP = CF.fit_params
                 with suppress(KeyError):
                     kwargs.pop("parent_ax")
-                FP.plot(parent_ax=ax, color=color, **kwargs)
                 hwhm = list(FP.beta.values())[0] * 1e3 * HWHM_FACTOR
                 hwhm_error = list(FP.beta_error.values())[0] * 1e3 * HWHM_FACTOR
-                legend_labels += [
-                    CF.name,
-                    f"Fit: $HWHM={hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.0f}$)",
-                ]
+                fit_label = f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.0f}$)"
+                FP.plot(parent_ax=ax, color=color, fit_label=fit_label, **kwargs)
 
-            ax.legend(legend_labels)
+            ax.legend()
 
-        return legend_labels, colors
+        return colors
 
     def compare_lifetimes(
         self,
@@ -1105,14 +1101,12 @@ class SolutionSFCSMeasurement:
                 h.append((x, y, label))
 
         with Plotter(parent_ax=parent_ax, super_title="Life Time Comparison") as ax:
-            labels = []
             for tuple_ in h:
                 x, y, label = tuple_
-                labels.append(label)
                 ax.semilogy(x, y, "-o", label=label)
             ax.set_xlabel("Life Time (ns)")
             ax.set_ylabel("Frequency")
-            ax.legend(labels)
+            ax.legend()
 
     def calculate_structure_factors(self, plot_kwargs={}, **kwargs) -> None:
         """Doc."""
@@ -1123,22 +1117,19 @@ class SolutionSFCSMeasurement:
             super_title=f"{self.type.capitalize()}: Structure Factor ($S(q)$)",
             **kwargs,
         ) as ax:
-            legend_labels = []
             for name, cf in self.cf.items():
                 s = cf.calculate_structure_factor(**kwargs)
                 ax.set_title("Gaussian vs. linear\nInterpolation")
                 ax.loglog(
                     s.q,
                     np.vstack((s.sq / s.sq[0], s.sq_lin_intrp / s.sq_lin_intrp[0])).T,
+                    label=(f"{name}: Gaussian Interpolation", f"{name}: Linear Interpolation"),
                     **plot_kwargs,
                 )
-                legend_labels += [
-                    f"{name}: Gaussian Interpolation",
-                    f"{name}: Linear Interpolation",
-                ]
+
             ax.set_xlabel("$q$ $(\\mu m^{-1})$")
             ax.set_ylabel("$S(q)$")
-            ax.legend(legend_labels)
+            ax.legend()
 
     def calculate_filtered_afterpulsing(
         self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
@@ -1322,12 +1313,17 @@ class SolutionSFCSExperiment:
                     parent_ax=ax,
                     y_field="average_all_cf_cr",
                     x_field=x_field,
+                    label=f"{cf.name}: average_all_cf_cr",
                     plot_kwargs=plot_kwargs,
                 )
                 cf.plot_correlation_function(
-                    parent_ax=ax, y_field="avg_cf_cr", x_field=x_field, plot_kwargs=plot_kwargs
+                    parent_ax=ax,
+                    y_field="avg_cf_cr",
+                    x_field=x_field,
+                    label=f"{cf.name}: avg_cf_cr",
+                    plot_kwargs=plot_kwargs,
                 )
-                ax.legend(["average_all_cf_cr", "avg_cf_cr"])
+                ax.legend()
 
     def renormalize_all(self, norm_range: Tuple[float, float], **kwargs):
         """Doc."""
@@ -1455,8 +1451,8 @@ class SolutionSFCSExperiment:
             with Plotter(
                 parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
             ) as ax:
-                ax.plot(t, hist_ratio)
-                ax.legend(["hist_ratio"])
+                ax.plot(t, hist_ratio, label="hist_ratio")
+                ax.legend()
 
             j_selected = linear_range.valid_indices(t)
 
@@ -1466,9 +1462,14 @@ class SolutionSFCSExperiment:
                 ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
                 p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
 
-                ax.plot(t[j_selected], hist_ratio[j_selected], "oy")
-                ax.plot(t[j_selected], np.polyval([p1, p0], t[j_selected]), "r")
-                ax.legend(["hist_ratio", "linear range", "robust fit"])
+                ax.plot(t[j_selected], hist_ratio[j_selected], "oy", label="hist_ratio")
+                ax.plot(
+                    t[j_selected],
+                    np.polyval([p1, p0], t[j_selected]),
+                    "r",
+                    label=["linear range", "robust fit"],
+                )
+                ax.legend()
 
                 lifetime_ns = conf_params.beta["tau"]
                 sigma_sted = p1 * lifetime_ns
@@ -1639,7 +1640,7 @@ class SolutionSFCSExperiment:
             with suppress(KeyError):
                 kwargs.pop("parent_ax")
 
-            legend_label_lists = [
+            for meas_type in ("confocal", "sted"):
                 getattr(self, meas_type).plot_correlation_functions(
                     parent_ax=ax,
                     x_field=x_field,
@@ -1650,14 +1651,20 @@ class SolutionSFCSExperiment:
                     y_scale=y_scale,
                     **kwargs,
                 )
-                for meas_type in ("confocal", "sted")
-            ]
-            confocal_legend_labels, sted_legend_labels = legend_label_lists
-            ax.legend(confocal_legend_labels + sted_legend_labels)
 
-    def estimate_spatial_resolution(
-        self, colors=None, parent_ax=None, **kwargs
-    ) -> Tuple[List[str], Iterator[str]]:
+            # add experiment name to labels if plotted hierarchically (multiple experiments)
+            # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
+            if (parent_ax := kwargs.get("parent_ax")) is not None:
+                existing_lines = parent_ax.get_lines()
+                for line in ax.get_lines():
+                    if line not in existing_lines:
+                        label = line.get_label()
+                        if "_" not in label:
+                            line.set_label(f"{self.name}: {label}")
+
+            ax.legend()
+
+    def estimate_spatial_resolution(self, colors=None, parent_ax=None, **kwargs) -> Iterator[str]:
         """
         High-level method for performing Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions
         (confocal, sted and any gates) in order to estimate the resolution improvement.
@@ -1666,23 +1673,28 @@ class SolutionSFCSExperiment:
 
         with Plotter(xlim=(1e-2, 1), ylim=(0, 1), parent_ax=parent_ax, **kwargs) as ax:
             colors = colors if colors is not None else iter(default_colors)
-            confocal_labels, remaining_colors = self.confocal.estimate_spatial_resolution(
+            remaining_colors = self.confocal.estimate_spatial_resolution(
                 parent_ax=ax, colors=colors, **kwargs
             )
-            sted_labels, remaining_colors = self.sted.estimate_spatial_resolution(
+            remaining_colors = self.sted.estimate_spatial_resolution(
                 parent_ax=ax,
                 colors=remaining_colors,
                 **kwargs,
             )
 
-            # add experiment name to labels
-            legend_labels = [
-                (f"{self.name}: {label}" if "Fit" not in label else label)
-                for label in confocal_labels + sted_labels
-            ]
-            ax.legend(legend_labels)
+            # add experiment name to labels if plotted hierarchically (multiple experiments)
+            # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
+            if parent_ax is not None:
+                existing_lines = parent_ax.get_lines()
+                for line in ax.get_lines():
+                    if line not in existing_lines:
+                        label = line.get_label()
+                        if "_" not in label:
+                            line.set_label(f"{self.name}: {label}")
 
-        return legend_labels, remaining_colors
+            ax.legend()
+
+        return remaining_colors
 
     def plot_afterpulsing_filters(self, **kwargs) -> None:
         """Plot afterpulsing filters each measurement"""
@@ -1716,22 +1728,25 @@ class SolutionSFCSExperiment:
         ) as axes:
             axes[0].set_title("Gaussian Interpolation")
             axes[1].set_title("Linear Interpolation")
-            legend_labels = []
 
             for meas_type in ("confocal", "sted"):
                 meas = getattr(self, meas_type)
                 for cf_name, cf in meas.cf.items():
                     s = cf.structure_factor
-                    axes[0].loglog(s.q, s.sq / s.sq[0], **kwargs.get("plot_kwargs", {}))
-                    axes[1].loglog(
-                        s.q, s.sq_lin_intrp / s.sq_lin_intrp[0], **kwargs.get("plot_kwargs", {})
+                    axes[0].loglog(
+                        s.q, s.sq / s.sq[0], label=cf_name, **kwargs.get("plot_kwargs", {})
                     )
-                    legend_labels.append(cf_name)
+                    axes[1].loglog(
+                        s.q,
+                        s.sq_lin_intrp / s.sq_lin_intrp[0],
+                        label=cf_name,
+                        **kwargs.get("plot_kwargs", {}),
+                    )
 
             for ax in axes:
                 ax.set_xlabel("$q$ $(\\mu m^{-1})$")
                 ax.set_ylabel("$S(q)$")
-                ax.legend(legend_labels)
+                ax.legend()
 
     def fit_structure_factors(self, model: str):
         """Doc."""
