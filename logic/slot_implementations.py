@@ -1612,7 +1612,14 @@ class MainWin:
 
             if measurement.scan_type == "circle":
                 data_type = self.infer_data_type_from_template(measurement.template)
-                cf = measurement.cf[data_type]
+                try:
+                    cf = measurement.cf[data_type]
+                except KeyError:
+                    # TODO: TEST THIS (possibly needed in other scan_types?)
+                    print(
+                        "Infered data_type ({data_type}) is not a key of CorrFunc dictionary (probably a detector-gated measurement). Using first CorrFunc"
+                    )
+                    cf = list(measurement.cf.values())[0]
                 cf.average_correlation()
 
                 # setting values and plotting

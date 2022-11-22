@@ -279,10 +279,7 @@ class CorrFunc:
         **kwargs,
     ) -> None:
 
-        if x_field == "vt_um_sq":
-            x = self.vt_um ** 2
-        else:
-            x = getattr(self, x_field)
+        x = getattr(self, x_field)
         y = getattr(self, y_field)
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
@@ -304,35 +301,40 @@ class CorrFunc:
         y_field=None,
         y_error_field=None,
         fit_param_estimate=None,
-        fit_range=(1e-3, 100),
+        fit_range=(np.NINF, np.inf),
         x_scale=None,
-        y_scale="linear",
-        bounds=None,
+        y_scale=None,
+        bounds=(np.NINF, np.inf),
         max_nfev=int(1e4),
         should_plot=False,
         **kwargs,
     ) -> None:
 
-        if fit_name == "diffusion_3d_fit" and fit_param_estimate is None:
-            fit_param_estimate = (self.g0, 0.035, 30.0)
-            bounds = (  # a, tau, w_sq
-                [0, 0, 0],
-                [1e7, 10, np.inf],
-            )
-            x_field = "lag"
-            x_scale = "log"
-            y_field = "avg_cf_cr"
-            y_error_field = "error_cf_cr"
-        elif fit_name == "zero_centered_gaussian_1d_fit" and fit_param_estimate is None:
-            fit_param_estimate = (1, 0.1, 0)
-            bounds = (  # A, sigma, bg
-                [0, 0, -1e3],
-                [2, 1, 1e3],
-            )
-            x_field = "vt_um"
-            x_scale = "linear"
-            y_field = "normalized"
-            y_error_field = "error_normalized"
+        if fit_param_estimate is None:
+            if fit_name == "diffusion_3d_fit":
+                fit_param_estimate = (self.g0, 0.035, 30.0)
+                bounds = (  # a, tau, w_sq
+                    [0, 0, 0],
+                    [1e7, 10, np.inf],
+                )
+                x_field = "lag"
+                x_scale = "log"
+                y_field = "avg_cf_cr"
+                y_scale = "linear"
+                y_error_field = "error_cf_cr"
+            elif fit_name == "zero_centered_zero_bg_normalized_gaussian_1d_fit":
+                fit_param_estimate = (0.1,)
+                bounds = (  # sigma
+                    [0],
+                    [1],
+                )
+                x_field = "vt_um"
+                x_scale = "linear"
+                y_field = "normalized"
+                y_scale = "linear"
+                y_error_field = "error_normalized"
+                if fit_range != (np.NINF, np.inf):
+                    fit_range = (1e-2, 100)
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
@@ -342,7 +344,7 @@ class CorrFunc:
             y = y[1:]
             error_y = error_y[1:]
 
-        return curve_fit_lims(
+        FP = curve_fit_lims(
             FIT_NAME_DICT[fit_name],
             fit_param_estimate,
             x,
@@ -350,11 +352,14 @@ class CorrFunc:
             error_y,
             x_limits=Limits(fit_range),
             should_plot=should_plot,
-            plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
             bounds=bounds,
             max_nfev=max_nfev,
+            plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
             **kwargs,
         )
+        self.fit_params = FP
+
+        return FP
 
     def calculate_structure_factor(
         self,
@@ -1025,9 +1030,7 @@ class SolutionSFCSMeasurement:
 
         return legend_labels
 
-    def estimate_spatial_resolution(
-        self, fit_range=(0.02, 0.4), color_generator=None, **kwargs
-    ) -> Tuple[List[str], Iterator[str]]:
+    def estimate_spatial_resolution(self, colors=None, **kwargs) -> Tuple[List[str], Iterator[str]]:
         """
         Perform Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions in the measurement
         in order to estimate the resolution improvement. This is relevant only for calibration experiments (i.e. 300 bp samples).
@@ -1036,33 +1039,36 @@ class SolutionSFCSMeasurement:
 
         HWHM_FACTOR = np.sqrt(2 * np.log(2))
 
-        cf_fp_dict = {}
         for CF in self.cf.values():
-            cf_fp_dict[CF] = CF.fit_correlation_function(
-                fit_name="zero_centered_gaussian_1d_fit", fit_range=fit_range, should_plot=False
+            CF.fit_correlation_function(
+                fit_name="zero_centered_zero_bg_normalized_gaussian_1d_fit",
+                should_plot=False,
             )
 
         with Plotter(
             super_title=f"Resolution fits (Gaussian) for '{self.type}' measurement.",
-            xlim=fit_range,
-            ylim=(0, 1),
+            xlim=(1e-2, 1),
+            ylim=(5e-3, 1),
             **kwargs,
         ) as ax:
             legend_labels = []
             # TODO: line below - this issue (line colors in hierarchical plotting) may be general and should be solved in Plotter class (?)
-            color_generator = (
-                color_generator if color_generator is not None else iter(default_colors)
-            )
-            for (CF, FP), color in zip(cf_fp_dict.items(), color_generator):
-                FP.plot(parent_ax=ax, color=color)
+            colors = colors if colors is not None else iter(default_colors)
+            for CF, color in zip(self.cf.values(), colors):
+                FP = CF.fit_params
+                with suppress(KeyError):
+                    kwargs.pop("parent_ax")
+                FP.plot(parent_ax=ax, color=color, **kwargs)
+                hwhm = list(FP.beta.values())[0] * 1e3 * HWHM_FACTOR
+                hwhm_error = list(FP.beta_error.values())[0] * 1e3 * HWHM_FACTOR
                 legend_labels += [
                     CF.name,
-                    f"Gaussian fit: HWHM={FP.beta['sigma'] * 1e3 * HWHM_FACTOR:.0f} nm. $\\chi^2$={FP.chi_sq_norm:.2f}",
+                    f"Fit: $HWHM={hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.0f}$)",
                 ]
 
             ax.legend(legend_labels)
 
-        return legend_labels, color_generator
+        return legend_labels, colors
 
     def compare_lifetimes(
         self,
@@ -1182,32 +1188,6 @@ class SolutionSFCSMeasurement:
                     logging.debug(
                         f"{method_name}: Dumped data '{self.name_on_disk}' to '{DUMP_PATH}'."
                     )
-
-
-class ImageSFCSMeasurement(CountsImageMixin):
-    """Doc."""
-
-    def __init__(self):
-        pass
-
-    def read_image_data(self, file_path, **kwargs) -> None:
-        """Doc."""
-
-        file_dict = file_utilities.load_file_dict(file_path)
-        self.process_data_file(file_dict, **kwargs)
-
-    def process_data_file(self, file_dict: dict, **kwargs) -> None:
-        """Doc."""
-
-        # store relevant attributes (add more as needed)
-        self.laser_mode = file_dict.get("laser_mode")
-        self.scan_params = file_dict.get("scan_params")
-
-        # Get ungated image (excitation or sted)
-        self.image_data = self.create_image_stack_data(file_dict)
-
-        # gating stuff (TDC) - not yet implemented
-        self.data = None
 
 
 class SolutionSFCSExperiment:
@@ -1607,7 +1587,7 @@ class SolutionSFCSExperiment:
         ylim=None,
         x_field=None,
         y_field=None,
-        x_scale="linear",
+        x_scale=None,
         y_scale=None,
         **kwargs,
     ):
@@ -1622,20 +1602,20 @@ class SolutionSFCSExperiment:
         if x_field is None:
             if ref_meas.scan_type == "static":
                 x_field = "lag"
-                x_scale = "log"
+                x_scale = "log" if not x_scale else x_scale
             else:
                 x_field = "vt_um"
-                x_scale = "linear"
-        elif x_field in {"vt_um", "vt_um_sq"}:
+                x_scale = "linear" if not x_scale else x_scale
+        elif x_field == "vt_um" and not x_scale:
             x_scale = "linear"
-        elif x_field == "lag":
+        elif x_field == "lag" and not x_scale:
             x_scale = "log"
 
         # auto y_field/y_scale determination
         if y_field is None:
             y_field = "normalized"
             if y_scale is None:
-                if x_field == "vt_um_sq":
+                if x_field == "vt_um":
                     y_scale = "log"
                 else:
                     y_scale = "linear"
@@ -1675,24 +1655,34 @@ class SolutionSFCSExperiment:
             confocal_legend_labels, sted_legend_labels = legend_label_lists
             ax.legend(confocal_legend_labels + sted_legend_labels)
 
-    def estimate_spatial_resolution(self, fit_range=(0.02, 0.4), **kwargs):
+    def estimate_spatial_resolution(
+        self, colors=None, parent_ax=None, **kwargs
+    ) -> Tuple[List[str], Iterator[str]]:
         """
         High-level method for performing Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions
         (confocal, sted and any gates) in order to estimate the resolution improvement.
         This is relevant only for calibration experiments (i.e. 300 bp samples).
         """
 
-        with Plotter(**kwargs, xlim=fit_range, ylim=(0, 1)) as ax:
-            confocal_labels, remaining_color_generator = self.confocal.estimate_spatial_resolution(
-                parent_ax=ax, color_generator=iter(default_colors), fit_range=fit_range, **kwargs
+        with Plotter(xlim=(1e-2, 1), ylim=(0, 1), parent_ax=parent_ax, **kwargs) as ax:
+            colors = colors if colors is not None else iter(default_colors)
+            confocal_labels, remaining_colors = self.confocal.estimate_spatial_resolution(
+                parent_ax=ax, colors=colors, **kwargs
             )
-            sted_labels, _ = self.sted.estimate_spatial_resolution(
+            sted_labels, remaining_colors = self.sted.estimate_spatial_resolution(
                 parent_ax=ax,
-                color_generator=remaining_color_generator,
-                fit_range=fit_range,
+                colors=remaining_colors,
                 **kwargs,
             )
-            ax.legend(confocal_labels + sted_labels)
+
+            # add experiment name to labels
+            legend_labels = [
+                (f"{self.name}: {label}" if "Fit" not in label else label)
+                for label in confocal_labels + sted_labels
+            ]
+            ax.legend(legend_labels)
+
+        return legend_labels, remaining_colors
 
     def plot_afterpulsing_filters(self, **kwargs) -> None:
         """Plot afterpulsing filters each measurement"""
@@ -1749,6 +1739,32 @@ class SolutionSFCSExperiment:
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.dawsn.html
 
         raise NotImplementedError
+
+
+class ImageSFCSMeasurement(CountsImageMixin):
+    """Doc."""
+
+    def __init__(self):
+        pass
+
+    def read_image_data(self, file_path, **kwargs) -> None:
+        """Doc."""
+
+        file_dict = file_utilities.load_file_dict(file_path)
+        self.process_data_file(file_dict, **kwargs)
+
+    def process_data_file(self, file_dict: dict, **kwargs) -> None:
+        """Doc."""
+
+        # store relevant attributes (add more as needed)
+        self.laser_mode = file_dict.get("laser_mode")
+        self.scan_params = file_dict.get("scan_params")
+
+        # Get ungated image (excitation or sted)
+        self.image_data = self.create_image_stack_data(file_dict)
+
+        # gating stuff (TDC) - not yet implemented
+        self.data = None
 
 
 def calculate_calibrated_afterpulse(

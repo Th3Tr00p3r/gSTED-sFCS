@@ -2,6 +2,7 @@
 
 import sys
 import warnings
+from contextlib import suppress
 from dataclasses import dataclass, field
 from string import ascii_lowercase
 from typing import Callable, Dict
@@ -60,10 +61,20 @@ class FitParams:
                 ".",
                 label="Data",
                 zorder=1,
+                markersize=2,
                 color=color if color is not None else "k",
             )
             if not (self.sigma == 1).all():
-                ax.errorbar(self.xs, self.ys, self.ys_errors, fmt=".", label="Error", zorder=2)
+                ax.errorbar(
+                    self.xs,
+                    self.ys,
+                    self.ys_errors,
+                    fmt="none",
+                    label="Error",
+                    elinewidth=0.5,
+                    zorder=2,
+                    color=color if color is not None else "k",
+                )
             ax.plot(
                 self.x,
                 self.fit_func(self.x, *self.beta.values()),
@@ -84,7 +95,7 @@ def curve_fit_lims(
     x_limits=Limits(),
     y_limits=Limits(),
     should_plot=False,
-    plot_kwargs=dict(x_scale="log"),
+    plot_kwargs={},
     **kwargs,
 ) -> FitParams:
     """Doc."""
@@ -108,7 +119,7 @@ def curve_fit_lims(
     )
 
     if should_plot:
-        FP.plot(**plot_kwargs, **kwargs)
+        FP.plot(**plot_kwargs)
 
     return FP
 
@@ -167,6 +178,10 @@ def _fit_and_get_param_dict(
 ) -> FitParams:
     """Doc."""
 
+    if "linear" in fit_func.__name__:
+        with suppress(KeyError):
+            kwargs.pop("max_nfev")
+
     x = xs[valid_idxs]
     y = ys[valid_idxs]
     sigma = ys_errors[valid_idxs]
@@ -211,8 +226,8 @@ def gaussian_1d_fit(t, A, mu, sigma, bg):
     return A * np.exp(-1 / 2 * ((t - mu) / sigma) ** 2) + bg
 
 
-def zero_centered_gaussian_1d_fit(t, A, sigma, bg):
-    return gaussian_1d_fit(t, A, 0, sigma, bg)
+def zero_centered_zero_bg_normalized_gaussian_1d_fit(t, sigma):
+    return gaussian_1d_fit(t, 1, 0, sigma, 0)
 
 
 def gaussian_2d_fit(xy_tuple, amplitude, x0, y0, sigma_x, sigma_y, phi, offset):
@@ -233,8 +248,8 @@ def gaussian_2d_fit(xy_tuple, amplitude, x0, y0, sigma_x, sigma_y, phi, offset):
     return g.ravel()
 
 
-def linear_fit(t, a, b):
-    return a * t + b
+def linear_fit(t, m, n):
+    return m * t + n
 
 
 def power_fit(t, a, n):
