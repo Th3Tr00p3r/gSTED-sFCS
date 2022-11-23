@@ -328,8 +328,8 @@ class MainWin:
         """Doc."""
 
         delayer_dvc = self._app.devices.delayer
-        current_sync_time_ns = delayer_dvc.sync_delay_ns.get()
-        new_sync_time_ns = delayer_dvc.eff_delay_wdgt.get()
+        current_sync_time_ns = delayer_dvc.sync_delay_ns
+        new_sync_time_ns = delayer_dvc.eff_delay_ns
 
         pressed = dialog.QuestionDialog(
             txt=f"Are you sure you wish to calibrate the new value of {new_sync_time_ns} ns as the new 'zero-gating' time? (current value is {current_sync_time_ns} ns)",
@@ -338,7 +338,7 @@ class MainWin:
         if pressed == dialog.NO:
             return
         else:
-            delayer_dvc.sync_delay_ns.set(new_sync_time_ns)
+            delayer_dvc.calibrate_sync_time()
             self._gui.settings.impl.save()
 
     def show_stage_dock(self):
