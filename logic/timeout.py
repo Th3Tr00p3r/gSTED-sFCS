@@ -192,9 +192,8 @@ class Timeout:
         while self.not_finished:
 
             if not self._app.meas.is_running:
-                with suppress(DeviceError, TypeError):
+                with suppress(DeviceError):
                     # DeviceError - camera error
-                    # TypeError - .cameras not yet initialized
                     video_cams = [cam for cam in self.main_gui.impl.cameras if cam.is_in_video_mode]
                     for video_cam in video_cams:
                         if not video_cam.is_waiting_for_frame:

@@ -45,7 +45,7 @@ class MainWin:
         self._app = app
         self._gui = app.gui
         self.main_gui = main_gui
-        self.cameras = None
+        self.cameras = []
 
     def close(self, event):
         """Doc."""
@@ -430,6 +430,7 @@ class MainWin:
                 self.main_gui.solScanFileTemplate.setEnabled(True)
 
             elif meas_type == "SFCSImage":
+                print("Shutting DOWN!")  # TESTESTEST
                 self.main_gui.startImgScanExc.setEnabled(True)
                 self.main_gui.startImgScanDep.setEnabled(True)
                 self.main_gui.startImgScanSted.setEnabled(True)
@@ -712,7 +713,7 @@ class MainWin:
 
         self.main_gui.cameraDock.setVisible(is_toggled_on)
         if is_toggled_on:
-            if self.cameras is None:
+            if not self.cameras:
                 slider_const = 1e2
                 self.cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
                 for idx, camera in enumerate(self.cameras):
@@ -750,7 +751,7 @@ class MainWin:
     def set_parameter(self, cam_num: int, param_name: str, value) -> None:
         """Doc."""
 
-        if self.cameras is None:
+        if not self.cameras:
             return
 
         slider_const = 1e2
@@ -782,7 +783,7 @@ class MainWin:
     def set_auto_exposure(self, cam_num: int, is_checked: bool):
         """Doc."""
 
-        if self.cameras is None:
+        if not self.cameras:
             return
 
         camera = self.cameras[cam_num - 1]
@@ -800,7 +801,7 @@ class MainWin:
     def set_grayscale_mode(self, cam_num: int, is_checked: bool):
         """Doc."""
 
-        if self.cameras is None:
+        if not self.cameras:
             return
 
         camera = self.cameras[cam_num - 1]
@@ -825,7 +826,7 @@ class MainWin:
     def get_gaussian_diameter(self, cam_num: int, is_checked: bool):
         """Returns the Gaussian FWHM diameter (mm) of a beam image"""
 
-        if self.cameras is not None:
+        if self.cameras:
             camera = self.cameras[cam_num - 1]
             camera.should_get_diameter = is_checked
 

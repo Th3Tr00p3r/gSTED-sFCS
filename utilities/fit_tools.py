@@ -44,7 +44,10 @@ class FitParams:
     def __post_init__(self):
         self.x = self.xs[self.valid_idxs]
         self.y = self.ys[self.valid_idxs]
-        self.sigma = self.ys_errors[self.valid_idxs]
+        try:
+            self.sigma = self.ys_errors[self.valid_idxs]
+        except TypeError:
+            self.sigma = 1
 
     def plot(self, color=None, fit_label="Fit", **kwargs):
         """Doc."""
@@ -184,7 +187,10 @@ def _fit_and_get_param_dict(
 
     x = xs[valid_idxs]
     y = ys[valid_idxs]
-    sigma = ys_errors[valid_idxs]
+    try:
+        sigma = ys_errors[valid_idxs]
+    except TypeError:
+        sigma = 1
 
     try:
         popt, pcov = opt.curve_fit(fit_func, x, y, p0=p0, **kwargs)
