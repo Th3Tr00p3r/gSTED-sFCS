@@ -6,6 +6,7 @@ import re
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
+from itertools import cycle
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Dict, Iterator, List, Tuple, Union
@@ -1052,7 +1053,7 @@ class SolutionSFCSMeasurement:
             **kwargs,
         ) as ax:
             # TODO: line below - this issue (line colors in hierarchical plotting) may be general and should be solved in Plotter class (?)
-            colors = colors if colors is not None else iter(default_colors)
+            colors = colors if colors is not None else cycle(default_colors)
             for CF, color in zip(self.cf.values(), colors):
                 FP = CF.fit_params
                 with suppress(KeyError):
@@ -1681,7 +1682,7 @@ class SolutionSFCSExperiment:
                 # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
                 existing_lines = parent_ax.get_lines()
 
-            colors = colors if colors is not None else iter(default_colors)
+            colors = colors if colors is not None else cycle(default_colors)
             remaining_colors = self.confocal.estimate_spatial_resolution(
                 parent_ax=ax, colors=colors, **kwargs
             )

@@ -83,7 +83,7 @@ class FitParams:
                 zorder=3,
                 color=color if color is not None else "r",
             )
-            ax.legend(["Data", "Error", "Fit"])
+            ax.legend()
 
 
 def curve_fit_lims(

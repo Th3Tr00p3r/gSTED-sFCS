@@ -323,7 +323,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             led_widget=("ledPSD", "QIcon", "main", True),
             switch_widget=("psdSwitch", "QIcon", "main", True),
             set_delay_wdgt=("psdDelay", "QSpinBox", "main", True),
-            eff_delay_wdgt=("psdEffDelay", "QSpinBox", "main", True),
+            eff_delay_ns=("psdEffDelay", "QSpinBox", "main", True),
             description=("psdDescription", "QLineEdit", "settings", False),
             baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
@@ -366,6 +366,25 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
         self.is_on = False
 
+    # TODO: can these be set dynamically for all device widgets? is it even a good idea?
+    @property
+    def sync_delay_ns(self):
+        self._sync_delay_ns = self.sync_delay_ns.get()
+        return self._sync_delay_ns
+
+    @sync_delay_ns.setter
+    def sync_delay_ns(self, val_ns: float):
+        self.sync_delay_ns.set(val_ns)
+
+    @property
+    def eff_delay_ns(self):
+        self._eff_delay_ns = self.eff_delay_ns.get()
+        return self._eff_delay_ns
+
+    @eff_delay_ns.setter
+    def eff_delay_ns(self, val_ns: float):
+        self.eff_delay_ns.set(val_ns)
+
     async def toggle(self, is_being_switched_on: bool):
         """Doc."""
 
@@ -397,7 +416,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """
 
         try:
-            req_total_delay_ns = self.sync_delay_ns.get() + lower_gate_ns
+            req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
 
             # ensure pulsewidth step doesn't go past 'req_delay_ns' by subtracting 5 ns (steps are 3 or 4 ns)
             # yet stays close so all relevant gates are still reachable with the PSD delay (up to ~50 ns)
@@ -422,7 +441,13 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.settings["effective_delay_ns"] = effective_delay_ns
 
             # Show delay in GUI
-            self.eff_delay_wdgt.set(effective_delay_ns)
+            self.eff_delay_ns = effective_delay_ns
+
+    def calibrate_sync_time(self):
+        """Doc."""
+
+        self.sync_delay_ns = self.eff_delay_ns
+        self.settings["sync_delay_ns"] = self.sync_delay_ns
 
 
 class TDC(SimpleDODevice):
