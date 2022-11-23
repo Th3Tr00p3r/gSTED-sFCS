@@ -527,7 +527,6 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             self._app.gui.main.impl.disp_plane_img(auto_cross=should_display_autocross)
 
         if self.is_running:  # if not manually before completion
-            print("AUTO FINISH MEAS (STOP)")  # TESTESTEST
             await self.stop()
 
 

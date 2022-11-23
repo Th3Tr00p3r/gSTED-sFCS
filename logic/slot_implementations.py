@@ -430,7 +430,6 @@ class MainWin:
                 self.main_gui.solScanFileTemplate.setEnabled(True)
 
             elif meas_type == "SFCSImage":
-                print("Shutting DOWN!")  # TESTESTEST
                 self.main_gui.startImgScanExc.setEnabled(True)
                 self.main_gui.startImgScanDep.setEnabled(True)
                 self.main_gui.startImgScanSted.setEnabled(True)

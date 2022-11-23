@@ -310,7 +310,7 @@ class CorrFunc:
         x_scale=None,
         y_scale=None,
         bounds=(np.NINF, np.inf),
-        max_nfev=int(1e4),
+        max_nfev=int(1e3),
         should_plot=False,
         **kwargs,
     ) -> None:
@@ -327,6 +327,9 @@ class CorrFunc:
                 y_field = "avg_cf_cr"
                 y_scale = "linear"
                 y_error_field = "error_cf_cr"
+                if fit_range == (np.NINF, np.inf):
+                    fit_range = (1e-3, 10)
+
             elif fit_name == "zero_centered_zero_bg_normalized_gaussian_1d_fit":
                 fit_param_estimate = (0.1,)
                 bounds = (  # sigma
