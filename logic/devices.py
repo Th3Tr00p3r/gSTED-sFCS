@@ -323,7 +323,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             led_widget=("ledPSD", "QIcon", "main", True),
             switch_widget=("psdSwitch", "QIcon", "main", True),
             set_delay_wdgt=("psdDelay", "QSpinBox", "main", True),
-            eff_delay_ns=("psdEffDelay", "QSpinBox", "main", True),
+            _eff_delay_ns=("psdEffDelay", "QSpinBox", "main", True),
             description=("psdDescription", "QLineEdit", "settings", False),
             baud_rate=("psdBaudRate", "QSpinBox", "settings", False),
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
@@ -331,7 +331,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
             # NOTE: sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
             # NOTE: the sync delay might be better calibrated by setting the delay so that there is no change in countrate when switching from free-running mode to gated mode
-            sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", True),
+            _sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", True),
         ),
     )
 
@@ -369,21 +369,19 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     # TODO: can these be set dynamically for all device widgets? is it even a good idea?
     @property
     def sync_delay_ns(self):
-        self._sync_delay_ns = self.sync_delay_ns.get()
-        return self._sync_delay_ns
+        return self._sync_delay_ns.get()
 
     @sync_delay_ns.setter
     def sync_delay_ns(self, val_ns: float):
-        self.sync_delay_ns.set(val_ns)
+        self._sync_delay_ns.set(val_ns)
 
     @property
     def eff_delay_ns(self):
-        self._eff_delay_ns = self.eff_delay_ns.get()
-        return self._eff_delay_ns
+        return self._eff_delay_ns.get()
 
     @eff_delay_ns.setter
     def eff_delay_ns(self, val_ns: float):
-        self.eff_delay_ns.set(val_ns)
+        self._eff_delay_ns.set(val_ns)
 
     async def toggle(self, is_being_switched_on: bool):
         """Doc."""
