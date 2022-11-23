@@ -64,7 +64,7 @@ pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
 AIclkDiv,100
-syncDelay,49.41
+syncDelay,49.61
 laserPulsePropTime,1.5
 excIdleTimer,60.0
 depIdleTimer,60.0
