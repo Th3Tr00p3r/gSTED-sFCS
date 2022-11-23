@@ -65,7 +65,7 @@ class GuiDisplay:
         ) as ax:
             try:
                 for x, y in xy_pairs_list:
-                    ax.plot(x, y, lw=0.4, labels=labels)
+                    ax.plot(x, y, lw=0.4, label=labels)
                     ax.legend(fontsize=6)
             except TypeError:  # xy_pairs_list is a really 'x', 'y' is in args
                 ax.plot(xy_pairs_list, *args, "k", lw=0.3)

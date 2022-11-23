@@ -458,21 +458,24 @@ class MainWin:
         if scan_params_coll:
             scan_params = scan_params_coll.gui_to_dict(self._gui)
 
-            with suppress(AttributeError, ZeroDivisionError, ValueError):
-                # AttributeError - devices not yet initialized
-                # ZeroDivisionError - loadout has bad values
+            try:
                 um_v_ratio = self._app.devices.scanners.um_v_ratio
-                curr_ao_v = tuple(getattr(self.main_gui, f"{ax}AOVint").value() for ax in "xyz")
-                ao, scan_params = ScanPatternAO(
-                    pattern,
-                    um_v_ratio,
-                    curr_ao_v,
-                    scan_params,
-                ).calculate_pattern()
-                x_data, y_data = ao[0, :], ao[1, :]
-                plt_wdgt.display_patterns(x_data, y_data)
-                # display the calculated parameters
-                scan_params_coll.obj_to_gui(self._gui, scan_params)
+            except AttributeError:
+                ...
+            else:
+                with suppress(ZeroDivisionError, ValueError):
+                    # ZeroDivisionError - loadout has bad values
+                    curr_ao_v = tuple(getattr(self.main_gui, f"{ax}AOVint").value() for ax in "xyz")
+                    ao, scan_params = ScanPatternAO(
+                        pattern,
+                        um_v_ratio,
+                        curr_ao_v,
+                        scan_params,
+                    ).calculate_pattern()
+                    x_data, y_data = ao[0, :], ao[1, :]
+                    plt_wdgt.display_patterns(x_data, y_data)
+                    # display the calculated parameters
+                    scan_params_coll.obj_to_gui(self._gui, scan_params)
 
         else:
             # no scan
@@ -1142,7 +1145,7 @@ class MainWin:
             measurement = SolutionSFCSMeasurement(data_type)
             try:
                 measurement.read_fpga_data(
-                    date_dir_path / template, should_plot=False, should_keep_data=True
+                    date_dir_path / template, should_plot=False, should_dump_data=False
                 )
                 measurement.correlate_and_average(
                     cf_name=f"{data_type} alignment", afterpulsing_method="filter"
@@ -1389,7 +1392,7 @@ class MainWin:
                         measurement = SolutionSFCSMeasurement(data_type)
                         measurement.read_fpga_data(
                             curr_dir / current_template,
-                            should_keep_data=True,
+                            should_dump_data=False,
                             **options_dict,
                         )
                     measurement.correlate_data(
@@ -1617,7 +1620,7 @@ class MainWin:
                 except KeyError:
                     # TODO: TEST THIS (possibly needed in other scan_types?)
                     print(
-                        "Infered data_type ({data_type}) is not a key of CorrFunc dictionary (probably a detector-gated measurement). Using first CorrFunc"
+                        f"Infered data_type ({data_type}) is not a key of CorrFunc dictionary (probably a detector-gated measurement). Using first CorrFunc"
                     )
                     cf = list(measurement.cf.values())[0]
                 cf.average_correlation()

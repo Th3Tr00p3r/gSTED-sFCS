@@ -791,7 +791,7 @@ class SolutionSFCSMeasurement:
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
                 self.calibrate_tdc(
-                    should_keep_data=True, is_verbose=is_verbose, **corr_options
+                    should_dump_data=False, is_verbose=is_verbose, **corr_options
                 )  # abort data rotation decorator
 
         # create list of split data for correlator - TDC-gating is performed here
@@ -903,7 +903,7 @@ class SolutionSFCSMeasurement:
             tdc_gate_ns = Gate(gate_ns)
             if tdc_gate_ns or self.detector_settings["gate_ns"]:
                 if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                    self.calibrate_tdc(should_keep_data=True, is_verbose=is_verbose)
+                    self.calibrate_tdc(should_dump_data=False, is_verbose=is_verbose)
                 effective_lower_gate_ns = max(
                     tdc_gate_ns.lower, self.detector_settings["gate_ns"].lower
                 )
@@ -1150,9 +1150,7 @@ class SolutionSFCSMeasurement:
             **kwargs,
         )
 
-    def dump_or_load_data(
-        self, should_load: bool, should_keep_data=False, method_name=None, **kwargs
-    ) -> None:
+    def dump_or_load_data(self, should_load: bool, method_name=None, **kwargs) -> None:
         """
         Load or save the 'data' attribute.
         (relieve RAM - important during multiple-experiment analysis)
@@ -1177,7 +1175,7 @@ class SolutionSFCSMeasurement:
                     obj_name="dumped data array",
                     element_size_estimate_mb=self.data[0].size_estimate_mb,
                 )
-                if is_saved and not should_keep_data:
+                if is_saved:
                     self.data = []
                     self.is_data_dumped = True
                     logging.debug(
@@ -1267,7 +1265,7 @@ class SolutionSFCSExperiment:
 
         if not force_processing:  # Use pre-processed
             try:
-                file_path_template = Path(file_path_template)  # str-> Path if needed
+                file_path_template = Path(file_path_template)
                 dir_path, file_template = file_path_template.parent, file_path_template.name
                 # load pre-processed
                 file_path = dir_path / "processed" / re.sub("_[*]", "", file_template)
@@ -1277,6 +1275,7 @@ class SolutionSFCSExperiment:
                     should_load_data=should_re_correlate,
                 )
                 measurement.type = meas_type
+                setattr(self, meas_type, measurement)
                 print(f"Loaded pre-processed {meas_type} measurement: '{file_path}'")
             except OSError:
                 print(
@@ -1287,19 +1286,21 @@ class SolutionSFCSExperiment:
             measurement.read_fpga_data(
                 file_path_template,
                 should_plot=should_plot,
-                should_keep_data=True,
+                should_dump_data=False,
                 **kwargs,
             )
         # Calibrate TDC (sync with confocal) before correlating if using afterpulsing filtering
         if afterpulsing_method == "filter" and meas_type == "sted" and self.confocal.is_loaded:
             print(f"{self.name}: Calibrating TDC first (syncing with confocal)...", end=" ")
-            self.calibrate_tdc(should_plot=should_plot, should_keep_data=True, **kwargs)
+            self.calibrate_tdc(should_plot=should_plot, should_dump_data=False, **kwargs)
             print("Done.")
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
             cf = measurement.correlate_and_average(
                 is_verbose=True, afterpulsing_method=afterpulsing_method, **kwargs
             )
+        else:  # get existing first corrfunc
+            cf = list(measurement.cf.values())[0]
 
         if should_plot:
 
@@ -1564,7 +1565,7 @@ class SolutionSFCSExperiment:
         print(f"Adding multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'...")
         for tdc_gate_ns in gate_list:
             self.add_gate(
-                tdc_gate_ns, meas_type, should_plot=False, should_keep_data=True, **kwargs
+                tdc_gate_ns, meas_type, should_plot=False, should_dump_data=False, **kwargs
             )
         getattr(self, meas_type).dump_or_load_data(False)  # dump data in the end
 
