@@ -443,7 +443,7 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
             full_data["detector_settings"] = file_dict["system_info"]["detector_settings"].__dict__
             full_data["delayer_settings"] = file_dict["system_info"]["delayer_settings"].__dict__
         elif not full_data.get("detector_settings"):  # OLD DETECTOR
-            full_data["detector_settings"] = dict(model="PDM", gate_width_ns=100, is_gated=False)
+            full_data["detector_settings"] = dict(model="PDM", gate_width_ns=100)
         # namespaces to dicts
         if isinstance(full_data.get("detector_settings"), SimpleNamespace):
             full_data["detector_settings"] = full_data.get("detector_settings").__dict__

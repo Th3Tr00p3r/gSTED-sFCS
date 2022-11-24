@@ -269,6 +269,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     fix_shift=("fixShift", "QCheckBox", "options", False),
     should_auto_roi=("autoRoi", "QCheckBox", "options", False),
     should_subtract_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
+    should_ignore_hard_gate=("ignoreHardGate", "QCheckBox", "options", False),
     afterpulsing_method=("afterpulsingRemovalMethod", "QComboBox", "options", False),
     override_system_info=("useDefaultSysInfo", "QCheckBox", "options", False),
     should_re_correlate=("solImportReCorrelate", "QCheckBox", "main", False),

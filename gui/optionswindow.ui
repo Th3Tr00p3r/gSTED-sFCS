@@ -52,6 +52,13 @@ Background</string>
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="ignoreHardGate">
+           <property name="text">
+            <string>Ignore Detector Gate</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <property name="spacing">
             <number>2</number>

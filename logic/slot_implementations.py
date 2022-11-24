@@ -108,12 +108,6 @@ class MainWin:
                     try:
                         if asyncio.iscoroutinefunction(getattr(dvc, toggle_mthd)):
                             self._app.loop.create_task(getattr(dvc, toggle_mthd)(True))
-                            if nick == "delayer":
-                                with suppress(DeviceError):
-                                    # TODO: try to move this inside device (add widgets to device)
-                                    self._app.loop.create_task(
-                                        self._app.devices.spad.toggle_mode("external")
-                                    )
                         else:
                             getattr(dvc, toggle_mthd)(True)
                     except DeviceError as exc:
@@ -294,35 +288,21 @@ class MainWin:
                 except FileNotFoundError:
                     spad_dvc.pause(False)  # unpause if 'FastGatedSPAD_Module.exe' not found
 
-    def set_detector_gate(self):
+    async def set_spad_gate(self):
         """Doc."""
 
-        with suppress(AttributeError, DeviceError):
-            # AttributeError - device not yet defined
+        if hasattr(self._app, "devices"):
+            with suppress(DeviceError):
+                await self._app.devices.delayer.set_lower_gate()
+                await self._app.devices.spad.set_gate()
 
-            # set the lower gate using the delayer
-            delayer_dvc = self._app.devices.delayer
-            lower_gate_ns = delayer_dvc.set_delay_wdgt.get()
-            self._app.loop.create_task(delayer_dvc.set_lower_gate(lower_gate_ns))
-
-            # set the maximum possible gate width according to the lower gate chosen
-            spad_dvc = self._app.devices.spad
-            laser_period_ns = round(1 / (spad_dvc.laser_freq_mhz * 1e6) * 1e9)
-            # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
-            gate_width_ns = laser_period_ns - lower_gate_ns - 2
-            self._app.loop.create_task(spad_dvc.set_gate_width(gate_width_ns))
-            spad_dvc.settings["gate_ns"] = helper.Gate(
-                lower_gate_ns, lower_gate_ns + gate_width_ns, is_hard=True
-            )
-
-    def set_spad_gatewidth(self):
+    async def set_spad_gatewidth(self):
         """Doc."""
 
-        with suppress(AttributeError, ValueError, DeviceError):
-            # AttributeError - device not yet defined
-            # ValueError:  writing/reading PSD too fast!
-            spad_dvc = self._app.devices.spad
-            self._app.loop.create_task(spad_dvc.set_gate_width())
+        if hasattr(self._app, "devices"):
+            with suppress(DeviceError, ValueError):
+                # ValueError:  writing/reading PSD too fast!
+                await self._app.devices.spad.set_gate_width()
 
     def calibrate_pulse_sync_delay(self):
         """Doc."""
@@ -1436,11 +1416,13 @@ class MainWin:
         else:
             loading_options["file_selection"] = "Use All"
 
+        # TODO: make this dynamic (so I don't have to add/remove rows for each new option)
         loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
         loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"
         loading_options["afterpulsing_method"] = import_wdgts["afterpulsing_method"]
         loading_options["should_subtract_bg_corr"] = import_wdgts["should_subtract_bg_corr"]
         loading_options["override_system_info"] = import_wdgts["override_system_info"]
+        loading_options["should_ignore_hard_gate"] = import_wdgts["should_ignore_hard_gate"]
 
         return loading_options
 

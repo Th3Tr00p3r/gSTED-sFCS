@@ -23,6 +23,7 @@ from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.fit_tools import FitError, fit_2d_gaussian_to_image, linear_fit
 from utilities.helper import (
+    Gate,
     Limits,
     deep_getattr,
     div_ceil,
@@ -197,6 +198,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.attrs,
             app,
         )
+        self.delayer_dvc = app.devices.delayer
         self.is_on = False
         try:
             self.toggle(True)
@@ -206,7 +208,8 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.purge(True)
             self._app_loop.create_task(self.toggle_mode("free running"))
 
-            self.gate_ns = None
+            self.lower_gate_ns = 0
+            self.gate_ns = Gate()
             self.is_paused = False  # used when ceding control to MPD interface
             self.settings = {}
 
@@ -278,8 +281,23 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 # Write to widgets
                 self.attrs.param_widgets.obj_to_gui(self._app_gui, self.settings)
 
+        # Gating
+        self.settings["gate_ns"] = self.gate_ns if self.settings["mode"] == "external" else Gate()
+
         if was_on != self.is_on:
             self.toggle_led_and_switch(self.is_on)
+
+    async def set_gate(self):
+        """Doc."""
+
+        # set the maximum possible gate width according to the lower gate chosen
+        laser_period_ns = round(1 / (self.laser_freq_mhz * 1e6) * 1e9)
+        # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
+        gate_width_ns = laser_period_ns - self.lower_gate_ns - 2
+
+        # setting the gate width
+        await self.set_gate_width(gate_width_ns)
+        self.gate_ns = Gate(self.lower_gate_ns, self.lower_gate_ns + gate_width_ns, is_hard=True)
 
     async def toggle_mode(self, mode: str) -> None:
         """Doc."""
@@ -393,6 +411,8 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
+            # switch detector mode accordingly
+            await self.spad_dvc.toggle_mode("external" if is_being_switched_on else "free running")
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
 
@@ -403,15 +423,17 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         await self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
-    async def set_lower_gate(self, lower_gate_ns: float):
+    async def set_lower_gate(self):
         """
         Set the delay according to the chosen lower gate in ns.
         This is achieved by a combination of setting the pulse width as a mechanism of coarse delay,
         and on top of that setting the signal delay in picoseconds.
-        The value for each is automatically found by calibrating ahead of time the delay needed
+        The approptiate value for each is automatically found by calibrating ahead of time the delay needed
         for syncronizing the laser pulse with the fluorescence pulse.
         (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
         """
+
+        lower_gate_ns = self.set_delay_wdgt.get()
 
         try:
             req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
@@ -440,6 +462,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
             # Show delay in GUI
             self.eff_delay_ns = effective_delay_ns
+
+            # keep the chosen gate in spad device (where it is relevant)
+            self.spad_dvc.lower_gate_ns = lower_gate_ns
 
     def calibrate_sync_time(self):
         """Doc."""

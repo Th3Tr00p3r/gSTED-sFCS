@@ -685,14 +685,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
             "detector_settings": getattr(self.spad_dvc, "settings", {}),
         }
-
-        if self.delayer_dvc.is_on:
-            # TODO: there are definitely redundencies here. decide on a single guarantee that detector gating is happening and fix where nescessary
-            full_data["delayer_settings"] = self.delayer_dvc.settings
-            full_data["detector_settings"]["is_gated"] = True
-        else:
-            full_data["delayer_settings"] = None
-            full_data["detector_settings"]["is_gated"] = False
+        full_data["delayer_settings"] = (
+            self.delayer_dvc.settings if self.delayer_dvc.is_on else None
+        )
 
         if self.scanning:
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
