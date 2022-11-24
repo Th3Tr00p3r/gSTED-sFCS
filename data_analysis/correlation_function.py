@@ -594,7 +594,7 @@ class SolutionSFCSMeasurement:
     ) -> List[TDCPhotonData]:
         """Doc."""
 
-        self._get_general_properties(file_paths[0])
+        self._get_general_properties(file_paths[0], **proc_options)
 
         # initialize data processor
         self.data_processor = TDCPhotonDataProcessor(
@@ -629,6 +629,8 @@ class SolutionSFCSMeasurement:
         self,
         file_path: Path = None,
         file_dict: dict = None,
+        should_ignore_hard_gate: bool = False,
+        **kwargs,
     ) -> None:
         """Get general measurement properties from the first data file"""
 
@@ -646,17 +648,18 @@ class SolutionSFCSMeasurement:
         with suppress(KeyError):
             self.duration_min = full_data["duration_s"] / 60
 
-        # Set detector settings to default old detector settings in case none are defined
-        if not self.detector_settings["is_gated"] and not self.detector_settings.get("gate_ns"):
-            self.detector_settings["gate_ns"] = Gate()
-        elif self.detector_settings.get("gate_ns") or self.detector_settings["is_gated"]:
-            # TODO: find a better way (start by defining the detector gate in the measurement file_dict itself)
-            print("This should not happen (missing detector gate)")
+        # TODO: missing gate - move this to legacy handeling
+        if self.detector_settings.get("gate_ns") is not None and (
+            not self.detector_settings["gate_ns"] and self.detector_settings["mode"] == "external"
+        ):
+            print("This should not happen (missing detector gate) - move this to legacy handeling!")
             self.detector_settings["gate_ns"] = Gate(
                 98 - self.detector_settings["gate_width_ns"],
                 self.detector_settings["gate_width_ns"],
                 is_hard=True,
             )
+        elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
+            self.detector_settings["gate_ns"] = Gate()
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -681,7 +684,7 @@ class SolutionSFCSMeasurement:
 
         # if using existing file_dict - usually during alignment measurements
         if file_dict is not None:
-            self._get_general_properties(file_dict=file_dict)
+            self._get_general_properties(file_dict=file_dict, **proc_options)
             file_idx = 1
 
         # File Data Loading
