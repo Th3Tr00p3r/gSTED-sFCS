@@ -198,7 +198,9 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.attrs,
             app,
         )
+        # TODO: unite the two devices...
         self.delayer_dvc = app.devices.delayer
+        self.delayer_dvc.spad_dvc = self
         self.is_on = False
         try:
             self.toggle(True)
@@ -297,7 +299,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
         # setting the gate width
         await self.set_gate_width(gate_width_ns)
-        self.gate_ns = Gate(self.lower_gate_ns, self.lower_gate_ns + gate_width_ns, is_hard=True)
+        self.gate_ns = Gate(self.lower_gate_ns, gate_width_ns, is_hard=True)
 
     async def toggle_mode(self, mode: str) -> None:
         """Doc."""
