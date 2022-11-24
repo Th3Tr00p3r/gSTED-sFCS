@@ -289,12 +289,12 @@ class ScanPatternAO:
 
         # extend to best fit the AO sampling rate
         _, samples_per_scan = ao_buffer.shape
-        # TODO: TESTESTEST multiplied by 10 for floating Z
+        # multiplied by 10 for floating Z speed # TODO: this can be better implemented by defining Z-speed...
         n_scans = int(ao_sampling_freq_hz / samples_per_scan) * 10
         ao_buffer = np.hstack([ao_buffer] * n_scans)
 
         # floating z - scan slowly in z-axis (one period during many xy circles)
-        if (z_amp_um := getattr(self.scan_params, "floating_z_amplitude_um", 0)) != 0:
+        if (z_amp_um := self.scan_params.get("floating_z_amplitude_um", 0)) != 0:
             R_Vz = z_amp_um / z_um_v_ratio
             _, aoz_len = ao_buffer.shape
             aoz = [origin_aoz_v + R_Vz * sin(2 * pi * (idx / aoz_len)) for idx in range(aoz_len)]
