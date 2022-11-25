@@ -312,7 +312,7 @@ class CorrFunc:
         x_scale=None,
         y_scale=None,
         bounds=(np.NINF, np.inf),
-        max_nfev=int(1e3),
+        max_nfev=int(1e4),
         should_plot=False,
         **kwargs,
     ) -> None:

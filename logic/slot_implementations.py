@@ -311,15 +311,21 @@ class MainWin:
         current_sync_time_ns = delayer_dvc.sync_delay_ns
         new_sync_time_ns = delayer_dvc.eff_delay_ns
 
-        pressed = dialog.QuestionDialog(
-            txt=f"Are you sure you wish to calibrate the new value of {new_sync_time_ns} ns as the new 'zero-gating' time? (current value is {current_sync_time_ns} ns)",
-            title="Re-Calibrate Delayer Synchronization Time",
-        ).display()
-        if pressed == dialog.NO:
-            return
+        if new_sync_time_ns != current_sync_time_ns:
+            pressed = dialog.QuestionDialog(
+                txt=f"Are you sure you wish to calibrate the new value of {new_sync_time_ns} ns as the new 'zero-gating' time? (current value is {current_sync_time_ns} ns)",
+                title="Re-Calibrate Delayer Synchronization Time",
+            ).display()
+            if pressed == dialog.NO:
+                return
+            else:
+                delayer_dvc.calibrate_sync_time()
+                self._gui.settings.impl.save()
         else:
-            delayer_dvc.calibrate_sync_time()
-            self._gui.settings.impl.save()
+            dialog.NotificationDialog(
+                txt=f"Already calibrated to {new_sync_time_ns} ns!",
+                title="Re-Calibrate Delayer Synchronization Time",
+            ).display()
 
     def show_stage_dock(self):
         """Make the laser dock visible (convenience)."""
@@ -1600,7 +1606,7 @@ class MainWin:
                 try:
                     cf = measurement.cf[data_type]
                 except KeyError:
-                    # TODO: TEST THIS (possibly needed in other scan_types?)
+                    # TODO: TEST THIS - possibly needed in other scan_types? (seems related to detector-gated measurements)
                     print(
                         f"Infered data_type ({data_type}) is not a key of CorrFunc dictionary (probably a detector-gated measurement). Using first CorrFunc"
                     )
