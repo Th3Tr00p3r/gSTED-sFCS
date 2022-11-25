@@ -350,7 +350,7 @@ class ScanPatternAO:
         ao_buffer += np.array([[origin_aox_v], [origin_aoy_v]])
 
         # floating z - scan slowly in z-axis (one period during many xy circles)
-        if (z_amp_um := getattr(self.scan_params, "floating_z_amplitude_um", 0)) != 0:
+        if (z_amp_um := self.scan_params.get("floating_z_amplitude_um", 0)) != 0:
             R_Vz = z_amp_um / z_um_v_ratio
             aoz_len = samples_per_circle * n_circles
             aoz = [origin_aoz_v + R_Vz * sin(2 * pi * (idx / aoz_len)) for idx in range(aoz_len)]
