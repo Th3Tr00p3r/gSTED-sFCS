@@ -44,6 +44,8 @@ from utilities.helper import (
 class StructureFactor:
     """Holds structure factor data"""
 
+    # TODO: move S(q) plotting to this class
+
     # parameters
     n_interp_pnts: int
     r_max: float
@@ -794,7 +796,7 @@ class SolutionSFCSMeasurement:
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
                 self.calibrate_tdc(
-                    should_dump_data=False, is_verbose=is_verbose, **corr_options
+                    should_dump_data=False, is_verbose=False, **corr_options
                 )  # abort data rotation decorator
 
         # create list of split data for correlator - TDC-gating is performed here
@@ -1294,7 +1296,7 @@ class SolutionSFCSExperiment:
             )
         # Calibrate TDC (sync with confocal) before correlating if using afterpulsing filtering
         if afterpulsing_method == "filter" and meas_type == "sted" and self.confocal.is_loaded:
-            print(f"{self.name}: Calibrating TDC first (syncing with confocal)...", end=" ")
+            print(f"{self.name}: Calibrating TDC first (syncing STED to confocal)...", end=" ")
             self.calibrate_tdc(should_plot=should_plot, should_dump_data=False, **kwargs)
             print("Done.")
         if not measurement.cf or should_re_correlate:  # Correlate and average data
