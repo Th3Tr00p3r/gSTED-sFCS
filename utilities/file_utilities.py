@@ -104,7 +104,6 @@ legacy_matlab_trans_dict = {
     "whatStage": "what_stage",
     # General
     "LinFrac": "linear_fraction",
-    "Version": "version",
     "AI": "ai",
     "AO": "ao",
     "FpgaFreq": "fpga_freq_mhz",
@@ -159,6 +158,15 @@ def _chunks(list_: list, n: int):
         yield list_[i : i + n]
 
 
+def estimate_bytes(obj) -> int:
+    """Returns the estimated size in bytes."""
+
+    try:
+        return len(pickle.dumps(obj, protocol=-1))
+    except MemoryError:
+        raise MemoryError("Object is too big!")
+
+
 def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -> None:
     """
      Print a cascading size description of object 'obj' up to level 'level'
@@ -169,15 +177,7 @@ def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -
     dse(obj) # TESTESTEST
     """
 
-    def _estimate_bytes(obj) -> int:
-        """Returns the estimated size in bytes."""
-
-        try:
-            return len(pickle.dumps(obj, protocol=-1))
-        except MemoryError:
-            raise MemoryError("Object is too big!")
-
-    size_mb = _estimate_bytes(obj) / 1e6
+    size_mb = estimate_bytes(obj) / 1e6
     if (size_mb > threshold_mb) and (level >= 0):
         if name is None:
             name = obj.__class__.__name__
@@ -227,12 +227,17 @@ def save_object(
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
     # split iterables to chunks if possible
+    MAX_CHUNK_MB = 500
     if element_size_estimate_mb is not None:
-        MAX_CHUNK_MB = 500
         n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
         chunked_obj = list(_chunks(obj, n_elem_per_chunk))
-    else:  # obj isn't iterable - treat as a single chunk
-        chunked_obj = [obj]
+    else:
+        try:  # attempt to estimate using the first object
+            element_size_estimate_mb = estimate_bytes(obj[0])
+            n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
+            chunked_obj = list(_chunks(obj, n_elem_per_chunk))
+        except TypeError:  # obj isn't iterable - treat as a single chunk
+            chunked_obj = [obj]
 
     should_track_progress = should_track_progress and len(chunked_obj) > 1
     if should_track_progress:
@@ -337,16 +342,16 @@ def save_processed_solution_meas(meas, dir_path: Path, should_force=False) -> bo
     if not file_path.is_file() or should_force:
 
         # load the data first, to save it as well
-        meas.dump_or_load_data(should_load=True)
+        meas.dump_or_load_data("load")
         # copy it
         data_copy = copy.deepcopy(meas.data)
-        # dump the data back
-        meas.dump_or_load_data(should_load=False)
+        # clear the data from the original
+        meas.dump_or_load_data("clear")
 
         # lower size if possible
         for p in data_copy:
-            if p.pulse_runtime.max() <= np.iinfo(np.int32).max:
-                p.pulse_runtime = p.pulse_runtime.astype(np.int32)
+            if p.correlation.pulse_runtime.max() <= np.iinfo(np.int32).max:
+                p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(np.int32)
 
         has_saved_meas = save_object(
             meas, file_path, compression_method="blosc", obj_name="processed measurement"
@@ -359,7 +364,7 @@ def save_processed_solution_meas(meas, dir_path: Path, should_force=False) -> bo
             data_copy,
             data_path,
             compression_method="blosc",
-            element_size_estimate_mb=data_copy[0].size_estimate_mb,
+            element_size_estimate_mb=data_copy[0].general.size_estimate_mb,
             obj_name="dumped data array",
             should_track_progress=True,
         )
@@ -382,7 +387,7 @@ def load_processed_solution_measurement(file_path: Path, file_template: str, sho
         data = load_object(data_path, should_track_progress=True)
         for p in data:
             # Load runtimes as int64 if they are not already of that type
-            p.pulse_runtime = p.pulse_runtime.astype(np.int64, copy=False)
+            p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(np.int64, copy=False)
         meas.data = data
 
     meas.is_data_dumped = not should_load_data
@@ -714,7 +719,7 @@ def prepare_file_paths(
     return file_paths
 
 
-def rotate_data_to_disk(does_modify_data: bool = False) -> Callable:
+def rotate_data_to_disk(does_modify_data: bool = False, **kwargs) -> Callable:
     """
     Loads 'self.data' object from disk prior to calling the method 'method',
     and dumps (saves and deletes the attribute) 'self.data' afterwards.
@@ -724,12 +729,15 @@ def rotate_data_to_disk(does_modify_data: bool = False) -> Callable:
         @functools.wraps(method)
         def method_wrapper(self, *args, should_dump_data: bool = True, **kwargs):
             # load the data (if needed)
-            self.dump_or_load_data(should_load=True, method_name=method.__name__)
+            self.dump_or_load_data("load", method_name=method.__name__, **kwargs)
             # call the method with data loaded
             value = method(self, *args, **kwargs)
             # re-save and dump the data if was changed and not skipping dumping (e.g. skipping when doing multiple data-related actions in series)
-            if does_modify_data and should_dump_data:
-                self.dump_or_load_data(should_load=False, method_name=method.__name__, **kwargs)
+            if should_dump_data:
+                if does_modify_data or not self.dump_path.exists():
+                    self.dump_or_load_data("dump", method_name=method.__name__, **kwargs)
+                else:  # no change in Any
+                    self.dump_or_load_data("clear", method_name=method.__name__, **kwargs)
             # return what the method returns
             return value
 
