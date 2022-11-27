@@ -1137,9 +1137,9 @@ class MainWin:
                     cf_name=f"{data_type} alignment", afterpulsing_method="filter"
                 )
 
-            except AttributeError:
-                # No directories found
-                g0, tau = (None, None)
+            #            except AttributeError:
+            #                # No directories found
+            #                g0, tau = (None, None)
 
             except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                 err_hndlr(exc, sys._getframe(), locals())
@@ -1237,9 +1237,7 @@ class MainWin:
     def save_processed_data(self):
         """Doc."""
 
-        with self.get_measurement_from_template(
-            should_load=True, method_name="save_processed_data"
-        ) as measurement:
+        with self.get_measurement_from_template() as measurement:
             curr_dir = self.current_date_type_dir_path()
             file_utilities.save_processed_solution_meas(measurement, curr_dir)
             logging.info("Saved the processed data.")
@@ -1373,14 +1371,14 @@ class MainWin:
 
                 # loading and correlating
                 try:
-                    with suppress(AttributeError):
-                        # AttributeError - No directories found
-                        measurement = SolutionSFCSMeasurement(data_type)
-                        measurement.read_fpga_data(
-                            curr_dir / current_template,
-                            should_dump_data=False,
-                            **options_dict,
-                        )
+                    #                    with suppress(AttributeError):
+                    #                        # AttributeError - No directories found
+                    measurement = SolutionSFCSMeasurement(data_type)
+                    measurement.read_fpga_data(
+                        curr_dir / current_template,
+                        should_dump_data=False,
+                        **options_dict,
+                    )
                     measurement.correlate_data(
                         cf_name=data_type,
                         is_verbose=True,
@@ -1436,9 +1434,6 @@ class MainWin:
     def get_measurement_from_template(
         self,
         template: str = "",
-        should_load=False,
-        does_modify_data: bool = False,
-        **kwargs,
     ) -> SolutionSFCSMeasurement:
         """Doc."""
 
@@ -1446,22 +1441,7 @@ class MainWin:
             template = cast(str, wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.get())
         curr_data_type, *_ = re.split(" -", template)
         measurement = self._app.analysis.loaded_measurements.get(curr_data_type)
-
-        if should_load:
-            with suppress(AttributeError):
-                measurement.dump_or_load_data(should_load=True, **kwargs)
-
-        try:
-            yield measurement
-
-        finally:
-            if should_load:
-                if does_modify_data:
-                    with suppress(AttributeError):
-                        measurement.dump_or_load_data(should_load=False, **kwargs)
-                else:
-                    delattr(measurement, "data")
-                    measurement.is_data_dumped = True
+        yield measurement
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
@@ -1774,8 +1754,6 @@ class MainWin:
                 if assignment_params.method == "loaded":
                     with self.get_measurement_from_template(
                         wdgt_coll[f"assigned_{meas_type}_template"].get(),
-                        should_load=True,
-                        method_name="load_experiment",
                     ) as measurement:
                         kwargs[meas_type] = measurement
 

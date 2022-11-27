@@ -3,6 +3,7 @@
 import logging
 import multiprocessing as mp
 import re
+import shutil
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
@@ -18,8 +19,9 @@ from sklearn import linear_model
 from data_analysis.data_processing import (
     CountsImageMixin,
     TDCCalibration,
-    TDCPhotonData,
     TDCPhotonDataProcessor,
+    TDCPhotonFileData,
+    TDCPhotonMeasurementData,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities import file_utilities
@@ -477,10 +479,8 @@ class SolutionSFCSMeasurement:
 
     def __init__(self, type):
         self.type = type
-        self.data: list = []  # list to hold the data of each file
         self.cf: dict = dict()
         self.xcf: dict = dict()
-        self.is_data_dumped = False
         self.scan_type: str
         self.duration_min: float = None
         self.is_loaded = False
@@ -501,14 +501,18 @@ class SolutionSFCSMeasurement:
         self.n_paths = len(file_paths)
         self.file_path_template = file_path_template
         *_, self.template = Path(file_path_template).parts
-        self.name_on_disk = re.sub("\\*", "", re.sub("_[*]", "", self.template))
+        self.dump_path = file_utilities.DUMP_PATH / re.sub(
+            "\\*", "", re.sub("_[*].pkl", "", self.template)
+        )
+        shutil.rmtree(self.dump_path, ignore_errors=True)  # clear dump_path
+        self.data = TDCPhotonMeasurementData(self.dump_path)
 
         print("\nLoading FPGA data from disk -")
         print(f"Template path: '{file_path_template}'")
         print(f"Files: {self.n_paths}, Selection: '{file_selection}'\n")
 
         # actual data processing
-        self.data = self._process_all_data(file_paths, **proc_options)
+        self._process_all_data(file_paths, **proc_options)
 
         # count the files and ensure there's at least one file
         self.n_files = len(self.data)
@@ -519,23 +523,25 @@ class SolutionSFCSMeasurement:
 
         # aggregate images and ROIs for sFCS
         if self.scan_type == "circle":
-            self.scan_image = np.vstack(tuple(p.image for p in self.data))
+            self.scan_image = np.vstack(tuple(p.general.image for p in self.data))
             samples_per_circle = int(
                 self.scan_settings["ao_sampling_freq_hz"] / self.scan_settings["circle_freq_hz"]
             )
-            bg_corr_array = np.empty((len(self.data), samples_per_circle))
+            bg_corr_array = np.empty((self.n_files, samples_per_circle))
             for idx, p in enumerate(self.data):
-                bg_corr_array[idx] = p.bg_line_corr[0]["corrfunc"]
+                bg_corr_array[idx] = p.general.bg_line_corr[0]["corrfunc"]
             avg_bg_corr = bg_corr_array.mean(axis=0)
-            self.bg_line_corr_list = [dict(lag=p.bg_line_corr[0]["lag"], corrfunc=avg_bg_corr)]
+            self.bg_line_corr_list = [
+                dict(lag=p.general.bg_line_corr[0]["lag"], corrfunc=avg_bg_corr)
+            ]
 
         if self.scan_type == "angular":
             # aggregate images and ROIs for angular sFCS
-            self.scan_images_dstack = np.dstack(tuple(p.image for p in self.data))
-            self.roi_list = [p.roi for p in self.data]
+            self.scan_images_dstack = np.dstack(tuple(p.general.image for p in self.data))
+            self.roi_list = [p.general.roi for p in self.data]
             self.bg_line_corr_list = [
                 bg_line_corr
-                for bg_file_corr in [p.bg_line_corr for p in self.data]
+                for bg_file_corr in [p.general.bg_line_corr for p in self.data]
                 for bg_line_corr in bg_file_corr
             ]
 
@@ -543,13 +549,13 @@ class SolutionSFCSMeasurement:
             self.bg_line_corr_list = []
 
         # calculate average count rate
-        self.avg_cnt_rate_khz = np.mean([p.avg_cnt_rate_khz for p in self.data])
+        self.avg_cnt_rate_khz = np.mean([p.general.avg_cnt_rate_khz for p in self.data])
         try:
-            self.std_cnt_rate_khz = np.std([p.avg_cnt_rate_khz for p in self.data], ddof=1)
+            self.std_cnt_rate_khz = np.std([p.general.avg_cnt_rate_khz for p in self.data], ddof=1)
         except RuntimeWarning:  # single file
             self.std_cnt_rate_khz = 0.0
 
-        calc_duration_mins = sum([p.duration_s for p in self.data]) / 60
+        calc_duration_mins = sum([p.general.duration_s for p in self.data]) / 60
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
                 print(
@@ -593,7 +599,7 @@ class SolutionSFCSMeasurement:
         file_paths: List[Path],
         should_parallel_process: bool = False,
         **proc_options,
-    ) -> List[TDCPhotonData]:
+    ):
         """Doc."""
 
         self._get_general_properties(file_paths[0], **proc_options)
@@ -609,23 +615,20 @@ class SolutionSFCSMeasurement:
             func = partial(self.process_data_file, is_verbose=True, **proc_options)
             print(f"Parallel processing using {N_CORES} CPUs/processes.")
             with mp.get_context("spawn").Pool(N_CORES) as pool:
-                data = list(pool.map(func, file_paths))
+                self.data = list(pool.map(func, file_paths))
 
         # serial processing (default)
         else:
-            data = []
-            for file_path in file_paths:
+            for idx, file_path in enumerate(file_paths):
                 # Processing data
-                p = self.process_data_file(file_path, is_verbose=True, **proc_options)
+                p = self.process_data_file(idx, file_path, is_verbose=True, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
-                    data.append(p)
+                    self.data.append(p)
 
         # auto determination of run duration
-        self.run_duration = sum([p.duration_s for p in data])
-
-        return data
+        self.run_duration = sum([p.general.duration_s for p in self.data])
 
     def _get_general_properties(
         self,
@@ -677,8 +680,8 @@ class SolutionSFCSMeasurement:
             self.scan_type = "static"
 
     def process_data_file(
-        self, file_path: Path = None, file_dict: dict = None, **proc_options
-    ) -> TDCPhotonData:
+        self, idx=0, file_path: Path = None, file_dict: dict = None, **proc_options
+    ) -> TDCPhotonFileData:
         """Doc."""
 
         if not file_path and not file_dict:
@@ -711,14 +714,8 @@ class SolutionSFCSMeasurement:
             self.data_processor = TDCPhotonDataProcessor(
                 self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
             )
-        try:
-            p = self.data_processor.process_data(file_dict["full_data"], **proc_options)
-        except AttributeError:
-            data_processor = TDCPhotonDataProcessor(
-                self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
-            )
-            p = data_processor.process_data(file_dict["full_data"], **proc_options)
-        return p
+
+        return self.data_processor.process_data(idx, file_dict["full_data"], **proc_options)
 
     @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
@@ -751,7 +748,7 @@ class SolutionSFCSMeasurement:
         CF.average_correlation(**kwargs)
         return CF
 
-    @file_utilities.rotate_data_to_disk()
+    @file_utilities.rotate_data_to_disk(data_types=["correlation"])
     def correlate_data(  # NOQA C901
         self,
         cf_name="unnamed",
@@ -772,7 +769,7 @@ class SolutionSFCSMeasurement:
 
         if is_verbose:
             print(
-                f"{self.type} - Preparing split data ({len(self.data)} files) for software correlator...",
+                f"{self.type} - Preparing split data ({self.n_files} files) for software correlator...",
                 end=" ",
             )
 
@@ -879,7 +876,7 @@ class SolutionSFCSMeasurement:
 
         return CF
 
-    @file_utilities.rotate_data_to_disk()
+    @file_utilities.rotate_data_to_disk(data_types=["correlation"])
     def cross_correlate_data(
         self,
         xcorr_types=["AB", "BA"],
@@ -897,7 +894,7 @@ class SolutionSFCSMeasurement:
 
         if is_verbose:
             print(
-                f"{self.type} - Preparing split data ({len(self.data)} files) for software correlator...",
+                f"{self.type} - Preparing split data ({self.n_files} files) for software correlator...",
                 end=" ",
             )
 
@@ -997,8 +994,7 @@ class SolutionSFCSMeasurement:
         """
 
         file_splits_dict_list = [
-            p.get_xcorr_splits_dict(self.scan_type, xcorr_types, self.laser_freq_hz, **kwargs)
-            for p in self.data
+            p.get_xcorr_splits_dict(xcorr_types, self.laser_freq_hz, **kwargs) for p in self.data
         ]
         dt_ts_splits_dict = {
             xx: [
@@ -1155,37 +1151,18 @@ class SolutionSFCSMeasurement:
             **kwargs,
         )
 
-    def dump_or_load_data(self, should_load: bool, method_name=None, **kwargs) -> None:
+    def dump_or_load_data(self, action: bool, method_name=None, **kwargs) -> None:
         """
         Load or save the 'data' attribute.
         (relieve RAM - important during multiple-experiment analysis)
         """
 
-        DUMP_PATH = file_utilities.DUMP_PATH
-
         with suppress(AttributeError):
-            # AttributeError - name_on_disk is not defined (happens when doing alignment, for example)
-            if should_load:  # loading data
-                if self.is_data_dumped:
-                    logging.debug(
-                        f"{method_name}: Loading dumped data '{self.name_on_disk}' from '{DUMP_PATH}'."
-                    )
-                    with suppress(FileNotFoundError):
-                        self.data = file_utilities.load_object(DUMP_PATH / self.name_on_disk)
-                        self.is_data_dumped = False
-            else:  # saving data
-                is_saved = file_utilities.save_object(
-                    self.data,
-                    DUMP_PATH / self.name_on_disk,
-                    obj_name="dumped data array",
-                    element_size_estimate_mb=self.data[0].size_estimate_mb,
-                )
-                if is_saved:
-                    self.data = []
-                    self.is_data_dumped = True
-                    logging.debug(
-                        f"{method_name}: Dumped data '{self.name_on_disk}' to '{DUMP_PATH}'."
-                    )
+            was_action_performed = self.data.rotate_data(action, **kwargs)
+            if was_action_performed:
+                logging.debug(f"{method_name}: {action.capitalize()}ing data: '{self.dump_path}'.")
+            else:
+                logging.debug(f"{method_name}: {action.capitalize()}ing data failed!")
 
 
 class SolutionSFCSExperiment:
@@ -1572,7 +1549,9 @@ class SolutionSFCSExperiment:
             self.add_gate(
                 tdc_gate_ns, meas_type, should_plot=False, should_dump_data=False, **kwargs
             )
-        getattr(self, meas_type).dump_or_load_data(False)  # dump data in the end
+        getattr(self, meas_type).dump_or_load_data(
+            "dump", method_name="add_gates"
+        )  # dump data in the end
 
         if should_plot:
             self.plot_standard(**kwargs)
