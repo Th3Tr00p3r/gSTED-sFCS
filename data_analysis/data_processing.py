@@ -227,13 +227,13 @@ class TDCPhotonFileData:
     correlation: CorrelationFileData
     dump_path: Path
 
-    def clear_data(self, data_types: List[str] = ["coarse_fine", "correlation"]):
+    def clear(self, data_types: List[str] = ["coarse_fine", "correlation"]):
         """Clears chosen attributes."""
 
         for data_type in data_types:
             setattr(self, data_type, None)
 
-    def dump_data(self, data_types: List[str] = ["coarse_fine", "correlation"]):
+    def dump(self, data_types: List[str] = ["coarse_fine", "correlation"]):
         """Dumps chosen attributes to disk (to free RAM)"""
 
         for data_type in data_types:
@@ -246,7 +246,7 @@ class TDCPhotonFileData:
                     obj_name=f"dumped {data_type}_{self.idx}",
                 )
 
-    def load_data(self, data_types: List[str] = ["coarse_fine", "correlation"]):
+    def load(self, data_types: List[str] = ["coarse_fine", "correlation"]):
         """Loads chosen attributes from disk (to process)"""
 
         for data_type in data_types:
@@ -263,20 +263,20 @@ class TDCPhotonFileData:
         """Loads the relevant data types for as long as needed, then dumps them back to disk"""
 
         # load
-        self.load_data(data_types)
+        self.load(data_types)
 
+        # do stuff with loaded data
         try:
             yield self
 
+        # clear loaded data (save if changes were made)
         finally:
             if not keep_data:
                 if is_modified:
-                    self.dump_data(data_types)
-                    self.clear_data(data_types)
+                    self.dump(data_types)
+                    self.clear(data_types)
                 else:
-                    self.clear_data(data_types)
-            else:
-                print("WARNING: DATA IS STILL LOADED!")  # TESTESTEST
+                    self.clear(data_types)
 
     def get_xcorr_splits_dict(
         self, xcorr_types: List[str], *args, gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
@@ -514,7 +514,7 @@ class TDCPhotonMeasurementData(list):
         # TODO: this defeats the purpose of rotation in the single file level to avoid RAM overflow. Find a better way to load all the data together for saving processed measurements, e.g. by loading, changing type, compressing and loading the next, then pickling all compressed?...
 
         for p in self:
-            getattr(p, f"{action}_data")()
+            getattr(p, action)()
 
 
 @dataclass
@@ -780,7 +780,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         p.general.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         # dump coarse_fine and correlation data to free RAM
-        p.dump_data()
+        p.dump()
+        p.clear()
 
         return p
 
@@ -1356,7 +1357,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         **kwargs,
     ) -> TDCCalibration:
         """Doc."""
-        # TODO: consider what will be needed for detector gated STED measurements (which are synced to confocal)
 
         coarse, fine = self._unite_coarse_fine_data(data, scan_type)
 
