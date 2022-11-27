@@ -43,10 +43,8 @@ from utilities.helper import (
 
 
 @dataclass
-class StructureFactor:
-    """Holds structure factor data"""
-
-    # TODO: move S(q) plotting to this class
+class HankelTransform:
+    """Holds Hankel transform data"""
 
     # parameters
     n_interp_pnts: int
@@ -59,9 +57,12 @@ class StructureFactor:
     fr_linear_interp: np.ndarray
 
     q: np.ndarray
-    sq: np.ndarray
-    sq_lin_intrp: np.ndarray
-    sq_error: np.ndarray
+    fq: np.ndarray
+    fq_lin_intrp: np.ndarray
+    fq_error: np.ndarray
+
+    def plot(self):
+        """Doc."""
 
 
 @dataclass
@@ -373,7 +374,7 @@ class CorrFunc:
 
         return FP
 
-    def calculate_structure_factor(
+    def hankel_transform(
         self,
         n_interp_pnts: int = 2048,
         r_max: float = 10.0,
@@ -381,7 +382,7 @@ class CorrFunc:
         g_min: float = 1e-2,
         n_robust: int = 2,
         **kwargs,
-    ) -> StructureFactor:
+    ) -> HankelTransform:
         """Doc."""
 
         print(f"Calculating '{self.name}' structure factor...", end=" ")
@@ -455,7 +456,7 @@ class CorrFunc:
         #        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
         fq_error = None
 
-        self.structure_factor = StructureFactor(
+        self.structure_factor = HankelTransform(
             n_interp_pnts,
             r_max,
             r_min,
@@ -792,9 +793,7 @@ class SolutionSFCSMeasurement:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
-                self.calibrate_tdc(
-                    should_dump_data=False, is_verbose=False, **corr_options
-                )  # abort data rotation decorator
+                self.calibrate_tdc(is_verbose=False, **corr_options)
 
         # create list of split data for correlator - TDC-gating is performed here
         dt_ts_split_list = self._prepare_xcorr_splits_dict(
@@ -904,7 +903,7 @@ class SolutionSFCSMeasurement:
             tdc_gate_ns = Gate(gate_ns)
             if tdc_gate_ns or self.detector_settings["gate_ns"]:
                 if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                    self.calibrate_tdc(should_dump_data=False, is_verbose=is_verbose)
+                    self.calibrate_tdc(is_verbose=is_verbose)
                 effective_lower_gate_ns = max(
                     tdc_gate_ns.lower, self.detector_settings["gate_ns"].lower
                 )
@@ -1217,7 +1216,6 @@ class SolutionSFCSExperiment:
         **kwargs,
     ):
         """Doc."""
-        # TODO: avoid saveing and re-loading data during loading of measurement (cancel data rotation in all stages except the last)
 
         if "cf_name" not in kwargs:
             if meas_type == "confocal":
@@ -1255,13 +1253,12 @@ class SolutionSFCSExperiment:
             measurement.read_fpga_data(
                 file_path_template,
                 should_plot=should_plot,
-                should_dump_data=False,
                 **kwargs,
             )
         # Calibrate TDC (sync with confocal) before correlating if using afterpulsing filtering
         if afterpulsing_method == "filter" and meas_type == "sted" and self.confocal.is_loaded:
             print(f"{self.name}: Calibrating TDC first (syncing STED to confocal)...", end=" ")
-            self.calibrate_tdc(should_plot=should_plot, should_dump_data=False, **kwargs)
+            self.calibrate_tdc(should_plot=should_plot, **kwargs)
             print("Done.")
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
@@ -1700,7 +1697,7 @@ class SolutionSFCSExperiment:
             getattr(self, meas_type).calculate_structure_factors(**kwargs)
 
         # plot them
-        # TODO: instead of coding the plot here, add a 'plot' method to the StructureFactor class and use it here
+        # TODO: instead of coding the plot here, add a 'plot' method to the HankelTransform class and use it here
         with Plotter(
             subplots=(1, 2),
             super_title=f"Experiment '{self.name.capitalize()}':\nStructure Factors",
