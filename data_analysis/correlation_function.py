@@ -484,8 +484,8 @@ class SolutionSFCSMeasurement:
         self.scan_type: str
         self.duration_min: float = None
         self.is_loaded = False
+        self.data = TDCPhotonMeasurementData()
 
-    @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def read_fpga_data(
         self,
         file_path_template: Union[str, Path],
@@ -505,7 +505,6 @@ class SolutionSFCSMeasurement:
             "\\*", "", re.sub("_[*].pkl", "", self.template)
         )
         shutil.rmtree(self.dump_path, ignore_errors=True)  # clear dump_path
-        self.data = TDCPhotonMeasurementData(self.dump_path)
 
         print("\nLoading FPGA data from disk -")
         print(f"Template path: '{file_path_template}'")
@@ -606,7 +605,7 @@ class SolutionSFCSMeasurement:
 
         # initialize data processor
         self.data_processor = TDCPhotonDataProcessor(
-            self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
+            self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
         )
 
         # parellel processing
@@ -712,12 +711,14 @@ class SolutionSFCSMeasurement:
         # initialize data processor if needed (only during alignment)
         if not hasattr(self, "data_processor"):
             self.data_processor = TDCPhotonDataProcessor(
-                self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
+                self.dump_path,
+                self.laser_freq_hz,
+                self.fpga_freq_hz,
+                self.detector_settings["gate_ns"],
             )
 
         return self.data_processor.process_data(idx, file_dict["full_data"], **proc_options)
 
-    @file_utilities.rotate_data_to_disk(does_modify_data=True)
     def calibrate_tdc(
         self, force_processing=True, should_plot=False, is_verbose=False, **kwargs
     ) -> None:
@@ -748,7 +749,6 @@ class SolutionSFCSMeasurement:
         CF.average_correlation(**kwargs)
         return CF
 
-    @file_utilities.rotate_data_to_disk(data_types=["correlation"])
     def correlate_data(  # NOQA C901
         self,
         cf_name="unnamed",
@@ -876,7 +876,6 @@ class SolutionSFCSMeasurement:
 
         return CF
 
-    @file_utilities.rotate_data_to_disk(data_types=["correlation"])
     def cross_correlate_data(
         self,
         xcorr_types=["AB", "BA"],
@@ -993,6 +992,7 @@ class SolutionSFCSMeasurement:
         To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
 
+        print("File: ", end="")
         file_splits_dict_list = [
             p.get_xcorr_splits_dict(xcorr_types, self.laser_freq_hz, **kwargs) for p in self.data
         ]
@@ -1150,19 +1150,6 @@ class SolutionSFCSMeasurement:
             tdc_gate_ns=Gate(tdc_gate_ns),
             **kwargs,
         )
-
-    def dump_or_load_data(self, action: bool, method_name=None, **kwargs) -> None:
-        """
-        Load or save the 'data' attribute.
-        (relieve RAM - important during multiple-experiment analysis)
-        """
-
-        with suppress(AttributeError):
-            was_action_performed = self.data.rotate_data(action, **kwargs)
-            if was_action_performed:
-                logging.debug(f"{method_name}: {action.capitalize()}ing data: '{self.dump_path}'.")
-            else:
-                logging.debug(f"{method_name}: {action.capitalize()}ing data failed!")
 
 
 class SolutionSFCSExperiment:
@@ -1541,17 +1528,12 @@ class SolutionSFCSExperiment:
         self, gate_list: List[Tuple[float, float]], should_plot=True, meas_type="sted", **kwargs
     ):
         """
-        A convecience method for adding multiple gates. This also avoids data saving/loading between gates.
+        A convecience method for adding multiple gates.
         """
 
         print(f"Adding multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'...")
         for tdc_gate_ns in gate_list:
-            self.add_gate(
-                tdc_gate_ns, meas_type, should_plot=False, should_dump_data=False, **kwargs
-            )
-        getattr(self, meas_type).dump_or_load_data(
-            "dump", method_name="add_gates"
-        )  # dump data in the end
+            self.add_gate(tdc_gate_ns, meas_type, should_plot=False, **kwargs)
 
         if should_plot:
             self.plot_standard(**kwargs)

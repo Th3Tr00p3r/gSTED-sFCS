@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import copy
-import functools
 import gzip
 import logging
 import pickle
 import re
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 import bloscpack
 import numpy as np
@@ -341,17 +340,20 @@ def save_processed_solution_meas(meas, dir_path: Path, should_force=False) -> bo
     file_path = dir_path / file_name
     if not file_path.is_file() or should_force:
 
+        # TODO: this possibly defeats the purpose of individual file rotation: loading all data at once may be to much for RAM.
+        # TODO: can probably implement some other form of saving (load and save each file seperatly, or try keeping compressed when loading (in TDCPhotonFileData???)
         # load the data first, to save it as well
-        meas.dump_or_load_data("load")
+        meas.data.rotate_all_data("load")
         # copy it
         data_copy = copy.deepcopy(meas.data)
         # clear the data from the original
-        meas.dump_or_load_data("clear")
+        meas.data.rotate_all_data("clear")
 
         # lower size if possible
         for p in data_copy:
-            if p.correlation.pulse_runtime.max() <= np.iinfo(np.int32).max:
-                p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(np.int32)
+            with p.rotate_data(["correlation"], keep_data=True):
+                if p.correlation.pulse_runtime.max() <= np.iinfo(np.int32).max:
+                    p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(np.int32)
 
         has_saved_meas = save_object(
             meas, file_path, compression_method="blosc", obj_name="processed measurement"
@@ -387,7 +389,10 @@ def load_processed_solution_measurement(file_path: Path, file_template: str, sho
         data = load_object(data_path, should_track_progress=True)
         for p in data:
             # Load runtimes as int64 if they are not already of that type
-            p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(np.int64, copy=False)
+            with p.rotate_data(["correlation"]):
+                p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(
+                    np.int64, copy=False
+                )
         meas.data = data
 
     meas.is_data_dumped = not should_load_data
@@ -717,30 +722,3 @@ def prepare_file_paths(
             file_paths = [file_paths[i] for i in range(len(file_paths)) if i not in file_idxs]
 
     return file_paths
-
-
-def rotate_data_to_disk(does_modify_data: bool = False, **kwargs) -> Callable:
-    """
-    Loads 'self.data' object from disk prior to calling the method 'method',
-    and dumps (saves and deletes the attribute) 'self.data' afterwards.
-    """
-
-    def outer_wrapper(method) -> Callable:
-        @functools.wraps(method)
-        def method_wrapper(self, *args, should_dump_data: bool = True, **kwargs):
-            # load the data (if needed)
-            self.dump_or_load_data("load", method_name=method.__name__, **kwargs)
-            # call the method with data loaded
-            value = method(self, *args, **kwargs)
-            # re-save and dump the data if was changed and not skipping dumping (e.g. skipping when doing multiple data-related actions in series)
-            if should_dump_data:
-                if does_modify_data or not self.dump_path.exists():
-                    self.dump_or_load_data("dump", method_name=method.__name__, **kwargs)
-                else:  # no change in Any
-                    self.dump_or_load_data("clear", method_name=method.__name__, **kwargs)
-            # return what the method returns
-            return value
-
-        return method_wrapper
-
-    return outer_wrapper
