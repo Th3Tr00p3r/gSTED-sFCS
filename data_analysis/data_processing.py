@@ -275,8 +275,6 @@ class TDCPhotonFileData:
                     self.clear_data(data_types)
                 else:
                     self.clear_data(data_types)
-            else:
-                print("WARNING: DATA IS STILL LOADED!")  # TESTESTEST
 
     def get_xcorr_splits_dict(
         self, xcorr_types: List[str], *args, gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
