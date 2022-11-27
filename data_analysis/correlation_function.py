@@ -807,14 +807,18 @@ class SolutionSFCSMeasurement:
 
         # Calculate afterpulsing filter if doesn't alreay exist (optional)
         if is_filtered:
+            print("Preparing Afterpulsing filter... ", end="")
             afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
                 gate_ns, self.type, **corr_options
             )
+            print("Done.")
 
         # build correlator input
+        print(f"Building correlator input ({len(dt_ts_split_list)} splits): ", end="")
         corr_input_list = []
         filter_input_list = []
         for dt_ts_split in dt_ts_split_list:
+            print("O", end="")
             corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
             if is_filtered:
                 filter = afterpulsing_filter.filter[int(get_afterpulsing)]
@@ -825,6 +829,7 @@ class SolutionSFCSMeasurement:
                 filter = np.hstack((filter, [0]))
                 # add the relevent filter values to the correlator filter input list
                 filter_input_list.append(filter[bin_num - 1])
+        print(" - Done.")
 
         # choose correct correlator type
         if self.scan_type in {"static", "circle"}:
