@@ -1130,9 +1130,7 @@ class MainWin:
 
             measurement = SolutionSFCSMeasurement(data_type)
             try:
-                measurement.read_fpga_data(
-                    date_dir_path / template, should_plot=False, should_dump_data=False
-                )
+                measurement.read_fpga_data(date_dir_path / template, should_plot=False)
                 measurement.correlate_and_average(
                     cf_name=f"{data_type} alignment", afterpulsing_method="filter"
                 )
@@ -1376,7 +1374,6 @@ class MainWin:
                     measurement = SolutionSFCSMeasurement(data_type)
                     measurement.read_fpga_data(
                         curr_dir / current_template,
-                        should_dump_data=False,
                         **options_dict,
                     )
                     measurement.correlate_data(
