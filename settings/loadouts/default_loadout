@@ -27,8 +27,8 @@ imgScanNumPlanes,1
 currPlane,0
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
-expStrctFctrRbstIntrpPnts,3
 tdcCalibGating,40
+expStrctFctrRbstIntrpPnts,7
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -44,9 +44,9 @@ imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
 solAnalysisRemoveOverSpinner,2.0
-expStrctFctrGMin,0.1
 customGateLifetimesLower,5.0
 customGateLifetimesUpper,20.0
+expStrctFctrGMin,0.01
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -61,18 +61,18 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,11
 dataYear,2022
-dataDay,17
-dataTemplate1,ATTO300bpGated_circle_exc_161259_*.pkl
+dataDay,24
+dataTemplate1,YOYO300bpGated_circle_exc_160549_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
-importedSolDataTemplates1,ATTO300bpGated_circle_exc_161259_*.pkl
+importedSolDataTemplates1,
 loadedExperimentNames,
 gateUnits,ns
 assignedGates,
 gateMeasType,STED
 availableGates,
-importedSolDataTemplates2,ATTO300bpGated_circle_exc_161259_*.pkl
+importedSolDataTemplates2,
 expPropGstedGate,
 avgInterval,5000
 posAxis,X
