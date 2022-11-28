@@ -1961,14 +1961,14 @@ class MainWin:
             wdgt.obj.removeItem(wdgt.obj.currentIndex())
             logging.info(f"Gate '{gate_to_remove}' removed from '{experiment.name}' experiment.")
 
-    def calculate_structure_factors(self) -> None:
+    def calculate_hankel_transforms(self) -> None:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
         experiment = self.get_experiment()
         try:
-            experiment.calculate_structure_factors(
-                g_min=wdgt_coll["g_min"], n_robust=wdgt_coll["n_robust"]
+            experiment.calculate_hankel_transforms(
+                fr_interp_lims=(wdgt_coll["g_min"], np.inf), n_robust=wdgt_coll["n_robust"]
             )
         except AttributeError:
             logging.info("Can't calculate structure factors, no experiment is loaded!")

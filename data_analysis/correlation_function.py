@@ -13,7 +13,6 @@ from types import SimpleNamespace
 from typing import Dict, Iterator, List, Tuple, Union
 
 import numpy as np
-import scipy
 from sklearn import linear_model
 
 from data_analysis.data_processing import (
@@ -35,34 +34,30 @@ from utilities.fit_tools import (
 from utilities.helper import (
     EPS,
     Gate,
+    HankelTransform,
     Limits,
-    extrapolate_over_noise,
     hankel_transform,
     unify_length,
 )
 
-
-@dataclass
-class HankelTransform:
-    """Holds Hankel transform data"""
-
-    # parameters
-    n_interp_pnts: int
-    r_max: float
-    r_min: float
-    g_min: float
-
-    r: np.ndarray
-    fr: np.ndarray
-    fr_linear_interp: np.ndarray
-
-    q: np.ndarray
-    fq: np.ndarray
-    fq_lin_intrp: np.ndarray
-    fq_error: np.ndarray
-
-    def plot(self):
-        """Doc."""
+# @dataclass
+# class HankelTransform:
+#    """Holds Hankel transform data"""
+#
+#    # parameters
+#    n_interp_pnts: int
+#    r_max: float
+#    r_min: float
+#    g_min: float
+#
+#    r: np.ndarray
+#    fr: np.ndarray
+#    fr_linear_interp: np.ndarray
+#
+#    q: np.ndarray
+#    fq: np.ndarray
+#    fq_lin_intrp: np.ndarray
+#    fq_error: np.ndarray
 
 
 @dataclass
@@ -374,66 +369,36 @@ class CorrFunc:
 
         return FP
 
-    def hankel_transform(
+    def calculate_hankel_transform(
         self,
-        n_interp_pnts: int = 2048,
-        r_max: float = 10.0,
-        r_min: float = 0.05,
-        g_min: float = 1e-2,
-        n_robust: int = 2,
+        interp_types=["gaussian"],  # "linear"
+        should_plot=False,
         **kwargs,
     ) -> HankelTransform:
         """Doc."""
 
-        print(f"Calculating '{self.name}' structure factor...", end=" ")
+        print(f"Calculating '{self.name}' Hankel transform...", end=" ")
 
-        c0 = scipy.special.jn_zeros(0, n_interp_pnts)  # Bessel function zeros
-        r = (r_max / c0[n_interp_pnts - 1]) * c0  # Radius vector
-
-        # interpolation (extrapolate the noisy parts)
-        #  Gaussian
-        gauss_interp = extrapolate_over_noise(
-            self.vt_um,
-            self.normalized,
-            r,
-            Limits(r_min, r_max),
-            Limits(g_min, np.inf),
-            n_robust=n_robust,
-            interp_type="gaussian",
-        )
-
-        #  linear
-        lin_interp = extrapolate_over_noise(
-            self.vt_um,
-            self.normalized,
-            r,
-            Limits(r_min, r_max),
-            Limits(g_min, np.inf),
-            n_robust=n_robust,
-            interp_type="linear",
-        )
+        # perform Hankel transforms
+        self.hankel_transforms = {
+            interp_type: hankel_transform(
+                self.vt_um,
+                self.normalized,
+                interp_type,
+                **kwargs,
+            )
+            for interp_type in interp_types
+        }
 
         # plot interpolations for testing
-        with Plotter(
-            super_title=f"{self.name.capitalize()}: Interpolation Testing",
-            xlim=(0, self.vt_um[max(lin_interp.interp_idxs) + 5] ** 2),
-            ylim=(1e-1, 1.3),
-        ) as ax:
-            ax.semilogy(self.vt_um ** 2, self.normalized, "x", label="Normalized")
-            ax.semilogy(
-                lin_interp.x_samples ** 2, lin_interp.y_samples, "o", label="Interpolation Sample"
-            )
-            ax.semilogy(r ** 2, gauss_interp.y_interp, label="Gaussian Intep/Extrap")
-            ax.semilogy(r ** 2, lin_interp.y_interp, label="Linear Intep/Extrap")
-            ax.legend()
-            ax.set_xlabel("Displacement $(\\mu m^2)$")
-            ax.set_ylabel("ACF (Normalized)")
-
-        # Fourier Transform
-        q, fq = hankel_transform(r, gauss_interp.y_interp)
-
-        #  linear interpolated Fourier Transform
-        _, fq_linear_interp = hankel_transform(r, lin_interp.y_interp)
+        if should_plot:
+            with Plotter(subplots=((n_rows := len(interp_types)), 2), **kwargs) as axes:
+                with suppress(KeyError):
+                    kwargs.pop("parent_ax")
+                for transform, ax_row in zip(
+                    self.hankel_transforms.values(), axes if n_rows > 1 else [axes]
+                ):
+                    transform.plot(parent_ax=ax_row, label_prefix=f"{self.name}: ", **kwargs)
 
         # TODO: show this to Oleg - can't figure out what's wrong
         #        #  Estimating error of transform
@@ -454,23 +419,6 @@ class CorrFunc:
         #            _, fq_allfunc[idx] = hankel_transform(r, fr)
         #
         #        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
-        fq_error = None
-
-        self.structure_factor = HankelTransform(
-            n_interp_pnts,
-            r_max,
-            r_min,
-            g_min,
-            r,
-            gauss_interp.y_interp,
-            lin_interp.y_interp,
-            q,
-            fq,
-            fq_linear_interp,
-            fq_error,
-        )
-
-        return self.structure_factor
 
 
 class SolutionSFCSMeasurement:
@@ -1112,28 +1060,42 @@ class SolutionSFCSMeasurement:
             ax.set_ylabel("Frequency")
             ax.legend()
 
-    def calculate_structure_factors(self, plot_kwargs={}, **kwargs) -> None:
+    def calculate_hankel_transforms(
+        self, parent_axes=None, should_plot=False, plot_kwargs={}, **kwargs
+    ) -> None:
         """Doc."""
 
-        #  calculation and plotting
-        with Plotter(
-            #            xlim=Limits(q[1], np.pi / min(w_xy)),
-            super_title=f"{self.type.capitalize()}: Structure Factor ($S(q)$)",
-            **kwargs,
-        ) as ax:
-            for name, cf in self.cf.items():
-                s = cf.calculate_structure_factor(**kwargs)
-                ax.set_title("Gaussian vs. linear\nInterpolation")
-                ax.loglog(
-                    s.q,
-                    np.vstack((s.sq / s.sq[0], s.sq_lin_intrp / s.sq_lin_intrp[0])).T,
-                    label=(f"{name}: Gaussian Interpolation", f"{name}: Linear Interpolation"),
-                    **plot_kwargs,
-                )
+        # calculate the transforms for all corrfuncs
+        for cf in self.cf.values():
+            cf.calculate_hankel_transform(**kwargs)
 
-            ax.set_xlabel("$q$ $(\\mu m^{-1})$")
-            ax.set_ylabel("$S(q)$")
-            ax.legend()
+        if should_plot:
+            with Plotter(
+                subplots=((n_rows := kwargs.get("interp_types", 1)), 2),
+                super_title=f"{self.type.capitalize()}: Hankel Transforms",
+                parent_ax=parent_axes,
+                **kwargs,
+            ) as axes:
+                with suppress(KeyError):
+                    kwargs.pop("parent_ax")
+
+                for cf in self.cf.values():
+                    for transform, ax_row in zip(
+                        cf.hankel_transforms.values(), axes if n_rows > 1 else [axes]
+                    ):
+                        transform.plot(parent_ax=ax_row, label_prefix=f"{cf.name}: ", **kwargs)
+
+    #                    ax.set_title("Gaussian vs. linear\nInterpolation")
+    #                    ax.loglog(
+    #                        s.q,
+    #                        np.vstack((s.sq / s.sq[0], s.sq_lin_intrp / s.sq_lin_intrp[0])).T,
+    #                        label=(f"{cf.name}: Gaussian Interpolation", f"{cf.name}: Linear Interpolation"),
+    #                        **plot_kwargs,
+    #                    )
+
+    #                ax.set_xlabel("$q$ $(\\mu m^{-1})$")
+    #                ax.set_ylabel("$S(q)$")
+    #                ax.legend()
 
     def calculate_filtered_afterpulsing(
         self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
@@ -1166,6 +1128,7 @@ class SolutionSFCSExperiment:
         confocal=None,
         sted=None,
         should_plot=True,
+        should_plot_meas=True,
         confocal_kwargs={},
         sted_kwargs={},
         **kwargs,
@@ -1191,7 +1154,7 @@ class SolutionSFCSExperiment:
                     self.load_measurement(
                         meas_type=meas_type,
                         file_path_template=meas_template,
-                        should_plot=should_plot,
+                        should_plot=should_plot and should_plot_meas,
                         **meas_kwargs,
                         **kwargs,
                     )
@@ -1202,7 +1165,7 @@ class SolutionSFCSExperiment:
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
         if should_plot:
-            self.plot_standard(**kwargs)
+            self.plot_standard(should_add_exp_name=False, **kwargs)
 
     def load_measurement(
         self,
@@ -1535,7 +1498,7 @@ class SolutionSFCSExperiment:
         if should_plot:
             self.plot_standard(**kwargs)
 
-    def plot_standard(self, **kwargs):
+    def plot_standard(self, should_add_exp_name=True, **kwargs):
         """Doc."""
 
         super_title = f"Experiment '{self.name}' - All ACFs"
@@ -1544,10 +1507,12 @@ class SolutionSFCSExperiment:
                 parent_ax=axes[0],
                 y_field="avg_cf_cr",
                 x_field="lag",
+                should_add_exp_name=should_add_exp_name,
             )
 
             self.plot_correlation_functions(
                 parent_ax=axes[1],
+                should_add_exp_name=should_add_exp_name,
             )
 
     def plot_correlation_functions(
@@ -1558,6 +1523,7 @@ class SolutionSFCSExperiment:
         y_field=None,
         x_scale=None,
         y_scale=None,
+        should_add_exp_name=True,
         **kwargs,
     ):
         """Doc."""
@@ -1632,7 +1598,9 @@ class SolutionSFCSExperiment:
                     if line not in existing_lines:
                         label = line.get_label()
                         if "_" not in label:
-                            line.set_label(f"{self.name}: {label}")
+                            line.set_label(
+                                f"{self.name}: {label}" if should_add_exp_name else label
+                            )
 
             ax.legend()
 
@@ -1684,45 +1652,65 @@ class SolutionSFCSExperiment:
                         **kwargs,
                     )
 
-    def calculate_structure_factors(self, **kwargs) -> None:
+    def calculate_hankel_transforms(self, parent_axes=None, should_plot=True, **kwargs) -> None:
         """Doc."""
 
+        # calculate all structure factors
         print(
             f"Calculating all structure factors for '{self.name.capitalize()}' experiment...",
             end=" ",
         )
-
-        # calculate all structure factors
         for meas_type in ("confocal", "sted"):
-            getattr(self, meas_type).calculate_structure_factors(**kwargs)
+            getattr(self, meas_type).calculate_hankel_transforms(**kwargs)
+        print("Done.")
 
-        # plot them
-        # TODO: instead of coding the plot here, add a 'plot' method to the HankelTransform class and use it here
-        with Plotter(
-            subplots=(1, 2),
-            super_title=f"Experiment '{self.name.capitalize()}':\nStructure Factors",
-        ) as axes:
-            axes[0].set_title("Gaussian Interpolation")
-            axes[1].set_title("Linear Interpolation")
+        # plot all transforms of all corrfuncs of all measurements in a single figure
+        if should_plot:
+            with Plotter(
+                subplots=((n_rows := kwargs.get("interp_types", 1)), 2),
+                super_title=f"Experiment '{self.name}': Hankel Transforms",
+                parent_ax=parent_axes,
+                **kwargs,
+            ) as axes:
+                with suppress(KeyError):
+                    kwargs.pop("parent_ax")
 
-            for meas_type in ("confocal", "sted"):
-                meas = getattr(self, meas_type)
-                for cf_name, cf in meas.cf.items():
-                    s = cf.structure_factor
-                    axes[0].loglog(
-                        s.q, s.sq / s.sq[0], label=cf_name, **kwargs.get("plot_kwargs", {})
-                    )
-                    axes[1].loglog(
-                        s.q,
-                        s.sq_lin_intrp / s.sq_lin_intrp[0],
-                        label=cf_name,
-                        **kwargs.get("plot_kwargs", {}),
-                    )
+                for meas_type in ("confocal", "sted"):
+                    for CF in getattr(self, meas_type).cf.values():
+                        for transform, ax_row in zip(
+                            CF.hankel_transforms.values(), axes if n_rows > 1 else [axes]
+                        ):
+                            transform.plot(
+                                parent_axes=ax_row, label_prefix=f"{CF.name}: ", **kwargs
+                            )
 
-            for ax in axes:
-                ax.set_xlabel("$q$ $(\\mu m^{-1})$")
-                ax.set_ylabel("$S(q)$")
-                ax.legend()
+    #        # plot them
+    #        # TODO: instead of coding the plot here, add a 'plot' method to the HankelTransform class and use it here
+    #        with Plotter(
+    #            subplots=(1, 2),
+    #            super_title=f"Experiment '{self.name.capitalize()}':\nStructure Factors",
+    #        ) as axes:
+    #            axes[0].set_title("Gaussian Interpolation")
+    #            axes[1].set_title("Linear Interpolation")
+    #
+    #            for meas_type in ("confocal", "sted"):
+    #                meas = getattr(self, meas_type)
+    #                for cf_name, cf in meas.cf.items():
+    #                    s = cf.structure_factor
+    #                    axes[0].loglog(
+    #                        s.q, s.sq / s.sq[0], label=cf_name, **kwargs.get("plot_kwargs", {})
+    #                    )
+    #                    axes[1].loglog(
+    #                        s.q,
+    #                        s.sq_lin_intrp / s.sq_lin_intrp[0],
+    #                        label=cf_name,
+    #                        **kwargs.get("plot_kwargs", {}),
+    #                    )
+    #
+    #            for ax in axes:
+    #                ax.set_xlabel("$q$ $(\\mu m^{-1})$")
+    #                ax.set_ylabel("$S(q)$")
+    #                ax.legend()
 
     def fit_structure_factors(self, model: str):
         """Doc."""
