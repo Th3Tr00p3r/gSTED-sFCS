@@ -8,7 +8,7 @@ import sys
 import time
 from contextlib import suppress
 from copy import copy
-from types import SimpleNamespace
+from dataclasses import dataclass
 from typing import Any, Callable, List, Tuple, TypeVar
 
 import numpy as np
@@ -338,6 +338,53 @@ def timer(threshold_ms: float = 0.0) -> Callable:
     return outer_wrapper
 
 
+@dataclass
+class InterpExtrap1D:
+    """Holds the results of some one-dimensional interpolation/extrapolation."""
+
+    interp_type: str
+    x_interp: np.ndarray
+    y_interp: np.ndarray
+    x_sample: np.ndarray
+    y_sample: np.ndarray
+    x_data: np.ndarray  # original data
+    y_data: np.ndarray  # original data
+    # TODO: seperate indices for interpolation and extrapolation for better understanding?
+    interp_idxs: np.ndarray
+
+    def plot(self, label_prefix="", **kwargs):
+        """Display the interpolation."""
+
+        kwargs["xlim"] = kwargs.get("xlim", (0, self.x_data[max(self.interp_idxs) + 10]))
+        kwargs["ylim"] = kwargs.get("ylim", (1e-2, 1.3))
+
+        with display.Plotter(
+            super_title=f"{self.interp_type.capitalize()} Interpolation",
+            xlabel="$x$",
+            ylabel="$y$",
+            **kwargs,
+        ) as ax:
+            line2d = ax.plot(
+                self.x_data,
+                self.y_data,
+                "o",
+                label=f"_{label_prefix}data",
+                alpha=0.4,
+                markerfacecolor="none",
+            )
+            color = line2d[0].get_color()  # get the color from the first plotted line
+            ax.plot(
+                self.x_sample,
+                self.y_sample,
+                "o",
+                label=f"_{label_prefix}sample",
+                color=color,
+                markerfacecolor="none",
+            )
+            ax.plot(self.x_interp, self.y_interp, "--", label=f"{label_prefix}", color=color)
+            ax.legend()
+
+
 def robust_interpolation(
     x,  # x-values to interpolate onto
     xi,  # real x vals
@@ -384,9 +431,12 @@ def extrapolate_over_noise(
     n_robust=0,
     interp_type="linear",  # gaussian
     extrap_x_lims=Limits(np.NINF, np.inf),
-    should_plot=False,
-) -> SimpleNamespace:
+) -> InterpExtrap1D:
     """Doc."""
+
+    # ignore first data point (avoid zeros for later quadratic xscale # TESTESTEST
+    x = x[1:]
+    y = y[1:]
 
     # unify length of y to x (assumes y decays to zero)
     y = unify_length(y, len(x))
@@ -407,22 +457,30 @@ def extrapolate_over_noise(
     y_samples = y[interp_idxs]
 
     if interp_type == "gaussian":
-        x_interp = initial_x_interp ** 2
-        x_samples = x_samples ** 2
-        y_samples = np.log(y_samples)
-    elif interp_type == "linear":
-        x_interp = initial_x_interp
+        if n_robust:
+            y_interp = robust_interpolation(
+                initial_x_interp ** 2, x_samples ** 2, np.log(y_samples), n_robust
+            )
+        else:
+            interpolator = scipy.interpolate.interp1d(
+                x_samples ** 2,
+                np.log(y_samples),
+                fill_value="extrapolate",
+                assume_sorted=True,
+            )
+            y_interp = interpolator(initial_x_interp ** 2)
 
-    if n_robust:
-        y_interp = robust_interpolation(x_interp, x_samples, y_samples, n_robust)
-    else:
-        interpolator = scipy.interpolate.interp1d(
-            x_samples,
-            y_samples,
-            fill_value="extrapolate",
-            assume_sorted=True,
-        )
-        y_interp = interpolator(x_interp)
+    elif interp_type == "linear":
+        if n_robust:
+            y_interp = robust_interpolation(initial_x_interp, x_samples, y_samples, n_robust)
+        else:
+            interpolator = scipy.interpolate.interp1d(
+                x_samples,
+                y_samples,
+                fill_value="extrapolate",
+                assume_sorted=True,
+            )
+            y_interp = interpolator(initial_x_interp)
 
     if interp_type == "gaussian":
         y_interp = np.exp(y_interp)
@@ -430,29 +488,15 @@ def extrapolate_over_noise(
         #  zero-pad the linear interpolation
         y_interp[x_interp > x[y_lims.valid_indices(y, as_bool=False)[-1]]] = 0
 
-    if should_plot:
-        with display.Plotter(
-            subplots=(1, 2),
-            super_title=f"{interp_type.capitalize()} Interpolation Testing",
-            xlabel="$x$",
-            ylabel="$y$",
-            ylim=(-abs(np.median(y)) * 1.3, np.median(largest_n(y, 5)) * 1.3),
-        ) as axes:
-            axes[0].plot(x, y, "o", label="before")
-            axes[0].plot(initial_x_interp, y_interp, ".", markersize="4", label="after")
-            axes[0].legend()
-
-            axes[1].plot(x, y, "o", label="before")
-            axes[1].plot(initial_x_interp, y_interp, ".", markersize="4", label="after")
-            axes[1].legend()
-            axes[1].set_xscale("log")
-
-    return SimpleNamespace(
-        x_interp=initial_x_interp,
-        y_interp=y_interp,
-        x_samples=x_samples,
-        y_samples=y_samples,
-        interp_idxs=interp_idxs,
+    return InterpExtrap1D(
+        interp_type,
+        x_interp,
+        y_interp,
+        x_samples,
+        y_samples,
+        x,
+        y,
+        interp_idxs,
     )
 
 
@@ -574,20 +618,75 @@ def fourier_transform_1d(
     return r, fr_interp, q, fq
 
 
+@dataclass
+class HankelTransform:
+    """Holds results of Hankel transform"""
+
+    # TODO: this and hankel_transform should move to correlation_function.py?
+
+    IE: InterpExtrap1D
+    q2pi: np.ndarray
+    fq: np.ndarray
+
+    def plot(self, parent_axes=None, label_prefix="", **kwargs):
+        """Display the transform's results"""
+
+        with display.Plotter(
+            subplots=(1, 2),
+            parent_ax=parent_axes,
+            y_scale="log",
+            **kwargs,
+        ) as axes:
+            self.IE.plot(parent_ax=axes[0], label_prefix=label_prefix, **kwargs)
+            axes[0].set_xscale("function", functions=(lambda x: x ** 2, lambda x: x ** (1 / 2)))
+            axes[0].set_title("Interp./Extrap. Testing")
+            axes[0].set_xlabel("vt_um")
+            axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
+
+            axes[1].plot(self.q2pi, self.fq / self.fq[0], label=f"{label_prefix}Hankel transform")
+            axes[1].set_xscale("log")
+            axes[1].set_title("Hankel Transforms")
+            axes[1].set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
+            axes[1].set_ylabel("$F(q)$ (Normalized)")
+
+            for ax in axes:
+                ax.legend()
+
+
+#        with display.Plotter(
+#            super_title=f"{self.name.capitalize()}: Interpolation Testing",
+#            xlim=(0, self.vt_um[max(lin_interp.interp_idxs) + 5] ** 2),
+#            ylim=(1e-1, 1.3),
+#        ) as ax:
+#            ax.semilogy(self.vt_um ** 2, self.normalized, "x", label="Normalized")
+#            ax.semilogy(
+#                lin_interp.x_samples ** 2, lin_interp.y_samples, "o", label="Interpolation Sample"
+#            )
+#            ax.semilogy(r ** 2, gauss_interp.y_interp, label="Gaussian Intep/Extrap")
+#            ax.semilogy(r ** 2, lin_interp.y_interp, label="Linear Intep/Extrap")
+#            ax.legend()
+#            ax.set_xlabel("Displacement $(\\mu m^2)$")
+#            ax.set_ylabel("ACF (Normalized)")
+
+
 def hankel_transform(
-    x: np.ndarray,
-    y: np.ndarray,
-    should_inverse: bool = False,
-    n_robust: int = 3,
-    should_do_gaussian_interpolation: bool = False,
-    dr=None,
-) -> Tuple[np.ndarray, np.ndarray]:
+    r: np.ndarray,
+    fr: np.ndarray,
+    interp_type: str,
+    max_r=10,
+    r_interp_lims=Limits(0.05, 0.5),
+    fr_interp_lims=Limits(3e-2, np.inf),
+    n: int = 2048,  # number of interpolation points
+    n_robust: int = 7,  # number of robust interpolation points (either side)
+) -> HankelTransform:
     """Doc."""
 
-    n = x.size
-
     # prepare the Hankel transformation matrix C
-    c0 = scipy.special.jn_zeros(0, n)
+    c0 = scipy.special.jn_zeros(0, n)  # Bessel function zeros
+
+    # Prepare interpolated radial vector
+    r_interp = c0.T * max_r / c0[n - 1]
+
     bessel_j0 = scipy.special.j0
     bessel_j1 = scipy.special.j1
 
@@ -599,75 +698,26 @@ def hankel_transform(
         / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
     )
 
-    if not should_inverse:
+    r_max = max(r)
+    q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
+    q = c0.T / (2 * np.pi * r_max)  # Frequency vector
+    m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
+    m2 = m1 * r_max / q_max  # m2 prepares output vector for display
+    # end  of preparations for Hankel transform
 
-        r_max = max(x)
-        q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
+    # interpolation/extrapolation
+    IE = extrapolate_over_noise(
+        x=r,
+        y=fr,
+        x_interp=r_interp,
+        x_lims=Limits(r_interp_lims),
+        y_lims=Limits(fr_interp_lims),
+        n_robust=n_robust,
+        interp_type=interp_type,
+    )
 
-        r = c0.T * r_max / c0[n - 1]  # Radius vector
-        q = c0.T / (2 * np.pi * r_max)  # Frequency vector
-
-        m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
-        m2 = m1 * r_max / q_max  # m2 prepares output vector for display
-
-        # end preparations for Hankel transform
-
-        if n_robust:  # use robust interpolation
-            if should_do_gaussian_interpolation:  # Gaussian
-                fr_interp = np.exp(robust_interpolation(r ** 2, x ** 2, np.log(y), n_robust))
-                fr_interp[
-                    r > x[-n_robust]
-                ] = 0  # zero pad last points that do not have full interpolation
-            else:  # linear
-                fr_interp = robust_interpolation(r, x, y, n_robust)
-
-            fr_interp = fr_interp.ravel()
-
-        else:
-            if should_do_gaussian_interpolation:
-                interpolator = scipy.interpolate.interp1d(
-                    x ** 2,
-                    np.log(y),
-                    fill_value="extrapolate",
-                    assume_sorted=True,
-                )
-                fr_interp = np.exp(interpolator(r ** 2))
-            else:  # linear
-                interpolator = scipy.interpolate.interp1d(
-                    x,
-                    y,
-                    fill_value="extrapolate",
-                    assume_sorted=True,
-                )
-                fr_interp = interpolator(r)
-
-        return 2 * np.pi * q, C @ (fr_interp / m1) * m2
-
-    else:  # inverse transform
-
-        if dr is not None:
-            q_max = 1 / (2 * dr)
-        else:
-            q_max = max(x) / (2 * np.pi)
-
-        r_max = c0[n - 1] / (2 * np.pi * q_max)  # Maximum radius
-
-        r = c0.T * r_max / c0[n - 1]  # Radius vector
-        q = c0.T / (2 * np.pi * r_max)  # Frequency vector
-        q = 2 * np.pi * q
-
-        m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
-        m2 = m1 * r_max / q_max  # m2 prepares output vector for display
-        # end preparations for Hankel transform
-
-        interpolator = scipy.interpolate.interp1d(
-            x,
-            y,
-            fill_value="extrapolate",
-            assume_sorted=True,
-        )
-
-        return r, C @ (interpolator(q) / m2) * m1
+    # returning the transform (includes interpolation for testing)
+    return HankelTransform(IE, 2 * np.pi * q, C @ (IE.y_interp / m1) * m2)
 
 
 def unify_length(vec_in: np.ndarray, out_len: int) -> np.ndarray:

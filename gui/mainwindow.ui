@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -6671,7 +6671,7 @@ Rows</string>
                         <item>
                          <widget class="QTabWidget" name="tabWidget_4">
                           <property name="currentIndex">
-                           <number>2</number>
+                           <number>3</number>
                           </property>
                           <widget class="QWidget" name="tab_7">
                            <attribute name="title">
@@ -7374,7 +7374,7 @@ Over (ns)</string>
                           </widget>
                           <widget class="QWidget" name="tab_10">
                            <attribute name="title">
-                            <string>Structure Factors</string>
+                            <string>Hankel Transform</string>
                            </attribute>
                            <widget class="QPushButton" name="calculateStructureFactors">
                             <property name="geometry">
