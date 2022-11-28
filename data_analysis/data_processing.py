@@ -227,6 +227,9 @@ class TDCPhotonFileData:
     correlation: CorrelationFileData
     dump_path: Path
 
+    def __repr__(self):
+        return f"TDCPhotonFileData(general={'Loaded' if self.general else None}, coarse_fine={'Loaded' if self.coarse_fine else None}, correlation={'Loaded' if self.correlation else None}, idx={self.idx}, dump_path={self.dump_path})"
+
     def clear(self, data_types: List[str] = ["coarse_fine", "correlation"]):
         """Clears chosen attributes."""
 
