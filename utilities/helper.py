@@ -355,8 +355,8 @@ class InterpExtrap1D:
     def plot(self, label_prefix="", **kwargs):
         """Display the interpolation."""
 
-        kwargs["xlim"] = kwargs.get("xlim", (0, self.x_data[max(self.interp_idxs) + 10]))
-        kwargs["ylim"] = kwargs.get("ylim", (1e-2, 1.3))
+        kwargs["xlim"] = kwargs.get("xlim", (0, self.x_data[max(self.interp_idxs) + 5]))
+        kwargs["ylim"] = kwargs.get("ylim", (5e-3, 1.3))
 
         with display.Plotter(
             super_title=f"{self.interp_type.capitalize()} Interpolation",
@@ -381,7 +381,14 @@ class InterpExtrap1D:
                 color=color,
                 markerfacecolor="none",
             )
-            ax.plot(self.x_interp, self.y_interp, "--", label=f"{label_prefix}", color=color)
+            ax.plot(
+                self.x_interp,
+                self.y_interp,
+                ".",
+                markersize=4,
+                label=f"{label_prefix}",
+                color=color,
+            )
             ax.legend()
 
 
@@ -433,10 +440,6 @@ def extrapolate_over_noise(
     extrap_x_lims=Limits(np.NINF, np.inf),
 ) -> InterpExtrap1D:
     """Doc."""
-
-    # ignore first data point (avoid zeros for later quadratic xscale # TESTESTEST
-    x = x[1:]
-    y = y[1:]
 
     # unify length of y to x (assumes y decays to zero)
     y = unify_length(y, len(x))
@@ -645,6 +648,7 @@ class HankelTransform:
 
             axes[1].plot(self.q2pi, self.fq / self.fq[0], label=f"{label_prefix}Hankel transform")
             axes[1].set_xscale("log")
+            axes[1].set_ylim(1e-4, 2)
             axes[1].set_title("Hankel Transforms")
             axes[1].set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
             axes[1].set_ylabel("$F(q)$ (Normalized)")
@@ -653,31 +657,16 @@ class HankelTransform:
                 ax.legend()
 
 
-#        with display.Plotter(
-#            super_title=f"{self.name.capitalize()}: Interpolation Testing",
-#            xlim=(0, self.vt_um[max(lin_interp.interp_idxs) + 5] ** 2),
-#            ylim=(1e-1, 1.3),
-#        ) as ax:
-#            ax.semilogy(self.vt_um ** 2, self.normalized, "x", label="Normalized")
-#            ax.semilogy(
-#                lin_interp.x_samples ** 2, lin_interp.y_samples, "o", label="Interpolation Sample"
-#            )
-#            ax.semilogy(r ** 2, gauss_interp.y_interp, label="Gaussian Intep/Extrap")
-#            ax.semilogy(r ** 2, lin_interp.y_interp, label="Linear Intep/Extrap")
-#            ax.legend()
-#            ax.set_xlabel("Displacement $(\\mu m^2)$")
-#            ax.set_ylabel("ACF (Normalized)")
-
-
 def hankel_transform(
     r: np.ndarray,
     fr: np.ndarray,
     interp_type: str,
     max_r=10,
-    r_interp_lims=Limits(0.05, 0.5),
-    fr_interp_lims=Limits(3e-2, np.inf),
+    r_interp_lims: Tuple[float, float] = (0.05, 2),
+    fr_interp_lims: Tuple[float, float] = (3e-2, np.inf),
     n: int = 2048,  # number of interpolation points
     n_robust: int = 7,  # number of robust interpolation points (either side)
+    **kwargs,
 ) -> HankelTransform:
     """Doc."""
 

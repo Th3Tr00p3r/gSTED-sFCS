@@ -1223,11 +1223,12 @@ class SolutionSFCSExperiment:
                 should_plot=should_plot,
                 **kwargs,
             )
-        # Calibrate TDC (sync with confocal) before correlating if using afterpulsing filtering
-        if afterpulsing_method == "filter" and meas_type == "sted" and self.confocal.is_loaded:
-            print(f"{self.name}: Calibrating TDC first (syncing STED to confocal)...", end=" ")
-            self.calibrate_tdc(should_plot=should_plot, **kwargs)
-            print("Done.")
+            # Calibrate TDC (sync with confocal) before correlating if using afterpulsing filtering
+            if afterpulsing_method == "filter" and meas_type == "sted" and self.confocal.is_loaded:
+                print(f"{self.name}: Calibrating TDC first (syncing STED to confocal)...", end=" ")
+                self.calibrate_tdc(should_plot=should_plot, **kwargs)
+                print("Done.")
+
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
             cf = measurement.correlate_and_average(
