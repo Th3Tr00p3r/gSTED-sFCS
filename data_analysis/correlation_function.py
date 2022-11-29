@@ -371,7 +371,7 @@ class CorrFunc:
 
     def calculate_hankel_transform(
         self,
-        interp_types=["gaussian"],  # "linear"
+        interp_types,
         should_plot=False,
         **kwargs,
     ) -> HankelTransform:
@@ -1066,17 +1066,22 @@ class SolutionSFCSMeasurement:
             ax.legend()
 
     def calculate_hankel_transforms(
-        self, parent_axes=None, should_plot=False, plot_kwargs={}, **kwargs
+        self,
+        interp_types=["gaussian"],
+        parent_axes=None,
+        should_plot=False,
+        plot_kwargs={},
+        **kwargs,
     ) -> None:
         """Doc."""
 
         # calculate the transforms for all corrfuncs
         for cf in self.cf.values():
-            cf.calculate_hankel_transform(**kwargs)
+            cf.calculate_hankel_transform(interp_types, **kwargs)
 
         if should_plot:
             with Plotter(
-                subplots=((n_rows := kwargs.get("interp_types", 1)), 2),
+                subplots=((n_rows := len(interp_types)), 2),
                 super_title=f"{self.type.capitalize()}: Hankel Transforms",
                 parent_ax=parent_axes,
                 **kwargs,
@@ -1658,8 +1663,13 @@ class SolutionSFCSExperiment:
                         **kwargs,
                     )
 
-    def calculate_hankel_transforms(self, parent_axes=None, should_plot=True, **kwargs) -> None:
+    def calculate_hankel_transforms(
+        self, interp_types=["gaussian"], parent_axes=None, should_plot=True, **kwargs
+    ) -> None:
         """Doc."""
+        # TODO: for better hierarchical understanding, this method should call upon the measurements' method 'calculate_hankel_transforms'
+        # and not the CorrFunc method of the same name!
+        # Plotting should not be optional, and then the calculation/plotting of the meas method could be placed inside Plotter context.
 
         # calculate all structure factors
         print(
@@ -1667,13 +1677,13 @@ class SolutionSFCSExperiment:
             end=" ",
         )
         for meas_type in ("confocal", "sted"):
-            getattr(self, meas_type).calculate_hankel_transforms(**kwargs)
+            getattr(self, meas_type).calculate_hankel_transforms(interp_types, **kwargs)
         print("Done.")
 
         # plot all transforms of all corrfuncs of all measurements in a single figure
         if should_plot:
             with Plotter(
-                subplots=((n_rows := kwargs.get("interp_types", 1)), 2),
+                subplots=((n_rows := len(interp_types)), 2),
                 super_title=f"Experiment '{self.name}': Hankel Transforms",
                 parent_ax=parent_axes,
                 **kwargs,
