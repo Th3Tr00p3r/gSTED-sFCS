@@ -1,15 +1,11 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
 newTemplate,
-solImportFileSelectionPattern,1
+solImportFileSelectionPattern,1-15
 lineEdit,
 experimentName,test
 spadMode,external
 solScanFloatingAmp,0
-circAoSampFreq,10000
-circDiameter,20
-circSpeed,6000
-numOfCircles,960
 maxLineLen,100
 angAoSampFreq,10000
 angle,120
@@ -20,6 +16,10 @@ maxScanFreq,40
 solPointsPerLine,149
 solTotPointsPerLine,183
 solNumLines,14
+circAoSampFreq,10000
+circDiameter,20
+circSpeed,6000
+numOfCircles,960
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
@@ -28,7 +28,7 @@ currPlane,0
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
 tdcCalibGating,40
-expStrctFctrRbstIntrpPnts,7
+expStrctFctrRbstIntrpPnts,3
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -53,8 +53,8 @@ zAOV,5.0
 axisMoveUm,5.0
 psdDelay,0.0
 psdEffDelay,49.61
-solMeasPreset,Standard Static
-solScanType,static
+solMeasPreset,Standard Circular
+solScanType,circle
 solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
@@ -76,7 +76,7 @@ importedSolDataTemplates2,
 expPropGstedGate,
 avgInterval,5000
 posAxis,X
-solScanParamsStacked,2
+solScanParamsStacked,1
 importStacked,1
 analysisStacked,1
 depModeStacked,0
@@ -109,8 +109,8 @@ tabWidget_4,0
 tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
-solImportReCorrelate,True
-solImportAutoLoadProcessed,False
+solImportReCorrelate,False
+solImportAutoLoadProcessed,True
 autoExp1,False
 grayscaleMode1,True
 measureBeamDiameter1,False
