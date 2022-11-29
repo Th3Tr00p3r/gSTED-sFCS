@@ -51,10 +51,10 @@ class Limits:
             except TypeError:  # limits is not iterable
                 self.lower, self.upper = limits, upper
                 if limits is None:
-                    return None
+                    raise ValueError("None is not a valid Limits argument!")
             else:
                 if None in limits:
-                    return None
+                    raise ValueError("None is not a valid Limits argument!")
 
     def __call__(self, *args, **kwargs):
         self.__init__(*args, **kwargs)
@@ -349,13 +349,14 @@ class InterpExtrap1D:
     y_sample: np.ndarray
     x_data: np.ndarray  # original data
     y_data: np.ndarray  # original data
-    # TODO: seperate indices for interpolation and extrapolation for better understanding?
     interp_idxs: np.ndarray
 
     def plot(self, label_prefix="", **kwargs):
         """Display the interpolation."""
 
-        kwargs["xlim"] = kwargs.get("xlim", (0, self.x_data[max(self.interp_idxs) + 5]))
+        # TODO: once hierarchical plotting is applied, use the first (confocal) max(self.x_data[self.interp_idxs]) as the upper x limit for plotting
+        #        kwargs["xlim"] = kwargs.get("xlim", (0, max(self.x_data[self.interp_idxs])))
+        kwargs["xlim"] = kwargs.get("xlim", (0, 1))  # TESTESTEST - temporary fix
         kwargs["ylim"] = kwargs.get("ylim", (5e-3, 1.3))
 
         with display.Plotter(
@@ -400,7 +401,6 @@ def robust_interpolation(
 ) -> np.ndarray:
     """Doc."""
 
-    # translated from: [h, bin] = histc(x, np.array([-np.inf, xi, inf]))
     bins = np.hstack(([-np.inf], xi, [np.inf]))
     (x_bin_counts, _), x_bin_idxs = np.histogram(x, bins), np.digitize(x, bins)
     ch = np.cumsum(x_bin_counts, dtype=np.uint16)
@@ -428,16 +428,59 @@ def robust_interpolation(
     return y
 
 
+def get_noise_start_idx(arr: np.ndarray, **kwargs):
+    """
+    Get the index where noise begins (according to standard deviation from local linear fits).
+    Assumes valid (no NaNs or <=0) values of 'arr' are supplied.
+    """
+
+    def std_from_local_linear_fit(arr: np.ndarray, kernel_size=8):
+        """
+        Given an array and an even kernel (1D) size, returns an array of equal length where each kernel-sized subarray
+        contains the local standard deviation of that part of the original array from a local linear fit of that part.
+        """
+
+        ransac = linear_model.RANSACRegressor()
+
+        local_std_arr = np.zeros(arr.shape, dtype=np.float64)
+        for idx in range(kernel_size, arr.size - kernel_size):
+            # prepare kernel-sized sub-array
+            min_idx = idx - kernel_size // 2
+            max_idx = idx + kernel_size // 2 + 1
+            xs = np.arange(min_idx, max_idx)
+            ys = arr[min_idx:max_idx]
+
+            # fit linear model to subarray
+            ransac.fit(xs[:, np.newaxis], ys)
+            p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
+            fitted_ys = p0 + p1 * xs
+
+            # add fitted line to data, then calculate std
+            local_std_arr[min_idx:max_idx] = (arr[min_idx:max_idx] - fitted_ys).std()
+
+        return local_std_arr
+
+    log_arr = np.log(arr)
+    local_std = std_from_local_linear_fit(log_arr, **kwargs)
+    normalized_local_std = local_std / local_std.max()
+    diff_normalized_local_std = np.diff(normalized_local_std)
+
+    # get first time the normalized diff passes arr
+    return np.nonzero(diff_normalized_local_std > arr[1:])[0][0]
+
+
 def extrapolate_over_noise(
     x,
     y,
     x_interp=None,
-    x_lims: Limits = Limits(np.NINF, np.inf),
-    y_lims: Limits = Limits(np.NINF, np.inf),
+    x_lims: Limits = Limits(),
+    y_lims: Limits = Limits(),
     n_bins=2 ** 17,
-    n_robust=0,
-    interp_type="linear",  # gaussian
+    n_robust=3,
+    interp_type="gaussian",
     extrap_x_lims=Limits(np.NINF, np.inf),
+    should_auto_determine_upper_x=True,
+    **kwargs,
 ) -> InterpExtrap1D:
     """Doc."""
 
@@ -450,12 +493,15 @@ def extrapolate_over_noise(
     else:
         initial_x_interp = x_interp
 
-    # choose interpolation range (extrapola.te the noisy parts)
-    interp_idxs = sorted(
-        set(x_lims.valid_indices(x, as_bool=False))
-        & set(y_lims.valid_indices(y, as_bool=False)[:-1])
-    )
+    # heuristic auto-determination of limits by noise inspection TESTESTEST
+    if should_auto_determine_upper_x:
+        valid_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
+        noise_start_idx = get_noise_start_idx(y[valid_idxs], **kwargs)
+        x_lims.upper = x[valid_idxs][noise_start_idx]
+        print(f"Noise starts at {x_lims.upper:.2f} um.")  # TESTESTEST
 
+    # choose interpolation range (extrapolate the noisy parts)
+    interp_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
     x_samples = x[interp_idxs]
     y_samples = y[interp_idxs]
 
@@ -489,7 +535,7 @@ def extrapolate_over_noise(
         y_interp = np.exp(y_interp)
     elif interp_type == "linear":
         #  zero-pad the linear interpolation
-        y_interp[x_interp > x[y_lims.valid_indices(y, as_bool=False)[-1]]] = 0
+        y_interp[x_interp > x[y_lims.valid_indices(y)][-1]] = 0
 
     return InterpExtrap1D(
         interp_type,
@@ -662,8 +708,8 @@ def hankel_transform(
     fr: np.ndarray,
     interp_type: str,
     max_r=10,
-    r_interp_lims: Tuple[float, float] = (0.05, 2),
-    fr_interp_lims: Tuple[float, float] = (3e-2, np.inf),
+    r_interp_lims: Tuple[float, float] = (0.05, 5),
+    fr_interp_lims: Tuple[float, float] = (1e-8, np.inf),  # (3e-2, np.inf),
     n: int = 2048,  # number of interpolation points
     n_robust: int = 7,  # number of robust interpolation points (either side)
     **kwargs,

@@ -1968,7 +1968,8 @@ class MainWin:
         experiment = self.get_experiment()
         try:
             experiment.calculate_hankel_transforms(
-                fr_interp_lims=(wdgt_coll["g_min"], np.inf), n_robust=wdgt_coll["n_robust"]
+                #                fr_interp_lims=(wdgt_coll["g_min"], np.inf),
+                n_robust=wdgt_coll["n_robust"]
             )
         except AttributeError:
             logging.info("Can't calculate structure factors, no experiment is loaded!")
