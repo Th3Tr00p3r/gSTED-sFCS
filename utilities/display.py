@@ -64,8 +64,8 @@ class GuiDisplay:
             gui_options=self.GuiDisplayOptions(show_axis=False, scroll_zoom=scroll_zoom),
         ) as ax:
             try:
-                for x, y in xy_pairs_list:
-                    ax.plot(x, y, lw=0.4, label=labels)
+                for (x, y), label in zip(xy_pairs_list, labels):
+                    ax.plot(x, y, lw=0.4, label=label)
                     ax.legend(fontsize=6)
             except TypeError:  # xy_pairs_list is a really 'x', 'y' is in args
                 ax.plot(xy_pairs_list, *args, "k", lw=0.3)
@@ -350,7 +350,7 @@ def cursor_factory(ax, init_cursor_pos):
                 self._set_crosshair_visible(True)
                 self.move_to_pos((event.xdata, event.ydata))
 
-        def move_to_pos(self, pos):
+        def move_to_pos(self, pos: Tuple[float, float]):
             """Doc."""
 
             x, y = pos
