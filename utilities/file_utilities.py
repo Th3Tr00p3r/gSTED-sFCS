@@ -235,7 +235,7 @@ def save_object(
             element_size_estimate_mb = estimate_bytes(obj[0])
             n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
             chunked_obj = list(_chunks(obj, n_elem_per_chunk))
-        except TypeError:  # obj isn't iterable - treat as a single chunk
+        except (TypeError, KeyError):  # obj isn't iterable - treat as a single chunk
             chunked_obj = [obj]
 
     should_track_progress = should_track_progress and len(chunked_obj) > 1
