@@ -197,6 +197,7 @@ class GeneralFileData:
     """
 
     # general
+    laser_freq_hz: int
     section_runtime_edges: list
     size_estimate_mb: float
     duration_s: float
@@ -282,7 +283,7 @@ class TDCPhotonFileData:
                     self.clear(data_types)
 
     def get_xcorr_splits_dict(
-        self, xcorr_types: List[str], *args, gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
+        self, xcorr_types: List[str], gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
     ):
         """Return a list of SoftwareCorrelator input units (splits) from a measurement data in a single file (self)"""
 
@@ -292,7 +293,7 @@ class TDCPhotonFileData:
                 return self._get_line_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns)
             else:  # continuous data
                 return self._get_continuous_xcorr_splits_dict(
-                    xcorr_types, *args, gate1_ns, gate2_ns, **kwargs
+                    xcorr_types, gate1_ns, gate2_ns, **kwargs
                 )
 
     def _get_line_xcorr_splits_dict(
@@ -372,7 +373,6 @@ class TDCPhotonFileData:
     def _get_continuous_xcorr_splits_dict(
         self,
         xcorr_types: List[str],
-        laser_freq_hz: int,
         gate1_ns,
         gate2_ns,
         *args,
@@ -387,7 +387,7 @@ class TDCPhotonFileData:
             # split into sections of approx time of run_duration
             section_time = (
                 self.correlation.pulse_runtime[se_end] - self.correlation.pulse_runtime[se_start]
-            ) / laser_freq_hz
+            ) / self.general.laser_freq_hz
 
             section_pulse_runtime = self.correlation.pulse_runtime[se_start : se_end + 1]
             section_delay_time = self.correlation.delay_time[se_start : se_end + 1]
@@ -509,6 +509,26 @@ class TDCPhotonMeasurementData(list):
 
     def __init__(self):
         super().__init__()
+
+    def prepare_xcorr_splits_dict(self, xcorr_types: List[str], **kwargs) -> Dict[str, List]:
+        """
+        Prepare SoftwareCorrelator input from complete measurement data.
+        Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
+        To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
+        """
+
+        print("File: ", end="")
+        file_splits_dict_list = [p.get_xcorr_splits_dict(xcorr_types, **kwargs) for p in self]
+        dt_ts_splits_dict = {
+            xx: [
+                dt_ts_split
+                for splits_dict in file_splits_dict_list
+                for dt_ts_split in splits_dict[xx]
+            ]
+            for xx in xcorr_types
+        }
+
+        return dt_ts_splits_dict
 
     def rotate_all_data(
         self, action: str = "load", data_types: List[str] = ["coarse_fine", "correlation"], **kwargs
@@ -901,6 +921,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             idx,
             GeneralFileData(
                 # general
+                laser_freq_hz=self.laser_freq_hz,
                 section_runtime_edges=section_runtime_edges,
                 size_estimate_mb=max(section_lengths) / 1e6,
                 duration_s=duration_s,
