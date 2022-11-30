@@ -417,6 +417,7 @@ class CorrFunc:
         self,
         interp_types,
         should_plot=False,
+        parent_axes=None,
         **kwargs,
     ) -> None:
         """Doc."""
@@ -487,13 +488,13 @@ class CorrFunc:
 
         # plot the transforms with interpolations for testing
         if should_plot:
-            with Plotter(subplots=((n_rows := len(interp_types)), 2), **kwargs) as axes:
-                with suppress(KeyError):
-                    kwargs.pop("parent_ax")
+            with Plotter(
+                subplots=((n_rows := len(interp_types)), 2), parent_ax=parent_axes, **kwargs
+            ) as axes:
                 for transform, ax_row in zip(
                     self.hankel_transforms.values(), axes if n_rows > 1 else [axes]
                 ):
-                    transform.plot(parent_ax=ax_row, label_prefix=f"{self.name}: ", **kwargs)
+                    transform.plot(parent_axes=ax_row, label_prefix=f"{self.name}: ", **kwargs)
 
         # TODO: show this to Oleg - can't figure out what's wrong
         #        #  Estimating error of transform
@@ -1169,30 +1170,27 @@ class SolutionSFCSMeasurement:
         interp_types=["gaussian"],
         parent_axes=None,
         should_plot=False,
-        plot_kwargs={},
         **kwargs,
     ) -> None:
         """Doc."""
 
-        # calculate the transforms for all corrfuncs
-        for cf in self.cf.values():
-            cf.calculate_hankel_transform(interp_types, **kwargs)
+        # calculate without plotting
+        if not should_plot:
+            for cf in self.cf.values():
+                cf.calculate_hankel_transform(interp_types, **kwargs)
 
+        # calculate and plot
         if should_plot:
             with Plotter(
-                subplots=((n_rows := len(interp_types)), 2),
+                subplots=(len(interp_types), 2),
                 super_title=f"{self.type.capitalize()}: Hankel Transforms",
                 parent_ax=parent_axes,
                 **kwargs,
             ) as axes:
-                with suppress(KeyError):
-                    kwargs.pop("parent_ax")
-
                 for cf in self.cf.values():
-                    for transform, ax_row in zip(
-                        cf.hankel_transforms.values(), axes if n_rows > 1 else [axes]
-                    ):
-                        transform.plot(parent_ax=ax_row, label_prefix=f"{cf.name}: ", **kwargs)
+                    cf.calculate_hankel_transform(
+                        interp_types, should_plot=True, parent_axes=axes, **kwargs
+                    )
 
     def calculate_structure_factors(self, cal_meas, should_plot=False, parent_ax=None, **kwargs):
         """
@@ -1202,7 +1200,7 @@ class SolutionSFCSMeasurement:
         in the calibration measurement (all calculated if needed) and returns the sought structure factors.
         """
 
-        # calculated without plotting
+        # calculate without plotting
         if not should_plot:
             for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
                 CF.calculate_structure_factor(cal_CF, **kwargs)
@@ -1777,38 +1775,28 @@ class SolutionSFCSExperiment:
         self, interp_types=["gaussian"], parent_axes=None, should_plot=True, **kwargs
     ) -> None:
         """Doc."""
-        # TODO: for better hierarchical understanding, this method should call upon the measurements' method 'calculate_hankel_transforms'
-        # and not the CorrFunc method of the same name!
-        # Plotting should not be optional, and then the calculation/plotting of the meas method could be placed inside Plotter context.
 
-        # calculate all structure factors
-        print(
-            f"Calculating all Hankel transforms for '{self.name}' experiment...",
-            end=" ",
-        )
-        for meas_type in ("confocal", "sted"):
-            getattr(self, meas_type).calculate_hankel_transforms(interp_types, **kwargs)
-        print("Done.")
+        print(f"Calculating all Hankel transforms for '{self.name}' experiment...", end=" ")
+
+        # calculated without plotting
+        if not should_plot:
+            for meas_type in ("confocal", "sted"):
+                getattr(self, meas_type).calculate_hankel_transforms(interp_types, **kwargs)
 
         # plot all transforms of all corrfuncs of all measurements in a single figure
-        if should_plot:
+        else:
             with Plotter(
-                subplots=((n_rows := len(interp_types)), 2),
+                subplots=(len(interp_types), 2),
                 super_title=f"Experiment '{self.name}': Hankel Transforms",
                 parent_ax=parent_axes,
                 **kwargs,
             ) as axes:
-                with suppress(KeyError):
-                    kwargs.pop("parent_ax")
-
                 for meas_type in ("confocal", "sted"):
-                    for CF in getattr(self, meas_type).cf.values():
-                        for transform, ax_row in zip(
-                            CF.hankel_transforms.values(), axes if n_rows > 1 else [axes]
-                        ):
-                            transform.plot(
-                                parent_axes=ax_row, label_prefix=f"{CF.name}: ", **kwargs
-                            )
+                    getattr(self, meas_type).calculate_hankel_transforms(
+                        interp_types, should_plot=True, parent_axes=axes, **kwargs
+                    )
+
+        print("Done.")
 
     def calculate_structure_factors(self, cal_exp, should_plot=True, parent_ax=None, **kwargs):
         """

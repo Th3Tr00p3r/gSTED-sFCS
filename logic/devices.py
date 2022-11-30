@@ -1480,6 +1480,9 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             annotation=f"$1/e^2$: {diameter_mm:.2f}$\\pm${diameter_mm_err:.2f} mm\n$\\chi^2$={fp.chi_sq_norm:.2f}",
         )
 
+        # move crosshair to ellipse center (for beam co-alignment) - TESTESTEST
+        self.display.obj.axes[0].cursor.move_to_pos(ellipse.get_center())
+
 
 class Camera1(Camera):
     """Doc."""
