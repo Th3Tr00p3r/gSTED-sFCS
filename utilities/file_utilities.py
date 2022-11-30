@@ -325,14 +325,18 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
             return [item for chunk_ in loaded_data for item in chunk_]
 
 
-def save_processed_solution_meas(meas, dir_path: Path, should_force=False) -> bool:
+def save_processed_solution_meas(
+    meas, dir_path: Path, should_save_data=True, should_force=False
+) -> bool:
     """
     Save a processed measurement, including the '.data' attribute.
     The template may then be loaded much more quickly.
     """
+    # TODO: add option to save only the measurement itself (not .data) so that can be quikly re-saved after gating (no change to processed data)
 
-    # init return value as false
+    # init return value conditions as false
     has_saved_meas = False
+    has_saved_data = False
 
     # save the measurement
     dir_path = dir_path / "processed"
@@ -340,38 +344,42 @@ def save_processed_solution_meas(meas, dir_path: Path, should_force=False) -> bo
     file_path = dir_path / file_name
     if not file_path.is_file() or should_force:
 
-        # TODO: this possibly defeats the purpose of individual file rotation: loading all data at once may be to much for RAM.
-        # TODO: can probably implement some other form of saving (load and save each file seperatly, or try keeping compressed when loading (in TDCPhotonFileData???)
-        # load the data first, to save it as well
-        meas.data.rotate_all_data("load")
-        # copy it
-        data_copy = copy.deepcopy(meas.data)
-        # clear the data from the original
-        meas.data.rotate_all_data("clear")
-
-        # lower size if possible
-        for p in data_copy:
-            with p.rotate_data(["correlation"], keep_data=True):
-                if p.correlation.pulse_runtime.max() <= np.iinfo(np.int32).max:
-                    p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(np.int32)
-
+        # save the measurement object
         has_saved_meas = save_object(
             meas, file_path, compression_method="blosc", obj_name="processed measurement"
         )
 
         # save the data separately
-        data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
-        # TODO: find out what is causes the PermissionError (notebooks)
-        has_saved_data = save_object(
-            data_copy,
-            data_path,
-            compression_method="blosc",
-            element_size_estimate_mb=data_copy[0].general.size_estimate_mb,
-            obj_name="dumped data array",
-            should_track_progress=True,
-        )
+        if should_save_data:
+            # TODO: this possibly defeats the purpose of individual file rotation: loading all data at once may be to much for RAM.
+            # TODO: can probably implement some other form of saving (load and save each file seperatly, or try keeping compressed when loading (in TDCPhotonFileData???)
+            # load the data first, to save it as well
+            meas.data.rotate_all_data("load")
+            # copy it
+            data_copy = copy.deepcopy(meas.data)
+            # clear the data from the original
+            meas.data.rotate_all_data("clear")
 
-    return has_saved_meas and has_saved_data
+            # lower size if possible
+            for p in data_copy:
+                with p.rotate_data(["correlation"], keep_data=True):
+                    if p.correlation.pulse_runtime.max() <= np.iinfo(np.int32).max:
+                        p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(np.int32)
+
+            data_path = file_path.parent / Path(
+                str(file_path.stem) + "_data" + str(file_path.suffix)
+            )
+            # TODO: find out what is causes the PermissionError (notebooks)
+            has_saved_data = save_object(
+                data_copy,
+                data_path,
+                compression_method="blosc",
+                element_size_estimate_mb=data_copy[0].general.size_estimate_mb,
+                obj_name="dumped data array",
+                should_track_progress=True,
+            )
+
+    return has_saved_meas and (has_saved_data or not should_save_data)
 
 
 def load_processed_solution_measurement(file_path: Path, file_template: str, should_load_data=True):
