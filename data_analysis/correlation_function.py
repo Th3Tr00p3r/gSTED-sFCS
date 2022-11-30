@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from typing import Dict, Iterator, List, Tuple, Union
 
 import numpy as np
+from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
 
 from data_analysis.data_processing import (
@@ -34,30 +35,73 @@ from utilities.fit_tools import (
 from utilities.helper import (
     EPS,
     Gate,
-    HankelTransform,
+    InterpExtrap1D,
     Limits,
-    hankel_transform,
+    extrapolate_over_noise,
     unify_length,
 )
 
-# @dataclass
-# class HankelTransform:
-#    """Holds Hankel transform data"""
-#
-#    # parameters
-#    n_interp_pnts: int
-#    r_max: float
-#    r_min: float
-#    g_min: float
-#
-#    r: np.ndarray
-#    fr: np.ndarray
-#    fr_linear_interp: np.ndarray
-#
-#    q: np.ndarray
-#    fq: np.ndarray
-#    fq_lin_intrp: np.ndarray
-#    fq_error: np.ndarray
+
+@dataclass
+class StructureFactor:
+    """Holds structure factor data"""
+
+    q2pi: np.ndarray
+    sq: np.ndarray
+    sq_error: np.ndarray = None
+
+    def plot(self, label_prefix="", **kwargs):
+        """
+        Plot a single structure factor. Meant to be used for hierarchical plotting
+        directly from a measurement of indirectly from an experiment.
+        """
+
+        with Plotter(
+            super_title="Structure Factors",
+            y_scale="log",
+            **kwargs,
+        ) as ax:
+            ax.plot(self.q2pi, self.sq / self.sq[0], label=label_prefix)
+            ax.set_xscale("log")
+            ax.set_ylim(1e-4, 2)
+            ax.set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
+            ax.set_ylabel("$S(q)$ (Normalized)")
+
+            ax.legend()
+
+
+@dataclass
+class HankelTransform:
+    """Holds results of Hankel transform"""
+
+    IE: InterpExtrap1D
+    q2pi: np.ndarray
+    fq: np.ndarray
+
+    def plot(self, parent_axes=None, label_prefix="", **kwargs):
+        """Display the transform's results"""
+
+        with Plotter(
+            subplots=(1, 2),
+            parent_ax=parent_axes,
+            y_scale="log",
+            **kwargs,
+        ) as axes:
+            self.IE.plot(parent_ax=axes[0], label_prefix=label_prefix, **kwargs)
+            axes[0].set_xscale("function", functions=(lambda x: x ** 2, lambda x: x ** (1 / 2)))
+            axes[0].set_title("Interp./Extrap. Testing")
+            axes[0].set_xlabel("vt_um")
+            axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
+
+            axes[1].plot(self.q2pi, self.fq / self.fq[0], label=f"{label_prefix}Hankel transform")
+            axes[1].set_xscale("log")
+            axes[1].set_ylim(1e-4, 2)
+            axes[1].set_title("Hankel Transforms")
+            axes[1].set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
+            axes[1].set_ylabel("$F(q)$ (Normalized)")
+
+            for ax in axes:
+                ax.legend()
 
 
 @dataclass
@@ -374,8 +418,59 @@ class CorrFunc:
         interp_types,
         should_plot=False,
         **kwargs,
-    ) -> HankelTransform:
+    ) -> None:
         """Doc."""
+
+        def hankel_transform(
+            r: np.ndarray,
+            fr: np.ndarray,
+            interp_type: str,
+            max_r=10,
+            r_interp_lims: Tuple[float, float] = (0.05, 5),
+            fr_interp_lims: Tuple[float, float] = (1e-8, np.inf),  # (3e-2, np.inf),
+            n: int = 2048,  # number of interpolation points
+            n_robust: int = 7,  # number of robust interpolation points (either side)
+            **kwargs,
+        ) -> HankelTransform:
+            """Doc."""
+
+            # prepare the Hankel transformation matrix C
+            c0 = jn_zeros(0, n)  # Bessel function zeros
+
+            # Prepare interpolated radial vector
+            r_interp = c0.T * max_r / c0[n - 1]
+
+            bessel_j0 = j0
+            bessel_j1 = j1
+
+            j_n, j_m = np.meshgrid(c0, c0)
+
+            C = (
+                (2 / c0[n - 1])
+                * bessel_j0(j_n * j_m / c0[n - 1])
+                / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
+            )
+
+            r_max = max(r)
+            q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
+            q = c0.T / (2 * np.pi * r_max)  # Frequency vector
+            m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
+            m2 = m1 * r_max / q_max  # m2 prepares output vector for display
+            # end  of preparations for Hankel transform
+
+            # interpolation/extrapolation
+            IE = extrapolate_over_noise(
+                x=r,
+                y=fr,
+                x_interp=r_interp,
+                x_lims=Limits(r_interp_lims),
+                y_lims=Limits(fr_interp_lims),
+                n_robust=n_robust,
+                interp_type=interp_type,
+            )
+
+            # returning the transform (includes interpolation for testing)
+            return HankelTransform(IE, 2 * np.pi * q, C @ (IE.y_interp / m1) * m2)
 
         print(f"Calculating '{self.name}' Hankel transform...", end=" ")
 
@@ -390,7 +485,7 @@ class CorrFunc:
             for interp_type in interp_types
         }
 
-        # plot interpolations for testing
+        # plot the transforms with interpolations for testing
         if should_plot:
             with Plotter(subplots=((n_rows := len(interp_types)), 2), **kwargs) as axes:
                 with suppress(KeyError):
@@ -419,6 +514,31 @@ class CorrFunc:
         #            _, fq_allfunc[idx] = hankel_transform(r, fr)
         #
         #        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
+
+    def calculate_structure_factor(
+        self, cal_cf, interp_type="gaussian", should_plot=False, **kwargs
+    ):
+        """
+        Given a calibration CorrFunc object, i.e. one performed on a below-resolution sample
+        (e.g. a 300 bp DNA sample labeled with the same fluorophore),
+        this method divides this measurement's (self) Hankel transforms by the corresponding ones
+        in the calibration measurement (all calculated if needed) and returns the sought structure factors.
+        """
+
+        # calculate Hankel transforms (with selected interpolation type) if needed
+        for CF in (self, cal_cf):
+            if (
+                not getattr(CF, "hankel_transforms")
+                or CF.hankel_transforms.get(interp_type) is None
+            ):
+                CF.calculate_hankel_transform([interp_type])
+
+        HT = self.hankel_transforms[interp_type]
+        cal_HT = cal_cf.hankel_transforms[interp_type]
+        self.structure_factor = StructureFactor(HT.q2pi, HT.fq / cal_HT.fq)
+
+        if should_plot:
+            self.structure_factor.plot(label_prefix=self.name, **kwargs)
 
 
 class SolutionSFCSMeasurement:
@@ -744,7 +864,7 @@ class SolutionSFCSMeasurement:
                 self.calibrate_tdc(is_verbose=False, **corr_options)
 
         # create list of split data for correlator - TDC-gating is performed here
-        dt_ts_split_list = self._prepare_xcorr_splits_dict(
+        dt_ts_split_list = self.data.prepare_xcorr_splits_dict(
             ["AA"],
             gate1_ns=gate_ns,
         )["AA"]
@@ -867,7 +987,7 @@ class SolutionSFCSMeasurement:
         gate1_ns, gate2_ns = gates
 
         # create list of split data for correlator
-        dt_ts_split_dict = self._prepare_xcorr_splits_dict(
+        dt_ts_split_dict = self.data.prepare_xcorr_splits_dict(
             xcorr_types,
             gate1_ns=gate1_ns,
             gate2_ns=gate2_ns,
@@ -937,27 +1057,6 @@ class SolutionSFCSMeasurement:
             print("- Done.")
 
         return CF_dict
-
-    def _prepare_xcorr_splits_dict(self, xcorr_types: List[str], **kwargs) -> Dict[str, List]:
-        """
-        Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
-        To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
-        """
-
-        print("File: ", end="")
-        file_splits_dict_list = [
-            p.get_xcorr_splits_dict(xcorr_types, self.laser_freq_hz, **kwargs) for p in self.data
-        ]
-        dt_ts_splits_dict = {
-            xx: [
-                dt_ts_split
-                for splits_dict in file_splits_dict_list
-                for dt_ts_split in splits_dict[xx]
-            ]
-            for xx in xcorr_types
-        }
-
-        return dt_ts_splits_dict
 
     def plot_correlation_functions(
         self,
@@ -1095,17 +1194,28 @@ class SolutionSFCSMeasurement:
                     ):
                         transform.plot(parent_ax=ax_row, label_prefix=f"{cf.name}: ", **kwargs)
 
-    #                    ax.set_title("Gaussian vs. linear\nInterpolation")
-    #                    ax.loglog(
-    #                        s.q,
-    #                        np.vstack((s.sq / s.sq[0], s.sq_lin_intrp / s.sq_lin_intrp[0])).T,
-    #                        label=(f"{cf.name}: Gaussian Interpolation", f"{cf.name}: Linear Interpolation"),
-    #                        **plot_kwargs,
-    #                    )
+    def calculate_structure_factors(self, cal_meas, should_plot=False, parent_ax=None, **kwargs):
+        """
+        Given a calibration SolutionSFCSMeasurement, i.e. one performed on a below-resolution sample
+        (e.g. a 300 bp DNA sample labeled with the same fluorophore),
+        this method divides this measurement's (self) Hankel transforms by the corresponding ones
+        in the calibration measurement (all calculated if needed) and returns the sought structure factors.
+        """
 
-    #                ax.set_xlabel("$q$ $(\\mu m^{-1})$")
-    #                ax.set_ylabel("$S(q)$")
-    #                ax.legend()
+        # calculated without plotting
+        if not should_plot:
+            for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
+                CF.calculate_structure_factor(cal_CF, **kwargs)
+
+        # calculate and plot
+        else:
+            with Plotter(
+                super_title=f"{self.type.capitalize()}: Structure Factors",
+                parent_ax=parent_ax,
+                **kwargs,
+            ) as ax:
+                for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
+                    CF.calculate_structure_factor(cal_CF, should_plot=True, parent_ax=ax, **kwargs)
 
     def calculate_filtered_afterpulsing(
         self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
@@ -1277,11 +1387,11 @@ class SolutionSFCSExperiment:
             for cf in getattr(self, meas_type).cf.values():
                 cf.average_correlation(norm_range=norm_range, **kwargs)
 
-    def save_processed_measurements(self, **kwargs):
+    def save_processed_measurements(self, meas_types=["confocal", "sted"], **kwargs):
         """Doc."""
 
         print("Saving processed measurements to disk...", end=" ")
-        if self.confocal.is_loaded:
+        if self.confocal.is_loaded and "confocal" in meas_types:
             if file_utilities.save_processed_solution_meas(
                 self.confocal, self.confocal.file_path_template.parent, **kwargs
             ):
@@ -1291,7 +1401,7 @@ class SolutionSFCSExperiment:
                     "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
                     end=" ",
                 )
-        if self.sted.is_loaded:
+        if self.sted.is_loaded and "sted" in meas_types:
             if file_utilities.save_processed_solution_meas(
                 self.sted, self.sted.file_path_template.parent, **kwargs
             ):
@@ -1673,7 +1783,7 @@ class SolutionSFCSExperiment:
 
         # calculate all structure factors
         print(
-            f"Calculating all structure factors for '{self.name.capitalize()}' experiment...",
+            f"Calculating all Hankel transforms for '{self.name}' experiment...",
             end=" ",
         )
         for meas_type in ("confocal", "sted"):
@@ -1700,33 +1810,34 @@ class SolutionSFCSExperiment:
                                 parent_axes=ax_row, label_prefix=f"{CF.name}: ", **kwargs
                             )
 
-    #        # plot them
-    #        # TODO: instead of coding the plot here, add a 'plot' method to the HankelTransform class and use it here
-    #        with Plotter(
-    #            subplots=(1, 2),
-    #            super_title=f"Experiment '{self.name.capitalize()}':\nStructure Factors",
-    #        ) as axes:
-    #            axes[0].set_title("Gaussian Interpolation")
-    #            axes[1].set_title("Linear Interpolation")
-    #
-    #            for meas_type in ("confocal", "sted"):
-    #                meas = getattr(self, meas_type)
-    #                for cf_name, cf in meas.cf.items():
-    #                    s = cf.structure_factor
-    #                    axes[0].loglog(
-    #                        s.q, s.sq / s.sq[0], label=cf_name, **kwargs.get("plot_kwargs", {})
-    #                    )
-    #                    axes[1].loglog(
-    #                        s.q,
-    #                        s.sq_lin_intrp / s.sq_lin_intrp[0],
-    #                        label=cf_name,
-    #                        **kwargs.get("plot_kwargs", {}),
-    #                    )
-    #
-    #            for ax in axes:
-    #                ax.set_xlabel("$q$ $(\\mu m^{-1})$")
-    #                ax.set_ylabel("$S(q)$")
-    #                ax.legend()
+    def calculate_structure_factors(self, cal_exp, should_plot=True, parent_ax=None, **kwargs):
+        """
+        Given a calibration SolutionSFCSExperiment, i.e. one performed
+        on a below-resolution sample (e.g. a 300 bp DNA sample labeled with the same fluorophore),
+        this method divides this experiment's (self) Hankel transforms by the corresponding ones
+        in the calibration experiment (all calculated if needed) and returns the sought structure factors.
+        """
+
+        # calculated without plotting
+        if not should_plot:
+            for meas_type in ("confocal", "sted"):
+                cal_meas = getattr(cal_exp, meas_type)
+                getattr(self, meas_type).calculate_structure_factors(
+                    cal_meas, should_plot=False, **kwargs
+                )
+
+        # calculate and plot
+        else:
+            with Plotter(
+                super_title=f"Experiment '{self.name}': Structure factors",
+                parent_ax=parent_ax,
+                **kwargs,
+            ) as ax:
+                for meas_type in ("confocal", "sted"):
+                    cal_meas = getattr(cal_exp, meas_type)
+                    getattr(self, meas_type).calculate_structure_factors(
+                        cal_meas, should_plot=True, parent_ax=ax, **kwargs
+                    )
 
     def fit_structure_factors(self, model: str):
         """Doc."""

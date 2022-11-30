@@ -257,6 +257,61 @@ class Gate(Limits):
         return Gate(lower, upper, hard_gate=hard_gate)
 
 
+@dataclass
+class InterpExtrap1D:
+    """Holds the results of some one-dimensional interpolation/extrapolation."""
+
+    interp_type: str
+    x_interp: np.ndarray
+    y_interp: np.ndarray
+    x_sample: np.ndarray
+    y_sample: np.ndarray
+    x_data: np.ndarray  # original data
+    y_data: np.ndarray  # original data
+    interp_idxs: np.ndarray
+
+    def plot(self, label_prefix="", **kwargs):
+        """Display the interpolation."""
+
+        # TODO: once hierarchical plotting is applied, use the first (confocal) max(self.x_data[self.interp_idxs]) as the upper x limit for plotting
+        #        kwargs["xlim"] = kwargs.get("xlim", (0, max(self.x_data[self.interp_idxs])))
+        kwargs["xlim"] = kwargs.get("xlim", (0, 1))  # TESTESTEST - temporary fix
+        kwargs["ylim"] = kwargs.get("ylim", (5e-3, 1.3))
+
+        with display.Plotter(
+            super_title=f"{self.interp_type.capitalize()} Interpolation",
+            xlabel="$x$",
+            ylabel="$y$",
+            **kwargs,
+        ) as ax:
+            line2d = ax.plot(
+                self.x_data,
+                self.y_data,
+                "o",
+                label=f"_{label_prefix}data",
+                alpha=0.4,
+                markerfacecolor="none",
+            )
+            color = line2d[0].get_color()  # get the color from the first plotted line
+            ax.plot(
+                self.x_sample,
+                self.y_sample,
+                "o",
+                label=f"_{label_prefix}sample",
+                color=color,
+                markerfacecolor="none",
+            )
+            ax.plot(
+                self.x_interp,
+                self.y_interp,
+                ".",
+                markersize=4,
+                label=f"{label_prefix}",
+                color=color,
+            )
+            ax.legend()
+
+
 def nan_helper(y):
     """
     Helper to handle indices and logical indices of NaNs.
@@ -336,61 +391,6 @@ def timer(threshold_ms: float = 0.0) -> Callable:
         return wrapper
 
     return outer_wrapper
-
-
-@dataclass
-class InterpExtrap1D:
-    """Holds the results of some one-dimensional interpolation/extrapolation."""
-
-    interp_type: str
-    x_interp: np.ndarray
-    y_interp: np.ndarray
-    x_sample: np.ndarray
-    y_sample: np.ndarray
-    x_data: np.ndarray  # original data
-    y_data: np.ndarray  # original data
-    interp_idxs: np.ndarray
-
-    def plot(self, label_prefix="", **kwargs):
-        """Display the interpolation."""
-
-        # TODO: once hierarchical plotting is applied, use the first (confocal) max(self.x_data[self.interp_idxs]) as the upper x limit for plotting
-        #        kwargs["xlim"] = kwargs.get("xlim", (0, max(self.x_data[self.interp_idxs])))
-        kwargs["xlim"] = kwargs.get("xlim", (0, 1))  # TESTESTEST - temporary fix
-        kwargs["ylim"] = kwargs.get("ylim", (5e-3, 1.3))
-
-        with display.Plotter(
-            super_title=f"{self.interp_type.capitalize()} Interpolation",
-            xlabel="$x$",
-            ylabel="$y$",
-            **kwargs,
-        ) as ax:
-            line2d = ax.plot(
-                self.x_data,
-                self.y_data,
-                "o",
-                label=f"_{label_prefix}data",
-                alpha=0.4,
-                markerfacecolor="none",
-            )
-            color = line2d[0].get_color()  # get the color from the first plotted line
-            ax.plot(
-                self.x_sample,
-                self.y_sample,
-                "o",
-                label=f"_{label_prefix}sample",
-                color=color,
-                markerfacecolor="none",
-            )
-            ax.plot(
-                self.x_interp,
-                self.y_interp,
-                ".",
-                markersize=4,
-                label=f"{label_prefix}",
-                color=color,
-            )
-            ax.legend()
 
 
 def robust_interpolation(
@@ -484,6 +484,8 @@ def extrapolate_over_noise(
 ) -> InterpExtrap1D:
     """Doc."""
 
+    INTERP_TYPES = ("gaussian", "linear")
+
     # unify length of y to x (assumes y decays to zero)
     y = unify_length(y, len(x))
 
@@ -498,7 +500,7 @@ def extrapolate_over_noise(
         valid_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
         noise_start_idx = get_noise_start_idx(y[valid_idxs], **kwargs)
         x_lims.upper = x[valid_idxs][noise_start_idx]
-        print(f"Noise starts at {x_lims.upper:.2f} um.")  # TESTESTEST
+        print(f"Noise starts at {x_lims.upper * 1e3:.0f} nm.")  # TESTESTEST
 
     # choose interpolation range (extrapolate the noisy parts)
     interp_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
@@ -530,6 +532,9 @@ def extrapolate_over_noise(
                 assume_sorted=True,
             )
             y_interp = interpolator(initial_x_interp)
+
+    else:
+        raise ValueError(f"Unknown interpolation type '{interp_type}'. Choose from {INTERP_TYPES}.")
 
     if interp_type == "gaussian":
         y_interp = np.exp(y_interp)
@@ -665,94 +670,6 @@ def fourier_transform_1d(
             axes[1][1].set_ylabel("$f(q)$")
 
     return r, fr_interp, q, fq
-
-
-@dataclass
-class HankelTransform:
-    """Holds results of Hankel transform"""
-
-    # TODO: this and hankel_transform should move to correlation_function.py?
-
-    IE: InterpExtrap1D
-    q2pi: np.ndarray
-    fq: np.ndarray
-
-    def plot(self, parent_axes=None, label_prefix="", **kwargs):
-        """Display the transform's results"""
-
-        with display.Plotter(
-            subplots=(1, 2),
-            parent_ax=parent_axes,
-            y_scale="log",
-            **kwargs,
-        ) as axes:
-            self.IE.plot(parent_ax=axes[0], label_prefix=label_prefix, **kwargs)
-            axes[0].set_xscale("function", functions=(lambda x: x ** 2, lambda x: x ** (1 / 2)))
-            axes[0].set_title("Interp./Extrap. Testing")
-            axes[0].set_xlabel("vt_um")
-            axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
-
-            axes[1].plot(self.q2pi, self.fq / self.fq[0], label=f"{label_prefix}Hankel transform")
-            axes[1].set_xscale("log")
-            axes[1].set_ylim(1e-4, 2)
-            axes[1].set_title("Hankel Transforms")
-            axes[1].set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
-            axes[1].set_ylabel("$F(q)$ (Normalized)")
-
-            for ax in axes:
-                ax.legend()
-
-
-def hankel_transform(
-    r: np.ndarray,
-    fr: np.ndarray,
-    interp_type: str,
-    max_r=10,
-    r_interp_lims: Tuple[float, float] = (0.05, 5),
-    fr_interp_lims: Tuple[float, float] = (1e-8, np.inf),  # (3e-2, np.inf),
-    n: int = 2048,  # number of interpolation points
-    n_robust: int = 7,  # number of robust interpolation points (either side)
-    **kwargs,
-) -> HankelTransform:
-    """Doc."""
-
-    # prepare the Hankel transformation matrix C
-    c0 = scipy.special.jn_zeros(0, n)  # Bessel function zeros
-
-    # Prepare interpolated radial vector
-    r_interp = c0.T * max_r / c0[n - 1]
-
-    bessel_j0 = scipy.special.j0
-    bessel_j1 = scipy.special.j1
-
-    j_n, j_m = np.meshgrid(c0, c0)
-
-    C = (
-        (2 / c0[n - 1])
-        * bessel_j0(j_n * j_m / c0[n - 1])
-        / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
-    )
-
-    r_max = max(r)
-    q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
-    q = c0.T / (2 * np.pi * r_max)  # Frequency vector
-    m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
-    m2 = m1 * r_max / q_max  # m2 prepares output vector for display
-    # end  of preparations for Hankel transform
-
-    # interpolation/extrapolation
-    IE = extrapolate_over_noise(
-        x=r,
-        y=fr,
-        x_interp=r_interp,
-        x_lims=Limits(r_interp_lims),
-        y_lims=Limits(fr_interp_lims),
-        n_robust=n_robust,
-        interp_type=interp_type,
-    )
-
-    # returning the transform (includes interpolation for testing)
-    return HankelTransform(IE, 2 * np.pi * q, C @ (IE.y_interp / m1) * m2)
 
 
 def unify_length(vec_in: np.ndarray, out_len: int) -> np.ndarray:
