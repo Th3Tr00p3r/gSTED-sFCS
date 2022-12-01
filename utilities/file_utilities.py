@@ -351,20 +351,18 @@ def save_processed_solution_meas(
 
         # save the data separately
         if should_save_data:
-            # TODO: this possibly defeats the purpose of individual file rotation: loading all data at once may be to much for RAM.
-            # TODO: can probably implement some other form of saving (load and save each file seperatly, or try keeping compressed when loading (in TDCPhotonFileData???)
+            # TODO: This should be adjusted to work with the memory mapping!!!
             # load the data first, to save it as well
-            meas.data.rotate_all_data("load")
+            meas.data.rotate_all("load")
             # copy it
             data_copy = copy.deepcopy(meas.data)
             # clear the data from the original
-            meas.data.rotate_all_data("clear")
+            meas.data.rotate_all("clear")
 
             # lower size if possible
             for p in data_copy:
-                with p.rotate_data(["correlation"], keep_data=True):
-                    if p.correlation.pulse_runtime.max() <= np.iinfo(np.int32).max:
-                        p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(np.int32)
+                if p.raw.pulse_runtime.max() <= np.iinfo(np.int32).max:
+                    p.raw.pulse_runtime = p.raw.pulse_runtime.astype(np.int32)
 
             data_path = file_path.parent / Path(
                 str(file_path.stem) + "_data" + str(file_path.suffix)
@@ -397,10 +395,7 @@ def load_processed_solution_measurement(file_path: Path, file_template: str, sho
         data = load_object(data_path, should_track_progress=True)
         for p in data:
             # Load runtimes as int64 if they are not already of that type
-            with p.rotate_data(["correlation"]):
-                p.correlation.pulse_runtime = p.correlation.pulse_runtime.astype(
-                    np.int64, copy=False
-                )
+            p.raw.pulse_runtime = p.raw.pulse_runtime.astype(np.int64, copy=False)
         meas.data = data
 
     meas.is_data_dumped = not should_load_data

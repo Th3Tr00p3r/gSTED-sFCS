@@ -427,7 +427,7 @@ class CorrFunc:
             fr: np.ndarray,
             interp_type: str,
             max_r=10,
-            r_interp_lims: Tuple[float, float] = (0.05, 5),
+            r_interp_lims: Tuple[float, float] = (0, 5),
             fr_interp_lims: Tuple[float, float] = (1e-8, np.inf),  # (3e-2, np.inf),
             n: int = 2048,  # number of interpolation points
             n_robust: int = 7,  # number of robust interpolation points (either side)
@@ -834,7 +834,7 @@ class SolutionSFCSMeasurement:
         """
         High level function for correlating any type of data (e.g. static, angular scan, circular scan...)
         Returns a 'CorrFunc' object.
-        Data attribute is possibly rotated from/to disk.
+        Data attribute is memory-mapped from disk.
         """
 
         if is_verbose:
