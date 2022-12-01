@@ -168,7 +168,7 @@ class RawFileData:
     Holds a single file's worth of processed, TDC-based, time-tagged photon data which is used in turn for photon delay-time calibration
     and analysis of the entire measurement data.
     This version uses Numpy.mmap (memory-mapping) for getting the initially save 'raw' data (which is unchanging after initial processing of byte data.
-    Therefore, no actual data is ever kept in the object.
+    Therefore, no actual data is ever kept in the object (unless should_dump=False)
     """
 
     def __init__(
@@ -179,65 +179,150 @@ class RawFileData:
         coarse2: np.ndarray,
         fine: np.ndarray,
         pulse_runtime: np.ndarray,
+        line_num: np.ndarray = None,
+        should_dump=True,
     ):
         """
         Unite the (equal shape) arrays into a single 2D array and immediately dump to disk.
         From now on will be accessed via memory mapping.
         """
 
-        self._file_path = dump_path / f"raw_data_{idx}.npy"
-        data = np.vstack((coarse, coarse2, fine, pulse_runtime))
+        self.should_dump = should_dump
 
-        # save to disk (creating the folder first, if needed)
-        Path.mkdir(dump_path, parents=True, exist_ok=True)
-        np.save(
-            self._file_path,
-            data,
-            allow_pickle=False,
-            fix_imports=False,
-        )
+        if should_dump:
+            self._file_path = dump_path / f"raw_data_{idx}.npy"
+            if line_num is None:
+                data = np.vstack((coarse, coarse2, fine, pulse_runtime))
+            else:
+                data = np.vstack((coarse, coarse2, fine, pulse_runtime, line_num))
+
+            # save to disk (creating the folder first, if needed). 100 Mb takes about 3 seconds on spinning disk drive.
+            Path.mkdir(dump_path, parents=True, exist_ok=True)
+            print("SAVING RAW DATA TO DISK!")  # TESTESTEST
+            np.save(
+                self._file_path,
+                data,
+                allow_pickle=False,
+                fix_imports=False,
+            )
+
+        else:
+            self._coarse = coarse
+            self._coarse2 = coarse2
+            self._fine = fine
+            self._pulse_runtime = pulse_runtime
+            self._line_num = line_num
 
     @property
     def coarse(self):
-        return self.read_mmap_row(0)
+        if self.should_dump:
+            return self.read_mmap_row(0)
+        else:
+            return self._coarse
 
     @coarse.setter
-    def coarse(self):
-        return RuntimeError("RawFileData attributes are read-only.")
+    def coarse(self, new: np.ndarray):
+        if self.should_dump:
+            return RuntimeError("RawFileData attributes are read-only.")
+        else:
+            self._coarse = new
 
     @property
     def coarse2(self):
-        return self.read_mmap_row(1)
+        if self.should_dump:
+            return self.read_mmap_row(1)
+        else:
+            return self._coarse2
 
     @coarse2.setter
-    def coarse2(self):
-        return RuntimeError("RawFileData attributes are read-only.")
+    def coarse2(self, new: np.ndarray):
+        if self.should_dump:
+            return RuntimeError("RawFileData attributes are read-only.")
+        else:
+            self._coarse2 = new
 
     @property
     def fine(self):
-        return self.read_mmap_row(2)
+        if self.should_dump:
+            return self.read_mmap_row(2)
+        else:
+            return self._fine
 
     @fine.setter
-    def fine(self):
-        return RuntimeError("RawFileData attributes are read-only.")
+    def fine(self, new: np.ndarray):
+        if self.should_dump:
+            return RuntimeError("RawFileData attributes are read-only.")
+        else:
+            self._fine = new
 
     @property
     def pulse_runtime(self):
-        return self.read_mmap_row(3)
+        if self.should_dump:
+            return self.read_mmap_row(3)
+        else:
+            return self._pulse_runtime
 
     @pulse_runtime.setter
-    def pulse_runtime(self):
-        return RuntimeError("RawFileData attributes are read-only.")
+    def pulse_runtime(self, new: np.ndarray):
+        if self.should_dump:
+            return RuntimeError("RawFileData attributes are read-only.")
+        else:
+            self._pulse_runtime = new
+
+    @property
+    def line_num(self):
+        if self.should_dump:
+            try:
+                return self.read_mmap_row(4)
+            except IndexError:
+                return None
+        else:
+            return self._pulse_runtime
+
+    @line_num.setter
+    def line_num(self, new: np.ndarray):
+        if self.should_dump:
+            return RuntimeError("RawFileData attributes are read-only.")
+        else:
+            self._line_num = new
 
     def read_mmap_row(self, row_idx: int):
-        """Load the data from disk by memory-mapping, and get the 'row_idx' row."""
+        """
+        Access the data from disk by memory-mapping, and get the 'row_idx' row.
+        each read should take about 1 ms, therefore unnoticeable.
+        """
 
         return np.load(
             self._file_path,
             mmap_mode="r",
             allow_pickle=False,
             fix_imports=False,
-        )[row_idx, :]
+        )[row_idx]
+
+    def write_mmap_row(self, row_idx: int, new_row: np.ndarray):
+        """
+        Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
+        each write should take about ???, therefore unnoticeable.
+        """
+
+        data = np.load(
+            self._file_path,
+            mmap_mode="r+",
+            allow_pickle=False,
+            fix_imports=False,
+        )
+        data[row_idx] = new_row
+        data.flush()
+
+    def get_all_data(self) -> np.ndarray:
+        """Returns a copy of the dumped data (for compressing and saving total data)"""
+
+        return np.load(
+            self._file_path,
+            mmap_mode="r",
+            allow_pickle=False,
+            fix_imports=False,
+        ).copy()
 
 
 @dataclass
@@ -253,7 +338,6 @@ class GeneralFileData:
     size_estimate_mb: float
     duration_s: float
     skipped_duration: float
-    pulse_runtime_size: int
     delay_time: np.ndarray  # TESTESTEST - moved here
     avg_cnt_rate_khz: float = None
     image: np.ndarray = None
@@ -266,7 +350,6 @@ class GeneralFileData:
     line_limits: Limits = None
     samples_per_line: int = None
     n_lines: int = None
-    line_num: np.ndarray = None  # TESTESTEST - moved here
     roi: Dict[str, deque] = None
     bw_mask: np.ndarray = None
 
@@ -283,13 +366,22 @@ class TDCPhotonFileData:
     def __repr__(self):
         return f"TDCPhotonFileData(idx={self.idx}, dump_path={self.dump_path})"
 
+    def import_raw(self, raw_data: np.ndarray):
+        """Load RawFileData using an existing ndarray"""
+
+        self.raw = RawFileData(
+            self.idx,
+            self.dump_path,
+            *[line for line in raw_data],
+        )
+
     def get_xcorr_splits_dict(
         self, xcorr_types: List[str], gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
     ):
         """Return a list of SoftwareCorrelator input units (splits) from a measurement data in a single file (self)"""
 
         print(f"{self.idx + 1}, ", end="")
-        if self.general.line_num is not None:  # line data
+        if self.raw.line_num is not None:  # line data
             return self._get_line_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns)
         else:  # continuous data
             return self._get_continuous_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns, **kwargs)
@@ -311,7 +403,7 @@ class TDCPhotonFileData:
             pulse_runtime1 = self.raw.pulse_runtime[valid_idxs1]
             ts1 = np.hstack(([0], np.diff(pulse_runtime1)))
             dt_ts1 = np.vstack((dt1, ts1))
-            line_num1 = self.general.line_num[valid_idxs1]
+            line_num1 = self.raw.line_num[valid_idxs1]
         if "B" in "".join(xcorr_types):
             gate2_idxs = gate2_ns.valid_indices(self.general.delay_time)
             valid_idxs2 = gate2_idxs | nan_idxs
@@ -319,7 +411,7 @@ class TDCPhotonFileData:
             pulse_runtime2 = self.raw.pulse_runtime[valid_idxs2]
             ts2 = np.hstack(([0], np.diff(pulse_runtime2)))
             dt_ts2 = np.vstack((dt2, ts2))
-            line_num2 = self.general.line_num[valid_idxs2]
+            line_num2 = self.raw.line_num[valid_idxs2]
         if "AB" in xcorr_types or "BA" in xcorr_types:
             # NOTE: # gate2 is first in line to match how software correlator C code written
             dt_ts12 = np.vstack(
@@ -331,7 +423,7 @@ class TDCPhotonFileData:
                 )
             )[:, valid_idxs1 | valid_idxs2]
             dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
-            line_num12 = self.general.line_num[valid_idxs1 | valid_idxs2]
+            line_num12 = self.raw.line_num[valid_idxs1 | valid_idxs2]
 
         dt_ts_splits_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
         for j in self.general.line_limits.as_range():
@@ -800,6 +892,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         is_scan_continuous=False,
         should_use_all_sections=True,
         len_factor=0.01,
+        should_dump=True,
         is_verbose=False,
         byte_data_slice=None,
         **proc_options,
@@ -912,7 +1005,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 size_estimate_mb=max(section_lengths) / 1e6,
                 duration_s=duration_s,
                 skipped_duration=skipped_duration,
-                pulse_runtime_size=pulse_runtime.size,
                 delay_time=np.full(
                     pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
                 ),
@@ -926,6 +1018,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 coarse2=coarse2,
                 fine=fine,
                 pulse_runtime=pulse_runtime,
+                should_dump=should_dump,
             ),
             self.dump_path,
         )
@@ -1167,7 +1260,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         '"""
         # TODO: can this method be moved to the appropriate Mixin class?
 
-        p = self._convert_fpga_data_to_photons(idx, full_data["byte_data"], is_verbose=True)
+        p = self._convert_fpga_data_to_photons(
+            idx, full_data["byte_data"], should_dump=False, is_verbose=True
+        )
 
         scan_settings = full_data["scan_settings"]
         linear_part = scan_settings["linear_part"].round().astype(np.uint16)
@@ -1308,9 +1403,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
         sorted_idxs = np.argsort(pulse_runtime)
-        p.raw.pulse_runtime = pulse_runtime[sorted_idxs]
-        p.general.pulse_runtime_size = p.raw.pulse_runtime.size
-        p.general.line_num = np.hstack(
+        new_pulse_runtime = pulse_runtime[sorted_idxs]
+        new_line_num = np.hstack(
             (
                 line_start_lables,
                 line_stop_labels,
@@ -1319,9 +1413,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         )[sorted_idxs]
         line_starts_nans = np.full(line_starts_runtime.size, NAN_PLACEBO, dtype=np.int16)
         line_stops_nans = np.full(line_stops_runtime.size, NAN_PLACEBO, dtype=np.int16)
-        p.raw.coarse = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse))[sorted_idxs]
-        p.raw.coarse2 = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse2))[sorted_idxs]
-        p.raw.fine = np.hstack((line_starts_nans, line_stops_nans, p.raw.fine))[sorted_idxs]
+        new_coarse = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse))[sorted_idxs]
+        new_coarse2 = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse2))[sorted_idxs]
+        new_fine = np.hstack((line_starts_nans, line_stops_nans, p.raw.fine))[sorted_idxs]
+
+        # replace the raw data after angular scan changes made # TESTESTEST
+        p.import_raw(
+            np.vstack((new_coarse, new_coarse2, new_fine, new_pulse_runtime, new_line_num))
+        )
 
         # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
         p.general.delay_time = np.full(
@@ -1569,7 +1668,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         """Doc."""
 
         # keep pulse_runtime elements of each file for array size allocation
-        n_elem = np.cumsum([0] + [p.general.pulse_runtime_size for p in data])
+        n_elem = np.cumsum([0] + [p.raw.pulse_runtime.size for p in data])
 
         # unite coarse and fine times from all files
         coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
