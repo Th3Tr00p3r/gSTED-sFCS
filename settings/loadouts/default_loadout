@@ -1,7 +1,7 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
 newTemplate,
-solImportFileSelectionPattern,1-15
+solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
 spadMode,external
@@ -61,8 +61,8 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,11
 dataYear,2022
-dataDay,24
-dataTemplate1,YOYO300bpGated_circle_exc_160549_*.pkl
+dataDay,30
+dataTemplate1,YOYO300bpGated_circle_exc_124834_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -110,7 +110,7 @@ tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
 solImportReCorrelate,False
-solImportAutoLoadProcessed,True
+solImportAutoLoadProcessed,False
 autoExp1,False
 grayscaleMode1,True
 measureBeamDiameter1,False

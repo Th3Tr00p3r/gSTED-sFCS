@@ -1,7 +1,6 @@
 """Data Processing."""
 
 from collections import deque
-from contextlib import contextmanager
 from copy import copy
 from dataclasses import dataclass
 from itertools import count as infinite_range
@@ -13,7 +12,6 @@ import scipy
 import skimage
 
 from utilities.display import Plotter
-from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
 from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
 
@@ -165,28 +163,81 @@ class AngularScanDataMixin:
         return line_corr_list
 
 
-@dataclass
-class CorrelationFileData:
-    """
-    Holds a single file's worth of processed, TDC-based, time-tagged photon data for correlation.
-    Data can be further used processed to produced gated (or non-gated) raw input for SoftwareCorrelator.
-    """
-
-    pulse_runtime: np.ndarray
-    delay_time: np.ndarray
-    line_num: np.ndarray = None
-
-
-@dataclass
-class CoarseFineFileData:
+class RawFileData:
     """
     Holds a single file's worth of processed, TDC-based, time-tagged photon data which is used in turn for photon delay-time calibration
     and analysis of the entire measurement data.
+    This version uses Numpy.mmap (memory-mapping) for getting the initially save 'raw' data (which is unchanging after initial processing of byte data.
+    Therefore, no actual data is ever kept in the object.
     """
 
-    coarse: np.ndarray
-    coarse2: np.ndarray
-    fine: np.ndarray
+    def __init__(
+        self,
+        idx: int,
+        dump_path: Path,
+        coarse: np.ndarray,
+        coarse2: np.ndarray,
+        fine: np.ndarray,
+        pulse_runtime: np.ndarray,
+    ):
+        """
+        Unite the (equal shape) arrays into a single 2D array and immediately dump to disk.
+        From now on will be accessed via memory mapping.
+        """
+
+        self._file_path = dump_path / f"raw_data_{idx}.npy"
+        data = np.vstack((coarse, coarse2, fine, pulse_runtime))
+
+        # save to disk (creating the folder first, if needed)
+        Path.mkdir(dump_path, parents=True, exist_ok=True)
+        np.save(
+            self._file_path,
+            data,
+            allow_pickle=False,
+            fix_imports=False,
+        )
+
+    @property
+    def coarse(self):
+        return self.read_mmap_row(0)
+
+    @coarse.setter
+    def coarse(self):
+        return RuntimeError("RawFileData attributes are read-only.")
+
+    @property
+    def coarse2(self):
+        return self.read_mmap_row(1)
+
+    @coarse2.setter
+    def coarse2(self):
+        return RuntimeError("RawFileData attributes are read-only.")
+
+    @property
+    def fine(self):
+        return self.read_mmap_row(2)
+
+    @fine.setter
+    def fine(self):
+        return RuntimeError("RawFileData attributes are read-only.")
+
+    @property
+    def pulse_runtime(self):
+        return self.read_mmap_row(3)
+
+    @pulse_runtime.setter
+    def pulse_runtime(self):
+        return RuntimeError("RawFileData attributes are read-only.")
+
+    def read_mmap_row(self, row_idx: int):
+        """Load the data from disk by memory-mapping, and get the 'row_idx' row."""
+
+        return np.load(
+            self._file_path,
+            mmap_mode="r",
+            allow_pickle=False,
+            fix_imports=False,
+        )[row_idx, :]
 
 
 @dataclass
@@ -203,6 +254,7 @@ class GeneralFileData:
     duration_s: float
     skipped_duration: float
     pulse_runtime_size: int
+    delay_time: np.ndarray  # TESTESTEST - moved here
     avg_cnt_rate_khz: float = None
     image: np.ndarray = None
     bg_line_corr: List[Dict[str, Any]] = None
@@ -214,6 +266,7 @@ class GeneralFileData:
     line_limits: Limits = None
     samples_per_line: int = None
     n_lines: int = None
+    line_num: np.ndarray = None  # TESTESTEST - moved here
     roi: Dict[str, deque] = None
     bw_mask: np.ndarray = None
 
@@ -224,63 +277,11 @@ class TDCPhotonFileData:
 
     idx: int
     general: GeneralFileData
-    coarse_fine: CoarseFineFileData
-    correlation: CorrelationFileData
+    raw: RawFileData
     dump_path: Path
 
     def __repr__(self):
-        return f"TDCPhotonFileData(general={'Loaded' if self.general else None}, coarse_fine={'Loaded' if self.coarse_fine else None}, correlation={'Loaded' if self.correlation else None}, idx={self.idx}, dump_path={self.dump_path})"
-
-    def clear(self, data_types: List[str] = ["coarse_fine", "correlation"]):
-        """Clears chosen attributes."""
-
-        for data_type in data_types:
-            setattr(self, data_type, None)
-
-    def dump(self, data_types: List[str] = ["coarse_fine", "correlation"]):
-        """Dumps chosen attributes to disk (to free RAM)"""
-
-        for data_type in data_types:
-            # dump only loaded attributes (redundant condition?)
-            if getattr(self, data_type):
-                # dump to disk
-                save_object(
-                    getattr(self, data_type),
-                    self.dump_path / f"{data_type}_{self.idx}.pkl",
-                    obj_name=f"dumped {data_type}_{self.idx}",
-                )
-
-    def load(self, data_types: List[str] = ["coarse_fine", "correlation"]):
-        """Loads chosen attributes from disk (to process)"""
-
-        for data_type in data_types:
-            # load only clear attributes (redundant condition?)
-            if getattr(self, data_type) is None:
-                setattr(
-                    self, data_type, load_object(self.dump_path / f"{data_type}_{self.idx}.pkl")
-                )
-
-    @contextmanager
-    def rotate_data(
-        self, data_types=["coarse_fine", "correlation"], is_modified=False, keep_data=False
-    ):
-        """Loads the relevant data types for as long as needed, then dumps them back to disk"""
-
-        # load
-        self.load(data_types)
-
-        # do stuff with loaded data
-        try:
-            yield self
-
-        # clear loaded data (save if changes were made)
-        finally:
-            if not keep_data:
-                if is_modified:
-                    self.dump(data_types)
-                    self.clear(data_types)
-                else:
-                    self.clear(data_types)
+        return f"TDCPhotonFileData(idx={self.idx}, dump_path={self.dump_path})"
 
     def get_xcorr_splits_dict(
         self, xcorr_types: List[str], gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
@@ -288,13 +289,10 @@ class TDCPhotonFileData:
         """Return a list of SoftwareCorrelator input units (splits) from a measurement data in a single file (self)"""
 
         print(f"{self.idx + 1}, ", end="")
-        with self.rotate_data(["correlation"]):
-            if self.correlation.line_num is not None:  # line data
-                return self._get_line_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns)
-            else:  # continuous data
-                return self._get_continuous_xcorr_splits_dict(
-                    xcorr_types, gate1_ns, gate2_ns, **kwargs
-                )
+        if self.general.line_num is not None:  # line data
+            return self._get_line_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns)
+        else:  # continuous data
+            return self._get_continuous_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns, **kwargs)
 
     def _get_line_xcorr_splits_dict(
         self,
@@ -305,35 +303,35 @@ class TDCPhotonFileData:
         """Splits are all photons belonging to each scan line."""
 
         # NaNs mark line starts/ends (used to create valid = -1/-2 needed in C code)
-        nan_idxs = np.isnan(self.correlation.delay_time)
+        nan_idxs = np.isnan(self.general.delay_time)
         if "A" in "".join(xcorr_types):
-            gate1_idxs = gate1_ns.valid_indices(self.correlation.delay_time)
+            gate1_idxs = gate1_ns.valid_indices(self.general.delay_time)
             valid_idxs1 = gate1_idxs | nan_idxs
-            dt1 = self.correlation.delay_time[valid_idxs1]
-            pulse_runtime1 = self.correlation.pulse_runtime[valid_idxs1]
+            dt1 = self.general.delay_time[valid_idxs1]
+            pulse_runtime1 = self.raw.pulse_runtime[valid_idxs1]
             ts1 = np.hstack(([0], np.diff(pulse_runtime1)))
             dt_ts1 = np.vstack((dt1, ts1))
-            line_num1 = self.correlation.line_num[valid_idxs1]
+            line_num1 = self.general.line_num[valid_idxs1]
         if "B" in "".join(xcorr_types):
-            gate2_idxs = gate2_ns.valid_indices(self.correlation.delay_time)
+            gate2_idxs = gate2_ns.valid_indices(self.general.delay_time)
             valid_idxs2 = gate2_idxs | nan_idxs
-            dt2 = self.correlation.delay_time[valid_idxs2]
-            pulse_runtime2 = self.correlation.pulse_runtime[valid_idxs2]
+            dt2 = self.general.delay_time[valid_idxs2]
+            pulse_runtime2 = self.raw.pulse_runtime[valid_idxs2]
             ts2 = np.hstack(([0], np.diff(pulse_runtime2)))
             dt_ts2 = np.vstack((dt2, ts2))
-            line_num2 = self.correlation.line_num[valid_idxs2]
+            line_num2 = self.general.line_num[valid_idxs2]
         if "AB" in xcorr_types or "BA" in xcorr_types:
             # NOTE: # gate2 is first in line to match how software correlator C code written
             dt_ts12 = np.vstack(
                 (
-                    self.correlation.delay_time,
-                    self.correlation.pulse_runtime,
+                    self.general.delay_time,
+                    self.raw.pulse_runtime,
                     valid_idxs2,
                     valid_idxs1,
                 )
             )[:, valid_idxs1 | valid_idxs2]
             dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
-            line_num12 = self.correlation.line_num[valid_idxs1 | valid_idxs2]
+            line_num12 = self.general.line_num[valid_idxs1 | valid_idxs2]
 
         dt_ts_splits_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
         for j in self.general.line_limits.as_range():
@@ -386,11 +384,11 @@ class TDCPhotonFileData:
         for se_idx, (se_start, se_end) in enumerate(self.general.all_section_edges):
             # split into sections of approx time of run_duration
             section_time = (
-                self.correlation.pulse_runtime[se_end] - self.correlation.pulse_runtime[se_start]
+                self.raw.pulse_runtime[se_end] - self.raw.pulse_runtime[se_start]
             ) / self.general.laser_freq_hz
 
-            section_pulse_runtime = self.correlation.pulse_runtime[se_start : se_end + 1]
-            section_delay_time = self.correlation.delay_time[se_start : se_end + 1]
+            section_pulse_runtime = self.raw.pulse_runtime[se_start : se_end + 1]
+            section_delay_time = self.general.delay_time[se_start : se_end + 1]
 
             # split the data into parts A/B according to gates
             # TODO: in order to make this more general and use it with both auto and cross correlations, the function should optionally accept 2 seperate data,
@@ -529,15 +527,6 @@ class TDCPhotonMeasurementData(list):
         }
 
         return dt_ts_splits_dict
-
-    def rotate_all_data(
-        self, action: str = "load", data_types: List[str] = ["coarse_fine", "correlation"], **kwargs
-    ) -> None:
-        """Rotate data of all files in self (list)"""
-        # TODO: this defeats the purpose of rotation in the single file level to avoid RAM overflow. Find a better way to load all the data together for saving processed measurements, e.g. by loading, changing type, compressing and loading the next, then pickling all compressed?...
-
-        for p in self:
-            getattr(p, action)()
 
 
 @dataclass
@@ -802,10 +791,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # add general properties
         p.general.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
-        # dump coarse_fine and correlation data to free RAM
-        p.dump()
-        p.clear()
-
         return p
 
     def _convert_fpga_data_to_photons(
@@ -918,6 +903,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             skipped_duration = 0
 
         return TDCPhotonFileData(
+            # TODO: using properties, I can ignore the fact that some attributes are 'raw' and some are 'general' and get less code
             idx,
             GeneralFileData(
                 # general
@@ -927,19 +913,19 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 duration_s=duration_s,
                 skipped_duration=skipped_duration,
                 pulse_runtime_size=pulse_runtime.size,
-                # continuous scan
-                all_section_edges=all_section_edges,
-            ),
-            CoarseFineFileData(
-                coarse=coarse,
-                coarse2=coarse2,
-                fine=fine,
-            ),
-            CorrelationFileData(
-                pulse_runtime=pulse_runtime,
                 delay_time=np.full(
                     pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
                 ),
+                # continuous scan
+                all_section_edges=all_section_edges,
+            ),
+            RawFileData(
+                idx=idx,
+                dump_path=self.dump_path,
+                coarse=coarse,
+                coarse2=coarse2,
+                fine=fine,
+                pulse_runtime=pulse_runtime,
             ),
             self.dump_path,
         )
@@ -1145,7 +1131,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         print("Converting circular scan to image...", end=" ")
         cnt, _ = self._sum_scan_circles(
-            p.correlation.pulse_runtime,
+            p.raw.pulse_runtime,
             self.laser_freq_hz,
             ao_sampling_freq_hz,
             scan_settings["circle_freq_hz"],
@@ -1191,13 +1177,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         print("Converting angular scan to image...", end=" ")
 
-        pulse_runtime = np.empty(p.correlation.pulse_runtime.shape, dtype=np.int64)
+        pulse_runtime = np.empty(p.raw.pulse_runtime.shape, dtype=np.int64)
         cnt = np.zeros((p.general.n_lines + 1, p.general.samples_per_line), dtype=np.uint16)
         sample_runtime = np.empty(pulse_runtime.shape, dtype=np.int64)
         pixel_num = np.empty(pulse_runtime.shape, dtype=np.int64)
         line_num = np.empty(pulse_runtime.shape, dtype=np.int16)
         for sec_idx, (start_idx, end_idx) in enumerate(p.general.section_runtime_edges):
-            sec_pulse_runtime = p.correlation.pulse_runtime[start_idx:end_idx]
+            sec_pulse_runtime = p.raw.pulse_runtime[start_idx:end_idx]
             (
                 sec_cnt,
                 sec_sample_runtime,
@@ -1322,9 +1308,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
         sorted_idxs = np.argsort(pulse_runtime)
-        p.correlation.pulse_runtime = pulse_runtime[sorted_idxs]
-        p.general.pulse_runtime_size = p.correlation.pulse_runtime.size
-        p.correlation.line_num = np.hstack(
+        p.raw.pulse_runtime = pulse_runtime[sorted_idxs]
+        p.general.pulse_runtime_size = p.raw.pulse_runtime.size
+        p.general.line_num = np.hstack(
             (
                 line_start_lables,
                 line_stop_labels,
@@ -1333,22 +1319,16 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         )[sorted_idxs]
         line_starts_nans = np.full(line_starts_runtime.size, NAN_PLACEBO, dtype=np.int16)
         line_stops_nans = np.full(line_stops_runtime.size, NAN_PLACEBO, dtype=np.int16)
-        p.coarse_fine.coarse = np.hstack((line_starts_nans, line_stops_nans, p.coarse_fine.coarse))[
-            sorted_idxs
-        ]
-        p.coarse_fine.coarse2 = np.hstack(
-            (line_starts_nans, line_stops_nans, p.coarse_fine.coarse2)
-        )[sorted_idxs]
-        p.coarse_fine.fine = np.hstack((line_starts_nans, line_stops_nans, p.coarse_fine.fine))[
-            sorted_idxs
-        ]
+        p.raw.coarse = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse))[sorted_idxs]
+        p.raw.coarse2 = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse2))[sorted_idxs]
+        p.raw.fine = np.hstack((line_starts_nans, line_stops_nans, p.raw.fine))[sorted_idxs]
 
         # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
-        p.correlation.delay_time = np.full(
-            p.correlation.pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
+        p.general.delay_time = np.full(
+            p.raw.pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
         )
-        line_edge_idxs = p.coarse_fine.fine == NAN_PLACEBO
-        p.correlation.delay_time[line_edge_idxs] = np.nan
+        line_edge_idxs = p.raw.fine == NAN_PLACEBO
+        p.general.delay_time[line_edge_idxs] = np.nan
 
         p.general.image = cnt
         p.general.roi = roi
@@ -1506,37 +1486,30 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         first_coarse_bin, *_, last_coarse_bin = coarse_bins
         delay_time_list = []
         for p in data:
-            with p.rotate_data(is_modified=True):
-                p.correlation.delay_time = np.full(
-                    p.coarse_fine.coarse.shape, np.nan, dtype=np.float64
-                )
-                crs = np.minimum(p.coarse_fine.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
-                crs[crs < 0] = crs[crs < 0] + last_coarse_bin - first_coarse_bin + 1
+            p.general.delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
+            crs = np.minimum(p.raw.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
+            crs[crs < 0] = crs[crs < 0] + last_coarse_bin - first_coarse_bin + 1
 
-                delta_coarse = p.coarse_fine.coarse2 - p.coarse_fine.coarse
-                delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
+            delta_coarse = p.raw.coarse2 - p.raw.coarse
+            delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
 
-                # in the TDC midrange use "coarse" counter
-                in_mid_tdc = (p.coarse_fine.fine >= l_quarter_tdc) & (
-                    p.coarse_fine.fine <= r_quarter_tdc
-                )
-                delta_coarse[in_mid_tdc] = 0
+            # in the TDC midrange use "coarse" counter
+            in_mid_tdc = (p.raw.fine >= l_quarter_tdc) & (p.raw.fine <= r_quarter_tdc)
+            delta_coarse[in_mid_tdc] = 0
 
-                # on the right of TDC use "coarse2" counter (no change in delta)
-                # on the left of TDC use "coarse2" counter decremented by 1
-                on_left_tdc = p.coarse_fine.fine < l_quarter_tdc
-                delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
+            # on the right of TDC use "coarse2" counter (no change in delta)
+            # on the left of TDC use "coarse2" counter decremented by 1
+            on_left_tdc = p.raw.fine < l_quarter_tdc
+            delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
 
-                photon_idxs = (
-                    p.coarse_fine.fine != NAN_PLACEBO
-                )  # self.NAN_PLACEBO are starts/ends of lines
-                p.correlation.delay_time[photon_idxs] = (
-                    t_calib[p.coarse_fine.fine[photon_idxs]]
-                    + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
-                )
-                total_laser_pulses += p.correlation.pulse_runtime[-1]
+            photon_idxs = p.raw.fine != NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
+            p.general.delay_time[photon_idxs] = (
+                t_calib[p.raw.fine[photon_idxs]]
+                + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
+            )
+            total_laser_pulses += p.raw.pulse_runtime[-1]
 
-                delay_time_list.append(p.correlation.delay_time[photon_idxs])
+            delay_time_list.append(p.general.delay_time[photon_idxs])
 
         delay_time = np.hstack(delay_time_list)
 
@@ -1602,9 +1575,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
         fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
         for i, p in enumerate(data):
-            with p.rotate_data(["coarse_fine"]):
-                coarse[n_elem[i] : n_elem[i + 1]] = p.coarse_fine.coarse
-                fine[n_elem[i] : n_elem[i + 1]] = p.coarse_fine.fine
+            coarse[n_elem[i] : n_elem[i + 1]] = p.raw.coarse
+            fine[n_elem[i] : n_elem[i + 1]] = p.raw.fine
 
         # remove line starts/ends from angular scan data
         if scan_type == "angular":
