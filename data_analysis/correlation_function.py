@@ -760,6 +760,7 @@ class SolutionSFCSMeasurement:
         if file_dict is not None:
             self._get_general_properties(file_dict=file_dict, **proc_options)
             file_idx = 1
+            self.dump_path = file_utilities.DUMP_PATH / "temp_meas.pkl"
 
         # File Data Loading
         if file_path is not None:  # Loading file from disk
