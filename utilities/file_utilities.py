@@ -17,7 +17,7 @@ import scipy.io as spio
 
 from utilities.helper import Limits, reverse_dict, timer
 
-DUMP_PATH = Path("C:/temp_sfcs_data/")
+DUMP_PATH = Path("D:/temp_sfcs_data/")
 
 # TODO: this should be defined elsewhere (devices? app?)
 with open("FastGatedSPAD_AP.pkl", "rb") as f:
@@ -317,7 +317,9 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
 
     except EOFError:
         if should_track_progress:
-            print(f" - Done ({len(loaded_data)} chunks)")
+            print(
+                f" - Done ({(n_chunks := len(loaded_data))} {'chunks' if n_chunks > 1 else 'chunk'})"
+            )
 
         if len(loaded_data) == 1:  # extract non-chunked loaded data
             return loaded_data[0]
@@ -349,30 +351,29 @@ def save_processed_solution_meas(
             meas, file_path, compression_method="blosc", obj_name="processed measurement"
         )
 
-        # save the data separately
+        # save the raw data separately
         if should_save_data:
-            # TODO: This should be adjusted to work with the memory mapping!!!
-            # load the data first, to save it as well
-            meas.data.rotate_all("load")
-            # copy it
-            data_copy = copy.deepcopy(meas.data)
-            # clear the data from the original
-            meas.data.rotate_all("clear")
+            # copy the data attribute to avoid spoiling the original
+            meas_data_copy = copy.deepcopy(meas.data)
 
-            # lower size if possible
-            for p in data_copy:
-                if p.raw.pulse_runtime.max() <= np.iinfo(np.int32).max:
-                    p.raw.pulse_runtime = p.raw.pulse_runtime.astype(np.int32)
+            # lower size of runtime (row 3) if possible
+            data_list_to_save = []
+            for p in meas_data_copy:
+                file_raw_data_copy = p.raw.get_all_data()
+                if file_raw_data_copy[3].max() <= np.iinfo(np.int32).max:
+                    file_raw_data_copy[3] = file_raw_data_copy[3].astype(np.int32)
+
+                data_list_to_save.append(file_raw_data_copy)
 
             data_path = file_path.parent / Path(
                 str(file_path.stem) + "_data" + str(file_path.suffix)
             )
             # TODO: find out what is causes the PermissionError (notebooks)
             has_saved_data = save_object(
-                data_copy,
+                data_list_to_save,
                 data_path,
                 compression_method="blosc",
-                element_size_estimate_mb=data_copy[0].general.size_estimate_mb,
+                element_size_estimate_mb=data_list_to_save[0].nbytes / 1e6,
                 obj_name="dumped data array",
                 should_track_progress=True,
             )
@@ -392,13 +393,12 @@ def load_processed_solution_measurement(file_path: Path, file_template: str, sho
     # load separately the data
     if should_load_data:
         data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
-        data = load_object(data_path, should_track_progress=True)
-        for p in data:
+        data_list = load_object(data_path, should_track_progress=True)
+        for idx, file_raw_data in enumerate(data_list):
             # Load runtimes as int64 if they are not already of that type
-            p.raw.pulse_runtime = p.raw.pulse_runtime.astype(np.int64, copy=False)
-        meas.data = data
-
-    meas.is_data_dumped = not should_load_data
+            file_raw_data[3] = file_raw_data[3].astype(np.int64, copy=False)
+            # create a RawFileData from the file_raw_data and add it
+            meas.data[idx].import_raw(file_raw_data)
 
     return meas
 
