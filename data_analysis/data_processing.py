@@ -12,6 +12,7 @@ import scipy
 import skimage
 
 from utilities.display import Plotter
+from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
 from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
 
@@ -190,21 +191,29 @@ class RawFileData:
         self.should_dump = should_dump
 
         if should_dump:
-            self._file_path = dump_path / f"raw_data_{idx}.npy"
+            self._file_name = f"raw_data_{idx}.npy"
+            self._dump_path = dump_path
             if line_num is None:
                 data = np.vstack((coarse, coarse2, fine, pulse_runtime))
             else:
                 data = np.vstack((coarse, coarse2, fine, pulse_runtime, line_num))
 
-            # save to disk (creating the folder first, if needed). 100 Mb takes about 3 seconds on spinning disk drive.
-            Path.mkdir(dump_path, parents=True, exist_ok=True)
-            print("SAVING RAW DATA TO DISK!")  # TESTESTEST
-            np.save(
-                self._file_path,
-                data,
-                allow_pickle=False,
-                fix_imports=False,
-            )
+            # save to disk (). 100 Mb takes about 3 seconds on spinning disk drive.
+            # resave only if file doesn't exist or is significantly different in size # TESTESTEST
+            self._file_path = self._dump_path / self._file_name
+            if (
+                not self._file_path.exists()
+                or abs(self._file_path.stat().st_size - data.nbytes) / data.nbytes > 0.1
+            ):
+                Path.mkdir(
+                    self._dump_path, parents=True, exist_ok=True
+                )  # creating the folder if needed
+                np.save(
+                    self._file_path,
+                    data,
+                    allow_pickle=False,
+                    fix_imports=False,
+                )
 
         else:
             self._coarse = coarse
@@ -216,7 +225,7 @@ class RawFileData:
     @property
     def coarse(self):
         if self.should_dump:
-            return self.read_mmap_row(0)
+            return self.read_mmap(0)
         else:
             return self._coarse
 
@@ -230,7 +239,7 @@ class RawFileData:
     @property
     def coarse2(self):
         if self.should_dump:
-            return self.read_mmap_row(1)
+            return self.read_mmap(1)
         else:
             return self._coarse2
 
@@ -244,7 +253,7 @@ class RawFileData:
     @property
     def fine(self):
         if self.should_dump:
-            return self.read_mmap_row(2)
+            return self.read_mmap(2)
         else:
             return self._fine
 
@@ -258,7 +267,7 @@ class RawFileData:
     @property
     def pulse_runtime(self):
         if self.should_dump:
-            return self.read_mmap_row(3)
+            return self.read_mmap(3)
         else:
             return self._pulse_runtime
 
@@ -273,7 +282,7 @@ class RawFileData:
     def line_num(self):
         if self.should_dump:
             try:
-                return self.read_mmap_row(4)
+                return self.read_mmap(4)
             except IndexError:
                 return None
         else:
@@ -286,16 +295,17 @@ class RawFileData:
         else:
             self._line_num = new
 
-    def read_mmap_row(self, row_idx: int):
+    def read_mmap(self, row_idx: Union[int, slice] = slice(None), file_path=None):
         """
         Access the data from disk by memory-mapping, and get the 'row_idx' row.
+        If row_idx was not supplied, retrieve the whole array.
         each read should take about 1 ms, therefore unnoticeable.
         """
 
         return np.load(
-            self._file_path,
+            file_path if file_path is not None else self._file_path,
             mmap_mode="r",
-            allow_pickle=False,
+            allow_pickle=True,
             fix_imports=False,
         )[row_idx]
 
@@ -314,15 +324,36 @@ class RawFileData:
         data[row_idx] = new_row
         data.flush()
 
-    def get_all_data(self) -> np.ndarray:
-        """Returns a copy of the dumped data (for compressing and saving total data)"""
+    def save_compressed(self, dir_path: Path = None):
+        """Compress (blosc) and save the memory-mapped data in a provided folder"""
 
-        return np.load(
+        # load the data from dump path
+        data = self.read_mmap()
+
+        # compress and save to processed folder ('dir_path')
+        Path.mkdir(dir_path, parents=True, exist_ok=True)  # creating the folder if needed
+        save_object(
+            data,
+            dir_path / self._file_name,
+            compression_method="blosc",
+            element_size_estimate_mb=data.nbytes / 1e6,
+            obj_name="dumped data array",
+            should_track_progress=True,
+        )
+
+    def load_compressed(self, dir_path: Path):
+        """Decompress and re-save the processed data in the dump path for analysis"""
+
+        # load data from processed folder
+        data = load_object(dir_path / self._file_name, should_track_progress=True)
+
+        # resave
+        np.save(
             self._file_path,
-            mmap_mode="r",
+            data,
             allow_pickle=False,
             fix_imports=False,
-        ).copy()
+        )
 
 
 @dataclass

@@ -1237,8 +1237,13 @@ class MainWin:
 
         with self.get_measurement_from_template() as measurement:
             curr_dir = self.current_date_type_dir_path()
-            file_utilities.save_processed_solution_meas(measurement, curr_dir)
-            logging.info("Saved the processed data.")
+            was_saved = file_utilities.save_processed_solution_meas(
+                measurement, curr_dir, should_force=True
+            )
+            if was_saved:
+                logging.info("Saved the processed data.")
+            else:
+                logging.info("Failed to save.")
 
     def delete_all_processed_data(self) -> None:
         """Doc."""
@@ -1281,8 +1286,8 @@ class MainWin:
         """Doc."""
 
         curr_dir = self.current_date_type_dir_path()
-        file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
-        self.main_gui.solImportLoadProcessed.setEnabled(file_path.is_file())
+        file_path = curr_dir / "processed" / re.sub("_[*].pkl", "", current_template)
+        self.main_gui.solImportLoadProcessed.setEnabled(file_path.exists())
 
     def convert_files_to_matlab_format(self) -> None:
         """
@@ -1338,7 +1343,7 @@ class MainWin:
 
             if should_load_processed or import_wdgts["auto_load_processed"]:
                 try:
-                    file_path = curr_dir / "processed" / re.sub("_[*]", "", current_template)
+                    file_path = curr_dir / "processed" / re.sub("_[*].pkl", "", current_template)
                     logging.info(f"Loading processed data '{current_template}' from hard drive...")
                     measurement = file_utilities.load_processed_solution_measurement(
                         file_path,
