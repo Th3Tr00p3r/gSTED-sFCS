@@ -334,7 +334,7 @@ class RawFileData:
         Path.mkdir(dir_path, parents=True, exist_ok=True)  # creating the folder if needed
         save_object(
             data,
-            dir_path / self._file_name,
+            (dir_path / self._file_name).with_suffix(".blosc"),
             compression_method="blosc",
             element_size_estimate_mb=data.nbytes / 1e6,
             obj_name="dumped data array",
@@ -345,7 +345,9 @@ class RawFileData:
         """Decompress and re-save the processed data in the dump path for analysis"""
 
         # load data from processed folder
-        data = load_object(dir_path / self._file_name, should_track_progress=True)
+        data = load_object(
+            (dir_path / self._file_name).with_suffix(".blosc"), should_track_progress=True
+        )
 
         # resave
         np.save(
