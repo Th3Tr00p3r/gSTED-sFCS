@@ -706,9 +706,18 @@ def prepare_file_paths(
 
     if file_selection != "Use All":
         file_idxs, choice = file_selection_str_to_list(file_selection)
+        print("file_idxs, choice: ", file_idxs, choice)  # TESTESTEST
         if choice == "Use":
-            file_paths = [file_paths[i] for i in range(len(file_paths)) if i in file_idxs]
+            file_paths = [
+                file_path
+                for file_path in file_paths
+                if any(f"_{idx + 1}.pkl" in str(file_path) for idx in file_idxs)
+            ]
         else:
-            file_paths = [file_paths[i] for i in range(len(file_paths)) if i not in file_idxs]
+            file_paths = [
+                file_path
+                for file_path in file_paths
+                if not any(f"_{idx + 1}.pkl" in str(file_path) for idx in file_idxs)
+            ]
 
     return file_paths
