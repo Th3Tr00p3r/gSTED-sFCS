@@ -211,7 +211,7 @@ def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -
 def save_object(
     obj,
     file_path: Path,
-    compression_method: str = None,  # "gzip" / "blosc"
+    compression_method: str = "no compression",  # "gzip" / "blosc"
     obj_name: str = None,
     element_size_estimate_mb: float = None,
     should_track_progress=False,
@@ -240,7 +240,10 @@ def save_object(
 
     should_track_progress = should_track_progress and len(chunked_obj) > 1
     if should_track_progress:
-        print(f"Saving '{file_path.name}' in {len(chunked_obj)} chunks:", end=" ")
+        print(
+            f"Saving '{file_path.name}' in {len(chunked_obj)} chunks ({compression_method}): ",
+            end="",
+        )
 
     if compression_method == "gzip":
         with gzip.open(file_path, "wb", compresslevel=1) as f_gzip:
@@ -285,7 +288,8 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
     file_path = Path(file_path)
 
     if should_track_progress:
-        print(f"Loading '{file_path.name}':", end=" ")
+        print(f"Loading '{file_path.name}': ", end="")
+        compression_method = "no"
 
     try:
         try:  # gzip decompression
@@ -294,6 +298,7 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
                 while True:
                     loaded_data.append(pickle.load(f_gzip_cmprsd))  # type: ignore
                     if should_track_progress:
+                        compression_method = "gzip"
                         print("O", end="")
 
         except gzip.BadGzipFile:  # blosc decompression
@@ -305,6 +310,7 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
                         p_bytes, _ = bloscpack.unpack_bytes_from_bytes(cmprsd_bytes)
                         loaded_data.append(pickle.loads(p_bytes))
                         if should_track_progress:
+                            compression_method = "blosc"
                             print("O", end="")
 
                 except (ValueError, TypeError):  # uncompressed file
@@ -318,7 +324,7 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
     except EOFError:
         if should_track_progress:
             print(
-                f" - Done ({(n_chunks := len(loaded_data))} {'chunks' if n_chunks > 1 else 'chunk'})"
+                f" - Done ({(n_chunks := len(loaded_data))} {'chunks' if n_chunks > 1 else 'chunk'}, {compression_method} compression)"
             )
 
         if len(loaded_data) == 1:  # extract non-chunked loaded data
@@ -327,78 +333,59 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
             return [item for chunk_ in loaded_data for item in chunk_]
 
 
-def save_processed_solution_meas(
-    meas, dir_path: Path, should_save_data=True, should_force=False
-) -> bool:
+def save_processed_solution_meas(meas, should_save_data=True, should_force=False) -> bool:
     """
     Save a processed measurement, including the '.data' attribute.
     The template may then be loaded much more quickly.
     """
-    # TODO: add option to save only the measurement itself (not .data) so that can be quikly re-saved after gating (no change to processed data)
-
-    # init return value conditions as false
-    has_saved_meas = False
-    has_saved_data = False
+    # TODO: this should be moved to measurement class?
 
     # save the measurement
-    dir_path = dir_path / "processed"
-    file_name = re.sub("_[*]", "", meas.template)
-    file_path = dir_path / file_name
-    if not file_path.is_file() or should_force:
+    dir_path = meas.file_path_template.parent / "processed" / re.sub("_[*].pkl", "", meas.template)
+
+    meas_file_path = dir_path / "SolutionSFCSMeasurement.pkl"
+    if not meas_file_path.is_file() or should_force:
 
         # save the measurement object
-        has_saved_meas = save_object(
-            meas, file_path, compression_method="blosc", obj_name="processed measurement"
+        save_object(
+            meas, meas_file_path, compression_method="blosc", obj_name="processed measurement"
         )
 
         # save the raw data separately
         if should_save_data:
-            # copy the data attribute to avoid spoiling the original
-            meas_data_copy = copy.deepcopy(meas.data)
+            data_dir_path = dir_path / "data"
 
-            # lower size of runtime (row 3) if possible
-            data_list_to_save = []
-            for p in meas_data_copy:
-                file_raw_data_copy = p.raw.get_all_data()
-                if file_raw_data_copy[3].max() <= np.iinfo(np.int32).max:
-                    file_raw_data_copy[3] = file_raw_data_copy[3].astype(np.int32)
+            # move each data file from the temp folder to 'data_dir_path'
+            for p in meas.data:
+                #                # lower size of runtime (row 3) if possible
+                #                if data[3].max() <= np.iinfo(np.int32).max:
+                #                    data[3] = file_raw_data_copy[3].astype(np.int32)
+                p.raw.save_compressed(data_dir_path)
 
-                data_list_to_save.append(file_raw_data_copy)
+        return True
 
-            data_path = file_path.parent / Path(
-                str(file_path.stem) + "_data" + str(file_path.suffix)
-            )
-            # TODO: find out what is causes the PermissionError (notebooks)
-            has_saved_data = save_object(
-                data_list_to_save,
-                data_path,
-                compression_method="blosc",
-                element_size_estimate_mb=data_list_to_save[0].nbytes / 1e6,
-                obj_name="dumped data array",
-                should_track_progress=True,
-            )
-
-    return has_saved_meas and (has_saved_data or not should_save_data)
+    else:
+        return False
 
 
-def load_processed_solution_measurement(file_path: Path, file_template: str, should_load_data=True):
+def load_processed_solution_measurement(dir_path: Path, file_template: str, should_load_data=True):
     """Doc."""
 
-    # load the measurement
-    meas = load_object(file_path)
+    meas_file_path = dir_path / "SolutionSFCSMeasurement.pkl"
 
-    # define the template # TODO: why is this needed?
-    meas.template = file_template
+    # load the measurement
+    meas = load_object(meas_file_path)
+
+    #    # define the template # TODO: why is this needed?
+    #    meas.template = file_template
 
     # load separately the data
     if should_load_data:
-        data_path = file_path.parent / Path(str(file_path.stem) + "_data" + str(file_path.suffix))
-        data_list = load_object(data_path, should_track_progress=True)
-        for idx, file_raw_data in enumerate(data_list):
-            # Load runtimes as int64 if they are not already of that type
-            file_raw_data[3] = file_raw_data[3].astype(np.int64, copy=False)
-            # create a RawFileData from the file_raw_data and add it
-            meas.data[idx].import_raw(file_raw_data)
+        for p in meas.data:
+            #                # lower size of runtime (row 3) if possible
+            #                if data[3].max() <= np.iinfo(np.int32).max:
+            #                    data[3] = file_raw_data_copy[3].astype(np.int32)
+            p.raw.load_compressed(dir_path / "data")
 
     return meas
 

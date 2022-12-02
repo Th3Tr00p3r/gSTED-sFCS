@@ -571,10 +571,10 @@ class SolutionSFCSMeasurement:
         self.n_paths = len(file_paths)
         self.file_path_template = file_path_template
         *_, self.template = Path(file_path_template).parts
+
         self.dump_path = file_utilities.DUMP_PATH / re.sub(
             "\\*", "", re.sub("_[*].pkl", "", self.template)
         )
-        shutil.rmtree(self.dump_path, ignore_errors=True)  # clear dump_path
 
         print("\nLoading FPGA data from disk -")
         print(f"Template path: '{file_path_template}'")
@@ -1231,6 +1231,11 @@ class SolutionSFCSMeasurement:
             **kwargs,
         )
 
+    def clear_dump_path(self):
+        """Delete the dump folder"""
+
+        shutil.rmtree(self.dump_path, ignore_errors=True)
+
 
 class SolutionSFCSExperiment:
     """Doc."""
@@ -1317,18 +1322,18 @@ class SolutionSFCSExperiment:
                 file_path_template = Path(file_path_template)
                 dir_path, file_template = file_path_template.parent, file_path_template.name
                 # load pre-processed
-                file_path = dir_path / "processed" / re.sub("_[*]", "", file_template)
+                dir_path = dir_path / "processed" / re.sub("_[*].pkl", "", file_template)
                 measurement = file_utilities.load_processed_solution_measurement(
-                    file_path,
+                    dir_path,
                     file_template,
                     should_load_data=should_re_correlate,
                 )
                 measurement.type = meas_type
                 setattr(self, meas_type, measurement)
-                print(f"Loaded pre-processed {meas_type} measurement: '{file_path}'")
+                print(f"Loaded pre-processed {meas_type} measurement from: '{dir_path}'")
             except OSError:
                 print(
-                    f"Pre-processed {meas_type} measurement not found at: '{file_path}'. Processing data regularly."
+                    f"Pre-processed {meas_type} measurement not found at: '{dir_path}'. Processing data regularly."
                 )
 
         if not measurement.cf:  # Process data
