@@ -478,6 +478,7 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
             )
 
 
+@timer()
 def load_file_dict(file_path: Path):
     """
     Load files according to extension.
@@ -706,7 +707,6 @@ def prepare_file_paths(
 
     if file_selection != "Use All":
         file_idxs, choice = file_selection_str_to_list(file_selection)
-        print("file_idxs, choice: ", file_idxs, choice)  # TESTESTEST
         if choice == "Use":
             file_paths = [
                 file_path

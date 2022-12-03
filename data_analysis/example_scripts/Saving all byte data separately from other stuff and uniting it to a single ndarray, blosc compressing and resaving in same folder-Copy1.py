@@ -14,9 +14,6 @@
 # ---
 
 # %% [markdown]
-# # This idea was abandoned - too much memory taken up by the single file (p) created by a long byte_data array. Since I'm using memory mapping now anyway, I could just have as many byte_array objects saved seperately as .npy and read from them quickly (doesn't matter if they're one file or not).
-
-# %% [markdown]
 # We begin by moving to the project **directory**, loading neccessary **packages and modules**, and **defining constants**:
 
 # %%
