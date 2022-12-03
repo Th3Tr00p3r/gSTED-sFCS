@@ -14,7 +14,7 @@ import skimage
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
-from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
+from utilities.helper import Gate, Limits, div_ceil, nan_helper, timer, xcorr
 
 NAN_PLACEBO = -100  # marks starts/ends of lines
 LINE_END_ADDER = 1000
@@ -172,6 +172,7 @@ class RawFileData:
     Therefore, no actual data is ever kept in the object (unless should_dump=False)
     """
 
+    @timer()
     def __init__(
         self,
         idx: int,
@@ -314,6 +315,7 @@ class RawFileData:
         Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
         each write should take about ???, therefore unnoticeable.
         """
+        # TODO: try to use with delay_time by trying to move it to self instead of general
 
         data = np.load(
             self._file_path,
