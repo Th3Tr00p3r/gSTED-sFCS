@@ -38,6 +38,7 @@ from utilities.helper import (
     InterpExtrap1D,
     Limits,
     extrapolate_over_noise,
+    timer,
     unify_length,
 )
 
@@ -670,6 +671,17 @@ class SolutionSFCSMeasurement:
         **proc_options,
     ):
         """Doc."""
+        # TODO: perhaps muktiprocessing isn't fast cause the bottleneck is the disk loading.
+        # since now each file raw_data is memory mapped, and since loading/saving only takes up about 1/5 of the processing time,
+        # if I create a multiprocessing queue where a single worker loads each file's byte_data, the rest of the workers can have it processed (coarse, fine, pulse_runtime etc.),
+        # after which it will delete its own byte_data and pass it to same single worker (the one that loads) which which would initiate a RawFileData (which saves the processed data).
+        # the single worker should only start to save once all byte_data is loaded. In this way I could maxize the throughput.
+        # Use this example in the botton of this page: https://docs.python.org/3/library/multiprocessing.html
+        # idea is each worker gets a process and pulls byte data from queue for processing, then returns to resutls queue.
+        # Another (single) worker is the one putting the byte_data in the one queue and saving the processed data from the other queue.
+        # First, the all 'load byte data' tasks are put in the IO queue (1). then the single IO worker process is started where the task queue is the IO queue and the done queue is the processing queue (2).
+        # Secondly, many worker processes are initialized where the task queue is the processing queue (2) and the done queue is the IO queue ('saving' tasks now). the 'loading' tasks have a pre-known amount N.
+        # Once N saving tasks are performed, both queues can be shut down - the IO worker can issue N 'stop' commands then stop itself and it is done.
 
         self._get_general_properties(file_paths[0], **proc_options)
 
@@ -678,6 +690,7 @@ class SolutionSFCSMeasurement:
             self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
         )
 
+        # TODO: this obviously isn't a good idea since the I/O to disk limits the workers.
         # parellel processing
         if should_parallel_process and len(file_paths) > 20:
             N_CORES = mp.cpu_count() // 2 - 1  # /2 due to hyperthreading, -1 to leave one free
@@ -748,6 +761,7 @@ class SolutionSFCSMeasurement:
         else:
             self.scan_type = "static"
 
+    @timer()
     def process_data_file(
         self, idx=0, file_path: Path = None, file_dict: dict = None, **proc_options
     ) -> TDCPhotonFileData:
