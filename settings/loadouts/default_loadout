@@ -59,10 +59,10 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-dataMonth,6
+dataMonth,11
 dataYear,2022
 dataDay,30
-dataTemplate1,bp300YOYOFresh_angular_exc_124351_*.pkl
+dataTemplate1,YOYO300bpGated_circle_exc_124834_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -71,9 +71,9 @@ gateUnits,ns
 assignedGates,
 gateMeasType,STED
 availableGates,
-importedSolDataTemplates2,bp300YOYOFresh_angular_exc_124351_*.pkl
-expPropGstedGate,Lifetime
-importedSolDataTemplates1,bp300YOYOFresh_angular_exc_124351_*.pkl
+importedSolDataTemplates2,
+expPropGstedGate,
+importedSolDataTemplates1,
 avgInterval,5000
 posAxis,X
 solScanParamsStacked,1
@@ -85,8 +85,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveOver,True

@@ -54,15 +54,14 @@ except NameError:
 
 from data_analysis.correlation_function import (
     CorrFunc,
-    SFCSExperiment,
+    SolutionSFCSExperiment,
     SolutionSFCSMeasurement,
-    calculate_afterpulse,
+    calculate_calibrated_afterpulse,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from utilities.display import Plotter, get_gradient_colormap
 from utilities.file_utilities import (
     default_system_info,
-    load_mat,
     load_object,
     save_object,
     save_processed_solution_meas,
@@ -103,7 +102,7 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 
 template_paths = [DATA_PATH / tmplt for tmplt in data_templates]
 
-halogen_exp_dict = {label: SFCSExperiment(name=label) for label in data_labels}
+halogen_exp_dict = {label: SolutionSFCSExperiment(label) for label in data_labels}
 
 label_load_kwargs_dict = {
     label: dict(confocal_template=tmplt_path, file_selection=selection)
