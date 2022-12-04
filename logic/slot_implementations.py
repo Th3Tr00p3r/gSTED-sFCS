@@ -1429,6 +1429,7 @@ class MainWin:
         loading_options["should_subtract_bg_corr"] = import_wdgts["should_subtract_bg_corr"]
         loading_options["override_system_info"] = import_wdgts["override_system_info"]
         loading_options["should_ignore_hard_gate"] = import_wdgts["should_ignore_hard_gate"]
+        loading_options["should_parallel_process"] = import_wdgts["should_parallel_process"]
 
         return loading_options
 

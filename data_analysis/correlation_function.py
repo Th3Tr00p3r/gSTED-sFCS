@@ -6,11 +6,10 @@ import re
 import shutil
 from contextlib import suppress
 from dataclasses import dataclass
-from functools import partial
 from itertools import cycle
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Dict, Iterator, List, Tuple, Union
+from typing import Any, Dict, Iterator, List, Tuple, Union
 
 import numpy as np
 from scipy.special import j0, j1, jn_zeros
@@ -24,8 +23,16 @@ from data_analysis.data_processing import (
     TDCPhotonMeasurementData,
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
-from utilities import file_utilities
+from data_analysis.workers import N_CPU_CORES, data_processing_worker, io_worker
 from utilities.display import Plotter, default_colors
+from utilities.file_utilities import (
+    DUMP_PATH,
+    default_system_info,
+    load_file_dict,
+    load_processed_solution_measurement,
+    prepare_file_paths,
+    save_processed_solution_meas,
+)
 from utilities.fit_tools import (
     FIT_NAME_DICT,
     FitParams,
@@ -41,6 +48,8 @@ from utilities.helper import (
     timer,
     unify_length,
 )
+
+# import queue
 
 
 @dataclass
@@ -547,6 +556,9 @@ class SolutionSFCSMeasurement:
     """Doc."""
 
     tdc_calib: TDCCalibration
+    laser_freq_hz: int
+    fpga_freq_hz: int
+    scan_settings: dict[str, Any]
 
     def __init__(self, type):
         self.type = type
@@ -566,16 +578,12 @@ class SolutionSFCSMeasurement:
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
 
-        file_paths = file_utilities.prepare_file_paths(
-            Path(file_path_template), file_selection, **proc_options
-        )
+        file_paths = prepare_file_paths(Path(file_path_template), file_selection, **proc_options)
         self.n_paths = len(file_paths)
         self.file_path_template = file_path_template
         *_, self.template = Path(file_path_template).parts
 
-        self.dump_path = file_utilities.DUMP_PATH / re.sub(
-            "\\*", "", re.sub("_[*].pkl", "", self.template)
-        )
+        self.dump_path = DUMP_PATH / re.sub("\\*", "", re.sub("_[*].pkl", "", self.template))
 
         print("\nLoading FPGA data from disk -")
         print(f"Template path: '{file_path_template}'")
@@ -664,6 +672,7 @@ class SolutionSFCSMeasurement:
                 pass
             print("Done.\n")
 
+    @timer()
     def _process_all_data(
         self,
         file_paths: List[Path],
@@ -671,17 +680,6 @@ class SolutionSFCSMeasurement:
         **proc_options,
     ):
         """Doc."""
-        # TODO: perhaps muktiprocessing isn't fast cause the bottleneck is the disk loading.
-        # since now each file raw_data is memory mapped, and since loading/saving only takes up about 1/5 of the processing time,
-        # if I create a multiprocessing queue where a single worker loads each file's byte_data, the rest of the workers can have it processed (coarse, fine, pulse_runtime etc.),
-        # after which it will delete its own byte_data and pass it to same single worker (the one that loads) which which would initiate a RawFileData (which saves the processed data).
-        # the single worker should only start to save once all byte_data is loaded. In this way I could maxize the throughput.
-        # Use this example in the botton of this page: https://docs.python.org/3/library/multiprocessing.html
-        # idea is each worker gets a process and pulls byte data from queue for processing, then returns to resutls queue.
-        # Another (single) worker is the one putting the byte_data in the one queue and saving the processed data from the other queue.
-        # First, the all 'load byte data' tasks are put in the IO queue (1). then the single IO worker process is started where the task queue is the IO queue and the done queue is the processing queue (2).
-        # Secondly, many worker processes are initialized where the task queue is the processing queue (2) and the done queue is the IO queue ('saving' tasks now). the 'loading' tasks have a pre-known amount N.
-        # Once N saving tasks are performed, both queues can be shut down - the IO worker can issue N 'stop' commands then stop itself and it is done.
 
         self._get_general_properties(file_paths[0], **proc_options)
 
@@ -690,14 +688,74 @@ class SolutionSFCSMeasurement:
             self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
         )
 
-        # TODO: this obviously isn't a good idea since the I/O to disk limits the workers.
         # parellel processing
-        if should_parallel_process and len(file_paths) > 20:
-            N_CORES = mp.cpu_count() // 2 - 1  # /2 due to hyperthreading, -1 to leave one free
-            func = partial(self.process_data_file, is_verbose=True, **proc_options)
-            print(f"Parallel processing using {N_CORES} CPUs/processes.")
-            with mp.get_context("spawn").Pool(N_CORES) as pool:
-                self.data = list(pool.map(func, file_paths))
+        # estimate byte_data size (of each file) - total photons times 7 (bytes per photon) in Mega-bytes
+        total_byte_data_size_estimate_mb = (
+            (self.avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
+        )
+        if (
+            should_parallel_process
+            and ((n_files := len(file_paths)) >= 5)
+            and (total_byte_data_size_estimate_mb > 2000)
+        ):
+
+            # -2 is one CPU left to OS and one for I/O
+            N_RAM_PROCESSES = N_CPU_CORES - 2
+
+            print(
+                f"Multi-processing {n_files} files using {N_RAM_PROCESSES} processes (+1 process for I/O)... ",
+                end="",
+            )
+
+            # initialize 3 queues managed by a Manager
+            manager = mp.Manager()
+            io_queue = manager.Queue()
+            data_processing_queue = manager.Queue()
+            results_queue = manager.Queue()
+
+            # initialize a list to keep track of processes
+            process_list = []
+
+            # initialize IO worker (one process)
+            io_process = mp.Process(
+                target=io_worker,
+                name="IO",
+                args=(
+                    io_queue,
+                    data_processing_queue,
+                    results_queue,
+                    self.data_processor,
+                    n_files,
+                    N_RAM_PROCESSES,
+                ),
+                kwargs=proc_options,
+            )
+            io_process.start()
+            process_list.append(io_process)
+
+            # initialize the data processing workers (N_RAM_PROCESSES processes)
+            for _ in range(N_RAM_PROCESSES):
+                data_processing_process = mp.Process(
+                    target=data_processing_worker, args=(data_processing_queue, io_queue)
+                )
+                data_processing_process.start()
+                process_list.append(data_processing_process)
+
+            # fill IO queue with loading tasks for the IO worker
+            load_tasks = [(load_file_dict, file_path) for file_path in file_paths]
+            for task in load_tasks:
+                io_queue.put(task)
+
+            # join then close each process to block untill all are finished and immediately release resources
+            for process in process_list:
+                process.join()
+                process.close()
+
+            print("\nMultiprocessing complete!")  # TESTESTEST
+
+            # finally, collect the file data objects
+            for _ in range(n_files):
+                self.data.append(results_queue.get())
 
         # serial processing (default)
         else:
@@ -708,6 +766,7 @@ class SolutionSFCSMeasurement:
                 # Appending data to self
                 if p is not None:
                     self.data.append(p)
+                    p.raw.dump()
 
         # auto determination of run duration
         self.run_duration = sum([p.general.duration_s for p in self.data])
@@ -722,9 +781,12 @@ class SolutionSFCSMeasurement:
         """Get general measurement properties from the first data file"""
 
         if file_path is not None:  # Loading file from disk
-            file_dict = file_utilities.load_file_dict(file_path)
+            file_dict = load_file_dict(file_path)
 
         full_data = file_dict["full_data"]
+
+        # get countrate estimate (for multiprocessing threshod). calculated more precisely in the end of processing.ArithmeticError
+        self.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         self.afterpulse_params = file_dict["system_info"]["afterpulse_params"]
         self.detector_settings = full_data.get("detector_settings")
@@ -732,8 +794,9 @@ class SolutionSFCSMeasurement:
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
         self.pulse_period_ns = 1 / self.laser_freq_hz * 1e9
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
-        with suppress(KeyError):
-            self.duration_min = full_data["duration_s"] / 60
+        self.duration_min = (
+            full_data.get("duration_s", 0) / 60
+        )  # TODO: (was the 'None' used? is the new default 0 OK?)
 
         # TODO: missing gate - move this to legacy handeling
         if self.detector_settings.get("gate_ns") is not None and (
@@ -761,7 +824,6 @@ class SolutionSFCSMeasurement:
         else:
             self.scan_type = "static"
 
-    @timer()
     def process_data_file(
         self, idx=0, file_path: Path = None, file_dict: dict = None, **proc_options
     ) -> TDCPhotonFileData:
@@ -774,7 +836,7 @@ class SolutionSFCSMeasurement:
         if file_dict is not None:
             self._get_general_properties(file_dict=file_dict, **proc_options)
             file_idx = 1
-            self.dump_path = file_utilities.DUMP_PATH / "temp_meas.pkl"
+            self.dump_path = DUMP_PATH / "temp_meas.pkl"
 
         # File Data Loading
         if file_path is not None:  # Loading file from disk
@@ -788,7 +850,7 @@ class SolutionSFCSMeasurement:
                 end=" ",
             )
             try:
-                file_dict = file_utilities.load_file_dict(file_path)
+                file_dict = load_file_dict(file_path)
             except FileNotFoundError:
                 print(f"File '{file_path}' not found. Ignoring.")
 
@@ -1337,7 +1399,7 @@ class SolutionSFCSExperiment:
                 dir_path, file_template = file_path_template.parent, file_path_template.name
                 # load pre-processed
                 dir_path = dir_path / "processed" / re.sub("_[*].pkl", "", file_template)
-                measurement = file_utilities.load_processed_solution_measurement(
+                measurement = load_processed_solution_measurement(
                     dir_path,
                     file_template,
                     should_load_data=should_re_correlate,
@@ -1410,7 +1472,7 @@ class SolutionSFCSExperiment:
 
         print("Saving processed measurements to disk...", end=" ")
         if self.confocal.is_loaded and "confocal" in meas_types:
-            if file_utilities.save_processed_solution_meas(
+            if save_processed_solution_meas(
                 self.confocal, self.confocal.file_path_template.parent, **kwargs
             ):
                 print("Confocal saved...", end=" ")
@@ -1420,7 +1482,7 @@ class SolutionSFCSExperiment:
                     end=" ",
                 )
         if self.sted.is_loaded and "sted" in meas_types:
-            if file_utilities.save_processed_solution_meas(
+            if save_processed_solution_meas(
                 self.sted, self.sted.file_path_template.parent, **kwargs
             ):
                 print("STED saved...", end=" ")
@@ -1864,7 +1926,7 @@ class ImageSFCSMeasurement(CountsImageMixin):
     def read_image_data(self, file_path, **kwargs) -> None:
         """Doc."""
 
-        file_dict = file_utilities.load_file_dict(file_path)
+        file_dict = load_file_dict(file_path)
         self.process_data_file(file_dict, **kwargs)
 
     def process_data_file(self, file_dict: dict, **kwargs) -> None:
@@ -1883,7 +1945,7 @@ class ImageSFCSMeasurement(CountsImageMixin):
 
 def calculate_calibrated_afterpulse(
     lag: np.ndarray,
-    afterpulse_params: tuple = file_utilities.default_system_info["afterpulse_params"],
+    afterpulse_params: tuple = default_system_info["afterpulse_params"],
     gate_ns: Tuple[float, float] = (0, np.inf),
     laser_freq_hz: float = 1e7,
 ) -> np.ndarray:
