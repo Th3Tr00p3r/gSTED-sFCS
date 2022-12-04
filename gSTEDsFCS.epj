@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project gSTEDsFCS",
     "copyright": "Copyright (C) 2022 idomic, ",
-    "saved": "2022-10-28, 15:36:34"
+    "saved": "2022-12-04, 11:35:16"
   },
   "project": {
     "AUTHOR": "idomic",
@@ -148,6 +148,7 @@
       "data_analysis/correlation_function.py",
       "data_analysis/data_processing.py",
       "data_analysis/software_correlator.py",
+      "data_analysis/workers.py",
       "gui/gui.py",
       "gui/widgets.py",
       "logic/app.py",
@@ -176,6 +177,7 @@
     "TRANSLATIONPATTERN": "",
     "TRANSLATIONS": [],
     "TRANSLATIONSBINPATH": "",
+    "TRANSLATIONSOURCESTARTPATH": "",
     "UICPARAMS": {
       "Package": "",
       "PackagesRoot": "",

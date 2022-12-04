@@ -172,7 +172,6 @@ class RawFileData:
     Therefore, no actual data is ever kept in the object (unless should_dump=False)
     """
 
-    @timer()
     def __init__(
         self,
         idx: int,
@@ -182,106 +181,85 @@ class RawFileData:
         fine: np.ndarray,
         pulse_runtime: np.ndarray,
         line_num: np.ndarray = None,
-        should_dump=True,
     ):
         """
         Unite the (equal shape) arrays into a single 2D array and immediately dump to disk.
         From now on will be accessed via memory mapping.
         """
 
-        self.should_dump = should_dump
+        self._file_name = f"raw_data_{idx}.npy"
+        self._dump_path = dump_path
+        self._file_path = self._dump_path / self._file_name
 
-        if should_dump:
-            self._file_name = f"raw_data_{idx}.npy"
-            self._dump_path = dump_path
-            if line_num is None:
-                data = np.vstack((coarse, coarse2, fine, pulse_runtime))
-            else:
-                data = np.vstack((coarse, coarse2, fine, pulse_runtime, line_num))
+        # keep data until dumped
+        self._coarse = coarse
+        self._coarse2 = coarse2
+        self._fine = fine
+        self._pulse_runtime = pulse_runtime
+        self._line_num = line_num
 
-            # save to disk (). 100 Mb takes about 3 seconds on spinning disk drive.
-            # resave only if file doesn't exist or is significantly different in size # TESTESTEST
-            self._file_path = self._dump_path / self._file_name
-            if (
-                not self._file_path.exists()
-                or abs(self._file_path.stat().st_size - data.nbytes) / data.nbytes > 0.1
-            ):
-                Path.mkdir(
-                    self._dump_path, parents=True, exist_ok=True
-                )  # creating the folder if needed
-                np.save(
-                    self._file_path,
-                    data,
-                    allow_pickle=False,
-                    fix_imports=False,
-                )
-
-        else:
-            self._coarse = coarse
-            self._coarse2 = coarse2
-            self._fine = fine
-            self._pulse_runtime = pulse_runtime
-            self._line_num = line_num
+        # keep track
+        self._was_data_dumped = False
 
     @property
     def coarse(self):
-        if self.should_dump:
+        if self._was_data_dumped:
             return self.read_mmap(0)
         else:
             return self._coarse
 
     @coarse.setter
     def coarse(self, new: np.ndarray):
-        if self.should_dump:
+        if self._was_data_dumped:
             return RuntimeError("RawFileData attributes are read-only.")
         else:
             self._coarse = new
 
     @property
     def coarse2(self):
-        if self.should_dump:
+        if self._was_data_dumped:
             return self.read_mmap(1)
         else:
             return self._coarse2
 
     @coarse2.setter
     def coarse2(self, new: np.ndarray):
-        if self.should_dump:
+        if self._was_data_dumped:
             return RuntimeError("RawFileData attributes are read-only.")
         else:
             self._coarse2 = new
 
     @property
     def fine(self):
-        if self.should_dump:
+        if self._was_data_dumped:
             return self.read_mmap(2)
         else:
             return self._fine
 
     @fine.setter
     def fine(self, new: np.ndarray):
-        if self.should_dump:
+        if self._was_data_dumped:
             return RuntimeError("RawFileData attributes are read-only.")
         else:
             self._fine = new
 
     @property
     def pulse_runtime(self):
-        if self.should_dump:
+        if self._was_data_dumped:
             return self.read_mmap(3)
         else:
             return self._pulse_runtime
 
     @pulse_runtime.setter
     def pulse_runtime(self, new: np.ndarray):
-        if self.should_dump:
+        if self._was_data_dumped:
             return RuntimeError("RawFileData attributes are read-only.")
         else:
             self._pulse_runtime = new
 
     @property
     def line_num(self):
-        if self.should_dump:
+        if self._was_data_dumped:
             try:
                 return self.read_mmap(4)
             except IndexError:
@@ -291,7 +269,7 @@ class RawFileData:
 
     @line_num.setter
     def line_num(self, new: np.ndarray):
-        if self.should_dump:
+        if self._was_data_dumped:
             return RuntimeError("RawFileData attributes are read-only.")
         else:
             self._line_num = new
@@ -325,6 +303,41 @@ class RawFileData:
         )
         data[row_idx] = new_row
         data.flush()
+
+    @timer()
+    def dump(self):
+        """Dump the data to disk. Should be called right after initialization (only needed once)."""
+
+        if self._was_data_dumped:
+            raise RuntimeError("Data was already dumped! No need to dump again.")
+
+        else:
+            # prepare data ndarray
+            if self._line_num is None:
+                data = np.vstack((self._coarse, self._coarse2, self._fine, self._pulse_runtime))
+            else:
+                data = np.vstack(
+                    (self._coarse, self._coarse2, self._fine, self._pulse_runtime, self._line_num)
+                )
+
+            # clear the RAM
+            self._coarse = None
+            self._coarse2 = None
+            self._fine = None
+            self._pulse_runtime = None
+            self._line_num = None
+
+            # save
+            Path.mkdir(self._dump_path, parents=True, exist_ok=True)
+            np.save(
+                self._file_path,
+                data,
+                allow_pickle=False,
+                fix_imports=False,
+            )
+
+            # keep track
+            self._was_data_dumped = True
 
     def save_compressed(self, dir_path: Path = None):
         """Compress (blosc) and save the memory-mapped data in a provided folder"""
@@ -409,6 +422,7 @@ class TDCPhotonFileData:
             self.dump_path,
             *[line for line in raw_data],
         )
+        self.raw.dump()
 
     def get_xcorr_splits_dict(
         self, xcorr_types: List[str], gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
@@ -895,6 +909,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self.fpga_freq_hz = fpga_freq_hz
         self.detector_gate_ns = detector_gate_ns
 
+    @timer()
     def process_data(self, idx, full_data, **proc_options) -> TDCPhotonFileData:
         """Doc."""
 
@@ -1053,7 +1068,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 coarse2=coarse2,
                 fine=fine,
                 pulse_runtime=pulse_runtime,
-                should_dump=should_dump,
             ),
             self.dump_path,
         )
@@ -1240,7 +1254,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 break
         return None
 
-    def _process_circular_scan_data_file(self, idx, full_data, **proc_options) -> TDCPhotonFileData:
+    def _process_circular_scan_data_file(
+        self, idx, full_data, is_verbose=False, **proc_options
+    ) -> TDCPhotonFileData:
         """
         Processes a single circular sFCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
@@ -1257,7 +1273,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         scan_settings = full_data["scan_settings"]
         ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
 
-        print("Converting circular scan to image...", end=" ")
+        if is_verbose:
+            print("Converting circular scan to image...", end=" ")
         cnt, _ = self._sum_scan_circles(
             p.raw.pulse_runtime,
             self.laser_freq_hz,

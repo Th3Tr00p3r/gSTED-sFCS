@@ -1,5 +1,7 @@
 afterpulsingRemovalMethod,filter
 useDefaultSysInfo,False
 subtractBgCorr,True
+ignoreHardGate,False
+useMultiProcessing,True
 fixShift,True
 autoRoi,True
