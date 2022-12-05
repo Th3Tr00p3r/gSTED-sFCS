@@ -312,7 +312,8 @@ class RawFileData:
         """Dump the data to disk. Should be called right after initialization (only needed once)."""
 
         if self._was_data_dumped:
-            raise RuntimeError("Data was already dumped! No need to dump again.")
+            #            raise RuntimeError("Data was already dumped! No need to dump again.") # TODO: find out why exception is raised during mp
+            print(f"Data ({self.idx}) was already dumped! No need to dump again.")
 
         else:
             # prepare data ndarray
