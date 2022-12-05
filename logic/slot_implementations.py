@@ -1236,10 +1236,7 @@ class MainWin:
         """Doc."""
 
         with self.get_measurement_from_template() as measurement:
-            curr_dir = self.current_date_type_dir_path()
-            was_saved = file_utilities.save_processed_solution_meas(
-                measurement, curr_dir, should_force=True
-            )
+            was_saved = measurement.save_processed(should_force=True, is_verbose=True)
             if was_saved:
                 logging.info("Saved the processed data.")
             else:

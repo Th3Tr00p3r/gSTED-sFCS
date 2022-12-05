@@ -1,8 +1,10 @@
 """Data Processing."""
 
+import multiprocessing as mp
 from collections import deque
 from copy import copy
 from dataclasses import dataclass
+from functools import partial
 from itertools import count as infinite_range
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
@@ -11,6 +13,7 @@ import numpy as np
 import scipy
 import skimage
 
+from data_analysis.workers import N_CPU_CORES, get_splits_dict
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
@@ -189,7 +192,7 @@ class RawFileData:
 
         self._file_name = f"raw_data_{idx}.npy"
         self._dump_path = dump_path
-        self._file_path = self._dump_path / self._file_name
+        self.dump_file_path = self._dump_path / self._file_name
 
         # keep data until dumped
         self._coarse = coarse
@@ -200,6 +203,7 @@ class RawFileData:
 
         # keep track
         self._was_data_dumped = False
+        self.compressed_file_path: Path = None
 
     @property
     def coarse(self):
@@ -282,7 +286,7 @@ class RawFileData:
         """
 
         return np.load(
-            file_path if file_path is not None else self._file_path,
+            file_path if file_path is not None else self.dump_file_path,
             mmap_mode="r",
             allow_pickle=True,
             fix_imports=False,
@@ -296,7 +300,7 @@ class RawFileData:
         # TODO: try to use with delay_time by trying to move it to self instead of general
 
         data = np.load(
-            self._file_path,
+            self.dump_file_path,
             mmap_mode="r+",
             allow_pickle=False,
             fix_imports=False,
@@ -304,7 +308,6 @@ class RawFileData:
         data[row_idx] = new_row
         data.flush()
 
-    @timer()
     def dump(self):
         """Dump the data to disk. Should be called right after initialization (only needed once)."""
 
@@ -330,7 +333,7 @@ class RawFileData:
             # save
             Path.mkdir(self._dump_path, parents=True, exist_ok=True)
             np.save(
-                self._file_path,
+                self.dump_file_path,
                 data,
                 allow_pickle=False,
                 fix_imports=False,
@@ -347,9 +350,10 @@ class RawFileData:
 
         # compress and save to processed folder ('dir_path')
         Path.mkdir(dir_path, parents=True, exist_ok=True)  # creating the folder if needed
+        self.compressed_file_path = (dir_path / self._file_name).with_suffix(".blosc")
         save_object(
             data,
-            (dir_path / self._file_name).with_suffix(".blosc"),
+            self.compressed_file_path,
             compression_method="blosc",
             element_size_estimate_mb=data.nbytes / 1e6,
             obj_name="dumped data array",
@@ -364,9 +368,10 @@ class RawFileData:
             (dir_path / self._file_name).with_suffix(".blosc"), should_track_progress=True
         )
 
-        # resave
+        # resave (dump), creating the dumpt folder first if needed
+        Path.mkdir(self._dump_path, parents=True, exist_ok=True)
         np.save(
-            self._file_path,
+            self.dump_file_path,
             data,
             allow_pickle=False,
             fix_imports=False,
@@ -422,14 +427,12 @@ class TDCPhotonFileData:
             self.dump_path,
             *[line for line in raw_data],
         )
-        self.raw.dump()
 
     def get_xcorr_splits_dict(
         self, xcorr_types: List[str], gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
     ):
         """Return a list of SoftwareCorrelator input units (splits) from a measurement data in a single file (self)"""
 
-        print(f"{self.idx + 1}, ", end="")
         if self.raw.line_num is not None:  # line data
             return self._get_line_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns)
         else:  # continuous data
@@ -649,15 +652,33 @@ class TDCPhotonMeasurementData(list):
     def __init__(self):
         super().__init__()
 
-    def prepare_xcorr_splits_dict(self, xcorr_types: List[str], **kwargs) -> Dict[str, List]:
+    @timer()
+    def prepare_xcorr_splits_dict(
+        self, xcorr_types: List[str], should_parallel_process=True, **kwargs
+    ) -> Dict[str, List]:  # TESTESTEST should_parallel_process was False
         """
         Prepare SoftwareCorrelator input from complete measurement data.
         Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
         To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
 
-        print("File: ", end="")
-        file_splits_dict_list = [p.get_xcorr_splits_dict(xcorr_types, **kwargs) for p in self]
+        if should_parallel_process and (N_FILES := len(self)) > 10:
+            N_PROCESSES = N_CPU_CORES - 1
+            CHUNKSIZE = N_FILES // N_PROCESSES
+            kwargs["xcorr_types"] = xcorr_types
+            partial_get_splits_dict = partial(get_splits_dict, **kwargs)
+            print(
+                f"(Parallel processing using {N_PROCESSES} processes, with chunksize {CHUNKSIZE}) ",
+                end="",
+            )
+            with mp.get_context().Pool(N_PROCESSES) as pool:
+                file_splits_dict_list = list(
+                    pool.imap_unordered(partial_get_splits_dict, self, CHUNKSIZE)
+                )
+
+        else:
+            file_splits_dict_list = [p.get_xcorr_splits_dict(xcorr_types, **kwargs) for p in self]
+
         dt_ts_splits_dict = {
             xx: [
                 dt_ts_split
@@ -909,8 +930,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self.fpga_freq_hz = fpga_freq_hz
         self.detector_gate_ns = detector_gate_ns
 
-    @timer()
-    def process_data(self, idx, full_data, **proc_options) -> TDCPhotonFileData:
+    def process_data(self, idx, full_data, should_dump=True, **proc_options) -> TDCPhotonFileData:
         """Doc."""
 
         # sFCS
@@ -929,6 +949,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 is_scan_continuous=True,
                 **proc_options,
             )
+            if should_dump:  # False when multiprocessing
+                p.raw.dump()
 
         # add general properties
         p.general.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
@@ -942,7 +964,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         is_scan_continuous=False,
         should_use_all_sections=True,
         len_factor=0.01,
-        should_dump=True,
         is_verbose=False,
         byte_data_slice=None,
         **proc_options,
@@ -1255,7 +1276,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         return None
 
     def _process_circular_scan_data_file(
-        self, idx, full_data, is_verbose=False, **proc_options
+        self, idx, full_data, is_verbose=False, should_dump=True, **proc_options
     ) -> TDCPhotonFileData:
         """
         Processes a single circular sFCS data file ('full_data').
@@ -1269,6 +1290,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             is_scan_continuous=True,
             **proc_options,
         )
+        if should_dump:  # False when multiprocessing
+            p.raw.dump
 
         scan_settings = full_data["scan_settings"]
         ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
@@ -1304,6 +1327,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         full_data,
         should_fix_shift=True,
         roi_selection="auto",
+        should_dump=True,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1473,6 +1497,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         p.import_raw(
             np.vstack((new_coarse, new_coarse2, new_fine, new_pulse_runtime, new_line_num))
         )
+        if should_dump:  # False only if multiprocessing
+            p.raw.dump()
 
         # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
         p.general.delay_time = np.full(
@@ -1512,6 +1538,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         **kwargs,
     ) -> TDCCalibration:
         """Doc."""
+        # TODO: move to 'TDCPhotonMeasurementData' class
 
         coarse, fine = self._unite_coarse_fine_data(data, scan_type)
 
