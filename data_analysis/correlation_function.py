@@ -110,7 +110,7 @@ class HankelTransform:
             axes[1].set_title("Hankel Transforms")
             axes[1].set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
             axes[1].set_ylabel("$F(q)$ (Normalized)")
-            axes[0].legend(loc="lower left")
+            axes[1].legend(loc="lower left")
 
 
 @dataclass
