@@ -190,6 +190,7 @@ class RawFileData:
         From now on will be accessed via memory mapping.
         """
 
+        self._idx = idx
         self._file_name = f"raw_data_{idx}.npy"
         self._dump_path = dump_path
         self.dump_file_path = self._dump_path / self._file_name
@@ -313,7 +314,7 @@ class RawFileData:
 
         if self._was_data_dumped:
             #            raise RuntimeError("Data was already dumped! No need to dump again.") # TODO: find out why exception is raised during mp
-            print(f"Data ({self.idx}) was already dumped! No need to dump again.")
+            print(f"Data ({self._idx}) was already dumped! No need to dump again.")
 
         else:
             # prepare data ndarray
