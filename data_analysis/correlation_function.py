@@ -102,6 +102,7 @@ class HankelTransform:
             axes[0].set_title("Interp./Extrap. Testing")
             axes[0].set_xlabel("vt_um")
             axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
+            axes[0].legend()
 
             axes[1].plot(self.q2pi, self.fq / self.fq[0], label=f"{label_prefix}Hankel transform")
             axes[1].set_xscale("log")
@@ -109,9 +110,7 @@ class HankelTransform:
             axes[1].set_title("Hankel Transforms")
             axes[1].set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
             axes[1].set_ylabel("$F(q)$ (Normalized)")
-
-            for ax in axes:
-                ax.legend()
+            axes[0].legend(loc="lower left")
 
 
 @dataclass
@@ -694,6 +693,9 @@ class SolutionSFCSMeasurement:
         total_byte_data_size_estimate_mb = (
             (self.avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
         )
+        print(
+            "total_byte_data_size_estimate_mb (all files): ", total_byte_data_size_estimate_mb
+        )  # TESTESTEST
         if (
             should_parallel_process
             and ((n_files := len(file_paths)) >= 5)
@@ -944,6 +946,14 @@ class SolutionSFCSMeasurement:
                     print("(Calibrating TDC first...)", end=" ")
                 self.calibrate_tdc(is_verbose=False, **corr_options)
 
+        # Calculate afterpulsing filter if doesn't alreay exist (optional)
+        if is_filtered:
+            print("Preparing Afterpulsing filter... ", end="")
+            afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
+                gate_ns, self.type, **corr_options
+            )
+            print("Done.")
+
         # create list of split data for correlator - TDC-gating is performed here
         dt_ts_split_list = self.data.prepare_xcorr_splits_dict(
             ["AA"],
@@ -953,15 +963,8 @@ class SolutionSFCSMeasurement:
         if is_verbose:
             print("Done.")
 
-        # Calculate afterpulsing filter if doesn't alreay exist (optional)
-        if is_filtered:
-            print("Preparing Afterpulsing filter... ", end="")
-            afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
-                gate_ns, self.type, **corr_options
-            )
-            print("Done.")
-
         # build correlator input
+        # TODO: this should be united with 'prepare_xcorr_splits_dict'  (above) and then could be multiprocessed too (also, it's where it belongs)
         print(f"Building correlator input ({len(dt_ts_split_list)} splits): ", end="")
         corr_input_list = []
         filter_input_list = []

@@ -311,12 +311,10 @@ class RawFileData:
 
     def dump(self):
         """Dump the data to disk. Should be called right after initialization (only needed once)."""
+        # TODO: add a should_force method if needed, but more importantly provide a way to ignore the dump if file of the same name already exists
 
-        if self._was_data_dumped:
-            #            raise RuntimeError("Data was already dumped! No need to dump again.") # TODO: find out why exception is raised during mp
-            print(f"Data ({self._idx}) was already dumped! No need to dump again.")
-
-        else:
+        # cancel dumping if not needed # TESTESTEST
+        if not self._was_data_dumped or not self.dump_file_path.exists():
             # prepare data ndarray
             if self._line_num is None:
                 data = np.vstack((self._coarse, self._coarse2, self._fine, self._pulse_runtime))
@@ -324,13 +322,6 @@ class RawFileData:
                 data = np.vstack(
                     (self._coarse, self._coarse2, self._fine, self._pulse_runtime, self._line_num)
                 )
-
-            # clear the RAM
-            self._coarse = None
-            self._coarse2 = None
-            self._fine = None
-            self._pulse_runtime = None
-            self._line_num = None
 
             # save
             Path.mkdir(self._dump_path, parents=True, exist_ok=True)
@@ -343,6 +334,13 @@ class RawFileData:
 
             # keep track
             self._was_data_dumped = True
+
+        # clear the RAM
+        self._coarse = None
+        self._coarse2 = None
+        self._fine = None
+        self._pulse_runtime = None
+        self._line_num = None
 
     def save_compressed(self, dir_path: Path = None):
         """Compress (blosc) and save the memory-mapped data in a provided folder"""
