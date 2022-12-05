@@ -31,6 +31,7 @@ from logic.devices import (
 )
 from logic.timeout import Timeout
 from utilities.errors import DeviceError
+from utilities.file_utilities import DUMP_PATH
 
 
 class App:
@@ -254,7 +255,7 @@ class App:
         self.loop.stop()
 
         # clear temp folder
-        shutil.rmtree("C:/temp_sfcs_data/", ignore_errors=True)  # TODO: make optional
+        shutil.rmtree(DUMP_PATH, ignore_errors=True)  # TODO: make optional
 
         logging.info("Quitting application.")
         print("Application closed.")
@@ -265,7 +266,8 @@ class App:
         try:
             if not self.exiting:
                 pressed = dialog.QuestionDialog(
-                    txt="Are you sure you want to quit?", title="Quitting Program"
+                    txt=f"Are you sure you want to quit?\nThis would also clear the temprary dump path\n({DUMP_PATH})",
+                    title="Quitting Program",
                 ).display()
                 if pressed == dialog.YES:
                     self.exiting = True

@@ -333,59 +333,24 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
             return [item for chunk_ in loaded_data for item in chunk_]
 
 
-def save_processed_solution_meas(meas, should_save_data=True, should_force=False) -> bool:
-    """
-    Save a processed measurement, including the '.data' attribute.
-    The template may then be loaded much more quickly.
-    """
-    # TODO: this should be moved to measurement class?
-
-    # save the measurement
-    dir_path = meas.file_path_template.parent / "processed" / re.sub("_[*].pkl", "", meas.template)
-
-    meas_file_path = dir_path / "SolutionSFCSMeasurement.pkl"
-    if not meas_file_path.is_file() or should_force:
-
-        # save the measurement object
-        save_object(
-            meas, meas_file_path, compression_method="blosc", obj_name="processed measurement"
-        )
-
-        # save the raw data separately
-        if should_save_data:
-            data_dir_path = dir_path / "data"
-
-            # move each data file from the temp folder to 'data_dir_path'
-            for p in meas.data:
-                #                # lower size of runtime (row 3) if possible
-                #                if data[3].max() <= np.iinfo(np.int32).max:
-                #                    data[3] = file_raw_data_copy[3].astype(np.int32)
-                p.raw.save_compressed(data_dir_path)
-
-        return True
-
-    else:
-        return False
-
-
 def load_processed_solution_measurement(dir_path: Path, file_template: str, should_load_data=True):
     """Doc."""
 
     meas_file_path = dir_path / "SolutionSFCSMeasurement.pkl"
 
     # load the measurement
+    print("Loading SolutionSFCSMeasurement object... ", end="")
     meas = load_object(meas_file_path)
+    print("Done.")
 
     #    # define the template # TODO: why is this needed?
     #    meas.template = file_template
 
-    # load separately the data
+    # load separately the data, but only if not already in temp folder (to avoid long decompressing)
     if should_load_data:
         for p in meas.data:
-            #                # lower size of runtime (row 3) if possible
-            #                if data[3].max() <= np.iinfo(np.int32).max:
-            #                    data[3] = file_raw_data_copy[3].astype(np.int32)
-            p.raw.load_compressed(dir_path / "data")
+            if not p.raw.dump_file_path.exists():
+                p.raw.load_compressed(dir_path / "data")
 
     return meas
 
