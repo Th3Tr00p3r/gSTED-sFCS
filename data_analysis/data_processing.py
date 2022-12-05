@@ -183,6 +183,7 @@ class RawFileData:
         coarse2: np.ndarray,
         fine: np.ndarray,
         pulse_runtime: np.ndarray,
+        delay_time: np.ndarray,
         line_num: np.ndarray = None,
     ):
         """
@@ -200,6 +201,7 @@ class RawFileData:
         self._coarse2 = coarse2
         self._fine = fine
         self._pulse_runtime = pulse_runtime
+        self._delay_time = delay_time
         self._line_num = line_num
 
         # keep track
@@ -209,7 +211,7 @@ class RawFileData:
     @property
     def coarse(self):
         if self._was_data_dumped:
-            return self.read_mmap(0)
+            return self.read_mmap(0).astype(np.int16)
         else:
             return self._coarse
 
@@ -223,7 +225,7 @@ class RawFileData:
     @property
     def coarse2(self):
         if self._was_data_dumped:
-            return self.read_mmap(1)
+            return self.read_mmap(1).astype(np.int16)
         else:
             return self._coarse2
 
@@ -237,7 +239,7 @@ class RawFileData:
     @property
     def fine(self):
         if self._was_data_dumped:
-            return self.read_mmap(2)
+            return self.read_mmap(2).astype(np.int16)
         else:
             return self._fine
 
@@ -251,7 +253,7 @@ class RawFileData:
     @property
     def pulse_runtime(self):
         if self._was_data_dumped:
-            return self.read_mmap(3)
+            return self.read_mmap(3).astype(np.int64)
         else:
             return self._pulse_runtime
 
@@ -263,10 +265,25 @@ class RawFileData:
             self._pulse_runtime = new
 
     @property
+    def delay_time(self):
+        if self._was_data_dumped:
+            return self.read_mmap(4).astype(np.float16)
+        else:
+            return self._delay_time
+
+    @delay_time.setter
+    def delay_time(self, new: np.ndarray):
+        # NOTE: this does not allow for slicing! must assign a full delay_time array of same size
+        if self._was_data_dumped:
+            return self.write_mmap_row(4, new)
+        else:
+            self._delay_time = new
+
+    @property
     def line_num(self):
         if self._was_data_dumped:
             try:
-                return self.read_mmap(4)
+                return self.read_mmap(5).astype(np.int16)
             except IndexError:
                 return None
         else:
@@ -293,12 +310,12 @@ class RawFileData:
             fix_imports=False,
         )[row_idx]
 
+    @timer()
     def write_mmap_row(self, row_idx: int, new_row: np.ndarray):
         """
         Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
         each write should take about ???, therefore unnoticeable.
         """
-        # TODO: try to use with delay_time by trying to move it to self instead of general
 
         data = np.load(
             self.dump_file_path,
@@ -317,10 +334,19 @@ class RawFileData:
         if not self._was_data_dumped or not self.dump_file_path.exists():
             # prepare data ndarray
             if self._line_num is None:
-                data = np.vstack((self._coarse, self._coarse2, self._fine, self._pulse_runtime))
+                data = np.vstack(
+                    (self._coarse, self._coarse2, self._fine, self._pulse_runtime, self._delay_time)
+                )
             else:
                 data = np.vstack(
-                    (self._coarse, self._coarse2, self._fine, self._pulse_runtime, self._line_num)
+                    (
+                        self._coarse,
+                        self._coarse2,
+                        self._fine,
+                        self._pulse_runtime,
+                        self._delay_time,
+                        self._line_num,
+                    )
                 )
 
             # save
@@ -340,6 +366,7 @@ class RawFileData:
         self._coarse2 = None
         self._fine = None
         self._pulse_runtime = None
+        self._delay_time = None
         self._line_num = None
 
     def save_compressed(self, dir_path: Path = None):
@@ -391,7 +418,6 @@ class GeneralFileData:
     size_estimate_mb: float
     duration_s: float
     skipped_duration: float
-    delay_time: np.ndarray  # TESTESTEST - moved here
     avg_cnt_rate_khz: float = None
     image: np.ndarray = None
     bg_line_corr: List[Dict[str, Any]] = None
@@ -446,20 +472,22 @@ class TDCPhotonFileData:
     ):
         """Splits are all photons belonging to each scan line."""
 
+        dt = self.raw.delay_time
+
         # NaNs mark line starts/ends (used to create valid = -1/-2 needed in C code)
-        nan_idxs = np.isnan(self.general.delay_time)
+        nan_idxs = np.isnan(dt)
         if "A" in "".join(xcorr_types):
-            gate1_idxs = gate1_ns.valid_indices(self.general.delay_time)
+            gate1_idxs = gate1_ns.valid_indices(dt)
             valid_idxs1 = gate1_idxs | nan_idxs
-            dt1 = self.general.delay_time[valid_idxs1]
+            dt1 = dt[valid_idxs1]
             pulse_runtime1 = self.raw.pulse_runtime[valid_idxs1]
             ts1 = np.hstack(([0], np.diff(pulse_runtime1)))
             dt_ts1 = np.vstack((dt1, ts1))
             line_num1 = self.raw.line_num[valid_idxs1]
         if "B" in "".join(xcorr_types):
-            gate2_idxs = gate2_ns.valid_indices(self.general.delay_time)
+            gate2_idxs = gate2_ns.valid_indices(dt)
             valid_idxs2 = gate2_idxs | nan_idxs
-            dt2 = self.general.delay_time[valid_idxs2]
+            dt2 = dt[valid_idxs2]
             pulse_runtime2 = self.raw.pulse_runtime[valid_idxs2]
             ts2 = np.hstack(([0], np.diff(pulse_runtime2)))
             dt_ts2 = np.vstack((dt2, ts2))
@@ -468,7 +496,7 @@ class TDCPhotonFileData:
             # NOTE: # gate2 is first in line to match how software correlator C code written
             dt_ts12 = np.vstack(
                 (
-                    self.general.delay_time,
+                    dt,
                     self.raw.pulse_runtime,
                     valid_idxs2,
                     valid_idxs1,
@@ -532,7 +560,7 @@ class TDCPhotonFileData:
             ) / self.general.laser_freq_hz
 
             section_pulse_runtime = self.raw.pulse_runtime[se_start : se_end + 1]
-            section_delay_time = self.general.delay_time[se_start : se_end + 1]
+            section_delay_time = self.raw.delay_time[se_start : se_end + 1]
 
             # split the data into parts A/B according to gates
             # TODO: in order to make this more general and use it with both auto and cross correlations, the function should optionally accept 2 seperate data,
@@ -1076,9 +1104,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 size_estimate_mb=max(section_lengths) / 1e6,
                 duration_s=duration_s,
                 skipped_duration=skipped_duration,
-                delay_time=np.full(
-                    pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
-                ),
                 # continuous scan
                 all_section_edges=all_section_edges,
             ),
@@ -1089,6 +1114,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 coarse2=coarse2,
                 fine=fine,
                 pulse_runtime=pulse_runtime,
+                delay_time=np.full(
+                    pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
+                ),
             ),
             self.dump_path,
         )
@@ -1493,19 +1521,19 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         new_coarse2 = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse2))[sorted_idxs]
         new_fine = np.hstack((line_starts_nans, line_stops_nans, p.raw.fine))[sorted_idxs]
 
-        # replace the raw data after angular scan changes made # TESTESTEST
+        # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
+        delay_time = np.full(new_pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16)
+        line_edge_idxs = new_fine == NAN_PLACEBO
+        delay_time[line_edge_idxs] = np.nan
+
+        # replace the raw data after angular scan changes made
         p.import_raw(
-            np.vstack((new_coarse, new_coarse2, new_fine, new_pulse_runtime, new_line_num))
+            np.vstack(
+                (new_coarse, new_coarse2, new_fine, new_pulse_runtime, delay_time, new_line_num)
+            )
         )
         if should_dump:  # False only if multiprocessing
             p.raw.dump()
-
-        # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
-        p.general.delay_time = np.full(
-            p.raw.pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
-        )
-        line_edge_idxs = p.raw.fine == NAN_PLACEBO
-        p.general.delay_time[line_edge_idxs] = np.nan
 
         p.general.image = cnt
         p.general.roi = roi
@@ -1664,7 +1692,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         first_coarse_bin, *_, last_coarse_bin = coarse_bins
         delay_time_list = []
         for p in data:
-            p.general.delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
+            _delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
             crs = np.minimum(p.raw.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
             crs[crs < 0] = crs[crs < 0] + last_coarse_bin - first_coarse_bin + 1
 
@@ -1681,13 +1709,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
 
             photon_idxs = p.raw.fine != NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
-            p.general.delay_time[photon_idxs] = (
+            _delay_time[photon_idxs] = (
                 t_calib[p.raw.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
             )
+            p.raw.delay_time = _delay_time
             total_laser_pulses += p.raw.pulse_runtime[-1]
 
-            delay_time_list.append(p.general.delay_time[photon_idxs])
+            delay_time_list.append(_delay_time[photon_idxs])
 
         delay_time = np.hstack(delay_time_list)
 
