@@ -3,7 +3,6 @@
 import logging
 import multiprocessing as mp
 import re
-import shutil
 from contextlib import suppress
 from dataclasses import dataclass
 from itertools import cycle
@@ -1325,7 +1324,7 @@ class SolutionSFCSMeasurement:
             / "processed"
             / re.sub("_[*].pkl", "", self.template)
         )
-        meas_file_path = dir_path / "SolutionSFCSMeasurement.pkl"
+        meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
             # save the measurement object
             if is_verbose:
@@ -1351,11 +1350,6 @@ class SolutionSFCSMeasurement:
 
         else:
             return False
-
-    def clear_dump_path(self):
-        """Delete the dump folder"""
-
-        shutil.rmtree(self.dump_path, ignore_errors=True)
 
 
 class SolutionSFCSExperiment:

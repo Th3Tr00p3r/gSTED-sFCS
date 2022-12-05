@@ -338,7 +338,7 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
 def load_processed_solution_measurement(dir_path: Path, file_template: str, should_load_data=True):
     """Doc."""
 
-    meas_file_path = dir_path / "SolutionSFCSMeasurement.pkl"
+    meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
 
     # load the measurement
     print("Loading SolutionSFCSMeasurement object... ", end="")
