@@ -690,6 +690,7 @@ class SolutionSFCSMeasurement:
 
         # parellel processing
         # estimate byte_data size (of each file) - total photons times 7 (bytes per photon) in Mega-bytes
+        # TODO: estimation should be for a single file (must know the original number of files!) and condition should depend on actual number of file
         total_byte_data_size_estimate_mb = (
             (self.avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
         )

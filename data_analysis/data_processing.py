@@ -1291,7 +1291,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             **proc_options,
         )
         if should_dump:  # False when multiprocessing
-            p.raw.dump
+            p.raw.dump()
 
         scan_settings = full_data["scan_settings"]
         ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
