@@ -220,6 +220,8 @@ def save_object(
     Save a pickle-serialized and optionally gzip/blosc-compressed object to disk, if estimated size is within the limits.
     Returns 'True' if saved, 'False' otherwise.
     """
+    # TODO: file suffix (.pkl, .blosc, .gzip) should be determined here! (with_suffix...) - this would simplify the load_object function, too, since it would know which file to expect. (but it's nice that it finds out on its own)
+    # TODO: compressed objects take up less space, and so the chunksize should (if possible) be set to a higher value when estimating the chunksize of a soon to be compressed object (but how??)
 
     # create parent directory if needed
     dir_path = file_path.parent
@@ -443,7 +445,6 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
             )
 
 
-@timer()
 def load_file_dict(file_path: Path):
     """
     Load files according to extension.
