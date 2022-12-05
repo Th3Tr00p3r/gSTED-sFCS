@@ -24,7 +24,7 @@ def io_worker(
         else:  # args is a 'TDCPhotonFileData' object (p)
             if arg is not None:
                 #                print(f"SAVING RAW DATA {arg.idx}... ", end="")  # TESTESTEST
-                func(arg)
+                func(arg)  # raw.dump()
                 #                print("Done!") # TESTESTEST
                 results.put(arg)
             n_saves += 1
@@ -43,6 +43,10 @@ def io_worker(
 
 def dump_data_file(p):
     p.raw.dump()
+
+
+def get_splits_dict(p, **kwargs):
+    return p.get_xcorr_splits_dict(**kwargs)
 
 
 def data_processing_worker(data_processing_queue, io_queue):

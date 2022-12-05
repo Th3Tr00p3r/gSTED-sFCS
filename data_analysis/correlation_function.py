@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from itertools import cycle
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, Iterator, List, Tuple, Union
+from typing import Any, Dict, Iterator, List, Tuple, Union, cast
 
 import numpy as np
 from scipy.special import j0, j1, jn_zeros
@@ -31,7 +31,7 @@ from utilities.file_utilities import (
     load_file_dict,
     load_processed_solution_measurement,
     prepare_file_paths,
-    save_processed_solution_meas,
+    save_object,
 )
 from utilities.fit_tools import (
     FIT_NAME_DICT,
@@ -699,6 +699,9 @@ class SolutionSFCSMeasurement:
             and (total_byte_data_size_estimate_mb > 2000)
         ):
 
+            # cancel auto-dumping upon processing, to leave the dumping to IO process
+            proc_options["should_dump"] = False
+
             # -2 is one CPU left to OS and one for I/O
             N_RAM_PROCESSES = N_CPU_CORES - 2
 
@@ -766,7 +769,6 @@ class SolutionSFCSMeasurement:
                 # Appending data to self
                 if p is not None:
                     self.data.append(p)
-                    p.raw.dump()
 
         # auto determination of run duration
         self.run_duration = sum([p.general.duration_s for p in self.data])
@@ -1307,6 +1309,45 @@ class SolutionSFCSMeasurement:
             **kwargs,
         )
 
+    def save_processed(self, should_save_data=True, should_force=False, is_verbose=False) -> bool:
+        """
+        Save a processed measurement, including the '.data' attribute.
+        The template may then be loaded much more quickly.
+        """
+
+        # save the measurement
+        dir_path = (
+            cast(Path, self.file_path_template).parent
+            / "processed"
+            / re.sub("_[*].pkl", "", self.template)
+        )
+        meas_file_path = dir_path / "SolutionSFCSMeasurement.pkl"
+        if not meas_file_path.is_file() or should_force:
+            # save the measurement object
+            if is_verbose:
+                print("Saving SolutionSFCSMeasurement object... ", end="")
+            save_object(
+                self, meas_file_path, compression_method="blosc", obj_name="processed measurement"
+            )
+            if is_verbose:
+                print("Done.")
+
+            # save the raw data separately
+            if should_save_data:
+                data_dir_path = dir_path / "data"
+
+                # compress and save each data file in the temp folder in 'data_dir_path' (optional)
+                for p in self.data:
+                    if p.raw.compressed_file_path is None or (
+                        not p.raw.compressed_file_path.exists() or should_force
+                    ):
+                        p.raw.save_compressed(data_dir_path)
+
+            return True
+
+        else:
+            return False
+
     def clear_dump_path(self):
         """Delete the dump folder"""
 
@@ -1469,12 +1510,11 @@ class SolutionSFCSExperiment:
 
     def save_processed_measurements(self, meas_types=["confocal", "sted"], **kwargs):
         """Doc."""
+        # TODO: this should call the same method on Measurement object (hierarchical). move it from file_utilities
 
         print("Saving processed measurements to disk...", end=" ")
         if self.confocal.is_loaded and "confocal" in meas_types:
-            if save_processed_solution_meas(
-                self.confocal, self.confocal.file_path_template.parent, **kwargs
-            ):
+            if self.confocal.save_processed(**kwargs):
                 print("Confocal saved...", end=" ")
             else:
                 print(
@@ -1482,9 +1522,7 @@ class SolutionSFCSExperiment:
                     end=" ",
                 )
         if self.sted.is_loaded and "sted" in meas_types:
-            if save_processed_solution_meas(
-                self.sted, self.sted.file_path_template.parent, **kwargs
-            ):
+            if self.sted.save_processed(**kwargs):
                 print("STED saved...", end=" ")
             else:
                 print(
