@@ -17,7 +17,7 @@ from data_analysis.workers import N_CPU_CORES, get_splits_dict
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
-from utilities.helper import Gate, Limits, div_ceil, nan_helper, timer, xcorr
+from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
 
 NAN_PLACEBO = -100  # marks starts/ends of lines
 LINE_END_ADDER = 1000
@@ -310,7 +310,6 @@ class RawFileData:
             fix_imports=False,
         )[row_idx]
 
-    @timer()
     def write_mmap_row(self, row_idx: int, new_row: np.ndarray):
         """
         Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
@@ -328,9 +327,8 @@ class RawFileData:
 
     def dump(self):
         """Dump the data to disk. Should be called right after initialization (only needed once)."""
-        # TODO: add a should_force method if needed, but more importantly provide a way to ignore the dump if file of the same name already exists
 
-        # cancel dumping if not needed # TESTESTEST
+        # cancel dumping if not needed
         if not self._was_data_dumped or not self.dump_file_path.exists():
             # prepare data ndarray
             if self._line_num is None:
@@ -680,17 +678,16 @@ class TDCPhotonMeasurementData(list):
     def __init__(self):
         super().__init__()
 
-    @timer()
     def prepare_xcorr_splits_dict(
         self, xcorr_types: List[str], should_parallel_process=True, **kwargs
-    ) -> Dict[str, List]:  # TESTESTEST should_parallel_process was False
+    ) -> Dict[str, List]:
         """
         Prepare SoftwareCorrelator input from complete measurement data.
         Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
         To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
 
-        if should_parallel_process and (N_FILES := len(self)) > 10:
+        if should_parallel_process and (N_FILES := len(self)) > 20:
             N_PROCESSES = N_CPU_CORES - 1
             CHUNKSIZE = N_FILES // N_PROCESSES
             kwargs["xcorr_types"] = xcorr_types
