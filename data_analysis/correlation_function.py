@@ -452,9 +452,6 @@ class CorrFunc:
 
             C = (2 / c0[n - 1]) * j0(j_n * j_m / c0[n - 1]) / (abs(j1(j_n)) * abs(j1(j_m)))
 
-            r_max = max(r)
-            print("max_r: ", max_r)
-            print("r_max: ", r_max)
             v_max = c0[n - 1] / (2 * np.pi * max_r)  # Maximum frequency
             v = c0.T / (2 * np.pi * max_r)  # Frequency vector
             m1 = (abs(j1(c0)) / max_r).T  # m1 prepares input vector for transformation
