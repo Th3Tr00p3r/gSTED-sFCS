@@ -1615,10 +1615,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             coarse_bins = x_all
             h = h_all
         elif isinstance(pick_valid_bins_according_to, np.ndarray):
-            coarse_bins = sync_coarse_time_to
+            coarse_bins = pick_valid_bins_according_to
             h = h_all[coarse_bins]
         elif isinstance(pick_valid_bins_according_to, TDCCalibration):
-            coarse_bins = sync_coarse_time_to.coarse_bins
+            coarse_bins = pick_valid_bins_according_to.coarse_bins
             h = h_all[coarse_bins]
         else:
             raise TypeError(
