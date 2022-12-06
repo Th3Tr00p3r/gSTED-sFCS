@@ -1,10 +1,15 @@
-solScanFileTemplate,
 imgScanFileTemplate,gb
+solScanFileTemplate,
 newTemplate,
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
 spadMode,free running
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 solScanFloatingAmp,0
 maxLineLen,100
 angAoSampFreq,10000
@@ -20,29 +25,24 @@ circAoSampFreq,10000
 circDiameter,20
 circSpeed,6000
 numOfCircles,960
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 tdcCalibGating,40
 expStrctFctrRbstIntrpPnts,3
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
-depPow,130
 depCurr,1500
+depPow,130
 stageSteps,250
 spadGateWidth,98
 spadEffGateWidth,98
-solScanMaxFileSize,20.0
-solLinFrac,0.9
-solAngActualSpeed,6010.93
-solActualScanFreq,27.32
-solScanDur,10.0
 imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
+solScanMaxFileSize,20.0
+solLinFrac,0.9
+solAngActualSpeed,6010.93
+solActualScanFreq,27.32
+solScanDur,15.0
 customGateLifetimesLower,5.0
 customGateLifetimesUpper,20.0
 expStrctFctrGMin,0.01
@@ -53,12 +53,12 @@ zAOV,5.0
 axisMoveUm,5.0
 psdDelay,0.0
 psdEffDelay,49.61
-solMeasPreset,Standard Circular
-solScanType,circle
-solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
+solMeasPreset,Standard Static
+solScanType,static
+solScanDurUnits,seconds
 dataMonth,11
 dataYear,2022
 dataDay,30
@@ -72,14 +72,14 @@ assignedGates,
 gateMeasType,STED
 availableGates,
 importedSolDataTemplates2,
-expPropGstedGate,
+expPropGstedGate,Lifetime
 importedSolDataTemplates1,
 avgInterval,5000
 posAxis,X
-solScanParamsStacked,1
+solScanParamsStacked,2
 importStacked,1
 analysisStacked,1
-depModeStacked,0
+depModeStacked,1
 regularSolMeas,False
 repeatSolMeas,True
 finalSolMeas,False
@@ -93,8 +93,8 @@ solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
 solAveragingPlotSpatial,False
-currMode,True
-powMode,False
+currMode,False
+powMode,True
 numPlaneShownChoice,0
 pixel_clock1,99
 framerate1,99

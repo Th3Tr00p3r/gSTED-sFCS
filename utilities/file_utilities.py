@@ -168,7 +168,7 @@ def estimate_bytes(obj) -> int:
 
 def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -> None:
     """
-     Print a cascading size description of object 'obj' up to level 'level'
+    Print a cascading size description of object 'obj' up to level 'level'
     for objects (and subobjects) requiring an estimated disk space over 'threshold_mb'.
 
     for ease of use, copy these lines to somewhere in the code:
@@ -176,7 +176,9 @@ def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -
     dse(obj) # TESTESTEST
     """
 
-    size_mb = estimate_bytes(obj) / 1e6
+    # get object size
+    size_mb = (obj.nbytes if isinstance(obj, np.ndarray) else estimate_bytes(obj)) / 1e6
+
     if (size_mb > threshold_mb) and (level >= 0):
         if name is None:
             name = obj.__class__.__name__
