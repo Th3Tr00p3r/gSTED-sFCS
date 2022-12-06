@@ -166,7 +166,7 @@ def estimate_bytes(obj) -> int:
         raise MemoryError("Object is too big!")
 
 
-def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -> None:
+def deep_size_estimate(obj, threshold_mb=0, level=np.inf, indent=4, name=None) -> None:
     """
     Print a cascading size description of object 'obj' up to level 'level'
     for objects (and subobjects) requiring an estimated disk space over 'threshold_mb'.
@@ -193,13 +193,13 @@ def deep_size_estimate(obj, level=np.inf, indent=4, threshold_mb=0, name=None) -
 
         if isinstance(obj, (list, tuple, set)):
             for idx, elem in enumerate(obj):
-                deep_size_estimate(elem, level - 1, indent + 4, threshold_mb, f"{name}[{idx}]")
+                deep_size_estimate(elem, threshold_mb, level - 1, indent + 4, f"{name}[{idx}]")
         if hasattr(obj, "__dict__"):
             # convert namespaces into dicts
             obj = copy.deepcopy(vars(obj))
         if isinstance(obj, dict):
             for key, val in obj.items():
-                deep_size_estimate(val, level - 1, indent + 4, threshold_mb, key)
+                deep_size_estimate(val, threshold_mb, level - 1, indent + 4, key)
         else:
             return
     elif name is None:
