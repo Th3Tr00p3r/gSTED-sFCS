@@ -70,7 +70,7 @@ class StructureFactor:
             ax.plot(self.q, self.sq / self.sq[0], label=label_prefix)
             ax.set_xscale("log")
             ax.set_ylim(1e-4, 2)
-            ax.set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
+            ax.set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
             ax.set_ylabel("$S(q)$ (Normalized)")
 
             ax.legend()
@@ -104,7 +104,7 @@ class HankelTransform:
             axes[1].set_xscale("log")
             axes[1].set_ylim(1e-4, 2)
             axes[1].set_title("Hankel Transforms")
-            axes[1].set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
+            axes[1].set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
             axes[1].set_ylabel("$F(q)$ (Normalized)")
             axes[1].legend(loc="lower left")
 
@@ -432,7 +432,7 @@ class CorrFunc:
             fr: np.ndarray,
             interp_type: str,
             max_r=10,
-            r_interp_lims: Tuple[float, float] = (0, 5),
+            r_interp_lims: Tuple[float, float] = (0.05, 5),
             fr_interp_lims: Tuple[float, float] = (1e-8, np.inf),  # (3e-2, np.inf),
             n: int = 2048,  # number of interpolation points
             n_robust: int = 7,  # number of robust interpolation points (either side)
@@ -440,29 +440,25 @@ class CorrFunc:
         ) -> HankelTransform:
             """Doc."""
 
+            #            n = r.size # number of interpolation points
+
             # prepare the Hankel transformation matrix C
             c0 = jn_zeros(0, n)  # Bessel function zeros
 
             # Prepare interpolated radial vector
             r_interp = c0.T * max_r / c0[n - 1]
 
-            bessel_j0 = j0
-            bessel_j1 = j1
-
             j_n, j_m = np.meshgrid(c0, c0)
 
-            C = (
-                (2 / c0[n - 1])
-                * bessel_j0(j_n * j_m / c0[n - 1])
-                / (abs(bessel_j1(j_n)) * abs(bessel_j1(j_m)))
-            )
+            C = (2 / c0[n - 1]) * j0(j_n * j_m / c0[n - 1]) / (abs(j1(j_n)) * abs(j1(j_m)))
 
             r_max = max(r)
+            print("max_r: ", max_r)
             print("r_max: ", r_max)
-            v_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
-            v = c0.T / (2 * np.pi * r_max)  # Frequency vector
-            m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
-            m2 = m1 * r_max / v_max  # m2 prepares output vector for display
+            v_max = c0[n - 1] / (2 * np.pi * max_r)  # Maximum frequency
+            v = c0.T / (2 * np.pi * max_r)  # Frequency vector
+            m1 = (abs(j1(c0)) / max_r).T  # m1 prepares input vector for transformation
+            m2 = m1 * max_r / v_max  # m2 prepares output vector for display
             # end  of preparations for Hankel transform
 
             # interpolation/extrapolation
