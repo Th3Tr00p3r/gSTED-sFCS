@@ -44,7 +44,6 @@ from utilities.helper import (
     InterpExtrap1D,
     Limits,
     extrapolate_over_noise,
-    timer,
     unify_length,
 )
 
@@ -670,7 +669,6 @@ class SolutionSFCSMeasurement:
                 pass
             print("Done.\n")
 
-    @timer()
     def _process_all_data(
         self,
         file_paths: List[Path],
@@ -946,6 +944,7 @@ class SolutionSFCSMeasurement:
                 self.calibrate_tdc(is_verbose=False, **corr_options)
 
         # Calculate afterpulsing filter if doesn't alreay exist (optional)
+        afterpulsing_filter = None
         if is_filtered:
             print("Preparing Afterpulsing filter... ", end="")
             afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
@@ -953,33 +952,18 @@ class SolutionSFCSMeasurement:
             )
             print("Done.")
 
-        # create list of split data for correlator - TDC-gating is performed here
-        dt_ts_split_list = self.data.prepare_xcorr_splits_dict(
-            ["AA"],
-            gate1_ns=gate_ns,
-        )["AA"]
-
-        if is_verbose:
-            print("Done.")
-
-        # build correlator input
-        # TODO: this should be united with 'prepare_xcorr_splits_dict'  (above) and then could be multiprocessed too (also, it's where it belongs)
-        print(f"Building correlator input ({len(dt_ts_split_list)} splits): ", end="")
-        corr_input_list = []
-        filter_input_list = []
-        for dt_ts_split in dt_ts_split_list:
-            print("O", end="")
-            corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
-            if is_filtered:
-                filter = afterpulsing_filter.filter[int(get_afterpulsing)]
-                # create a filter for genuine fluorscene (ignoring afterpulsing)
-                split_delay_time = dt_ts_split[0]
-                bin_num = np.digitize(split_delay_time, self.tdc_calib.fine_bins)
-                # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
-                filter = np.hstack((filter, [0]))
-                # add the relevent filter values to the correlator filter input list
-                filter_input_list.append(filter[bin_num - 1])
-        print(" - Done.")
+        # build correlator input - create list of split data (and optionally filters) for correlator. TDC-gating is performed here
+        print("Building correlator input splits: ", end="")
+        # -
+        corr_input_list, filter_input_list = zip(
+            *self.data.prepare_xcorr_input(
+                ["AA"],
+                gate1_ns=gate_ns,
+                afterpulsing_filter=afterpulsing_filter if is_filtered else None,
+                get_afterpulsing=get_afterpulsing,
+            )["AA"]
+        )
+        print("Done.")
 
         # choose correct correlator type
         if self.scan_type in {"static", "circle"}:
@@ -1070,7 +1054,7 @@ class SolutionSFCSMeasurement:
         gate1_ns, gate2_ns = gates
 
         # create list of split data for correlator
-        dt_ts_split_dict = self.data.prepare_xcorr_splits_dict(
+        dt_ts_split_dict = self.data.prepare_xcorr_input(
             xcorr_types,
             gate1_ns=gate1_ns,
             gate2_ns=gate2_ns,
