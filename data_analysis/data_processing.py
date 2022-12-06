@@ -13,7 +13,7 @@ import numpy as np
 import scipy
 import skimage
 
-from data_analysis.workers import N_CPU_CORES, get_splits_dict
+from data_analysis.workers import N_CPU_CORES, get_xcorr_input_dict
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
@@ -452,27 +452,28 @@ class TDCPhotonFileData:
             *[line for line in raw_data],
         )
 
-    def get_xcorr_splits_dict(
+    def get_xcorr_input_dict(
         self, xcorr_types: List[str], gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
     ):
         """Return a list of SoftwareCorrelator input units (splits) from a measurement data in a single file (self)"""
 
         if self.raw.line_num is not None:  # line data
-            return self._get_line_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns)
+            return self._get_line_xcorr_input_dict(xcorr_types, gate1_ns, gate2_ns, **kwargs)
         else:  # continuous data
-            return self._get_continuous_xcorr_splits_dict(xcorr_types, gate1_ns, gate2_ns, **kwargs)
+            return self._get_continuous_xcorr_input_dict(xcorr_types, gate1_ns, gate2_ns, **kwargs)
 
-    def _get_line_xcorr_splits_dict(
+    def _get_line_xcorr_input_dict(
         self,
         xcorr_types: List[str],
         gate1_ns,
         gate2_ns,
+        **kwargs,
     ):
         """Splits are all photons belonging to each scan line."""
 
+        # Gating is performed here
         dt = self.raw.delay_time
-
-        # NaNs mark line starts/ends (used to create valid = -1/-2 needed in C code)
+        # NOTE: NaNs mark line starts/ends (used to create valid = -1/-2 needed in C code)
         nan_idxs = np.isnan(dt)
         if "A" in "".join(xcorr_types):
             gate1_idxs = gate1_ns.valid_indices(dt)
@@ -491,7 +492,7 @@ class TDCPhotonFileData:
             dt_ts2 = np.vstack((dt2, ts2))
             line_num2 = self.raw.line_num[valid_idxs2]
         if "AB" in xcorr_types or "BA" in xcorr_types:
-            # NOTE: # gate2 is first in line to match how software correlator C code written
+            # NOTE: # gate2 is first in line to match how software correlator C-code is written
             dt_ts12 = np.vstack(
                 (
                     dt,
@@ -503,42 +504,48 @@ class TDCPhotonFileData:
             dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
             line_num12 = self.raw.line_num[valid_idxs1 | valid_idxs2]
 
-        dt_ts_splits_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
-        for j in self.general.line_limits.as_range():
+        xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
+        for line_idx in self.general.line_limits.as_range():
             for xx in xcorr_types:
                 if xx == "AA":
-                    dt_ts_splits_dict[xx].append(
-                        self._prepare_correlator_input(dt_ts1, j, "line", line_num=line_num1)
+                    xcorr_input_dict[xx].append(
+                        self._prepare_correlator_input(
+                            dt_ts1, line_idx, "line", line_num=line_num1, **kwargs
+                        )
                     )
                 if xx == "BB":
-                    dt_ts_splits_dict[xx].append(
-                        self._prepare_correlator_input(dt_ts2, j, "line", line_num=line_num2)
+                    xcorr_input_dict[xx].append(
+                        self._prepare_correlator_input(
+                            dt_ts2, line_idx, "line", line_num=line_num2, **kwargs
+                        )
                     )
                 if xx == "AB":
-                    splitsAB = self._prepare_correlator_input(
+                    xcorr_input_AB = self._prepare_correlator_input(
                         dt_ts12,
-                        j,
+                        line_idx,
                         "line",
                         line_num=line_num12,
+                        **kwargs,
                     )
-                    dt_ts_splits_dict[xx].append(splitsAB)
+                    xcorr_input_dict[xx].append(xcorr_input_AB)
                 if xx == "BA":
                     if "AB" in xcorr_types:
-                        dt_ts_splits_dict[xx].append(splitsAB[[0, 1, 3, 2, 4], :])
+                        xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1, 3], :])
                     else:
-                        dt_ts21 = dt_ts12[[0, 1, 3, 2, 4], :]
-                        dt_ts_splits_dict[xx].append(
+                        dt_ts21 = dt_ts12[[0, 2, 1, 3], :]
+                        xcorr_input_dict[xx].append(
                             self._prepare_correlator_input(
                                 dt_ts21,
-                                j,
+                                line_idx,
                                 "line",
                                 line_num=line_num12,
+                                **kwargs,
                             )
                         )
 
-        return dt_ts_splits_dict
+        return xcorr_input_dict
 
-    def _get_continuous_xcorr_splits_dict(
+    def _get_continuous_xcorr_input_dict(
         self,
         xcorr_types: List[str],
         gate1_ns,
@@ -549,6 +556,8 @@ class TDCPhotonFileData:
     ):
         """Continuous scan/static measurement - splits are arbitrarily cut along the measurement"""
 
+        dt = self.raw.delay_time
+
         # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size. Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
         split_duration = self.general.duration_s / n_splits_requested
         for se_idx, (se_start, se_end) in enumerate(self.general.all_section_edges):
@@ -558,7 +567,7 @@ class TDCPhotonFileData:
             ) / self.general.laser_freq_hz
 
             section_pulse_runtime = self.raw.pulse_runtime[se_start : se_end + 1]
-            section_delay_time = self.raw.delay_time[se_start : se_end + 1]
+            section_delay_time = dt[se_start : se_end + 1]
 
             # split the data into parts A/B according to gates
             # TODO: in order to make this more general and use it with both auto and cross correlations, the function should optionally accept 2 seperate data,
@@ -581,44 +590,50 @@ class TDCPhotonFileData:
                     (section_delay_time, section_ts12, gate2_idxs, gate1_idxs)
                 )[:, gate1_idxs | gate2_idxs]
 
-            dt_ts_splits_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
-            for j in range(n_splits := div_ceil(section_time, split_duration)):
+            xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
+            for split_idx in range(n_splits := div_ceil(section_time, split_duration)):
                 for xx in xcorr_types:
                     if xx == "AA":
-                        dt_ts_splits_dict[xx].append(
+                        xcorr_input_dict[xx].append(
                             self._prepare_correlator_input(
-                                section_dt_ts1, j, "continuous", n_splits=n_splits
+                                section_dt_ts1, split_idx, "continuous", n_splits=n_splits, **kwargs
                             )
                         )
                     if xx == "BB":
-                        dt_ts_splits_dict[xx].append(
+                        xcorr_input_dict[xx].append(
                             self._prepare_correlator_input(
-                                section_dt_ts2, j, "continuous", n_splits=n_splits
+                                section_dt_ts2,
+                                split_idx,
+                                "continuous",
+                                n_splits=n_splits,
+                                **kwargs,
                             )
                         )
                     if xx == "AB":
-                        splitsAB = self._prepare_correlator_input(
+                        xcorr_input_AB = self._prepare_correlator_input(
                             section_dt_ts12,
-                            j,
+                            split_idx,
                             "continuous",
                             n_splits=n_splits,
+                            **kwargs,
                         )
-                        dt_ts_splits_dict[xx].append(splitsAB)
+                        xcorr_input_dict[xx].append(xcorr_input_AB)
                     if xx == "BA":
                         if "AB" in xcorr_types:
-                            dt_ts_splits_dict[xx].append(splitsAB[[0, 1, 3, 2], :])
+                            xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1], :])
                         else:
-                            section_dt_ts21 = section_dt_ts12[[0, 1, 3, 2], :]
-                            dt_ts_splits_dict[xx].append(
+                            section_dt_ts21 = section_dt_ts12[[0, 2, 1], :]
+                            xcorr_input_dict[xx].append(
                                 self._prepare_correlator_input(
                                     section_dt_ts21,
-                                    j,
+                                    split_idx,
                                     "continuous",
                                     n_splits=n_splits,
+                                    **kwargs,
                                 )
                             )
 
-        return dt_ts_splits_dict
+        return xcorr_input_dict
 
     def _prepare_correlator_input(
         self,
@@ -627,12 +642,15 @@ class TDCPhotonFileData:
         scan_type,
         line_num=None,
         n_splits=None,
+        afterpulsing_filter=None,
+        get_afterpulsing=False,
+        **kwargs,
     ) -> np.ndarray:
         """Doc."""
 
         if scan_type == "continuous":
             splits = np.linspace(0, dt_ts_in.shape[1], n_splits + 1, dtype=np.int32)
-            return dt_ts_in[:, splits[idx] : splits[idx + 1]]
+            dt_ts_out = dt_ts_in[:, splits[idx] : splits[idx + 1]]
 
         elif scan_type == "line":
             valid = (line_num == idx).astype(np.int8)
@@ -643,30 +661,47 @@ class TDCPhotonFileData:
             dt_ts_out = dt_ts_in[:, valid != 0]
             valid = valid[valid != 0]
 
-            if not valid.any():
-                return np.vstack(([], []))
+            if valid.any():
+                # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
+                # check that we start with the line beginning and not its end
+                if valid[0] != -1:
+                    # remove photons till the first found beginning
+                    j_start = np.where(valid == -1)[0]
 
-            # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
-            # check that we start with the line beginning and not its end
-            if valid[0] != -1:
-                # remove photons till the first found beginning
-                j_start = np.where(valid == -1)[0]
+                    if len(j_start) > 0:
+                        dt_ts_out = dt_ts_out[:, j_start[0] :]
+                        valid = valid[j_start[0] :]
 
-                if len(j_start) > 0:
-                    dt_ts_out = dt_ts_out[:, j_start[0] :]
-                    valid = valid[j_start[0] :]
+                # check that we stop with the line ending and not its beginning
+                if valid[-1] != -2:
+                    # remove photons after the last found ending
+                    j_end = np.where(valid == -2)[0]
 
-            # check that we stop with the line ending and not its beginning
-            if valid[-1] != -2:
-                # remove photons after the last found ending
-                j_end = np.where(valid == -2)[0]
+                    if len(j_end) > 0:
+                        *_, j_end_last = j_end
+                        dt_ts_out = dt_ts_out[:, : j_end_last + 1]
+                        valid = valid[: j_end_last + 1]
 
-                if len(j_end) > 0:
-                    *_, j_end_last = j_end
-                    dt_ts_out = dt_ts_out[:, : j_end_last + 1]
-                    valid = valid[: j_end_last + 1]
+                dt_ts_out = np.vstack((dt_ts_out, valid))
 
-            return np.vstack((dt_ts_out, valid))
+            else:
+                corr_input = np.vstack(([], []))
+
+        # prepare filter input if afterpulsing filter is supplied
+        if afterpulsing_filter is not None:
+            filter = afterpulsing_filter.filter[int(get_afterpulsing)]
+            # create a filter for genuine fluorscene (ignoring afterpulsing)
+            split_dt = dt_ts_out[0]
+            bin_num = np.digitize(split_dt, afterpulsing_filter.fine_bins)
+            # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
+            filter = np.hstack((filter, [0]))  # TODO: should the filter be created like this?
+            # add the relevent filter values to the correlator filter input list
+            filter_input = filter[bin_num - 1]
+        else:
+            filter_input = None
+
+        corr_input = np.squeeze(dt_ts_out[1:].astype(np.int32))
+        return (corr_input, filter_input)
 
 
 class TDCPhotonMeasurementData(list):
@@ -678,7 +713,7 @@ class TDCPhotonMeasurementData(list):
     def __init__(self):
         super().__init__()
 
-    def prepare_xcorr_splits_dict(
+    def prepare_xcorr_input(
         self, xcorr_types: List[str], should_parallel_process=True, **kwargs
     ) -> Dict[str, List]:
         """
@@ -691,29 +726,31 @@ class TDCPhotonMeasurementData(list):
             N_PROCESSES = N_CPU_CORES - 1
             CHUNKSIZE = N_FILES // N_PROCESSES
             kwargs["xcorr_types"] = xcorr_types
-            partial_get_splits_dict = partial(get_splits_dict, **kwargs)
+            partial_get_splits_dict = partial(get_xcorr_input_dict, **kwargs)
             print(
                 f"(Parallel processing using {N_PROCESSES} processes, with chunksize {CHUNKSIZE}) ",
                 end="",
             )
             with mp.get_context().Pool(N_PROCESSES) as pool:
-                file_splits_dict_list = list(
+                file_xcorr_input_dict_list = list(
                     pool.imap_unordered(partial_get_splits_dict, self, CHUNKSIZE)
                 )
 
         else:
-            file_splits_dict_list = [p.get_xcorr_splits_dict(xcorr_types, **kwargs) for p in self]
+            file_xcorr_input_dict_list = [
+                p.get_xcorr_input_dict(xcorr_types, **kwargs) for p in self
+            ]
 
-        dt_ts_splits_dict = {
+        xcorr_input_dict = {
             xx: [
-                dt_ts_split
-                for splits_dict in file_splits_dict_list
-                for dt_ts_split in splits_dict[xx]
+                xcorr_input
+                for xcorr_input_dict in file_xcorr_input_dict_list
+                for xcorr_input in xcorr_input_dict[xx]
             ]
             for xx in xcorr_types
         }
 
-        return dt_ts_splits_dict
+        return xcorr_input_dict
 
 
 @dataclass
@@ -728,6 +765,7 @@ class AfterulsingFilter:
     valid_limits: Limits
     M: np.ndarray
     filter: np.ndarray
+    fine_bins: np.ndarray
 
     def plot(self, parent_ax=None, **plot_kwargs):
         """Doc."""
@@ -933,6 +971,7 @@ class TDCCalibration:
             valid_limits,
             M,
             F,
+            self.fine_bins,
         )
 
         if should_plot:
