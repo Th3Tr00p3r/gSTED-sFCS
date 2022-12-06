@@ -47,14 +47,12 @@ from utilities.helper import (
     unify_length,
 )
 
-# import queue
-
 
 @dataclass
 class StructureFactor:
     """Holds structure factor data"""
 
-    q2pi: np.ndarray
+    q: np.ndarray
     sq: np.ndarray
     sq_error: np.ndarray = None
 
@@ -69,7 +67,7 @@ class StructureFactor:
             y_scale="log",
             **kwargs,
         ) as ax:
-            ax.plot(self.q2pi, self.sq / self.sq[0], label=label_prefix)
+            ax.plot(self.q, self.sq / self.sq[0], label=label_prefix)
             ax.set_xscale("log")
             ax.set_ylim(1e-4, 2)
             ax.set_xlabel("$2\\pi q$ $\\left(\\frac{1}{\\mu m}\\right)$")
@@ -83,7 +81,7 @@ class HankelTransform:
     """Holds results of Hankel transform"""
 
     IE: InterpExtrap1D
-    q2pi: np.ndarray
+    q: np.ndarray
     fq: np.ndarray
 
     def plot(self, parent_axes=None, label_prefix="", **kwargs):
@@ -102,7 +100,7 @@ class HankelTransform:
             axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
             axes[0].legend()
 
-            axes[1].plot(self.q2pi, self.fq / self.fq[0], label=f"{label_prefix}Hankel transform")
+            axes[1].plot(self.q, self.fq / self.fq[0], label=f"{label_prefix}Hankel transform")
             axes[1].set_xscale("log")
             axes[1].set_ylim(1e-4, 2)
             axes[1].set_title("Hankel Transforms")
@@ -461,10 +459,10 @@ class CorrFunc:
 
             r_max = max(r)
             print("r_max: ", r_max)
-            q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
-            q = c0.T / (2 * np.pi * r_max)  # Frequency vector
+            v_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
+            v = c0.T / (2 * np.pi * r_max)  # Frequency vector
             m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
-            m2 = m1 * r_max / q_max  # m2 prepares output vector for display
+            m2 = m1 * r_max / v_max  # m2 prepares output vector for display
             # end  of preparations for Hankel transform
 
             # interpolation/extrapolation
@@ -479,7 +477,7 @@ class CorrFunc:
             )
 
             # returning the transform (includes interpolation for testing)
-            return HankelTransform(IE, 2 * np.pi * q, C @ (IE.y_interp / m1) * m2)
+            return HankelTransform(IE, 2 * np.pi * v, C @ (IE.y_interp / m1) * m2)
 
         print(f"Calculating '{self.name}' Hankel transform...", end=" ")
 
@@ -544,7 +542,7 @@ class CorrFunc:
 
         HT = self.hankel_transforms[interp_type]
         cal_HT = cal_cf.hankel_transforms[interp_type]
-        self.structure_factor = StructureFactor(HT.q2pi, HT.fq / cal_HT.fq)
+        self.structure_factor = StructureFactor(HT.q, HT.fq / cal_HT.fq)
 
         if should_plot:
             self.structure_factor.plot(label_prefix=self.name, **kwargs)
@@ -903,7 +901,7 @@ class SolutionSFCSMeasurement:
         self,
         cf_name="unnamed",
         tdc_gate_ns=Gate(),
-        afterpulsing_method="filter",
+        afterpulsing_method=None,
         external_afterpulse_params=None,
         external_afterpulsing=None,
         get_afterpulsing=False,
@@ -925,7 +923,12 @@ class SolutionSFCSMeasurement:
 
         # keep afterpulsing method for consistency with future gating
         if not hasattr(self, "afterpulsing_method"):
-            self.afterpulsing_method = afterpulsing_method
+            self.afterpulsing_method = (
+                "filter" if afterpulsing_method is None else afterpulsing_method
+            )
+        afterpulsing_method = (
+            self.afterpulsing_method if afterpulsing_method is None else afterpulsing_method
+        )
 
         # Unite TDC gate and detector gate
         gate_ns = Gate(tdc_gate_ns) & self.detector_settings["gate_ns"]
@@ -936,9 +939,9 @@ class SolutionSFCSMeasurement:
             cf_name = f"gated {cf_name} {gate_ns}"
 
         # the following conditions require TDC calibration prior to creating splits
-        if self.afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
-            raise ValueError(f"Invalid afterpulsing_method chosen: {self.afterpulsing_method}.")
-        elif (is_filtered := self.afterpulsing_method == "filter") or gate_ns:
+        if afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
+            raise ValueError(f"Invalid afterpulsing_method chosen: {afterpulsing_method}.")
+        elif (is_filtered := afterpulsing_method == "filter") or gate_ns:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
@@ -998,7 +1001,7 @@ class SolutionSFCSMeasurement:
             external_afterpulsing=external_afterpulsing,
             gate_ns=gate_ns,
             list_of_filter_arrays=filter_input_list if is_filtered else None,
-            should_subtract_afterpulsing=self.afterpulsing_method == "subtract calibrated",
+            should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
             **corr_options,
         )
 
@@ -1297,7 +1300,9 @@ class SolutionSFCSMeasurement:
             **kwargs,
         )
 
-    def save_processed(self, should_save_data=True, should_force=False, is_verbose=False) -> bool:
+    def save_processed(
+        self, should_save_data=True, should_force=False, is_verbose=False, **kwargs
+    ) -> bool:
         """
         Save a processed measurement, including the '.data' attribute.
         The template may then be loaded much more quickly.
@@ -1400,6 +1405,7 @@ class SolutionSFCSExperiment:
         force_processing=True,
         should_re_correlate=False,
         afterpulsing_method="filter",
+        should_save=False,
         **kwargs,
     ):
         """Doc."""
@@ -1453,6 +1459,14 @@ class SolutionSFCSExperiment:
             cf = measurement.correlate_and_average(
                 is_verbose=True, afterpulsing_method=afterpulsing_method, **kwargs
             )
+
+            if should_save:
+                print(f"Saving {measurement.type} measurement to disk...", end=" ")
+                if measurement.save_processed(**kwargs):
+                    print("Done.")
+                else:
+                    print("Measurement already exists! (set 'should_force = True' to override.)")
+
         else:  # get existing first corrfunc
             cf = list(measurement.cf.values())[0]
 
@@ -1493,7 +1507,6 @@ class SolutionSFCSExperiment:
 
     def save_processed_measurements(self, meas_types=["confocal", "sted"], **kwargs):
         """Doc."""
-        # TODO: this should call the same method on Measurement object (hierarchical). move it from file_utilities
 
         print("Saving processed measurements to disk...", end=" ")
         if self.confocal.is_loaded and "confocal" in meas_types:
