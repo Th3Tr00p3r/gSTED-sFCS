@@ -461,6 +461,7 @@ class CorrFunc:
             )
 
             r_max = max(r)
+            print("r_max: ", r_max)
             q_max = c0[n - 1] / (2 * np.pi * r_max)  # Maximum frequency
             q = c0.T / (2 * np.pi * r_max)  # Frequency vector
             m1 = (abs(bessel_j1(c0)) / r_max).T  # m1 prepares input vector for transformation
