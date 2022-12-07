@@ -844,7 +844,15 @@ class SolutionSFCSMeasurement:
                 end=" ",
             )
             try:
+                import time  # TESTING
+
+                tic = time.perf_counter()  # TESTING
                 file_dict = load_file_dict(file_path)
+                # NOTE - WARNING! byte data is memory mapped - mode must always be kept to 'r' to avoid writing over byte_data!!!
+                byte_data = np.load(
+                    file_path.with_name(file_path.name.replace(".pkl", "_byte_data.npy")), "r"
+                )
+                print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms")  # TESTING
             except FileNotFoundError:
                 print(f"File '{file_path}' not found. Ignoring.")
 
@@ -858,7 +866,9 @@ class SolutionSFCSMeasurement:
                 self.detector_settings["gate_ns"],
             )
 
-        return self.data_processor.process_data(idx, file_dict["full_data"], **proc_options)
+        return self.data_processor.process_data(
+            idx, byte_data, file_dict["full_data"], **proc_options
+        )
 
     def calibrate_tdc(
         self, force_processing=True, should_plot=False, is_verbose=False, **kwargs

@@ -994,22 +994,24 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self.fpga_freq_hz = fpga_freq_hz
         self.detector_gate_ns = detector_gate_ns
 
-    def process_data(self, idx, full_data, should_dump=True, **proc_options) -> TDCPhotonFileData:
+    def process_data(
+        self, idx, byte_data, full_data, should_dump=True, **proc_options
+    ) -> TDCPhotonFileData:
         """Doc."""
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
             if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
-                p = self._process_circular_scan_data_file(idx, full_data, **proc_options)
+                p = self._process_circular_scan_data_file(idx, byte_data, full_data, **proc_options)
             elif scan_type == "angular":  # Angular sFCS
-                p = self._process_angular_scan_data_file(idx, full_data, **proc_options)
+                p = self._process_angular_scan_data_file(idx, byte_data, full_data, **proc_options)
 
         # FCS
         else:
             scan_type = "static"
             p = self._convert_fpga_data_to_photons(
                 idx,
-                full_data["byte_data"],
+                byte_data,
                 is_scan_continuous=True,
                 **proc_options,
             )
@@ -1340,7 +1342,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         return None
 
     def _process_circular_scan_data_file(
-        self, idx, full_data, is_verbose=False, should_dump=True, **proc_options
+        self, idx, byte_data, full_data, is_verbose=False, should_dump=True, **proc_options
     ) -> TDCPhotonFileData:
         """
         Processes a single circular sFCS data file ('full_data').
@@ -1350,7 +1352,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         p = self._convert_fpga_data_to_photons(
             idx,
-            full_data["byte_data"],
+            byte_data,
             is_scan_continuous=True,
             **proc_options,
         )
@@ -1388,6 +1390,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
     def _process_angular_scan_data_file(
         self,
         idx,
+        byte_data,
         full_data,
         should_fix_shift=True,
         roi_selection="auto",
@@ -1400,9 +1403,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         '"""
         # TODO: can this method be moved to the appropriate Mixin class?
 
-        p = self._convert_fpga_data_to_photons(
-            idx, full_data["byte_data"], should_dump=False, is_verbose=True
-        )
+        p = self._convert_fpga_data_to_photons(idx, byte_data, should_dump=False, is_verbose=True)
 
         scan_settings = full_data["scan_settings"]
         linear_part = scan_settings["linear_part"].round().astype(np.uint16)
