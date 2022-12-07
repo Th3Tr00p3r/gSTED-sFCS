@@ -21,6 +21,9 @@
 # * THIS IS A ONE-TIME SCRIPT - but can safely be run on already converted data (KeyError will be caught)
 # * Does not currently seem to work with old .mat files. A fallback was created for them in correlation_function.py
 
+# %% [markdown]
+# # FOR SOME REASON STATIC MEASUREMENT'S FILE_DICT FILE SIZE STAYS LARGE - CHECK IT OUT! (CAN BE DONE WITHIN GUI WITH DEBUGGER)
+
 # %%
 from pathlib import Path
 import numpy as np
