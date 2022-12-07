@@ -688,7 +688,7 @@ class SolutionSFCSMeasurement:
         if (
             should_parallel_process
             and ((n_files := len(file_paths)) >= 5)
-            and (total_byte_data_size_estimate_mb > 0)  # was 2000
+            and (total_byte_data_size_estimate_mb > 2000)
         ):
 
             # cancel auto-dumping upon processing, to leave the dumping to IO process
@@ -833,7 +833,7 @@ class SolutionSFCSMeasurement:
         if file_dict is not None:
             self._get_general_properties(file_dict=file_dict, **proc_options)
             file_idx = 1
-            self.dump_path = DUMP_PATH / "temp_meas.pkl"
+            self.dump_path = DUMP_PATH / "temp_meas"
 
         # File Data Loading
         if file_path is not None:  # Loading file from disk
@@ -848,7 +848,7 @@ class SolutionSFCSMeasurement:
             )
             try:
                 file_dict = load_file_dict(file_path)
-                byte_data_path = file_path.with_name(
+                proc_options["byte_data_path"] = file_path.with_name(
                     file_path.name.replace(".pkl", "_byte_data.npy")
                 )
             except FileNotFoundError:
@@ -864,9 +864,7 @@ class SolutionSFCSMeasurement:
                 self.detector_settings["gate_ns"],
             )
 
-        return self.data_processor.process_data(
-            idx, byte_data_path, file_dict["full_data"], **proc_options
-        )
+        return self.data_processor.process_data(idx, file_dict["full_data"], **proc_options)
 
     def calibrate_tdc(
         self, force_processing=True, should_plot=False, is_verbose=False, **kwargs
