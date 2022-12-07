@@ -176,6 +176,17 @@ class MeasurementProcedure:
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
         file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
+
+        # TESTESTEST - seperate byte_data and save separately as .npy for memory mapping
+        byte_data = data_dict["full_data"].pop("byte_data")
+        np.save(
+            file_path.with_name(file_path.name.replace(".pkl", "_byte_data.npy")),
+            byte_data,
+            allow_pickle=False,
+            fix_imports=False,
+        )
+        # /TESTESTEST
+
         file_utilities.save_object(
             data_dict, file_path, compression_method="gzip", obj_name="raw data"
         )
