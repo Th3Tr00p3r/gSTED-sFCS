@@ -44,6 +44,7 @@ from utilities.helper import (
     InterpExtrap1D,
     Limits,
     extrapolate_over_noise,
+    timer,
     unify_length,
 )
 
@@ -661,6 +662,7 @@ class SolutionSFCSMeasurement:
                 pass
             print("Done.\n")
 
+    @timer()
     def _process_all_data(
         self,
         file_paths: List[Path],
@@ -690,12 +692,6 @@ class SolutionSFCSMeasurement:
             and ((n_files := len(file_paths)) >= 5)
             and (total_byte_data_size_estimate_mb > 2000)
         ):
-
-            # cancel auto-dumping upon processing, to leave the dumping to IO process
-            proc_options["should_dump"] = False
-            # do not print anything inside processes (slows things down) - if you want to know what's going on, put the text in the results queue
-            proc_options["is_verbose"] = False
-
             # -2 is one CPU left to OS and one for I/O
             N_RAM_PROCESSES = N_CPU_CORES - 2
 
@@ -708,7 +704,7 @@ class SolutionSFCSMeasurement:
             manager = mp.Manager()
             io_queue = manager.Queue()
             data_processing_queue = manager.Queue()
-            results_queue = manager.Queue()
+            processed_queue = manager.Queue()
 
             # initialize a list to keep track of processes
             process_list = []
@@ -720,21 +716,25 @@ class SolutionSFCSMeasurement:
                 args=(
                     io_queue,
                     data_processing_queue,
-                    results_queue,
+                    processed_queue,
                     self.data_processor,
                     n_files,
                     N_RAM_PROCESSES,
                 ),
-                kwargs=proc_options,
             )
             io_process.start()
             process_list.append(io_process)
 
+            # cancel auto-dumping upon processing, to leave the dumping to IO process
+            proc_options["should_dump"] = False
+            # do not print anything inside processes (slows things down) - if you want to know what's going on, put the text in the results queue
+            proc_options["is_verbose"] = False
             # initialize the data processing workers (N_RAM_PROCESSES processes)
             for _ in range(N_RAM_PROCESSES):
                 data_processing_process = mp.Process(
                     target=data_processing_worker,
                     args=(data_processing_queue, io_queue),
+                    kwargs=proc_options,
                 )
                 data_processing_process.start()
                 process_list.append(data_processing_process)
@@ -749,11 +749,11 @@ class SolutionSFCSMeasurement:
                 process.join()
                 process.close()
 
-            print("\nMultiprocessing complete!")  # TESTESTEST
-
             # finally, collect the file data objects
             for _ in range(n_files):
-                self.data.append(results_queue.get())
+                self.data.append(processed_queue.get())
+
+            print("\nMultiprocessing complete!")  # TESTESTEST
 
         # serial processing (default)
         else:
@@ -848,6 +848,9 @@ class SolutionSFCSMeasurement:
             )
             try:
                 file_dict = load_file_dict(file_path)
+                proc_options["byte_data"] = file_dict["full_data"].get(
+                    "byte_data"
+                )  # compatibility with pre-conversion data
                 proc_options["byte_data_path"] = file_path.with_name(
                     file_path.name.replace(".pkl", "_byte_data.npy")
                 )

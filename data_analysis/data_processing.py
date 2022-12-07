@@ -1002,9 +1002,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
             if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
-                p = self._process_circular_scan_data_file(idx, full_data, **proc_options)
+                p = self._process_circular_scan_data_file(
+                    idx, full_data, should_dump=should_dump, **proc_options
+                )
             elif scan_type == "angular":  # Angular sFCS
-                p = self._process_angular_scan_data_file(idx, full_data, **proc_options)
+                p = self._process_angular_scan_data_file(
+                    idx, full_data, should_dump=should_dump, **proc_options
+                )
 
         # FCS
         else:
@@ -1039,7 +1043,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if is_verbose:
             print("Converting raw data to photons...", end=" ")
 
-        # getting byte data by memory-mapping (unless supplied - alignment measurements only)
+        # getting byte data by memory-mapping (unless supplied - alignment measurements and pre-conversion data only)
         if byte_data is None:
             # NOTE - WARNING! byte data is memory mapped - mode must always be kept to 'r' to avoid writing over byte_data!!!
             byte_data = np.load(byte_data_path, "r")
@@ -1188,7 +1192,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         )
         max_time_stamp = scipy.stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
         sec_edges = (time_stamps > max_time_stamp).nonzero()[0].tolist()
-        if (n_outliers := len(sec_edges)) > 0:
+        if (n_outliers := len(sec_edges)) > 0 and is_verbose:
             print(f"found {n_outliers} outliers.", end=" ")
         sec_edges = [0] + sec_edges + [len(time_stamps)]
         all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
@@ -1409,7 +1413,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         p = self._convert_fpga_data_to_photons(
             idx,
-            should_dump=False,
             is_verbose=is_verbose,
             **kwargs,
         )
