@@ -176,16 +176,16 @@ class MeasurementProcedure:
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
         file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
+        byte_data_path = file_path.with_name(file_path.name.replace(".pkl", "_byte_data.npy"))
 
-        # TESTESTEST - seperate byte_data and save separately as .npy for memory mapping
         byte_data = data_dict["full_data"].pop("byte_data")
+        Path.mkdir(byte_data_path.parent, parents=True, exist_ok=True)
         np.save(
-            file_path.with_name(file_path.name.replace(".pkl", "_byte_data.npy")),
+            byte_data_path,
             byte_data,
             allow_pickle=False,
             fix_imports=False,
         )
-        # /TESTESTEST
 
         file_utilities.save_object(
             data_dict, file_path, compression_method="gzip", obj_name="raw data"
@@ -628,7 +628,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
     def disp_ACF(self):
         """Doc."""
 
-        def compute_acf(data):
+        def compute_acf(byte_data):
             """Doc."""
 
             meas_laser_type_dict = dict(
@@ -638,7 +638,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             )
 
             s = SolutionSFCSMeasurement(meas_laser_type_dict[self.laser_mode])
-            p = s.process_data_file(file_dict=self.prep_meas_dict(), **self.processing_options)
+            p = s.process_data_file(
+                file_dict=self.prep_meas_dict(), byte_data=byte_data, **self.processing_options
+            )
             s.data.append(p)
             cf = s.correlate_and_average(
                 cf_name=f"{self.laser_mode} alignment",
@@ -647,7 +649,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             return cf
 
         try:
-            cf = compute_acf(self.data_dvc.data)
+            cf = compute_acf(np.array(self.data_dvc.data, dtype=np.uint8))
         except (RuntimeError, RuntimeWarning) as exc:
             # RuntimeWarning - some sort of zero-division in _calculate_weighted_avg
             # (due to invalid data during beam obstruction)
