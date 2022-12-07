@@ -62,7 +62,7 @@ imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,11
 dataYear,2022
 dataDay,24
-dataTemplate1,YOYO300bpGatedFloatingZ_circle_sted_165601_*.pkl
+dataTemplate1,YOYO300bpGatedFloatingZ_circle_exc_162223_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -73,7 +73,7 @@ assignedGates,
 gateMeasType,STED
 availableGates,
 importedSolDataTemplates2,
-expPropGstedGate,
+expPropGstedGate,Lifetime
 avgInterval,5000
 posAxis,X
 solScanParamsStacked,2
@@ -110,7 +110,7 @@ tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
 solImportReCorrelate,False
-solImportAutoLoadProcessed,True
+solImportAutoLoadProcessed,False
 autoExp1,False
 grayscaleMode1,True
 measureBeamDiameter1,False

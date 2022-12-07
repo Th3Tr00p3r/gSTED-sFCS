@@ -131,6 +131,7 @@ class AngularScanDataMixin:
         line_limits: Limits,
         sampling_freq_Hz,
         image2: np.ndarray = None,
+        is_verbose=False,
     ) -> list:
         """Returns a list of auto-correlations of the lines of an image."""
 
@@ -147,7 +148,8 @@ class AngularScanDataMixin:
                 else:
                     c, lags = xcorr(line1, line2)
             except ValueError:
-                print(f"Correlation of line No.{j} has failed. Skipping.", end=" ")
+                if is_verbose:
+                    print(f"Correlation of line No.{j} has failed. Skipping.", end=" ")
             else:
                 if not is_doing_xcorr:  # Autocorrelation
                     c = c / line1.mean() ** 2 - 1
@@ -995,23 +997,27 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self.detector_gate_ns = detector_gate_ns
 
     def process_data(
-        self, idx, byte_data, full_data, should_dump=True, **proc_options
+        self, idx, byte_data_path: Path, full_data, should_dump=True, **proc_options
     ) -> TDCPhotonFileData:
         """Doc."""
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
             if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
-                p = self._process_circular_scan_data_file(idx, byte_data, full_data, **proc_options)
+                p = self._process_circular_scan_data_file(
+                    idx, byte_data_path, full_data, **proc_options
+                )
             elif scan_type == "angular":  # Angular sFCS
-                p = self._process_angular_scan_data_file(idx, byte_data, full_data, **proc_options)
+                p = self._process_angular_scan_data_file(
+                    idx, byte_data_path, full_data, **proc_options
+                )
 
         # FCS
         else:
             scan_type = "static"
             p = self._convert_fpga_data_to_photons(
                 idx,
-                byte_data,
+                byte_data_path,
                 is_scan_continuous=True,
                 **proc_options,
             )
@@ -1026,7 +1032,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
     def _convert_fpga_data_to_photons(
         self,
         idx,
-        byte_data,
+        byte_data_path,
         is_scan_continuous=False,
         should_use_all_sections=True,
         len_factor=0.01,
@@ -1038,6 +1044,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         if is_verbose:
             print("Converting raw data to photons...", end=" ")
+
+        # getting byte data by memory-mapping
+        # NOTE - WARNING! byte data is memory mapped - mode must always be kept to 'r' to avoid writing over byte_data!!!
+        byte_data = np.load(byte_data_path, "r")
 
         # option to use only certain parts of data (for testing)
         if byte_data_slice is not None:
@@ -1395,6 +1405,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         should_fix_shift=True,
         roi_selection="auto",
         should_dump=True,
+        is_verbose=False,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1403,7 +1414,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         '"""
         # TODO: can this method be moved to the appropriate Mixin class?
 
-        p = self._convert_fpga_data_to_photons(idx, byte_data, should_dump=False, is_verbose=True)
+        p = self._convert_fpga_data_to_photons(
+            idx, byte_data, should_dump=False, is_verbose=is_verbose
+        )
 
         scan_settings = full_data["scan_settings"]
         linear_part = scan_settings["linear_part"].round().astype(np.uint16)
@@ -1411,7 +1424,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         p.general.samples_per_line = int(scan_settings["samples_per_line"])
         p.general.n_lines = int(scan_settings["n_lines"])
 
-        print("Converting angular scan to image...", end=" ")
+        if is_verbose:
+            print("Converting angular scan to image...", end=" ")
 
         pulse_runtime = np.empty(p.raw.pulse_runtime.shape, dtype=np.int64)
         cnt = np.zeros((p.general.n_lines + 1, p.general.samples_per_line), dtype=np.uint16)
@@ -1434,7 +1448,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             )
 
             if should_fix_shift:
-                print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
+                if is_verbose:
+                    print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
                 pix_shift = self._get_data_shift(sec_cnt.copy())
                 sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
                     self.laser_freq_hz / ao_sampling_freq_hz
@@ -1451,7 +1466,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     p.general.samples_per_line,
                     p.general.n_lines,
                 )
-                print(f"({pix_shift} pixels).", end=" ")
+                if is_verbose:
+                    print(f"({pix_shift} pixels).", end=" ")
 
             pulse_runtime[start_idx:end_idx] = sec_pulse_runtime
             cnt += sec_cnt
@@ -1462,14 +1478,17 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # invert every second line
         cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
 
-        print("ROI selection: ", end=" ")
+        if is_verbose:
+            print("ROI selection: ", end=" ")
 
         if roi_selection == "auto":
-            print("automatic. Thresholding and smoothing...", end=" ")
+            if is_verbose:
+                print("automatic. Thresholding and smoothing...", end=" ")
             try:
                 bw = self._threshold_and_smooth(cnt.copy())
             except ValueError:
-                print("Thresholding failed, skipping file.\n")
+                if is_verbose:
+                    print("Thresholding failed, skipping file.\n")
                 return None
         elif roi_selection == "all":
             bw = np.full(cnt.shape, True)
@@ -1487,7 +1506,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         m2 = np.sum(bw, axis=1)
         bw[m2 < 0.5 * m2.max(), :] = False
 
-        print("Building ROI...", end=" ")
+        if is_verbose:
+            print("Building ROI...", end=" ")
 
         line_starts = []
         line_stops = []
@@ -1525,7 +1545,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             roi["row"].append(roi["row"][0])
             roi["col"].append(roi["col"][0])
         except IndexError:
-            print("ROI is empty (need to figure out the cause). Skipping file.\n")
+            if is_verbose:
+                print("ROI is empty (need to figure out the cause). Skipping file.\n")
             return None
 
         # convert lists/deques to numpy arrays
@@ -1582,7 +1603,11 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # get background correlation (gated background is bad)
         p.general.line_limits = Limits(line_num[line_num > 0].min(), line_num.max())
         p.general.bg_line_corr = self._bg_line_correlations(
-            p.general.image, p.general.bw_mask, p.general.line_limits, ao_sampling_freq_hz
+            p.general.image,
+            p.general.bw_mask,
+            p.general.line_limits,
+            ao_sampling_freq_hz,
+            is_verbose=is_verbose,
         )
 
         return p

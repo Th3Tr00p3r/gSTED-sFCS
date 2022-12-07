@@ -14,11 +14,17 @@ def io_worker(
     for func, arg in iter(io_queue.get, "STOP"):
         #        print("IO WORKER: LOADING DATA... ", end="")  # TESTESTEST
         # func was load task - place processing task in data_processing_queue queue
+        # arg is file_path
         if func.__name__ == "load_file_dict":  # args is the file_path
             file_idx = int(re.split("_(\\d+)\\.", str(arg))[1])
             file_dict = func(arg)
+            byte_data_path = arg.with_name(arg.name.replace(".pkl", "_byte_data.npy"))
             data_processing_queue.put(
-                (data_processor.process_data, (file_idx, file_dict["full_data"]), proc_options)
+                (
+                    data_processor.process_data,
+                    (file_idx, byte_data_path, file_dict["full_data"]),
+                    proc_options,
+                )
             )
         # func was save task - no further tasks
         else:  # args is a 'TDCPhotonFileData' object (p)

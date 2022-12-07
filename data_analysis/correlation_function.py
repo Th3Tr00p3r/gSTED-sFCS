@@ -688,11 +688,13 @@ class SolutionSFCSMeasurement:
         if (
             should_parallel_process
             and ((n_files := len(file_paths)) >= 5)
-            and (total_byte_data_size_estimate_mb > 2000)
+            and (total_byte_data_size_estimate_mb > 0)  # was 2000
         ):
 
             # cancel auto-dumping upon processing, to leave the dumping to IO process
             proc_options["should_dump"] = False
+            # do not print anything inside processes (slows things down) - if you want to know what's going on, put the text in the results queue
+            proc_options["is_verbose"] = False
 
             # -2 is one CPU left to OS and one for I/O
             N_RAM_PROCESSES = N_CPU_CORES - 2
@@ -731,14 +733,15 @@ class SolutionSFCSMeasurement:
             # initialize the data processing workers (N_RAM_PROCESSES processes)
             for _ in range(N_RAM_PROCESSES):
                 data_processing_process = mp.Process(
-                    target=data_processing_worker, args=(data_processing_queue, io_queue)
+                    target=data_processing_worker,
+                    args=(data_processing_queue, io_queue),
                 )
                 data_processing_process.start()
                 process_list.append(data_processing_process)
 
             # fill IO queue with loading tasks for the IO worker
-            load_tasks = [(load_file_dict, file_path) for file_path in file_paths]
-            for task in load_tasks:
+            file_dict_load_tasks = [(load_file_dict, file_path) for file_path in file_paths]
+            for task in file_dict_load_tasks:
                 io_queue.put(task)
 
             # join then close each process to block untill all are finished and immediately release resources
@@ -844,15 +847,10 @@ class SolutionSFCSMeasurement:
                 end=" ",
             )
             try:
-                import time  # TESTING
-
-                tic = time.perf_counter()  # TESTING
                 file_dict = load_file_dict(file_path)
-                # NOTE - WARNING! byte data is memory mapped - mode must always be kept to 'r' to avoid writing over byte_data!!!
-                byte_data = np.load(
-                    file_path.with_name(file_path.name.replace(".pkl", "_byte_data.npy")), "r"
+                byte_data_path = file_path.with_name(
+                    file_path.name.replace(".pkl", "_byte_data.npy")
                 )
-                print(f"part 1 timing: {(time.perf_counter() - tic)*1e3:0.4f} ms")  # TESTING
             except FileNotFoundError:
                 print(f"File '{file_path}' not found. Ignoring.")
 
@@ -867,7 +865,7 @@ class SolutionSFCSMeasurement:
             )
 
         return self.data_processor.process_data(
-            idx, byte_data, file_dict["full_data"], **proc_options
+            idx, byte_data_path, file_dict["full_data"], **proc_options
         )
 
     def calibrate_tdc(
@@ -1693,7 +1691,7 @@ class SolutionSFCSExperiment:
         meas_type: str,
         should_plot=True,
         should_re_correlate=False,
-        is_verbose=True,
+        is_verbose=False,
         **kwargs,
     ) -> None:
         """Doc."""
