@@ -118,6 +118,8 @@ class MainWin:
                             logging.debug(f"{dvc.log_ref} toggled ON")
                             if nick == "stage":
                                 self.main_gui.stageButtonsGroup.setEnabled(True)
+                            elif nick == "exc_laser":  # TESTESTEST
+                                self.main_gui.setPsdDelay.setEnabled(False)
                             was_toggled = True
 
                 # switch OFF
@@ -147,6 +149,9 @@ class MainWin:
                             # set curr/pow values to zero when depletion is turned OFF
                             self.main_gui.depActualCurr.setValue(0)
                             self.main_gui.depActualPow.setValue(0)
+
+                        elif nick == "exc_laser":  # TESTESTEST
+                            self.main_gui.setPsdDelay.setEnabled(False)
 
                         was_toggled = True
 

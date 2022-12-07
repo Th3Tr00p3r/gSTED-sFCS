@@ -7,9 +7,15 @@ N_CPU_CORES = mp.cpu_count() // 2  # /2 due to hyperthreading,
 
 
 def io_worker(
-    io_queue, data_processing_queue, results, data_processor, n_files, n_processors, **proc_options
+    io_queue,
+    data_processing_queue,
+    processed_queue,
+    data_processor,
+    n_files,
+    n_processors,
 ):
     n_saves = 0
+    n_loads = 0
     #    print("IO WORKER: INITIALIZED.")  # TESTESTEST
     for func, arg in iter(io_queue.get, "STOP"):
         #        print("IO WORKER: LOADING DATA... ", end="")  # TESTESTEST
@@ -22,17 +28,18 @@ def io_worker(
             data_processing_queue.put(
                 (
                     data_processor.process_data,
-                    (file_idx, byte_data_path, file_dict["full_data"]),
-                    proc_options,
+                    (file_idx, file_dict["full_data"]),
+                    {"byte_data_path": byte_data_path},
                 )
             )
+            n_loads += 1
         # func was save task - no further tasks
         else:  # args is a 'TDCPhotonFileData' object (p)
             if arg is not None:
                 #                print(f"SAVING RAW DATA {arg.idx}... ", end="")  # TESTESTEST
                 func(arg)  # raw.dump()
+                processed_queue.put(arg)
                 #                print("Done!") # TESTESTEST
-                results.put(arg)
             n_saves += 1
             #            print(f"saved {n_saves} files!")  # TESTESTEST
             if n_saves == n_files:
@@ -55,12 +62,13 @@ def get_xcorr_input_dict(p, **kwargs):
     return p.get_xcorr_input_dict(**kwargs)
 
 
-def data_processing_worker(data_processing_queue, io_queue):
+def data_processing_worker(data_processing_queue, io_queue, **proc_options):
     #    print("PROCESSING WORKER: INITIALIZED.")  # TESTESTEST
     files_processed = 0  # TESTESTEST
     for func, args, kwargs in iter(data_processing_queue.get, "STOP"):
+        #        print(F"\nPROCESSING WORKER: args={args}, kwargs={kwargs.keys()}\n") # TESTESTEST
         #        print("PROCESSING WORKER: PROCESSING... ", end="")  # TESTESTEST
-        p = func(*args, **kwargs)
+        p = func(*args, **{**kwargs, **proc_options})
         #        print(f"FILE {p.idx} PROCESSED.")  # TESTESTEST
         io_queue.put((dump_data_file, p))
         files_processed += 1
