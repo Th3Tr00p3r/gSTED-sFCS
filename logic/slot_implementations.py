@@ -1032,17 +1032,26 @@ class MainWin:
             )
             return
 
-        new_template = re.sub(curr_template_prefix, new_template_prefix, curr_template, count=1)
+        curr_file_paths = [str(filepath) for filepath in dir_path.glob(curr_template)]
+        curr_byte_data_paths = [
+            str(
+                Path(file_path_str).with_name(
+                    Path(file_path_str).name.replace(".pkl", "_byte_data.npy")
+                )
+            )
+            for file_path_str in curr_file_paths
+        ]
+        # check if current template doesn't exists (can only happen if deleted manually between discovering the template and running this function)
+        if not curr_file_paths:
+            logging.warning("Current template is missing! (Probably manually deleted)")
+            return
 
+        new_template = re.sub(curr_template_prefix, new_template_prefix, curr_template, count=1)
         # check if new template already exists (unlikely)
         if list(dir_path.glob(new_template)):
             logging.warning(
                 f"New template '{new_template}' already exists in '{dir_path}'. Operation canceled."
             )
-            return
-        # check if current template doesn't exists (can only happen if deleted manually between discovering the template and running this function)
-        if not (curr_filepaths := [str(filepath) for filepath in dir_path.glob(curr_template)]):
-            logging.warning("Current template is missing! (Probably manually deleted)")
             return
 
         pressed = dialog.QuestionDialog(
@@ -1053,20 +1062,45 @@ class MainWin:
             return
 
         # generate new filanames
-        new_filepaths = [
+        new_file_paths = [
             re.sub(curr_template_prefix, new_template_prefix, curr_filepath)
-            for curr_filepath in curr_filepaths
+            for curr_filepath in curr_file_paths
         ]
         # rename the files
         [
             Path(curr_filepath).rename(new_filepath)
-            for curr_filepath, new_filepath in zip(curr_filepaths, new_filepaths)
+            for curr_filepath, new_filepath in zip(curr_file_paths, new_file_paths)
         ]
+        logging.info(
+            f"Renamed {len(curr_file_paths)} 'file_dict' files. ({curr_template} -> {new_template})"
+        )
+
+        # TESTESTEST - rename the data files
+        try:
+            [
+                Path(curr_byte_data_path).rename(
+                    str(
+                        Path(new_filepath_str).with_name(
+                            Path(new_filepath_str).name.replace(".pkl", "_byte_data.npy")
+                        )
+                    )
+                )
+                for curr_byte_data_path, new_filepath_str in zip(
+                    curr_byte_data_paths, new_file_paths
+                )
+            ]
+        except FileNotFoundError:
+            print("Byte-data (.npy) files not found. Is this pre-separation data?")
+        else:
+            logging.info(
+                f"Renamed {len(curr_file_paths)} 'byte_data' files. ({curr_template} -> {new_template})"
+            )
+
         # rename the log file, if applicable
         with suppress(FileNotFoundError):
             pattern = re.sub("\\*?", "[0-9]*", curr_template)
             replacement = re.sub("_\\*", "", curr_template)
-            current_log_filepath = re.sub(pattern, replacement, curr_filepaths[0])
+            current_log_filepath = re.sub(pattern, replacement, curr_file_paths[0])
             current_log_filepath = re.sub("\\.pkl", ".log", current_log_filepath)
             new_log_filepath = re.sub(
                 curr_template_prefix, new_template_prefix, current_log_filepath
