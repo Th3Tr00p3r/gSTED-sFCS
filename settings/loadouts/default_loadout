@@ -61,8 +61,8 @@ solScanType,static
 solScanDurUnits,seconds
 dataMonth,12
 dataYear,2022
-dataDay,5
-dataTemplate1,YOYO_CNCP_Gated50ns_circle_exc_164410_*.pkl
+dataDay,7
+dataTemplate1,YOYO300bp_circle_exc_150217_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -109,6 +109,7 @@ tabWidget_4,0
 tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
+accumAcf,True
 solImportReCorrelate,False
 solImportAutoLoadProcessed,False
 autoExp1,False
