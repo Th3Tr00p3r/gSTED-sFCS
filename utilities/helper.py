@@ -672,13 +672,25 @@ def fourier_transform_1d(
     return r, fr_interp, q, fq
 
 
-def unify_length(vec_in: np.ndarray, out_len: int) -> np.ndarray:
-    """Either trims or zero-pads the tail of a 1D array to match 'out_len'"""
+def unify_length(arr: np.ndarray, out_len: int) -> np.ndarray:
+    """Either trims or zero-pads the right edge of an ndarray to match 'out_len' (2nd axis)"""
 
-    if len(vec_in) >= out_len:
-        return vec_in[:out_len]
-    else:
-        return np.hstack((vec_in, np.zeros(out_len - len(vec_in))))
+    # assume >=2D array
+    try:
+        if (arr_len := arr.shape[1]) >= out_len:
+            return arr[:, :out_len]
+        else:
+            pad_width = tuple(
+                [(0, 0), (0, out_len - arr_len)] + [(0, 0) for _ in range(len(arr.shape) - 2)]
+            )
+            return np.pad(arr, pad_width)
+
+    # 1D array
+    except IndexError:
+        if (arr_len := arr.size) >= out_len:
+            return arr[:out_len]
+        else:
+            return np.pad(arr, (0, out_len - arr_len))
 
 
 def xcorr(a, b):

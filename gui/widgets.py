@@ -380,6 +380,7 @@ SOL_MEAS_COLL = QtWidgetCollection(
     tau_wdgt=("decayTime", "QDoubleSpinBox", "main", True),
     plot_wdgt=("solScanAcf", None, "main", True),
     fit_led=("ledFit", "QIcon", "main", True),
+    should_accumulate_corrfuncs=("accumAcf", "QCheckBox", "main", False),
 )
 
 IMG_SCAN_COLL = QtWidgetCollection(
