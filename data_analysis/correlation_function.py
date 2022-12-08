@@ -130,12 +130,20 @@ class CorrFunc:
     cf_cr: np.ndarray
     g0: float
 
-    def __init__(self, name: str, correlator_type: int, laser_freq_hz, afterpulsing_filter=None):
+    def __init__(
+        self,
+        name: str,
+        correlator_type: int,
+        laser_freq_hz,
+        afterpulsing_filter=None,
+        duration_min=None,
+    ):
         self.name = name
         self.correlator_type = correlator_type
         self.laser_freq_hz = laser_freq_hz
         self.fit_params: Dict[str, FitParams] = dict()
         self.afterpulsing_filter = afterpulsing_filter
+        self.duration_min = duration_min
 
     def __add__(self, other):
         """Averages all attributes of two CorrFunc objects and returns a new CorrFunc instance"""
@@ -156,7 +164,7 @@ class CorrFunc:
 
         # instantiate a new CorrFunc object to hold the mean values
         new_CF = CorrFunc(
-            f"{self.name} + {self.name}",
+            f"{self.name}",
             self.correlator_type,
             self.laser_freq_hz,
             self.afterpulsing_filter,
@@ -169,85 +177,58 @@ class CorrFunc:
         req_shape = (max_length, min_n_rows)  # for 2D arrays
 
         # set the attributes
-        new_CF.corrfunc = np.mean(
-            np.dstack(
-                (unify_length(self.corrfunc, req_shape), unify_length(other.corrfunc, req_shape))
-            ),
-            axis=-1,
-        )
-        new_CF.weights = np.mean(
-            np.dstack(
-                (unify_length(self.corrfunc, req_shape), unify_length(other.corrfunc, req_shape))
-            ),
-            axis=-1,
-        )
-        new_CF.cf_cr = np.mean(
-            np.dstack((unify_length(self.cf_cr, req_shape), unify_length(other.cf_cr, req_shape))),
-            axis=-1,
-        )
-        new_CF.average_all_cf_cr = np.mean(
-            np.vstack(
-                (
-                    unify_length(self.average_all_cf_cr, (max_length,)),
-                    unify_length(other.average_all_cf_cr, (max_length,)),
-                )
-            ),
-            axis=-1,
-        )
-        new_CF.avg_cf_cr = np.mean(
-            np.vstack(
-                (
-                    unify_length(self.avg_cf_cr, (max_length,)),
-                    unify_length(other.avg_cf_cr, (max_length,)),
-                )
-            ),
-            axis=-1,
-        )
-        new_CF.error_cf_cr = np.mean(
-            np.vstack(
-                (
-                    unify_length(self.error_cf_cr, (max_length,)),
-                    unify_length(other.error_cf_cr, (max_length,)),
-                )
-            ),
-            axis=-1,
-        )
-        new_CF.avg_corrfunc = np.mean(
-            np.vstack(
-                (
-                    unify_length(self.avg_corrfunc, (max_length,)),
-                    unify_length(other.avg_corrfunc, (max_length,)),
-                )
-            ),
-            axis=-1,
-        )
-        new_CF.error_corrfunc = np.mean(
-            np.vstack(
-                (
-                    unify_length(self.error_corrfunc, (max_length,)),
-                    unify_length(other.error_corrfunc, (max_length,)),
-                )
-            ),
-            axis=-1,
-        )
-        new_CF.normalized = np.mean(
-            np.vstack(
-                (
-                    unify_length(self.normalized, (max_length,)),
-                    unify_length(other.normalized, (max_length,)),
-                )
-            ),
-            axis=-1,
-        )
-        new_CF.error_normalized = np.mean(
-            np.vstack(
-                (
-                    unify_length(self.error_normalized, (max_length,)),
-                    unify_length(other.error_normalized, (max_length,)),
-                )
-            ),
-            axis=-1,
-        )
+        #        np.average(data, axis=1, weights=[1./4, 3./4]) # TODO: weighted average based on duration, instead of mean()
+        new_CF.corrfunc = np.dstack(
+            (unify_length(self.corrfunc, req_shape), unify_length(other.corrfunc, req_shape))
+        ).mean(axis=-1)
+        new_CF.weights = np.dstack(
+            (unify_length(self.weights, req_shape), unify_length(other.weights, req_shape))
+        ).mean(axis=-1)
+        new_CF.cf_cr = np.dstack(
+            (unify_length(self.cf_cr, req_shape), unify_length(other.cf_cr, req_shape))
+        ).mean(axis=-1)
+        new_CF.average_all_cf_cr = np.vstack(
+            (
+                unify_length(self.average_all_cf_cr, (max_length,)),
+                unify_length(other.average_all_cf_cr, (max_length,)),
+            )
+        ).mean(axis=0)
+        new_CF.avg_cf_cr = np.vstack(
+            (
+                unify_length(self.avg_cf_cr, (max_length,)),
+                unify_length(other.avg_cf_cr, (max_length,)),
+            )
+        ).mean(axis=0)
+        new_CF.error_cf_cr = np.vstack(
+            (
+                unify_length(self.error_cf_cr, (max_length,)),
+                unify_length(other.error_cf_cr, (max_length,)),
+            )
+        ).mean(axis=0)
+        new_CF.avg_corrfunc = np.vstack(
+            (
+                unify_length(self.avg_corrfunc, (max_length,)),
+                unify_length(other.avg_corrfunc, (max_length,)),
+            )
+        ).mean(axis=0)
+        new_CF.error_corrfunc = np.vstack(
+            (
+                unify_length(self.error_corrfunc, (max_length,)),
+                unify_length(other.error_corrfunc, (max_length,)),
+            )
+        ).mean(axis=0)
+        new_CF.normalized = np.vstack(
+            (
+                unify_length(self.normalized, (max_length,)),
+                unify_length(other.normalized, (max_length,)),
+            )
+        ).mean(axis=0)
+        new_CF.error_normalized = np.vstack(
+            (
+                unify_length(self.error_normalized, (max_length,)),
+                unify_length(other.error_normalized, (max_length,)),
+            )
+        ).mean(axis=0)
         new_CF.g0 = (self.g0 + other.g0) / 2
 
         return new_CF
@@ -1111,6 +1092,7 @@ class SolutionSFCSMeasurement:
             correlator_option,
             self.laser_freq_hz,
             afterpulsing_filter if is_filtered else None,
+            duration_min=self.duration_min,  # TESTESTEST
         )
         CF.correlate_measurement(
             corr_input_list,
