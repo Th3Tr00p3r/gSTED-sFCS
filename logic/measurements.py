@@ -652,7 +652,10 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         try:
             CF = compute_acf(np.array(self.data_dvc.data, dtype=np.uint8))
             if self.should_accumulate_corrfuncs:
-                self.cf += CF
+                try:
+                    self.cf += CF
+                except AttributeError:
+                    self.cf = CF
             else:
                 self.cf = CF
         except (RuntimeError, RuntimeWarning) as exc:
@@ -810,9 +813,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
 
+                # show/add the ACF of the latest file in GUI
+                self.disp_ACF()
+
                 # case aligning and not manually stopped
                 if self.repeat and self.is_running:
-                    self.disp_ACF()
                     # reset measurement
                     self.set_current_and_end_times()
                     self.start_time = time.perf_counter()
@@ -820,7 +825,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
                 # case final alignment and not manually stopped
                 elif self.final and self.is_running:
-                    self.disp_ACF()
                     if should_save:
                         self.save_data(self.prep_meas_dict(), self.build_filename(0))
 

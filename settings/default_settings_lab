@@ -72,7 +72,7 @@ xOrigin,0.0
 yOrigin,0.0
 zOrigin,5.0
 xConv,70.81
-yConv,70.81
+yConv,19.0
 zConv,10.0
 counterTriggerEdge,Rising
 excTriggerSrc,External (TDC)
