@@ -1,15 +1,19 @@
 imgScanFileTemplate,gb
-solScanFileTemplate,
 newTemplate,
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
+solScanFileTemplate,
 spadMode,free running
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
+solAnalysisRemoveWorstSpinner,0
+scanImgFileNum,1
+tdcCalibGating,40
+expStrctFctrRbstIntrpPnts,3
 solScanFloatingAmp,0
 circAoSampFreq,10000
 circDiameter,20
@@ -25,10 +29,6 @@ maxScanFreq,40
 solPointsPerLine,149
 solTotPointsPerLine,183
 solNumLines,14
-solAnalysisRemoveWorstSpinner,0
-scanImgFileNum,1
-tdcCalibGating,40
-expStrctFctrRbstIntrpPnts,3
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -38,15 +38,15 @@ imgScanDim1,15.0
 imgScanDim2,15.0
 imgScanDim3,10.0
 imgScanLinFrac,0.9
+solAnalysisRemoveOverSpinner,2.0
+customGateLifetimesLower,5.0
+customGateLifetimesUpper,20.0
+expStrctFctrGMin,0.01
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,6010.93
 solActualScanFreq,27.32
 solScanDur,15.0
-solAnalysisRemoveOverSpinner,2.0
-customGateLifetimesLower,5.0
-customGateLifetimesUpper,20.0
-expStrctFctrGMin,0.01
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -56,9 +56,6 @@ psdEffDelay,49.61
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
-solMeasPreset,Standard Static
-solScanType,static
-solScanDurUnits,seconds
 dataMonth,12
 dataYear,2022
 dataDay,7
@@ -74,15 +71,15 @@ gateMeasType,STED
 availableGates,
 importedSolDataTemplates2,
 expPropGstedGate,Lifetime
+solMeasPreset,Standard Static
+solScanType,static
+solScanDurUnits,seconds
 avgInterval,5000
 posAxis,X
-solScanParamsStacked,2
 importStacked,1
 analysisStacked,1
+solScanParamsStacked,2
 depModeStacked,0
-regularSolMeas,False
-repeatSolMeas,True
-finalSolMeas,False
 imageDataImport,False
 solDataImport,True
 solImportUseAll,False
@@ -93,6 +90,9 @@ solAveragingPlotTemporal,True
 solAveragingPlotSpatial,False
 assignLoadedMeas,False
 assignRawData,True
+regularSolMeas,False
+repeatSolMeas,True
+finalSolMeas,False
 currMode,True
 powMode,False
 numPlaneShownChoice,0
@@ -102,16 +102,16 @@ exposure1,99
 pixel_clock2,99
 framerate2,99
 exposure2,99
-tabWidget,2
+tabWidget,1
 tabWidget_2,1
 tabWidget_5,0
 tabWidget_4,0
 tabWidget_3,0
 autoCrosshair,True
 alwaysSaveImg,False
-accumAcf,True
 solImportReCorrelate,False
 solImportAutoLoadProcessed,False
+accumAcf,True
 autoExp1,False
 grayscaleMode1,True
 measureBeamDiameter1,False
