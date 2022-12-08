@@ -568,6 +568,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.tau_wdgt = kwargs.get("tau_wdgt")
         self.plot_wdgt = kwargs.get("plot_wdgt")
         self.fit_led = kwargs.get("fit_led")
+        self.should_accumulate_corrfuncs = kwargs.get("should_accumulate_corrfuncs")
         self.processing_options = kwargs.get("processing_options")
 
         if self.scan_params.get("floating_z_amplitude_um", 0) != 0:
@@ -642,14 +643,18 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 file_dict=self.prep_meas_dict(), byte_data=byte_data, **self.processing_options
             )
             s.data.append(p)
-            cf = s.correlate_and_average(
+            CF = s.correlate_and_average(
                 cf_name=f"{self.laser_mode} alignment",
                 **self.processing_options,
             )
-            return cf
+            return CF
 
         try:
-            cf = compute_acf(np.array(self.data_dvc.data, dtype=np.uint8))
+            CF = compute_acf(np.array(self.data_dvc.data, dtype=np.uint8))
+            if self.should_accumulate_corrfuncs:
+                self.cf += CF
+            else:
+                self.cf = CF
         except (RuntimeError, RuntimeWarning) as exc:
             # RuntimeWarning - some sort of zero-division in _calculate_weighted_avg
             # (due to invalid data during beam obstruction)
@@ -660,15 +665,15 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             errors.err_hndlr(exc, sys._getframe(), locals())
         else:
             try:
-                fp = cf.fit_correlation_function()
+                fp = CF.fit_correlation_function()
             except fit_tools.FitError as exc:
                 # fit failed
                 errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
                 self.fit_led.set(self.icon_dict["led_red"])
-                g0, tau = cf.g0, 0.1
+                g0, tau = CF.g0, 0.1
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(0)
-                self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
+                self.plot_wdgt.obj.plot_acfs((CF.lag, "lag"), CF.avg_cf_cr, g0)
             else:
                 # fit succeeded
                 self.fit_led.set(self.icon_dict["led_off"])
@@ -676,9 +681,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 fit_func = fp.fit_func
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(tau * 1e3)
-                self.plot_wdgt.obj.plot_acfs((cf.lag, "lag"), cf.avg_cf_cr, g0)
-                y_fit = fit_func(cf.lag, *fp.beta.values())
-                self.plot_wdgt.obj.plot(cf.lag, y_fit, "-.r")
+                self.plot_wdgt.obj.plot_acfs((CF.lag, "lag"), CF.avg_cf_cr, g0)
+                y_fit = fit_func(CF.lag, *fp.beta.values())
+                self.plot_wdgt.obj.plot(CF.lag, y_fit, "-.r")
                 logging.info(
                     f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f} K, tau: {tau*1e3:.1f} us."
                 )

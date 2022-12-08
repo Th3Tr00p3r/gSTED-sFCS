@@ -1075,7 +1075,7 @@ class MainWin:
             f"Renamed {len(curr_file_paths)} 'file_dict' files. ({curr_template} -> {new_template})"
         )
 
-        # TESTESTEST - rename the data files
+        # rename the data files
         try:
             [
                 Path(curr_byte_data_path).rename(

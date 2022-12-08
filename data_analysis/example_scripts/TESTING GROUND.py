@@ -13,6 +13,48 @@
 # ---
 
 # %% [markdown]
+# ## General tests
+
+# %%
+import numpy as np
+from typing import Tuple
+
+
+def unify_length(arr: np.ndarray, out_len: Tuple[int, ...]) -> np.ndarray:
+    """Either trims or zero-pads the right edge of an ndarray to match 'out_len' (2nd axis)"""
+
+    # assume >=2D array
+    try:
+        if (arr_len := arr.shape[1]) >= out_len:
+            return arr[:, :out_len]
+        else:
+            pad_width = tuple(
+                [(0, 0), (0, out_len - arr_len)] + [(0, 0) for _ in range(len(arr.shape) - 2)]
+            )
+            return np.pad(arr, pad_width)
+
+    # 1D array
+    except IndexError:
+        if (arr_len := arr.size) >= out_len:
+            return arr[:out_len]
+        else:
+            pad_width = (0, out_len - arr_len)
+            return np.pad(arr, pad_width)
+
+
+test_1d_arr = np.arange(16)
+test_2d_arr = np.arange(16).reshape(4, 4)
+
+print("test_1d_arr:\n", test_1d_arr, "\n\ntest_2d_arr:\n", test_2d_arr)
+print()
+
+# %%
+unify_length(test_1d_arr, 20)
+
+# %%
+unify_length(test_2d_arr, 15)
+
+# %% [markdown]
 # We begin by moving to the project **directory**, loading neccessary **packages and modules**, and **defining constants**:
 
 # %%

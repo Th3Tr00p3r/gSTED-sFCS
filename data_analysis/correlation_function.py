@@ -137,6 +137,125 @@ class CorrFunc:
         self.fit_params: Dict[str, FitParams] = dict()
         self.afterpulsing_filter = afterpulsing_filter
 
+    def __add__(self, other):
+        """Averages all attributes of two CorrFunc objects and returns a new CorrFunc instance"""
+
+        # ensure similarity
+        if self.correlator_type != other.correlator_type:
+            raise ValueError(
+                f"Combined CorrFunc objects must have the same 'correlator_type'! ({self.correlator_type}, {other.correlator_type})"
+            )
+        if self.laser_freq_hz != other.laser_freq_hz:
+            raise ValueError(
+                f"Combined CorrFunc objects must have the same 'laser_freq_hz'! ({self.laser_freq_hz}, {other.laser_freq_hz})"
+            )
+        if self.afterpulsing_filter != other.afterpulsing_filter:
+            raise ValueError(
+                f"Combined CorrFunc objects must have the same 'afterpulsing_filter'! ({self.afterpulsing_filter}, {other.afterpulsing_filter})"
+            )
+
+        # instantiate a new CorrFunc object to hold the mean values
+        new_CF = CorrFunc(
+            f"{self.name} + {self.name}",
+            self.correlator_type,
+            self.laser_freq_hz,
+            self.afterpulsing_filter,
+        )
+
+        # before averaging, get the maximum lag length of self and other - will need to unify (zero pad) to max length before stacking for averaging
+        new_lag = max(self.lag, other.lag, key=len)
+        max_length = len(new_lag)
+
+        # set the attributes
+        new_CF.corrfunc = np.mean(
+            np.vstack(
+                (unify_length(self.corrfunc, max_length), unify_length(other.corrfunc, max_length))
+            ),
+            axis=-1,
+        )
+        new_CF.weights = np.mean(
+            np.vstack(
+                (unify_length(self.corrfunc, max_length), unify_length(other.corrfunc, max_length))
+            ),
+            axis=-1,
+        )
+        new_CF.corrfunc = np.mean(
+            np.dstack(
+                (unify_length(self.corrfunc, max_length), unify_length(other.corrfunc, max_length))
+            ),
+            axis=-1,
+        )
+        new_CF.cf_cr = np.mean(
+            np.dstack(
+                (unify_length(self.cf_cr, max_length), unify_length(other.cf_cr, max_length))
+            ),
+            axis=-1,
+        )
+        new_CF.average_all_cf_cr = np.mean(
+            np.vstack(
+                (
+                    unify_length(self.average_all_cf_cr, max_length),
+                    unify_length(other.average_all_cf_cr, max_length),
+                )
+            ),
+            axis=-1,
+        )
+        new_CF.avg_cf_cr = np.mean(
+            np.vstack(
+                (
+                    unify_length(self.avg_cf_cr, max_length),
+                    unify_length(other.avg_cf_cr, max_length),
+                )
+            ),
+            axis=-1,
+        )
+        new_CF.error_cf_cr = np.mean(
+            np.vstack(
+                (
+                    unify_length(self.error_cf_cr, max_length),
+                    unify_length(other.error_cf_cr, max_length),
+                )
+            ),
+            axis=-1,
+        )
+        new_CF.avg_corrfunc = np.mean(
+            np.vstack(
+                (
+                    unify_length(self.avg_corrfunc, max_length),
+                    unify_length(other.avg_corrfunc, max_length),
+                )
+            ),
+            axis=-1,
+        )
+        new_CF.error_corrfuncr = np.mean(
+            np.vstack(
+                (
+                    unify_length(self.error_corrfuncr, max_length),
+                    unify_length(other.error_corrfuncr, max_length),
+                )
+            ),
+            axis=-1,
+        )
+        new_CF.normalized = np.mean(
+            np.vstack(
+                (
+                    unify_length(self.normalized, max_length),
+                    unify_length(other.normalized, max_length),
+                )
+            ),
+            axis=-1,
+        )
+        new_CF.error_normalized = np.mean(
+            np.vstack(
+                (
+                    unify_length(self.error_normalized, max_length),
+                    unify_length(other.error_normalized, max_length),
+                )
+            ),
+            axis=-1,
+        )
+        new_CF.g0 = np.mean(self.g0, other.g0)
+
     def correlate_measurement(
         self,
         time_stamp_split_list: List[np.ndarray],
