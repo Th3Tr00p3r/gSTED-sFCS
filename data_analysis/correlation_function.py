@@ -202,70 +202,70 @@ class CorrFunc:
                 (
                     unify_length(self.average_all_cf_cr, (max_length,)),
                     unify_length(other.average_all_cf_cr, (max_length,)),
-                ),
-                axis=0,
-                weights=[self.duration_min, other.duration_min],
-            )
+                )
+            ),
+            axis=0,
+            weights=[self.duration_min, other.duration_min],
         )
         new_CF.avg_cf_cr = np.average(
             np.vstack(
                 (
                     unify_length(self.avg_cf_cr, (max_length,)),
                     unify_length(other.avg_cf_cr, (max_length,)),
-                ),
-                axis=0,
-                weights=[self.duration_min, other.duration_min],
-            )
+                )
+            ),
+            axis=0,
+            weights=[self.duration_min, other.duration_min],
         )
         new_CF.error_cf_cr = np.average(
             np.vstack(
                 (
                     unify_length(self.error_cf_cr, (max_length,)),
                     unify_length(other.error_cf_cr, (max_length,)),
-                ),
-                axis=0,
-                weights=[self.duration_min, other.duration_min],
-            )
+                )
+            ),
+            axis=0,
+            weights=[self.duration_min, other.duration_min],
         )
         new_CF.avg_corrfunc = np.average(
             np.vstack(
                 (
                     unify_length(self.avg_corrfunc, (max_length,)),
                     unify_length(other.avg_corrfunc, (max_length,)),
-                ),
-                axis=0,
-                weights=[self.duration_min, other.duration_min],
-            )
+                )
+            ),
+            axis=0,
+            weights=[self.duration_min, other.duration_min],
         )
         new_CF.error_corrfunc = np.average(
             np.vstack(
                 (
                     unify_length(self.error_corrfunc, (max_length,)),
                     unify_length(other.error_corrfunc, (max_length,)),
-                ),
-                axis=0,
-                weights=[self.duration_min, other.duration_min],
-            )
+                )
+            ),
+            axis=0,
+            weights=[self.duration_min, other.duration_min],
         )
         new_CF.normalized = np.average(
             np.vstack(
                 (
                     unify_length(self.normalized, (max_length,)),
                     unify_length(other.normalized, (max_length,)),
-                ),
-                axis=0,
-                weights=[self.duration_min, other.duration_min],
-            )
+                )
+            ),
+            axis=0,
+            weights=[self.duration_min, other.duration_min],
         )
         new_CF.error_normalized = np.average(
             np.vstack(
                 (
                     unify_length(self.error_normalized, (max_length,)),
                     unify_length(other.error_normalized, (max_length,)),
-                ),
-                axis=0,
-                weights=[self.duration_min, other.duration_min],
-            )
+                )
+            ),
+            axis=0,
+            weights=[self.duration_min, other.duration_min],
         )
         new_CF.g0 = (self.g0 + other.g0) / 2
 
