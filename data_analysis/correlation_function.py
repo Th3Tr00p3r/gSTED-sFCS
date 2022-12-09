@@ -177,59 +177,100 @@ class CorrFunc:
         req_shape = (max_length, min_n_rows)  # for 2D arrays
 
         # set the attributes
-        #        np.average(data, axis=1, weights=[1./4, 3./4]) # TODO: weighted average based on duration, instead of mean()
-        new_CF.corrfunc = np.dstack(
-            (unify_length(self.corrfunc, req_shape), unify_length(other.corrfunc, req_shape))
-        ).mean(axis=-1)
-        new_CF.weights = np.dstack(
-            (unify_length(self.weights, req_shape), unify_length(other.weights, req_shape))
-        ).mean(axis=-1)
-        new_CF.cf_cr = np.dstack(
-            (unify_length(self.cf_cr, req_shape), unify_length(other.cf_cr, req_shape))
-        ).mean(axis=-1)
-        new_CF.average_all_cf_cr = np.vstack(
-            (
-                unify_length(self.average_all_cf_cr, (max_length,)),
-                unify_length(other.average_all_cf_cr, (max_length,)),
+        # TODO: test me with alignment measurement, then regular
+        new_CF.corrfunc = np.average(
+            np.dstack(
+                (unify_length(self.corrfunc, req_shape), unify_length(other.corrfunc, req_shape))
+            ),
+            axis=-1,
+            weights=[self.duration_min, other.duration_min],
+        )
+        new_CF.weights = np.average(
+            np.dstack(
+                (unify_length(self.weights, req_shape), unify_length(other.weights, req_shape))
+            ),
+            axis=-1,
+            weights=[self.duration_min, other.duration_min],
+        )
+        new_CF.cf_cr = np.average(
+            np.dstack((unify_length(self.cf_cr, req_shape), unify_length(other.cf_cr, req_shape))),
+            axis=-1,
+            weights=[self.duration_min, other.duration_min],
+        )
+        new_CF.average_all_cf_cr = np.average(
+            np.vstack(
+                (
+                    unify_length(self.average_all_cf_cr, (max_length,)),
+                    unify_length(other.average_all_cf_cr, (max_length,)),
+                ),
+                axis=0,
+                weights=[self.duration_min, other.duration_min],
             )
-        ).mean(axis=0)
-        new_CF.avg_cf_cr = np.vstack(
-            (
-                unify_length(self.avg_cf_cr, (max_length,)),
-                unify_length(other.avg_cf_cr, (max_length,)),
+        )
+        new_CF.avg_cf_cr = np.average(
+            np.vstack(
+                (
+                    unify_length(self.avg_cf_cr, (max_length,)),
+                    unify_length(other.avg_cf_cr, (max_length,)),
+                ),
+                axis=0,
+                weights=[self.duration_min, other.duration_min],
             )
-        ).mean(axis=0)
-        new_CF.error_cf_cr = np.vstack(
-            (
-                unify_length(self.error_cf_cr, (max_length,)),
-                unify_length(other.error_cf_cr, (max_length,)),
+        )
+        new_CF.error_cf_cr = np.average(
+            np.vstack(
+                (
+                    unify_length(self.error_cf_cr, (max_length,)),
+                    unify_length(other.error_cf_cr, (max_length,)),
+                ),
+                axis=0,
+                weights=[self.duration_min, other.duration_min],
             )
-        ).mean(axis=0)
-        new_CF.avg_corrfunc = np.vstack(
-            (
-                unify_length(self.avg_corrfunc, (max_length,)),
-                unify_length(other.avg_corrfunc, (max_length,)),
+        )
+        new_CF.avg_corrfunc = np.average(
+            np.vstack(
+                (
+                    unify_length(self.avg_corrfunc, (max_length,)),
+                    unify_length(other.avg_corrfunc, (max_length,)),
+                ),
+                axis=0,
+                weights=[self.duration_min, other.duration_min],
             )
-        ).mean(axis=0)
-        new_CF.error_corrfunc = np.vstack(
-            (
-                unify_length(self.error_corrfunc, (max_length,)),
-                unify_length(other.error_corrfunc, (max_length,)),
+        )
+        new_CF.error_corrfunc = np.average(
+            np.vstack(
+                (
+                    unify_length(self.error_corrfunc, (max_length,)),
+                    unify_length(other.error_corrfunc, (max_length,)),
+                ),
+                axis=0,
+                weights=[self.duration_min, other.duration_min],
             )
-        ).mean(axis=0)
-        new_CF.normalized = np.vstack(
-            (
-                unify_length(self.normalized, (max_length,)),
-                unify_length(other.normalized, (max_length,)),
+        )
+        new_CF.normalized = np.average(
+            np.vstack(
+                (
+                    unify_length(self.normalized, (max_length,)),
+                    unify_length(other.normalized, (max_length,)),
+                ),
+                axis=0,
+                weights=[self.duration_min, other.duration_min],
             )
-        ).mean(axis=0)
-        new_CF.error_normalized = np.vstack(
-            (
-                unify_length(self.error_normalized, (max_length,)),
-                unify_length(other.error_normalized, (max_length,)),
+        )
+        new_CF.error_normalized = np.average(
+            np.vstack(
+                (
+                    unify_length(self.error_normalized, (max_length,)),
+                    unify_length(other.error_normalized, (max_length,)),
+                ),
+                axis=0,
+                weights=[self.duration_min, other.duration_min],
             )
-        ).mean(axis=0)
+        )
         new_CF.g0 = (self.g0 + other.g0) / 2
+
+        # accumulate the duration (used as weights for the next addition
+        new_CF.duration_min = self.duration_min + other.duration_min
 
         return new_CF
 
@@ -1791,7 +1832,7 @@ class SolutionSFCSExperiment:
         self,
         tdc_gate_ns: Tuple[float, float],
         meas_type: str,
-        should_plot=True,
+        should_plot=False,
         should_re_correlate=False,
         is_verbose=False,
         **kwargs,
@@ -1823,7 +1864,7 @@ class SolutionSFCSExperiment:
             self.plot_standard(**kwargs)
 
     def add_gates(
-        self, gate_list: List[Tuple[float, float]], should_plot=True, meas_type="sted", **kwargs
+        self, gate_list: List[Tuple[float, float]], should_plot=False, meas_type="sted", **kwargs
     ):
         """
         A convecience method for adding multiple gates.
@@ -1911,10 +1952,7 @@ class SolutionSFCSExperiment:
         ) as ax:
 
             if (parent_ax := kwargs.get("parent_ax")) is not None:
-                # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
                 existing_lines = parent_ax.get_lines()
-
-            with suppress(KeyError):
                 kwargs.pop("parent_ax")
 
             for meas_type in ("confocal", "sted"):
