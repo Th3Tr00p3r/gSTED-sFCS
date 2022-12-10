@@ -2147,6 +2147,7 @@ class SettWin:
             duration_units="seconds",
             final=False,
             repeat=False,  # TODO: why are both final and repeat needed? aren't they mutually exclusive?
+            should_disp_acf=False,
         )
 
         await self._app.meas.run(should_save=False)
@@ -2160,6 +2161,9 @@ class SettWin:
             labels=["AO_int", "AI"],
             scroll_zoom=True,
         )
+
+        # auto-fix the issue if needed
+        self._app.devices.scanners.recalibrate_y_galvo("circle", ai_buffer)
 
 
 class ProcessingOptionsWindow:

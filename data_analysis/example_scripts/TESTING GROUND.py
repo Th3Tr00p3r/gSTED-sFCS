@@ -17,56 +17,18 @@
 
 # %%
 import numpy as np
-from typing import Tuple
 
+a = np.array(range(10))
 
-def unify_length(arr: np.ndarray, req_shape: Tuple[int, ...]) -> np.ndarray:
-    """
-    Returns a either a zero-padded array or a trimmed one, according to the requested shape.
-    passing None as one of the shape axes ignores that axis.
-    """
-
-    if (dim_arr := len(arr.shape)) != len(req_shape):
-        raise ValueError(f"Dimensionallities do not match {len(arr.shape)}, {len(req_shape)}")
-
-    out_arr = np.copy(arr)
-
-    # assume >=2D array
-    try:
-        for ax, req_length in enumerate(req_shape):
-            if req_length is None:
-                # no change required
-                continue
-            if (arr_len := arr.shape[ax]) >= req_shape[ax]:
-                out_arr = out_arr[:, :req_length]
-            else:
-                pad_width = tuple(
-                    [(0, 0)] * ax + [(0, req_length - arr_len)] + [(0, 0)] * (dim_arr - (ax + 1))
-                )
-                out_arr = np.pad(out_arr, pad_width)
-
-        return out_arr
-
-    # 1D array
-    except IndexError:
-        out_length = req_shape[0]
-        if (arr_len := arr.size) >= out_length:
-            return arr[:out_length]
-        else:
-            return np.pad(arr, (0, out_length - arr_len))
-
-
-test_1d_arr = np.arange(16)
-test_2d_arr = np.arange(16).reshape(4, 4)
-
-print("test_1d_arr:\n", test_1d_arr, "\n\ntest_2d_arr:\n", test_2d_arr)
-print()
 
 # %%
-unify_length(test_1d_arr, (50,))
+a.data
 
 # %%
-unify_length(test_2d_arr, (None, None))
+a[:] = a * 3
+
+# %%
+a.dump()
 
 # %% [markdown]
 # We begin by moving to the project **directory**, loading neccessary **packages and modules**, and **defining constants**:

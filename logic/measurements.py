@@ -58,10 +58,9 @@ class MeasurementProcedure:
         self.prog_bar_wdgt = prog_bar_wdgt
         self.icon_dict = app.icon_dict  # get icons
         self.scan_params = scan_params
-        self.um_v_ratio = self.scanners_dvc.um_v_ratio
         # TODO: check if 'ai_scaling_xyz' matches today's ratio
         self.sys_info = file_utilities.default_system_info
-        self.sys_info["xyz_um_to_v"] = self.um_v_ratio
+        self.sys_info["xyz_um_to_v"] = self.scanners_dvc.um_v_ratio
         self.sys_info["date"] = dt.now().strftime("%d-%m-%Y")
 
         # TODO: These are for mypy to be silent. Ultimately, I believe creating an ABC will
@@ -393,7 +392,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         # create ao_buffer
         self.ao_buffer, self.scan_params = ScanPatternAO(
             "image",
-            self.um_v_ratio,
+            self.scanners_dvc.um_v_ratio,
             self.scan_params["initial_ao"],
             self.scan_params,
         ).calculate_pattern()
@@ -556,6 +555,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.scan_type = kwargs["scan_type"]
         self.repeat = kwargs["repeat"]
         self.final = kwargs["final"]
+        self.should_disp_acf = kwargs.get("should_disp_acf", True)
         self.max_file_size_mb = kwargs.get("max_file_size_mb", 20)
         self.duration = kwargs["duration"]
         self.duration_units = kwargs["duration_units"]
@@ -618,7 +618,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         curr_ao_v = tuple(getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz")
         self.ao_buffer, self.scan_params = ScanPatternAO(
             self.scan_params["pattern"],
-            self.um_v_ratio,
+            self.scanners_dvc.um_v_ratio,
             curr_ao_v,
             self.scan_params,
         ).calculate_pattern()
@@ -633,9 +633,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             """Doc."""
 
             meas_laser_type_dict = dict(
-                exc="confocal",
-                dep="depletion",
-                sted="sted",
+                exc="confocal", dep="depletion", sted="sted", nolaser="nolaser"
             )
 
             s = SolutionSFCSMeasurement(meas_laser_type_dict[self.laser_mode])
@@ -661,6 +659,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         except (RuntimeError, RuntimeWarning) as exc:
             # RuntimeWarning - some sort of zero-division in _calculate_weighted_avg
             # (due to invalid data during beam obstruction)
+            # or in automatic ROI selection (same reason, for angular scans)
             # RuntimeError - detector disconected
             errors.err_hndlr(exc, sys._getframe(), locals())
         except Exception as exc:
@@ -743,7 +742,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         return {"full_data": full_data, "system_info": self.sys_info}
 
-    async def run(self, should_save=True):
+    async def run(self, should_save=True):  # NOQA C901
         """Doc."""
 
         # initialize gui start/end times
@@ -789,6 +788,13 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 if self.scanning:
                     self.counter_dvc.init_ci_buffer()
                     # re-start scan for each file
+
+                    # if scanning measurement, ensure proper Y-galvo calibration during measurement and re-setup the scan if was recalibrated
+                    if len(self.scanners_dvc.ai_buffer) and self.scanners_dvc.recalibrate_y_galvo(
+                        self.scan_params["pattern"]
+                    ):  # TESTESTEST
+                        self.setup_scan()  # TESTESTEST
+
                     self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
                     self.init_scan_tasks("CONTINUOUS")
                     self.scanners_dvc.start_tasks("ao")
@@ -814,7 +820,8 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.scanners_dvc.fill_ai_buffer()
 
                 # show/add the ACF of the latest file in GUI
-                self.disp_ACF()
+                if self.should_disp_acf:
+                    self.disp_ACF()
 
                 # case aligning and not manually stopped
                 if self.repeat and self.is_running:
