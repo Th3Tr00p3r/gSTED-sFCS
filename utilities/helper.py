@@ -672,13 +672,23 @@ def fourier_transform_1d(
     return r, fr_interp, q, fq
 
 
+def simple_slice(arr: np.ndarray, idxs, axis: int):
+    """
+    Adapted from:
+    https://stackoverflow.com/questions/24398708/slicing-a-numpy-array-along-a-dynamically-specified-axis
+    """
+    sl = [slice(None)] * arr.ndim
+    sl[axis] = idxs
+    return arr[tuple(sl)]
+
+
 def unify_length(arr: np.ndarray, req_shape: Tuple[int, ...]) -> np.ndarray:
     """
     Returns a either a zero-padded array or a trimmed one, according to the requested shape.
     passing None as one of the shape axes ignores that axis.
     """
 
-    if (dim_arr := len(arr.shape)) != len(req_shape):
+    if arr.ndim != len(req_shape):
         raise ValueError(f"Dimensionallities do not match {len(arr.shape)}, {len(req_shape)}")
 
     out_arr = np.copy(arr)
@@ -690,10 +700,10 @@ def unify_length(arr: np.ndarray, req_shape: Tuple[int, ...]) -> np.ndarray:
                 # no change required
                 continue
             if (arr_len := arr.shape[ax]) >= req_shape[ax]:
-                out_arr = out_arr[:, :req_length]
+                out_arr = simple_slice(out_arr, slice(req_length), ax)
             else:
                 pad_width = tuple(
-                    [(0, 0)] * ax + [(0, req_length - arr_len)] + [(0, 0)] * (dim_arr - (ax + 1))
+                    [(0, 0)] * ax + [(0, req_length - arr_len)] + [(0, 0)] * (arr.ndim - (ax + 1))
                 )
                 out_arr = np.pad(out_arr, pad_width)
 

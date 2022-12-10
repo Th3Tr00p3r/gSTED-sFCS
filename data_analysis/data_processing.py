@@ -67,7 +67,7 @@ class AngularScanDataMixin:
 
         return img, sample_runtime, pixel_num, line_num
 
-    def _get_data_shift(self, cnt: np.ndarray) -> int:
+    def _get_data_shift(self, cnt: np.ndarray, is_verbose=False) -> int:
         """Doc."""
 
         def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
@@ -100,7 +100,7 @@ class AngularScanDataMixin:
 
         # in case initial attempt fails, limit shift to the flattened size of the image
         if (outer_half_sum > inner_half_sum) or return_row_idx != height - 1:
-            if return_row_idx != height - 1:
+            if return_row_idx != height - 1 and is_verbose:
                 print("Data is heavily shifted, check it out!", end=" ")
             min_pix_shift = -round(cnt.size / 2)
             max_pix_shift = min_pix_shift + cnt.size + 1
@@ -1009,7 +1009,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 p = self._process_angular_scan_data_file(
                     idx, full_data, should_dump=should_dump, **proc_options
                 )
-
         # FCS
         else:
             scan_type = "static"
@@ -1449,7 +1448,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             if should_fix_shift:
                 if is_verbose:
                     print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
-                pix_shift = self._get_data_shift(sec_cnt.copy())
+                pix_shift = self._get_data_shift(sec_cnt.copy(), is_verbose=is_verbose)
                 sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
                     self.laser_freq_hz / ao_sampling_freq_hz
                 )
@@ -1486,8 +1485,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             try:
                 bw = self._threshold_and_smooth(cnt.copy())
             except ValueError:
-                if is_verbose:
-                    print("Thresholding failed, skipping file.\n")
+                raise RuntimeError("Automatic ROI selection: Thresholding failed")
                 return None
         elif roi_selection == "all":
             bw = np.full(cnt.shape, True)

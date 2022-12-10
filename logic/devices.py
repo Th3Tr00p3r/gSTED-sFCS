@@ -15,6 +15,7 @@ import numpy as np
 import PIL
 from matplotlib.patches import Ellipse
 from nidaqmx.errors import DaqError
+from skimage.measure import EllipseModel
 
 from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
@@ -562,7 +563,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     (X: x_galvo, Y: y_galvo, Z: z_piezo)
     """
 
-    # TODO: for better modularity and simplicity, create a seperate class for each galvo and the piezo seperately, and have this class control all of them
+    # TODO: for better modularity and simplicity, create a seperate class for each galvo and the piezo, and have this class control all of them
 
     attrs = DeviceAttrs(
         log_ref="Scanners",
@@ -752,6 +753,9 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         axes_to_use = self.AXES_TO_BOOL_TUPLE_DICT[type]
 
+        # keep latest AO for Y-galvo calibration # TESTESTEST
+        self._latest_ao_buffer = ao_data  # TESTESTEST
+
         xy_chan_spcs = []
         z_chan_spcs = []
         ao_data_xy = np.empty(shape=(0,))
@@ -877,6 +881,46 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             diff_ao_data[0, :] = ao_data
             diff_ao_data[1, :] = -ao_data
         return diff_ao_data
+
+    def recalibrate_y_galvo(self, scan_pattern: str, ext_ai_buffer=None):
+        """Doc."""
+
+        # get XY analog input
+        if ext_ai_buffer is None:
+            ai_xy = np.array(self.ai_buffer).T[:2]
+        else:
+            ai_xy = np.array(ext_ai_buffer).T[:2]
+
+        if scan_pattern == "circle":
+            # fit ellipse to circular scan AI, to get ratio between the semi-major axes
+            # as the scan is supposed to be circular, the ratio between the axes is the needed y calibration factor
+            ellipse_model = EllipseModel()
+            ellipse_model.estimate(ai_xy.T)
+            _, _, a, b, _ = ellipse_model.params
+            y_calib_factor = a / b
+
+        elif scan_pattern == "angular":
+            # match the AI/AO_int ratio in the Y-galvo to that of the X-galvo
+            if ext_ai_buffer is None:
+                ao_int_xy = np.array(self.ai_buffer).T[3:5]
+            else:
+                ao_int_xy = np.array(ext_ai_buffer).T[3:5]
+
+            dist_ao_xy = ao_int_xy.max(axis=1) - ao_int_xy.min(axis=1)
+            dist_ai_xy = ai_xy.max(axis=1) - ai_xy.min(axis=1)
+            xy_ai_ao_ratio = dist_ai_xy / dist_ao_xy
+            y_calib_factor = xy_ai_ao_ratio[0] / xy_ai_ao_ratio[1]
+            print("ANGULAR SCAN Y-CALIB FACTOR: ", y_calib_factor)  # TESTESTEST
+
+        _, current_y_um2v, _ = self.um_v_ratio
+        new_y_um2v = current_y_um2v * y_calib_factor
+        rel_change = abs(new_y_um2v - current_y_um2v) / current_y_um2v
+        if rel_change > 0.05:
+            self.y_um2v_const.set(new_y_um2v)
+            print(f"Y-galvo calibration changed ({current_y_um2v} -> {new_y_um2v}).")
+            return True
+        else:
+            return False
 
 
 class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
