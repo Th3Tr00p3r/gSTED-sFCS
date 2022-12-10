@@ -56,19 +56,13 @@ class Timeout:
     async def _read_ci_and_ai(self) -> None:
         """Doc."""
 
-        def fill_buffers() -> None:
-            """Doc."""
-
+        while self.not_finished:
             # CI (Photon Counter)
             if not self.cntr_dvc.error_dict:
                 self.cntr_dvc.fill_ci_buffer()
-
             # AI (Scanners)
             if not self.scan_dvc.error_dict:
                 self.scan_dvc.fill_ai_buffer()
-
-        while self.not_finished:
-            fill_buffers()
             await asyncio.sleep(TIMEOUT_INTERVAL)
 
     async def _update_main_gui(self) -> None:  # noqa: C901
