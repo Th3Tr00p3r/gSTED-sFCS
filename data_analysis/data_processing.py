@@ -837,7 +837,7 @@ class TDCCalibration:
     error_all_hist_norm: Any
     t_weight: Any
 
-    def plot(self, parent_axes=None, **plot_kwargs) -> None:
+    def plot(self, **kwargs) -> None:
         """Doc."""
 
         try:
@@ -853,9 +853,8 @@ class TDCCalibration:
             return
 
         with Plotter(
-            parent_ax=parent_axes,
             subplots=(2, 2),
-            **plot_kwargs,
+            **kwargs,
         ) as axes:
             axes[0, 0].semilogy(x_all, h_all, "-o", label="All Hist")
             axes[0, 0].semilogy(coase_bins, h, "o", label="Valid Bins")
@@ -1615,7 +1614,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         calib_range_ns: Union[Limits, tuple] = Limits(40, 80),
         n_zeros_for_fine_bounds=10,
         time_bins_for_hist_ns=0.1,
-        parent_axes=None,
         **kwargs,
     ) -> TDCCalibration:
         """Doc."""
