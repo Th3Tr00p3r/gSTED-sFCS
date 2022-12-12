@@ -269,6 +269,7 @@ class InterpExtrap1D:
     x_data: np.ndarray  # original data
     y_data: np.ndarray  # original data
     interp_idxs: np.ndarray
+    x_lims: Limits
 
     def plot(self, label_prefix="", **kwargs):
         """Display the interpolation."""
@@ -289,7 +290,7 @@ class InterpExtrap1D:
                 self.y_data,
                 "o",
                 label=f"_{label_prefix}data",
-                alpha=0.4,
+                alpha=0.3,
                 markerfacecolor="none",
             )
             color = line2d[0].get_color()  # get the color from the first plotted line
@@ -309,6 +310,8 @@ class InterpExtrap1D:
                 label=f"{label_prefix}",
                 color=color,
             )
+            ax.axvline(x=self.x_lims.lower, color=color, lw=1, ls="--")
+            ax.axvline(x=self.x_lims.upper, color=color, lw=1, ls="--")
             ax.legend()
 
 
@@ -434,7 +437,7 @@ def get_noise_start_idx(arr: np.ndarray, **kwargs):
     Assumes valid (no NaNs or <=0) values of 'arr' are supplied.
     """
 
-    def std_from_local_linear_fit(arr: np.ndarray, kernel_size=8):
+    def std_from_local_linear_fit(arr: np.ndarray, kernel_size=8, **kwargs):
         """
         Given an array and an even kernel (1D) size, returns an array of equal length where each kernel-sized subarray
         contains the local standard deviation of that part of the original array from a local linear fit of that part.
@@ -551,6 +554,7 @@ def extrapolate_over_noise(
         x,
         y,
         interp_idxs,
+        x_lims,
     )
 
 
