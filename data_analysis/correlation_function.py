@@ -57,7 +57,7 @@ class StructureFactor:
     sq: np.ndarray
     sq_error: np.ndarray = None
 
-    def plot(self, label_prefix="", **kwargs):
+    def plot(self, interp_type: str, label_prefix="", **kwargs):
         """
         Plot a single structure factor. Meant to be used for hierarchical plotting
         directly from a measurement of indirectly from an experiment.
@@ -72,8 +72,7 @@ class StructureFactor:
             ax.set_xscale("log")
             ax.set_ylim(1e-4, 2)
             ax.set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
-            ax.set_ylabel("$S(q)$ (Normalized)")
-
+            ax.set_ylabel("$S(q)$")
             ax.legend()
 
 
@@ -106,7 +105,7 @@ class HankelTransform:
             axes[1].set_ylim(1e-4, 2)
             axes[1].set_title("Hankel Transforms")
             axes[1].set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
-            axes[1].set_ylabel("$F(q)$ (Normalized)")
+            axes[1].set_ylabel("$F(q)$")
             axes[1].legend(loc="lower left")
 
 
@@ -564,8 +563,6 @@ class CorrFunc:
         ) -> HankelTransform:
             """Doc."""
 
-            #            n = r.size # number of interpolation points
-
             # prepare the Hankel transformation matrix C
             c0 = jn_zeros(0, n)  # Bessel function zeros
 
@@ -591,12 +588,14 @@ class CorrFunc:
                 y_lims=Limits(fr_interp_lims),
                 n_robust=n_robust,
                 interp_type=interp_type,
+                **kwargs,
             )
 
             # returning the transform (includes interpolation for testing)
             return HankelTransform(IE, 2 * np.pi * v, C @ (IE.y_interp / m1) * m2)
 
-        print(f"Calculating '{self.name}' Hankel transform...", end=" ")
+        if kwargs.get("is_verbose"):
+            print(f"Calculating '{self.name}' Hankel transform...", end=" ")
 
         # perform Hankel transforms
         self.hankel_transforms = {
@@ -638,7 +637,18 @@ class CorrFunc:
         #
         #        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
 
-    def calculate_structure_factor(self, cal_cf, interp_types: List[str], **kwargs):
+        if kwargs.get("is_verbose"):
+            print("Done.")
+
+    def calculate_structure_factor(
+        self,
+        cal_cf,
+        interp_types: List[str],
+        parent_ax=None,
+        should_plot=False,
+        is_verbose=False,
+        **kwargs,
+    ):
         """
         Given a calibration CorrFunc object, i.e. one performed on a below-resolution sample
         (e.g. a 300 bp DNA sample labeled with the same fluorophore),
@@ -646,9 +656,14 @@ class CorrFunc:
         in the calibration measurement (all calculated if needed) and returns the sought structure factors.
         """
 
+        if is_verbose:
+            print(f"Calculating '{self.name}' Hankel transform...", end=" ")
+
         # calculate Hankel transforms (with selected interpolation type) if needed, without plotting
         for CF in (self, cal_cf):
-            CF.calculate_hankel_transform(interp_types)
+            # only if needed (usually performed upper in the hierarchy, i.e. in SolutionSFCSMeasurement or SolutionSFCSExperiment)
+            if interp_types != list(CF.hankel_transforms.keys()):
+                CF.calculate_hankel_transform(interp_types, is_verbose=False, **kwargs)
 
         # get the structure factors by dividing the Hankel transforms
         self.structure_factors = {}
@@ -658,15 +673,20 @@ class CorrFunc:
             self.structure_factors[interp_type] = StructureFactor(HT.q, HT.fq / cal_HT.fq)
 
         # plot interpolations/transforms for testing, and finally the structure factors
-        if kwargs.get("should_plot"):
-            with Plotter(subplots=((n_rows := len(interp_types)), 1), **kwargs) as axes:
-                print("BEFORE ZIP: ", axes, type(axes), axes.shape)  # TESTESTEST
+        if should_plot:
+            with Plotter(
+                subplots=((n_rows := len(interp_types)), 1), parent_ax=parent_ax, **kwargs
+            ) as axes:
                 kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
-                for structure_factor, ax in zip(
-                    self.structure_factors.values(), (axes if n_rows > 1 else [axes])
+                for (interp_type, structure_factor), ax in zip(
+                    self.structure_factors.items(), (axes if n_rows > 1 else [axes])
                 ):
-                    print("AFTER ZIP: ", ax, type(ax), ax.shape)  # TESTESTEST
-                    structure_factor.plot(parent_ax=ax, label_prefix=f"{self.name}: ", **kwargs)
+                    structure_factor.plot(
+                        interp_type, parent_ax=ax, label_prefix=f"{self.name}: ", **kwargs
+                    )
+
+        if is_verbose:
+            print("Done.")
 
 
 class SolutionSFCSMeasurement:
@@ -879,7 +899,7 @@ class SolutionSFCSMeasurement:
             for _ in range(n_files):
                 self.data.append(processed_queue.get())
 
-            print("\nMultiprocessing complete!")  # TESTESTEST
+            print("\nMultiprocessing complete!")
 
         # serial processing (default)
         else:
@@ -1366,14 +1386,18 @@ class SolutionSFCSMeasurement:
     def calculate_hankel_transforms(
         self,
         interp_types=["gaussian"],
+        is_verbose=False,
         **kwargs,
     ) -> None:
         """Doc."""
 
+        if is_verbose:
+            print(f"Calculating all Hankel transforms for '{self.type}' measurement...", end=" ")
+
         # calculate without plotting
         if not kwargs.get("should_plot"):
             for cf in self.cf.values():
-                cf.calculate_hankel_transform(interp_types, **kwargs)
+                cf.calculate_hankel_transform(interp_types, is_verbose=False, **kwargs)
 
         # calculate and plot
         else:
@@ -1386,8 +1410,11 @@ class SolutionSFCSMeasurement:
                 for cf in self.cf.values():
                     cf.calculate_hankel_transform(interp_types, parent_ax=axes, **kwargs)
 
+        if is_verbose:
+            print("Done.")
+
     def calculate_structure_factors(
-        self, cal_meas, interp_types=["gaussian"], parent_ax=None, **kwargs
+        self, cal_meas, interp_types=["gaussian"], parent_ax=None, is_verbose=False, **kwargs
     ):
         """
         Given a calibration SolutionSFCSMeasurement, i.e. one performed on a below-resolution sample
@@ -1396,10 +1423,13 @@ class SolutionSFCSMeasurement:
         in the calibration measurement (all calculated if needed) and returns the sought structure factors.
         """
 
+        if is_verbose:
+            print(f"Calculating all structure factors for '{self.type}' measurement...", end=" ")
+
         # calculate without plotting
         if not kwargs.get("should_plot"):
             for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
-                CF.calculate_structure_factor(cal_CF, **kwargs)
+                CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
 
         # calculate and plot
         else:
@@ -1410,7 +1440,14 @@ class SolutionSFCSMeasurement:
                 **kwargs,
             ) as axes:
                 for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
-                    CF.calculate_structure_factor(cal_CF, interp_types, parent_ax=axes, **kwargs)
+                    CF.calculate_structure_factor(
+                        cal_CF, interp_types, parent_ax=axes, is_verbose=False, **kwargs
+                    )
+                for ax, interp_type in zip(axes if len(interp_types) > 1 else [axes], interp_types):
+                    ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
+
+        if is_verbose:
+            print("Done.")
 
     def calculate_filtered_afterpulsing(
         self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
@@ -1997,15 +2034,20 @@ class SolutionSFCSExperiment:
                         **kwargs,
                     )
 
-    def calculate_hankel_transforms(self, interp_types=["gaussian"], **kwargs) -> None:
+    def calculate_hankel_transforms(
+        self, interp_types=["gaussian"], is_verbose=False, **kwargs
+    ) -> None:
         """Doc."""
 
-        print(f"Calculating all Hankel transforms for '{self.name}' experiment...", end=" ")
+        if is_verbose:
+            print(f"Calculating all Hankel transforms for '{self.name}' experiment...", end=" ")
 
         # calculated without plotting
         if not kwargs.get("should_plot"):
             for meas_type in ("confocal", "sted"):
-                getattr(self, meas_type).calculate_hankel_transforms(interp_types, **kwargs)
+                getattr(self, meas_type).calculate_hankel_transforms(
+                    interp_types, is_verbose=False, **kwargs
+                )
 
         # plot all transforms of all corrfuncs of all measurements in a single figure
         else:
@@ -2016,13 +2058,14 @@ class SolutionSFCSExperiment:
             ) as axes:
                 for meas_type in ("confocal", "sted"):
                     getattr(self, meas_type).calculate_hankel_transforms(
-                        interp_types, parent_ax=axes, **kwargs
+                        interp_types, parent_ax=axes, is_verbose=False, **kwargs
                     )
 
-        print("Done.")
+        if is_verbose:
+            print("Done.")
 
     def calculate_structure_factors(
-        self, cal_exp, interp_types=["gaussian"], should_plot=True, **kwargs
+        self, cal_exp, interp_types=["gaussian"], should_plot=True, is_verbose=True, **kwargs
     ):
         """
         Given a calibration SolutionSFCSExperiment, i.e. one performed
@@ -2031,19 +2074,26 @@ class SolutionSFCSExperiment:
         in the calibration experiment (all calculated if needed) and returns the sought structure factors.
         """
 
+        if is_verbose:
+            print(f"Calculating all structure factors for '{self.name}' experiment...", end=" ")
+
         # calculated without plotting
         if not should_plot:
             for meas_type in ("confocal", "sted"):
                 cal_meas = getattr(cal_exp, meas_type)
                 getattr(self, meas_type).calculate_structure_factors(
-                    cal_meas, should_plot=False, **kwargs
+                    cal_meas, interp_types, should_plot=False, is_verbose=False, **kwargs
                 )
 
         # calculate and plot
         else:
             # Hankel transforms are performed first in this (plotting) case, so they can be shown
-            cal_exp.calculate_hankel_transforms(should_plot=True, **kwargs)
-            self.calculate_hankel_transforms(should_plot=True, **kwargs)
+            cal_exp.calculate_hankel_transforms(
+                interp_types, should_plot=True, is_verbose=False, **kwargs
+            )
+            self.calculate_hankel_transforms(
+                interp_types, should_plot=True, is_verbose=False, **kwargs
+            )
             # now getting the Sq and plotting it as well (should be fast since transforms exist in CorrFuncs already)
             with Plotter(
                 subplots=(len(interp_types), 1),
@@ -2055,11 +2105,17 @@ class SolutionSFCSExperiment:
                     cal_meas = getattr(cal_exp, meas_type)
                     getattr(self, meas_type).calculate_structure_factors(
                         cal_meas,
-                        interp_types=["gaussian"],
+                        interp_types,
                         should_plot=True,
+                        is_verbose=False,
                         parent_ax=axes,
                         **kwargs,
                     )
+                for ax, interp_type in zip(axes if len(interp_types) > 1 else [axes], interp_types):
+                    ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
+
+        if is_verbose:
+            print("Done.")
 
     def fit_structure_factors(self, model: str):
         """Doc."""
