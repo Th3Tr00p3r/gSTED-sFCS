@@ -85,15 +85,15 @@ class HankelTransform:
     q: np.ndarray
     fq: np.ndarray
 
-    def plot(self, parent_axes=None, label_prefix="", **kwargs):
+    def plot(self, label_prefix="", **kwargs):
         """Display the transform's results"""
 
         with Plotter(
             subplots=(1, 2),
-            parent_ax=parent_axes,
             y_scale="log",
             **kwargs,
         ) as axes:
+            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
             self.IE.plot(parent_ax=axes[0], label_prefix=label_prefix, **kwargs)
             axes[0].set_xscale("function", functions=(lambda x: x ** 2, lambda x: x ** (1 / 2)))
             axes[0].set_title("Interp./Extrap. Testing")
@@ -130,20 +130,13 @@ class CorrFunc:
     cf_cr: np.ndarray
     g0: float
 
-    def __init__(
-        self,
-        name: str,
-        correlator_type: int,
-        laser_freq_hz,
-        afterpulsing_filter=None,
-        duration_min=None,
-    ):
+    def __init__(self, name: str, correlator_type: int, laser_freq_hz, **kwargs):
         self.name = name
         self.correlator_type = correlator_type
         self.laser_freq_hz = laser_freq_hz
         self.fit_params: Dict[str, FitParams] = dict()
-        self.afterpulsing_filter = afterpulsing_filter
-        self.duration_min = duration_min
+        self.afterpulsing_filter = kwargs.get("afterpulsing_filter")
+        self.duration_min = kwargs.get("duration_min")
 
     def __add__(self, other):
         """Averages all attributes of two CorrFunc objects and returns a new CorrFunc instance"""
@@ -462,7 +455,6 @@ class CorrFunc:
         y_field="avg_cf_cr",
         x_scale="log",
         y_scale="linear",
-        label=None,
         **kwargs,
     ) -> None:
 
@@ -471,7 +463,7 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        if label is None:
+        if kwargs.get("label") is None:
             label = self.name
 
         with Plotter(
@@ -555,7 +547,6 @@ class CorrFunc:
     def calculate_hankel_transform(
         self,
         interp_types,
-        parent_axes=None,
         **kwargs,
     ) -> None:
         """Doc."""
@@ -620,13 +611,12 @@ class CorrFunc:
 
         # plot the transforms with interpolations for testing
         if kwargs.get("should_plot"):
-            with Plotter(
-                subplots=((n_rows := len(interp_types)), 2), parent_ax=parent_axes, **kwargs
-            ) as axes:
+            with Plotter(subplots=((n_rows := len(interp_types)), 2), **kwargs) as axes:
                 for transform, ax_row in zip(
                     self.hankel_transforms.values(), axes if n_rows > 1 else [axes]
                 ):
-                    transform.plot(parent_axes=ax_row, label_prefix=f"{self.name}: ", **kwargs)
+                    kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
+                    transform.plot(parent_ax=ax_row, label_prefix=f"{self.name}: ", **kwargs)
 
         # TODO: show this to Oleg - can't figure out what's wrong
         #        #  Estimating error of transform
@@ -1122,7 +1112,7 @@ class SolutionSFCSMeasurement:
             cf_name,
             correlator_option,
             self.laser_freq_hz,
-            afterpulsing_filter if is_filtered else None,
+            afterpulsing_filter=afterpulsing_filter if is_filtered else None,
             duration_min=self.duration_min,  # TESTESTEST
         )
         CF.correlate_measurement(
@@ -1329,7 +1319,7 @@ class SolutionSFCSMeasurement:
         legend_label: str,
         compare_to: dict = None,
         normalization_type="Per Time",
-        parent_ax=None,
+        **kwargs,
     ):
         """
         Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
@@ -1358,7 +1348,7 @@ class SolutionSFCSMeasurement:
                     raise ValueError(f"Unknown normalization type '{normalization_type}'.")
                 h.append((x, y, label))
 
-        with Plotter(parent_ax=parent_ax, super_title="Life Time Comparison") as ax:
+        with Plotter(super_title="Life Time Comparison", **kwargs) as ax:
             for tuple_ in h:
                 x, y, label = tuple_
                 ax.semilogy(x, y, "-o", label=label)
@@ -1369,7 +1359,6 @@ class SolutionSFCSMeasurement:
     def calculate_hankel_transforms(
         self,
         interp_types=["gaussian"],
-        parent_axes=None,
         **kwargs,
     ) -> None:
         """Doc."""
@@ -1384,13 +1373,11 @@ class SolutionSFCSMeasurement:
             with Plotter(
                 subplots=(len(interp_types), 2),
                 super_title=f"{self.type.capitalize()}: Hankel Transforms",
-                parent_ax=parent_axes,
                 **kwargs,
             ) as axes:
+                kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
                 for cf in self.cf.values():
-                    cf.calculate_hankel_transform(
-                        interp_types, should_plot=True, parent_axes=axes, **kwargs
-                    )
+                    cf.calculate_hankel_transform(interp_types, parent_ax=axes, **kwargs)
 
     def calculate_structure_factors(self, cal_meas, parent_ax=None, **kwargs):
         """
@@ -1413,7 +1400,7 @@ class SolutionSFCSMeasurement:
                 **kwargs,
             ) as ax:
                 for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
-                    CF.calculate_structure_factor(cal_CF, should_plot=True, parent_ax=ax, **kwargs)
+                    CF.calculate_structure_factor(cal_CF, parent_ax=ax, **kwargs)
 
     def calculate_filtered_afterpulsing(
         self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
@@ -1508,7 +1495,6 @@ class SolutionSFCSExperiment:
                     self.load_measurement(
                         meas_type=meas_type,
                         file_path_template=meas_template,
-                        should_plot=kwargs.get("should_plot") and kwargs.get("should_plot_meas"),
                         **meas_kwargs,
                         **kwargs,
                     )
@@ -1593,7 +1579,7 @@ class SolutionSFCSExperiment:
         else:  # get existing first corrfunc
             cf = list(measurement.cf.values())[0]
 
-        if kwargs.get("should_plot"):
+        if kwargs.get("should_plot_meas"):
 
             if (x_field := kwargs.get("x_field")) is None:
                 if measurement.scan_type == "static":
@@ -1670,8 +1656,8 @@ class SolutionSFCSExperiment:
                 self.sted, "scan_type"
             ):  # if both measurements quack as if loaded
                 with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
-                    self.confocal.tdc_calib.plot(parent_axes=axes[:, :2])
-                    self.sted.tdc_calib.plot(parent_axes=axes[:, 2:])
+                    self.confocal.tdc_calib.plot(parent_ax=axes[:, :2])
+                    self.sted.tdc_calib.plot(parent_ax=axes[:, 2:])
 
             # Confocal only
             elif self.confocal.is_loaded:  # STED measurement not loaded
@@ -1953,16 +1939,16 @@ class SolutionSFCSExperiment:
 
             ax.legend()
 
-    def estimate_spatial_resolution(self, colors=None, parent_ax=None, **kwargs) -> Iterator[str]:
+    def estimate_spatial_resolution(self, colors=None, **kwargs) -> Iterator[str]:
         """
         High-level method for performing Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions
         (confocal, sted and any gates) in order to estimate the resolution improvement.
         This is relevant only for calibration experiments (i.e. 300 bp samples).
         """
 
-        with Plotter(xlim=(1e-2, 1), ylim=(0, 1), parent_ax=parent_ax, **kwargs) as ax:
+        with Plotter(xlim=(1e-2, 1), ylim=(0, 1), **kwargs) as ax:
 
-            if parent_ax is not None:
+            if (parent_ax := kwargs.pop("parent_ax", None)) is not None:
                 # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
                 existing_lines = parent_ax.get_lines()
 
@@ -2001,9 +1987,7 @@ class SolutionSFCSExperiment:
                         **kwargs,
                     )
 
-    def calculate_hankel_transforms(
-        self, interp_types=["gaussian"], parent_axes=None, **kwargs
-    ) -> None:
+    def calculate_hankel_transforms(self, interp_types=["gaussian"], **kwargs) -> None:
         """Doc."""
 
         print(f"Calculating all Hankel transforms for '{self.name}' experiment...", end=" ")
@@ -2018,12 +2002,11 @@ class SolutionSFCSExperiment:
             with Plotter(
                 subplots=(len(interp_types), 2),
                 super_title=f"Experiment '{self.name}': Hankel Transforms",
-                parent_ax=parent_axes,
                 **kwargs,
             ) as axes:
                 for meas_type in ("confocal", "sted"):
                     getattr(self, meas_type).calculate_hankel_transforms(
-                        interp_types, should_plot=True, parent_axes=axes, **kwargs
+                        interp_types, parent_ax=axes, **kwargs
                     )
 
         print("Done.")
@@ -2048,7 +2031,6 @@ class SolutionSFCSExperiment:
         else:
             with Plotter(
                 super_title=f"Experiment '{self.name}': Structure factors",
-                parent_ax=parent_ax,
                 **kwargs,
             ) as ax:
                 for meas_type in ("confocal", "sted"):
