@@ -97,7 +97,6 @@ def curve_fit_lims(
     ys_errors=None,
     x_limits=Limits(),
     y_limits=Limits(),
-    should_plot=False,
     plot_kwargs={},
     **kwargs,
 ) -> FitParams:
@@ -121,7 +120,7 @@ def curve_fit_lims(
         **kwargs,
     )
 
-    if should_plot:
+    if kwargs.get("should_plot"):
         FP.plot(**plot_kwargs)
 
     return FP
