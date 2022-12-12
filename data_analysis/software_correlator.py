@@ -103,7 +103,6 @@ class SoftwareCorrelator:
         self,
         list_of_photon_arrays: List[np.ndarray],
         *args,
-        is_verbose=False,
         list_of_filter_arrays=None,
         **kwargs,
     ) -> SoftwareCorrelatorListOutput:
@@ -127,7 +126,7 @@ class SoftwareCorrelator:
                     kwargs["filter_array"] = list_of_filter_arrays[idx]
                 corr_output = self.correlate(ts_split, *args, **kwargs)
                 correlator_output_list.append(corr_output)
-                if is_verbose:
+                if kwargs.get("is_verbose"):
                     print(idx + 1, end=(", " if idx < len(list_of_photon_arrays) - 1 else ""))
 
         return self.list_output(correlator_output_list)
