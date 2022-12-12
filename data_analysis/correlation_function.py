@@ -283,19 +283,18 @@ class CorrFunc:
     ) -> None:
         """Doc."""
 
-        if is_verbose:
+        if kwargs.get("is_verbose"):
             print(f"Correlating {len(time_stamp_split_list)} splits -", end=" ")
 
         output = self.SC.correlate_list(
             time_stamp_split_list,
             self.correlator_type,
             timebase_ms=1000 / self.laser_freq_hz,
-            is_verbose=is_verbose,
             **kwargs,
         )
         self.lag = max(output.lag_list, key=len)
 
-        if is_verbose:
+        if kwargs.get("is_verbose"):
             print(". Processing correlator output...", end=" ")
 
         self._process_correlator_list_output(output, *args, **kwargs)
@@ -363,7 +362,6 @@ class CorrFunc:
         reject_n_worst=None,
         norm_range=(1e-3, 2e-3),
         delete_list=[],
-        should_plot=False,
         plot_kwargs={},
         **kwargs,
     ) -> None:
@@ -435,7 +433,7 @@ class CorrFunc:
         self.normalized = self.avg_cf_cr / self.g0
         self.error_normalized = self.error_cf_cr / self.g0
 
-        if should_plot:
+        if kwargs.get("should_plot"):
             self.plot_correlation_function(plot_kwargs=plot_kwargs)
 
     def _calculate_weighted_avg(
@@ -498,7 +496,6 @@ class CorrFunc:
         y_scale=None,
         bounds=(np.NINF, np.inf),
         max_nfev=int(1e4),
-        should_plot=False,
         **kwargs,
     ) -> None:
 
@@ -546,7 +543,6 @@ class CorrFunc:
             y,
             error_y,
             x_limits=Limits(fit_range),
-            should_plot=should_plot,
             bounds=bounds,
             max_nfev=max_nfev,
             plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
@@ -559,7 +555,6 @@ class CorrFunc:
     def calculate_hankel_transform(
         self,
         interp_types,
-        should_plot=False,
         parent_axes=None,
         **kwargs,
     ) -> None:
@@ -624,7 +619,7 @@ class CorrFunc:
         }
 
         # plot the transforms with interpolations for testing
-        if should_plot:
+        if kwargs.get("should_plot"):
             with Plotter(
                 subplots=((n_rows := len(interp_types)), 2), parent_ax=parent_axes, **kwargs
             ) as axes:
@@ -653,9 +648,7 @@ class CorrFunc:
         #
         #        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
 
-    def calculate_structure_factor(
-        self, cal_cf, interp_type="gaussian", should_plot=False, **kwargs
-    ):
+    def calculate_structure_factor(self, cal_cf, interp_type="gaussian", **kwargs):
         """
         Given a calibration CorrFunc object, i.e. one performed on a below-resolution sample
         (e.g. a 300 bp DNA sample labeled with the same fluorophore),
@@ -675,7 +668,7 @@ class CorrFunc:
         cal_HT = cal_cf.hankel_transforms[interp_type]
         self.structure_factor = StructureFactor(HT.q, HT.fq / cal_HT.fq)
 
-        if should_plot:
+        if kwargs.get("should_plot"):
             self.structure_factor.plot(label_prefix=self.name, **kwargs)
 
 
@@ -700,7 +693,6 @@ class SolutionSFCSMeasurement:
         self,
         file_path_template: Union[str, Path],
         file_selection: str = "Use All",
-        should_plot=False,
         **proc_options,
     ) -> None:
         """Processes a complete FCS measurement (multiple files)."""
@@ -776,7 +768,7 @@ class SolutionSFCSMeasurement:
         print(f"Finished loading FPGA data ({self.n_files}/{self.n_paths} files used).\n")
 
         # plotting of scan image and ROI
-        if should_plot:
+        if proc_options.get("should_plot"):
             print("Displaying scan images...", end=" ")
             if self.scan_type == "angular":
                 with Plotter(
@@ -1006,27 +998,25 @@ class SolutionSFCSMeasurement:
 
         return self.data_processor.process_data(idx, file_dict["full_data"], **proc_options)
 
-    def calibrate_tdc(
-        self, force_processing=True, should_plot=False, is_verbose=False, **kwargs
-    ) -> None:
+    def calibrate_tdc(self, force_processing=True, **kwargs) -> None:
         """Doc."""
 
         if not force_processing and hasattr(self, "tdc_calib"):
             print(f"\n{self.type}: TDC calibration exists, skipping.")
-            if should_plot:
+            if kwargs.get("should_plot"):
                 self.tdc_calib.plot()
             return
 
-        if is_verbose:
+        if kwargs.get("is_verbose"):
             print(f"\n{self.type}: Calibrating TDC...", end=" ")
 
         # perform actual TDC calibration
         self.tdc_calib = self.data_processor.calibrate_tdc(self.data, self.scan_type, **kwargs)
 
-        if should_plot:
+        if kwargs.get("should_plot"):
             self.tdc_calib.plot()
 
-        if is_verbose:
+        if kwargs.get("is_verbose"):
             print("Done.")
 
     def correlate_and_average(self, **kwargs) -> CorrFunc:
@@ -1084,7 +1074,7 @@ class SolutionSFCSMeasurement:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if is_verbose:
                     print("(Calibrating TDC first...)", end=" ")
-                self.calibrate_tdc(is_verbose=False, **corr_options)
+                self.calibrate_tdc(**corr_options)
 
         # Calculate afterpulsing filter if doesn't alreay exist (optional)
         afterpulsing_filter = None
@@ -1141,7 +1131,6 @@ class SolutionSFCSMeasurement:
             if external_afterpulse_params is not None
             else self.afterpulse_params,
             getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
-            is_verbose=is_verbose,
             external_afterpulsing=external_afterpulsing,
             gate_ns=gate_ns,
             list_of_filter_arrays=filter_input_list if is_filtered else None,
@@ -1254,7 +1243,6 @@ class SolutionSFCSMeasurement:
                 corr_input_dict[xx],
                 afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
                 getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
-                is_verbose=is_verbose,
                 **kwargs,
             )
 
@@ -1313,7 +1301,6 @@ class SolutionSFCSMeasurement:
         for CF in self.cf.values():
             CF.fit_correlation_function(
                 fit_name="zero_centered_zero_bg_normalized_gaussian_1d_fit",
-                should_plot=False,
             )
 
         with Plotter(
@@ -1383,18 +1370,17 @@ class SolutionSFCSMeasurement:
         self,
         interp_types=["gaussian"],
         parent_axes=None,
-        should_plot=False,
         **kwargs,
     ) -> None:
         """Doc."""
 
         # calculate without plotting
-        if not should_plot:
+        if not kwargs.get("should_plot"):
             for cf in self.cf.values():
                 cf.calculate_hankel_transform(interp_types, **kwargs)
 
         # calculate and plot
-        if should_plot:
+        else:
             with Plotter(
                 subplots=(len(interp_types), 2),
                 super_title=f"{self.type.capitalize()}: Hankel Transforms",
@@ -1406,7 +1392,7 @@ class SolutionSFCSMeasurement:
                         interp_types, should_plot=True, parent_axes=axes, **kwargs
                     )
 
-    def calculate_structure_factors(self, cal_meas, should_plot=False, parent_ax=None, **kwargs):
+    def calculate_structure_factors(self, cal_meas, parent_ax=None, **kwargs):
         """
         Given a calibration SolutionSFCSMeasurement, i.e. one performed on a below-resolution sample
         (e.g. a 300 bp DNA sample labeled with the same fluorophore),
@@ -1415,7 +1401,7 @@ class SolutionSFCSMeasurement:
         """
 
         # calculate without plotting
-        if not should_plot:
+        if not kwargs.get("should_plot"):
             for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
                 CF.calculate_structure_factor(cal_CF, **kwargs)
 
@@ -1439,14 +1425,11 @@ class SolutionSFCSMeasurement:
             cf_name="afterpulsing",
             afterpulsing_method="filter",
             get_afterpulsing=True,
-            is_verbose=is_verbose,
             tdc_gate_ns=Gate(tdc_gate_ns),
             **kwargs,
         )
 
-    def save_processed(
-        self, should_save_data=True, should_force=False, is_verbose=False, **kwargs
-    ) -> bool:
+    def save_processed(self, should_save_data=True, should_force=False, **kwargs) -> bool:
         """
         Save a processed measurement, including the '.data' attribute.
         The template may then be loaded much more quickly.
@@ -1461,12 +1444,12 @@ class SolutionSFCSMeasurement:
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
             # save the measurement object
-            if is_verbose:
+            if kwargs.get("is_verbose"):
                 print("Saving SolutionSFCSMeasurement object... ", end="")
             save_object(
                 self, meas_file_path, compression_method="blosc", obj_name="processed measurement"
             )
-            if is_verbose:
+            if kwargs.get("is_verbose"):
                 print("Done.")
 
             # save the raw data separately
@@ -1500,8 +1483,6 @@ class SolutionSFCSExperiment:
         sted_template: Union[str, Path] = None,
         confocal=None,
         sted=None,
-        should_plot=True,
-        should_plot_meas=True,
         confocal_kwargs={},
         sted_kwargs={},
         **kwargs,
@@ -1527,7 +1508,7 @@ class SolutionSFCSExperiment:
                     self.load_measurement(
                         meas_type=meas_type,
                         file_path_template=meas_template,
-                        should_plot=should_plot and should_plot_meas,
+                        should_plot=kwargs.get("should_plot") and kwargs.get("should_plot_meas"),
                         **meas_kwargs,
                         **kwargs,
                     )
@@ -1537,14 +1518,13 @@ class SolutionSFCSExperiment:
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
-        if should_plot:
+        if kwargs.get("should_plot"):
             self.plot_standard(should_add_exp_name=False, **kwargs)
 
     def load_measurement(
         self,
         meas_type: str,
         file_path_template: Union[str, Path],
-        should_plot: bool = False,
         plot_kwargs: dict = {},
         force_processing=True,
         should_re_correlate=False,
@@ -1589,13 +1569,12 @@ class SolutionSFCSExperiment:
         if not measurement.cf:  # Process data
             measurement.read_fpga_data(
                 file_path_template,
-                should_plot=should_plot,
                 **kwargs,
             )
             # Calibrate TDC (sync with confocal) before correlating if using afterpulsing filtering
             if afterpulsing_method == "filter" and meas_type == "sted" and self.confocal.is_loaded:
                 print(f"{self.name}: Calibrating TDC first (syncing STED to confocal)...", end=" ")
-                self.calibrate_tdc(should_plot=should_plot, **kwargs)
+                self.calibrate_tdc(**kwargs)
                 print("Done.")
 
         if not measurement.cf or should_re_correlate:  # Correlate and average data
@@ -1614,7 +1593,7 @@ class SolutionSFCSExperiment:
         else:  # get existing first corrfunc
             cf = list(measurement.cf.values())[0]
 
-        if should_plot:
+        if kwargs.get("should_plot"):
 
             if (x_field := kwargs.get("x_field")) is None:
                 if measurement.scan_type == "static":
@@ -1832,9 +1811,7 @@ class SolutionSFCSExperiment:
         self,
         tdc_gate_ns: Tuple[float, float],
         meas_type: str,
-        should_plot=False,
         should_re_correlate=False,
-        is_verbose=False,
         **kwargs,
     ) -> None:
         """Doc."""
@@ -1847,12 +1824,10 @@ class SolutionSFCSExperiment:
 
         if meas_type == "confocal":
             self.confocal.correlate_and_average(
-                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, is_verbose=is_verbose, **kwargs
+                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, **kwargs
             )
         elif self.sted.is_loaded:
-            self.sted.correlate_and_average(
-                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, is_verbose=is_verbose, **kwargs
-            )
+            self.sted.correlate_and_average(tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, **kwargs)
         else:
             # STED measurement not loaded
             logging.info(
@@ -1860,21 +1835,19 @@ class SolutionSFCSExperiment:
             )
             return
 
-        if should_plot:
+        if kwargs.get("should_plot"):
             self.plot_standard(**kwargs)
 
-    def add_gates(
-        self, gate_list: List[Tuple[float, float]], should_plot=False, meas_type="sted", **kwargs
-    ):
+    def add_gates(self, gate_list: List[Tuple[float, float]], meas_type="sted", **kwargs):
         """
         A convecience method for adding multiple gates.
         """
 
         print(f"Adding multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'...")
         for tdc_gate_ns in gate_list:
-            self.add_gate(tdc_gate_ns, meas_type, should_plot=False, **kwargs)
+            self.add_gate(tdc_gate_ns, meas_type, **kwargs)
 
-        if should_plot:
+        if kwargs.get("should_plot"):
             self.plot_standard(**kwargs)
 
     def plot_standard(self, should_add_exp_name=True, **kwargs):
@@ -2029,14 +2002,14 @@ class SolutionSFCSExperiment:
                     )
 
     def calculate_hankel_transforms(
-        self, interp_types=["gaussian"], parent_axes=None, should_plot=True, **kwargs
+        self, interp_types=["gaussian"], parent_axes=None, **kwargs
     ) -> None:
         """Doc."""
 
         print(f"Calculating all Hankel transforms for '{self.name}' experiment...", end=" ")
 
         # calculated without plotting
-        if not should_plot:
+        if not kwargs.get("should_plot"):
             for meas_type in ("confocal", "sted"):
                 getattr(self, meas_type).calculate_hankel_transforms(interp_types, **kwargs)
 

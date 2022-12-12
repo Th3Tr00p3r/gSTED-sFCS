@@ -562,7 +562,7 @@ def fourier_transform_1d(
     n_bins=2 ** 17,
     bin_size=None,
     should_normalize: bool = False,
-    should_plot=False,
+    **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Doc."""
 
@@ -621,7 +621,7 @@ def fourier_transform_1d(
     q = np.hstack((q[k2:] - 2 * np.pi / bin_size, q[:k1]))
     fq = np.hstack((fq[k2:], fq[:k1]))
 
-    if should_plot:
+    if kwargs.get("should_plot"):
         with display.Plotter(
             subplots=(2, 2),
             super_title=f"{'Inverse ' if should_inverse else ''}Fourier Transform",
