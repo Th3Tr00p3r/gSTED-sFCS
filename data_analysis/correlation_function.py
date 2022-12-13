@@ -608,15 +608,6 @@ class CorrFunc:
             for interp_type in interp_types
         }
 
-        # plot the transforms with interpolations for testing
-        if kwargs.get("should_plot"):
-            with Plotter(subplots=((n_rows := len(interp_types)), 2), **kwargs) as axes:
-                kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
-                for transform, ax_row in zip(
-                    self.hankel_transforms.values(), axes if n_rows > 1 else [axes]
-                ):
-                    transform.plot(parent_ax=ax_row, label_prefix=f"{self.name}: ", **kwargs)
-
         # TODO: show this to Oleg - can't figure out what's wrong
         #        #  Estimating error of transform
         #        print("Estimating error of transform...") # TESTESTEST
@@ -640,6 +631,20 @@ class CorrFunc:
         if kwargs.get("is_verbose"):
             print("Done.")
 
+    def plot_hankel_transform(self, **kwargs):
+        """Doc."""
+
+        # get interpolations types
+        interp_types = list(self.hankel_transforms.keys())
+        n_interps = len(interp_types)
+
+        with Plotter(subplots=(n_interps, 2), **kwargs) as axes:
+            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
+            for hnkl_trans, ax_row in zip(
+                self.hankel_transforms.values(), axes if n_interps > 1 else [axes]
+            ):
+                hnkl_trans.plot(parent_ax=ax_row, label_prefix=f"{self.name}: ", **kwargs)
+
     def calculate_structure_factor(
         self,
         cal_cf,
@@ -659,11 +664,9 @@ class CorrFunc:
         if is_verbose:
             print(f"Calculating '{self.name}' Hankel transform...", end=" ")
 
-        # calculate Hankel transforms (with selected interpolation type) if needed, without plotting
-        for CF in (self, cal_cf):
-            # only if needed (usually performed upper in the hierarchy, i.e. in SolutionSFCSMeasurement or SolutionSFCSExperiment)
-            if interp_types != list(CF.hankel_transforms.keys()):
-                CF.calculate_hankel_transform(interp_types, is_verbose=False, **kwargs)
+        # calculate Hankel transforms (with selected interpolation type)
+        self.calculate_hankel_transform(interp_types, is_verbose=False, **kwargs)
+        cal_cf.calculate_hankel_transform(interp_types, is_verbose=False, **kwargs)
 
         # get the structure factors by dividing the Hankel transforms
         self.structure_factors = {}
@@ -672,21 +675,24 @@ class CorrFunc:
             cal_HT = cal_cf.hankel_transforms[interp_type]
             self.structure_factors[interp_type] = StructureFactor(HT.q, HT.fq / cal_HT.fq)
 
-        # plot interpolations/transforms for testing, and finally the structure factors
-        if should_plot:
-            with Plotter(
-                subplots=((n_rows := len(interp_types)), 1), parent_ax=parent_ax, **kwargs
-            ) as axes:
-                kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
-                for (interp_type, structure_factor), ax in zip(
-                    self.structure_factors.items(), (axes if n_rows > 1 else [axes])
-                ):
-                    structure_factor.plot(
-                        interp_type, parent_ax=ax, label_prefix=f"{self.name}: ", **kwargs
-                    )
-
         if is_verbose:
             print("Done.")
+
+    def plot_structure_factor(self, **kwargs):
+        """Doc."""
+
+        # get interpolations types
+        interp_types = list(self.structure_factors.keys())
+        n_interps = len(interp_types)
+
+        with Plotter(subplots=(n_interps, 1), **kwargs) as axes:
+            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
+            for (interp_type, structure_factor), ax in zip(
+                self.structure_factors.items(), (axes if n_interps > 1 else [axes])
+            ):
+                structure_factor.plot(
+                    interp_type, parent_ax=ax, label_prefix=f"{self.name}: ", **kwargs
+                )
 
 
 class SolutionSFCSMeasurement:
@@ -1330,8 +1336,7 @@ class SolutionSFCSMeasurement:
             colors = colors if colors is not None else cycle(default_colors)
             for CF, color in zip(self.cf.values(), colors):
                 FP = CF.fit_params
-                with suppress(KeyError):
-                    kwargs.pop("parent_ax")
+                kwargs.pop("parent_ax", None)  # TODO: consider including this in Plotter __exit__
                 hwhm = list(FP.beta.values())[0] * 1e3 * HWHM_FACTOR
                 hwhm_error = list(FP.beta_error.values())[0] * 1e3 * HWHM_FACTOR
                 fit_label = f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.0f}$)"
@@ -1383,35 +1388,21 @@ class SolutionSFCSMeasurement:
             ax.set_ylabel("Frequency")
             ax.legend()
 
-    def calculate_hankel_transforms(
-        self,
-        interp_types=["gaussian"],
-        is_verbose=False,
-        **kwargs,
-    ) -> None:
+    def plot_hankel_transforms(self, **kwargs):
         """Doc."""
 
-        if is_verbose:
-            print(f"Calculating all Hankel transforms for '{self.type}' measurement...", end=" ")
+        # get interpolations types
+        interp_types = list(list(self.cf.values())[0].hankel_transforms.keys())
+        n_interps = len(interp_types)
 
-        # calculate without plotting
-        if not kwargs.get("should_plot"):
+        with Plotter(
+            subplots=(n_interps, 2),
+            super_title=f"{self.type.capitalize()}: Hankel Transforms",
+            **kwargs,
+        ) as axes:
+            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
             for cf in self.cf.values():
-                cf.calculate_hankel_transform(interp_types, is_verbose=False, **kwargs)
-
-        # calculate and plot
-        else:
-            with Plotter(
-                subplots=(len(interp_types), 2),
-                super_title=f"{self.type.capitalize()}: Hankel Transforms",
-                **kwargs,
-            ) as axes:
-                kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
-                for cf in self.cf.values():
-                    cf.calculate_hankel_transform(interp_types, parent_ax=axes, **kwargs)
-
-        if is_verbose:
-            print("Done.")
+                cf.plot_hankel_transform(parent_ax=axes, **kwargs)
 
     def calculate_structure_factors(
         self, cal_meas, interp_types=["gaussian"], parent_ax=None, is_verbose=False, **kwargs
@@ -1427,27 +1418,29 @@ class SolutionSFCSMeasurement:
             print(f"Calculating all structure factors for '{self.type}' measurement...", end=" ")
 
         # calculate without plotting
-        if not kwargs.get("should_plot"):
-            for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
-                CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
-
-        # calculate and plot
-        else:
-            with Plotter(
-                subplots=(len(interp_types), 1),
-                super_title=f"{self.type.capitalize()}: Structure Factors",
-                parent_ax=parent_ax,
-                **kwargs,
-            ) as axes:
-                for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
-                    CF.calculate_structure_factor(
-                        cal_CF, interp_types, parent_ax=axes, is_verbose=False, **kwargs
-                    )
-                for ax, interp_type in zip(axes if len(interp_types) > 1 else [axes], interp_types):
-                    ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
+        for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
+            CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
 
         if is_verbose:
             print("Done.")
+
+    def plot_structure_factors(self, **kwargs):
+        """Doc."""
+
+        # get interpolations types
+        interp_types = list(list(self.cf.values())[0].structure_factors.keys())
+        n_interps = len(interp_types)
+
+        with Plotter(
+            subplots=(n_interps, 1),
+            super_title=f"{self.type.capitalize()}: Structure Factors",
+            **kwargs,
+        ) as axes:
+            for CF in self.cf.values():
+                kwargs.pop("parent_ax", None)
+                CF.plot_structure_factor(parent_ax=axes, **kwargs)
+            for ax, interp_type in zip(axes if n_interps > 1 else [axes], interp_types):
+                ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
 
     def calculate_filtered_afterpulsing(
         self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
@@ -2034,36 +2027,6 @@ class SolutionSFCSExperiment:
                         **kwargs,
                     )
 
-    def calculate_hankel_transforms(
-        self, interp_types=["gaussian"], is_verbose=False, **kwargs
-    ) -> None:
-        """Doc."""
-
-        if is_verbose:
-            print(f"Calculating all Hankel transforms for '{self.name}' experiment...", end=" ")
-
-        # calculated without plotting
-        if not kwargs.get("should_plot"):
-            for meas_type in ("confocal", "sted"):
-                getattr(self, meas_type).calculate_hankel_transforms(
-                    interp_types, is_verbose=False, **kwargs
-                )
-
-        # plot all transforms of all corrfuncs of all measurements in a single figure
-        else:
-            with Plotter(
-                subplots=(len(interp_types), 2),
-                super_title=f"Experiment '{self.name}': Hankel Transforms",
-                **kwargs,
-            ) as axes:
-                for meas_type in ("confocal", "sted"):
-                    getattr(self, meas_type).calculate_hankel_transforms(
-                        interp_types, parent_ax=axes, is_verbose=False, **kwargs
-                    )
-
-        if is_verbose:
-            print("Done.")
-
     def calculate_structure_factors(
         self, cal_exp, interp_types=["gaussian"], should_plot=True, is_verbose=True, **kwargs
     ):
@@ -2078,44 +2041,49 @@ class SolutionSFCSExperiment:
             print(f"Calculating all structure factors for '{self.name}' experiment...", end=" ")
 
         # calculated without plotting
-        if not should_plot:
-            for meas_type in ("confocal", "sted"):
-                cal_meas = getattr(cal_exp, meas_type)
-                getattr(self, meas_type).calculate_structure_factors(
-                    cal_meas, interp_types, should_plot=False, is_verbose=False, **kwargs
-                )
+        for meas_type in ("confocal", "sted"):
+            cal_meas = getattr(cal_exp, meas_type)
+            getattr(self, meas_type).calculate_structure_factors(
+                cal_meas, interp_types, is_verbose=False, **kwargs
+            )
 
-        # calculate and plot
-        else:
-            # Hankel transforms are performed first in this (plotting) case, so they can be shown
-            cal_exp.calculate_hankel_transforms(
-                interp_types, should_plot=True, is_verbose=False, **kwargs
-            )
-            self.calculate_hankel_transforms(
-                interp_types, should_plot=True, is_verbose=False, **kwargs
-            )
-            # now getting the Sq and plotting it as well (should be fast since transforms exist in CorrFuncs already)
-            with Plotter(
-                subplots=(len(interp_types), 1),
-                super_title=f"Experiment '{self.name}': Structure factors",
-                **kwargs,
-            ) as axes:
-                kwargs.pop("parent_ax", None)
-                for meas_type in ("confocal", "sted"):
-                    cal_meas = getattr(cal_exp, meas_type)
-                    getattr(self, meas_type).calculate_structure_factors(
-                        cal_meas,
-                        interp_types,
-                        should_plot=True,
-                        is_verbose=False,
-                        parent_ax=axes,
-                        **kwargs,
-                    )
-                for ax, interp_type in zip(axes if len(interp_types) > 1 else [axes], interp_types):
-                    ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
+        # keep reference to calibration experiment
+        self.cal_exp = cal_exp
 
         if is_verbose:
             print("Done.")
+
+    def plot_structure_factors(self, **kwargs):
+        """Doc."""
+        # TESTESTESTEST - add this for Measurements and CorrFuncs and test! (and take plotting out of the 'calculate' methods)
+
+        # get interpolations types
+        interp_types = list(list(self.confocal.cf.values())[0].structure_factors.keys())
+        n_interps = len(interp_types)
+
+        # plot all transforms of all corrfuncs of all measurements in a single figure (for self and calibration)
+        for exp in (self, self.cal_exp):
+            with Plotter(
+                subplots=(n_interps, 2),
+                super_title=f"Experiment '{exp.name}': Hankel Transforms",
+                **kwargs,
+            ) as axes:
+                for meas_type in ("confocal", "sted"):
+                    getattr(exp, meas_type).plot_hankel_transforms(parent_ax=axes, **kwargs)
+
+        # plot the structure factors in another figure
+        with Plotter(
+            subplots=(n_interps, 1),
+            super_title=f"Experiment '{self.name}': Structure factors",
+            **kwargs,
+        ) as axes:
+            for meas_type in ("confocal", "sted"):
+                getattr(self, meas_type).plot_structure_factors(
+                    parent_ax=axes,
+                    **kwargs,
+                )
+            for ax, interp_type in zip(axes if len(interp_types) > 1 else [axes], interp_types):
+                ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
 
     def fit_structure_factors(self, model: str):
         """Doc."""
