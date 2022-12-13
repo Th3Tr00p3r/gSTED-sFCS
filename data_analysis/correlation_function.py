@@ -588,6 +588,9 @@ class CorrFunc:
                 y_lims=Limits(fr_interp_lims),
                 n_robust=n_robust,
                 interp_type=interp_type,
+                name=f"{kwargs['parent_name']},\n{self.name}"
+                if kwargs.get("parent_name")
+                else self.name,
                 **kwargs,
             )
 
@@ -1418,6 +1421,9 @@ class SolutionSFCSMeasurement:
             print(f"Calculating all structure factors for '{self.type}' measurement...", end=" ")
 
         # calculate without plotting
+        kwargs["parent_name"] = (
+            f"{kwargs['parent_name']},\n{self.type}" if kwargs.get("parent_name") else self.type
+        )
         for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
             CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
 
@@ -1582,7 +1588,7 @@ class SolutionSFCSExperiment:
                 measurement = load_processed_solution_measurement(
                     dir_path,
                     file_template,
-                    should_load_data=should_re_correlate,
+                    #                    should_load_data=should_re_correlate,
                 )
                 measurement.type = meas_type
                 setattr(self, meas_type, measurement)
@@ -2041,6 +2047,7 @@ class SolutionSFCSExperiment:
             print(f"Calculating all structure factors for '{self.name}' experiment...", end=" ")
 
         # calculated without plotting
+        kwargs["parent_name"] = self.name
         for meas_type in ("confocal", "sted"):
             cal_meas = getattr(cal_exp, meas_type)
             getattr(self, meas_type).calculate_structure_factors(

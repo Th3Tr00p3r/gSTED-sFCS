@@ -482,7 +482,8 @@ def extrapolate_over_noise(
     n_robust=3,
     interp_type="gaussian",
     extrap_x_lims=Limits(np.NINF, np.inf),
-    should_auto_determine_upper_x=True,
+    should_auto_determine_upper_x=False,
+    should_interactively_set_upper_x=True,
     **kwargs,
 ) -> InterpExtrap1D:
     """Doc."""
@@ -498,12 +499,27 @@ def extrapolate_over_noise(
     else:
         initial_x_interp = x_interp
 
-    # heuristic auto-determination of limits by noise inspection TESTESTEST
+    # heuristic auto-determination of limits by noise inspection
+    valid_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
+    noise_start_idx = get_noise_start_idx(y[valid_idxs], **kwargs)
+    x_noise = x[valid_idxs][noise_start_idx]
     if should_auto_determine_upper_x:
-        valid_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
-        noise_start_idx = get_noise_start_idx(y[valid_idxs], **kwargs)
-        x_lims.upper = x[valid_idxs][noise_start_idx]
-    #        print(f"Noise starts at {x_lims.upper * 1e3:.0f} nm.")  # TESTESTEST
+        x_lims.upper = x_noise
+
+    # interactively choose the noise level
+    elif should_interactively_set_upper_x:
+        with display.Plotter(
+            super_title="Interactive Selection of Noise Level\n(One point)",
+            selection_limits=x_lims,
+            should_close_after_selection=True,
+            xlim=(0, min(x[(y < 1e-3) & (x > 0.1)][0], x[(x < 2)][-1])),
+            x_scale="quadratic",
+            ylim=(1e-4, 1),
+            y_scale="log",
+        ) as ax:
+            ax.plot(x, y, "ok", label=kwargs["name"] if kwargs.get("name") else "data")
+            ax.axvline(x=x_noise, color="red", lw=1, ls="--", label="heuristic estimate")
+            ax.legend()
 
     # choose interpolation range (extrapolate the noisy parts)
     interp_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
