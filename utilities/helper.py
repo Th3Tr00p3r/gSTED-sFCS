@@ -503,7 +503,7 @@ def extrapolate_over_noise(
         valid_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
         noise_start_idx = get_noise_start_idx(y[valid_idxs], **kwargs)
         x_lims.upper = x[valid_idxs][noise_start_idx]
-        print(f"Noise starts at {x_lims.upper * 1e3:.0f} nm.")  # TESTESTEST
+    #        print(f"Noise starts at {x_lims.upper * 1e3:.0f} nm.")  # TESTESTEST
 
     # choose interpolation range (extrapolate the noisy parts)
     interp_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
