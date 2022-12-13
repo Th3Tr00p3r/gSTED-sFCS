@@ -262,11 +262,19 @@ class Plotter:
             if self.selection_limits is not None:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
-                selected_points_list = self.fig.ginput(n=-1, timeout=-1)
-                x_coords = [x for (x, y) in selected_points_list]
-                if len(x_coords) < 2:
-                    raise RuntimeError("Must select at least 2 points!")
-                self.selection_limits(min(x_coords), max(x_coords))
+                x_coords = []
+                while not x_coords:
+                    selected_points_list = self.fig.ginput(n=-1, timeout=-1)
+                    x_coords = [x for (x, y) in selected_points_list]
+                    if x_coords:
+                        break
+                    print(
+                        "Must select at least 1 point! (left button to set, right to erase last, middle or Enter to confirm)"
+                    )
+                if len(x_coords) == 1:
+                    self.selection_limits(0, max(x_coords))
+                else:
+                    self.selection_limits(min(x_coords), max(x_coords))
                 if self.should_close_after_selection:
                     plt.close(self.fig)
                 return
