@@ -790,10 +790,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     # re-start scan for each file
 
                     # if scanning measurement, ensure proper Y-galvo calibration during measurement and re-setup the scan if was recalibrated
+                    # TODO: test this!
                     if len(self.scanners_dvc.ai_buffer) and self.scanners_dvc.recalibrate_y_galvo(
                         self.scan_params,
-                    ):  # TESTESTEST
-                        self.setup_scan()  # TESTESTEST
+                    ):
+                        self.setup_scan()
 
                     self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
                     self.init_scan_tasks("CONTINUOUS")

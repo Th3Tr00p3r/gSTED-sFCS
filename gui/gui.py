@@ -535,7 +535,7 @@ class SettWin(QtWidgets.QDialog):
         # XY calibration using circular scan
         self.xyCalibDisplay = GuiDisplay(self.xyPatternCalibLayout)
         self.testXYCal.released.connect(
-            lambda: self._loop.create_task(self.impl.disp_circular_scan_ai())
+            lambda: self._loop.create_task(self.impl.recalibrate_y_galvo())
         )
 
     def closeEvent(self, event: QtCore.QEvent) -> None:
