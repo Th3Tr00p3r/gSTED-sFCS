@@ -468,8 +468,9 @@ def get_noise_start_idx(arr: np.ndarray, **kwargs):
     normalized_local_std = local_std / local_std.max()
     diff_normalized_local_std = np.diff(normalized_local_std)
 
-    # get first time the normalized diff passes arr
-    return np.nonzero(diff_normalized_local_std > arr[1:])[0][0]
+    # get the max jumps, and return the minimum idx among the highest 10 jumps
+    higherst_diff_normalized_local_std_sorted = np.argsort(diff_normalized_local_std)[::-1]
+    return higherst_diff_normalized_local_std_sorted[:10].min()
 
 
 def extrapolate_over_noise(
@@ -482,7 +483,6 @@ def extrapolate_over_noise(
     n_robust=3,
     interp_type="gaussian",
     extrap_x_lims=Limits(np.NINF, np.inf),
-    should_auto_determine_upper_x=False,
     should_interactively_set_upper_x=True,
     **kwargs,
 ) -> InterpExtrap1D:
@@ -503,7 +503,7 @@ def extrapolate_over_noise(
     valid_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
     noise_start_idx = get_noise_start_idx(y[valid_idxs], **kwargs)
     x_noise = x[valid_idxs][noise_start_idx]
-    if should_auto_determine_upper_x:
+    if kwargs.get("should_auto_determine_upper_x"):
         x_lims.upper = x_noise
 
     # interactively choose the noise level
