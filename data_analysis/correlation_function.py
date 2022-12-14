@@ -159,7 +159,7 @@ class CorrFunc:
             f"{self.name}",
             self.correlator_type,
             self.laser_freq_hz,
-            self.afterpulsing_filter,
+            afterpulsing_filter=self.afterpulsing_filter,
         )
 
         # before averaging, get the maximum lag length of self and other - will need to unify (zero pad) to max length before stacking for averaging
@@ -382,7 +382,7 @@ class CorrFunc:
                 / len(jj)
             ).sum(axis=1)
             print(
-                f"Division by zero avoided by adding EPSILON={EPS}. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={EPS:.2f}. Why does this happen (zero in variance)?"
             )
 
         total_n_rows, _ = self.cf_cr.shape
@@ -419,7 +419,7 @@ class CorrFunc:
                 1 / (self.error_cf_cr[j_t] + EPS) ** 2
             ).sum()
             print(
-                f"Division by zero avoided by adding EPSILON={EPS}. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={EPS:.2f}. Why does this happen (zero in variance)?"
             )
 
         self.normalized = self.avg_cf_cr / self.g0
@@ -441,7 +441,7 @@ class CorrFunc:
             tot_weights += EPS
             avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
             print(
-                f"Division by zero avoided by adding epsilon={EPS}. Why does this happen (zero total weight)?"
+                f"Division by zero avoided by adding epsilon={EPS:.2f}. Why does this happen (zero total weight)?"
             )
         finally:
             error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
