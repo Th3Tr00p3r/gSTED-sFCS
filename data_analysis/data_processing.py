@@ -572,8 +572,6 @@ class TDCPhotonFileData:
             section_delay_time = dt[se_start : se_end + 1]
 
             # split the data into parts A/B according to gates
-            # TODO: in order to make this more general and use it with both auto and cross correlations, the function should optionally accept 2 seperate data,
-            # i.e. the split according to gates should be performed externally and beforehand.
             if "A" in "".join(xcorr_types):
                 gate1_idxs = gate1_ns.valid_indices(section_delay_time)
                 section_prt1 = section_pulse_runtime[gate1_idxs]
@@ -724,6 +722,7 @@ class TDCPhotonMeasurementData(list):
         To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
 
+        # parallel processing
         if should_parallel_process and (N_FILES := len(self)) > 20:
             N_PROCESSES = N_CPU_CORES - 1
             CHUNKSIZE = N_FILES // N_PROCESSES
@@ -738,6 +737,7 @@ class TDCPhotonMeasurementData(list):
                     pool.imap_unordered(partial_get_splits_dict, self, CHUNKSIZE)
                 )
 
+        # serial (regular) processing
         else:
             file_xcorr_input_dict_list = [
                 p.get_xcorr_input_dict(xcorr_types, **kwargs) for p in self

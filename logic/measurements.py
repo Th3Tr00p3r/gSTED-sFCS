@@ -791,7 +791,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
                     # if scanning measurement, ensure proper Y-galvo calibration during measurement and re-setup the scan if was recalibrated
                     if len(self.scanners_dvc.ai_buffer) and self.scanners_dvc.recalibrate_y_galvo(
-                        self.scan_params["pattern"]
+                        self.scan_params,
                     ):  # TESTESTEST
                         self.setup_scan()  # TESTESTEST
 

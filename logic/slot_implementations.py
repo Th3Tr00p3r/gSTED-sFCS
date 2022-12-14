@@ -2131,26 +2131,56 @@ class SettWin:
         and display analog I/O in order to gauge said calibration.
         """
 
-        # perform a short circular scan
+        # perform a short angular scan
+        scan_params = dict(
+            pattern="angular",
+            max_line_len_um=100,
+            ao_sampling_freq_hz=10000,
+            angle_deg=120,
+            linear_fraction=0.9,
+            line_shift_um=2,
+            speed_um_s=6000,
+            min_lines=6,
+            max_scan_freq_Hz=40,
+            ppl=149,
+            samples_per_line=183,
+            eff_speed_um_s=6010.93,
+            n_lines=14,
+            line_freq_hz=27.32,
+        )
         self._app.meas = meas.SolutionMeasurementProcedure(
             app=self._app,
-            scan_type="circle",
-            scan_params=dict(
-                pattern="circle",
-                ao_sampling_freq_hz=10000,
-                diameter_um=20,
-                speed_um_s=6000,
-                n_circles=960,
-            ),
+            scan_type="angular",
+            scan_params=scan_params,
             laser_mode="nolaser",
-            duration=0.3,
+            duration=0.5,
             duration_units="seconds",
             final=False,
             repeat=False,  # TODO: why are both final and repeat needed? aren't they mutually exclusive?
             should_disp_acf=False,
         )
 
-        await self._app.meas.run(should_save=False)
+        #        # perform a short circular scan
+        #        self._app.meas = meas.SolutionMeasurementProcedure(
+        #            app=self._app,
+        #            scan_type="circle",
+        #            scan_params=scan_params=dict(
+        #                pattern="circle",
+        #                ao_sampling_freq_hz=10000,
+        #                diameter_um=20,
+        #                speed_um_s=6000,
+        #                n_circles=960,
+        #            ),
+        #            laser_mode="nolaser",
+        #            duration=0.1,
+        #            duration_units="seconds",
+        #            final=False,
+        #            repeat=False,  # TODO: why are both final and repeat needed? aren't they mutually exclusive?
+        #            should_disp_acf=False,
+        #        )
+
+        # wait for coroutine to finish (blocking the next lines) - this ensures 'last_meas_data' is captured before calibrating
+        await asyncio.wait_for(self._app.meas.run(should_save=False), 5)
 
         # display the AO_ext and AI in the appointed widget
         display = self.settings_gui.xyCalibDisplay
@@ -2163,7 +2193,8 @@ class SettWin:
         )
 
         # auto-fix the issue if needed
-        self._app.devices.scanners.recalibrate_y_galvo("circle", ai_buffer)
+        #        self._app.devices.scanners.recalibrate_y_galvo("circle", ai_buffer)
+        self._app.devices.scanners.recalibrate_y_galvo(scan_params, ai_buffer)
 
 
 class ProcessingOptionsWindow:

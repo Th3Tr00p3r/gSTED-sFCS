@@ -15,10 +15,10 @@ import numpy as np
 import PIL
 from matplotlib.patches import Ellipse
 from nidaqmx.errors import DaqError
-from skimage.measure import EllipseModel
 
 from gui.widgets import QtWidgetAccess, QtWidgetCollection
 from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
+from logic.scan_patterns import ScanPatternAO
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
@@ -882,7 +882,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             diff_ao_data[1, :] = -ao_data
         return diff_ao_data
 
-    def recalibrate_y_galvo(self, scan_pattern: str, ext_ai_buffer=None):
+    def recalibrate_y_galvo(self, scan_params, ext_ai_buffer=None):
         """Doc."""
 
         # get XY analog input
@@ -891,33 +891,35 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         else:
             ai_xy = np.array(ext_ai_buffer).T[:2]
 
-        if scan_pattern == "circle":
-            # fit ellipse to circular scan AI, to get ratio between the semi-major axes
-            # as the scan is supposed to be circular, the ratio between the axes is the needed y calibration factor
-            ellipse_model = EllipseModel()
-            ellipse_model.estimate(ai_xy.T)
-            _, _, a, b, _ = ellipse_model.params
-            y_calib_factor = a / b
+        if scan_params["pattern"] == "circle":
+            # "fit ellipse" to circular scan AI, to get ratio between the semi-major axes
+            # as the scan is supposed to be circular, the ratio between the axes is the required y-calibration factor
+            a = (ai_xy[0].max() - ai_xy[0].min()) / 2
+            b = (ai_xy[1].max() - ai_xy[1].min()) / 2
+            y_calib_factor = b / a
 
-        elif scan_pattern == "angular":
-            # match the AI/AO_int ratio in the Y-galvo to that of the X-galvo
-            if ext_ai_buffer is None:
-                ao_int_xy = np.array(self.ai_buffer).T[3:5]
-            else:
-                ao_int_xy = np.array(ext_ai_buffer).T[3:5]
+        elif scan_params["pattern"] == "angular":
+            # create an "axes equal" angular scan (x_um_v for X and Y)
+            x_um_v, _, z_um_v = self.um_v_ratio
+            ao_buffer, _ = ScanPatternAO(
+                "angular",
+                (x_um_v, x_um_v, z_um_v),
+                (0, 0, 0),
+                scan_params,
+            ).calculate_pattern()
 
-            dist_ao_xy = ao_int_xy.max(axis=1) - ao_int_xy.min(axis=1)
+            # get the calibration by requiring the correct ratio
+            dist_ao_xy = ao_buffer.max(axis=1) - ao_buffer.min(axis=1)
             dist_ai_xy = ai_xy.max(axis=1) - ai_xy.min(axis=1)
             xy_ai_ao_ratio = dist_ai_xy / dist_ao_xy
-            y_calib_factor = xy_ai_ao_ratio[0] / xy_ai_ao_ratio[1]
-            print("ANGULAR SCAN Y-CALIB FACTOR: ", y_calib_factor)  # TESTESTEST
+            y_calib_factor = xy_ai_ao_ratio[1] / xy_ai_ao_ratio[0]
 
         _, current_y_um2v, _ = self.um_v_ratio
         new_y_um2v = current_y_um2v * y_calib_factor
         rel_change = abs(new_y_um2v - current_y_um2v) / current_y_um2v
-        if rel_change > 0.05:
+        if rel_change > 0.025:
             self.y_um2v_const.set(new_y_um2v)
-            print(f"Y-galvo calibration changed ({current_y_um2v} -> {new_y_um2v}).")
+            logging.info(f"Y-galvo calibration changed ({current_y_um2v:.2f} -> {new_y_um2v:.2f}).")
             return True
         else:
             return False
@@ -1336,8 +1338,8 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         cmd_dict = {
-            "UP": f"my {-steps}",
-            "DOWN": f"my {steps}",
+            "UP": f"my {steps}",
+            "DOWN": f"my {-steps}",
             "LEFT": f"mx {steps}",
             "RIGHT": f"mx {-steps}",
         }
