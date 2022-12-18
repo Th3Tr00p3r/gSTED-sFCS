@@ -345,6 +345,11 @@ class MainWin:
         if meas_type != (current_type := self._app.meas.type):
 
             if not self._app.meas.is_running:
+
+                # re-calibrate y-galvo before measurement (if needed)
+                logging.info("Pefroming automatic Y-galvo calibration before measurement.")
+                await self._app.gui.settings.impl.recalibrate_y_galvo(should_display=False)
+
                 # no meas running
                 if meas_type == "SFCSSolution":
                     pattern = self.main_gui.solScanType.currentText()
@@ -397,13 +402,8 @@ class MainWin:
                     getattr(self.main_gui, f"startImgScan{laser_mode}").setEnabled(True)
                     getattr(self.main_gui, f"startImgScan{laser_mode}").setText("Stop \nScan")
 
-                # re-calibrate y-galvo before measurement (if needed)
-                # TODO: test this!
-                self._app.loop.create_task(
-                    self._app.gui.settings.impl.recalibrate_y_galvo(should_display=False)
-                )
                 # run the measurement
-                self._app.loop.create_task(self._app.meas.run())
+                await self._app.meas.run()
             else:
                 # other meas running
                 logging.warning(
@@ -2146,9 +2146,9 @@ class SettWin:
             n_circles=960,
         )
         self._app.meas = meas.SolutionMeasurementProcedure(
-            app=self._app,
+            self._app,
+            scan_params,
             scan_type="circle",
-            scan_params=scan_params,
             laser_mode="nolaser",
             duration=0.1,
             duration_units="seconds",
@@ -2162,7 +2162,7 @@ class SettWin:
 
         # auto-fix the issue if needed
         ai_buffer = self._app.last_meas_data["full_data"]["scan_settings"]["ai"]
-        self._app.devices.scanners.recalibrate_y_galvo("circle", ai_buffer)
+        self._app.devices.scanners.recalibrate_y_galvo(scan_params, ai_buffer)
 
         # display the AO_ext and AI in the appointed widget
         if should_display:

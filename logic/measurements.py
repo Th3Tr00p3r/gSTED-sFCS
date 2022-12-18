@@ -245,6 +245,10 @@ class MeasurementProcedure:
                 # turn both depletion shutter and excitation ON
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
+            elif self.laser_mode == "nolaser":
+                # turn both excitation and depletion shutter OFF
+                self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
+                self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
 
             if current_emission_state() != self.laser_mode:
                 # cancel measurement if relevant lasers are not ON,
@@ -791,9 +795,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
                     # if scanning measurement, ensure proper Y-galvo calibration during measurement and re-setup the scan if was recalibrated
                     # TODO: test this!
+                    logging.info("Testing Y-galvo calibration before starting new file.")
                     if len(self.scanners_dvc.ai_buffer) and self.scanners_dvc.recalibrate_y_galvo(
                         self.scan_params,
                     ):
+                        logging.info("Re-calibrating Y-galvo.")
                         self.setup_scan()
 
                     self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
@@ -820,8 +826,8 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
 
-                # show/add the ACF of the latest file in GUI
-                if self.should_disp_acf:
+                # show/add the ACF of the latest file in GUI (if not manually stopped)
+                if self.should_disp_acf and self.is_running:
                     self.disp_ACF()
 
                 # case aligning and not manually stopped
