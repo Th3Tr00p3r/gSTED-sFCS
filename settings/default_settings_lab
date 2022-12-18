@@ -7,10 +7,6 @@ imgSubdirName,image
 camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
 logDataPath,./log/
 tempDataPath,C:/temp_sfcs_folder/
-spadDescription,FT232R USB UART
-spadModelQuery,AQ
-psdDescription,FT230X Basic UART
-psdModelQuery,RSN
 cam1Serial,4102737458
 cam2Serial,4102835063
 arduinoAddr,COM3
@@ -35,6 +31,10 @@ excTriggerIntAddr,Dev3/port0/
 excAddr,Dev1/port0/line6
 depShutterAddr,Dev3/port0/line11
 depModelQuery,getmodel
+psdDescription,FT230X Basic UART
+psdModelQuery,RSN
+spadDescription,FT232R USB UART
+spadModelQuery,AQ
 AOXaddr,Dev3/ao2, Dev3/ao3
 AOYaddr,Dev3/ao0, Dev3/ao1
 AOZaddr,Dev1/ao1
@@ -47,12 +47,6 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-spadBaudRate,115200
-spadTimeout,100
-psdBaudRate,115200
-psdTimeout,10
-psdThreshold_mV,-500
-psdFreqDiv,1
 um232Timeout,2
 um232TxSize,256000
 um232NumBytes,256000
@@ -63,6 +57,12 @@ TDCversion,3
 pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
+psdBaudRate,115200
+psdTimeout,10
+psdThreshold_mV,-500
+psdFreqDiv,1
+spadBaudRate,115200
+spadTimeout,100
 AIclkDiv,100
 syncDelay,49.61
 laserPulsePropTime,1.5
@@ -72,7 +72,7 @@ xOrigin,0.0
 yOrigin,0.0
 zOrigin,5.0
 xConv,70.81
-yConv,71.6
+yConv,70.81
 zConv,10.0
 counterTriggerEdge,Rising
 excTriggerSrc,External (TDC)
