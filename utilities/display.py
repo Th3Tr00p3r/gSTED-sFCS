@@ -263,7 +263,7 @@ class Plotter:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
                 x_coords = []
-                while not x_coords:
+                while not x_coords:  # enforce at least one point selection
                     selected_points_list = self.fig.ginput(n=-1, timeout=-1)
                     x_coords = [x for (x, y) in selected_points_list]
                     if x_coords:
@@ -271,9 +271,9 @@ class Plotter:
                     print(
                         "Must select at least 1 point! (left button to set, right to erase last, middle or Enter to confirm)"
                     )
-                if len(x_coords) == 1:
-                    self.selection_limits(0, max(x_coords))
-                else:
+                if len(x_coords) == 1:  # select max only
+                    self.selection_limits(self.selection_limits.lower, max(x_coords))
+                else:  # select min and max
                     self.selection_limits(min(x_coords), max(x_coords))
                 if self.should_close_after_selection:
                     plt.close(self.fig)
@@ -288,6 +288,17 @@ class Plotter:
                 self.fig.show()
                 self.fig.canvas.draw_idle()
 
+    def _quadratic_xscale_backwards(self, x):
+        """Doc"""
+
+        if (x < 0).any():
+            new_x = np.empty(x.shape)
+            new_x[x < 0] = 0
+            new_x[x >= 0] = x[x >= 0] ** (1 / 2)
+            return new_x
+        else:
+            return x ** (1 / 2)
+
     def _set_axis_attributes(self, ax):
         """Doc."""
 
@@ -301,7 +312,9 @@ class Plotter:
             ax.set_ylim(self.ylim)
         if self.x_scale is not None:
             if self.x_scale == "quadratic":
-                ax.set_xscale("function", functions=(lambda x: x ** 2, lambda x: x ** (1 / 2)))
+                ax.set_xscale(
+                    "function", functions=(lambda x: x ** 2, self._quadratic_xscale_backwards)
+                )
             else:
                 ax.set_xscale(self.x_scale)
         if self.y_scale is not None:
