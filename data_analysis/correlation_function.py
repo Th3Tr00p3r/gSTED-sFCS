@@ -668,8 +668,15 @@ class CorrFunc:
             print(f"Calculating '{self.name}' Hankel transform...", end=" ")
 
         # calculate Hankel transforms (with selected interpolation type)
-        self.calculate_hankel_transform(interp_types, is_verbose=False, **kwargs)
-        cal_cf.calculate_hankel_transform(interp_types, is_verbose=False, **kwargs)
+        if parent_names := kwargs.pop("parent_names", None):
+            parent_name, cal_parent_name = parent_names
+
+        self.calculate_hankel_transform(
+            interp_types, is_verbose=False, parent_name=parent_name, **kwargs
+        )
+        cal_cf.calculate_hankel_transform(
+            interp_types, is_verbose=False, parent_name=cal_parent_name, **kwargs
+        )
 
         # get the structure factors by dividing the Hankel transforms
         self.structure_factors = {}
@@ -1421,8 +1428,13 @@ class SolutionSFCSMeasurement:
             print(f"Calculating all structure factors for '{self.type}' measurement...", end=" ")
 
         # calculate without plotting
-        kwargs["parent_name"] = (
-            f"{kwargs['parent_name']},\n{self.type}" if kwargs.get("parent_name") else self.type
+        kwargs["parent_names"] = (
+            f"{kwargs['parent_names'][0]},\n{self.type}"
+            if kwargs.get("parent_names")
+            else self.type,
+            f"{kwargs['parent_names'][1]},\n{self.type}"
+            if kwargs.get("parent_names")
+            else self.type,
         )
         for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
             CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
@@ -1550,8 +1562,8 @@ class SolutionSFCSExperiment:
                 setattr(self, meas_type, measurement)
                 getattr(self, meas_type).name = meas_type  # remame supplied measurement
 
-        if kwargs.get("should_plot"):
-            self.plot_standard(should_add_exp_name=False, **kwargs)
+        # always plot
+        self.plot_standard(should_add_exp_name=False, **kwargs)
 
     def load_measurement(
         self,
@@ -2047,7 +2059,7 @@ class SolutionSFCSExperiment:
             print(f"Calculating all structure factors for '{self.name}' experiment...", end=" ")
 
         # calculated without plotting
-        kwargs["parent_name"] = self.name
+        kwargs["parent_names"] = (self.name, cal_exp.name)
         for meas_type in ("confocal", "sted"):
             cal_meas = getattr(cal_exp, meas_type)
             getattr(self, meas_type).calculate_structure_factors(
@@ -2062,7 +2074,6 @@ class SolutionSFCSExperiment:
 
     def plot_structure_factors(self, **kwargs):
         """Doc."""
-        # TESTESTESTEST - add this for Measurements and CorrFuncs and test! (and take plotting out of the 'calculate' methods)
 
         # get interpolations types
         interp_types = list(list(self.confocal.cf.values())[0].structure_factors.keys())
