@@ -2156,9 +2156,8 @@ class SettWin:
             repeat=False,  # TODO: why are both final and repeat needed? aren't they mutually exclusive?
             should_disp_acf=False,
         )
-
-        # wait for coroutine to finish (blocking the next lines) - this ensures 'last_meas_data' is captured before calibrating
-        await asyncio.wait_for(self._app.meas.run(should_save=False), 5)
+        # run measurement
+        await self._app.meas.run(should_save=False)
 
         # auto-fix the issue if needed
         ai_buffer = self._app.last_meas_data["full_data"]["scan_settings"]["ai"]
