@@ -145,17 +145,23 @@ class Timeout:
         def update_log_wdgt() -> None:
             """Doc."""
 
-            if (last_line := helper.file_last_line(self._app.log_file_path)) is None:
-                logging.info("Log file initialized.")
-            elif last_line.find("INFO") != -1:
-                line_time, line_text = last_line[12:23], last_line[38:]
-                last_line = line_time + line_text
+            try:
+                last_line = helper.file_last_line(self._app.log_file_path)
+            except UnicodeDecodeError:
+                # TODO: what's this?
+                print("Something wrong with log file...")
+            else:
+                if last_line is None:
+                    logging.info("Log file initialized.")
+                elif last_line.find("INFO") != -1:
+                    line_time, line_text = last_line[12:23], last_line[38:]
+                    last_line = line_time + line_text
 
-                if last_line != self.log_buffer_deque[0]:
-                    self.log_buffer_deque.appendleft(last_line)
+                    if last_line != self.log_buffer_deque[0]:
+                        self.log_buffer_deque.appendleft(last_line)
 
-                    text = "".join(self.log_buffer_deque)
-                    self._app.gui.main.lastAction.setPlainText(text)
+                        text = "".join(self.log_buffer_deque)
+                        self._app.gui.main.lastAction.setPlainText(text)
 
         while self.not_finished:
 
