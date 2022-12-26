@@ -305,7 +305,7 @@ class InterpExtrap1D:
             ax.plot(
                 self.x_interp,
                 self.y_interp,
-                ".",
+                "-",
                 markersize=4,
                 label=f"{label_prefix}",
                 color=color,
@@ -500,11 +500,13 @@ def extrapolate_over_noise(
         initial_x_interp = x_interp
 
     # heuristic auto-determination of limits by noise inspection
-    valid_idxs = x_lims.valid_indices(x) & y_lims.valid_indices(y)
+    valid_idxs = Limits(0.05, 10).valid_indices(x) & y_lims.valid_indices(y)
     noise_start_idx = get_noise_start_idx(y[valid_idxs], **kwargs)
     x_noise = x[valid_idxs][noise_start_idx]
     if kwargs.get("should_auto_determine_upper_x"):
-        x_lims.upper = x_noise
+        # allow manual limiting of auto choice
+        if x_lims.upper > x_noise:
+            x_lims.upper = x_noise
 
     # interactively choose the noise level
     elif should_interactively_set_upper_x:
