@@ -271,6 +271,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     should_subtract_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
     should_ignore_hard_gate=("ignoreHardGate", "QCheckBox", "options", False),
     should_parallel_process=("useMultiProcessing", "QCheckBox", "options", False),
+    should_unite_start_times=("shouldUniteStartTimes", "QCheckBox", "options", False),
     afterpulsing_method=("afterpulsingRemovalMethod", "QComboBox", "options", False),
     override_system_info=("useDefaultSysInfo", "QCheckBox", "options", False),
     should_re_correlate=("solImportReCorrelate", "QCheckBox", "main", False),
