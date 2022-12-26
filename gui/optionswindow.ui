@@ -69,6 +69,16 @@ Background</string>
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="shouldUniteStartTimes">
+           <property name="toolTip">
+            <string>Use default system info instead of that saved in the file</string>
+           </property>
+           <property name="text">
+            <string>Unite start times</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <property name="spacing">
             <number>2</number>
