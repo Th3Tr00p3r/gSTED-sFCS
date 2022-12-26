@@ -3,5 +3,6 @@ useDefaultSysInfo,False
 subtractBgCorr,True
 ignoreHardGate,False
 useMultiProcessing,True
+shouldUniteStartTimes,True
 fixShift,True
 autoRoi,True
