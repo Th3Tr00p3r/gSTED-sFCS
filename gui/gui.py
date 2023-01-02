@@ -357,6 +357,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.impl.preview_img_scan(template)
         self.impl.toggle_save_processed_enabled()
         self.impl.toggle_load_processed_enabled(template)
+        self.impl.prefill_new_template(template)
 
     @QtCore.pyqtSlot(str)
     def on_importedSolDataTemplates1_currentTextChanged(self, template: str) -> None:
