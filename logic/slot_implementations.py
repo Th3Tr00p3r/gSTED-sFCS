@@ -706,7 +706,6 @@ class MainWin:
     ####################
     ## Camera Dock
     ####################
-
     def toggle_camera_dock(self, is_toggled_on: bool) -> None:
         """Doc."""
 
@@ -832,7 +831,6 @@ class MainWin:
     ####################
     ## Analysis Tab - Raw Data
     ####################
-
     def switch_data_type(self) -> None:
         """Doc."""
 
@@ -1009,13 +1007,31 @@ class MainWin:
             else:  # cycle to end
                 data_templates_combobox.setCurrentIndex(n_items - 1)
 
+    def prefill_new_template(self, curr_template):
+        """Pre-fill the 'new template' field with the modifiable part of the current template, (workflow)"""
+
+        if curr_template:
+            try:
+                # get the current prefix - anything before the timestamp
+                curr_template_prefix = re.findall("(^.*)(?=_[0-9]{6})", curr_template)[0]
+            except IndexError:
+                # legacy template which has no timestamp
+                try:
+                    curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
+                except IndexError:
+                    # legacy template which has no underscores
+                    curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[0]
+
+            data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._app.gui)
+            data_import_wdgts["new_template"].set(curr_template_prefix)
+
     def rename_template(self) -> None:
         """Doc."""
 
         dir_path = self.current_date_type_dir_path()
         data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._app.gui)
         curr_template = data_import_wdgts["data_templates"].get()
-        new_template_prefix = data_import_wdgts["new_template"]
+        new_template_prefix = data_import_wdgts["new_template"].get()
 
         # cancel if no new prefix supplied
         if not new_template_prefix:
