@@ -108,7 +108,9 @@ class AngularScanDataMixin:
 
         return pix_shift
 
-    def _threshold_and_smooth(self, img, otsu_classes=4, n_bins=256, disk_radius=2) -> np.ndarray:
+    def _threshold_and_smooth(
+        self, img, otsu_classes=4, n_bins=256, disk_radius=2, **kwargs
+    ) -> np.ndarray:
         """Doc."""
 
         thresh = skimage.filters.threshold_multiotsu(
@@ -1390,7 +1392,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         return p
 
-    def _process_angular_scan_data_file(
+    def _process_angular_scan_data_file(  # NOQA C901
         self,
         idx,
         full_data,
@@ -1404,6 +1406,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
         # TODO: can this method be moved to the appropriate Mixin class?
+        # TODO; simplify me! (C901)
 
         p = self._convert_fpga_data_to_photons(
             idx,
@@ -1540,6 +1543,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 print("ROI is empty (need to figure out the cause). Skipping file.\n")
             return None
 
+        if kwargs.get("is_verbose"):
+            print("Inserting line markers to arrays...", end=" ")
+
         # convert lists/deques to numpy arrays
         roi = {key: np.array(val, dtype=np.uint16) for key, val in roi.items()}
         line_start_lables = np.array(line_start_lables, dtype=np.int16)
@@ -1553,6 +1559,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         line_stops_runtime: np.ndarray = line_stops * round(
             self.laser_freq_hz / ao_sampling_freq_hz
         )
+
+        # TODO: i need to figure out a way to add "pause-play" markers inside rows, so that I can ignore bright spots
+        # and avoid including slightly-damaged rows or throw away mostly good rows.
 
         pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
         sorted_idxs = np.argsort(pulse_runtime)
@@ -1575,6 +1584,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         line_edge_idxs = new_fine == NAN_PLACEBO
         delay_time[line_edge_idxs] = np.nan
 
+        if kwargs.get("is_verbose"):  # TESTESTEST
+            print("Dumping raw data file to disk...", end=" ")  # TESTESTEST
+
         # replace the raw data after angular scan changes made
         p.import_raw(
             np.vstack(
@@ -1591,7 +1603,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         bw[1::2, :] = np.flip(bw[1::2, :], 1)
         p.general.bw_mask = bw
 
-        # get background correlation (gated background is bad)
+        if kwargs.get("is_verbose"):  # TESTESTEST
+            print("Getting background correlation...", end=" ")  # TESTESTEST
+
+        # get background correlation (gated background is bad
         p.general.line_limits = Limits(line_num[line_num > 0].min(), line_num.max())
         p.general.bg_line_corr = self._bg_line_correlations(
             p.general.image,

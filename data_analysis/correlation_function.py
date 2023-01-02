@@ -270,7 +270,6 @@ class CorrFunc:
         self,
         time_stamp_split_list: List[np.ndarray],
         *args,
-        is_verbose: bool = False,
         **kwargs,
     ) -> None:
         """Doc."""
