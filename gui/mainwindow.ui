@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5753,7 +5753,7 @@ Measurement</string>
                             <bool>true</bool>
                            </property>
                            <property name="currentIndex">
-                            <number>0</number>
+                            <number>1</number>
                            </property>
                            <widget class="QWidget" name="tab_11">
                             <attribute name="title">
@@ -5926,7 +5926,7 @@ over:</string>
                                                </size>
                                               </property>
                                               <property name="decimals">
-                                               <number>1</number>
+                                               <number>2</number>
                                               </property>
                                               <property name="maximum">
                                                <double>10.000000000000000</double>
