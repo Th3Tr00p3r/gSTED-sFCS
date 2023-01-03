@@ -151,7 +151,7 @@ class MainWin:
                             self.main_gui.depActualPow.setValue(0)
 
                         elif nick == "exc_laser":  # TESTESTEST
-                            self.main_gui.setPsdDelay.setEnabled(False)
+                            self.main_gui.setPsdDelay.setEnabled(True)
 
                         was_toggled = True
 
@@ -403,6 +403,7 @@ class MainWin:
                     getattr(self.main_gui, f"startImgScan{laser_mode}").setText("Stop \nScan")
 
                 # run the measurement
+                logging.info(f"{meas_type} measurement started.")
                 await self._app.meas.run()
             else:
                 # other meas running
@@ -435,6 +436,7 @@ class MainWin:
             if self._app.meas.is_running:
                 # manual stop
                 await self._app.meas.stop()
+                logging.info(f"{meas_type} measurement stopped.")
 
     def disp_scn_pttrn(self, pattern: str):
         """Doc."""
@@ -1227,7 +1229,7 @@ class MainWin:
             basic_header.append("-" * 40)
             basic_header.append("Measurement Log File")
             basic_header.append("-" * 40)
-            basic_header.append("Excitation Power: 20 uW @ BFP")
+            basic_header.append("Excitation Power: 12 uW @ BFP")
             basic_header.append("Depletion Power: 200 mW @ BFP (set to 260 mW)")
             if g0 is not None:
                 basic_header.append(
