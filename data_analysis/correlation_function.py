@@ -719,6 +719,7 @@ class SolutionSFCSMeasurement:
         self.scan_type: str
         self.duration_min: float = None
         self.is_loaded = False
+        self.was_processed_data_loaded = False
         self.data = TDCPhotonMeasurementData()
 
     def read_fpga_data(
@@ -1497,7 +1498,7 @@ class SolutionSFCSMeasurement:
                 print("Done.")
 
             # save the raw data separately
-            if should_save_data:
+            if should_save_data and not self.was_processed_data_loaded:
                 data_dir_path = dir_path / "data"
 
                 # compress and save each data file in the temp folder in 'data_dir_path' (optional)
@@ -1602,6 +1603,7 @@ class SolutionSFCSExperiment:
                     #                    should_load_data=should_re_correlate,
                 )
                 measurement.type = meas_type
+                measurement.was_processed_data_loaded = True
                 setattr(self, meas_type, measurement)
                 print(f"Loaded pre-processed {meas_type} measurement from: '{dir_path}'")
             except OSError:
