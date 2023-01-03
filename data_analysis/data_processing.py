@@ -81,6 +81,7 @@ class AngularScanDataMixin:
                 score[idx] = (abs(rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :]))).sum()
             return pix_shifts[score.argmin()]
 
+        cnt = cnt.copy()
         height, width = cnt.shape
 
         # replacing outliers with median value
@@ -118,7 +119,7 @@ class AngularScanDataMixin:
         #            ax.imshow(img)
 
         # global filtering of outliers (replace bright pixels with median of central area)
-        img = np.copy(img)
+        img = img.copy()
         _, width = img.shape
         median = np.median(img[:, int(width * 0.25) : int(width * 0.75)])
         img[img > median * median_factor] = median
@@ -1473,7 +1474,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             if should_fix_shift:
                 if kwargs.get("is_verbose"):
                     print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
-                pix_shift = self._get_data_shift(sec_cnt.copy(), **kwargs)
+                pix_shift = self._get_data_shift(sec_cnt, **kwargs)
                 sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
                     self.laser_freq_hz / ao_sampling_freq_hz
                 )
