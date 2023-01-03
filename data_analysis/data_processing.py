@@ -2,6 +2,7 @@
 
 import multiprocessing as mp
 from collections import deque
+from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass
 from functools import partial
@@ -45,7 +46,7 @@ class CircularScanDataMixin:
 class AngularScanDataMixin:
     """Doc."""
 
-    def _convert_angular_scan_to_image(
+    def convert_angular_scan_to_image(
         self, pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
     ):
         """Converts angular scan pulse_runtime into an image."""
@@ -109,21 +110,46 @@ class AngularScanDataMixin:
         return pix_shift
 
     def _threshold_and_smooth(
-        self, img, otsu_classes=4, n_bins=256, disk_radius=2, **kwargs
+        self, img, otsu_classes=4, n_bins=256, disk_radius=2, median_factor=1.1, **kwargs
     ) -> np.ndarray:
         """Doc."""
 
+        #        with Plotter(super_title="BEFORE MEDFILT") as ax: # TESTESTEST
+        #            ax.imshow(img)
+
+        # global filtering of outliers (replace bright pixels with median of central area)
+        img = np.copy(img)
+        _, width = img.shape
+        median = np.median(img[:, int(width * 0.25) : int(width * 0.75)])
+        img[img > median * median_factor] = median
+
+        #        with Plotter(super_title="AFTER MEDFILT") as ax: # TESTESTEST
+        #            ax.imshow(img)
+
+        # minor local filtering of outliers then thresholding
         thresh = skimage.filters.threshold_multiotsu(
             skimage.filters.median(img).astype(np.float32), otsu_classes, nbins=n_bins
-        )  # minor filtering of outliers
+        )
         cnt_dig = np.digitize(img, bins=thresh)
+
+        #        with Plotter(super_title="AFTER threshold_multiotsu") as ax: # TESTESTEST
+        #            ax.imshow(cnt_dig)
+
         plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
         std_plateau = scipy.stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
         dev_cnt = img - plateau_lvl
-        bw = dev_cnt > -std_plateau
+        bw = dev_cnt >= -std_plateau
+
+        #        with Plotter(super_title="MASK BEFORE FILLING HOLES") as ax: # TESTESTEST
+        #            ax.imshow(bw)
+
         bw = scipy.ndimage.binary_fill_holes(bw)
         disk_open = skimage.morphology.disk(radius=disk_radius)
         bw = skimage.morphology.opening(bw, footprint=disk_open)
+
+        #        with Plotter(super_title="FINAL MASK") as ax: # TESTESTEST
+        #            ax.imshow(bw)
+
         return bw
 
     def _bg_line_correlations(
@@ -1021,7 +1047,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 p.raw.dump()
 
         # add general properties
-        p.general.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
+        with suppress(AttributeError):
+            # AttributeError: p is None
+            p.general.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         return p
 
@@ -1434,7 +1462,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 sec_sample_runtime,
                 sec_pixel_num,
                 sec_line_num,
-            ) = self._convert_angular_scan_to_image(
+            ) = self.convert_angular_scan_to_image(
                 sec_pulse_runtime,
                 self.laser_freq_hz,
                 ao_sampling_freq_hz,
@@ -1454,7 +1482,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     sec_sample_runtime,
                     sec_pixel_num,
                     sec_line_num,
-                ) = self._convert_angular_scan_to_image(
+                ) = self.convert_angular_scan_to_image(
                     sec_pulse_runtime,
                     self.laser_freq_hz,
                     ao_sampling_freq_hz,
@@ -1473,12 +1501,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # invert every second line
         cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
 
-        if kwargs.get("is_verbose"):
-            print("ROI selection: ", end=" ")
-
         if roi_selection == "auto":
             if kwargs.get("is_verbose"):
-                print("automatic. Thresholding and smoothing...", end=" ")
+                print("Thresholding and smoothing...", end=" ")
             try:
                 bw = self._threshold_and_smooth(cnt.copy())
             except ValueError:

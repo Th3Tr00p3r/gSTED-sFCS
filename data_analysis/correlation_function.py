@@ -138,7 +138,7 @@ class CorrFunc:
         self.duration_min = kwargs.get("duration_min")
 
     def __add__(self, other):
-        """Averages all attributes of two CorrFunc objects and returns a new CorrFunc instance"""
+        """Averages (weighted) all attributes of two CorrFunc objects and returns a new CorrFunc instance"""
 
         # ensure similarity
         if self.correlator_type != other.correlator_type:
@@ -1674,10 +1674,10 @@ class SolutionSFCSExperiment:
     def save_processed_measurements(self, meas_types=["confocal", "sted"], **kwargs):
         """Doc."""
 
-        print("Saving processed measurements to disk...", end=" ")
+        print("Saving processed measurements to disk...")
         if self.confocal.is_loaded and "confocal" in meas_types:
             if self.confocal.save_processed(**kwargs):
-                print("Confocal saved...", end=" ")
+                print("Confocal saved.")
             else:
                 print(
                     "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
@@ -1685,7 +1685,7 @@ class SolutionSFCSExperiment:
                 )
         if self.sted.is_loaded and "sted" in meas_types:
             if self.sted.save_processed(**kwargs):
-                print("STED saved...", end=" ")
+                print("STED saved.")
             else:
                 print(
                     "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
