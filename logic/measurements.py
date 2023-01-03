@@ -110,7 +110,6 @@ class MeasurementProcedure:
             # AttributeError: no widget
             self.prog_bar_wdgt.set(0)
         self._app.gui.main.impl.populate_all_data_dates(type_)  # refresh saved measurements
-        logging.info(f"{self.type} measurement stopped")
         self.type = None
 
     async def record_data(
@@ -172,6 +171,7 @@ class MeasurementProcedure:
         elif self.type == "SFCSImage":
             save_path = today_dir / "image"
         else:
+            # TODO: why do I get here sometimes? (related to y-galvo cal.?)
             raise NotImplementedError(f"Measurements of type '{self.type}' are not handled.")
 
         file_path = save_path / (re.sub("\\s", "_", file_name) + ".pkl")
