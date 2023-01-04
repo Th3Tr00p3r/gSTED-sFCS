@@ -338,6 +338,15 @@ def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
 
+def chunked_bincount(arr, n_chunks=10):
+    """Performes 'bincount' in chunks"""
+
+    bins = np.zeros(arr.max() + 1)
+    for i in range(n_chunks):
+        bins += np.bincount(arr[i * arr.size : (i + 1) * arr.size], minlength=arr.max() + 1)
+    return bins
+
+
 def largest_n(arr: np.ndarray, n: int):
     """
     Adapted from:
