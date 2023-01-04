@@ -16,9 +16,9 @@ import skimage
 
 from data_analysis.workers import N_CPU_CORES, get_xcorr_input_dict
 from utilities.display import Plotter
-from utilities.file_utilities import load_object, save_object
+from utilities.file_utilities import load_object, save_object  # , DUMP_PATH
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
-from utilities.helper import Gate, Limits, div_ceil, nan_helper, xcorr
+from utilities.helper import Gate, Limits, chunked_bincount, div_ceil, nan_helper, xcorr
 
 NAN_PLACEBO = -100  # marks starts/ends of lines
 LINE_END_ADDER = 1000
@@ -47,7 +47,15 @@ class AngularScanDataMixin:
     """Doc."""
 
     def convert_angular_scan_to_image(
-        self, pulse_runtime, laser_freq_hz, ao_sampling_freq_hz, samples_per_line, n_lines
+        self,
+        pulse_runtime,
+        laser_freq_hz,
+        ao_sampling_freq_hz,
+        samples_per_line,
+        n_lines,
+        should_fix_shift=True,
+        pix_shift=0,
+        **kwargs,
     ):
         """Converts angular scan pulse_runtime into an image."""
 
@@ -66,7 +74,27 @@ class AngularScanDataMixin:
         for j in range(n_lines + 1):
             img[j, :], _ = np.histogram(pixel_num[line_num == j], bins=bins)
 
-        return img, sample_runtime, pixel_num, line_num
+        if should_fix_shift:
+            if kwargs.get("is_verbose"):
+                print("Fixing data shift...", end=" ")
+            pix_shift = self._get_data_shift(img, **kwargs)
+            if kwargs.get("is_verbose"):
+                print(f"shifting {pix_shift} pixels...", end=" ")
+            shifted_pulse_runtime = pulse_runtime + pix_shift * round(
+                self.laser_freq_hz / ao_sampling_freq_hz
+            )
+            return self.convert_angular_scan_to_image(
+                shifted_pulse_runtime,
+                self.laser_freq_hz,
+                ao_sampling_freq_hz,
+                samples_per_line,
+                n_lines,
+                should_fix_shift=False,
+                pix_shift=pix_shift,
+            )
+
+        else:
+            return img, sample_runtime, pixel_num, line_num, pix_shift
 
     def _get_data_shift(self, cnt: np.ndarray, **kwargs) -> int:
         """Doc."""
@@ -460,6 +488,7 @@ class GeneralFileData:
     n_lines: int = None
     roi: Dict[str, deque] = None
     bw_mask: np.ndarray = None
+    pix_shift: int = None
 
 
 @dataclass
@@ -1425,7 +1454,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self,
         idx,
         full_data,
-        should_fix_shift=True,
         roi_selection="auto",
         should_dump=True,
         **kwargs,
@@ -1437,10 +1465,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # TODO: can this method be moved to the appropriate Mixin class?
         # TODO; simplify me! (C901)
 
-        p = self._convert_fpga_data_to_photons(
-            idx,
-            **kwargs,
-        )
+        try:
+            p = self._convert_fpga_data_to_photons(
+                idx,
+                **kwargs,
+            )
+        except RuntimeError as exc:
+            print(f"{exc} Skipping file.")
+            return None
 
         scan_settings = full_data["scan_settings"]
         linear_part = scan_settings["linear_part"].round().astype(np.uint16)
@@ -1463,35 +1495,15 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 sec_sample_runtime,
                 sec_pixel_num,
                 sec_line_num,
+                pix_shift,
             ) = self.convert_angular_scan_to_image(
                 sec_pulse_runtime,
                 self.laser_freq_hz,
                 ao_sampling_freq_hz,
                 p.general.samples_per_line,
                 p.general.n_lines,
+                **kwargs,
             )
-
-            if should_fix_shift:
-                if kwargs.get("is_verbose"):
-                    print(f"Fixing line shift of section {sec_idx+1}...", end=" ")
-                pix_shift = self._get_data_shift(sec_cnt, **kwargs)
-                sec_pulse_runtime = sec_pulse_runtime + pix_shift * round(
-                    self.laser_freq_hz / ao_sampling_freq_hz
-                )
-                (
-                    sec_cnt,
-                    sec_sample_runtime,
-                    sec_pixel_num,
-                    sec_line_num,
-                ) = self.convert_angular_scan_to_image(
-                    sec_pulse_runtime,
-                    self.laser_freq_hz,
-                    ao_sampling_freq_hz,
-                    p.general.samples_per_line,
-                    p.general.n_lines,
-                )
-                if kwargs.get("is_verbose"):
-                    print(f"({pix_shift} pixels).", end=" ")
 
             pulse_runtime[start_idx:end_idx] = sec_pulse_runtime
             cnt += sec_cnt
@@ -1588,7 +1600,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         # TODO: i need to figure out a way to add "pause-play" markers inside rows, so that I can ignore bright spots
         # and avoid including slightly-damaged rows or throw away mostly good rows.
-
         pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
         sorted_idxs = np.argsort(pulse_runtime)
         new_pulse_runtime = pulse_runtime[sorted_idxs]
@@ -1622,8 +1633,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if should_dump:  # False only if multiprocessing
             p.raw.dump()
 
-        p.general.image = cnt
+        p.general.image = cnt  # TODO: scan image creation can happen post processing now, and can perhaps be a method of p itself
         p.general.roi = roi
+        p.general.pix_shift = pix_shift
 
         # reverse rows again
         bw[1::2, :] = np.flip(bw[1::2, :], 1)
@@ -1662,7 +1674,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         coarse, fine = self._unite_coarse_fine_data(data, scan_type)
 
-        h_all = np.bincount(coarse).astype(np.uint32)
+        #        h_all = np.bincount(coarse).astype(np.uint32)
+        h_all = chunked_bincount(coarse).astype(np.uint32)  # TESTESTEST
         x_all = np.arange(coarse.max() + 1, dtype=np.uint8)
 
         if pick_valid_bins_according_to is None:
@@ -1866,6 +1879,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
     def _unite_coarse_fine_data(self, data, scan_type: str):
         """Doc."""
+        # TODO: this is badly designed, memory-wise - all of the memory which i'm trying to keep on disk is loaded into RAM!
+        # I need to change this so that an array of proper size is allocated on disk and written to file-by-file.
+        # I can then memory-map that array instead of having everything in RAM at once...
 
         # keep pulse_runtime elements of each file for array size allocation
         n_elem = np.cumsum([0] + [p.raw.pulse_runtime.size for p in data])
@@ -1873,6 +1889,23 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # unite coarse and fine times from all files
         coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
         fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+
+        #        # save to disk to relieve RAM
+        #        Path.mkdir(DUMP_PATH, parents=True, exist_ok=True)
+        #        np.save(
+        #            DUMP_PATH / "coarse.npy",
+        #            coarse,
+        #            allow_pickle=False,
+        #            fix_imports=False,
+        #        )
+        #        np.save(
+        #            DUMP_PATH / "fine.npy",
+        #            fine,
+        #            allow_pickle=False,
+        #            fix_imports=False,
+        #        )
+        #        # next I could change the loop so that it writes each file's coarse/fine to disk instead
+
         for i, p in enumerate(data):
             coarse[n_elem[i] : n_elem[i + 1]] = p.raw.coarse
             fine[n_elem[i] : n_elem[i + 1]] = p.raw.fine
