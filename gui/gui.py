@@ -75,6 +75,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.circDiameter.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
         self.circAoSampFreq.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
         self.circSpeed.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
+        self.circShouldPrecess.stateChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
 
         # Positioning/Scanners
         self.axisMoveUp.released.connect(lambda: self.impl.displace_scanner_axis(1))
