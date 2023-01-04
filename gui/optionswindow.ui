@@ -35,7 +35,7 @@
          <item>
           <widget class="QCheckBox" name="useDefaultSysInfo">
            <property name="toolTip">
-            <string>Use default system info instead of that saved in the file</string>
+            <string>Use default system info instead of that saved in the file.</string>
            </property>
            <property name="text">
             <string>Use Default
@@ -45,6 +45,9 @@ System Info</string>
          </item>
          <item>
           <widget class="QCheckBox" name="subtractBgCorr">
+           <property name="toolTip">
+            <string>Subtract spatial correlations from the section/file scan.</string>
+           </property>
            <property name="text">
             <string>Subtract
 Background</string>
@@ -61,7 +64,7 @@ Background</string>
          <item>
           <widget class="QCheckBox" name="useMultiProcessing">
            <property name="toolTip">
-            <string>Use default system info instead of that saved in the file</string>
+            <string>Use multiple cores where deemed effective</string>
            </property>
            <property name="text">
             <string>Multiprocess data</string>
@@ -71,7 +74,7 @@ Background</string>
          <item>
           <widget class="QCheckBox" name="shouldUniteStartTimes">
            <property name="toolTip">
-            <string>Use default system info instead of that saved in the file</string>
+            <string>Combine measurements with identical templates except for the start time.</string>
            </property>
            <property name="text">
             <string>Unite start times</string>
@@ -92,6 +95,9 @@ Background</string>
            </item>
            <item>
             <widget class="QComboBox" name="afterpulsingRemovalMethod">
+             <property name="toolTip">
+              <string>How to deal with detector afterpulsing</string>
+             </property>
              <item>
               <property name="text">
                <string>none</string>
@@ -135,6 +141,9 @@ Background</string>
                <pointsize>8</pointsize>
               </font>
              </property>
+             <property name="toolTip">
+              <string>Fix the (currently inexplicable) shift between the actual scan position of a pixel and the measured analog input within each section/file</string>
+             </property>
              <property name="text">
               <string>Fix Shift</string>
              </property>
@@ -145,6 +154,9 @@ Background</string>
            </item>
            <item>
             <widget class="QCheckBox" name="autoRoi">
+             <property name="toolTip">
+              <string>Automatically locate the scan area (the default - currently no alternative).</string>
+             </property>
              <property name="text">
               <string>Auto ROI</string>
              </property>
