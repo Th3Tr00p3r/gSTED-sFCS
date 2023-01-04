@@ -1198,7 +1198,7 @@ class SolutionSFCSMeasurement:
         **kwargs,
     ) -> Dict[str, CorrFunc]:
         """Doc."""
-        # TODO: currently does not support 'Enderlein-filtering' - needs new correlator types built and code here fixed according to 'correlate_data'
+        # TODO: currently does not support 'Enderlein-filtering' - needs new correlator types built and code here fixed similarly to 'correlate_data'
 
         if is_verbose:
             print(
@@ -1497,16 +1497,16 @@ class SolutionSFCSMeasurement:
             if kwargs.get("is_verbose"):
                 print("Done.")
 
-            # save the raw data separately
-            if should_save_data and not self.was_processed_data_loaded:
-                data_dir_path = dir_path / "data"
+        # save the raw data separately
+        if should_save_data and not self.was_processed_data_loaded:
+            data_dir_path = dir_path / "data"
 
-                # compress and save each data file in the temp folder in 'data_dir_path' (optional)
-                for p in self.data:
-                    if p.raw.compressed_file_path is None or (
-                        not p.raw.compressed_file_path.exists() or should_force
-                    ):
-                        p.raw.save_compressed(data_dir_path)
+            # compress and save each data file in the temp folder in 'data_dir_path' (optional)
+            for p in self.data:
+                if p.raw.compressed_file_path is None or (
+                    not p.raw.compressed_file_path.exists() or should_force
+                ):
+                    p.raw.save_compressed(data_dir_path)
 
             return True
 
@@ -2106,7 +2106,7 @@ class SolutionSFCSExperiment:
 
     def fit_structure_factors(self, model: str):
         """Doc."""
-        # TODO:
+        # NOTE: Check out
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.dawsn.html
 
         raise NotImplementedError
