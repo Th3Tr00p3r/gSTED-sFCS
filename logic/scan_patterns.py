@@ -325,7 +325,7 @@ class ScanPatternAO:
         circumference_large = pi * diameter_um_large
         circle_freq_hz_large = speed_um_s_large / circumference_large
         samples_per_circle_large = int(ao_sampling_freq_hz / circle_freq_hz_large)
-        # TODO: TESTESTEST multiplied by 10 for floating Z
+        # multiplied by 10 for (optional) floating Z
         n_circles_large = int(ao_sampling_freq_hz / samples_per_circle_large * 10)
 
         x_um_v_ratio, y_um_v_ratio, z_um_v_ratio = self.um_v_ratio
@@ -348,39 +348,42 @@ class ScanPatternAO:
         )
 
         # add a small, circle to the AO, to alleviate bleaching and spatial correlation in dense solutions
-        diameter_um_small = diameter_um_large / 5
-        speed_um_s_small = speed_um_s_large / 1000
+        if self.scan_params.get("should_precess", False):
+            diameter_um_small = diameter_um_large / 5
+            speed_um_s_small = speed_um_s_large / 1000
 
-        circumference_small = pi * diameter_um_small
-        circle_freq_hz_small = speed_um_s_small / circumference_small
-        samples_per_circle_small = int(ao_sampling_freq_hz / circle_freq_hz_small)
-        # the number of small circles is determined by the already prepared big circles AO length
-        # generally, they won't be divisible and one of the circles (big or small) will not finish its last rounds
-        n_circles_small = int(ao_buffer_large.size / samples_per_circle_small)
+            circumference_small = pi * diameter_um_small
+            circle_freq_hz_small = speed_um_s_small / circumference_small
+            samples_per_circle_small = int(ao_sampling_freq_hz / circle_freq_hz_small)
+            # the number of small circles is determined by the already prepared big circles AO length
+            # generally, they won't be divisible and one of the circles (big or small) will not finish its last rounds
+            n_circles_small = max(int(ao_buffer_large.size / samples_per_circle_small), 1)
 
-        R_Vx_small = diameter_um_small / 2 / x_um_v_ratio
-        R_Vy_small = diameter_um_small / 2 / y_um_v_ratio
+            R_Vx_small = diameter_um_small / 2 / x_um_v_ratio
+            R_Vy_small = diameter_um_small / 2 / y_um_v_ratio
 
-        ao_buffer_small = np.array(
-            [
+            ao_buffer_small = np.array(
                 [
-                    R_Vx_small * sin(2 * pi * (idx / samples_per_circle_small))
-                    for idx in range(samples_per_circle_small)
-                ]
-                * n_circles_small,
-                [
-                    R_Vy_small * cos(2 * pi * (idx / samples_per_circle_small))
-                    for idx in range(samples_per_circle_small)
-                ]
-                * n_circles_small,
-            ],
-        )
+                    [
+                        R_Vx_small * sin(2 * pi * (idx / samples_per_circle_small))
+                        for idx in range(samples_per_circle_small)
+                    ]
+                    * n_circles_small,
+                    [
+                        R_Vy_small * cos(2 * pi * (idx / samples_per_circle_small))
+                        for idx in range(samples_per_circle_small)
+                    ]
+                    * n_circles_small,
+                ],
+            )
 
-        # shorten the longer AO array to match the length of the shorter
-        if ao_buffer_large.size < ao_buffer_small.size:
-            ao_buffer_small = unify_length(ao_buffer_small, ao_buffer_large.shape)
+            # shorten the longer AO array to match the length of the shorter
+            if ao_buffer_large.size < ao_buffer_small.size:
+                ao_buffer_small = unify_length(ao_buffer_small, ao_buffer_large.shape)
+            else:
+                ao_buffer_large = unify_length(ao_buffer_large, ao_buffer_small.shape)
         else:
-            ao_buffer_large = unify_length(ao_buffer_large, ao_buffer_small.shape)
+            ao_buffer_small = np.array([[0], [0]])
 
         # add origin AO vector
         origin_aox_v, origin_aoy_v, origin_aoz_v = self.origin_ao_v
@@ -390,7 +393,8 @@ class ScanPatternAO:
         ao_buffer = ao_buffer_large + ao_buffer_small + origin_ao
 
         # floating z - scan slowly in z-axis (one period during many xy circles)
-        if (z_amp_um := self.scan_params.get("floating_z_amplitude_um", 0)) != 0:
+        z_amp_um = self.scan_params.get("floating_z_amplitude_um", 0)
+        if z_amp_um != 0:
             R_Vz = z_amp_um / z_um_v_ratio
             aoz_len = ao_buffer.shape[1]
             aoz = [origin_aoz_v + R_Vz * sin(2 * pi * (idx / aoz_len)) for idx in range(aoz_len)]

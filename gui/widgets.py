@@ -351,6 +351,7 @@ SOL_ANG_SCAN_COLL = QtWidgetCollection(
     eff_speed_um_s=("solAngActualSpeed", "QDoubleSpinBox", "main", True),
     n_lines=("solNumLines", "QSpinBox", "main", True),
     line_freq_hz=("solActualScanFreq", "QDoubleSpinBox", "main", True),
+    floating_z_amplitude_um=("solScanFloatingAmp", "QSpinBox", "main", False),
 )
 
 SOL_CIRC_SCAN_COLL = QtWidgetCollection(
@@ -358,6 +359,8 @@ SOL_CIRC_SCAN_COLL = QtWidgetCollection(
     diameter_um=("circDiameter", "QDoubleSpinBox", "main", False),
     speed_um_s=("circSpeed", "QSpinBox", "main", False),
     n_circles=("numOfCircles", "QSpinBox", "main", True),
+    should_precess=("circShouldPrecess", "QCheckBox", "main", False),
+    floating_z_amplitude_um=("solScanFloatingAmp", "QSpinBox", "main", False),
 )
 
 SOL_MEAS_COLL = QtWidgetCollection(
