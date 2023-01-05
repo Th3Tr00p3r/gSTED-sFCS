@@ -9,6 +9,7 @@ import time
 from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, List, Tuple, TypeVar
 
 import numpy as np
@@ -23,6 +24,84 @@ import utilities.display as display
 
 EPS = sys.float_info.epsilon
 Number = TypeVar("Number", int, float)
+
+
+class MemMapping:
+    """
+    A convenience class working with Numpy memory-mapping.
+    Can be used as a context manager to ensure deletion of on-disk file (single-use).
+    """
+
+    def __init__(
+        self,
+        arr: np.ndarray,
+        file_name: str = "temp.npy",
+        dump_path: Path = Path("C:/temp_sfcs_data/"),
+    ):
+        self._file_name = file_name
+        self._dump_path = dump_path
+        self._dump_file_path = self._dump_path / self._file_name
+        self._dump(arr)
+
+        # keep some useful attributes for quick access
+        self.shape = arr.shape
+        self.size = arr.size
+        self.max = arr.max()
+        self.min = arr.min()
+
+    def _dump(self, arr: np.ndarray):
+        """Dump the data to disk. Called at initialization only."""
+
+        # save
+        Path.mkdir(self._dump_path, parents=True, exist_ok=True)
+        np.save(
+            self._dump_file_path,
+            arr,
+            allow_pickle=False,
+            fix_imports=False,
+        )
+
+    def read(self):
+        """
+        Access the data from disk by memory-mapping, and get the 'row_idx' row.
+        each read should take about 1 ms, therefore unnoticeable.
+        """
+
+        return np.load(
+            self._dump_file_path,
+            mmap_mode="r",
+            allow_pickle=True,
+            fix_imports=False,
+        )
+
+    def write1d(self, arr: np.ndarray, start_idx=0, stop_idx=None):
+        """
+        Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
+        each write should take about ~100 ms.
+        """
+
+        if stop_idx is None:
+            stop_idx = arr.size
+
+        mmap_sub_arr = np.load(
+            self._dump_file_path,
+            mmap_mode="r+",
+            allow_pickle=False,
+            fix_imports=False,
+        )
+        mmap_sub_arr[start_idx:stop_idx] = arr
+        mmap_sub_arr.flush()
+
+        # update useful attributes for quick access
+        self.shape = mmap_sub_arr.shape
+        self.size = mmap_sub_arr.size
+        self.max = mmap_sub_arr.max()
+        self.min = mmap_sub_arr.min()
+
+    def delete(self):
+        """Delete the on-dsk array"""
+
+        self._dump_file_path.unlink()
 
 
 class Limits:
@@ -338,12 +417,14 @@ def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
 
-def chunked_bincount(arr, n_chunks=10):
-    """Performes 'bincount' in chunks"""
+def chunked_bincount(arr_mmap: MemMapping, n_chunks=10):
+    """Performes 'bincount' in series on disk-loaded array chunks using a MemMapping object"""
 
-    bins = np.zeros(arr.max() + 1)
+    sz = arr_mmap.size
+    max_val = arr_mmap.max
+    bins = np.zeros(max_val + 1)
     for i in range(n_chunks):
-        bins += np.bincount(arr[i * arr.size : (i + 1) * arr.size], minlength=arr.max() + 1)
+        bins += np.bincount(arr_mmap.read()[i * sz : (i + 1) * sz], minlength=max_val + 1)
     return bins
 
 
