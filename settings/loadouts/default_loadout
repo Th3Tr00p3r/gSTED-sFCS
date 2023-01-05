@@ -1,7 +1,7 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
-newTemplate,CNCP7uW10nsGating_angular_exc
-solImportFileSelectionPattern,4
+newTemplate,YOYO300bp7uW3nsGating_angular_exc
+solImportFileSelectionPattern,1-2
 lineEdit,
 experimentName,test
 spadMode,free running
@@ -62,7 +62,7 @@ imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,1
 dataYear,2023
 dataDay,2
-dataTemplate1,CNCP7uW10nsGating_angular_exc_150324_*.pkl
+dataTemplate1,YOYO300bp7uW3nsGating_angular_exc_125236_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -71,9 +71,9 @@ gateUnits,ns
 assignedGates,
 gateMeasType,STED
 availableGates,
-importedSolDataTemplates2,CNCP7uW10nsGating_angular_exc_150324_*.pkl
+importedSolDataTemplates2,
 expPropGstedGate,
-importedSolDataTemplates1,CNCP7uW10nsGating_angular_exc_150324_*.pkl
+importedSolDataTemplates1,
 avgInterval,5000
 posAxis,X
 solScanParamsStacked,2

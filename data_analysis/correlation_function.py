@@ -1068,7 +1068,6 @@ class SolutionSFCSMeasurement:
         external_afterpulsing=None,
         get_afterpulsing=False,
         should_subtract_bg_corr=True,
-        is_verbose=False,
         **corr_options,
     ) -> CorrFunc:
         """
@@ -1077,7 +1076,7 @@ class SolutionSFCSMeasurement:
         Data attribute is memory-mapped from disk.
         """
 
-        if is_verbose:
+        if corr_options.get("is_verbose"):
             print(
                 f"{self.type} - Preparing split data ({self.n_files} files) for software correlator...",
                 end=" ",
@@ -1105,23 +1104,23 @@ class SolutionSFCSMeasurement:
             raise ValueError(f"Invalid afterpulsing_method chosen: {afterpulsing_method}.")
         elif (is_filtered := afterpulsing_method == "filter") or gate_ns:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                if is_verbose:
+                if corr_options.get("is_verbose"):
                     print("(Calibrating TDC first...)", end=" ")
                 self.calibrate_tdc(**corr_options)
 
         # Calculate afterpulsing filter if doesn't alreay exist (optional)
         afterpulsing_filter = None
         if is_filtered:
-            if is_verbose:
+            if corr_options.get("is_verbose"):
                 print("Preparing Afterpulsing filter... ", end="")
             afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
                 gate_ns, self.type, **corr_options
             )
-            if is_verbose:
+            if corr_options.get("is_verbose"):
                 print("Done.")
 
         # build correlator input - create list of split data (and optionally filters) for correlator. TDC-gating is performed here
-        if is_verbose:
+        if corr_options.get("is_verbose"):
             print("Building correlator input splits: ", end="")
         # -
         corr_input_list, filter_input_list = zip(
@@ -1132,7 +1131,7 @@ class SolutionSFCSMeasurement:
                 get_afterpulsing=get_afterpulsing,
             )["AA"]
         )
-        if is_verbose:
+        if corr_options.get("is_verbose"):
             print("Done.")
 
         # choose correct correlator type
@@ -1147,7 +1146,7 @@ class SolutionSFCSMeasurement:
             else:
                 correlator_option = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
-        if is_verbose:
+        if corr_options.get("is_verbose"):
             print(f"Correlating {self.scan_type} data ({cf_name}):", end=" ")
 
         # Correlate data
@@ -1176,7 +1175,7 @@ class SolutionSFCSMeasurement:
         except AttributeError:
             CF.vt_um = CF.lag  # static
 
-        if is_verbose:
+        if corr_options.get("is_verbose"):
             print("- Done.")
 
         # name the Corrfunc object
@@ -1607,8 +1606,11 @@ class SolutionSFCSExperiment:
                 setattr(self, meas_type, measurement)
                 print(f"Loaded pre-processed {meas_type} measurement from: '{dir_path}'")
             except OSError:
+                # since not forcing processing, avoid dumping (though will still process to get p.general...) existing raw data
+                # TODO: try to avoid processing of existing files altogether - this may require saving the general part as well...
+                kwargs["should_avoid_dumping"] = True
                 print(
-                    f"Pre-processed {meas_type} measurement not found at: '{dir_path}'. Processing data regularly."
+                    f"Pre-processed {meas_type} measurement not found at: '{dir_path}'. Processing (non-existing) data files regularly."
                 )
 
         if not measurement.cf:  # Process data
