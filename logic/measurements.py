@@ -641,10 +641,24 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             )
 
             s = SolutionSFCSMeasurement(meas_laser_type_dict[self.laser_mode])
+            # NOTE: using only up to first 10 Mb to avoid blocking measurements for too long
             p = s.process_data_file(
-                file_dict=self.prep_meas_dict(), byte_data=byte_data, **self.processing_options
+                file_dict=self.prep_meas_dict(),
+                byte_data=byte_data,
+                byte_data_slice=slice(0, int(10e6)),
+                **self.processing_options,
             )
             s.data.append(p)
+
+            # TESTESTEST - patch for background subtration - fix this
+            if self.scan_type != "static":
+                s.bg_line_corr_list = [
+                    bg_line_corr
+                    for bg_file_corr in [p.general.bg_line_corr for p in s.data]
+                    for bg_line_corr in bg_file_corr
+                ]
+            # /TESTESTEST
+
             CF = s.correlate_and_average(
                 cf_name=f"{self.laser_mode} alignment",
                 **self.processing_options,
