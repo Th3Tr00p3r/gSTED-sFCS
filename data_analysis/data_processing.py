@@ -18,7 +18,15 @@ from data_analysis.workers import N_CPU_CORES, get_xcorr_input_dict
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object  # , DUMP_PATH
 from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
-from utilities.helper import Gate, Limits, chunked_bincount, div_ceil, nan_helper, xcorr
+from utilities.helper import (
+    Gate,
+    Limits,
+    MemMapping,
+    chunked_bincount,
+    div_ceil,
+    nan_helper,
+    xcorr,
+)
 
 NAN_PLACEBO = -100  # marks starts/ends of lines
 LINE_END_ADDER = 1000
@@ -244,6 +252,8 @@ class RawFileData:
         pulse_runtime: np.ndarray,
         delay_time: np.ndarray,
         line_num: np.ndarray = None,
+        should_avoid_dumping=False,
+        **kwargs,
     ):
         """
         Unite the (equal shape) arrays into a single 2D array and immediately dump to disk.
@@ -254,6 +264,7 @@ class RawFileData:
         self._file_name = f"raw_data_{idx}.npy"
         self._dump_path = dump_path
         self.dump_file_path = self._dump_path / self._file_name
+        self.should_avoid_dumping = should_avoid_dumping
 
         # keep data until dumped
         self._coarse = coarse
@@ -385,10 +396,14 @@ class RawFileData:
         data.flush()
 
     def dump(self):
-        """Dump the data to disk. Should be called right after initialization (only needed once)."""
+        """Dump the data to disk. Should be called right after initialization (only needed once). Returns whether the data was dumped."""
 
         # cancel dumping if not needed
-        if not self._was_data_dumped or not self.dump_file_path.exists():
+        if (
+            not self._was_data_dumped
+            and not (self.dump_file_path.exists() and self.should_avoid_dumping)
+            or not self.dump_file_path.exists()
+        ):
             # prepare data ndarray
             if self._line_num is None:
                 data = np.vstack(
@@ -415,7 +430,8 @@ class RawFileData:
                 fix_imports=False,
             )
 
-            # keep track
+        # keep track
+        if self.dump_file_path.exists():
             self._was_data_dumped = True
 
         # clear the RAM
@@ -489,6 +505,7 @@ class GeneralFileData:
     roi: Dict[str, deque] = None
     bw_mask: np.ndarray = None
     pix_shift: int = None
+    all_single_scan_edges: List[Tuple[int, int]] = None
 
 
 @dataclass
@@ -503,13 +520,14 @@ class TDCPhotonFileData:
     def __repr__(self):
         return f"TDCPhotonFileData(idx={self.idx}, dump_path={self.dump_path})"
 
-    def import_raw(self, raw_data: np.ndarray):
+    def import_raw(self, raw_data: np.ndarray, **kwargs):
         """Load RawFileData using an existing ndarray"""
 
         self.raw = RawFileData(
             self.idx,
             self.dump_path,
             *[line for line in raw_data],
+            **kwargs,
         )
 
     def get_xcorr_input_dict(
@@ -1220,6 +1238,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 delay_time=np.full(
                     pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
                 ),
+                **proc_options,
             ),
             self.dump_path,
         )
@@ -1450,7 +1469,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         return p
 
-    def _process_angular_scan_data_file(  # NOQA C901
+    def _process_angular_scan_data_file(
         self,
         idx,
         full_data,
@@ -1463,7 +1482,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
         # TODO: can this method be moved to the appropriate Mixin class?
-        # TODO; simplify me! (C901)
 
         try:
             p = self._convert_fpga_data_to_photons(
@@ -1598,6 +1616,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             self.laser_freq_hz / ao_sampling_freq_hz
         )
 
+        # keeping the scan start/stop runtimes for scan animation
+        p.general.all_single_scan_edges = list(
+            zip(
+                line_starts_runtime[line_start_lables == line_start_lables[0]],
+                line_stops_runtime[line_stop_labels == line_stop_labels[-1]],
+            )
+        )
+
         # TODO: i need to figure out a way to add "pause-play" markers inside rows, so that I can ignore bright spots
         # and avoid including slightly-damaged rows or throw away mostly good rows.
         pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
@@ -1621,16 +1647,20 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         line_edge_idxs = new_fine == NAN_PLACEBO
         delay_time[line_edge_idxs] = np.nan
 
-        if kwargs.get("is_verbose"):  # TESTESTEST
-            print("Dumping raw data file to disk...", end=" ")  # TESTESTEST
-
         # replace the raw data after angular scan changes made
         p.import_raw(
             np.vstack(
                 (new_coarse, new_coarse2, new_fine, new_pulse_runtime, delay_time, new_line_num)
-            )
+            ),
+            **kwargs,
         )
-        if should_dump:  # False only if multiprocessing
+        if (
+            should_dump
+        ):  # False only if multiprocessing or if manually set to avoid re-dumping many existing identical files
+            if kwargs.get("is_verbose"):
+                print(
+                    "Dumping raw data file to disk (skipped if exists and not forcing)...", end=" "
+                )
             p.raw.dump()
 
         p.general.image = cnt  # TODO: scan image creation can happen post processing now, and can perhaps be a method of p itself
@@ -1655,7 +1685,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         return p
 
-    def calibrate_tdc(
+    def calibrate_tdc(  # NOQA C901
         self,
         data: list[TDCPhotonFileData],
         scan_type,
@@ -1672,15 +1702,18 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         """Doc."""
         # TODO: move to 'TDCPhotonMeasurementData' class
 
-        coarse, fine = self._unite_coarse_fine_data(data, scan_type)
+        if kwargs.get("is_verbose"):
+            print("Uniting coarse/fine data... ", end="")
+        coarse_mmap, fine_mmap = self._unite_coarse_fine_data(data, scan_type)
 
-        #        h_all = np.bincount(coarse).astype(np.uint32)
-        h_all = chunked_bincount(coarse).astype(np.uint32)  # TESTESTEST
-        x_all = np.arange(coarse.max() + 1, dtype=np.uint8)
+        if kwargs.get("is_verbose"):
+            print("Binning coarse data... ", end="")
+        h_all = chunked_bincount(coarse_mmap).astype(np.uint32)
+        x_all = np.arange(coarse_mmap.max + 1, dtype=np.uint8)
 
         if pick_valid_bins_according_to is None:
-            h_all = h_all[coarse.min() :]
-            x_all = np.arange(coarse.min(), coarse.max() + 1, dtype=np.uint8)
+            h_all = h_all[coarse_mmap.min :]
+            x_all = np.arange(coarse_mmap.min, coarse_mmap.max + 1, dtype=np.uint8)
             coarse_bins = x_all
             h = h_all
         elif isinstance(pick_valid_bins_according_to, np.ndarray):
@@ -1739,6 +1772,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         )
 
         if isinstance(external_calib, TDCCalibration):
+            if kwargs.get("is_verbose"):
+                print("Using external calibration... ", end="")
             max_j = external_calib.max_j
             coarse_calib_bins = external_calib.coarse_calib_bins
             fine_bins = external_calib.fine_bins
@@ -1751,7 +1786,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             delay_times = external_calib.delay_times
 
         else:
-            fine_calib = fine[np.isin(coarse, coarse_calib_bins)]
+            if kwargs.get("is_verbose"):
+                print("Binning fine data... ", end="")
+            fine_calib = fine_mmap.read()[np.isin(coarse_mmap.read(), coarse_calib_bins)]
             h_tdc_calib = np.bincount(fine_calib, minlength=tdc_chain_length).astype(np.uint32)
 
             # find effective range of TDC by, say, finding 10 zeros in a row
@@ -1793,6 +1830,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             t_weight = t_weight[j_sorted]
 
         # assign time delays to all photons
+        if kwargs.get("is_verbose"):
+            print("Assigning delay times... ", end="")
         total_laser_pulses = 0
         first_coarse_bin, *_, last_coarse_bin = coarse_bins
         delay_time_list = []
@@ -1855,6 +1894,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             / total_laser_pulses
         )
 
+        # delete temp files
+        coarse_mmap.delete()
+        fine_mmap.delete()
+
+        if kwargs.get("is_verbose"):
+            print("Done.")
+
         return TDCCalibration(
             x_all=x_all,
             h_all=h_all,
@@ -1879,44 +1925,30 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
     def _unite_coarse_fine_data(self, data, scan_type: str):
         """Doc."""
-        # TODO: this is badly designed, memory-wise - all of the memory which i'm trying to keep on disk is loaded into RAM!
-        # I need to change this so that an array of proper size is allocated on disk and written to file-by-file.
-        # I can then memory-map that array instead of having everything in RAM at once...
 
         # keep pulse_runtime elements of each file for array size allocation
-        n_elem = np.cumsum([0] + [p.raw.pulse_runtime.size for p in data])
+        if scan_type == "angular":
+            # remove line starts/ends from angular scan data sizes
+            n_elem = np.cumsum([0] + [p.raw.fine[p.raw.fine > NAN_PLACEBO].size for p in data])
+        else:
+            n_elem = np.cumsum([0] + [p.raw.fine.size for p in data])
 
         # unite coarse and fine times from all files
-        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
-        fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
-
-        #        # save to disk to relieve RAM
-        #        Path.mkdir(DUMP_PATH, parents=True, exist_ok=True)
-        #        np.save(
-        #            DUMP_PATH / "coarse.npy",
-        #            coarse,
-        #            allow_pickle=False,
-        #            fix_imports=False,
-        #        )
-        #        np.save(
-        #            DUMP_PATH / "fine.npy",
-        #            fine,
-        #            allow_pickle=False,
-        #            fix_imports=False,
-        #        )
-        #        # next I could change the loop so that it writes each file's coarse/fine to disk instead
+        #        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+        coarse_mmap = MemMapping(np.empty(shape=(n_elem[-1],), dtype=np.int16), "coarse.npy")
+        fine_mmap = MemMapping(np.empty(shape=(n_elem[-1],), dtype=np.int16), "fine.npy")
 
         for i, p in enumerate(data):
-            coarse[n_elem[i] : n_elem[i + 1]] = p.raw.coarse
-            fine[n_elem[i] : n_elem[i + 1]] = p.raw.fine
+            if scan_type == "angular":
+                # remove line starts/ends from angular scan data
+                photon_idxs = p.raw.fine > NAN_PLACEBO
+            else:
+                # otherwise, treat all elements as photons
+                photon_idxs = slice(None)
+            coarse_mmap.write1d(p.raw.coarse[photon_idxs], n_elem[i], n_elem[i + 1])
+            fine_mmap.write1d(p.raw.fine[photon_idxs], n_elem[i], n_elem[i + 1])
 
-        # remove line starts/ends from angular scan data
-        if scan_type == "angular":
-            photon_idxs = fine > NAN_PLACEBO
-            coarse = coarse[photon_idxs]
-            fine = fine[photon_idxs]
-
-        return coarse, fine
+        return coarse_mmap, fine_mmap
 
 
 @dataclass

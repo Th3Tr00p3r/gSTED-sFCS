@@ -2,7 +2,7 @@ afterpulsingRemovalMethod,filter
 useDefaultSysInfo,False
 subtractBgCorr,True
 ignoreHardGate,False
-useMultiProcessing,True
+useMultiProcessing,False
 shouldUniteStartTimes,True
 fixShift,True
 autoRoi,True
