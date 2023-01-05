@@ -2725,7 +2725,7 @@ Amplitude (um)</string>
                       </sizepolicy>
                      </property>
                      <property name="currentIndex">
-                      <number>0</number>
+                      <number>1</number>
                      </property>
                      <widget class="QWidget" name="angularParams">
                       <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -3605,6 +3605,16 @@ Amplitude (um)</string>
                           </layout>
                          </item>
                         </layout>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="circShouldPrecess">
+                         <property name="toolTip">
+                          <string>Precess the circle around a 5 times smaller circle at 1/1000 the speed</string>
+                         </property>
+                         <property name="text">
+                          <string>Should Precess</string>
+                         </property>
+                        </widget>
                        </item>
                        <item>
                         <spacer name="verticalSpacer">
