@@ -1129,6 +1129,7 @@ class SolutionSFCSMeasurement:
                 gate1_ns=gate_ns,
                 afterpulsing_filter=afterpulsing_filter if is_filtered else None,
                 get_afterpulsing=get_afterpulsing,
+                **corr_options,
             )["AA"]
         )
         if corr_options.get("is_verbose"):
