@@ -790,7 +790,7 @@ class TDCPhotonMeasurementData(list):
         super().__init__()
 
     def prepare_xcorr_input(
-        self, xcorr_types: List[str], should_parallel_process=True, **kwargs
+        self, xcorr_types: List[str], should_parallel_process=False, **kwargs
     ) -> Dict[str, List]:
         """
         Prepare SoftwareCorrelator input from complete measurement data.
@@ -1616,7 +1616,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             self.laser_freq_hz / ao_sampling_freq_hz
         )
 
-        # keeping the scan start/stop runtimes for scan animation
+        # keeping the single-scan start/stop runtimes for scan animation
         p.general.all_single_scan_edges = list(
             zip(
                 line_starts_runtime[line_start_lables == line_start_lables[0]],
@@ -1658,9 +1658,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             should_dump
         ):  # False only if multiprocessing or if manually set to avoid re-dumping many existing identical files
             if kwargs.get("is_verbose"):
-                print(
-                    "Dumping raw data file to disk (skipped if exists and not forcing)...", end=" "
-                )
+                print("Dumping raw data file to disk (if needed)...", end=" ")
             p.raw.dump()
 
         p.general.image = cnt  # TODO: scan image creation can happen post processing now, and can perhaps be a method of p itself
@@ -1934,10 +1932,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             n_elem = np.cumsum([0] + [p.raw.fine.size for p in data])
 
         # unite coarse and fine times from all files
-        #        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
-        coarse_mmap = MemMapping(np.empty(shape=(n_elem[-1],), dtype=np.int16), "coarse.npy")
-        fine_mmap = MemMapping(np.empty(shape=(n_elem[-1],), dtype=np.int16), "fine.npy")
-
+        coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+        fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
         for i, p in enumerate(data):
             if scan_type == "angular":
                 # remove line starts/ends from angular scan data
@@ -1945,9 +1941,12 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             else:
                 # otherwise, treat all elements as photons
                 photon_idxs = slice(None)
-            coarse_mmap.write1d(p.raw.coarse[photon_idxs], n_elem[i], n_elem[i + 1])
-            fine_mmap.write1d(p.raw.fine[photon_idxs], n_elem[i], n_elem[i + 1])
+            coarse[n_elem[i] : n_elem[i + 1]] = p.raw.coarse[photon_idxs]
+            fine[n_elem[i] : n_elem[i + 1]] = p.raw.fine[photon_idxs]
+        coarse_mmap = MemMapping(coarse, "coarse.npy")
+        fine_mmap = MemMapping(fine, "fine.npy")
 
+        # return the MemMapping instances
         return coarse_mmap, fine_mmap
 
 
