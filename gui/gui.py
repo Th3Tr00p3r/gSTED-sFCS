@@ -102,6 +102,10 @@ class MainWin(QtWidgets.QMainWindow):
             lambda: self.impl.import_sol_data(should_load_processed=True)
         )
 
+        # scan image
+        self.scanImgFileNum.valueChanged.connect(self.impl.display_angular_scan_image)
+        self.bwMask.stateChanged.connect(self.impl.display_angular_scan_image)
+
         self.rowDiscriminationGroup = QtWidgets.QButtonGroup()
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveWorst)
@@ -295,12 +299,6 @@ class MainWin(QtWidgets.QMainWindow):
         """Doc"""
 
         self.impl.calculate_and_show_sol_mean_acf()
-
-    @QtCore.pyqtSlot(int)
-    def on_scanImgFileNum_valueChanged(self, val: int) -> None:
-        """Doc."""
-
-        self.impl.display_angular_scan_image(val)
 
     @QtCore.pyqtSlot()
     def on_removeImportedSolData_released(self) -> None:
