@@ -1485,6 +1485,9 @@ class MainWin:
         # TODO: make this dynamic (so I don't have to add/remove rows for each new option)
         loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
         loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"
+        loading_options["should_alleviate_bright_pixels"] = import_wdgts[
+            "should_alleviate_bright_pixels"
+        ]
         loading_options["afterpulsing_method"] = import_wdgts["afterpulsing_method"]
         loading_options["should_subtract_bg_corr"] = import_wdgts["should_subtract_bg_corr"]
         loading_options["override_system_info"] = import_wdgts["override_system_info"]
@@ -1565,7 +1568,7 @@ class MainWin:
                     sol_data_analysis_wdgts["scan_img_file_num"].obj.setEnabled(True)
                     sol_data_analysis_wdgts["scan_img_file_num"].obj.setRange(1, num_files)
                     sol_data_analysis_wdgts["scan_img_file_num"].set(1)
-                    self.display_angular_scan_image(1, imported_template)
+                    self.display_angular_scan_image(imported_template)
                     self.display_patterns(imported_template)
 
                     # calculate average and display
@@ -1604,15 +1607,27 @@ class MainWin:
                 scan_image_disp.display_image(img)
                 scan_image_disp.entitle_and_label("Pixel Index", "File Index")
 
-    def display_angular_scan_image(self, file_num, imported_template: str = None):
+    def display_angular_scan_image(self, imported_template: str = None):
         """Doc."""
+
+        # TODO: I still don't know why this happens/is needed, but sometimes I get an input of 2 seemingly out of nowhere
+        if isinstance(imported_template, int):
+            imported_template = None
 
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
             with self.get_measurement_from_template(imported_template) as measurement:
-                img = measurement.scan_images_dstack[:, :, file_num - 1]
-                roi = measurement.roi_list[file_num - 1]
+
+                sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_dict(self._app.gui)
+
+                file_idx = sol_data_analysis_wdgts["scan_img_file_num"].get() - 1
+                should_bw_mask = sol_data_analysis_wdgts["should_bw_mask"]
+
+                img = measurement.scan_images_dstack[:, :, file_idx] * (
+                    measurement.data[file_idx].general.image_bw_mask if should_bw_mask else 1
+                )
+                roi = measurement.roi_list[file_idx]
 
                 scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)

@@ -1,15 +1,11 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
-newTemplate,YOYO300bp7uW3nsGating_angular_exc
-solImportFileSelectionPattern,1-2
+newTemplate,CNCP7uW3nsGating_angular_sted
+solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
 spadMode,free running
 solScanFloatingAmp,0
-circAoSampFreq,10000
-circDiameter,20
-circSpeed,6000
-numOfCircles,960
 maxLineLen,100
 angAoSampFreq,10000
 angle,120
@@ -20,6 +16,10 @@ maxScanFreq,40
 solPointsPerLine,149
 solTotPointsPerLine,183
 solNumLines,14
+circAoSampFreq,10000
+circDiameter,20
+circSpeed,6000
+numOfCircles,960
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
@@ -62,7 +62,7 @@ imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,1
 dataYear,2023
 dataDay,2
-dataTemplate1,YOYO300bp7uW3nsGating_angular_exc_125236_*.pkl
+dataTemplate1,CNCP7uW3nsGating_angular_sted_152707_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -107,11 +107,13 @@ tabWidget_2,0
 tabWidget_4,0
 tabWidget_3,0
 tabWidget_5,0
+circShouldPrecess,False
 accumAcf,True
 autoCrosshair,True
 alwaysSaveImg,False
 solImportReCorrelate,False
 solImportAutoLoadProcessed,False
+bwMask,False
 autoExp1,False
 grayscaleMode1,True
 measureBeamDiameter1,False
