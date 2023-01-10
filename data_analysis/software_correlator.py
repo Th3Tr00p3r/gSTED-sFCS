@@ -129,7 +129,12 @@ class SoftwareCorrelator:
                 if kwargs.get("is_verbose"):
                     print(idx + 1, end=(", " if idx < len(list_of_photon_arrays) - 1 else ""))
 
-        return self.list_output(correlator_output_list)
+        lag_list = [output.lag for output in correlator_output_list]
+        corrfunc_list = [output.corrfunc for output in correlator_output_list]
+        weights_list = [output.weights for output in correlator_output_list]
+        countrate_list = [output.countrate for output in correlator_output_list]
+
+        return SoftwareCorrelatorListOutput(lag_list, corrfunc_list, weights_list, countrate_list)
 
     def correlate(  # NOQA C901
         self, photon_array, correlator_option, filter_array=None, timebase_ms=1, **kwargs
@@ -284,13 +289,3 @@ class SoftwareCorrelator:
             weights,
             countrate,
         )
-
-    def list_output(self, correlator_output_list: list) -> SoftwareCorrelatorListOutput:
-        """Accumulate all software correlator outputs in lists"""
-
-        lag_list = [output.lag for output in correlator_output_list]
-        corrfunc_list = [output.corrfunc for output in correlator_output_list]
-        weights_list = [output.weights for output in correlator_output_list]
-        countrate_list = [output.countrate for output in correlator_output_list]
-
-        return SoftwareCorrelatorListOutput(lag_list, corrfunc_list, weights_list, countrate_list)

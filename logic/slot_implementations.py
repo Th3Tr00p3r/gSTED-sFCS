@@ -1632,7 +1632,7 @@ class MainWin:
                 scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
                 scan_image_disp.plot(roi["col"], roi["row"], color="white")
-                scan_image_disp.entitle_and_label("Pixel Number", "Line Number")
+                scan_image_disp.entitle_and_label("Pixel Index", "Line Index")
 
     def display_patterns(self, imported_template: str = None):
         """Doc."""
