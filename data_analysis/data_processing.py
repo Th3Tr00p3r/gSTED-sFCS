@@ -17,7 +17,7 @@ import skimage
 from data_analysis.workers import N_CPU_CORES, get_xcorr_input_dict
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object  # , DUMP_PATH
-from utilities.fit_tools import FIT_NAME_DICT, FitParams, curve_fit_lims
+from utilities.fit_tools import FitParams, curve_fit_lims
 from utilities.helper import (
     Gate,
     Limits,
@@ -30,6 +30,7 @@ from utilities.helper import (
 
 NAN_PLACEBO = -100  # marks starts/ends of lines
 LINE_END_ADDER = 1000
+ZERO_LINE_START_ADDER = 2000
 
 
 class CircularScanDataMixin:
@@ -61,7 +62,7 @@ class AngularScanDataMixin:
         ao_sampling_freq_hz,
         samples_per_line,
         n_lines,
-        should_fix_shift=True,
+        should_fix_shift=False,
         pix_shift=0,
         **kwargs,
     ):
@@ -97,7 +98,6 @@ class AngularScanDataMixin:
                 ao_sampling_freq_hz,
                 samples_per_line,
                 n_lines,
-                should_fix_shift=False,
                 pix_shift=pix_shift,
             )
 
@@ -732,7 +732,10 @@ class TDCPhotonFileData:
 
         elif scan_type == "line":
             valid = (line_num == idx).astype(np.int8)
-            valid[line_num == -idx] = -1
+            if idx != 0:
+                valid[line_num == -idx] = -1
+            else:
+                valid[line_num == -ZERO_LINE_START_ADDER] = -1
             valid[line_num == -idx - LINE_END_ADDER] = -2
 
             #  remove photons from wrong lines
@@ -821,6 +824,7 @@ class TDCPhotonMeasurementData(list):
                 p.get_xcorr_input_dict(xcorr_types, **kwargs) for p in self
             ]
 
+        # TODO: explain this in a comment (uniting the dicts)
         xcorr_input_dict = {
             xx: [
                 xcorr_input
@@ -967,7 +971,7 @@ class TDCCalibration:
         is_finite_y = np.isfinite(getattr(self, y_field))
 
         return curve_fit_lims(
-            FIT_NAME_DICT["exponent_with_background_fit"],
+            "exponent_with_background_fit",
             fit_param_estimate,
             xs=getattr(self, x_field)[is_finite_y],
             ys=getattr(self, y_field)[is_finite_y],
@@ -1563,7 +1567,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         line_starts = []
         line_stops = []
-        line_start_lables = []
+        line_start_labels = []
         line_stop_labels = []
         roi: Dict[str, deque] = {"row": deque([]), "col": deque([])}
 
@@ -1585,7 +1589,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw.shape)
                 line_stops_new = list(range(line_stops_new_idx, sample_runtime[-1], bw.size))
 
-                line_start_lables += [-row_idx for elem in range(len(line_starts_new))]
+                line_start_labels += [
+                    (-ZERO_LINE_START_ADDER if row_idx == 0 else -row_idx)
+                    for elem in range(len(line_starts_new))
+                ]
                 line_stop_labels += [
                     (-row_idx - LINE_END_ADDER) for elem in range(len(line_stops_new))
                 ]
@@ -1610,7 +1617,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         # convert lists/deques to numpy arrays
         roi = {key: np.array(val, dtype=np.uint16) for key, val in roi.items()}
-        line_start_lables = np.array(line_start_lables, dtype=np.int16)
+        line_start_labels = np.array(line_start_labels, dtype=np.int16)
         line_stop_labels = np.array(line_stop_labels, dtype=np.int16)
         line_starts = np.array(line_starts, dtype=np.int64)
         line_stops = np.array(line_stops, dtype=np.int64)
@@ -1625,94 +1632,107 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # keeping the single-scan, in ROI, start/stop runtimes
         p.general.all_single_scan_edges = list(
             zip(
-                line_starts_runtime[line_start_lables == line_start_lables[0]],
+                line_starts_runtime[line_start_labels == line_start_labels[0]],
                 line_stops_runtime[line_stop_labels == line_stop_labels[-1]],
             )
         )
-
-        pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
-        sorted_idxs = np.argsort(pulse_runtime)
-        new_pulse_runtime = pulse_runtime[sorted_idxs]
-        new_line_num = np.hstack(
-            (
-                line_start_lables,
-                line_stop_labels,
-                line_num * bw[line_num, pixel_num].flatten(),
-            )
-        )[sorted_idxs]
-        line_starts_nans = np.full(line_starts_runtime.size, NAN_PLACEBO, dtype=np.int16)
-        line_stops_nans = np.full(line_stops_runtime.size, NAN_PLACEBO, dtype=np.int16)
-        new_coarse = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse))[sorted_idxs]
-        new_coarse2 = np.hstack((line_starts_nans, line_stops_nans, p.raw.coarse2))[sorted_idxs]
-        new_fine = np.hstack((line_starts_nans, line_stops_nans, p.raw.fine))[sorted_idxs]
-
-        # TESTESTEST - Attempting to ignore  rows with bright spots on the single-scan level prior to correlation
 
         if kwargs.get("should_alleviate_bright_pixels"):
             if kwargs.get("is_verbose"):
                 print("Getting rid of rows with bright spots on the single-scan level...", end=" ")
 
+            n_lines_removed = 0  # TESTESTEST
+            n_total_lines = p.general.n_lines * len(p.general.all_single_scan_edges)  # TESTESTEST
+
+            line_list = np.arange(p.general.n_lines)  # initialize once
+
             # calculate the pulse runtime shift from the pixel shift
             prt_shift = pix_shift * round(self.laser_freq_hz / ao_sampling_freq_hz)
-            # caculate the mean median of all single scans
-            mean_median = np.median(cnt[img_bw]) / len(p.general.all_single_scan_edges)
             # initialize the valid indices to be all False, then set the photons in good rows (which are in ful scans) to True
-            total_valid_idxs = np.full(len(new_line_num), False, dtype=bool)
+            total_valid_photon_idxs = np.full(len(line_num), False, dtype=bool)
+            total_valid_line_idxs = np.full(len(line_starts), False, dtype=bool)
             for scan_idx, (scan_start_prt, scan_stop_prt) in enumerate(
                 p.general.all_single_scan_edges
             ):
                 # get the indices of in-scan photons
                 lims = Limits(scan_start_prt, scan_stop_prt)
-                in_scan_idxs = lims.valid_indices(new_pulse_runtime)
+                in_scan_idxs = lims.valid_indices(pulse_runtime)
 
                 # prepare scan image to discriminate bad rows (with bright pixels)
                 # TODO: can this be more quickly performed without creating an image?
-                scan_prt = new_pulse_runtime[in_scan_idxs]
+                scan_prt = pulse_runtime[in_scan_idxs]
                 scan_img, *_ = self.convert_angular_scan_to_image(
                     scan_prt + prt_shift,
                     self.laser_freq_hz,
                     ao_sampling_freq_hz,
                     p.general.samples_per_line,
                     p.general.n_lines,
-                    should_fix_shift=False,
                 )
-                # flip every second line (back and forth scanning...) # NOTE - not really needed for row discrimination
-                scan_img[1::2, :] = np.flip(scan_img[1::2, :], 1)
-                scan_img = scan_img.astype(np.float64)
 
-                # discriminate rows having pixels values higher than a global (image within ROI) median-based threshold
+                # discriminate rows having pixels values higher than a histogram-based threshold
+                bincount = np.bincount(scan_img.flatten())
+                bin_vals = np.array(range(len(bincount)))
+                # fit Gaussian to histogram
+                FP = curve_fit_lims(
+                    "gaussian_1d_fit",
+                    (bincount.max() / 10, np.mean(bin_vals), len(bin_vals) / 10, 0),
+                    bin_vals,
+                    bincount,
+                    bounds=(  # A, mu, sigma, bg
+                        [0, 0, 0, -10],
+                        [1e4, bin_vals.max(), bin_vals.max(), 0],
+                    ),
+                    x_limits=Limits(10, np.inf),
+                )
+                # get bin where fitted_y drops to 1/N_TRESH of value and use as threshold
+                THRESH_FAC = 5e2
+                try:
+                    thresh_pix_val = FP.x[
+                        (FP.x > FP.beta["mu"]) & (FP.fitted_y < FP.beta["A"] / THRESH_FAC)
+                    ][0]
+                except IndexError:
+                    thresh_pix_val = np.inf
+                # keep the bad row indices
                 scan_bad_row_labels = [
-                    row_idx
-                    for row_idx, row in enumerate(scan_img)
-                    if (row > mean_median * kwargs.get("median_factor", 1.5)).any()
+                    row_idx for row_idx, row in enumerate(scan_img) if (row > thresh_pix_val).any()
                 ]
-                line_starts_ends_labels = []
-                for row_label in scan_bad_row_labels:
-                    line_starts_ends_labels.append(-row_label)
-                    line_starts_ends_labels.append(-(1000 + row_label))
-                scan_bad_row_labels += line_starts_ends_labels
+
+                n_lines_removed += len(scan_bad_row_labels)  # TESTESTEST
+
+                #                # Check out line discrimination in each scan image # TESTESTEST
+                #                print("scan_idx: ", scan_idx) # TESTESTEST
+                #                print(f"scan_bad_row_idxs ({len(scan_bad_row_labels)} total): {scan_bad_row_labels}") # TESTESTEST
+                #                with Plotter(should_force_aspect=True) as ax: # TESTESTEST
+                #                    ax.imshow(scan_img, vmin=0, vmax=128, interpolation="none") # TESTESTEST
+                #                    for bad_row_idx in set([label for label in scan_bad_row_labels if label >= 0]): # TESTESTEST
+                #                        ax.axhline(y=bad_row_idx, color="r", lw=1, ls="--") # TESTESTEST
 
                 # get indices of all valid photons (full rows withought bright spots) in the scan
-                scan_valid_idxs = np.in1d(
-                    new_line_num[in_scan_idxs], scan_bad_row_labels, invert=True
+                scan_valid_idxs = np.in1d(line_num[in_scan_idxs], scan_bad_row_labels, invert=True)
+                total_valid_photon_idxs[in_scan_idxs] = scan_valid_idxs
+                # also get the valid line start/stop and labels indices
+                in_scan_line_idxs = slice(
+                    scan_idx * p.general.n_lines, (scan_idx + 1) * p.general.n_lines
                 )
-                total_valid_idxs[in_scan_idxs] = scan_valid_idxs
+                total_valid_line_idxs[in_scan_line_idxs] = np.in1d(
+                    line_list, scan_bad_row_labels, assume_unique=True, invert=True
+                )
+
+            print(f"removed: {n_lines_removed}/{n_total_lines} lines.")  # TESTESTEST
 
             # Now, to actually discriminate the bad rows using the accumulated indices
-            new_pulse_runtime = new_pulse_runtime[total_valid_idxs]
-            new_coarse = new_coarse[total_valid_idxs]
-            new_coarse2 = new_coarse2[total_valid_idxs]
-            new_fine = new_fine[total_valid_idxs]
-            new_line_num = new_line_num[total_valid_idxs]
+            pulse_runtime = pulse_runtime[total_valid_photon_idxs]
+            coarse = p.raw.coarse[total_valid_photon_idxs]
+            coarse2 = p.raw.coarse2[total_valid_photon_idxs]
+            fine = p.raw.fine[total_valid_photon_idxs]
 
             # create a new scan image as well
-            alleviated_image, *_ = self.convert_angular_scan_to_image(
-                new_pulse_runtime + prt_shift,
+            alleviated_image, _, pixel_num, line_num, *_ = self.convert_angular_scan_to_image(
+                pulse_runtime + prt_shift,
                 self.laser_freq_hz,
                 ao_sampling_freq_hz,
                 p.general.samples_per_line,
                 p.general.n_lines,
-                should_fix_shift=False,
             )
             # flip every second line (back and forth scanning...) # NOTE - not really needed for row discrimination
             alleviated_image[1::2, :] = np.flip(alleviated_image[1::2, :], 1)
@@ -1730,11 +1750,57 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                         img_bw[row_idx]
                     ] *= max_row_median / np.median(alleviated_image[row_idx][img_bw[row_idx]])
             p.general.normalized_masked_alleviated_image = normalized_masked_alleviated_image
-            p.general.image = normalized_masked_alleviated_image  # TESTESTEST
 
-        # /TESTESTEST
+            with Plotter(subplots=(1, 3), should_force_aspect=True) as axes:  # TESTESTEST
+                from matplotlib.colors import Normalize  # TESTESTEST
+
+                axes[0].set_title("All rows")
+                axes[0].imshow(cnt * img_bw, norm=Normalize(), interpolation="none")  # TESTESTEST
+                axes[1].set_title("Bad rows removed")
+                axes[1].imshow(
+                    alleviated_image * img_bw, norm=Normalize(), interpolation="none"
+                )  # TESTESTEST
+                axes[2].set_title("Bad rows removed -\nnormalized to max row")
+                axes[2].imshow(
+                    normalized_masked_alleviated_image * img_bw,
+                    norm=Normalize(),
+                    interpolation="none",
+                )  # TESTESTEST
+
+            # remove bad lines from line starts/stops/labels (sorting them by pulse runtime first so they match the scan line order)
+            prt_sorted_idxs = np.argsort(line_starts_runtime)
+            line_starts_runtime = line_starts_runtime[prt_sorted_idxs][total_valid_line_idxs]
+            line_stops_runtime = line_stops_runtime[prt_sorted_idxs][total_valid_line_idxs]
+            line_start_labels = line_start_labels[prt_sorted_idxs][total_valid_line_idxs]
+            line_stop_labels = line_stop_labels[prt_sorted_idxs][total_valid_line_idxs]
+
+            # update the bw mask so that the the pixels which are not included in any scan (come from the "back to origin" part of the scan?),
+            # which are the first few in line 0 and the last few in the second to last line are not included (prevents issue with bg correlation of those lines)
+            img_bw[alleviated_image == 0] = False
+
         else:
+            coarse = p.raw.coarse
+            coarse2 = p.raw.coarse2
+            fine = p.raw.fine
             p.general.image = cnt
+
+        # Inserting the line start/stop markers into the arrays
+        pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
+        #        pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, prt)) # TESTESTEST
+        sorted_idxs = np.argsort(pulse_runtime)
+        new_pulse_runtime = pulse_runtime[sorted_idxs]
+        new_line_num = np.hstack(
+            (
+                line_start_labels,
+                line_stop_labels,
+                line_num * bw[line_num, pixel_num].flatten(),
+            )
+        )[sorted_idxs]
+        line_starts_nans = np.full(line_starts_runtime.size, NAN_PLACEBO, dtype=np.int16)
+        line_stops_nans = np.full(line_stops_runtime.size, NAN_PLACEBO, dtype=np.int16)
+        new_coarse = np.hstack((line_starts_nans, line_stops_nans, coarse))[sorted_idxs]
+        new_coarse2 = np.hstack((line_starts_nans, line_stops_nans, coarse2))[sorted_idxs]
+        new_fine = np.hstack((line_starts_nans, line_stops_nans, fine))[sorted_idxs]
 
         # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
         delay_time = np.full(new_pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16)
@@ -1762,7 +1828,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # get background correlation
         if kwargs.get("is_verbose"):
             print("Getting background correlation...", end=" ")
-        p.general.valid_lines = np.unique(new_line_num[new_line_num > 0])
+        p.general.valid_lines = np.unique(new_line_num[new_line_num >= 0])
         p.general.bg_line_corr = self._bg_line_correlations(
             p.general.image,
             img_bw,
