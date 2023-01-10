@@ -32,12 +32,7 @@ from utilities.file_utilities import (
     prepare_file_paths,
     save_object,
 )
-from utilities.fit_tools import (
-    FIT_NAME_DICT,
-    FitParams,
-    curve_fit_lims,
-    multi_exponent_fit,
-)
+from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
 from utilities.helper import (
     EPS,
     Gate,
@@ -527,7 +522,7 @@ class CorrFunc:
             error_y = error_y[1:]
 
         FP = curve_fit_lims(
-            FIT_NAME_DICT[fit_name],
+            fit_name,
             fit_param_estimate,
             x,
             y,
@@ -815,8 +810,8 @@ class SolutionSFCSMeasurement:
                         zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
                     ):
                         ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
-                        ax.set_xlabel("Pixel Number")
-                        ax.set_ylabel("Line Number")
+                        ax.set_xlabel("Pixel Index")
+                        ax.set_ylabel("Line Index")
                         ax.imshow(image, interpolation="none")
                         ax.plot(roi["col"], roi["row"], color="white")
             elif self.scan_type == "circle":
@@ -1820,7 +1815,7 @@ class SolutionSFCSExperiment:
 
             elif sted_field == "paraboloid":
                 fit_params = curve_fit_lims(
-                    FIT_NAME_DICT["ratio_of_lifetime_histograms_fit"],
+                    "ratio_of_lifetime_histograms_fit",
                     param_estimates=(2, 1, 1),
                     xs=t[j_selected],
                     ys=hist_ratio[j_selected],

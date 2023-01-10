@@ -48,6 +48,7 @@ class FitParams:
             self.sigma = self.ys_errors[self.valid_idxs]
         except TypeError:
             self.sigma = 1
+        self.fitted_y = self.fit_func(self.x, *self.beta.values())
 
     def plot(self, color=None, fit_label="Fit", **kwargs):
         """Doc."""
@@ -90,17 +91,20 @@ class FitParams:
 
 
 def curve_fit_lims(
-    fit_func,
+    fit_name,
     param_estimates,
     xs,
     ys,
     ys_errors=None,
     x_limits=Limits(),
     y_limits=Limits(),
+    should_plot=False,
     plot_kwargs={},
     **kwargs,
 ) -> FitParams:
     """Doc."""
+
+    fit_func = FIT_NAME_DICT[fit_name]
 
     if ys_errors is None:
         ys_errors = np.ones(ys.shape)
@@ -120,7 +124,7 @@ def curve_fit_lims(
         **kwargs,
     )
 
-    if kwargs.get("should_plot"):
+    if should_plot:
         FP.plot(**plot_kwargs)
 
     return FP
@@ -148,7 +152,7 @@ def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
 
     if meas_type == "confocal":
         fp = curve_fit_lims(
-            FIT_NAME_DICT["exponent_with_background_fit"],
+            "exponent_with_background_fit",
             [ys.max(), 3.5, ys.min() * 10],  # TODO: choose better starting values?
             bounds=([0] * 3, [np.inf, 10, np.inf]),
             xs=xs,
@@ -159,7 +163,7 @@ def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
         )
     elif meas_type == "sted":
         fp = curve_fit_lims(
-            FIT_NAME_DICT["sted_hist_fit"],
+            "sted_hist_fit",
             # A, tau, sigma0, sigma, bg
             [ys.max(), 1, 1e-5, 1, ys.min() * 10],  # TODO: choose better starting values?
             bounds=([0] * 5, [np.inf, 10, 1, np.inf, np.inf]),
