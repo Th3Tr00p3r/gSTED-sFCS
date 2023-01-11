@@ -25,6 +25,7 @@ from utilities.helper import (
     chunked_bincount,
     div_ceil,
     nan_helper,
+    unify_length,
     xcorr,
 )
 
@@ -188,6 +189,52 @@ class AngularScanDataMixin:
         #            ax.imshow(bw)
 
         return bw
+
+    def _get_line_markers_and_roi(self, bw_mask: np.ndarray, sample_runtime: np.ndarray):
+        """Doc."""
+
+        line_starts = []
+        line_stops = []
+        line_start_labels = []
+        line_stop_labels = []
+        roi: Dict[str, deque] = {"row": deque([]), "col": deque([])}
+
+        for row_idx in np.unique(bw_mask.nonzero()[0]):
+            nonzero_row_idxs = bw_mask[row_idx, :].nonzero()[0]
+            # set mask to True between non-zero edges of row
+            left_edge, right_edge = nonzero_row_idxs[0], nonzero_row_idxs[-1]
+            bw_mask[row_idx, left_edge:right_edge] = True
+            # add row to ROI
+            roi["row"].appendleft(row_idx)
+            roi["col"].appendleft(left_edge)
+            roi["row"].append(row_idx)
+            roi["col"].append(right_edge)
+
+            line_starts_new_idx = np.ravel_multi_index((row_idx, left_edge), bw_mask.shape)
+            line_starts_new = list(range(line_starts_new_idx, sample_runtime[-1], bw_mask.size))
+            line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw_mask.shape)
+            line_stops_new = list(range(line_stops_new_idx, sample_runtime[-1], bw_mask.size))
+
+            line_start_labels += [
+                (-ZERO_LINE_START_ADDER if row_idx == 0 else -row_idx)
+                for elem in range(len(line_starts_new))
+            ]
+            line_stop_labels += [(-row_idx - LINE_END_ADDER) for elem in range(len(line_stops_new))]
+            line_starts += line_starts_new
+            line_stops += line_stops_new
+
+        # repeat first point to close the polygon
+        roi["row"].append(roi["row"][0])
+        roi["col"].append(roi["col"][0])
+
+        # convert lists/deques to numpy arrays
+        roi = {key: np.array(val, dtype=np.uint16) for key, val in roi.items()}
+        line_start_labels = np.array(line_start_labels, dtype=np.int16)
+        line_stop_labels = np.array(line_stop_labels, dtype=np.int16)
+        line_starts = np.array(line_starts, dtype=np.int64)
+        line_stops = np.array(line_stops, dtype=np.int64)
+
+        return line_starts, line_stops, line_start_labels, line_stop_labels, roi
 
     def _bg_line_correlations(
         self,
@@ -1542,107 +1589,66 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             if kwargs.get("is_verbose"):
                 print("Thresholding and smoothing...", end=" ")
             try:
-                bw = self._threshold_and_smooth(cnt.copy())
+                img_bw = self._threshold_and_smooth(cnt.copy())
             except ValueError:
                 raise RuntimeError("Automatic ROI selection: Thresholding failed")
                 return None
         elif roi_selection == "all":
-            bw = np.full(cnt.shape, True)
+            img_bw = np.full(cnt.shape, True)
         else:
             raise ValueError(
                 f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
             )
 
         # cut edges
-        bw_temp = np.full(bw.shape, False, dtype=bool)
-        bw_temp[:, linear_part] = bw[:, linear_part]
-        bw = bw_temp
+        bw_temp = np.full(img_bw.shape, False, dtype=bool)
+        bw_temp[:, linear_part] = img_bw[:, linear_part]
+        img_bw = bw_temp
 
-        # discard short and fill long rows
-        m2 = np.sum(bw, axis=1)
-        bw[m2 < 0.5 * m2.max(), :] = False
+        # discard short rows, then fill long rows
+        m2 = np.sum(img_bw, axis=1)
+        img_bw[m2 < 0.5 * m2.max(), :] = False
+        true_vals = np.argwhere(img_bw)
+        for row_idx in np.unique(img_bw.nonzero()[0]):
+            true_idxs = true_vals[true_vals[:, 0] == row_idx][:, 1]
+            img_bw[row_idx, true_idxs.min() : true_idxs.max() + 1] = True
 
-        if kwargs.get("is_verbose"):
-            print("Building ROI...", end=" ")
-
-        line_starts = []
-        line_stops = []
-        line_start_labels = []
-        line_stop_labels = []
-        roi: Dict[str, deque] = {"row": deque([]), "col": deque([])}
-
-        bw_rows, _ = bw.shape
-        for row_idx in range(bw_rows):
-            nonzero_row_idxs = bw[row_idx, :].nonzero()[0]
-            if nonzero_row_idxs.size != 0:  # if bw row has nonzero elements
-                # set mask to True between non-zero edges of row
-                left_edge, right_edge = nonzero_row_idxs[0], nonzero_row_idxs[-1]
-                bw[row_idx, left_edge:right_edge] = True
-                # add row to ROI
-                roi["row"].appendleft(row_idx)
-                roi["col"].appendleft(left_edge)
-                roi["row"].append(row_idx)
-                roi["col"].append(right_edge)
-
-                line_starts_new_idx = np.ravel_multi_index((row_idx, left_edge), bw.shape)
-                line_starts_new = list(range(line_starts_new_idx, sample_runtime[-1], bw.size))
-                line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw.shape)
-                line_stops_new = list(range(line_stops_new_idx, sample_runtime[-1], bw.size))
-
-                line_start_labels += [
-                    (-ZERO_LINE_START_ADDER if row_idx == 0 else -row_idx)
-                    for elem in range(len(line_starts_new))
-                ]
-                line_stop_labels += [
-                    (-row_idx - LINE_END_ADDER) for elem in range(len(line_stops_new))
-                ]
-                line_starts += line_starts_new
-                line_stops += line_stops_new
-
-        try:
-            # repeat first point to close the polygon
-            roi["row"].append(roi["row"][0])
-            roi["col"].append(roi["col"][0])
-        except IndexError:
-            if kwargs.get("is_verbose"):
-                print("ROI is empty (need to figure out the cause). Skipping file.\n")
-            return None
-
-        # keep a copy as an "image mask", then reverse 2nd rows again to continue with a "data mask"
-        img_bw = bw.copy()
+        # create a copy and reverse 2nd rows again to get a "data mask"
+        bw = img_bw.copy()
         bw[1::2, :] = np.flip(bw[1::2, :], 1)
 
         if kwargs.get("is_verbose"):
-            print("Inserting line markers to arrays...", end=" ")
-
-        # convert lists/deques to numpy arrays
-        roi = {key: np.array(val, dtype=np.uint16) for key, val in roi.items()}
-        line_start_labels = np.array(line_start_labels, dtype=np.int16)
-        line_stop_labels = np.array(line_stop_labels, dtype=np.int16)
-        line_starts = np.array(line_starts, dtype=np.int64)
-        line_stops = np.array(line_stops, dtype=np.int64)
-
-        line_starts_runtime: np.ndarray = line_starts * round(
-            self.laser_freq_hz / ao_sampling_freq_hz
-        )
-        line_stops_runtime: np.ndarray = line_stops * round(
-            self.laser_freq_hz / ao_sampling_freq_hz
-        )
-
-        # keeping the single-scan, in ROI, start/stop runtimes
-        p.general.all_single_scan_edges = list(
-            zip(
-                line_starts_runtime[line_start_labels == line_start_labels[0]],
-                line_stops_runtime[line_stop_labels == line_stop_labels[-1]],
-            )
-        )
+            print("Building ROI...", end=" ")
 
         if kwargs.get("should_alleviate_bright_pixels"):
             if kwargs.get("is_verbose"):
                 print("Getting rid of rows with bright spots on the single-scan level...", end=" ")
 
+            # work with entire scan image, then return to ROI lines start/stops after
+            (
+                whole_line_starts,
+                whole_line_stops,
+                whole_line_start_labels,
+                whole_line_stop_labels,
+                _,
+            ) = self._get_line_markers_and_roi(np.full(cnt.shape, True), sample_runtime)
+            whole_line_starts_prt: np.ndarray = whole_line_starts * round(
+                self.laser_freq_hz / ao_sampling_freq_hz
+            )
+            whole_line_stops_prt: np.ndarray = whole_line_stops * round(
+                self.laser_freq_hz / ao_sampling_freq_hz
+            )
+
+            # keeping the single-scan, in ROI, start/stop runtimes
+            single_scan_edges = list(
+                zip(
+                    whole_line_starts_prt[whole_line_start_labels == whole_line_start_labels[0]],
+                    whole_line_stops_prt[whole_line_stop_labels == whole_line_stop_labels[-1]],
+                )
+            )
+
             n_lines_removed = 0  # TESTESTEST
-            n_total_lines = p.general.n_lines * len(p.general.all_single_scan_edges)  # TESTESTEST
+            n_total_lines = p.general.n_lines * len(single_scan_edges)  # TESTESTEST
 
             line_list = np.arange(p.general.n_lines)  # initialize once
 
@@ -1650,10 +1656,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             prt_shift = pix_shift * round(self.laser_freq_hz / ao_sampling_freq_hz)
             # initialize the valid indices to be all False, then set the photons in good rows (which are in ful scans) to True
             total_valid_photon_idxs = np.full(len(line_num), False, dtype=bool)
-            total_valid_line_idxs = np.full(len(line_starts), False, dtype=bool)
-            for scan_idx, (scan_start_prt, scan_stop_prt) in enumerate(
-                p.general.all_single_scan_edges
-            ):
+            total_valid_line_idxs = np.full(len(whole_line_starts_prt), False, dtype=bool)
+            for scan_idx, (scan_start_prt, scan_stop_prt) in enumerate(single_scan_edges):
                 # get the indices of in-scan photons
                 lims = Limits(scan_start_prt, scan_stop_prt)
                 in_scan_idxs = lims.valid_indices(pulse_runtime)
@@ -1670,32 +1674,42 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 )
 
                 # discriminate rows having pixels values higher than a histogram-based threshold
-                bincount = np.bincount(scan_img.flatten())
-                bin_vals = np.array(range(len(bincount)))
+                # select number of bins based on number of unique values in ROI
+                n_unique = len(np.unique(scan_img[img_bw]))
+                n_bins = max(10, round(n_unique / 3.5))
+
+                scan_hist, bin_edges = np.histogram(scan_img[img_bw], bins=n_bins)
+                bin_num = np.arange(len(scan_hist))
+                bg_part = round(n_bins / 10)
+
                 # fit Gaussian to histogram
                 FP = curve_fit_lims(
                     "gaussian_1d_fit",
-                    (bincount.max() / 10, np.mean(bin_vals), len(bin_vals) / 10, 0),
-                    bin_vals,
-                    bincount,
+                    (
+                        scan_hist[bg_part:].max() / 10,
+                        np.mean(bin_num[bg_part:]),
+                        len(bin_num[bg_part:]) / 10,
+                        0,
+                    ),
+                    bin_num[bg_part:],
+                    scan_hist[bg_part:],
                     bounds=(  # A, mu, sigma, bg
                         [0, 0, 0, -10],
-                        [1e4, bin_vals.max(), bin_vals.max(), 0],
+                        [1e4, bin_num.max(), bin_num.max(), 0],
                     ),
-                    x_limits=Limits(10, np.inf),
                 )
                 # get bin where fitted_y drops to 1/N_TRESH of value and use as threshold
-                THRESH_FAC = 5e2
+                THRESH_FAC = 75
                 try:
-                    thresh_pix_val = FP.x[
+                    thresh_bin = FP.x[
                         (FP.x > FP.beta["mu"]) & (FP.fitted_y < FP.beta["A"] / THRESH_FAC)
                     ][0]
                 except IndexError:
-                    thresh_pix_val = np.inf
-                # keep the bad row indices
-                scan_bad_row_labels = [
-                    row_idx for row_idx, row in enumerate(scan_img) if (row > thresh_pix_val).any()
-                ]
+                    thresh_bin = bin_num.max()
+
+                # get the bad rows
+                d = np.digitize(scan_img, bin_edges)
+                scan_bad_row_labels = np.unique((d > thresh_bin).nonzero()[0])
 
                 n_lines_removed += len(scan_bad_row_labels)  # TESTESTEST
 
@@ -1727,7 +1741,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             fine = p.raw.fine[total_valid_photon_idxs]
 
             # create a new scan image as well
-            alleviated_image, _, pixel_num, line_num, *_ = self.convert_angular_scan_to_image(
+            (
+                alleviated_image,
+                alleviated_sample_runtime,
+                pixel_num,
+                line_num,
+                *_,
+            ) = self.convert_angular_scan_to_image(
                 pulse_runtime + prt_shift,
                 self.laser_freq_hz,
                 ao_sampling_freq_hz,
@@ -1739,12 +1759,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             p.general.image = alleviated_image
 
             # and a row-normalized version for clarity
+            # TODO: this should be made a generalized function, and move to GUI as a display option (False by default!)
             temp_img = alleviated_image.copy().astype(np.float64)
             temp_img[~img_bw] = 0
             max_row = np.argmax(temp_img.sum(axis=1))
             max_row_median = np.median(alleviated_image[max_row][img_bw[max_row]])
-            normalized_masked_alleviated_image = alleviated_image.copy().astype(np.float64)
-            for row_idx in range(normalized_masked_alleviated_image.shape[0]):
+            normalized_masked_alleviated_image = (alleviated_image * img_bw).astype(np.float64)
+            for row_idx in np.unique(normalized_masked_alleviated_image.nonzero()[0]):
                 if np.median(alleviated_image[row_idx]):
                     normalized_masked_alleviated_image[row_idx][
                         img_bw[row_idx]
@@ -1762,31 +1783,62 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 )  # TESTESTEST
                 axes[2].set_title("Bad rows removed -\nnormalized to max row")
                 axes[2].imshow(
-                    normalized_masked_alleviated_image * img_bw,
+                    normalized_masked_alleviated_image,
                     norm=Normalize(),
                     interpolation="none",
                 )  # TESTESTEST
 
+            # Now cut crop the filtered lines using the ROI
+            (
+                line_starts,
+                line_stops,
+                line_start_labels,
+                line_stop_labels,
+                roi,
+            ) = self._get_line_markers_and_roi(img_bw, alleviated_sample_runtime)
+            line_starts_prt: np.ndarray = line_starts * round(
+                self.laser_freq_hz / ao_sampling_freq_hz
+            )
+            line_stops_prt: np.ndarray = line_stops * round(
+                self.laser_freq_hz / ao_sampling_freq_hz
+            )
+
             # remove bad lines from line starts/stops/labels (sorting them by pulse runtime first so they match the scan line order)
-            prt_sorted_idxs = np.argsort(line_starts_runtime)
-            line_starts_runtime = line_starts_runtime[prt_sorted_idxs][total_valid_line_idxs]
-            line_stops_runtime = line_stops_runtime[prt_sorted_idxs][total_valid_line_idxs]
+            # ensure uniform length (as it happens, I have encountered cases where line starts (and start labels) is longer by 1 then line stops/labels)
+            line_starts_prt = unify_length(line_starts_prt, line_stops_prt.shape)
+            line_start_labels = unify_length(line_start_labels, line_stop_labels.shape)
+            total_valid_line_idxs = unify_length(total_valid_line_idxs, line_starts_prt.shape)
+            # sort and filter
+            prt_sorted_idxs = np.argsort(line_starts_prt)
+            line_starts_prt = line_starts_prt[prt_sorted_idxs][total_valid_line_idxs]
+            line_stops_prt = line_stops_prt[prt_sorted_idxs][total_valid_line_idxs]
             line_start_labels = line_start_labels[prt_sorted_idxs][total_valid_line_idxs]
             line_stop_labels = line_stop_labels[prt_sorted_idxs][total_valid_line_idxs]
 
-            # update the bw mask so that the the pixels which are not included in any scan (come from the "back to origin" part of the scan?),
-            # which are the first few in line 0 and the last few in the second to last line are not included (prevents issue with bg correlation of those lines)
-            img_bw[alleviated_image == 0] = False
-
         else:
+            try:
+                (
+                    line_starts,
+                    line_stops,
+                    line_start_labels,
+                    line_stop_labels,
+                    roi,
+                ) = self._get_line_markers_and_roi(img_bw, sample_runtime)
+            except IndexError:
+                if kwargs.get("is_verbose"):
+                    print("ROI is empty (need to figure out the cause). Skipping file.\n")
+                return None
+
+            line_starts_prt = line_starts * round(self.laser_freq_hz / ao_sampling_freq_hz)
+            line_stops_prt = line_stops * round(self.laser_freq_hz / ao_sampling_freq_hz)
+
             coarse = p.raw.coarse
             coarse2 = p.raw.coarse2
             fine = p.raw.fine
             p.general.image = cnt
 
         # Inserting the line start/stop markers into the arrays
-        pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, pulse_runtime))
-        #        pulse_runtime = np.hstack((line_starts_runtime, line_stops_runtime, prt)) # TESTESTEST
+        pulse_runtime = np.hstack((line_starts_prt, line_stops_prt, pulse_runtime))
         sorted_idxs = np.argsort(pulse_runtime)
         new_pulse_runtime = pulse_runtime[sorted_idxs]
         new_line_num = np.hstack(
@@ -1796,8 +1848,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 line_num * bw[line_num, pixel_num].flatten(),
             )
         )[sorted_idxs]
-        line_starts_nans = np.full(line_starts_runtime.size, NAN_PLACEBO, dtype=np.int16)
-        line_stops_nans = np.full(line_stops_runtime.size, NAN_PLACEBO, dtype=np.int16)
+        line_starts_nans = np.full(line_starts_prt.size, NAN_PLACEBO, dtype=np.int16)
+        line_stops_nans = np.full(line_stops_prt.size, NAN_PLACEBO, dtype=np.int16)
         new_coarse = np.hstack((line_starts_nans, line_stops_nans, coarse))[sorted_idxs]
         new_coarse2 = np.hstack((line_starts_nans, line_stops_nans, coarse2))[sorted_idxs]
         new_fine = np.hstack((line_starts_nans, line_stops_nans, fine))[sorted_idxs]

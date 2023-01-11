@@ -1,7 +1,7 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
 newTemplate,CNCP7uW3nsGating_angular_sted
-solImportFileSelectionPattern,1
+solImportFileSelectionPattern,3
 lineEdit,
 experimentName,test
 spadMode,free running
