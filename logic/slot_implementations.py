@@ -1631,10 +1631,8 @@ class MainWin:
                 roi = measurement.roi_list[file_idx]
 
                 if should_normalize_rows:
-                    img = AngularScanDataMixin().normalize_scan_img_rows(
-                        img, mask if should_bw_mask else None
-                    )
-                elif should_bw_mask:
+                    img = AngularScanDataMixin().normalize_scan_img_rows(img, mask)
+                if should_bw_mask:
                     img *= mask
 
                 scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
