@@ -291,6 +291,7 @@ SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
     imported_templates=("importedSolDataTemplates1", "QComboBox", "main", True),
     scan_img_file_num=("scanImgFileNum", "QSpinBox", "main", True),
     should_bw_mask=("bwMask", "QCheckBox", "main", False),
+    should_normalize_rows=("normRows", "QCheckBox", "main", False),
     scan_settings=("solAnalysisScanSettings", "QPlainTextEdit", "main", True),
     scan_duration_min=("solAnalysisDur", "QDoubleSpinBox", "main", True),
     n_files=("solAnalysisNumFiles", "QSpinBox", "main", True),
