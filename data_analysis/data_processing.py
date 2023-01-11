@@ -280,6 +280,25 @@ class AngularScanDataMixin:
                 )
         return line_corr_list
 
+    def normalize_scan_img_rows(self, img: np.ndarray, mask=None):
+        """Normalize an image to the median of the maximum row. Optionally use a supplied mask first."""
+
+        if mask is None:
+            mask = np.full(img.shape, True, dtype=np.bool)
+            mask[-1, :] = False  # last row is always empty
+
+        temp_img = img.copy().astype(np.float64)
+        temp_img[~mask] = 0
+        max_row = np.argmax(temp_img.sum(axis=1))
+        max_row_median = np.median(img[max_row][mask[max_row]])
+        norm_masked_img = (img * mask).astype(np.float64)
+        for row_idx in np.unique(norm_masked_img.nonzero()[0]):
+            if mask[row_idx].any():
+                norm_masked_img[row_idx][mask[row_idx]] *= max_row_median / np.median(
+                    img[row_idx][mask[row_idx]]
+                )
+        return norm_masked_img
+
 
 class RawFileData:
     """
@@ -553,7 +572,7 @@ class GeneralFileData:
     bw_mask: np.ndarray = None
     image_bw_mask: np.ndarray = None
     pix_shift: int = None
-    all_single_scan_edges: List[Tuple[int, int]] = None
+    single_scan_edges: List[Tuple[int, int]] = None
     normalized_masked_alleviated_image: np.ndarray = None
 
 
@@ -1582,8 +1601,31 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             pixel_num[start_idx:end_idx] = sec_pixel_num
             line_num[start_idx:end_idx] = sec_line_num
 
-        # invert every second line
+        # invert every second to get proper image (back and forth scan)
         cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
+
+        # work with entire scan image, then return to ROI lines start/stops after
+        (
+            whole_line_starts,
+            whole_line_stops,
+            whole_line_start_labels,
+            whole_line_stop_labels,
+            _,
+        ) = self._get_line_markers_and_roi(np.full(cnt.shape, True), sample_runtime)
+        whole_line_starts_prt: np.ndarray = whole_line_starts * round(
+            self.laser_freq_hz / ao_sampling_freq_hz
+        )
+        whole_line_stops_prt: np.ndarray = whole_line_stops * round(
+            self.laser_freq_hz / ao_sampling_freq_hz
+        )
+
+        # keeping the single-scan, in ROI, start/stop runtimes
+        single_scan_edges = list(
+            zip(
+                whole_line_starts_prt[whole_line_start_labels == whole_line_start_labels[0]],
+                whole_line_stops_prt[whole_line_stop_labels == whole_line_stop_labels[-1]],
+            )
+        )
 
         if roi_selection == "auto":
             if kwargs.get("is_verbose"):
@@ -1624,29 +1666,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             if kwargs.get("is_verbose"):
                 print("Getting rid of rows with bright spots on the single-scan level...", end=" ")
 
-            # work with entire scan image, then return to ROI lines start/stops after
-            (
-                whole_line_starts,
-                whole_line_stops,
-                whole_line_start_labels,
-                whole_line_stop_labels,
-                _,
-            ) = self._get_line_markers_and_roi(np.full(cnt.shape, True), sample_runtime)
-            whole_line_starts_prt: np.ndarray = whole_line_starts * round(
-                self.laser_freq_hz / ao_sampling_freq_hz
-            )
-            whole_line_stops_prt: np.ndarray = whole_line_stops * round(
-                self.laser_freq_hz / ao_sampling_freq_hz
-            )
-
-            # keeping the single-scan, in ROI, start/stop runtimes
-            single_scan_edges = list(
-                zip(
-                    whole_line_starts_prt[whole_line_start_labels == whole_line_start_labels[0]],
-                    whole_line_stops_prt[whole_line_stop_labels == whole_line_stop_labels[-1]],
-                )
-            )
-
             n_lines_removed = 0  # TESTESTEST
             n_total_lines = p.general.n_lines * len(single_scan_edges)  # TESTESTEST
 
@@ -1656,7 +1675,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             prt_shift = pix_shift * round(self.laser_freq_hz / ao_sampling_freq_hz)
             # initialize the valid indices to be all False, then set the photons in good rows (which are in ful scans) to True
             total_valid_photon_idxs = np.full(len(line_num), False, dtype=bool)
-            total_valid_line_idxs = np.full(len(whole_line_starts_prt), False, dtype=bool)
+            total_valid_line_idxs = np.full(
+                (len(single_scan_edges), p.general.n_lines), False, dtype=bool
+            )
             for scan_idx, (scan_start_prt, scan_stop_prt) in enumerate(single_scan_edges):
                 # get the indices of in-scan photons
                 lims = Limits(scan_start_prt, scan_stop_prt)
@@ -1725,10 +1746,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 scan_valid_idxs = np.in1d(line_num[in_scan_idxs], scan_bad_row_labels, invert=True)
                 total_valid_photon_idxs[in_scan_idxs] = scan_valid_idxs
                 # also get the valid line start/stop and labels indices
-                in_scan_line_idxs = slice(
-                    scan_idx * p.general.n_lines, (scan_idx + 1) * p.general.n_lines
-                )
-                total_valid_line_idxs[in_scan_line_idxs] = np.in1d(
+                total_valid_line_idxs[scan_idx] = np.in1d(
                     line_list, scan_bad_row_labels, assume_unique=True, invert=True
                 )
 
@@ -1758,36 +1776,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             alleviated_image[1::2, :] = np.flip(alleviated_image[1::2, :], 1)
             p.general.image = alleviated_image
 
-            # and a row-normalized version for clarity
-            # TODO: this should be made a generalized function, and move to GUI as a display option (False by default!)
-            temp_img = alleviated_image.copy().astype(np.float64)
-            temp_img[~img_bw] = 0
-            max_row = np.argmax(temp_img.sum(axis=1))
-            max_row_median = np.median(alleviated_image[max_row][img_bw[max_row]])
-            normalized_masked_alleviated_image = (alleviated_image * img_bw).astype(np.float64)
-            for row_idx in np.unique(normalized_masked_alleviated_image.nonzero()[0]):
-                if np.median(alleviated_image[row_idx]):
-                    normalized_masked_alleviated_image[row_idx][
-                        img_bw[row_idx]
-                    ] *= max_row_median / np.median(alleviated_image[row_idx][img_bw[row_idx]])
-            p.general.normalized_masked_alleviated_image = normalized_masked_alleviated_image
-
-            with Plotter(subplots=(1, 3), should_force_aspect=True) as axes:  # TESTESTEST
-                from matplotlib.colors import Normalize  # TESTESTEST
-
-                axes[0].set_title("All rows")
-                axes[0].imshow(cnt * img_bw, norm=Normalize(), interpolation="none")  # TESTESTEST
-                axes[1].set_title("Bad rows removed")
-                axes[1].imshow(
-                    alleviated_image * img_bw, norm=Normalize(), interpolation="none"
-                )  # TESTESTEST
-                axes[2].set_title("Bad rows removed -\nnormalized to max row")
-                axes[2].imshow(
-                    normalized_masked_alleviated_image,
-                    norm=Normalize(),
-                    interpolation="none",
-                )  # TESTESTEST
-
             # Now cut crop the filtered lines using the ROI
             (
                 line_starts,
@@ -1803,17 +1791,19 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 self.laser_freq_hz / ao_sampling_freq_hz
             )
 
+            # use only the indices of lines within the ROI
+            roi_valid_line_idxs = total_valid_line_idxs[:, : roi["row"].max() + 1].flatten()
+
             # remove bad lines from line starts/stops/labels (sorting them by pulse runtime first so they match the scan line order)
             # ensure uniform length (as it happens, I have encountered cases where line starts (and start labels) is longer by 1 then line stops/labels)
             line_starts_prt = unify_length(line_starts_prt, line_stops_prt.shape)
             line_start_labels = unify_length(line_start_labels, line_stop_labels.shape)
-            total_valid_line_idxs = unify_length(total_valid_line_idxs, line_starts_prt.shape)
             # sort and filter
             prt_sorted_idxs = np.argsort(line_starts_prt)
-            line_starts_prt = line_starts_prt[prt_sorted_idxs][total_valid_line_idxs]
-            line_stops_prt = line_stops_prt[prt_sorted_idxs][total_valid_line_idxs]
-            line_start_labels = line_start_labels[prt_sorted_idxs][total_valid_line_idxs]
-            line_stop_labels = line_stop_labels[prt_sorted_idxs][total_valid_line_idxs]
+            line_starts_prt = line_starts_prt[prt_sorted_idxs][roi_valid_line_idxs]
+            line_stops_prt = line_stops_prt[prt_sorted_idxs][roi_valid_line_idxs]
+            line_start_labels = line_start_labels[prt_sorted_idxs][roi_valid_line_idxs]
+            line_stop_labels = line_stop_labels[prt_sorted_idxs][roi_valid_line_idxs]
 
         else:
             try:
@@ -1876,6 +1866,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         p.general.image_bw_mask = img_bw
         p.general.roi = roi
         p.general.pix_shift = pix_shift
+        p.general.single_scan_edges = single_scan_edges
 
         # get background correlation
         if kwargs.get("is_verbose"):

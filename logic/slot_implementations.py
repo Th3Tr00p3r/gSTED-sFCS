@@ -27,6 +27,7 @@ from data_analysis.correlation_function import (
     SolutionSFCSExperiment,
     SolutionSFCSMeasurement,
 )
+from data_analysis.data_processing import AngularScanDataMixin
 from logic.scan_patterns import ScanPatternAO
 from utilities import file_utilities, fit_tools, helper
 from utilities.display import GuiDisplay, auto_brightness_and_contrast
@@ -1623,11 +1624,18 @@ class MainWin:
 
                 file_idx = sol_data_analysis_wdgts["scan_img_file_num"].get() - 1
                 should_bw_mask = sol_data_analysis_wdgts["should_bw_mask"]
+                should_normalize_rows = sol_data_analysis_wdgts["should_normalize_rows"]
 
-                img = measurement.scan_images_dstack[:, :, file_idx] * (
-                    measurement.data[file_idx].general.image_bw_mask if should_bw_mask else 1
-                )
+                mask = measurement.data[file_idx].general.image_bw_mask
+                img = measurement.scan_images_dstack[:, :, file_idx].copy()
                 roi = measurement.roi_list[file_idx]
+
+                if should_normalize_rows:
+                    img = AngularScanDataMixin().normalize_scan_img_rows(
+                        img, mask if should_bw_mask else None
+                    )
+                elif should_bw_mask:
+                    img *= mask
 
                 scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
