@@ -291,12 +291,10 @@ class AngularScanDataMixin:
         temp_img[~mask] = 0
         max_row = np.argmax(temp_img.sum(axis=1))
         max_row_median = np.median(img[max_row][mask[max_row]])
-        norm_masked_img = (img * mask).astype(np.float64)
+        norm_masked_img = img.astype(np.float64)
         for row_idx in np.unique(norm_masked_img.nonzero()[0]):
             if mask[row_idx].any():
-                norm_masked_img[row_idx][mask[row_idx]] *= max_row_median / np.median(
-                    img[row_idx][mask[row_idx]]
-                )
+                norm_masked_img[row_idx] *= max_row_median / np.median(img[row_idx][mask[row_idx]])
         return norm_masked_img
 
 
@@ -1702,6 +1700,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 scan_hist, bin_edges = np.histogram(scan_img[img_bw], bins=n_bins)
                 bin_num = np.arange(len(scan_hist))
                 bg_part = round(n_bins / 10)
+
+                #                print("scan_idx: ", scan_idx) # TESTESTEST
 
                 # fit Gaussian to histogram
                 FP = curve_fit_lims(
