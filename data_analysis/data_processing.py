@@ -211,17 +211,30 @@ class AngularScanDataMixin:
             roi["col"].append(right_edge)
 
             line_starts_new_idx = np.ravel_multi_index((row_idx, left_edge), bw_mask.shape)
-            line_starts_new = list(range(line_starts_new_idx, sample_runtime[-1], bw_mask.size))
+            line_starts_new = list(
+                range(sample_runtime[0] + line_starts_new_idx, sample_runtime[-1], bw_mask.size)
+            )
             line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw_mask.shape)
-            line_stops_new = list(range(line_stops_new_idx, sample_runtime[-1], bw_mask.size))
+            line_stops_new = list(
+                range(sample_runtime[0] + line_stops_new_idx, sample_runtime[-1], bw_mask.size)
+            )
 
-            line_start_labels += [
-                (-ZERO_LINE_START_ADDER if row_idx == 0 else -row_idx)
-                for elem in range(len(line_starts_new))
-            ]
-            line_stop_labels += [(-row_idx - LINE_END_ADDER) for elem in range(len(line_stops_new))]
-            line_starts += line_starts_new
-            line_stops += line_stops_new
+            try:
+                line_starts_new, line_stops_new = [
+                    list(tup) for tup in zip(*zip(line_starts_new, line_stops_new))
+                ]
+            except ValueError:
+                continue
+            else:
+                line_start_labels += [
+                    (-ZERO_LINE_START_ADDER if row_idx == 0 else -row_idx)
+                    for elem in range(len(line_starts_new))
+                ]
+                line_stop_labels += [
+                    (-row_idx - LINE_END_ADDER) for elem in range(len(line_stops_new))
+                ]
+                line_starts += line_starts_new
+                line_stops += line_stops_new
 
         # repeat first point to close the polygon
         roi["row"].append(roi["row"][0])
