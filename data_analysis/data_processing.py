@@ -259,6 +259,48 @@ class AngularScanDataMixin:
 
         return line_starts_prt, scan_line_stops_prt, line_start_labels, line_stop_labels, roi
 
+    def get_bright_pixels(self, img: np.ndarray, mask: np.ndarray, thresh_factor=75, **kwargs):
+        """Get a mask for 'bright pixels' of an image using a histogram-based heuristic method."""
+
+        # select number of bins based on number of unique values in ROI
+        n_unique = len(np.unique(img[mask]))
+        n_bins = max(10, round(n_unique / 3.5))
+
+        scan_hist, bin_edges = np.histogram(img[mask], bins=n_bins)
+        bin_num = np.arange(len(scan_hist))
+        bg_part = round(n_bins / 10)
+
+        #                print("scan_idx: ", scan_idx) # TESTESTEST
+
+        # fit Gaussian to histogram
+        FP = curve_fit_lims(
+            "gaussian_1d_fit",
+            (
+                scan_hist[bg_part:].max() / 10,
+                np.mean(bin_num[bg_part:]),
+                len(bin_num[bg_part:]) / 10,
+                0,
+            ),
+            bin_num[bg_part:],
+            scan_hist[bg_part:],
+            bounds=(  # A, mu, sigma, bg
+                [0, 0, 0, -10],
+                [1e4, bin_num.max(), bin_num.max(), 0],
+            ),
+        )
+        # get bin where fitted_y drops to 1/N_TRESH of value and use as threshold
+        try:
+            thresh_bin = FP.x[
+                (FP.x > FP.beta["mu"]) & (FP.fitted_y < FP.beta["A"] / thresh_factor)
+            ][0]
+        except IndexError:
+            thresh_bin = bin_num.max()
+
+        # get the bad pixels
+        d = np.digitize(img, bin_edges)
+
+        return d > thresh_bin
+
     def _bg_line_correlations(
         self,
         image1: np.ndarray,
@@ -1694,12 +1736,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             )
             for scan_idx, (scan_start_prt, scan_stop_prt) in enumerate(single_scan_edges):
                 # get the indices of in-scan photons
-                lims = Limits(scan_start_prt, scan_stop_prt)
-                in_scan_idxs = lims.valid_indices(pulse_runtime)
+                in_scan_idxs = Limits(scan_start_prt, scan_stop_prt).valid_indices(pulse_runtime)
+                scan_prt = pulse_runtime[in_scan_idxs]
 
                 # prepare scan image to discriminate bad rows (with bright pixels)
-                # TODO: can this be more quickly performed without creating an image?
-                scan_prt = pulse_runtime[in_scan_idxs]
                 scan_img, *_ = self.convert_angular_scan_to_image(
                     scan_prt + prt_shift,
                     self.laser_freq_hz,
@@ -1708,45 +1748,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     p.general.n_lines,
                 )
 
-                # discriminate rows having pixels values higher than a histogram-based threshold
-                # select number of bins based on number of unique values in ROI
-                n_unique = len(np.unique(scan_img[img_bw]))
-                n_bins = max(10, round(n_unique / 3.5))
-
-                scan_hist, bin_edges = np.histogram(scan_img[img_bw], bins=n_bins)
-                bin_num = np.arange(len(scan_hist))
-                bg_part = round(n_bins / 10)
-
-                #                print("scan_idx: ", scan_idx) # TESTESTEST
-
-                # fit Gaussian to histogram
-                FP = curve_fit_lims(
-                    "gaussian_1d_fit",
-                    (
-                        scan_hist[bg_part:].max() / 10,
-                        np.mean(bin_num[bg_part:]),
-                        len(bin_num[bg_part:]) / 10,
-                        0,
-                    ),
-                    bin_num[bg_part:],
-                    scan_hist[bg_part:],
-                    bounds=(  # A, mu, sigma, bg
-                        [0, 0, 0, -10],
-                        [1e4, bin_num.max(), bin_num.max(), 0],
-                    ),
-                )
-                # get bin where fitted_y drops to 1/N_TRESH of value and use as threshold
-                THRESH_FAC = 75
-                try:
-                    thresh_bin = FP.x[
-                        (FP.x > FP.beta["mu"]) & (FP.fitted_y < FP.beta["A"] / THRESH_FAC)
-                    ][0]
-                except IndexError:
-                    thresh_bin = bin_num.max()
-
-                # get the bad rows
-                d = np.digitize(scan_img, bin_edges)
-                scan_bad_row_labels = np.unique((d > thresh_bin).nonzero()[0])
+                bright_pixels_bw = self.get_bright_pixels(scan_img, img_bw, **kwargs)
+                scan_bad_row_labels = np.unique(bright_pixels_bw.nonzero()[0])
 
                 n_lines_removed += len(scan_bad_row_labels)  # TESTESTEST
 
