@@ -103,6 +103,8 @@ class AngularScanDataMixin:
             )
 
         else:
+            # flip every second row to get an image (back and forth scan)
+            img[1::2, :] = np.flip(img[1::2, :], 1)
             return img, sample_runtime, pixel_num, line_num, pix_shift
 
     def _get_data_shift(self, cnt: np.ndarray, **kwargs) -> int:
@@ -1585,14 +1587,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             print("Converting angular scan to image...", end=" ")
 
         pulse_runtime = np.empty(p.raw.pulse_runtime.shape, dtype=np.int64)
-        cnt = np.zeros((p.general.n_lines + 1, p.general.samples_per_line), dtype=np.uint16)
+        img = np.zeros((p.general.n_lines + 1, p.general.samples_per_line), dtype=np.uint16)
         sample_runtime = np.empty(pulse_runtime.shape, dtype=np.int64)
         pixel_num = np.empty(pulse_runtime.shape, dtype=np.int64)
         line_num = np.empty(pulse_runtime.shape, dtype=np.int16)
         for sec_idx, (start_idx, end_idx) in enumerate(p.general.section_runtime_edges):
             sec_pulse_runtime = p.raw.pulse_runtime[start_idx:end_idx]
             (
-                sec_cnt,
+                sec_img,
                 sec_sample_runtime,
                 sec_pixel_num,
                 sec_line_num,
@@ -1607,13 +1609,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             )
 
             pulse_runtime[start_idx:end_idx] = sec_pulse_runtime
-            cnt += sec_cnt
+            img += sec_img
             sample_runtime[start_idx:end_idx] = sec_sample_runtime
             pixel_num[start_idx:end_idx] = sec_pixel_num
             line_num[start_idx:end_idx] = sec_line_num
-
-        # invert every second to get proper image (back and forth scan)
-        cnt[1::2, :] = np.flip(cnt[1::2, :], 1)
 
         # work with entire scan image, then return to ROI lines start/stops after
         (
@@ -1622,7 +1621,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             whole_line_start_labels,
             whole_line_stop_labels,
             _,
-        ) = self._get_line_markers_and_roi(np.full(cnt.shape, True), sample_runtime)
+        ) = self._get_line_markers_and_roi(np.full(img.shape, True), sample_runtime)
         whole_line_starts_prt: np.ndarray = whole_line_starts * round(
             self.laser_freq_hz / ao_sampling_freq_hz
         )
@@ -1642,12 +1641,12 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             if kwargs.get("is_verbose"):
                 print("Thresholding and smoothing...", end=" ")
             try:
-                img_bw = self._threshold_and_smooth(cnt.copy())
+                img_bw = self._threshold_and_smooth(img.copy())
             except ValueError:
                 raise RuntimeError("Automatic ROI selection: Thresholding failed")
                 return None
         elif roi_selection == "all":
-            img_bw = np.full(cnt.shape, True)
+            img_bw = np.full(img.shape, True)
         else:
             raise ValueError(
                 f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
@@ -1773,7 +1772,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
             # create a new scan image as well
             (
-                alleviated_image,
+                p.general.image,
                 alleviated_sample_runtime,
                 pixel_num,
                 line_num,
@@ -1785,9 +1784,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 p.general.samples_per_line,
                 p.general.n_lines,
             )
-            # flip every second line (back and forth scanning...) # NOTE - not really needed for row discrimination
-            alleviated_image[1::2, :] = np.flip(alleviated_image[1::2, :], 1)
-            p.general.image = alleviated_image
 
             # Now cut crop the filtered lines using the ROI
             (
@@ -1838,7 +1834,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             coarse = p.raw.coarse
             coarse2 = p.raw.coarse2
             fine = p.raw.fine
-            p.general.image = cnt
+            p.general.image = img
 
         # Inserting the line start/stop markers into the arrays
         pulse_runtime = np.hstack((line_starts_prt, line_stops_prt, pulse_runtime))
