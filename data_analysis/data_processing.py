@@ -192,8 +192,15 @@ class AngularScanDataMixin:
 
         return bw
 
-    def _get_line_markers_and_roi(self, bw_mask: np.ndarray, sample_runtime: np.ndarray):
+    def _get_line_markers_and_roi(
+        self,
+        bw_mask: np.ndarray,
+        sample_runtime: np.ndarray,
+        laser_freq_hz: int,
+        ao_sampling_freq_hz: int,
+    ):
         """Doc."""
+        # TODO: this does not give me what I want - I want line markers inside some range 'sample_runtime', but instead this only uses the last sample_runtime[-1]
 
         line_starts = []
         line_stops = []
@@ -203,9 +210,7 @@ class AngularScanDataMixin:
 
         for row_idx in np.unique(bw_mask.nonzero()[0]):
             nonzero_row_idxs = bw_mask[row_idx, :].nonzero()[0]
-            # set mask to True between non-zero edges of row
             left_edge, right_edge = nonzero_row_idxs[0], nonzero_row_idxs[-1]
-            bw_mask[row_idx, left_edge:right_edge] = True
             # add row to ROI
             roi["row"].appendleft(row_idx)
             roi["col"].appendleft(left_edge)
@@ -249,7 +254,10 @@ class AngularScanDataMixin:
         line_starts = np.array(line_starts, dtype=np.int64)
         line_stops = np.array(line_stops, dtype=np.int64)
 
-        return line_starts, line_stops, line_start_labels, line_stop_labels, roi
+        line_starts_prt = line_starts * round(laser_freq_hz / ao_sampling_freq_hz)
+        scan_line_stops_prt = line_stops * round(laser_freq_hz / ao_sampling_freq_hz)
+
+        return line_starts_prt, scan_line_stops_prt, line_start_labels, line_stop_labels, roi
 
     def _bg_line_correlations(
         self,
@@ -1616,17 +1624,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         # work with entire scan image, then return to ROI lines start/stops after
         (
-            whole_line_starts,
-            whole_line_stops,
+            whole_line_starts_prt,
+            whole_line_stops_prt,
             whole_line_start_labels,
             whole_line_stop_labels,
             _,
-        ) = self._get_line_markers_and_roi(np.full(img.shape, True), sample_runtime)
-        whole_line_starts_prt: np.ndarray = whole_line_starts * round(
-            self.laser_freq_hz / ao_sampling_freq_hz
-        )
-        whole_line_stops_prt: np.ndarray = whole_line_stops * round(
-            self.laser_freq_hz / ao_sampling_freq_hz
+        ) = self._get_line_markers_and_roi(
+            np.full(img.shape, True), sample_runtime, self.laser_freq_hz, ao_sampling_freq_hz
         )
 
         # keeping the single-scan, in ROI, start/stop runtimes
@@ -1787,17 +1791,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
             # Now cut crop the filtered lines using the ROI
             (
-                line_starts,
-                line_stops,
+                line_starts_prt,
+                line_stops_prt,
                 line_start_labels,
                 line_stop_labels,
                 roi,
-            ) = self._get_line_markers_and_roi(img_bw, alleviated_sample_runtime)
-            line_starts_prt: np.ndarray = line_starts * round(
-                self.laser_freq_hz / ao_sampling_freq_hz
-            )
-            line_stops_prt: np.ndarray = line_stops * round(
-                self.laser_freq_hz / ao_sampling_freq_hz
+            ) = self._get_line_markers_and_roi(
+                img_bw, alleviated_sample_runtime, self.laser_freq_hz, ao_sampling_freq_hz
             )
 
             # use only the indices of lines within the ROI
@@ -1817,19 +1817,18 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         else:
             try:
                 (
-                    line_starts,
-                    line_stops,
+                    line_starts_prt,
+                    line_stops_prt,
                     line_start_labels,
                     line_stop_labels,
                     roi,
-                ) = self._get_line_markers_and_roi(img_bw, sample_runtime)
+                ) = self._get_line_markers_and_roi(
+                    img_bw, sample_runtime, self.laser_freq_hz, ao_sampling_freq_hz
+                )
             except IndexError:
                 if kwargs.get("is_verbose"):
                     print("ROI is empty (need to figure out the cause). Skipping file.\n")
                 return None
-
-            line_starts_prt = line_starts * round(self.laser_freq_hz / ao_sampling_freq_hz)
-            line_stops_prt = line_stops * round(self.laser_freq_hz / ao_sampling_freq_hz)
 
             coarse = p.raw.coarse
             coarse2 = p.raw.coarse2
