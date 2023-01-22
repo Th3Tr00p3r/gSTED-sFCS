@@ -18,13 +18,14 @@ from data_analysis.workers import N_CPU_CORES, get_xcorr_input_dict
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object  # , DUMP_PATH
 from utilities.fit_tools import FitParams, curve_fit_lims
-from utilities.helper import (  # runs_of_true
+from utilities.helper import (
     Gate,
     Limits,
     MemMapping,
     chunked_bincount,
     div_ceil,
     nan_helper,
+    runs_of_true,
     xcorr,
 )
 
@@ -362,35 +363,35 @@ class AngularScanDataMixin:
                 norm_masked_img[row_idx] *= max_row_median / np.median(img[row_idx][mask[row_idx]])
         return norm_masked_img
 
+    def get_longest_true_runs_mask(self, mask):
+        """
+        Given a valid 2D boolean mask, returns a new mask where for each row only the longest 'True' run
+        is left untouched while everything else in the row is set to 'False'.
+        """
 
-#    def get_longest_true_runs_mask(self, mask):
-#        """
-#        Given a valid 2D boolean mask, returns a new mask where for each row only the longest 'True' run
-#        is left untouched while everything else in the row is set to 'False'.
-#        """
-#
-#        rot = runs_of_true(mask)
-#
-#        run_line_idxs = rot[0, :, 0]
-#        run_start_idx = rot[0, :, 1]
-#        run_stop_idx = rot[1, :, 1]
-#        run_len = run_stop_idx - run_start_idx
-#
-#        a = np.vstack((run_line_idxs, run_start_idx, run_stop_idx, run_len)).T
-#
-#        # sort by run length, then by line number
-#        a = a[a[:, 3].argsort()]
-#        a = a[a[:, 0].argsort(kind="mergesort")][::-1]
-#
-#        # get the indices of the first appearance of each row index (will be the longest run after above sorting)
-#        _, first_appearance_idxs = np.unique(a[:, 0], return_index=True)
-#        valid_idxs = a[first_appearance_idxs, :][:, 1:3]
-#
-#        longest_rot_mask = np.full(mask.shape, False)
-#        for row_idx in range(longest_rot_mask.shape[0]):
-#            longest_rot_mask[row_idx, slice(*valid_idxs[row_idx])] = True
-#
-#        return longest_rot_mask
+        rot = runs_of_true(mask)
+
+        run_line_idxs = rot[0, :, 0]
+        run_start_idx = rot[0, :, 1]
+        run_stop_idx = rot[1, :, 1]
+        run_len = run_stop_idx - run_start_idx
+
+        a = np.vstack((run_line_idxs, run_start_idx, run_stop_idx, run_len)).T
+
+        # sort by run length, then by line number
+        a = a[a[:, 3].argsort()]
+        a = a[a[:, 0].argsort(kind="mergesort")][::-1]
+
+        # get the indices of the first appearance of each row index (will be the longest run after above sorting)
+        _, first_appearance_idxs = np.unique(a[:, 0], return_index=True)
+        valid_idxs = a[first_appearance_idxs, :][:, 1:3]
+
+        # build ROT the mask
+        longest_rot_mask = np.full(mask.shape, False)
+        for row_idx in range(longest_rot_mask.shape[0]):
+            longest_rot_mask[row_idx, slice(*valid_idxs[row_idx])] = True
+
+        return longest_rot_mask
 
 
 class RawFileData:
