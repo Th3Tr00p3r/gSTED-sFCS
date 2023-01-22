@@ -1,6 +1,5 @@
 """Data organization and manipulation."""
 
-import logging
 import multiprocessing as mp
 import re
 from contextlib import suppress
@@ -1873,9 +1872,7 @@ class SolutionSFCSExperiment:
             self.sted.correlate_and_average(tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, **kwargs)
         else:
             # STED measurement not loaded
-            logging.info(
-                "Cannot add STED gate if there's no STED measurement loaded to the experiment!"
-            )
+            print("Cannot add STED gate if there's no STED measurement loaded to the experiment!")
             return
 
         if kwargs.get("should_plot"):
