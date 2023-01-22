@@ -1036,3 +1036,21 @@ def dir_date_parts(data_path: str, sub_dir: str = "", month: int = None, year: i
 
     # return unique date parts, sorted in descending order
     return sorted(set(date_item_list), key=lambda item: int(item), reverse=True)
+
+
+def runs_of_true(arr):
+    """
+    Returns start/stop indices of runs of 'True' along 1D array or rows of 2D array.
+    Adapted from:
+    https://stackoverflow.com/questions/1066758/find-length-of-sequences-of-identical-values-in-a-numpy-array-run-length-encodi
+    """
+
+    # make sure all runs of ones are well-bounded
+    n_dims = len(arr.shape)
+    pad_width = tuple([(0, 0)] * (n_dims - 1) + [(1, 1)])
+    bounded = np.pad(arr, pad_width).astype(np.int32)
+    # get 1 at run starts and -1 at run ends
+    difs = np.diff(bounded)
+    run_starts = np.argwhere(difs > 0)
+    run_ends = np.argwhere(difs < 0)
+    return np.array((run_starts, run_ends))
