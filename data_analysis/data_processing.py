@@ -1772,6 +1772,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 #                    for bad_row_idx in set([label for label in scan_bad_row_labels if label >= 0]): # TESTESTEST
                 #                        ax.axhline(y=bad_row_idx, color="r", lw=1, ls="--") # TESTESTEST
 
+                if scan_idx == 73:  # TESTESTEST
+                    print("HOHOHO!")  # TESTESTEST
+
                 # get in-scan line starts/stops/labels (necessary in this case since the ROI "changes" each scan - lines starts/stops change)
                 (
                     scan_line_starts_prt,
@@ -1783,10 +1786,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     scan_img_bw, scan_prt + prt_shift, self.laser_freq_hz, ao_sampling_freq_hz
                 )
 
-                scan_line_starts_prt = scan_line_starts_prt[valid_scan_line_idxs]
-                scan_line_stops_prt = scan_line_stops_prt[valid_scan_line_idxs]
-                scan_line_start_labels = scan_line_start_labels[valid_scan_line_idxs]
-                scan_line_stop_labels = scan_line_stop_labels[valid_scan_line_idxs]
+                try:
+                    scan_line_starts_prt = scan_line_starts_prt[valid_scan_line_idxs]
+                    scan_line_stops_prt = scan_line_stops_prt[valid_scan_line_idxs]
+                    scan_line_start_labels = scan_line_start_labels[valid_scan_line_idxs]
+                    scan_line_stop_labels = scan_line_stop_labels[valid_scan_line_idxs]
+                except IndexError:
+                    # scan_line_starts_prt is empty
+                    continue
 
                 # add to total list of start/stops
                 scan_line_starts_prt_list.append(scan_line_starts_prt)
