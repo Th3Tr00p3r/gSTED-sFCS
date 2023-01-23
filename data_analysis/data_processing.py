@@ -1772,9 +1772,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 #                    for bad_row_idx in set([label for label in scan_bad_row_labels if label >= 0]): # TESTESTEST
                 #                        ax.axhline(y=bad_row_idx, color="r", lw=1, ls="--") # TESTESTEST
 
-                if scan_idx == 73:  # TESTESTEST
-                    print("HOHOHO!")  # TESTESTEST
-
                 # get in-scan line starts/stops/labels (necessary in this case since the ROI "changes" each scan - lines starts/stops change)
                 (
                     scan_line_starts_prt,
