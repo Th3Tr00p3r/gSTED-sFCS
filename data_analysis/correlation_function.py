@@ -1854,9 +1854,12 @@ class SolutionSFCSExperiment:
         tdc_gate_ns: Tuple[float, float],
         meas_type: str,
         should_re_correlate=False,
+        is_verbose=True,
         **kwargs,
     ) -> None:
         """Doc."""
+
+        kwargs["is_verbose"] = is_verbose
 
         if not should_re_correlate and getattr(self, meas_type).cf.get(
             f"gated {meas_type} {tdc_gate_ns}"
@@ -1878,7 +1881,9 @@ class SolutionSFCSExperiment:
         if kwargs.get("should_plot"):
             self.plot_standard(**kwargs)
 
-    def add_gates(self, gate_list: List[Tuple[float, float]], meas_type="sted", **kwargs):
+    def add_gates(
+        self, gate_list: List[Tuple[float, float]], meas_type="sted", should_plot=False, **kwargs
+    ):
         """
         A convecience method for adding multiple gates.
         """
@@ -1887,7 +1892,7 @@ class SolutionSFCSExperiment:
         for tdc_gate_ns in gate_list:
             self.add_gate(tdc_gate_ns, meas_type, **kwargs)
 
-        if kwargs.get("should_plot"):
+        if should_plot:
             self.plot_standard(**kwargs)
 
     def plot_standard(self, should_add_exp_name=True, **kwargs):
