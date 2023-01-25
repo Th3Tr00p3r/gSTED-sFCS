@@ -2003,6 +2003,7 @@ class MainWin:
         experiment = self.get_experiment()
         proc_options_dict = self.get_processing_options_as_dict()
         kwargs = dict(
+            should_plot=True,
             gui_display=wdgt_coll["gui_display_sted_gating"].obj,
             gui_options=GuiDisplay.GuiDisplayOptions(show_axis=True),
             fontsize=10,
