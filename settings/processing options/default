@@ -6,4 +6,4 @@ useMultiProcessing,False
 shouldUniteStartTimes,True
 fixShift,True
 autoRoi,True
-alleviateBrightPixels,True
+alleviateBrightPixels,False
