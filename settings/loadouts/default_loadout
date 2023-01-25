@@ -1,7 +1,7 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
-newTemplate,CNCP7uW10nsGating_angular_exc
-solImportFileSelectionPattern,3
+newTemplate,YOYOrigami_100XDilutedPBS_angular_exc
+solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
 spadMode,free running
@@ -61,8 +61,8 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,1
 dataYear,2023
-dataDay,2
-dataTemplate1,CNCP7uW10nsGating_angular_exc_150324_*.pkl
+dataDay,24
+dataTemplate1,YOYOrigami_100XDilutedPBS_angular_exc_134958_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,

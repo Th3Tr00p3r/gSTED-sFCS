@@ -270,8 +270,6 @@ class AngularScanDataMixin:
         bin_num = np.arange(len(scan_hist))
         bg_part = round(n_bins / 10)
 
-        #                print("scan_idx: ", scan_idx) # TESTESTEST
-
         # fit Gaussian to histogram
         FP = curve_fit_lims(
             "gaussian_1d_fit",
@@ -288,6 +286,7 @@ class AngularScanDataMixin:
                 [1e4, bin_num.max(), bin_num.max(), 0],
             ),
         )
+
         # get bin where fitted_y drops to 1/N_TRESH of value and use as threshold
         try:
             thresh_bin = FP.x[
@@ -298,7 +297,6 @@ class AngularScanDataMixin:
 
         # get the bad pixels
         d = np.digitize(img, bin_edges)
-
         return d > thresh_bin
 
     def _bg_line_correlations(
@@ -1744,6 +1742,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 in_scan_idxs = Limits(scan_start_prt, scan_stop_prt).valid_indices(pulse_runtime)
                 scan_prt = pulse_runtime[in_scan_idxs]
 
+                # Handle faulty scans
+                if scan_prt.size < 100:
+                    print(
+                        f"One of the single scans (index {scan_idx}) is faulty. Ignoring whole file."
+                    )
+                    return None
+
                 # prepare scan image to discriminate bad rows (with bright pixels)
                 scan_img, _, scan_pixel_num, scan_line_num, _ = self.convert_angular_scan_to_image(
                     scan_prt + prt_shift,
@@ -1754,12 +1759,11 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 )
                 bright_pixels_img_bw = self.get_bright_pixels(scan_img, img_bw, **kwargs)
                 scan_bad_row_labels = np.unique(bright_pixels_img_bw.nonzero()[0])
-                n_lines_removed += len(scan_bad_row_labels)
-                scan_img_bw = img_bw
 
                 # get indices of all valid photons (full rows withought bright spots) in the scan
-                valid_scan_idxs = np.in1d(scan_line_num, scan_bad_row_labels, invert=True)
-                total_valid_photon_idxs[in_scan_idxs] = valid_scan_idxs
+                total_valid_photon_idxs[in_scan_idxs] = np.in1d(
+                    scan_line_num, scan_bad_row_labels, invert=True
+                )
 
                 # also get the valid line start/stop and labels indices and ignore the bad lines
                 valid_scan_line_idxs = np.in1d(
@@ -1780,7 +1784,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     scan_line_stop_labels,
                     _,
                 ) = self._get_line_markers_and_roi(
-                    scan_img_bw, scan_prt + prt_shift, self.laser_freq_hz, ao_sampling_freq_hz
+                    img_bw, scan_prt + prt_shift, self.laser_freq_hz, ao_sampling_freq_hz
                 )
 
                 try:
@@ -1790,13 +1794,15 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     scan_line_stop_labels = scan_line_stop_labels[valid_scan_line_idxs]
                 except IndexError:
                     # scan_line_starts_prt is empty
-                    continue
+                    ...
+                else:
+                    # add to total list of start/stops
+                    scan_line_starts_prt_list.append(scan_line_starts_prt)
+                    scan_line_stops_prt_list.append(scan_line_stops_prt)
+                    scan_line_start_labels_list.append(scan_line_start_labels)
+                    scan_line_stop_labels_list.append(scan_line_stop_labels)
 
-                # add to total list of start/stops
-                scan_line_starts_prt_list.append(scan_line_starts_prt)
-                scan_line_stops_prt_list.append(scan_line_stops_prt)
-                scan_line_start_labels_list.append(scan_line_start_labels)
-                scan_line_stop_labels_list.append(scan_line_stop_labels)
+                n_lines_removed += len(scan_bad_row_labels)
 
             print(f"removed: {n_lines_removed:.0f}/{n_total_lines} lines.")
 
