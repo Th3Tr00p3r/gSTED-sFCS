@@ -1494,6 +1494,7 @@ class MainWin:
         loading_options["override_system_info"] = import_wdgts["override_system_info"]
         loading_options["should_ignore_hard_gate"] = import_wdgts["should_ignore_hard_gate"]
         loading_options["should_parallel_process"] = import_wdgts["should_parallel_process"]
+        loading_options["should_unite_start_times"] = import_wdgts["should_unite_start_times"]
 
         return loading_options
 
@@ -1889,6 +1890,10 @@ class MainWin:
                 wdgt_coll["g0_ratio"].set(conf_g0 / sted_g0)
             logging.info(f"Experiment '{experiment_name}' loaded successfully.")
 
+            # estimate resolution
+            kwargs["gui_display"] = wdgt_coll["gui_display_resolution"].obj
+            experiment.estimate_spatial_resolution(**kwargs)
+
     def remove_experiment(self) -> None:
         """Doc."""
 
@@ -1933,6 +1938,7 @@ class MainWin:
 
                 # display parameters in GUI
                 wdgt_coll["fluoresence_lifetime"].set(lt_params.lifetime_ns)
+                wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
                 calib_pulse_delay_ns = self._gui.settings.laserPulsePropTime.value()
                 calc_pulse_delay_ns = lt_params.laser_pulse_delay_ns
                 if abs(calc_pulse_delay_ns - calib_pulse_delay_ns) / calc_pulse_delay_ns > 0.1:
@@ -2017,6 +2023,10 @@ class MainWin:
         else:
             wdgt_coll["available_gates"].obj.addItems([str(gate) for gate in gate_list])
 
+        # estimate resolution again (include new gates
+        kwargs["gui_display"] = wdgt_coll["gui_display_resolution"].obj
+        experiment.estimate_spatial_resolution(**kwargs)
+
     def remove_available_gate(self) -> None:
         """Doc."""
 
@@ -2048,6 +2058,10 @@ class MainWin:
             # delete from GUI
             wdgt.obj.removeItem(wdgt.obj.currentIndex())
             logging.info(f"Gate '{gate_to_remove}' removed from '{experiment.name}' experiment.")
+
+        # estimate resolution again (withouut gate)
+        kwargs["gui_display"] = wdgt_coll["gui_display_resolution"].obj
+        experiment.estimate_spatial_resolution(**kwargs)
 
     def calculate_hankel_transforms(self) -> None:
         """Doc."""

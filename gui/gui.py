@@ -55,6 +55,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.solExpTDC1 = GuiDisplay(self.solAnalysisTDCLayout1, self)
         self.solExpTDC2 = GuiDisplay(self.solAnalysisTDCLayout2, self)
         self.solExpGSTED = GuiDisplay(self.solExpGSTEDLayout, self)
+        self.solExpResolution = GuiDisplay(self.solAnalysisResolutionLayout, self)
 
         # scan patterns
         # image

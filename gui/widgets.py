@@ -326,15 +326,15 @@ SOL_EXP_ANALYSIS_COLL = QtWidgetCollection(
     available_gates=("availableGates", "QComboBox", "main", True),
     gate_meas_type=("gateMeasType", "QComboBox", "main", False),
     gui_display_sted_gating=("solExpGSTED", None, "main", True),
+    gui_display_resolution=("solExpResolution", None, "main", True),
     # structure factor
     g_min=("expStrctFctrGMin", "QDoubleSpinBox", "main", False),
     n_robust=("expStrctFctrRbstIntrpPnts", "QSpinBox", "main", False),
     # properties
     g0_ratio=("expPropRatio", "QDoubleSpinBox", "main", True),
     fluoresence_lifetime=("expPropLifetime", "QDoubleSpinBox", "main", True),
+    sigma_sted=("expPropSigmaSted", "QDoubleSpinBox", "main", True),
     laser_pulse_delay=("expPropLaserPulseDelay", "QDoubleSpinBox", "main", True),
-    gate_ns=("expPropGstedGate", "QComboBox", "main", True),
-    resolution_nm=("expPropGstedResolution", "QDoubleSpinBox", "main", True),
 )
 # -----------------------------------------------
 # MeasurementProcedure Widget Collections
