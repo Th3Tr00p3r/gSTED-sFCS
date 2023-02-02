@@ -1332,7 +1332,9 @@ class SolutionSFCSMeasurement:
 
         with Plotter(
             super_title=f"Resolution Estimation\nGaussian fitting (HWHM) for '{self.type}' ACF(s)",
-            xlim=(1e-2, 1),
+            x_scale="quadratic",
+            y_scale="log",
+            xlim=(0.01, 1),
             ylim=(5e-3, 1),
             **kwargs,
         ) as ax:
@@ -2005,8 +2007,16 @@ class SolutionSFCSExperiment:
         This is relevant only for calibration experiments (i.e. 300 bp samples).
         """
 
-        with Plotter(xlim=(1e-2, 1), ylim=(0, 1), **kwargs) as ax:
+        with Plotter(
+            super_title="Resolution Comparison by Gaussian Fitting",
+            x_scale="quadratic",
+            y_scale="log",
+            xlim=(0.01, 1),
+            ylim=(5e-3, 1),
+            **kwargs,
+        ) as ax:
 
+            kwargs.pop("gui_display", None)  # TODO: should this be included in Plotter init?
             if (parent_ax := kwargs.pop("parent_ax", None)) is not None:
                 # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
                 existing_lines = parent_ax.get_lines()
