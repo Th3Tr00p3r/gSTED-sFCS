@@ -1480,7 +1480,7 @@ class SolutionSFCSMeasurement:
         dir_path = (
             cast(Path, self.file_path_template).parent
             / "processed"
-            / re.sub("_[*].pkl", "", self.template)
+            / cast(Path, self.file_path_template).stem.replace("_*", "")
         )
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
