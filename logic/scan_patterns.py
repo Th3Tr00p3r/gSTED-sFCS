@@ -1,7 +1,7 @@
 """ scan patterns module. """
 
 import logging
-from math import cos, pi, sin, sqrt
+from math import cos, pi, sin
 from types import SimpleNamespace
 from typing import Tuple
 
@@ -125,8 +125,8 @@ class ScanPatternAO:
         ang_rad = ang_deg * (pi / 180)
         f = self.scan_params["linear_fraction"]
         max_line_len = self.scan_params["max_line_len_um"]
+        max_scan_width = self.scan_params["max_scan_width_um"]
         line_shift_um = self.scan_params["line_shift_um"]
-        min_n_lines = self.scan_params["min_lines"]
         ao_sampling_freq_hz = self.scan_params["ao_sampling_freq_hz"]
         max_scan_freq_Hz = self.scan_params["max_scan_freq_Hz"]
         speed_um_s = self.scan_params["speed_um_s"]
@@ -135,78 +135,8 @@ class ScanPatternAO:
             ang_deg = ang_deg % 180
             logging.warning("The scan angle should be in [0, 180] range!")
 
-        if (ang_deg == 0) or (ang_deg == 90):
-            tot_len = max_line_len
-            n_lines = 2 * int((max_line_len / line_shift_um + 1) / 2)
-        elif 0 < ang_deg < 90:
-            if cos(2 * ang_rad) < sqrt(2) * cos(ang_rad + pi / 4) * max_line_len / (
-                line_shift_um * (min_n_lines - 1)
-            ):
-                tot_len = min(
-                    max_line_len,
-                    (max_line_len - line_shift_um * (min_n_lines - 1) * sin(ang_rad))
-                    / cos(ang_rad),
-                )
-                n_lines = max(
-                    min_n_lines,
-                    2
-                    * int(
-                        (max_line_len / line_shift_um * (1 - abs(cos(ang_rad))) / sin(ang_rad) + 1)
-                        / 2
-                    ),
-                )
-            else:
-                tot_len = min(
-                    max_line_len,
-                    (max_line_len - line_shift_um * (min_n_lines - 1) * cos(ang_rad))
-                    / sin(ang_rad),
-                )
-                n_lines = max(
-                    min_n_lines,
-                    2
-                    * int(
-                        (max_line_len / line_shift_um * (1 - abs(sin(ang_rad))) / cos(ang_rad) + 1)
-                        / 2
-                    ),
-                )
-
-        elif 90 < ang_deg < 180:
-            if cos(2 * ang_rad) < sqrt(2) * cos(pi - ang_rad + pi / 4) * max_line_len / (
-                line_shift_um * (min_n_lines - 1)
-            ):
-                tot_len = min(
-                    max_line_len,
-                    (-max_line_len + line_shift_um * (min_n_lines - 1) * sin(ang_rad))
-                    / cos(ang_rad),
-                )
-                n_lines = max(
-                    min_n_lines,
-                    2
-                    * int(
-                        (max_line_len / line_shift_um * (1 - abs(cos(ang_rad))) / sin(ang_rad) + 1)
-                        / 2
-                    ),
-                )
-            else:
-                tot_len = min(
-                    max_line_len,
-                    (max_line_len + line_shift_um * (min_n_lines - 1) * cos(ang_rad))
-                    / sin(ang_rad),
-                )
-                n_lines = max(
-                    min_n_lines,
-                    2
-                    * int(
-                        (
-                            max_line_len
-                            / line_shift_um
-                            * (1 - abs(sin(ang_rad)))
-                            / abs(cos(ang_rad))
-                            + 1
-                        )
-                        / 2
-                    ),
-                )
+        tot_len = max_line_len
+        n_lines = 2 * int((max_scan_width / line_shift_um + 1) / 2)  # ensure 'n_lines' is even
 
         linear_len_um = f * tot_len
         line_freq_hz = speed_um_s / (2 * tot_len * (2 - f))
