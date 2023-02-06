@@ -667,7 +667,7 @@ def prepare_file_paths(
 
     dir_path, file_template = file_path_template.parent, file_path_template.name
     if should_unite_start_times:  # ignore start time in template
-        file_template = "_".join(file_template.split("_")[:-2]) + "_*.pkl"
+        file_template = "_".join(file_template.split("_")[:-2]) + f"_*{file_path_template.suffix}"
     unsorted_paths = list(dir_path.glob(file_template))
     file_paths = sort_file_paths_by_file_number(unsorted_paths)
     if not file_paths:
@@ -679,13 +679,17 @@ def prepare_file_paths(
             file_paths = [
                 file_path
                 for file_path in file_paths
-                if any(f"_{idx + 1}.pkl" in str(file_path) for idx in file_idxs)
+                if any(
+                    f"_{idx + 1}{file_path_template.suffix}" in str(file_path) for idx in file_idxs
+                )
             ]
         else:
             file_paths = [
                 file_path
                 for file_path in file_paths
-                if not any(f"_{idx + 1}.pkl" in str(file_path) for idx in file_idxs)
+                if not any(
+                    f"_{idx + 1}{file_path_template.suffix}" in str(file_path) for idx in file_idxs
+                )
             ]
 
     return file_paths
