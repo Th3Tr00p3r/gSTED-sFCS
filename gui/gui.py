@@ -70,7 +70,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.angle.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("angular"))
         self.solLinFrac.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("angular"))
         self.lineShift.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("angular"))
-        self.minNumLines.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("angular"))
+        self.maxWidth.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("angular"))
         self.solAngScanSpeed.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("angular"))
         # solution (circle)
         self.circDiameter.valueChanged.connect(lambda: self.impl.disp_scn_pttrn("circle"))
