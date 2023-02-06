@@ -27,7 +27,6 @@ class Timeout:
 
         self.log_buffer_deque = deque([""], maxlen=50)
 
-        self.exc_laser_dvc = self._app.devices.exc_laser
         self.cntr_dvc = self._app.devices.photon_counter
         self.scan_dvc = self._app.devices.scanners
 
@@ -47,7 +46,6 @@ class Timeout:
                 self._update_delayer_temperature(),
                 self._update_spad_status(),
                 self._update_main_gui(),
-                self._update_video(),
             )
         except Exception as exc:
             err_hndlr(exc, sys._getframe(), locals())
@@ -68,7 +66,7 @@ class Timeout:
     async def _update_main_gui(self) -> None:  # noqa: C901
         """Doc."""
 
-        def updt_scn_pos():
+        def updat_ai():
             """Doc."""
 
             app = self._app
@@ -124,7 +122,7 @@ class Timeout:
                 self.cntr_dvc.average_counts(self.cntr_avg_interval_s, rate)
                 self._app.gui.main.counts2.setValue(self.cntr_dvc.avg_cnt_rate_khz)
 
-        def updt_meas_progress(meas) -> None:
+        def update_meas_progress(meas) -> None:
             """Doc."""
 
             with suppress(AttributeError):
@@ -171,33 +169,26 @@ class Timeout:
             if not meas.is_running or meas.scan_type == "static":
                 # scanners
                 if not self.scan_dvc.error_dict:
-                    updt_scn_pos()
+                    updat_ai()
 
                 # log file widget
                 update_log_wdgt()
 
             if meas.is_running:
                 # MeasurementProcedure progress bar and time left
-                updt_meas_progress(meas)
+                update_meas_progress(meas)
+
+            else:
+                # DeviceError - camera error
+                video_cams = [cam for cam in self.main_gui.impl.cameras if cam.is_in_video_mode]
+                for video_cam in video_cams:
+                    with suppress(DeviceError):
+                        if not video_cam.is_waiting_for_frame:
+                            self._app.loop.create_task(video_cam.get_image())
 
             # photon_counter count rate
             if not self.cntr_dvc.error_dict:
                 update_avg_counts(meas)
-
-            await asyncio.sleep(GUI_UPDATE_INTERVAL)
-
-    async def _update_video(self) -> None:
-        """Doc."""
-
-        while self.not_finished:
-
-            if not self._app.meas.is_running:
-                with suppress(DeviceError):
-                    # DeviceError - camera error
-                    video_cams = [cam for cam in self.main_gui.impl.cameras if cam.is_in_video_mode]
-                    for video_cam in video_cams:
-                        if not video_cam.is_waiting_for_frame:
-                            self._app.loop.create_task(video_cam.get_image())
 
             await asyncio.sleep(GUI_UPDATE_INTERVAL)
 
@@ -207,9 +198,11 @@ class Timeout:
         while self.not_finished:
 
             dep_dvc = self._app.devices.dep_laser
+            exc_dvc = self._app.devices.exc_laser
             dep_shutter_dvc = self._app.devices.dep_shutter
+            video_cams = [cam for cam in self.main_gui.impl.cameras if cam.is_in_video_mode]
 
-            if (not dep_dvc.error_dict) and (not self._app.meas.is_running):
+            if not dep_dvc.error_dict and not self._app.meas.is_running and not video_cams:
 
                 # get time of operation of laser head (once)
                 if dep_dvc.time_of_operation_hr is None:
@@ -229,28 +222,23 @@ class Timeout:
                     self.main_gui.depActualPow.setValue(dep_dvc.get_prop("pow"))
                     self.main_gui.depActualCurr.setValue(dep_dvc.get_prop("curr"))
 
-                    # automatic shutdown
-                    if dep_dvc.is_emission_on:
-                        mins_since_turned_on = (time.perf_counter() - dep_dvc.turn_on_time) / 60
-                        if mins_since_turned_on > dep_dvc.off_timer_min:
-                            logging.info(
-                                f"Shutting down {dep_dvc.log_ref} automatically (idle for {dep_dvc.off_timer_min} mins)"
-                            )
-                            dep_dvc.laser_toggle(False)
-                            dep_shutter_dvc.toggle(False)
+            # automatic shutdowns when not measuring
+            if not dep_dvc.error_dict and dep_dvc.is_emission_on and not self._app.meas.is_running:
+                mins_since_turned_on = (time.perf_counter() - dep_dvc.turn_on_time) / 60
+                if mins_since_turned_on > dep_dvc.off_timer_min:
+                    logging.info(
+                        f"Shutting down {dep_dvc.log_ref} automatically (idle for {dep_dvc.off_timer_min} mins)"
+                    )
+                    dep_dvc.laser_toggle(False)
+                    dep_shutter_dvc.toggle(False)
 
-            if (not self.exc_laser_dvc.error_dict) and (not self._app.meas.is_running):
-
-                # automatic shutdown
-                if self.exc_laser_dvc.is_on:
-                    mins_since_turned_on = (
-                        time.perf_counter() - self.exc_laser_dvc.turn_on_time
-                    ) / 60
-                    if mins_since_turned_on > self.exc_laser_dvc.off_timer_min:
-                        logging.info(
-                            f"Shutting down {self.exc_laser_dvc.log_ref} automatically (idle for {self.exc_laser_dvc.off_timer_min} mins)"
-                        )
-                        self.exc_laser_dvc.toggle(False)
+            if not exc_dvc.error_dict and exc_dvc.is_on and not self._app.meas.is_running:
+                mins_since_turned_on = (time.perf_counter() - exc_dvc.turn_on_time) / 60
+                if mins_since_turned_on > exc_dvc.off_timer_min:
+                    logging.info(
+                        f"Shutting down {exc_dvc.log_ref} automatically (idle for {exc_dvc.off_timer_min} mins)"
+                    )
+                    exc_dvc.toggle(False)
 
             await asyncio.sleep(dep_dvc.update_interval_s)
 
@@ -276,6 +264,7 @@ class Timeout:
 
             spad_dvc = self._app.devices.spad
             delayer_dvc = self._app.devices.delayer
+            exc_dvc = self._app.devices.exc_laser
 
             if not spad_dvc.error_dict and not spad_dvc.is_paused and not self._app.meas.is_running:
 
@@ -283,7 +272,7 @@ class Timeout:
                 self._app.loop.create_task(spad_dvc.get_stats())
 
                 # gating
-                icon_name = "on" if delayer_dvc.is_on and self.exc_laser_dvc.is_on else "off"
+                icon_name = "on" if delayer_dvc.is_on and exc_dvc.is_on else "off"
                 spad_dvc.change_icons(icon_name, led_widget_name="gate_led_widget")
 
             await asyncio.sleep(spad_dvc.update_interval_s)
