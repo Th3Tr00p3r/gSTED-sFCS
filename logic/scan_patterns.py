@@ -122,9 +122,8 @@ class ScanPatternAO:
 
         # argument definitions (for better readability
         ang_deg = self.scan_params["angle_deg"]
-        ang_rad = ang_deg * (pi / 180)
         f = self.scan_params["linear_fraction"]
-        max_line_len = self.scan_params["max_line_len_um"]
+        tot_len = self.scan_params["max_line_len_um"]
         max_scan_width = self.scan_params["max_scan_width_um"]
         line_shift_um = self.scan_params["line_shift_um"]
         ao_sampling_freq_hz = self.scan_params["ao_sampling_freq_hz"]
@@ -134,10 +133,9 @@ class ScanPatternAO:
         if not (0 <= ang_deg <= 180):
             ang_deg = ang_deg % 180
             logging.warning("The scan angle should be in [0, 180] range!")
+        ang_rad = ang_deg * (pi / 180)
 
-        tot_len = max_line_len
         n_lines = 2 * int((max_scan_width / line_shift_um + 1) / 2)  # ensure 'n_lines' is even
-
         linear_len_um = f * tot_len
         line_freq_hz = speed_um_s / (2 * tot_len * (2 - f))
 
