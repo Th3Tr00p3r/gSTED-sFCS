@@ -350,8 +350,8 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
+            cal_pulse_prop_time_ns=("laserPulsePropTime", "QSpinBox", "settings", False),
             # NOTE: sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
-            # NOTE: the sync delay might be better calibrated by setting the delay so that there is no change in countrate when switching from free-running mode to gated mode
             _sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", True),
         ),
     )
@@ -467,7 +467,8 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.eff_delay_ns = effective_delay_ns
 
             # keep the chosen gate in spad device (where it is relevant)
-            self.spad_dvc.lower_gate_ns = lower_gate_ns
+            # add the calibrated pulse travel time to be consistent with TDC gating (which includes the travel time)
+            self.spad_dvc.lower_gate_ns = lower_gate_ns + self.cal_pulse_prop_time_ns
 
     def calibrate_sync_time(self):
         """Doc."""
