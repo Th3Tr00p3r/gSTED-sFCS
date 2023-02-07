@@ -2980,7 +2980,7 @@ Amplitude (um)</string>
                                 <number>1</number>
                                </property>
                                <property name="maximum">
-                                <number>100</number>
+                                <number>10</number>
                                </property>
                               </widget>
                              </item>
@@ -12606,7 +12606,7 @@ Fit</string>
                   </property>
                   <property name="text">
                    <string>Detector
-Lowe Gate (ns)</string>
+Lower Gate (ns)</string>
                   </property>
                  </widget>
                 </item>
@@ -12614,6 +12614,10 @@ Lowe Gate (ns)</string>
                  <widget class="QDoubleSpinBox" name="psdDelay">
                   <property name="enabled">
                    <bool>true</bool>
+                  </property>
+                  <property name="toolTip">
+                   <string>Effective lower detector gate in nanoseconds.
+Calibrated pulse travel time is automatically added to maintain consistency with TDC gating.</string>
                   </property>
                   <property name="styleSheet">
                    <string notr="true">background-color: rgb(255, 255, 255);</string>
@@ -12678,6 +12682,11 @@ Delay (ns)</string>
                  <widget class="QDoubleSpinBox" name="psdEffDelay">
                   <property name="enabled">
                    <bool>false</bool>
+                  </property>
+                  <property name="toolTip">
+                   <string>Effective delay time added by the PSD device
+by combining pulse width (with falling edge trigger) and inner delay mechnism
+for coarse and fine delay, respectively.</string>
                   </property>
                   <property name="styleSheet">
                    <string notr="true">background-color: rgb(255, 255, 255);</string>
