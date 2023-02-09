@@ -254,20 +254,25 @@ class MainWin:
         if um_disp != 0.0:
             scanners_dvc = self._app.devices.scanners
             axis = self.main_gui.posAxis.currentText()
-            current_vltg = scanners_dvc.ai_buffer[-1][3:][scanners_dvc.AXIS_INDEX[axis]]
-            um_v_ratio = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
-            delta_vltg = um_disp / um_v_ratio
+            try:
+                current_vltg = scanners_dvc.ai_buffer[-1][3:][scanners_dvc.AXIS_INDEX[axis]]
+            except IndexError:
+                # buffer was initialized? # TESTESTEST
+                logging.warning("buffer was initialized? # TESTESTEST")
+            else:
+                um_v_ratio = dict(zip("XYZ", scanners_dvc.um_v_ratio))[axis]
+                delta_vltg = um_disp / um_v_ratio
 
-            new_vltg = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS").clamp(
-                (current_vltg + delta_vltg)
-            )
+                new_vltg = getattr(scanners_dvc, f"{axis.upper()}_AO_LIMITS").clamp(
+                    (current_vltg + delta_vltg)
+                )
 
-            getattr(self.main_gui, f"{axis.lower()}AOV").setValue(new_vltg)
-            self.move_scanners(axis)
+                getattr(self.main_gui, f"{axis.lower()}AOV").setValue(new_vltg)
+                self.move_scanners(axis)
 
-            logging.debug(
-                f"{self._app.devices.scanners.log_ref}({axis}) was displaced {str(um_disp)} um"
-            )
+                logging.debug(
+                    f"{self._app.devices.scanners.log_ref}({axis}) was displaced {str(um_disp)} um"
+                )
 
     def move_stage(self, dir: str, steps: int):
         """Doc."""
@@ -347,9 +352,9 @@ class MainWin:
 
             if not self._app.meas.is_running:
 
-                # re-calibrate y-galvo before measurement (if needed)
-                logging.info("Pefroming automatic Y-galvo calibration before measurement.")
-                await self._app.gui.settings.impl.recalibrate_y_galvo(should_display=False)
+                #                # re-calibrate y-galvo before measurement (if needed)
+                #                logging.info("Pefroming automatic Y-galvo calibration before measurement.")
+                #                await self._app.gui.settings.impl.recalibrate_y_galvo(should_display=False)
 
                 # no meas running
                 if meas_type == "SFCSSolution":
