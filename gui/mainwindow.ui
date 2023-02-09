@@ -3058,7 +3058,7 @@ Amplitude (um)</string>
                                 </font>
                                </property>
                                <property name="text">
-                                <string>Max Scan Width</string>
+                                <string>Scan Width (um)</string>
                                </property>
                               </widget>
                              </item>

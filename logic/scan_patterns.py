@@ -124,7 +124,7 @@ class ScanPatternAO:
         ang_deg = self.scan_params["angle_deg"]
         f = self.scan_params["linear_fraction"]
         tot_len = self.scan_params["max_line_len_um"]
-        max_scan_width = self.scan_params["max_scan_width_um"]
+        scan_width = self.scan_params["scan_width_um"]
         line_shift_um = self.scan_params["line_shift_um"]
         ao_sampling_freq_hz = self.scan_params["ao_sampling_freq_hz"]
         max_scan_freq_Hz = self.scan_params["max_scan_freq_Hz"]
@@ -135,7 +135,7 @@ class ScanPatternAO:
             logging.warning("The scan angle should be in [0, 180] range!")
         ang_rad = ang_deg * (pi / 180)
 
-        n_lines = 2 * int((max_scan_width / line_shift_um + 1) / 2)  # ensure 'n_lines' is even
+        n_lines = 2 * int((scan_width / line_shift_um + 1) / 2)  # ensure 'n_lines' is even
         linear_len_um = f * tot_len
         line_freq_hz = speed_um_s / (2 * tot_len * (2 - f))
 
@@ -215,11 +215,12 @@ class ScanPatternAO:
         origin_aox_v, origin_aoy_v, origin_aoz_v = self.origin_ao_v
         ao_buffer += np.array([[origin_aox_v], [origin_aoy_v]])
 
-        # extend to best fit the AO sampling rate
+        # extend to best fit the AO sampling rate (if needed)
         _, samples_per_scan = ao_buffer.shape
         # multiplied by 10 for floating Z speed # TODO: this can be better implemented by defining Z-speed...
-        n_scans = int(ao_sampling_freq_hz / samples_per_scan) * 10
-        ao_buffer = np.hstack([ao_buffer] * n_scans)
+        if samples_per_scan < ao_sampling_freq_hz:
+            n_scans = int(ao_sampling_freq_hz / samples_per_scan) * 10
+            ao_buffer = np.hstack([ao_buffer] * n_scans)
 
         # floating z - scan slowly in z-axis (one period during many xy circles)
         if (z_amp_um := self.scan_params.get("floating_z_amplitude_um", 0)) != 0:
