@@ -109,18 +109,19 @@ class AngularScanDataMixin:
     def _get_data_shift(self, cnt: np.ndarray, **kwargs) -> int:
         """Doc."""
 
-        def get_best_pix_shift(img: np.ndarray, min_shift, max_shift) -> int:
+        def get_best_pix_shift(img: np.ndarray, min_shift, max_shift, step) -> int:
             """Doc."""
 
-            score = np.empty(shape=(max_shift - min_shift), dtype=np.uint32)
-            pix_shifts = np.arange(min_shift, max_shift)
-            for idx, pix_shift in enumerate(range(min_shift, max_shift)):
+            pix_shifts = np.arange(min_shift, max_shift, step)
+            score = np.empty(pix_shifts.shape, dtype=np.uint32)
+            for idx, pix_shift in enumerate(range(min_shift, max_shift, step)):
                 rolled_img = np.roll(img, pix_shift).astype(np.int32)
                 score[idx] = (abs(rolled_img[:-1:2, :] - np.fliplr(rolled_img[1::2, :]))).sum()
             return pix_shifts[score.argmin()]
 
         cnt = cnt.copy()
         height, width = cnt.shape
+        step = div_ceil(width, 1000)  # handling "slow" scans with many points per line
 
         # replacing outliers with median value
         med = np.median(cnt)
@@ -129,7 +130,7 @@ class AngularScanDataMixin:
         # limit initial attempt to the width of the image
         min_pix_shift = -round(width / 2)
         max_pix_shift = min_pix_shift + width + 1
-        pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+        pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift, step)
 
         # Test if not stuck in local minimum. Either 'outer_half_sum > inner_half_sum'
         # Or if the 'return row' (the empty one) is not at the bottom after shift
@@ -144,7 +145,7 @@ class AngularScanDataMixin:
                 print("Data is heavily shifted, check it out!", end=" ")
             min_pix_shift = -round(cnt.size / 2)
             max_pix_shift = min_pix_shift + cnt.size + 1
-            pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift)
+            pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift, step)
 
         return pix_shift
 
