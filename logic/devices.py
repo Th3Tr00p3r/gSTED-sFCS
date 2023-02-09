@@ -296,7 +296,9 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         # set the maximum possible gate width according to the lower gate chosen
         laser_period_ns = round(1 / (self.laser_freq_mhz * 1e6) * 1e9)
         # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
-        gate_width_ns = laser_period_ns - self.lower_gate_ns - 2
+        gate_width_ns = (
+            laser_period_ns - self.lower_gate_ns + self.delayer_dvc.cal_pulse_prop_time_ns - 2
+        )
 
         # setting the gate width
         await self.set_gate_width(gate_width_ns)
@@ -350,7 +352,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
-            cal_pulse_prop_time_ns=("laserPulsePropTime", "QSpinBox", "settings", False),
+            _cal_pulse_prop_time_ns=("laserPulsePropTime", "QSpinBox", "settings", True),
             # NOTE: sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
             _sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", True),
         ),
@@ -403,6 +405,14 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     @eff_delay_ns.setter
     def eff_delay_ns(self, val_ns: float):
         self._eff_delay_ns.set(val_ns)
+
+    @property
+    def cal_pulse_prop_time_ns(self):
+        return self._cal_pulse_prop_time_ns.get()
+
+    @cal_pulse_prop_time_ns.setter
+    def cal_pulse_prop_time_ns(self, val_ns: float):
+        self._cal_pulse_prop_time_ns.set(val_ns)
 
     async def toggle(self, is_being_switched_on: bool):
         """Doc."""

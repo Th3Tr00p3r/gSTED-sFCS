@@ -178,13 +178,13 @@ class Timeout:
                 # MeasurementProcedure progress bar and time left
                 update_meas_progress(meas)
 
-            else:
-                # DeviceError - camera error
-                video_cams = [cam for cam in self.main_gui.impl.cameras if cam.is_in_video_mode]
-                for video_cam in video_cams:
-                    with suppress(DeviceError):
-                        if not video_cam.is_waiting_for_frame:
-                            self._app.loop.create_task(video_cam.get_image())
+            #            else:
+            # DeviceError - camera error
+            video_cams = [cam for cam in self.main_gui.impl.cameras if cam.is_in_video_mode]
+            for video_cam in video_cams:
+                with suppress(DeviceError):
+                    if not video_cam.is_waiting_for_frame:
+                        self._app.loop.create_task(video_cam.get_image())
 
             # photon_counter count rate
             if not self.cntr_dvc.error_dict:
