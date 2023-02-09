@@ -154,17 +154,11 @@ class AngularScanDataMixin:
     ) -> np.ndarray:
         """Doc."""
 
-        #        with Plotter(super_title="BEFORE MEDFILT") as ax: # TESTESTEST
-        #            ax.imshow(img)
-
         # global filtering of outliers (replace bright pixels with median of central area)
         img = img.copy()
         _, width = img.shape
         median = np.median(img[:, int(width * 0.25) : int(width * 0.75)])
         img[img > median * median_factor] = median
-
-        #        with Plotter(super_title="AFTER MEDFILT") as ax: # TESTESTEST
-        #            ax.imshow(img)
 
         # minor local filtering of outliers then thresholding
         thresh = skimage.filters.threshold_multiotsu(
@@ -172,23 +166,14 @@ class AngularScanDataMixin:
         )
         cnt_dig = np.digitize(img, bins=thresh)
 
-        #        with Plotter(super_title="AFTER threshold_multiotsu") as ax: # TESTESTEST
-        #            ax.imshow(cnt_dig)
-
         plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
         std_plateau = scipy.stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
         dev_cnt = img - plateau_lvl
         bw = dev_cnt >= -std_plateau
 
-        #        with Plotter(super_title="MASK BEFORE FILLING HOLES") as ax: # TESTESTEST
-        #            ax.imshow(bw)
-
         bw = scipy.ndimage.binary_fill_holes(bw)
         disk_open = skimage.morphology.disk(radius=disk_radius)
         bw = skimage.morphology.opening(bw, footprint=disk_open)
-
-        #        with Plotter(super_title="FINAL MASK") as ax: # TESTESTEST
-        #            ax.imshow(bw)
 
         return bw
 
