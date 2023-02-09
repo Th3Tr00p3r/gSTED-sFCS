@@ -429,6 +429,20 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
 
+            # TESTESTEST
+            # get existing settings
+            current_delay_ps, current_pulse_width_ns = await self.mpd_command(
+                [("RD", None), ("RP", None)]
+            )
+            print(
+                f"current_delay_ps: {current_delay_ps}\ncurrent_pulse_width_ns: {current_pulse_width_ns}"
+            )
+            # Show delay in GUI
+            self.eff_delay_ns = int(current_pulse_width_ns) + int(current_delay_ps) * 1e-3
+            lower_gate_ns = self.eff_delay_ns - self.sync_delay_ns
+            self.set_delay_wdgt.set(lower_gate_ns)
+            # /TESTESTEST
+
     async def close(self):
         """Doc."""
 
@@ -467,14 +481,12 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
-            effective_delay_ns = pulsewidth_ns + psd_delay_ps * 1e-3
+            # Show delay in GUI
+            self.eff_delay_ns = pulsewidth_ns + psd_delay_ps * 1e-3
 
             self.settings["pulsewidth_ns"] = pulsewidth_ns
             self.settings["psd_delay_ns"] = psd_delay_ps * 1e-3
-            self.settings["effective_delay_ns"] = effective_delay_ns
-
-            # Show delay in GUI
-            self.eff_delay_ns = effective_delay_ns
+            self.settings["effective_delay_ns"] = self.eff_delay_ns
 
             # keep the chosen gate in spad device (where it is relevant)
             # add the calibrated pulse travel time to be consistent with TDC gating (which includes the travel time)
