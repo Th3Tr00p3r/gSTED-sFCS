@@ -234,11 +234,17 @@ class Limits:
 
     __rmul__ = __mul__
 
+    def __pow__(self, other: Number):
+        self_copy = copy(self)
+        self_copy.lower = self.lower ** other
+        self_copy.upper = self.upper ** other
+        return self_copy
+
     def __round__(self):
         self_copy = copy(self)
         self_copy.lower = round(self.lower)
         self_copy.upper = round(self.upper)
-        return
+        return self_copy
 
     def __bool__(self):
         return not ((self.lower == np.NINF) and (self.upper == np.inf))
