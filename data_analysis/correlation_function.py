@@ -1677,9 +1677,8 @@ class SolutionSFCSExperiment:
     def renormalize_all(self, norm_range: Tuple[float, float], **kwargs):
         """Doc."""
 
-        for meas_type in ("confocal", "sted"):
-            for cf in getattr(self, meas_type).cf.values():
-                cf.average_correlation(norm_range=norm_range, **kwargs)
+        for cf in self.cf_dict.values():
+            cf.average_correlation(norm_range=norm_range, **kwargs)
 
     def save_processed_measurements(self, meas_types=["confocal", "sted"], **kwargs):
         """Doc."""
@@ -2057,13 +2056,12 @@ class SolutionSFCSExperiment:
         """Plot afterpulsing filters each measurement"""
         # TODO: this can be improved, (plot both in single figure - plot method of AfterpulsingFilter doesn't match this)
 
-        for meas_type in ("confocal", "sted"):
-            with suppress(AttributeError):
-                for cf in getattr(self, meas_type).cf.values():
-                    cf.afterpulsing_filter.plot(
-                        super_title=f"Afterpulsing Filter\n{meas_type.capitalize()}: {cf.name}",
-                        **kwargs,
-                    )
+        with suppress(AttributeError):
+            for cf in self.cf_dict.values():
+                cf.afterpulsing_filter.plot(
+                    super_title=f"Afterpulsing Filter\n{cf.name}",
+                    **kwargs,
+                )
 
     def calculate_structure_factors(
         self, cal_exp, interp_types=["gaussian"], should_plot=True, is_verbose=True, **kwargs
