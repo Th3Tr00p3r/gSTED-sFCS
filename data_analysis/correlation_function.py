@@ -1518,6 +1518,14 @@ class SolutionSFCSExperiment:
         self.confocal: SolutionSFCSMeasurement
         self.sted: SolutionSFCSMeasurement
 
+    @property
+    def cf_dict(self):
+        """unite all CorrFunc objects from both 'confocal' and 'sted' measurements in a single dictionary."""
+
+        return {
+            cf_label: cf for meas in [self.confocal, self.sted] for cf_label, cf in meas.cf.items()
+        }
+
     def load_experiment(
         self,
         confocal_template: Union[str, Path] = None,
@@ -1544,9 +1552,8 @@ class SolutionSFCSExperiment:
             meas_template = locals()[f"{meas_type}_template"]
             meas_kwargs = locals()[f"{meas_type}_kwargs"]
             if measurement is None:
-
                 if meas_template is not None:
-                    self.load_measurement(
+                    measurement = self.load_measurement(
                         meas_type=meas_type,
                         file_path_template=meas_template,
                         **meas_kwargs,
@@ -1571,7 +1578,7 @@ class SolutionSFCSExperiment:
         afterpulsing_method="filter",
         should_save=False,
         **kwargs,
-    ):
+    ) -> SolutionSFCSMeasurement:
         """Doc."""
 
         if "cf_name" not in kwargs:
@@ -1664,6 +1671,8 @@ class SolutionSFCSExperiment:
                     plot_kwargs=plot_kwargs,
                 )
                 ax.legend()
+
+        return measurement
 
     def renormalize_all(self, norm_range: Tuple[float, float], **kwargs):
         """Doc."""

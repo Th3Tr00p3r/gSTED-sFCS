@@ -261,6 +261,10 @@ def linear_fit(t, m, n):
     return m * t + n
 
 
+def zero_intersect_linear_fit(t, m):
+    return m * t
+
+
 def power_fit(t, a, n):
     return a * t ** n
 
