@@ -1372,6 +1372,7 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         # TODO: Get these from the widgets during initialization!
         self.is_in_video_mode = False
         self.is_in_grayscale_mode = True
+        self.is_in_transposed_mode = False
         self.should_get_diameter = False
         self.is_auto_exposure_on = False
         self.last_snapshot = np.zeros((100, 100))
@@ -1404,16 +1405,18 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
+            if self.is_in_transposed_mode:
+                img = img.transpose(1, 0, 2)
             self.last_snapshot = img
 
             if should_display:
-                self._display_last_img()
+                self._display_img(img)
 
-    def _display_last_img(self) -> None:
+    def _display_img(self, img=None) -> None:
         """Doc."""
 
-        if self.last_snapshot is not None:
-            img_arr = self.last_snapshot
+        if img is not None:
+            img_arr = img
 
             if self.is_in_grayscale_mode:
                 img_arr = np.asarray(PIL.Image.fromarray(img_arr, mode="RGB").convert("L"))
@@ -1495,9 +1498,9 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             or sigma_x > max_sigma_x
             or sigma_y > max_sigma_y
         ):
-            print(
-                f"{self.log_ref}: Gaussian fit is irrational! Center on CCD and avoid saturation.\n({fp.beta})"
-            )
+            #            print(
+            #                f"{self.log_ref}: Gaussian fit is irrational! Center on CCD and avoid saturation.\n({fp.beta})"
+            #            )
             return
 
         # calculating the FWHM

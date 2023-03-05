@@ -254,6 +254,7 @@ class ScanPatternAO:
         circumference_large = pi * diameter_um_large
         circle_freq_hz_large = speed_um_s_large / circumference_large
         samples_per_circle_large = int(ao_sampling_freq_hz / circle_freq_hz_large)
+
         # multiplied by 10 for (optional) floating Z
         n_circles_large = int(ao_sampling_freq_hz / samples_per_circle_large * 10)
 
@@ -278,7 +279,7 @@ class ScanPatternAO:
 
         # add a small, circle to the AO, to alleviate bleaching and spatial correlation in dense solutions
         if self.scan_params.get("should_precess", False):
-            diameter_um_small = diameter_um_large / 5
+            diameter_um_small = diameter_um_large / 10
             speed_um_s_small = speed_um_s_large / 1000
 
             circumference_small = pi * diameter_um_small
