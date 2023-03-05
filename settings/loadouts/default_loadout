@@ -1,5 +1,5 @@
 imgScanFileTemplate,gb
-newTemplate,sol_circle_exc
+newTemplate,freeATTO_slow_circle_exc
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
@@ -15,20 +15,19 @@ tdcCalibGating,40
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
 solScanFloatingAmp,0
-circAoSampFreq,10000
-circDiameter,20
-circSpeed,6000
-numOfCircles,961
 maxLineLen,100
 angAoSampFreq,10000
 angle,120
 lineShift,2
 solAngScanSpeed,6000
 maxWidth,42
-maxScanFreq,40
 solPointsPerLine,149
 solTotPointsPerLine,183
 solNumLines,22
+circAoSampFreq,10000
+circDiameter,25
+circSpeed,12000
+numOfCircles,1538
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -46,7 +45,7 @@ solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,6010.93
 solActualScanFreq,27.32
-solScanDur,5.0
+solScanDur,15.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -58,8 +57,8 @@ imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,2
 dataYear,2023
-dataDay,7
-dataTemplate1,sol_circle_exc_142806_*.pkl
+dataDay,12
+dataTemplate1,freeATTO_slow_circle_exc_150047_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -72,9 +71,9 @@ importedSolDataTemplates2,
 importedSolDataTemplates1,
 solMeasPreset,Standard Static
 solScanType,static
-solScanDurUnits,minutes
+solScanDurUnits,seconds
 avgInterval,5000
-posAxis,X
+posAxis,Y
 importStacked,1
 analysisStacked,1
 solScanParamsStacked,2
@@ -115,9 +114,11 @@ normRows,False
 circShouldPrecess,False
 accumAcf,True
 autoExp1,False
+camTranspose1,False
 grayscaleMode1,True
 measureBeamDiameter1,False
 autoExp2,False
+camTranspose2,True
 grayscaleMode2,True
 measureBeamDiameter2,False
 scaleImgScan,292

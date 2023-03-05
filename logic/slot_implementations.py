@@ -804,6 +804,15 @@ class MainWin:
             with suppress(DeviceError):
                 camera.set_parameters(param_dict)
 
+    def set_transposed_mode(self, cam_num: int, is_checked: bool):
+        """Transpose camera images"""
+
+        if not self.cameras:
+            return
+
+        camera = self.cameras[cam_num - 1]
+        camera.is_in_transposed_mode = is_checked
+
     def set_grayscale_mode(self, cam_num: int, is_checked: bool):
         """Doc."""
 
