@@ -194,8 +194,8 @@ class App:
 
         logging.debug("Pausing 'ai' and 'ci' tasks")
         with suppress(DeviceError):
-            self.devices.scanners.pause_tasks("ai")
-            self.devices.photon_counter.pause_tasks("ci")
+            self.devices.scanners.stop_tasks("ai")
+            self.devices.photon_counter.stop_tasks("ci")
 
         try:
             yield
