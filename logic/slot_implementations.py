@@ -327,7 +327,7 @@ class MainWin:
                 txt=f"Are you sure you wish to calibrate the new value of {new_sync_time_ns} ns as the new 'zero-gating' time? (current value is {current_sync_time_ns} ns)",
                 title="Re-Calibrate Delayer Synchronization Time",
             ).display()
-            if pressed == dialog.NO:
+            if pressed is False:
                 return
             else:
                 delayer_dvc.calibrate_sync_time()
@@ -498,12 +498,12 @@ class MainWin:
         self._gui.options.show()
         self._gui.options.activateWindow()
 
-    def counts_avg_interval_changed(self, val: int) -> None:
+    def counts_avg_interval_changed(self, interval_s: int) -> None:
         """Doc."""
 
         with suppress(AttributeError):
             # AttributeError - devices not yet initialized
-            self._app.timeout_loop.cntr_avg_interval_s = val * 1e-3  # convert to seconds
+            self._app.timeout_loop.cntr_avg_interval_s = interval_s
 
     ####################
     ## Image Tab
@@ -1097,7 +1097,7 @@ class MainWin:
             txt=f"Change current template from:\n{curr_template}\nto:\n{new_template}\n?",
             title="Edit File Template",
         ).display()
-        if pressed == dialog.NO:
+        if pressed is False:
             return
 
         # generate new filanames
@@ -1340,7 +1340,7 @@ class MainWin:
                 txt="Are you sure you wish to delete all processed data?",
                 title="Clearing Processed Data",
             ).display()
-            if pressed == dialog.NO:
+            if pressed is False:
                 return
 
             for dir_path in processed_dir_paths:
@@ -1381,7 +1381,7 @@ class MainWin:
             txt=f"Are you sure you wish to convert '{current_template}'?",
             title="Conversion to .mat Format",
         ).display()
-        if pressed == dialog.NO:
+        if pressed is False:
             return
 
         unsorted_paths = list(current_dir_path.glob(current_template))
@@ -2128,7 +2128,7 @@ class SettWin:
                 pressed = dialog.QuestionDialog(
                     "Keep changes if made? " "(otherwise, revert to last loaded settings file.)"
                 ).display()
-                if pressed == dialog.NO:
+                if pressed is False:
                     self.load(self.settings_gui.settingsFileName.text())
 
         else:
