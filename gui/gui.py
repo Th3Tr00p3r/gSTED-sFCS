@@ -229,6 +229,12 @@ class MainWin(QtWidgets.QMainWindow):
         )
         self.saveImage1.released.connect(lambda: self.impl.save_last_image(1))
         self.saveImage2.released.connect(lambda: self.impl.save_last_image(2))
+        self.camTranspose1.toggled.connect(
+            lambda: self.impl.set_transposed_mode(1, self.camTranspose1.isChecked())
+        )
+        self.camTranspose2.toggled.connect(
+            lambda: self.impl.set_transposed_mode(2, self.camTranspose2.isChecked())
+        )
         self.measureBeamDiameter1.toggled.connect(
             lambda: self.impl.get_gaussian_diameter(1, self.measureBeamDiameter1.isChecked())
         )
