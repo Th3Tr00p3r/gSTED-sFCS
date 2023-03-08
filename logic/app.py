@@ -13,7 +13,6 @@ import yaml
 
 import gui.gui
 import gui.widgets as wdgts
-import utilities.dialog as dialog
 from logic.devices import (
     TDC,
     UM232H,
@@ -30,6 +29,7 @@ from logic.devices import (
     StepperStage,
 )
 from logic.timeout import Timeout
+from utilities.dialog import QuestionDialog
 from utilities.errors import DeviceError
 from utilities.file_utilities import DUMP_PATH
 
@@ -76,7 +76,7 @@ class App:
         self.icon_dict = gui.gui.get_icon_paths()
 
         # init windows
-        print("Initializing GUI...", end=" ")
+        print("    Initializing GUI...", end=" ")
         self.gui = SimpleNamespace()
         # TODO: widget collections from widget module should be part of the gui objects somehow - it's weird that they need to be supplied the gui object to read it - it should be a class method
         self.gui.main = gui.gui.MainWin(self)
@@ -104,7 +104,7 @@ class App:
         print("Done.")
 
         # Initialize all devices
-        print("Initializing Devices:")
+        print("    Initializing Devices:")
         self.init_devices()
         print("        Done.")
 
@@ -115,23 +115,29 @@ class App:
         ]
 
         # init scan patterns
+        print("    Calculating initial scan patterns...", end=" ")
         self.gui.main.impl.disp_scn_pttrn("image")
         sol_pattern = wdgts.SOL_MEAS_COLL.gui_to_dict(self.gui)["scan_type"]
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
+        print("Done.")
 
         # init last images deque
         self.last_image_scans = deque([], maxlen=10)
 
-        # init existing data folders (solution by default)
+        # init existing data folders (solution scan data by default)
+        print("    Fetching lastest measurement data...", end=" ")
         self.gui.main.solDataImport.setChecked(True)
         self.gui.main.impl.switch_data_type()
-
-        # show the GUI
-        self.gui.main.show()
+        print("Done.")
 
         # set up main timeout event
-        print("Initializing timeout loop...", end=" ")
+        print("    Initializing timeout loop...", end=" ")
         self.timeout_loop = Timeout(self)
+        print("Done.")
+
+        # show the GUI
+        print("    Displaying GUI...", end=" ")
+        self.gui.main.show()
         print("Done.")
 
         print("Application initialized.")
@@ -194,8 +200,8 @@ class App:
 
         logging.debug("Pausing 'ai' and 'ci' tasks")
         with suppress(DeviceError):
-            self.devices.scanners.pause_tasks("ai")
-            self.devices.photon_counter.pause_tasks("ci")
+            self.devices.scanners.stop_tasks("ai")
+            self.devices.photon_counter.stop_tasks("ci")
 
         try:
             yield
@@ -209,7 +215,7 @@ class App:
                 self.devices.photon_counter.init_ci_buffer()
                 self.devices.photon_counter.start_tasks("ci")
 
-    async def clean_up_app(self):
+    async def clean_up_app(self, should_clear_dump_path: bool):
         """Doc."""
 
         def close_all_dvcs(app):
@@ -255,7 +261,9 @@ class App:
         self.loop.stop()
 
         # clear temp folder
-        shutil.rmtree(DUMP_PATH, ignore_errors=True)  # TODO: make optional
+        if should_clear_dump_path:
+            shutil.rmtree(DUMP_PATH, ignore_errors=True)
+            logging.info("Dump path cleared.")
 
         logging.info("Quitting application.")
         print("Application closed.")
@@ -265,13 +273,14 @@ class App:
 
         try:
             if not self.exiting:
-                pressed = dialog.QuestionDialog(
-                    txt=f"Are you sure you want to quit?\nThis would also clear the temprary dump path\n({DUMP_PATH})",
+                pressed = QuestionDialog(
+                    txt=f"Would you like to clear the temprary dump path\n({DUMP_PATH})",
                     title="Quitting Program",
+                    should_include_cancel=True,
                 ).display()
-                if pressed == dialog.YES:
+                if pressed is not None:
                     self.exiting = True
-                    self.loop.create_task(self.clean_up_app())
+                    self.loop.create_task(self.clean_up_app(should_clear_dump_path=pressed is True))
                 else:
                     event.ignore()
         except AttributeError:
