@@ -55,7 +55,6 @@ class Ftd2xx(BaseDriver):
 
         try:
             self._inst = ftd2xx.ftd2xx.openEx(self.serial)
-        #            self._inst = ftd2xx.aio.openEx(self.serial)
         except AttributeError:
             raise IOError(f"{self.log_ref} is not plugged in.")
         except ftd2xx.ftd2xx.DeviceError:
@@ -200,7 +199,7 @@ class NIDAQmx(BaseDriver):
         task_status = [task.is_task_done() for task in task_list]
         return task_status.count(1) == len(task_status)
 
-    def pause_tasks(self, task_type: str) -> None:
+    def stop_tasks(self, task_type: str) -> None:
         """Doc."""
 
         task_list = getattr(self.tasks, task_type)

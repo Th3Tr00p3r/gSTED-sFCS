@@ -2,8 +2,11 @@
 
 from PyQt5.QtWidgets import QMessageBox
 
-YES = QMessageBox.Yes
-NO = QMessageBox.No
+input_dict = {
+    QMessageBox.Yes: True,
+    QMessageBox.No: False,
+    QMessageBox.Cancel: None,
+}
 
 
 class Dialog:
@@ -32,9 +35,10 @@ class Dialog:
             self._msg_box.addButton(getattr(QMessageBox, std_bttn))
 
     def display(self):
-        """Doc."""
+        """Show dialog to user, wait for response and translate it into boolean (or None in case of pressing cancel)."""
 
-        return self._msg_box.exec_()  # warning: blocks!
+        user_input = self._msg_box.exec_()  # warning: blocks!
+        return input_dict[user_input]
 
 
 class ErrorDialog(Dialog):
@@ -61,11 +65,15 @@ class ErrorDialog(Dialog):
 class QuestionDialog(Dialog):
     """Doc."""
 
-    def __init__(self, txt, title="User Input Needed"):
+    def __init__(self, txt, title="User Input Needed", should_include_cancel=False):
 
         super().__init__(msg_icon=QMessageBox.Question, msg_title=title, msg_text=txt)
-        self.set_buttons(["Yes", "No"])
-        self._msg_box.setDefaultButton(NO)
+        if should_include_cancel:
+            self.set_buttons(["Yes", "No", "Cancel"])
+            self._msg_box.setDefaultButton(QMessageBox.Cancel)
+        else:
+            self.set_buttons(["Yes", "No"])
+            self._msg_box.setDefaultButton(QMessageBox.No)
 
 
 class NotificationDialog(Dialog):
