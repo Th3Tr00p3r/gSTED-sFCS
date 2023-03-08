@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -8100,22 +8100,27 @@ Experiment</string>
                    </property>
                    <item>
                     <property name="text">
-                     <string>500</string>
+                     <string>0.5</string>
                     </property>
                    </item>
                    <item>
                     <property name="text">
-                     <string>1000</string>
+                     <string>1</string>
                     </property>
                    </item>
                    <item>
                     <property name="text">
-                     <string>2000</string>
+                     <string>2</string>
                     </property>
                    </item>
                    <item>
                     <property name="text">
-                     <string>5000</string>
+                     <string>5</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>10</string>
                     </property>
                    </item>
                   </widget>
@@ -8153,7 +8158,7 @@ Experiment</string>
                     <enum>Qt::LeftToRight</enum>
                    </property>
                    <property name="text">
-                    <string>ms interval</string>
+                    <string>s interval</string>
                    </property>
                    <property name="textFormat">
                     <enum>Qt::PlainText</enum>
