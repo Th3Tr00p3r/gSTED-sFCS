@@ -1,9 +1,7 @@
----
-
-repos:
+---repos:
 
     - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v0.812
+      rev: v1.1.1
       hooks:
           - id: mypy
             args: [--no-strict-optional, --ignore-missing-imports]
@@ -18,7 +16,8 @@ repos:
             types: [python]
             pass_filenames: false
             stages: [commit]
-            additional_dependencies: [numpy, scipy, sklearn, scikit-image, matplotlib, PyQt5]
+            additional_dependencies: [numpy, scipy, scikit-learn,
+                                      scikit-image, matplotlib, PyQt5]
 
     - repo: https://github.com/pycqa/isort
       rev: 5.9.3
@@ -28,31 +27,11 @@ repos:
             exclude: ^data_analysis/example_scripts
 
     - repo: https://github.com/ambv/black
-      rev: 21.9b0
+      rev: 22.3.0
       hooks:
           - id: black
-            language_version: python3.9
+            language_version: python3.10
 
-    - repo: https://gitlab.com/pycqa/flake8
-      rev: 3.9.2
-      hooks:
-          - id: flake8
-            exclude: ^data_analysis/example_scripts
-
-    # - repo: https://github.com/PyCQA/pydocstyle
-      # rev: 6.1.1
-      # hooks:
-          # - id: pydocstyle
-
-    - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
-      rev: 0.1.0   # or specific tag
-      hooks:
-          - id: yamlfmt
-            args: [--width, '150']
-    # - repo: https://github.com/pre-commit/pre-commit-hooks
-      # rev: v4.0.1
-      # hooks:
-          # # - id: fix-encoding-pragma
-            # # args: [--remove] # python3 files don't use this
-          # - id: check-added-large-files
-            # args: [--maxkb=1000]
+    - repo: https://gitlab.com/pycqa/flake8      rev: 3.9.2      hooks:          - id: flake8            exclude: ^data_analysis/example_scripts    # - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
+      # rev: 0.2.2
+      # hooks:          # - id: yamlfmt            # args: [--width, '150']
