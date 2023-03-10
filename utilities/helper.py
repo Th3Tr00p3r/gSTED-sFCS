@@ -236,8 +236,8 @@ class Limits:
 
     def __pow__(self, other: Number):
         self_copy = copy(self)
-        self_copy.lower = self.lower ** other
-        self_copy.upper = self.upper ** other
+        self_copy.lower = self.lower**other
+        self_copy.upper = self.upper**other
         return self_copy
 
     def __round__(self):
@@ -575,7 +575,7 @@ def extrapolate_over_noise(
     x_interp=None,
     x_lims: Limits = Limits(),
     y_lims: Limits = Limits(),
-    n_bins=2 ** 17,
+    n_bins=2**17,
     n_robust=3,
     interp_type="gaussian",
     extrap_x_lims=Limits(np.NINF, np.inf),
@@ -627,16 +627,16 @@ def extrapolate_over_noise(
     if interp_type == "gaussian":
         if n_robust:
             y_interp = robust_interpolation(
-                initial_x_interp ** 2, x_samples ** 2, np.log(y_samples), n_robust
+                initial_x_interp**2, x_samples**2, np.log(y_samples), n_robust
             )
         else:
             interpolator = scipy.interpolate.interp1d(
-                x_samples ** 2,
+                x_samples**2,
                 np.log(y_samples),
                 fill_value="extrapolate",
                 assume_sorted=True,
             )
-            y_interp = interpolator(initial_x_interp ** 2)
+            y_interp = interpolator(initial_x_interp**2)
 
     elif interp_type == "linear":
         if n_robust:
@@ -677,7 +677,7 @@ def fourier_transform_1d(
     y: np.ndarray,
     should_inverse: bool = False,
     is_input_symmetric=False,
-    n_bins=2 ** 17,
+    n_bins=2**17,
     bin_size=None,
     should_normalize: bool = False,
     **kwargs,
@@ -936,7 +936,7 @@ def deep_getattr(obj, deep_attr_name: str, default=None):
     return obj
 
 
-def div_ceil(x: int, y: int) -> int:
+def div_ceil(x: Number, y: Number) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
     return int(-(-x // y))

@@ -8,7 +8,7 @@ from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
 from string import ascii_letters, digits
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, cast
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -362,6 +362,11 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     psd_delay_limits_ps = Limits(1, 49090)
     pulsewidth_limits_ns = Limits(1, 250)
+    _sync_delay_ns: QtWidgetAccess
+    _eff_delay_ns: QtWidgetAccess
+    _cal_pulse_prop_time_ns: QtWidgetAccess
+    spad_dvc: FastGatedSPAD
+    set_delay_wdgt: QtWidgetAccess
 
     def __init__(self, app):
         super().__init__(self.attrs, app)
@@ -438,7 +443,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 f"current_delay_ps: {current_delay_ps}\ncurrent_pulse_width_ns: {current_pulse_width_ns}"
             )
             # Show delay in GUI
-            self.eff_delay_ns = int(current_pulse_width_ns) + int(current_delay_ps) * 1e-3
+            self.eff_delay_ns = (
+                int(cast(str, current_pulse_width_ns)) + int(cast(str, current_delay_ps)) * 1e-3
+            )
             lower_gate_ns = self.eff_delay_ns - self.sync_delay_ns
             self.set_delay_wdgt.set(lower_gate_ns)
             # /TESTESTEST
@@ -634,6 +641,8 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     Z_AO_LIMITS = Limits(0.0, 10.0, ("min_val", "max_val"))
     AI_BUFFER_SIZE = int(1e4)
 
+    ai_x_addr: str
+
     def __init__(self, app):
         super().__init__(
             self.attrs,
@@ -641,7 +650,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             task_types=("ai", "ao"),
         )
         RSE = ni_consts.TerminalConfiguration.RSE
-        DIFF = ni_consts.TerminalConfiguration.DIFFERENTIAL
+        DIFF = ni_consts.TerminalConfiguration.DIFF
         self.ai_chan_specs = [
             {
                 "physical_channel": getattr(self, f"ai_{axis}_addr"),
@@ -977,6 +986,8 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
     CI_BUFFER_SIZE = int(1e4)
 
+    CI_cnt_edges_term: str
+
     def __init__(self, app):
         super().__init__(
             self.attrs,
@@ -1118,6 +1129,11 @@ class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             freq_MHz=("pixelClockFreq", "QSpinBox", "settings", False),
         ),
     )
+
+    cntr_addr: str
+    tick_src: str
+    low_ticks: str
+    high_ticks: str
 
     def __init__(self, app):
         super().__init__(
@@ -1377,6 +1393,8 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     DEFAULT_PARAM_DICT = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
     PIXEL_SIZE_UM = 3.6
 
+    display: QtWidgetAccess
+
     def __init__(self, *args):
         super().__init__(
             *args,
@@ -1457,7 +1475,8 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
     def set_parameters(self, param_dict: dict = DEFAULT_PARAM_DICT) -> None:
         """Set pixel_clock, framerate and exposure"""
 
-        [self.set_parameter(name, value) for name, value in param_dict.items()]
+        for name, value in param_dict.items():
+            self.set_parameter(name, value)
 
     def get_and_display_beam_width(self, img_arr):
         """Doc."""

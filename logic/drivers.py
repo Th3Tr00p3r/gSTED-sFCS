@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+import warnings
 from contextlib import suppress
 from types import SimpleNamespace
 from typing import List, Tuple, Union
@@ -19,6 +20,9 @@ from nidaqmx.stream_readers import (
 
 from utilities.errors import IOError, err_hndlr
 from utilities.helper import Limits, generate_numbers_from_string, translate_dict_values
+
+warnings.simplefilter("ignore", UserWarning)  # TESTESTEST - visa related on laptop
+warnings.simplefilter("ignore", ResourceWarning)  # TESTESTEST - visa related on laptop
 
 
 class BaseDriver:

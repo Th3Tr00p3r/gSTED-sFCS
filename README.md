@@ -1,6 +1,6 @@
 # gSTED-sFCS
 
-Python-based software for our optical measurement system.
+Python-based control GUI and analysis software for our optical measurement system.
 
 ## How this project works:
 
@@ -14,7 +14,7 @@ Python-based software for our optical measurement system.
 
 #### <u>Implemetation</u>
 
-1. The`./implementation` package contains everything other than the most basic GUI - any button press triggers a slot in `gui.py` which in turn calls a function from the implementation. In this way the GUI is completely seperated from the implementation and the physical devices.
+1. The`./logic` package contains everything other than the most basic GUI - any button press triggers a slot in `gui.py` which in turn calls a function from the `slot_implementations.py` module, which in turn calls upon any of the other modules. In this way the GUI is completely seperated from the implementation and the physical devices.
 
 #### <u>Physical Device Control</u>
 
@@ -22,23 +22,25 @@ Python-based software for our optical measurement system.
 
 ## What's here/Noteworthy files:
 
-- `./gSTEDsFCS.e4p` - 'eric IDE' project file, which nicely ties everything together.
+- `./sfcs_sted.epj` - 'Eric IDE' project file, which nicely ties everything together.
 
 - `./gui/gui.py` - GUI module, containing strictly user interaction signals and slots, the slots implemented in `logic.py`.
 
-- `./implementation/logic.py` - general implementations, slowly taking shape when things are moved to seperate modules. Currently contains mostly implementations of the main application stuff (`App()` class) and the GUI windows (i.e. `MainWin()` class).
+- `./logic/slot_implementations.py` - general implementations, slowly taking shape when things are moved to seperate modules. Currently contains mostly implementations of the main application stuff (`App()` class) and the GUI windows (i.e. `MainWin()` class).
 
-- `./implementation/devices.py` - module implementing front-end device interaction with `logic.py` and back-end driver communication with physical instruments through subclassing driver implementations in `drivers.py`
+- `./logic/devices.py` - module implementing front-end device interaction with `logic.py` and back-end driver communication with physical instruments through subclassing driver implementations in `drivers.py`
 
-- `./implementation/constants.py` - constants used across the project.
+- `./logic/helper.py` - general helper functions used throughout the project.
 
-- `./settings/default_settings.csv` - default setting file, initial values for all GUI forms.
+- `./settings/default_settings.csv` - default setting file, initial values for all editable GUI widgets.
 
-- `.pre-commit-config.yaml`, `.flake8`, `pyproject.toml` - these are configuration files for git pre-commit hooks (stuff done before commiting). They enforce better code quality (and let us focus on the content).
+- `.pre-commit-config.yaml`, `.flake8`, `pyproject.toml` - these are configuration files for git pre-commit hooks (stuff performed right before commiting). They enforce better code quality (and let us focus on the content).
 
-## Dependencies/Imports:
+## Notable Dependencies:
 
-- Python 3.9.1
+- Python 3.10.10
+
+- Eric IDE (optional, but was invalueable during development) - very useful for Python GUI projects.
 
 - [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**).
 
@@ -56,9 +58,6 @@ Python-based software for our optical measurement system.
 
 - [ftd2xx](https://github.com/snmishra/ftd2xx) - communication with UM232, which is a usb port to the FPGA (TDC data).
 
-- [PyYAML](https://pypi.org/project/PyYAML/)- for logging configuration
-
-- [pre-commit](https://pypi.org/project/pre-commit/) - a tool for creating pre-commit hooks (using [flake8 ](https://pypi.org/project/flake8/), [isort ](https://pypi.org/project/isort/) and [black](https://pypi.org/project/black/))
 
 ## Installing Eric IDE on Windows:
 
