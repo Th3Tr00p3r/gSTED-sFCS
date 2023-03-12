@@ -8,7 +8,7 @@ from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
 from string import ascii_letters, digits
-from typing import List, Tuple, Union, cast
+from typing import Callable, List, Tuple, Union, cast
 
 import nidaqmx.constants as ni_consts
 import numpy as np
@@ -17,7 +17,7 @@ from matplotlib.patches import Ellipse
 from nidaqmx.errors import DaqError
 
 from gui.widgets import QtWidgetAccess, QtWidgetCollection
-from logic.drivers import Ftd2xx, Instrumental, NIDAQmx, PyVISA
+from logic.drivers import UC480, Ftd2xx, NIDAQmx, PyVISA, Spinnaker
 from logic.scan_patterns import ScanPatternAO
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.dialog import ErrorDialog
@@ -36,7 +36,7 @@ from utilities.helper import (
 @dataclass
 class DeviceAttrs:
     log_ref: str
-    param_widgets: QtWidgetCollection
+    param_widgets: QtWidgetCollection = None
     led_color: str = "green"
     synced_dvc_attrs: List[Tuple[str, str]] = None
 
@@ -1093,6 +1093,11 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 # IndexError - buffer is empty, keep last value
                 self.avg_cnt_rate_khz = (self.ci_buffer[-1] - self.ci_buffer[0]) / interval_s * 1e-3
 
+    #        # TESTESTEST
+    #        now = datetime.datetime.now()
+    #        print(f"{now.time()} - counts since last read: {(self.ci_buffer[-1] - self.ci_buffer[0])}, sum: {sum(self.ci_buffer)}, rate: {self.avg_cnt_rate_khz}")
+    #        # /TESTESTEST
+
     def init_ci_buffer(self, type: str = "circular", size=None) -> None:
         """Doc."""
 
@@ -1386,18 +1391,23 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         self.write("ryx ")  # release
 
 
-class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
+class BaseCamera:
     """Doc."""
 
-    DEFAULT_PARAM_DICT = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
-    PIXEL_SIZE_UM = 3.6
-
+    # NOTE: this are for mypy to be silent. what's needed here is an ABC.
     display: QtWidgetAccess
+    open_instrument: Callable
+    close_instrument: Callable
+    get_latest_frame: Callable
+    capture_image: Callable
+    toggle_video_mode: Callable
+    set_parameter: Callable
+
+    toggle_led_and_switch: Callable
+
+    DEFAULT_PARAM_DICT: dict
 
     def __init__(self, *args):
-        super().__init__(
-            *args,
-        )
         # TODO: Get these from the widgets during initialization!
         self.is_in_video_mode = False
         self.is_in_grayscale_mode = True
@@ -1471,8 +1481,11 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
             return not should_turn_on
 
-    def set_parameters(self, param_dict: dict = DEFAULT_PARAM_DICT) -> None:
+    def set_parameters(self, param_dict: dict = None) -> None:
         """Set pixel_clock, framerate and exposure"""
+
+        if param_dict is None:  # fallback to default
+            param_dict = self.DEFAULT_PARAM_DICT
 
         for name, value in param_dict.items():
             self.set_parameter(name, value)
@@ -1574,35 +1587,66 @@ class Camera(BaseDevice, Instrumental, metaclass=DeviceCheckerMetaClass):
         self.display.obj.axes[0].cursor.move_to_pos(ellipse.get_center())
 
 
-class Camera1(Camera):
+class ThorlabsCamera(BaseDevice, UC480, BaseCamera, metaclass=DeviceCheckerMetaClass):
+    """Doc."""
+
+    DEFAULT_PARAM_DICT = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
+    PIXEL_SIZE_UM = 3.6
+    attrs: DeviceAttrs
+
+    def __init__(self, app, cam_idx: int):
+
+        self.attrs.param_widgets = QtWidgetCollection(
+            led_widget=(f"ledCam{cam_idx}", "QIcon", "main", True),
+            switch_widget=(f"videoSwitch{cam_idx}", "QIcon", "main", True),
+            display=(f"ImgDisp{cam_idx}", None, "main", True),
+            serial=(f"cam{cam_idx}Serial", "QLineEdit", "settings", False),
+        )
+        super().__init__(self.attrs, app)
+
+
+class FlirCamera(BaseDevice, Spinnaker, BaseCamera, metaclass=DeviceCheckerMetaClass):
+    """Doc."""
+
+    # TODO: switch to Python 10 and then install pySpin
+    # TODO: change the camera GUI such that the top and bottom camera displays
+    # can show any of the connected cameras, to be chosen from a combobox.
+    # Also, change the class names such that they describe the use of the camera (e.g. vortex cam, BFP cam, sample cam)
+    # and get leave the index (1/2) to signify top (1) and bottom (2)
+
+    DEFAULT_PARAM_DICT = {"pixel_clock": 25, "framerate": 15.0, "exposure": 1.0}
+    PIXEL_SIZE_UM = 3.45
+
+    attrs: DeviceAttrs
+
+    def __init__(self, app, cam_idx: int):
+
+        self.attrs.param_widgets = QtWidgetCollection(
+            led_widget=(f"ledCam{cam_idx}", "QIcon", "main", True),
+            switch_widget=(f"videoSwitch{cam_idx}", "QIcon", "main", True),
+            display=(f"ImgDisp{cam_idx}", None, "main", True),
+            serial=(f"cam{cam_idx}Serial", "QLineEdit", "settings", False),
+        )
+        super().__init__(self.attrs, app)
+
+
+class Camera1(ThorlabsCamera):
     """Doc."""
 
     attrs = DeviceAttrs(
         log_ref="Camera 1",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledCam1", "QIcon", "main", True),
-            switch_widget=("videoSwitch1", "QIcon", "main", True),
-            display=("ImgDisp1", None, "main", True),
-            serial=("cam1Serial", "QLineEdit", "settings", False),
-        ),
     )
 
     def __init__(self, app):
-        super().__init__(self.attrs, app)
+        super().__init__(app, 1)
 
 
-class Camera2(Camera):
+class Camera2(ThorlabsCamera):
     """Doc."""
 
     attrs = DeviceAttrs(
         log_ref="Camera 2",
-        param_widgets=QtWidgetCollection(
-            led_widget=("ledCam2", "QIcon", "main", True),
-            switch_widget=("videoSwitch2", "QIcon", "main", True),
-            display=("ImgDisp2", None, "main", True),
-            serial=("cam2Serial", "QLineEdit", "settings", False),
-        ),
     )
 
     def __init__(self, app):
-        super().__init__(self.attrs, app)
+        super().__init__(app, 2)

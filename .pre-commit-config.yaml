@@ -20,7 +20,7 @@
                                       scikit-image, matplotlib, PyQt5]
 
     - repo: https://github.com/pycqa/isort
-      rev: 5.9.3
+      rev: 5.12.0
       hooks:
           - id: isort
             args: [--profile, black, --filter-files]
@@ -32,6 +32,6 @@
           - id: black
             language_version: python3.10
 
-    - repo: https://gitlab.com/pycqa/flake8      rev: 3.9.2      hooks:          - id: flake8            exclude: ^data_analysis/example_scripts    # - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
+    - repo: https://github.com/PyCQA/flake8/      rev: 6.0.0      hooks:          - id: flake8            exclude: ^data_analysis/example_scripts    # - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
       # rev: 0.2.2
       # hooks:          # - id: yamlfmt            # args: [--width, '150']

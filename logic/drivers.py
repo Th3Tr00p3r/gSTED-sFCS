@@ -31,6 +31,7 @@ class BaseDriver:
 
     def __init__(self, param_dict):
         [setattr(self, key, val) for key, val in param_dict.items()]
+        super().__init__()  # TESTESTEST - INIT any other supers?
 
 
 class Ftd2xx(BaseDriver):
@@ -475,13 +476,19 @@ class PyVISA(BaseDriver):
             raise IOError(f"{self.log_ref} disconnected! Reconnect and restart.")
 
 
-class Instrumental(BaseDriver):
+class Spinnaker(BaseDriver):
+    """Doc."""
+
+    ...
+
+
+class UC480(BaseDriver):
     """Doc."""
 
     last_snapshot: np.ndarray  # for mypy
 
     def __init__(self, param_dict):
-        super().__init__(param_dict)
+
         self._inst = None
         self.is_waiting_for_frame = False
 
@@ -489,14 +496,14 @@ class Instrumental(BaseDriver):
             exc = IOError("No UC480 cameras detected.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
+        super().__init__(param_dict)
+
     def open_instrument(self):
         """Doc."""
 
         try:
             self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
-            print(
-                f"(Instrumental SN: {self._inst._paramset['serial'].decode('utf-8')}) connection opened"
-            )
+            print(f"(UC480 SN: {self._inst._paramset['serial'].decode('utf-8')}) connection opened")
         except Exception as exc:
             # general 'Exception' is unavoidable due to bad exception handeling in instrumental-lib...
             raise IOError(f"{self.log_ref} disconnected - {exc}")

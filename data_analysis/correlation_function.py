@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from itertools import cycle
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, Iterator, List, Tuple, Union, cast
+from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union, cast
 
 import numpy as np
 from scipy.special import j0, j1, jn_zeros
@@ -88,7 +88,7 @@ class HankelTransform:
         ) as axes:
             kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
             self.IE.plot(parent_ax=axes[0], label_prefix=label_prefix, **kwargs)
-            axes[0].set_xscale("function", functions=(lambda x: x ** 2, lambda x: x ** (1 / 2)))
+            axes[0].set_xscale("function", functions=(lambda x: x**2, lambda x: x ** (1 / 2)))
             axes[0].set_title("Interp./Extrap. Testing")
             axes[0].set_xlabel("vt_um")
             axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
@@ -122,12 +122,12 @@ class CorrFunc:
     vt_um: np.ndarray
     cf_cr: np.ndarray
     g0: float
+    fit_params: FitParams
 
     def __init__(self, name: str, correlator_type: int, laser_freq_hz, **kwargs):
         self.name = name
         self.correlator_type = correlator_type
         self.laser_freq_hz = laser_freq_hz
-        self.fit_params: Dict[str, FitParams] = dict()
         self.afterpulsing_filter = kwargs.get("afterpulsing_filter")
         self.duration_min = kwargs.get("duration_min")
 
@@ -437,7 +437,7 @@ class CorrFunc:
                 f"Division by zero avoided by adding epsilon={EPS:.2f}. Why does this happen (zero total weight)?"
             )
         finally:
-            error_cf_cr = np.sqrt((weights ** 2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
+            error_cf_cr = np.sqrt((weights**2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
 
         return avg_cf_cr, error_cf_cr
 
@@ -481,7 +481,7 @@ class CorrFunc:
         bounds=(np.NINF, np.inf),
         max_nfev=int(1e4),
         **kwargs,
-    ) -> None:
+    ) -> FitParams:
 
         if fit_param_estimate is None:
             if fit_name == "diffusion_3d_fit":
@@ -520,7 +520,7 @@ class CorrFunc:
             y = y[1:]
             error_y = error_y[1:]
 
-        FP = curve_fit_lims(
+        self.fit_params = curve_fit_lims(
             fit_name,
             fit_param_estimate,
             x,
@@ -532,9 +532,8 @@ class CorrFunc:
             plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
             **kwargs,
         )
-        self.fit_params = FP
 
-        return FP
+        return self.fit_params
 
     def calculate_hankel_transform(
         self,
@@ -705,6 +704,7 @@ class SolutionSFCSMeasurement:
     laser_freq_hz: int
     fpga_freq_hz: int
     scan_settings: dict[str, Any]
+    detector_settings: dict[str, Any]
 
     def __init__(self, type):
         self.type = type
@@ -1861,7 +1861,7 @@ class SolutionSFCSExperiment:
 
     def add_gate(
         self,
-        tdc_gate_ns: Tuple[float, float],
+        tdc_gate_ns: Tuple[float, float] | Gate,
         meas_type: str,
         should_re_correlate=False,
         is_verbose=True,
@@ -1892,7 +1892,11 @@ class SolutionSFCSExperiment:
             self.plot_standard(**kwargs)
 
     def add_gates(
-        self, gate_list: List[Tuple[float, float]], meas_type="sted", should_plot=False, **kwargs
+        self,
+        gate_list: Sequence[Tuple[float, float] | Gate],
+        meas_type="sted",
+        should_plot=False,
+        **kwargs,
     ):
         """
         A convecience method for adding multiple gates.
@@ -2157,7 +2161,7 @@ class ImageSFCSMeasurement(CountsImageMixin):
 
 def calculate_calibrated_afterpulse(
     lag: np.ndarray,
-    afterpulse_params: tuple = default_system_info["afterpulse_params"],
+    afterpulse_params: Tuple[str, np.ndarray] = default_system_info["afterpulse_params"],
     gate_ns: Tuple[float, float] = (0, np.inf),
     laser_freq_hz: float = 1e7,
 ) -> np.ndarray:

@@ -979,12 +979,12 @@ def file_last_line(file_path) -> str:
         return last_line
 
 
-def dir_date_parts(data_path: str, sub_dir: str = "", month: int = None, year: int = None) -> list:
+def dir_date_parts(data_path: str, sub_dir: str = "", month: str = None, year: str = None) -> list:
     """
     Inputs:
         data_path - string containing the path to the main data folder.
-        month - integer month to search for. if None, will return months matching the year.
-        year - integer year to search for. If None, will return years of all subfolders.
+        month - str month to search for. if None, will return months matching the year.
+        year - str year to search for. If None, will return years of all subfolders.
 
     Returns:
         a sorted list of strings containing all relevant dates parts in the folder.
