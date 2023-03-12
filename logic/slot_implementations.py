@@ -570,7 +570,7 @@ class MainWin:
             "Both scans - averaged": "averaged",
         }
 
-        def auto_crosshair_position(image: np.ndarray, thresholding=False) -> Tuple[float, float]:
+        def auto_crosshair_position(image: np.ndarray, thresholding=False) -> Tuple[float, ...]:
             """
             Beam co-alignment aid. Attempts to fit a 2D Gaussian to an image and returns the fitted center.
             If the fit fails, or if the fitted Gaussian is centered outside the image limits, it instead
@@ -720,12 +720,12 @@ class MainWin:
         self.main_gui.cameraDock.setVisible(is_toggled_on)
         if is_toggled_on:
             if not self.cameras:
-                slider_const = 1e2
+                slider_const = 100
                 self.cameras = (self._app.devices.camera_1, self._app.devices.camera_2)
                 for idx, camera in enumerate(self.cameras):
                     self.update_slider_range(cam_num=idx + 1)
                     [
-                        getattr(self.main_gui, f"{name}{idx+1}").setValue(val * slider_const)
+                        getattr(self.main_gui, f"{name}{idx+1}").setValue(int(val) * slider_const)
                         for name, val in camera.DEFAULT_PARAM_DICT.items()
                     ]
             self.main_gui.move(100, 30)
@@ -744,14 +744,16 @@ class MainWin:
     def update_slider_range(self, cam_num: int) -> None:
         """Doc."""
 
-        slider_const = 1e2
+        slider_const = 100
 
         camera = self.cameras[cam_num - 1]
 
         with suppress(AttributeError):
             # AttributeError - camera not properly initialized
             for name in ("pixel_clock", "framerate", "exposure"):
-                range = tuple(limit * slider_const for limit in getattr(camera, f"{name}_range"))
+                range = tuple(
+                    int(limit * slider_const) for limit in getattr(camera, f"{name}_range")
+                )
                 getattr(self.main_gui, f"{name}{cam_num}").setRange(*range)
 
     def set_parameter(self, cam_num: int, param_name: str, value) -> None:
@@ -760,7 +762,7 @@ class MainWin:
         if not self.cameras:
             return
 
-        slider_const = 1e2
+        slider_const = 100
 
         # convert from slider
         value /= slider_const
@@ -1386,12 +1388,18 @@ class MainWin:
 
         unsorted_paths = list(current_dir_path.glob(current_template))
         file_paths = file_utilities.sort_file_paths_by_file_number(unsorted_paths)
+        byte_data_paths = [
+            Path(file_path_str).with_name(
+                Path(file_path_str).name.replace(".pkl", "_byte_data.npy")
+            )
+            for file_path_str in file_paths
+        ]
 
         Path.mkdir(current_dir_path / "matlab", parents=True, exist_ok=True)
 
         print(f"Converting {len(file_paths)} files to '.mat' in legacy MATLAB format...", end=" ")
-        for idx, file_path in enumerate(file_paths):
-            file_utilities.save_mat(file_path)
+        for idx, (file_path, byte_data_path) in enumerate(zip(file_paths, byte_data_paths)):
+            file_utilities.save_mat(file_path, byte_data_path)
             print(f"({idx+1})", end=" ")
 
         print("Done.")
@@ -1516,7 +1524,7 @@ class MainWin:
     def get_measurement_from_template(
         self,
         template: str = "",
-    ) -> SolutionSFCSMeasurement:
+    ):
         """Doc."""
 
         if not template:
@@ -1921,7 +1929,7 @@ class MainWin:
 
     def get_experiment(
         self,
-    ) -> SolutionSFCSMeasurement:
+    ) -> SolutionSFCSExperiment:
         """Doc."""
 
         experiment_name = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments.get()
@@ -2077,15 +2085,17 @@ class MainWin:
             kwargs["gui_display"] = wdgt_coll["gui_display_resolution"].obj
             experiment.estimate_spatial_resolution(**kwargs)
 
-    def calculate_hankel_transforms(self) -> None:
+    def calculate_structure_factors(self) -> None:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
         experiment = self.get_experiment()
+        cal_exp = self.get_experiment()  # TESTESTEST - need to set actual calibration experiment
         try:
-            experiment.calculate_hankel_transforms(
+            experiment.calculate_structure_factors(
+                cal_exp,  # TESTESTEST - need to set actual calibration experiment
                 #                fr_interp_lims=(wdgt_coll["g_min"], np.inf),
-                n_robust=wdgt_coll["n_robust"]
+                n_robust=wdgt_coll["n_robust"],
             )
         except AttributeError:
             logging.info("Can't calculate structure factors, no experiment is loaded!")

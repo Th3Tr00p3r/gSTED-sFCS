@@ -138,7 +138,7 @@ class Timeout:
                         / meas.est_total_duration_s
                         * meas.prog_bar_wdgt.obj.maximum()
                     )
-                meas.prog_bar_wdgt.set(progress)
+                meas.prog_bar_wdgt.set(round(progress))
 
         def update_log_wdgt() -> None:
             """Doc."""

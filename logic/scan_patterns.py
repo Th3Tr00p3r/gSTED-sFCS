@@ -2,8 +2,7 @@
 
 import logging
 from math import cos, pi, sin
-from types import SimpleNamespace
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
 
@@ -25,7 +24,7 @@ class ScanPatternAO:
         self.origin_ao_v = origin_ao_v
         self.scan_params = scan_params
 
-    def calculate_pattern(self) -> Tuple[np.ndarray, SimpleNamespace]:
+    def calculate_pattern(self) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Doc."""
 
         if self.pattern == "image":
@@ -39,7 +38,7 @@ class ScanPatternAO:
 
     def calc_image_pattern(
         self,
-    ) -> Tuple[np.ndarray, SimpleNamespace]:
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Doc."""
 
         line_freq_hz = self.scan_params["line_freq_hz"]
@@ -72,13 +71,13 @@ class ScanPatternAO:
         s[j] = a * np.power(t[j], 2)
 
         j = (t > t0) & (t <= (ppl / 2 - t0))
-        s[j] = v * t[j] - a * t0 ** 2 / 2
+        s[j] = v * t[j] - a * t0**2 / 2
 
         j = (t > (ppl / 2 - t0)) & (t <= (ppl / 2 + t0))
         s[j] = A - a * np.power((t[j] - ppl / 2), 2) / 2
 
         j = (t > (ppl / 2 + t0)) & (t <= (ppl - t0))
-        s[j] = A + a * t0 ** 2 / 2 - v * (t[j] - ppl / 2)
+        s[j] = A + a * t0**2 / 2 - v * (t[j] - ppl / 2)
 
         j = t > (ppl - t0)
         s[j] = a * np.power((ppl - t[j]), 2) / 2
@@ -117,7 +116,7 @@ class ScanPatternAO:
 
         return ao_buffer, self.scan_params
 
-    def calc_angular_pattern(self) -> Tuple[np.ndarray, SimpleNamespace]:
+    def calc_angular_pattern(self) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Doc."""
 
         # argument definitions (for better readability
@@ -167,7 +166,7 @@ class ScanPatternAO:
         shift_vec[j] = v_shift * (t[j] - t0)
 
         j = (t > t0) & (t <= (T - t0))
-        s[j] = v * t[j] - a * t0 ** 2 / 2
+        s[j] = v * t[j] - a * t0**2 / 2
         shift_vec[j] = 0
 
         j = t > (T - t0)
@@ -242,7 +241,7 @@ class ScanPatternAO:
 
         return ao_buffer, self.scan_params
 
-    def calc_circle_pattern(self) -> Tuple[np.ndarray, SimpleNamespace]:
+    def calc_circle_pattern(self) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Doc."""
 
         ao_sampling_freq_hz = self.scan_params["ao_sampling_freq_hz"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from contextlib import suppress
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import PyQt5.QtWidgets as QtWidgets
 
@@ -200,7 +200,7 @@ SETTINGS_TYPES = [
 ]
 
 # What to do with each widget class
-_getter_setter_type_dict: Dict[str, Tuple[str, str, type]] = {
+_getter_setter_type_dict: Dict[str, Tuple[str, str, Callable]] = {
     "QLabel": ("text", "setText", str),
     "QComboBox": ("currentText", "setCurrentText", str),
     "QTabWidget": ("currentIndex", "setCurrentIndex", int),

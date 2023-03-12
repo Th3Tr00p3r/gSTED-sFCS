@@ -9,7 +9,7 @@ import pickle
 import re
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import bloscpack
 import numpy as np
@@ -44,7 +44,7 @@ PDM_SPAD_AP = (
 )
 
 # TODO: this should be defined elsewhere (devices? app?)
-default_system_info = {
+default_system_info: Dict[str, Any] = {
     "setup": "STED with galvos",
     "afterpulse_params": FAST_GATED_SPAD_AP,  # PDM_SPAD_AP
     "ai_scaling_xyz": (1.243, 1.239, 1),
@@ -459,6 +459,8 @@ def load_file_dict(file_path: Path):
             file_dict = _translate_dict_keys(load_object(file_path), legacy_python_trans_dict)
         elif file_path.suffix == ".mat":
             file_dict = _translate_dict_keys(_load_mat(file_path), legacy_matlab_trans_dict)
+        elif file_path.suffix == ".npy":
+            file_dict = dict(byte_data=np.load(file_path, allow_pickle=False, fix_imports=False))
         else:
             raise NotImplementedError(f"Unknown file extension '{file_path.suffix}'.")
 
@@ -503,7 +505,7 @@ def _translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
     return translated_dict
 
 
-def save_mat(file_path: Path) -> None:
+def save_mat(*file_paths: Path) -> None:
     """
     Re-saves raw data at 'file_path' as .mat, in order to be loaded by old MATLAB analysis tools.
     This takes care of converting all keys to legacy naming, converting 'AfterPulseParam' to old style (array only, no type),
@@ -519,7 +521,10 @@ def save_mat(file_path: Path) -> None:
         # stop condition
         if not isinstance(obj, dict):
             if isinstance(obj, (list, tuple, Limits)):
-                return np.array(obj, dtype=np.int64)
+                try:
+                    return np.array(obj, dtype=np.int64)
+                except OverflowError:  # TESTESTEST
+                    return np.array(obj, dtype=np.float64)
             elif isinstance(obj, int):
                 return float(obj)
             elif isinstance(obj, SimpleNamespace):
@@ -534,18 +539,25 @@ def save_mat(file_path: Path) -> None:
             if val is not None
         }
 
-    file_dict = load_file_dict(file_path)
-    mat_file_path_str = re.sub("\\.pkl", ".mat", str(file_path))
+    mat_file_path_str = re.sub("\\.pkl", ".mat", str(file_paths[0]))
     if "solution" in mat_file_path_str:
         mat_file_path = Path(re.sub("solution", r"solution\\matlab", mat_file_path_str))
     elif "image" in mat_file_path_str:
         mat_file_path = Path(re.sub("image", r"image\\matlab", mat_file_path_str))
 
-    file_dict = _translate_dict_keys(file_dict, reverse_dict(legacy_matlab_trans_dict))
-    file_dict["SystemInfo"]["AfterPulseParam"] = file_dict["SystemInfo"]["AfterPulseParam"][1]
-    file_dict = _convert_types_to_matlab_format(file_dict)
-    file_dict["python_converted"] = True  # mark as converted-from-Python MATLAB format
-    spio.savemat(mat_file_path, file_dict)
+    # translate to Matlab format
+    file_dicts = [load_file_dict(file_path) for file_path in file_paths]
+    combined_file_dict = {k: v for file_dict in file_dicts for k, v in file_dict.items()}
+    combined_file_dict = _translate_dict_keys(
+        combined_file_dict, reverse_dict(legacy_matlab_trans_dict)
+    )
+    combined_file_dict["SystemInfo"]["AfterPulseParam"] = combined_file_dict["SystemInfo"][
+        "AfterPulseParam"
+    ][1]
+    combined_file_dict = _convert_types_to_matlab_format(combined_file_dict)
+    combined_file_dict["FullData"]["Data"] = combined_file_dict.pop("Data")
+    combined_file_dict["python_converted"] = True  # mark as converted-from-Python MATLAB format
+    spio.savemat(mat_file_path, combined_file_dict)
 
 
 def _load_mat(file_path):

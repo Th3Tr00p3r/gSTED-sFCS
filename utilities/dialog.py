@@ -6,6 +6,7 @@ input_dict = {
     QMessageBox.Yes: True,
     QMessageBox.No: False,
     QMessageBox.Cancel: None,
+    QMessageBox.Ok: None,
 }
 
 
