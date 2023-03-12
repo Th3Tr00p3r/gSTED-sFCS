@@ -746,8 +746,10 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         def smooth_start(
             axis: str, ao_chan_specs: list, final_pos: float, step_sz: float = 0.25
         ) -> None:
-            """Doc."""
-            # NOTE: Ask Oleg why we used 40 steps in LabVIEW (this is why I use a step size of 10/40 V)
+            """
+            Get to the initial scan point smoothly (in as many steps as required  to do so, according to 'step_sz').
+            The actual scan is assumed to be smooth. This just takes care of getting to the starting point.
+            """
 
             try:
                 init_pos = self.ai_buffer[-1][3:][self.AXIS_INDEX[axis]]
@@ -784,9 +786,6 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                     err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
         axes_to_use = self.AXES_TO_BOOL_TUPLE_DICT[type]
-
-        # keep latest AO for Y-galvo calibration # TESTESTEST
-        self._latest_ao_buffer = ao_data  # TESTESTEST
 
         xy_chan_spcs = []
         z_chan_spcs = []

@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project sfcs_sted",
     "copyright": "Copyright (C) 2023 idomich, ",
-    "saved": "2023-03-09, 01:35:28"
+    "saved": "2023-03-11, 15:22:34"
   },
   "project": {
     "AUTHOR": "idomich",
@@ -395,7 +395,6 @@
       "gui/icons/icons.qrc"
     ],
     "SOURCES": [
-      "__init__.py",
       "data_analysis/correlation_function.py",
       "data_analysis/data_processing.py",
       "data_analysis/example_scripts/.ipynb_checkpoints/250x dilution of Sasha's concentrated sample-checkpoint.py",
