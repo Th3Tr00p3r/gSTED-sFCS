@@ -1,6 +1,10 @@
 Instrumental_lib == 0.7
+<<<<<<< Updated upstream
 PyQt5_sip
 pyqt5
+=======
+pyqt5 == 5.15.9
+>>>>>>> Stashed changes
 pyvisa == 1.13.0
 pyvisa-py == 0.6.3
 PyYAML == 5.4.1

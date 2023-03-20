@@ -1961,16 +1961,16 @@ class MainWin:
                 # display parameters in GUI
                 wdgt_coll["fluoresence_lifetime"].set(lt_params.lifetime_ns)
                 wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
-                calib_pulse_delay_ns = self._app.devices.delayer.cal_pulse_prop_time_ns
                 calc_pulse_delay_ns = lt_params.laser_pulse_delay_ns
-                if abs(calc_pulse_delay_ns - calib_pulse_delay_ns) / calc_pulse_delay_ns > 0.1:
-                    logging.info(
-                        f"Calculated laser pulse delay time ({calc_pulse_delay_ns} ns) is very different from calibrated value. Using calibrated value ({calib_pulse_delay_ns} ns)"
-                    )
-                    wdgt_coll["laser_pulse_delay"].set(calib_pulse_delay_ns)
-                    experiment.lifetime_params.laser_pulse_delay_ns = calib_pulse_delay_ns
-                else:
-                    wdgt_coll["laser_pulse_delay"].set(calc_pulse_delay_ns)
+                #                calib_pulse_delay_ns = self._app.devices.delayer.cal_pulse_prop_time_ns
+                #                if abs(calc_pulse_delay_ns - calib_pulse_delay_ns) / calc_pulse_delay_ns > 0.1:
+                #                    logging.info(
+                #                        f"Calculated laser pulse delay time ({calc_pulse_delay_ns} ns) is very different from calibrated value. Using calibrated value ({calib_pulse_delay_ns} ns)"
+                #                    )
+                #                    wdgt_coll["laser_pulse_delay"].set(calib_pulse_delay_ns)
+                #                    experiment.lifetime_params.laser_pulse_delay_ns = calib_pulse_delay_ns
+                #                else:
+                wdgt_coll["laser_pulse_delay"].set(calc_pulse_delay_ns)
 
     def assign_gate(self) -> None:
         """Doc."""
