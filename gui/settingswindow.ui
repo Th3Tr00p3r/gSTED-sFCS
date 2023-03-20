@@ -95,7 +95,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -407,8 +407,8 @@
          <widget class="QGroupBox" name="groupBox_22">
           <property name="geometry">
            <rect>
-            <x>20</x>
-            <y>310</y>
+            <x>10</x>
+            <y>220</y>
             <width>149</width>
             <height>82</height>
            </rect>
@@ -446,48 +446,6 @@
               </widget>
              </item>
             </layout>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="layoutWidget">
-          <property name="geometry">
-           <rect>
-            <x>30</x>
-            <y>230</y>
-            <width>130</width>
-            <height>62</height>
-           </rect>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_44">
-           <item>
-            <widget class="QLabel" name="label_29">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>Laser Pulse
-Propagation Time (ns)</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QDoubleSpinBox" name="laserPulsePropTime">
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="decimals">
-              <number>2</number>
-             </property>
-             <property name="maximum">
-              <double>9999.000000000000000</double>
-             </property>
-             <property name="value">
-              <double>3.700000000000000</double>
-             </property>
-            </widget>
            </item>
           </layout>
          </widget>

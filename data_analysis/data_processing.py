@@ -167,7 +167,7 @@ class AngularScanDataMixin:
         cnt_dig = np.digitize(img, bins=thresh)
 
         plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
-        std_plateau = scipy.stats.median_absolute_deviation(img[cnt_dig == (otsu_classes - 1)])
+        std_plateau = scipy.stats.median_abs_deviation(img[cnt_dig == (otsu_classes - 1)])
         dev_cnt = img - plateau_lvl
         bw = dev_cnt >= -std_plateau
 
@@ -1001,6 +1001,7 @@ class AfterulsingFilter:
             axes[1].set_title("Filter")
             axes[1].plot(self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"])
             axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
+
             axes[1].legend()
 
             if self.valid_limits.upper != np.inf:
@@ -1107,22 +1108,10 @@ class TDCCalibration:
         all_hist_norm = copy(self.all_hist_norm)
         t_hist = copy(self.t_hist)
 
-        # prepare padding for the gated-out/noisy part of the histogram
+        # define valid bins to work with
         peak_bin = max(np.nanargmax(all_hist_norm) - 2, 0)
         peak_to_end_limits = Limits(t_hist[peak_bin], np.inf)
         valid_limits = peak_to_end_limits & gate_ns
-        lower_idx = round(valid_limits.lower * 10)
-        F_pad_before = np.zeros((2, lower_idx))
-        #        F_pad_before = np.full((2, lower_idx), np.nan)
-        try:
-            upper_idx = round(valid_limits.upper * 10)
-            F_pad_after = np.zeros((2, len(t_hist) - upper_idx - 1))
-        #            F_pad_after = np.full((2, len(t_hist) - upper_idx - 1), np.nan)
-        except (OverflowError, ValueError):
-            # OverflowError: gate_ns.upper == np.inf
-            # ValueError: len(t_hist) == upper_idx
-            F_pad_after = np.array([[], []])
-        # define valid bins to work with
         valid_idxs = valid_limits.valid_indices(t_hist)
 
         # interpolate over NaNs
@@ -1155,6 +1144,14 @@ class TDCCalibration:
         F = np.linalg.pinv(M.T @ inv_I @ M) @ M.T @ inv_I
 
         # Return the filter to original dimensions by adding zeros in the detector-gated zone
+        # prepare padding for the gated-out/noisy part of the histogram
+        lower_idx = round(valid_limits.lower * 10)
+        F_pad_before = np.zeros((2, lower_idx))
+        if gate_ns.upper != np.inf:
+            upper_idx = round(valid_limits.upper * 10)
+            F_pad_after = np.zeros((2, len(t_hist) - upper_idx))
+        else:
+            F_pad_after = np.zeros((2, 0))
         F = np.hstack((F_pad_before, F, F_pad_after))
 
         ap_filter = AfterulsingFilter(
@@ -1179,7 +1176,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
     """For processing raw bytes data"""
 
     GROUP_LEN: int = 7
-    MAX_VAL: int = 256 ** 3
+    MAX_VAL: int = 256**3
 
     def __init__(
         self, dump_path: Path, laser_freq_hz: int, fpga_freq_hz: int, detector_gate_ns: Gate
@@ -1287,7 +1284,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # calculate the global pulse_runtime (the number of laser pulses at each photon arrival since the beginning of the file)
         # each index in pulse_runtime represents a photon arrival into the TDC
         pulse_runtime = (
-            byte_data[photon_idxs + 1] * 256 ** 2
+            byte_data[photon_idxs + 1] * 256**2
             + byte_data[photon_idxs + 2] * 256
             + byte_data[photon_idxs + 3]
         ).astype(np.int64)
