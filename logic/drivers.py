@@ -19,27 +19,13 @@ from nidaqmx.stream_readers import (
 )
 
 from utilities.errors import IOError, err_hndlr
-from utilities.helper import (
-    Limits,
-    generate_numbers_from_string,
-    update_attributes,
-    update_dict_values,
-)
+from utilities.helper import Limits, generate_numbers_from_string, update_attributes
 
 warnings.simplefilter("ignore", UserWarning)  # TESTESTEST - visa related on laptop
 warnings.simplefilter("ignore", ResourceWarning)  # TESTESTEST - visa related on laptop
 
 
-class BaseDriver:
-
-    log_ref: str
-
-    def __init__(self, param_dict):
-        [setattr(self, key, val) for key, val in param_dict.items()]
-        super().__init__()  # TESTESTEST - INIT any other supers?
-
-
-class Ftd2xx(BaseDriver):
+class Ftd2xx:
     """Doc."""
 
     ftd2xx_dict = {
@@ -47,11 +33,12 @@ class Ftd2xx(BaseDriver):
         "RTS-CTS": ftd2xx.defines.FLOW_RTS_CTS,
     }
     n_bytes: int = 200
+    log_ref: str
 
-    def __init__(self, param_dict):
+    def __init__(self):
 
         update_attributes(self, self.ftd2xx_dict)
-        super().__init__(update_dict_values(param_dict, self.ftd2xx_dict))
+        super().__init__()
 
         # auto-find serial number from description
         num_devs = ftd2xx.createDeviceInfoList()
@@ -178,15 +165,16 @@ class Ftd2xx(BaseDriver):
             raise IOError(exc)
 
 
-class NIDAQmx(BaseDriver):
+class NIDAQmx:
     """Doc."""
 
     MIN_OUTPUT_RATE_Hz = int(1e3)
     CONT_READ_BFFR_SZ = int(1e5)
     AO_TIMEOUT = 0.1
+    log_ref: str
 
-    def __init__(self, param_dict, task_types):
-        super().__init__(param_dict)
+    def __init__(self, task_types):
+        super().__init__()
         self.task_types = task_types
         self.tasks = SimpleNamespace(**{type: [] for type in task_types})
 
@@ -356,16 +344,17 @@ class NIDAQmx(BaseDriver):
             do_task.write(_bool)
 
 
-class PyVISA(BaseDriver):
+class PyVISA:
     """Doc."""
+
+    log_ref: str
 
     def __init__(
         self,
-        param_dict,
         read_termination="",
         write_termination="",
     ):
-        super().__init__(param_dict)
+        super().__init__()
         self.read_termination = read_termination
         self.write_termination = write_termination
         self._rm = visa.ResourceManager()
@@ -483,18 +472,21 @@ class PyVISA(BaseDriver):
             raise IOError(f"{self.log_ref} disconnected! Reconnect and restart.")
 
 
-class Spinnaker(BaseDriver):
+class Spinnaker:
     """Doc."""
+
+    log_ref: str
 
     ...
 
 
-class UC480(BaseDriver):
+class UC480:
     """Doc."""
 
+    log_ref: str
     last_snapshot: np.ndarray  # for mypy
 
-    def __init__(self, param_dict):
+    def __init__(self):
 
         self._inst = None
         self.is_waiting_for_frame = False
@@ -503,7 +495,7 @@ class UC480(BaseDriver):
             exc = IOError("No UC480 cameras detected.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
 
-        super().__init__(param_dict)
+        super().__init__()
 
     def open_instrument(self):
         """Doc."""
