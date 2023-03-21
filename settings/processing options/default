@@ -3,7 +3,7 @@ useDefaultSysInfo,False
 subtractBgCorr,True
 ignoreHardGate,False
 useMultiProcessing,False
-shouldUniteStartTimes,True
+shouldUniteStartTimes,False
 fixShift,True
 autoRoi,True
 alleviateBrightPixels,False
