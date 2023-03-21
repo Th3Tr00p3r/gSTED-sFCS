@@ -19,7 +19,12 @@ from nidaqmx.stream_readers import (
 )
 
 from utilities.errors import IOError, err_hndlr
-from utilities.helper import Limits, generate_numbers_from_string, translate_dict_values
+from utilities.helper import (
+    Limits,
+    generate_numbers_from_string,
+    update_attributes,
+    update_dict_values,
+)
 
 warnings.simplefilter("ignore", UserWarning)  # TESTESTEST - visa related on laptop
 warnings.simplefilter("ignore", ResourceWarning)  # TESTESTEST - visa related on laptop
@@ -44,13 +49,15 @@ class Ftd2xx(BaseDriver):
     n_bytes: int = 200
 
     def __init__(self, param_dict):
-        super().__init__(translate_dict_values(param_dict, self.ftd2xx_dict))
+
+        update_attributes(self, self.ftd2xx_dict)
+        super().__init__(update_dict_values(param_dict, self.ftd2xx_dict))
 
         # auto-find serial number from description
         num_devs = ftd2xx.createDeviceInfoList()
         for idx in range(num_devs):
             info_dict = ftd2xx.getDeviceInfoDetail(devnum=idx)
-            if info_dict["description"].decode("utf-8") == param_dict["description"]:
+            if info_dict["description"].decode("utf-8") == self.description:
                 self.serial = info_dict["serial"]
                 print(f"(FTDI SN: {self.serial.decode('utf-8')} connection opened)")
 
