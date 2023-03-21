@@ -11,6 +11,9 @@ yacctab.py
 log/
 delete_me/
 
+# pyrcc binary (needs to be copied to each local repository from local venv)
+pyrcc5.exe
+
 # vim?
 .vim
 
