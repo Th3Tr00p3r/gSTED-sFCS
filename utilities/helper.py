@@ -955,19 +955,6 @@ def reverse_dict(dict_: dict, ignore_unhashable=False) -> dict:
         return {val: key for key, val in dict_.items()}
 
 
-def update_dict_values(original_dict: dict, trans_dict: dict) -> dict:
-    """
-    Updates values of dict according to another dict:
-    val_trans_dct.keys() are the values to update,
-    and val_trans_dct.values() are the new values.
-    """
-
-    return {
-        key: (trans_dict[val] if val in trans_dict.keys() else val)
-        for key, val in original_dict.items()
-    }
-
-
 def update_attributes(obj, val_dict: dict):
     """Update the (existing) attributes of an object according to a supplied dictionary"""
 

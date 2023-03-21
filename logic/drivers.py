@@ -483,8 +483,8 @@ class Spinnaker:
 class UC480:
     """Doc."""
 
-    log_ref: str
-    last_snapshot: np.ndarray  # for mypy
+    log_ref: str  # NOTE: these are for mypy to be silent. what's needed here is an ABC.
+    last_snapshot: np.ndarray
 
     def __init__(self):
 
