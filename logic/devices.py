@@ -67,7 +67,6 @@ class BaseDevice:
         self.error_dict = None
         self._app_loop = app.loop
         self._app_gui = app.gui
-        # TODO: really there's nothing left in "param_dict" to be passed to driver (super), in almost all cases. Consider refactoring further to get rid of it
         super().__init__(**kwargs)
 
         self.switch_widget: QtWidgetAccess
