@@ -352,7 +352,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             timeout_ms=("psdTimeout", "QSpinBox", "settings", False),
             threshold_mV=("psdThreshold_mV", "QSpinBox", "settings", False),
             freq_divider=("psdFreqDiv", "QSpinBox", "settings", False),
-            _cal_pulse_prop_time_ns=("laserPulsePropTime", "QSpinBox", "settings", True),
             # NOTE: sync_delay_ns was by measuring a detector-gated sample, getting its actual delay by syncing to the laser sample's (below) TDC calibration
             _sync_delay_ns=("syncDelay", "QDoubleSpinBox", "settings", True),
         ),
@@ -364,7 +363,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     pulsewidth_limits_ns = Limits(1, 250)
     _sync_delay_ns: QtWidgetAccess
     _eff_delay_ns: QtWidgetAccess
-    _cal_pulse_prop_time_ns: QtWidgetAccess
     spad_dvc: FastGatedSPAD
     set_delay_wdgt: QtWidgetAccess
 
@@ -397,6 +395,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     # TODO: can these be set dynamically for all device widgets? is it even a good idea?
     @property
     def sync_delay_ns(self):
+        # TODO: how can this be quickly manually calibrated eah day of measurements? Can't rely on a fixed value! (could change)
         return self._sync_delay_ns.get()
 
     @sync_delay_ns.setter
@@ -410,14 +409,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     @eff_delay_ns.setter
     def eff_delay_ns(self, val_ns: float):
         self._eff_delay_ns.set(val_ns)
-
-    @property
-    def cal_pulse_prop_time_ns(self):
-        return self._cal_pulse_prop_time_ns.get()
-
-    @cal_pulse_prop_time_ns.setter
-    def cal_pulse_prop_time_ns(self, val_ns: float):
-        self._cal_pulse_prop_time_ns.set(val_ns)
 
     async def toggle(self, is_being_switched_on: bool):
         """Doc."""
@@ -466,6 +457,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         for syncronizing the laser pulse with the fluorescence pulse.
         (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
         """
+        # TODO: need to manually set the "cal_pulse_prop_time_ns" before each detector-gated measurement! (or each day of measurements).
+        # This can be achieved by using the free ATTO measurement or any other non-gated measurement to get the pulse time
+        # (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
 
         lower_gate_ns = self.set_delay_wdgt.get()
 
