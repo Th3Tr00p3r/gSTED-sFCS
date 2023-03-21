@@ -50,13 +50,17 @@ class BaseDevice:
 
         self.icon_dict = app.icon_dict
 
-        param_dict = attrs.param_widgets.hold_widgets(app.gui).gui_to_dict(app.gui)
-        param_dict["log_ref"] = attrs.log_ref
-        param_dict["led_icon"] = app.icon_dict[f"led_{attrs.led_color}"]
-        param_dict["error_display"] = QtWidgetAccess(
+        # set basic device attributes
+        self.log_ref = attrs.log_ref
+        self.led_icon = app.icon_dict[f"led_{attrs.led_color}"]
+        self.error_display = QtWidgetAccess(
             "deviceErrorDisplay", "QLineEdit", "main", True
         ).hold_widget(app.gui.main)
+        # assign widgets
+        widget_dict = attrs.param_widgets.hold_widgets(app.gui).gui_to_dict(app.gui)
+        [setattr(self, key, val) for key, val in widget_dict.items()]
 
+        param_dict = {}
         if attrs.synced_dvc_attrs:
             for attr_name, deep_attr in attrs.synced_dvc_attrs:
                 param_dict[attr_name] = deep_getattr(app, deep_attr)
@@ -64,8 +68,9 @@ class BaseDevice:
         self.error_dict = None
         self._app_loop = app.loop
         self._app_gui = app.gui
+        # TODO: really there's nothing left in "param_dict" to be passed to driver (super), in almost all cases. Consider refactoring further to get rid of it
         super().__init__(param_dict, **kwargs)
-        self.led_widget: QtWidgetAccess
+
         self.switch_widget: QtWidgetAccess
 
     def change_icons(self, command, **kwargs):
