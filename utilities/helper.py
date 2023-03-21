@@ -10,7 +10,7 @@ from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, List, Tuple, TypeVar
+from typing import Any, Callable, Hashable, List, Tuple, TypeVar
 
 import numpy as np
 import scipy
@@ -942,13 +942,20 @@ def div_ceil(x: Number, y: Number) -> int:
     return int(-(-x // y))
 
 
-def reverse_dict(dict_: dict) -> dict:
-    """Return a new dict for which keys and values are switched"""
+def reverse_dict(dict_: dict, ignore_unhashable=False) -> dict:
+    """
+    Return a new dict for which keys and values are switched.
+    Raises a TypeError if a value is unhashable, unless 'ignore_unhashable' is True,
+    in which case it will drop from the new dict.
+    """
 
-    return {val: key for key, val in dict_.items()}
+    if ignore_unhashable:
+        return {val: key for key, val in dict_.items() if isinstance(val, Hashable)}
+    else:
+        return {val: key for key, val in dict_.items()}
 
 
-def translate_dict_values(original_dict: dict, trans_dict: dict) -> dict:
+def update_dict_values(original_dict: dict, trans_dict: dict) -> dict:
     """
     Updates values of dict according to another dict:
     val_trans_dct.keys() are the values to update,
@@ -959,6 +966,15 @@ def translate_dict_values(original_dict: dict, trans_dict: dict) -> dict:
         key: (trans_dict[val] if val in trans_dict.keys() else val)
         for key, val in original_dict.items()
     }
+
+
+def update_attributes(obj, val_dict: dict):
+    """Update the (existing) attributes of an object according to a supplied dictionary"""
+
+    rev_attr_dict = reverse_dict(vars(obj), ignore_unhashable=True)
+    for old_val, new_val in val_dict.items():
+        if old_val in rev_attr_dict:
+            setattr(obj, rev_attr_dict[old_val], new_val)
 
 
 def file_last_line(file_path) -> str:
