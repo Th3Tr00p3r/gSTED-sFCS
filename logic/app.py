@@ -9,7 +9,7 @@ from contextlib import contextmanager, suppress
 from pathlib import Path
 from types import SimpleNamespace
 
-import yaml
+import yaml  # type: ignore # mypy issue with 'stub'?
 
 import gui.gui
 import gui.widgets as wdgts
@@ -38,10 +38,9 @@ class App:
     """Doc."""
 
     SETTINGS_DIR_PATH = Path("./settings/")
-    PROCESSING_OPTIONS_DIR_PATH = SETTINGS_DIR_PATH / "processing options"
-    LOADOUT_DIR_PATH = SETTINGS_DIR_PATH / "loadouts/"
-    DEFAULT_LOADOUT_FILE_PATH = LOADOUT_DIR_PATH / "default_loadout"
-    DEFAULT_SETTINGS_FILE_PATH = SETTINGS_DIR_PATH / "default_settings"
+    DEFAULT_LOADOUT_FILE_PATH = SETTINGS_DIR_PATH / "default_loadout.txt"
+    DEFAULT_SETTINGS_FILE_PATH = SETTINGS_DIR_PATH / "default_settings.txt"
+    DEFAULT_PROCESSING_OPTIONS_FILE_PATH = SETTINGS_DIR_PATH / "default_processing_options.txt"
     DEFAULT_LOG_PATH = Path("./log/")
     device_nick_class_dict = {
         "exc_laser": ExcitationLaser,
@@ -83,7 +82,7 @@ class App:
         self.gui.settings = gui.gui.SettWin(self)
         self.gui.options = gui.gui.ProcessingOptionsWindow(self)
         self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
-        self.gui.settings.impl.load(self.default_settings_path())
+        self.gui.settings.impl.load(self.DEFAULT_SETTINGS_FILE_PATH)
         self.gui.options.impl.load()
 
         # populate all widget collections in 'gui.widgets' with objects
@@ -165,18 +164,6 @@ class App:
         for gui_object_name in {"dataPath", "camDataPath"}:
             rel_path = Path(getattr(self.gui.settings, gui_object_name).text())
             Path.mkdir(rel_path, parents=True, exist_ok=True)
-
-    def default_settings_path(self) -> Path:
-        """Doc."""
-        try:
-            with open(self.SETTINGS_DIR_PATH / "default_settings_choice", "r") as f:
-                return self.SETTINGS_DIR_PATH / f.readline()
-        except FileNotFoundError:
-            print(
-                "Warning - default settings choice file not found! using 'default_settings_lab'.",
-                end=" ",
-            )
-            return self.SETTINGS_DIR_PATH / "default_settings_lab"
 
     def init_devices(self):
         """
