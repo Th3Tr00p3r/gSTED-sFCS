@@ -728,11 +728,11 @@ class MainWin:
                         getattr(self.main_gui, f"{name}{idx+1}").setValue(int(val) * slider_const)
                         for name, val in camera.DEFAULT_PARAM_DICT.items()
                     ]
-            self.main_gui.move(100, 30)
-            self.main_gui.setFixedSize(1661, 950)
+            self.main_gui.move(0, 0)
+            self.main_gui.setFixedSize(1700, 950)
         else:
             self.main_gui.move(300, 30)
-            self.main_gui.setFixedSize(1211, 950)
+            self.main_gui.setFixedSize(1310, 950)
             [
                 self.device_toggle(
                     f"camera_{cam_num}", "toggle_video", "is_in_video_mode", leave_off=True

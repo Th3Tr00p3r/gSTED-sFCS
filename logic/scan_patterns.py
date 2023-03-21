@@ -174,6 +174,7 @@ class ScanPatternAO:
         shift_vec[j] = v_shift * (t[j] - T + t0)
         # centering
         s = s - 1 / (2 * f)
+        # TODO: need to center width as well?
 
         x_ao = np.zeros(shape=(T, n_lines + 1))
         y_ao = np.zeros(shape=(T, n_lines + 1))
@@ -232,7 +233,7 @@ class ScanPatternAO:
         self.scan_params["n_lines"] = n_lines
         self.scan_params["samples_per_line"] = T
         self.scan_params["linear_len_um"] = linear_len_um
-        self.scan_params["ppl"] = ppl
+        self.scan_params["ppl"] = round(ppl)  # TESTESTEST
         self.scan_params["line_freq_hz"] = line_freq_hz
         self.scan_params["eff_speed_um_s"] = v * linear_len_um * ao_sampling_freq_hz
         self.scan_params["linear_part"] = np.arange(t0, (T - t0) + 1, dtype=np.int32)
