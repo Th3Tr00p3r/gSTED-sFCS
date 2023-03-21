@@ -1,19 +1,19 @@
-imgScanFileTemplate,gb
-newTemplate,test_delete_angular_exc
+newTemplate,ATTO300bp_angular_exc
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
+imgScanFileTemplate,gb
 solScanFileTemplate,
 spadMode,free running
+expStrctFctrRbstIntrpPnts,3
+tdcCalibGating,40
+solAnalysisRemoveWorstSpinner,0
+scanImgFileNum,1
 imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 currPlane,0
-expStrctFctrRbstIntrpPnts,3
-tdcCalibGating,40
-solAnalysisRemoveWorstSpinner,0
-scanImgFileNum,1
 solScanFloatingAmp,0
 circAoSampFreq,10000
 circDiameter,25
@@ -21,26 +21,26 @@ circSpeed,25
 numOfCircles,3
 maxLineLen,100
 angAoSampFreq,10000
-angle,170
+angle,120
 lineShift,2
 solAngScanSpeed,8800
-maxWidth,52
+maxWidth,42
 solPointsPerLine,102
 solTotPointsPerLine,125
-solNumLines,26
+solNumLines,22
 depPow,130
 depCurr,1500
 stageSteps,250
 spadGateWidth,98
 spadEffGateWidth,1
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,10.0
-imgScanLinFrac,0.9
 expStrctFctrGMin,0.01
 customGateLifetimesLower,5.0
 customGateLifetimesUpper,20.0
 solAnalysisRemoveOverSpinner,2.0
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,10.0
+imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,8800.0
@@ -52,13 +52,10 @@ zAOV,5.0
 axisMoveUm,5.0
 psdDelay,0.0
 psdEffDelay,49.61
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - actual counts per pixel
 dataMonth,3
 dataYear,2023
-dataDay,14
-dataTemplate1,test_delete_angular_exc_150100_*.pkl
+dataDay,19
+dataTemplate1,ATTO300bp_angular_exc_143633_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -69,14 +66,17 @@ gateMeasType,STED
 availableGates,
 importedSolDataTemplates2,
 importedSolDataTemplates1,
-solMeasPreset,Standard Angular
-solScanType,angular
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - actual counts per pixel
+solMeasPreset,Standard Static
+solScanType,static
 solScanDurUnits,seconds
 avgInterval,5
 posAxis,X
 importStacked,1
 analysisStacked,1
-solScanParamsStacked,0
+solScanParamsStacked,2
 depModeStacked,0
 imageDataImport,False
 solDataImport,True
@@ -105,12 +105,12 @@ tabWidget_2,0
 tabWidget_4,0
 tabWidget_3,0
 tabWidget_5,0
-autoCrosshair,True
-alwaysSaveImg,False
 solImportReCorrelate,False
 solImportAutoLoadProcessed,False
 bwMask,False
 normRows,False
+autoCrosshair,True
+alwaysSaveImg,False
 circShouldPrecess,False
 accumAcf,True
 autoExp1,False
