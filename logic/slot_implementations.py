@@ -2265,13 +2265,13 @@ class ProcessingOptionsWindow:
     def save(self) -> None:
         """Save default options"""
 
-        file_path = self._app.PROCESSING_OPTIONS_DIR_PATH / "default"
+        file_path = self._app.DEFAULT_PROCESSING_OPTIONS_FILE_PATH
         wdgts.write_gui_to_file(self.processing_gui.frame, wdgts.SETTINGS_TYPES, file_path)
         logging.debug(f"Processing options file saved as: '{file_path}'")
 
     def load(self):
         """Load default options"""
 
-        file_path = self._app.PROCESSING_OPTIONS_DIR_PATH / "default"
+        file_path = self._app.DEFAULT_PROCESSING_OPTIONS_FILE_PATH
         wdgts.read_file_to_gui(file_path, self.processing_gui.frame)
         logging.debug(f"Processing options file loaded: '{file_path}'")
