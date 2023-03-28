@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -3666,7 +3666,7 @@ Pattern:</string>
              </layout>
             </item>
             <item>
-             <layout class="QVBoxLayout" name="verticalLayout_59" stretch="1,1,100">
+             <layout class="QVBoxLayout" name="verticalLayout_59" stretch="0,0,100">
               <property name="spacing">
                <number>0</number>
               </property>
@@ -4471,48 +4471,126 @@ Pattern:</string>
                </widget>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_32">
+               <layout class="QHBoxLayout" name="horizontalLayout_70">
                 <property name="spacing">
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QPushButton" name="startSolScanExc">
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>50</height>
-                   </size>
+                 <layout class="QVBoxLayout" name="verticalLayout_166">
+                  <property name="spacing">
+                   <number>0</number>
                   </property>
-                  <property name="text">
-                   <string>Exc Scan</string>
-                  </property>
-                 </widget>
+                  <item>
+                   <widget class="QPushButton" name="startSolScanExc">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>50</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Exc Scan</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="startSolQueueExc">
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>30</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Exc Queue</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="startSolScanDep">
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>50</height>
-                   </size>
+                 <layout class="QVBoxLayout" name="verticalLayout_167">
+                  <property name="spacing">
+                   <number>0</number>
                   </property>
-                  <property name="text">
-                   <string>Dep Scan</string>
-                  </property>
-                 </widget>
+                  <item>
+                   <widget class="QPushButton" name="startSolScanDep">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>50</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Dep Scan</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="startSolQueueDep">
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>30</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Dep Queue</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="startSolScanSted">
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>50</height>
-                   </size>
+                 <layout class="QVBoxLayout" name="verticalLayout_168">
+                  <property name="spacing">
+                   <number>0</number>
                   </property>
-                  <property name="text">
-                   <string>Sted Scan</string>
-                  </property>
-                 </widget>
+                  <item>
+                   <widget class="QPushButton" name="startSolScanSted">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>50</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>STED Scan</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="startSolQueueSted">
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>30</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>STED Queue</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                </layout>
               </item>

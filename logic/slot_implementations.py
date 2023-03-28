@@ -345,7 +345,7 @@ class MainWin:
             self.main_gui.stepperDock.setVisible(True)
             self.main_gui.actionStepper_Stage_Control.setChecked(True)
 
-    async def toggle_meas(self, meas_type, laser_mode):
+    async def toggle_meas(self, meas_type, laser_mode, should_run=True):
         """Doc."""
 
         if meas_type != (current_type := self._app.meas.type):
@@ -372,45 +372,62 @@ class MainWin:
 
                     scan_params["floating_z_amplitude_um"] = kwargs["floating_z_amplitude_um"]
 
-                    self._app.meas = meas.SolutionMeasurementProcedure(
-                        app=self._app,
-                        scan_params=scan_params,
-                        laser_mode=laser_mode.lower(),
-                        processing_options=self.get_processing_options_as_dict(),
-                        **kwargs,
+                    # add to FIFO queue
+                    self._app.meas_queue.appendleft(
+                        meas.SolutionMeasurementProcedure(
+                            app=self._app,
+                            scan_params=scan_params,
+                            laser_mode=laser_mode.lower(),
+                            processing_options=self.get_processing_options_as_dict(),
+                            **kwargs,
+                        )
                     )
 
-                    self.main_gui.startSolScanExc.setEnabled(False)
-                    self.main_gui.startSolScanDep.setEnabled(False)
-                    self.main_gui.startSolScanSted.setEnabled(False)
-                    getattr(self.main_gui, f"startSolScan{laser_mode}").setEnabled(True)
-                    getattr(self.main_gui, f"startSolScan{laser_mode}").setText("Stop \nScan")
+                    # adjust GUI
+                    if should_run:
+                        self.main_gui.startSolScanExc.setEnabled(False)
+                        self.main_gui.startSolScanDep.setEnabled(False)
+                        self.main_gui.startSolScanSted.setEnabled(False)
+                        getattr(self.main_gui, f"startSolScan{laser_mode}").setEnabled(True)
+                        getattr(self.main_gui, f"startSolScan{laser_mode}").setText("Stop \nScan")
 
-                    self.main_gui.solScanMaxFileSize.setEnabled(False)
-                    self.main_gui.solScanDur.setEnabled(self.main_gui.repeatSolMeas.isChecked())
-                    self.main_gui.solScanDurUnits.setEnabled(False)
-                    self.main_gui.solScanFileTemplate.setEnabled(False)
+                        self.main_gui.solScanMaxFileSize.setEnabled(False)
+                        self.main_gui.solScanDur.setEnabled(self.main_gui.repeatSolMeas.isChecked())
+                        self.main_gui.solScanDurUnits.setEnabled(False)
+                        self.main_gui.solScanFileTemplate.setEnabled(False)
 
                 elif meas_type == "SFCSImage":
 
                     kwargs = wdgts.IMG_MEAS_COLL.gui_to_dict(self._app.gui)
 
-                    self._app.meas = meas.ImageMeasurementProcedure(
-                        app=self._app,
-                        scan_params=wdgts.IMG_SCAN_COLL.gui_to_dict(self._gui),
-                        laser_mode=laser_mode.lower(),
-                        **kwargs,
+                    # add to FIFO queue
+                    self._app.meas_queue.appendleft(
+                        meas.ImageMeasurementProcedure(
+                            app=self._app,
+                            scan_params=wdgts.IMG_SCAN_COLL.gui_to_dict(self._gui),
+                            laser_mode=laser_mode.lower(),
+                            **kwargs,
+                        )
                     )
 
-                    self.main_gui.startImgScanExc.setEnabled(False)
-                    self.main_gui.startImgScanDep.setEnabled(False)
-                    self.main_gui.startImgScanSted.setEnabled(False)
-                    getattr(self.main_gui, f"startImgScan{laser_mode}").setEnabled(True)
-                    getattr(self.main_gui, f"startImgScan{laser_mode}").setText("Stop \nScan")
+                    # adjust GUI
+                    if should_run:
+                        self.main_gui.startImgScanExc.setEnabled(False)
+                        self.main_gui.startImgScanDep.setEnabled(False)
+                        self.main_gui.startImgScanSted.setEnabled(False)
+                        getattr(self.main_gui, f"startImgScan{laser_mode}").setEnabled(True)
+                        getattr(self.main_gui, f"startImgScan{laser_mode}").setText("Stop \nScan")
 
-                # run the measurement
-                logging.info(f"{meas_type} measurement started.")
-                await self._app.meas.run()
+                if should_run:
+                    # run the measurement
+                    logging.info(f"{meas_type} measurement started.")
+                    self._app.meas = self._app.meas_queue.pop()
+                    await self._app.meas.run()
+
+                else:
+                    # add to queue only
+                    logging.info(f"{meas_type} measurement added to FIFO queue.")
+
             else:
                 # other meas running
                 logging.warning(
@@ -418,7 +435,7 @@ class MainWin:
                 )
 
         else:  # current_type == meas_type
-            # manual shutdown
+            # measurement shutdown
             if meas_type == "SFCSSolution":
                 self.main_gui.startSolScanExc.setEnabled(True)
                 self.main_gui.startSolScanDep.setEnabled(True)
@@ -443,6 +460,13 @@ class MainWin:
                 # manual stop
                 await self._app.meas.stop()
                 logging.info(f"{meas_type} measurement stopped.")
+
+            # switch to next meas in line, if any
+            with suppress(IndexError):
+                # IndexError: empty deque - final measurement
+                self._app.meas = self._app.meas_queue.pop()
+                logging.info(f"{meas_type} measurement started.")
+                await self._app.meas.run()
 
     def disp_scn_pttrn(self, pattern: str):
         """Doc."""
