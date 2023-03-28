@@ -65,6 +65,7 @@ class App:
 
         self.loop = loop
         self.meas = SimpleNamespace(type=None, is_running=False)
+        self.meas_queue = deque()
         self.analysis = SimpleNamespace(
             loaded_measurements=dict(),
             assigned_to_experiment=dict(),
@@ -239,6 +240,7 @@ class App:
         self.timeout_loop.not_finished = False
 
         if self.meas.type is not None:
+            self.meas_queue.clear()
             await self.gui.main.impl.toggle_meas(self.meas.type, self.meas.laser_mode.capitalize())
 
         close_all_wins(self)

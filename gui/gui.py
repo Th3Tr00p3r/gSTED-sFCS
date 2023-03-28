@@ -204,11 +204,20 @@ class MainWin(QtWidgets.QMainWindow):
         self.startSolScanExc.released.connect(
             lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Exc"))
         )
+        self.startSolQueueExc.released.connect(
+            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Exc", False))
+        )
         self.startSolScanDep.released.connect(
             lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Dep"))
         )
+        self.startSolQueueDep.released.connect(
+            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Dep", False))
+        )
         self.startSolScanSted.released.connect(
             lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Sted"))
+        )
+        self.startSolQueueSted.released.connect(
+            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Sted", False))
         )
 
         # status bar
