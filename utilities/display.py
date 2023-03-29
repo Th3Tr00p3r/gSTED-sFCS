@@ -70,6 +70,7 @@ class GuiDisplay:
             except TypeError:  # xy_pairs_list is a really 'x', 'y' is in args
                 ax.plot(xy_pairs_list, *args, "k", lw=0.3)
             ax.set_aspect("equal")
+            ax.invert_xaxis()  # NOTE: this is to match the scan image orientation # TESTESTEST
 
     def display_image(self, image: np.ndarray, reuse_plotter=True, imshow_kwargs=dict(), **kwargs):
         """Doc."""
@@ -113,7 +114,7 @@ class GuiDisplay:
 
         elif x_type == "disp":
             kwargs["y_scale"] = "log"
-            x_arr = x_arr ** 2
+            x_arr = x_arr**2
             kwargs["xlim"] = (0, 0.6)
             kwargs["ylim"] = (g0 * 1.5e-3, g0 * 1.1)
 
@@ -313,7 +314,7 @@ class Plotter:
         if self.x_scale is not None:
             if self.x_scale == "quadratic":
                 ax.set_xscale(
-                    "function", functions=(lambda x: x ** 2, self._quadratic_xscale_backwards)
+                    "function", functions=(lambda x: x**2, self._quadratic_xscale_backwards)
                 )
             else:
                 ax.set_xscale(self.x_scale)
