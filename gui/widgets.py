@@ -217,6 +217,7 @@ _getter_setter_type_dict: Dict[str, Tuple[str, str, Callable]] = {
     "QStackedWidget": ("currentIndex", "setCurrentIndex", int),
     "QToolBox": ("currentIndex", "setCurrentIndex", int),
     "QDial": ("value", "setValue", int),
+    "QListWidget": ("currentItem", "setCurrentItem", None),
 }
 
 # ------------------------------
@@ -389,6 +390,7 @@ SOL_MEAS_COLL = QtWidgetCollection(
     plot_wdgt=("solScanAcf", None, "main", True),
     fit_led=("ledFit", "QIcon", "main", True),
     should_accumulate_corrfuncs=("accumAcf", "QCheckBox", "main", False),
+    meas_queue=("measQueue", "QListWidget", "main", True),
 )
 
 IMG_SCAN_COLL = QtWidgetCollection(

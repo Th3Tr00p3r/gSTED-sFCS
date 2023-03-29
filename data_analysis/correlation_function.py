@@ -67,7 +67,7 @@ class StructureFactor:
             ax.set_ylim(1e-4, 2)
             ax.set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
             ax.set_ylabel("$S(q)$")
-            ax.legend()
+            ax.legend(fontsize=6)
 
 
 @dataclass
@@ -1314,7 +1314,7 @@ class SolutionSFCSMeasurement:
                     plot_kwargs=plot_kwargs,
                     **kwargs,
                 )
-            ax.legend()
+            ax.legend(fontsize=6)
 
     def estimate_spatial_resolution(self, colors=None, **kwargs) -> Iterator[str]:
         """
@@ -1348,7 +1348,7 @@ class SolutionSFCSMeasurement:
                 fit_label = f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.0f}$)"
                 FP.plot(parent_ax=ax, color=color, fit_label=fit_label, **kwargs)
 
-            ax.legend()
+            ax.legend(fontsize=6)
 
         return colors
 
@@ -1670,7 +1670,7 @@ class SolutionSFCSExperiment:
                     label=f"{cf.name}: avg_cf_cr",
                     plot_kwargs=plot_kwargs,
                 )
-                ax.legend()
+                ax.legend(fontsize=6)
 
         return measurement
 
@@ -2010,7 +2010,7 @@ class SolutionSFCSExperiment:
                                 f"{self.name}: {label}" if should_add_exp_name else label
                             )
 
-            ax.legend()
+            ax.legend(fontsize=6)
 
     def estimate_spatial_resolution(self, colors=None, **kwargs) -> Iterator[str]:
         """
@@ -2052,7 +2052,7 @@ class SolutionSFCSExperiment:
                         if "_" not in label:
                             line.set_label(f"{self.name}: {label}")
 
-            ax.legend()
+            ax.legend(fontsize=6)
 
         return remaining_colors
 
