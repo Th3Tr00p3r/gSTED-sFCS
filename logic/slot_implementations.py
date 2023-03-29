@@ -382,6 +382,9 @@ class MainWin:
                             **kwargs,
                         )
                     )
+                    self._gui.measQueue.addItem(
+                        f"{pattern} - {laser_mode.lower()} - {kwargs['duration']} {kwargs['duration_units']}"
+                    )
 
                     # adjust GUI
                     if should_run:
@@ -467,6 +470,17 @@ class MainWin:
                 self._app.meas = self._app.meas_queue.pop()
                 logging.info(f"{meas_type} measurement started.")
                 await self._app.meas.run()
+
+    async def begin_measurements(self):
+        """Start the measurement queue"""
+
+        # switch to next meas in line, if any
+        with suppress(IndexError):
+            # IndexError: empty deque - final measurement
+            self._app.meas = self._app.meas_queue.pop()
+            self._gui.measQueue.takeItem(0)
+            logging.info(f"{self._app.meas.type} measurement started.")
+            await self._app.meas.run()
 
     def disp_scn_pttrn(self, pattern: str):
         """Doc."""
