@@ -211,6 +211,18 @@ class MainWin(QtWidgets.QMainWindow):
             lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Sted", False))
         )
 
+        # begin measurements in queue
+        self.beginMeasurements.released.connect(
+            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", should_run=True))
+        )
+
+        # cancel all measurments
+        self.stopMeasurements.released.connect(
+            lambda: self._loop.create_task(
+                self.impl.toggle_meas("SFCSSolution", self.impl._app.meas.type)
+            )
+        )
+
         # status bar
         self.setStatusBar(QtWidgets.QStatusBar())
 
