@@ -270,10 +270,8 @@ class MeasurementProcedure:
                 button = self._app.gui.main.startImgScanDep
             elif self.type == "SFCSImage" and self.laser_mode == "sted":
                 button = self._app.gui.main.startImgScanSted
-            elif self.type == "SFCSSolution" and self.laser_mode == "dep":
-                button = self._app.gui.main.startSolScanDep
-            elif self.type == "SFCSSolution" and self.laser_mode == "sted":
-                button = self._app.gui.main.startSolScanSted
+            elif self.type == "SFCSSolution" and self.laser_mode in {"dep", "sted"}:
+                button = self._app.gui.main.stopMeasurements
             button.setEnabled(False)
             await asyncio.sleep(5)
             button.setEnabled(True)
