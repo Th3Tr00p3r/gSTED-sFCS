@@ -863,15 +863,6 @@
                         </color>
                        </brush>
                       </colorrole>
-                      <colorrole role="PlaceholderText">
-                       <brush brushstyle="NoBrush">
-                        <color alpha="128">
-                         <red>0</red>
-                         <green>0</green>
-                         <blue>0</blue>
-                        </color>
-                       </brush>
-                      </colorrole>
                      </active>
                      <inactive>
                       <colorrole role="WindowText">
@@ -1009,15 +1000,6 @@
                         </color>
                        </brush>
                       </colorrole>
-                      <colorrole role="PlaceholderText">
-                       <brush brushstyle="NoBrush">
-                        <color alpha="128">
-                         <red>0</red>
-                         <green>0</green>
-                         <blue>0</blue>
-                        </color>
-                       </brush>
-                      </colorrole>
                      </inactive>
                      <disabled>
                       <colorrole role="WindowText">
@@ -1149,15 +1131,6 @@
                       <colorrole role="ToolTipText">
                        <brush brushstyle="SolidPattern">
                         <color alpha="255">
-                         <red>0</red>
-                         <green>0</green>
-                         <blue>0</blue>
-                        </color>
-                       </brush>
-                      </colorrole>
-                      <colorrole role="PlaceholderText">
-                       <brush brushstyle="NoBrush">
-                        <color alpha="128">
                          <red>0</red>
                          <green>0</green>
                          <blue>0</blue>
@@ -4030,15 +4003,6 @@ Pattern:</string>
                             </color>
                            </brush>
                           </colorrole>
-                          <colorrole role="PlaceholderText">
-                           <brush brushstyle="NoBrush">
-                            <color alpha="128">
-                             <red>0</red>
-                             <green>0</green>
-                             <blue>0</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
                          </active>
                          <inactive>
                           <colorrole role="WindowText">
@@ -4176,15 +4140,6 @@ Pattern:</string>
                             </color>
                            </brush>
                           </colorrole>
-                          <colorrole role="PlaceholderText">
-                           <brush brushstyle="NoBrush">
-                            <color alpha="128">
-                             <red>0</red>
-                             <green>0</green>
-                             <blue>0</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
                          </inactive>
                          <disabled>
                           <colorrole role="WindowText">
@@ -4316,15 +4271,6 @@ Pattern:</string>
                           <colorrole role="ToolTipText">
                            <brush brushstyle="SolidPattern">
                             <color alpha="255">
-                             <red>0</red>
-                             <green>0</green>
-                             <blue>0</blue>
-                            </color>
-                           </brush>
-                          </colorrole>
-                          <colorrole role="PlaceholderText">
-                           <brush brushstyle="NoBrush">
-                            <color alpha="128">
                              <red>0</red>
                              <green>0</green>
                              <blue>0</blue>
@@ -4520,7 +4466,7 @@ Pattern:</string>
                     </layout>
                    </item>
                    <item>
-                    <layout class="QGridLayout" name="gridLayout_39" rowstretch="10,1" columnstretch="1,10">
+                    <layout class="QGridLayout" name="gridLayout_39" rowstretch="10,0,0" columnstretch="1,0">
                      <property name="spacing">
                       <number>2</number>
                      </property>
@@ -4599,6 +4545,19 @@ Pattern:</string>
                        </layout>
                       </widget>
                      </item>
+                     <item row="1" column="0" colspan="2">
+                      <widget class="QPushButton" name="beginMeasurements">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="text">
+                        <string>Begin Measurements</string>
+                       </property>
+                      </widget>
+                     </item>
                      <item row="0" column="1">
                       <widget class="QGroupBox" name="groupBox_27">
                        <property name="title">
@@ -4667,8 +4626,8 @@ Pattern:</string>
                        </layout>
                       </widget>
                      </item>
-                     <item row="1" column="0" colspan="2">
-                      <widget class="QPushButton" name="beginMeasurements">
+                     <item row="2" column="0" colspan="2">
+                      <widget class="QPushButton" name="stopMeasurements">
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                          <horstretch>0</horstretch>
@@ -4676,7 +4635,7 @@ Pattern:</string>
                         </sizepolicy>
                        </property>
                        <property name="text">
-                        <string>Begin Measurements</string>
+                        <string>Stop Measurements</string>
                        </property>
                       </widget>
                      </item>
@@ -7350,7 +7309,7 @@ Over (ns)</string>
                                          <height>9999</height>
                                         </size>
                                        </property>
-                                       <property name="placeholderText">
+                                       <property name="placeholderText" stdset="0">
                                         <string/>
                                        </property>
                                       </widget>
@@ -7449,7 +7408,7 @@ Over (ns)</string>
                                         <height>9999999</height>
                                        </size>
                                       </property>
-                                      <property name="placeholderText">
+                                      <property name="placeholderText" stdset="0">
                                        <string/>
                                       </property>
                                      </widget>
