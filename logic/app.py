@@ -93,6 +93,9 @@ class App:
             if isinstance(val, wdgts.QtWidgetCollection)
         ]
 
+        # clear measurement queue
+        self.gui.main.measQueue.clear()
+
         # create neccessary data folders based on settings paths
         self.create_data_folders()
 
