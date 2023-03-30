@@ -191,36 +191,42 @@ class MainWin(QtWidgets.QMainWindow):
 
         # Image Scan
         self.startImgScanExc.released.connect(
-            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSImage", "Exc"))
+            lambda: self.impl.add_meas_to_queue("SFCSImage", "Exc")
         )
         self.startImgScanDep.released.connect(
-            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSImage", "Dep"))
+            lambda: self.impl.add_meas_to_queue("SFCSImage", "Dep")
         )
         self.startImgScanSted.released.connect(
-            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSImage", "Sted"))
+            lambda: self.impl.add_meas_to_queue("SFCSImage", "Sted")
         )
 
         # Solution Scan
         self.startSolQueueExc.released.connect(
-            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Exc", False))
+            lambda: self.impl.add_meas_to_queue("SFCSSolution", "Exc")
         )
         self.startSolQueueDep.released.connect(
-            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Dep", False))
+            lambda: self.impl.add_meas_to_queue("SFCSSolution", "Dep")
         )
         self.startSolQueueSted.released.connect(
-            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", "Sted", False))
+            lambda: self.impl.add_meas_to_queue("SFCSSolution", "Sted")
         )
+
+        # remove selected measurement from queue
+        self.removeMeasFromQueue.released.connect(lambda: self.impl.remove_meas_from_queue())
 
         # begin measurements in queue
         self.beginMeasurements.released.connect(
-            lambda: self._loop.create_task(self.impl.toggle_meas("SFCSSolution", should_run=True))
+            lambda: self._loop.create_task(self.impl.fire_meas_queue())
+        )
+
+        # cancel current measurement
+        self.stopMeasurement.released.connect(
+            lambda: self._loop.create_task(self.impl.toggle_meas(self.impl._app.meas))
         )
 
         # cancel all measurments
         self.stopMeasurements.released.connect(
-            lambda: self._loop.create_task(
-                self.impl.toggle_meas("SFCSSolution", self.impl._app.meas.type)
-            )
+            lambda: self._loop.create_task(self.impl.cancel_queue())
         )
 
         # status bar

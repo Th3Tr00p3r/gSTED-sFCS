@@ -65,7 +65,7 @@ class App:
 
         self.loop = loop
         self.meas = SimpleNamespace(type=None, is_running=False)
-        self.meas_queue = deque()
+        self.meas_queue = []
         self.analysis = SimpleNamespace(
             loaded_measurements=dict(),
             assigned_to_experiment=dict(),
@@ -82,7 +82,7 @@ class App:
         self.gui.main = gui.gui.MainWin(self)
         self.gui.settings = gui.gui.SettWin(self)
         self.gui.options = gui.gui.ProcessingOptionsWindow(self)
-        self.gui.main.impl.load(self.DEFAULT_LOADOUT_FILE_PATH)
+        self.gui.main.impl.load()
         self.gui.settings.impl.load(self.DEFAULT_SETTINGS_FILE_PATH)
         self.gui.options.impl.load()
 
@@ -242,9 +242,8 @@ class App:
         # exiting
         self.timeout_loop.not_finished = False
 
-        if self.meas.type is not None:
-            self.meas_queue.clear()
-            await self.gui.main.impl.toggle_meas(self.meas.type, self.meas.laser_mode.capitalize())
+        if self.meas.is_running is not None:
+            await self.gui.main.impl.cancel_queue()
 
         close_all_wins(self)
         close_all_dvcs(self)

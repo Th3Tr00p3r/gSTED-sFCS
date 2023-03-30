@@ -105,7 +105,7 @@ class MeasurementProcedure:
                 type_ = "solution"
 
         self.is_running = False
-        await self._app.gui.main.impl.toggle_meas(self.type, self.laser_mode.capitalize())
+        await self._app.gui.main.impl.toggle_meas(self)
         with suppress(AttributeError):
             # AttributeError: no widget
             self.prog_bar_wdgt.set(0)
