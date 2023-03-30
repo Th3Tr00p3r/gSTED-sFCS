@@ -4470,6 +4470,29 @@ Pattern:</string>
                      <property name="spacing">
                       <number>2</number>
                      </property>
+                     <item row="2" column="0" colspan="2">
+                      <layout class="QHBoxLayout" name="horizontalLayout_32" stretch="10,10">
+                       <property name="spacing">
+                        <number>2</number>
+                       </property>
+                       <item>
+                        <widget class="QPushButton" name="stopMeasurement">
+                         <property name="text">
+                          <string>Stop
+Current Measurement</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="stopMeasurements">
+                         <property name="text">
+                          <string>Stop
+All Measurements</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
                      <item row="0" column="0">
                       <widget class="QGroupBox" name="groupBox_26">
                        <property name="sizePolicy">
@@ -4569,6 +4592,9 @@ Pattern:</string>
                         </property>
                         <item>
                          <widget class="QListWidget" name="measQueue">
+                          <property name="enabled">
+                           <bool>true</bool>
+                          </property>
                           <property name="sizePolicy">
                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                             <horstretch>0</horstretch>
@@ -4580,6 +4606,9 @@ Pattern:</string>
                             <width>16777215</width>
                             <height>100</height>
                            </size>
+                          </property>
+                          <property name="styleSheet">
+                           <string notr="true">color: rgb(0, 0, 0);</string>
                           </property>
                           <property name="alternatingRowColors">
                            <bool>true</bool>
@@ -4598,6 +4627,9 @@ Pattern:</string>
                           </property>
                           <property name="selectionRectVisible">
                            <bool>false</bool>
+                          </property>
+                          <property name="currentRow">
+                           <number>-1</number>
                           </property>
                           <item>
                            <property name="text">
@@ -4624,19 +4656,6 @@ Pattern:</string>
                          </widget>
                         </item>
                        </layout>
-                      </widget>
-                     </item>
-                     <item row="2" column="0" colspan="2">
-                      <widget class="QPushButton" name="stopMeasurements">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string>Stop Measurements</string>
-                       </property>
                       </widget>
                      </item>
                     </layout>
