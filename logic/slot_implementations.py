@@ -56,27 +56,16 @@ class MainWin:
     def save(self) -> None:
         """Doc."""
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            self.main_gui,
-            "Save Loadout",
-            str(self._app.LOADOUT_DIR_PATH),
+        wdgts.write_gui_to_file(
+            self.main_gui, wdgts.MAIN_TYPES, self._app.DEFAULT_LOADOUT_FILE_PATH
         )
-        if file_path != "":
-            wdgts.write_gui_to_file(self.main_gui, wdgts.MAIN_TYPES, file_path)
-            logging.debug(f"Loadout saved as: '{file_path}'")
+        logging.debug("Loadout saved.")
 
-    def load(self, file_path="") -> None:
+    def load(self) -> None:
         """Doc."""
 
-        if not file_path:
-            file_path, _ = QFileDialog.getOpenFileName(
-                self.main_gui,
-                "Load Loadout",
-                str(self._app.LOADOUT_DIR_PATH),
-            )
-        if file_path != "":
-            wdgts.read_file_to_gui(file_path, self.main_gui)
-            logging.debug(f"Loadout loaded: '{file_path}'")
+        wdgts.read_file_to_gui(self._app.DEFAULT_LOADOUT_FILE_PATH, self.main_gui)
+        logging.debug("Loadout loaded.")
 
     def device_toggle(
         self, nick, toggle_mthd="toggle", state_attr="is_on", leave_on=False, leave_off=False
@@ -345,12 +334,112 @@ class MainWin:
             self.main_gui.stepperDock.setVisible(True)
             self.main_gui.actionStepper_Stage_Control.setChecked(True)
 
-    async def toggle_meas(self, meas_type=None, laser_mode=None, should_run=False):
+    def add_meas_to_queue(self, meas_type=None, laser_mode=None):
         """Doc."""
-        # TODO: this is now a MESS!
-        # seperate the creation of measurements and insertion into queue from toggling measurements and related GUI
 
-        if meas_type != (current_type := self._app.meas.type):
+        if meas_type == "SFCSSolution":
+            pattern = self.main_gui.solScanType.currentText()
+            if pattern == "angular":
+                scan_params = wdgts.SOL_ANG_SCAN_COLL.gui_to_dict(self._gui)
+            elif pattern == "circle":
+                scan_params = wdgts.SOL_CIRC_SCAN_COLL.gui_to_dict(self._gui)
+            elif pattern == "static":
+                scan_params = {}
+
+            scan_params["pattern"] = pattern
+            # get parameters from GUI
+            kwargs = wdgts.SOL_MEAS_COLL.gui_to_dict(self._app.gui)
+            scan_params["floating_z_amplitude_um"] = kwargs["floating_z_amplitude_um"]
+
+            # add to FIFO queue
+            self._app.meas_queue.append(
+                meas.SolutionMeasurementProcedure(
+                    app=self._app,
+                    scan_params=scan_params,
+                    laser_mode=laser_mode.lower(),
+                    processing_options=self.get_processing_options_as_dict(),
+                    **kwargs,
+                )
+            )
+            self._gui.main.measQueue.addItem(
+                f"{kwargs['file_template']}_{pattern}_{laser_mode.lower()} - {kwargs['duration']:.0f} {kwargs['duration_units']}"
+            )
+            logging.info(f"{meas_type} measurement added to FIFO queue.")
+
+        elif meas_type == "SFCSImage":
+            # get parameters from GUI
+            kwargs = wdgts.IMG_MEAS_COLL.gui_to_dict(self._app.gui)
+
+            # add to FIFO queue
+            self._app.meas_queue.append(
+                meas.ImageMeasurementProcedure(
+                    app=self._app,
+                    scan_params=wdgts.IMG_SCAN_COLL.gui_to_dict(self._gui),
+                    laser_mode=laser_mode.lower(),
+                    **kwargs,
+                )
+            )
+
+    def remove_meas_from_queue(self):
+        """Doc."""
+
+        with suppress(IndexError):
+            # IndexError: no measurements in queue...
+            meas_idx = self._gui.main.measQueue.currentRow()
+            self._gui.main.measQueue.takeItem(meas_idx)
+            self._app.meas_queue.pop(meas_idx)
+
+    async def fire_meas_queue(self):
+        """Perform all measurements in queue (FIFO)"""
+
+        if self._app.meas_queue:
+            self._gui.main.measQueue.setEnabled(False)
+            #            self._gui.main.measQueue.setCurrentRow(0)
+            while True:
+                # check if can start new measurements
+                if not self._app.meas.is_running:
+                    try:
+                        new_meas = self._app.meas_queue.pop(0)
+                    except IndexError:
+                        # queue empty
+                        break
+                    else:
+                        # increment the selected row
+                        self._gui.main.measQueue.setCurrentRow(
+                            self._app.gui.main.measQueue.currentRow() + 1
+                        )
+                        # perform measurement
+                        await self.toggle_meas(new_meas)
+
+                # pause between checks
+                else:
+                    await asyncio.sleep(0.5)
+
+            # empty deque - final measurement
+            self._gui.main.measQueue.clear()
+            # shutdown depletion
+            self._app.devices.dep_laser.laser_toggle(False)
+            # re-enable queue
+            self._gui.main.measQueue.setEnabled(True)
+            logging.info("All measurements completed.")
+        else:
+            logging.info("No measurements in queue!")
+
+    async def cancel_queue(self):
+        """Cancel current measurement as any pending measurements"""
+
+        # cancel queue
+        self._app.meas_queue = []
+        self._gui.main.measQueue.clear()
+        # stop current measurement
+        await self.toggle_meas(self._app.meas)
+        # re-enable queue
+        self._gui.main.measQueue.setEnabled(True)
+
+    async def toggle_meas(self, meas):
+        """Doc."""
+
+        if meas.type != (current_type := self._app.meas.type):
 
             # no meas running
             if not self._app.meas.is_running:
@@ -359,83 +448,23 @@ class MainWin:
                 #                logging.info("Pefroming automatic Y-galvo calibration before measurement.")
                 #                await self._app.gui.settings.impl.recalibrate_y_galvo(should_display=False)
 
-                # fire the queue
-                if should_run:
-                    with suppress(IndexError):
-                        # IndexError: empty deque - final measurement
-                        self._app.meas = self._app.meas_queue.pop()
-                        self._gui.main.measQueue.takeItem(0)
+                # adjust GUI
+                if meas.type == "SFCSSolution":
+                    self.main_gui.solScanMaxFileSize.setEnabled(False)
+                    self.main_gui.solScanDur.setEnabled(self.main_gui.repeatSolMeas.isChecked())
+                    self.main_gui.solScanDurUnits.setEnabled(False)
+                    self.main_gui.solScanFileTemplate.setEnabled(False)
 
-                # create new meas
-                else:
-                    if meas_type == "SFCSSolution":
-                        pattern = self.main_gui.solScanType.currentText()
-                        if pattern == "angular":
-                            scan_params = wdgts.SOL_ANG_SCAN_COLL.gui_to_dict(self._gui)
-                        elif pattern == "circle":
-                            scan_params = wdgts.SOL_CIRC_SCAN_COLL.gui_to_dict(self._gui)
-                        elif pattern == "static":
-                            scan_params = {}
+                elif meas.type == "SFCSImage":
+                    self.main_gui.startImgScanExc.setEnabled(False)
+                    self.main_gui.startImgScanDep.setEnabled(False)
+                    self.main_gui.startImgScanSted.setEnabled(False)
+                    getattr(self.main_gui, f"startImgScan{meas.laser_mode}").setEnabled(True)
+                    getattr(self.main_gui, f"startImgScan{meas.laser_mode}").setText("Stop \nScan")
 
-                        scan_params["pattern"] = pattern
-
-                        kwargs = wdgts.SOL_MEAS_COLL.gui_to_dict(self._app.gui)
-
-                        scan_params["floating_z_amplitude_um"] = kwargs["floating_z_amplitude_um"]
-
-                        # add to FIFO queue
-                        self._app.meas_queue.appendleft(
-                            meas.SolutionMeasurementProcedure(
-                                app=self._app,
-                                scan_params=scan_params,
-                                laser_mode=laser_mode.lower(),
-                                processing_options=self.get_processing_options_as_dict(),
-                                **kwargs,
-                            )
-                        )
-                        self._gui.main.measQueue.addItem(
-                            f"{pattern} - {laser_mode.lower()} - {kwargs['duration']} {kwargs['duration_units']}"
-                        )
-
-                    # adjust GUI
-                    if should_run:
-                        self.main_gui.solScanMaxFileSize.setEnabled(False)
-                        self.main_gui.solScanDur.setEnabled(self.main_gui.repeatSolMeas.isChecked())
-                        self.main_gui.solScanDurUnits.setEnabled(False)
-                        self.main_gui.solScanFileTemplate.setEnabled(False)
-
-                    elif meas_type == "SFCSImage":
-
-                        kwargs = wdgts.IMG_MEAS_COLL.gui_to_dict(self._app.gui)
-
-                        # add to FIFO queue
-                        self._app.meas_queue.appendleft(
-                            meas.ImageMeasurementProcedure(
-                                app=self._app,
-                                scan_params=wdgts.IMG_SCAN_COLL.gui_to_dict(self._gui),
-                                laser_mode=laser_mode.lower(),
-                                **kwargs,
-                            )
-                        )
-
-                        # adjust GUI
-                        if should_run:
-                            self.main_gui.startImgScanExc.setEnabled(False)
-                            self.main_gui.startImgScanDep.setEnabled(False)
-                            self.main_gui.startImgScanSted.setEnabled(False)
-                            getattr(self.main_gui, f"startImgScan{laser_mode}").setEnabled(True)
-                            getattr(self.main_gui, f"startImgScan{laser_mode}").setText(
-                                "Stop \nScan"
-                            )
-
-                if should_run:
-                    # run the measurement
-                    logging.info(f"{meas_type} measurement started.")
-                    await self._app.meas.run()
-
-                else:
-                    # add to queue only
-                    logging.info(f"{meas_type} measurement added to FIFO queue.")
+                # run the measurement
+                self._app.meas = meas
+                await meas.run()
 
             else:
                 # other meas running
@@ -443,34 +472,30 @@ class MainWin:
                     f"Another type of measurement " f"({current_type}) is currently running."
                 )
 
-        else:  # current_type == meas_type
-            # measurement shutdown
-            if meas_type == "SFCSSolution":
+        # measurement shutdown
+        else:  # current_type == meas.type
+            # adjust GUI
+            if meas.type == "SFCSSolution":
                 self.main_gui.impl.go_to_origin()
                 self.main_gui.solScanMaxFileSize.setEnabled(True)
                 self.main_gui.solScanDur.setEnabled(True)
                 self.main_gui.solScanDurUnits.setEnabled(True)
                 self.main_gui.solScanFileTemplate.setEnabled(True)
 
-            elif meas_type == "SFCSImage":
+            if meas.type == "SFCSImage":
                 self.main_gui.startImgScanExc.setEnabled(True)
                 self.main_gui.startImgScanDep.setEnabled(True)
                 self.main_gui.startImgScanSted.setEnabled(True)
-                getattr(self.main_gui, f"startImgScan{laser_mode}").setText(f"{laser_mode} \nScan")
+                getattr(self.main_gui, f"startImgScan{meas.laser_mode}").setText(
+                    f"{meas.laser_mode} \nScan"
+                )
 
+            # manual stop
             if self._app.meas.is_running:
-                # manual stop
                 await self._app.meas.stop()
-                logging.info(f"{meas_type} measurement stopped.")
-                self._app.meas_queue.clear()
-                self._gui.main.measQueue.clear()
-
-            # switch to next meas in line, if any
-            with suppress(IndexError):
-                # IndexError: empty deque - final measurement
-                self._app.meas = self._app.meas_queue.pop()
-                logging.info(f"{meas_type} measurement started.")
-                await self._app.meas.run()
+                self.remove_meas_from_queue()
+                self._gui.main.measQueue.setCurrentRow(self._gui.main.measQueue.currentRow() - 1)
+                logging.info(f"{meas.type} measurement stopped.")
 
     def disp_scn_pttrn(self, pattern: str):
         """Doc."""
