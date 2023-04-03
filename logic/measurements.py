@@ -110,7 +110,8 @@ class MeasurementProcedure:
             # AttributeError: no widget
             self.prog_bar_wdgt.set(0)
         self._app.gui.main.impl.populate_all_data_dates(type_)  # refresh saved measurements
-        self.type = None
+        # define dummy None measreument for App object
+        self._app.meas = SimpleNamespace(type=None, is_running=False)
 
     async def record_data(
         self, start_time: float, timed: bool = False, size_limited: bool = False

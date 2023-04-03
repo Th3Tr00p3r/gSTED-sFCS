@@ -221,7 +221,7 @@ class MainWin(QtWidgets.QMainWindow):
 
         # cancel current measurement
         self.stopMeasurement.released.connect(
-            lambda: self._loop.create_task(self.impl.toggle_meas(self.impl._app.meas))
+            lambda: self._loop.create_task(self.impl._app.meas.stop())
         )
 
         # cancel all measurments
