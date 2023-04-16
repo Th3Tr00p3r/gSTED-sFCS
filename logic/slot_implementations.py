@@ -17,7 +17,7 @@ import ftd2xx
 import nidaqmx.system as nisys
 import numpy as np
 import pyvisa
-from PyQt5.QtWidgets import QFileDialog, QWidget
+from PyQt5.QtWidgets import QFileDialog, QListWidgetItem, QWidget
 
 import gui.widgets as wdgts
 import logic.measurements as meas
@@ -361,9 +361,11 @@ class MainWin:
                     **kwargs,
                 )
             )
-            self._gui.main.measQueue.addItem(
+            new_item = QListWidgetItem(
                 f"{kwargs['file_template']}_{pattern}_{laser_mode.lower()} - {kwargs['duration']:.0f} {kwargs['duration_units']}"
             )
+            self._gui.main.measQueue.addItem(new_item)
+            self._gui.main.measQueue.setCurrentItem(new_item)
             logging.info(f"{meas_type} measurement added to FIFO queue.")
 
         elif meas_type == "SFCSImage":
