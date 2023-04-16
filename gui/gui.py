@@ -191,13 +191,25 @@ class MainWin(QtWidgets.QMainWindow):
 
         # Image Scan
         self.startImgScanExc.released.connect(
-            lambda: self.impl.add_meas_to_queue("SFCSImage", "Exc")
+            lambda: self._loop.create_task(
+                self.impl.fire_single_meas(
+                    meas_type="SFCSImage", laser_mode="Exc", should_turn_off_dep=False
+                )
+            )
         )
         self.startImgScanDep.released.connect(
-            lambda: self.impl.add_meas_to_queue("SFCSImage", "Dep")
+            lambda: self._loop.create_task(
+                self.impl.fire_single_meas(
+                    meas_type="SFCSImage", laser_mode="Dep", should_turn_off_dep=False
+                )
+            )
         )
         self.startImgScanSted.released.connect(
-            lambda: self.impl.add_meas_to_queue("SFCSImage", "Sted")
+            lambda: self._loop.create_task(
+                self.impl.fire_single_meas(
+                    meas_type="SFCSImage", laser_mode="Sted", should_turn_off_dep=False
+                )
+            )
         )
 
         # Solution Scan
