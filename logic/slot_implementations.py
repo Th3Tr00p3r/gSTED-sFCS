@@ -334,7 +334,7 @@ class MainWin:
             self.main_gui.stepperDock.setVisible(True)
             self.main_gui.actionStepper_Stage_Control.setChecked(True)
 
-    def add_meas_to_queue(self, meas_type=None, laser_mode=None):
+    def add_meas_to_queue(self, meas_type=None, laser_mode=None, **kwargs):
         """Doc."""
 
         if meas_type == "SFCSSolution":
@@ -391,7 +391,7 @@ class MainWin:
             self._gui.main.measQueue.takeItem(meas_idx)
             self._app.meas_queue.pop(meas_idx)
 
-    async def fire_meas_queue(self):
+    async def fire_meas_queue(self, should_turn_off_dep=True, **kwargs):
         """Perform all measurements in queue (FIFO)"""
 
         if self._app.meas_queue:
@@ -417,13 +417,14 @@ class MainWin:
                 else:
                     await asyncio.sleep(0.5)
 
-            # empty deque - final measurement
+            # empty queue - final measurement
             self._gui.main.measQueue.clear()
-            # shutdown depletion
-            self._app.devices.dep_laser.laser_toggle(False)
+            # relieve depletion laser
+            if should_turn_off_dep:
+                self._app.devices.dep_laser.laser_toggle(False)
             # re-enable queue
             self._gui.main.measQueue.setEnabled(True)
-            logging.info("All measurements completed.")
+            logging.debug("All measurements completed.")
         else:
             logging.info("No measurements in queue!")
 
@@ -437,6 +438,23 @@ class MainWin:
         await self.toggle_meas(self._app.meas)
         # re-enable queue
         self._gui.main.measQueue.setEnabled(True)
+
+    async def fire_single_meas(self, **kwargs):
+        """Doc."""
+
+        # start new single measurement
+        if not self._app.meas.is_running:
+            # cancel existing queue
+            self._app.meas_queue = []
+            self._gui.main.measQueue.clear()
+
+            # add single measurement to queue and fire it
+            self.add_meas_to_queue(**kwargs)
+            await self.fire_meas_queue(**kwargs)
+
+        # cancel current measurement
+        else:
+            await self.cancel_queue()
 
     async def toggle_meas(self, meas):
         """Doc."""
@@ -461,8 +479,12 @@ class MainWin:
                     self.main_gui.startImgScanExc.setEnabled(False)
                     self.main_gui.startImgScanDep.setEnabled(False)
                     self.main_gui.startImgScanSted.setEnabled(False)
-                    getattr(self.main_gui, f"startImgScan{meas.laser_mode}").setEnabled(True)
-                    getattr(self.main_gui, f"startImgScan{meas.laser_mode}").setText("Stop \nScan")
+                    getattr(
+                        self.main_gui, f"startImgScan{meas.laser_mode.capitalize()}"
+                    ).setEnabled(True)
+                    getattr(self.main_gui, f"startImgScan{meas.laser_mode.capitalize()}").setText(
+                        "Stop \nScan"
+                    )
 
                 # run the measurement
                 self._app.meas = meas
@@ -488,8 +510,8 @@ class MainWin:
                 self.main_gui.startImgScanExc.setEnabled(True)
                 self.main_gui.startImgScanDep.setEnabled(True)
                 self.main_gui.startImgScanSted.setEnabled(True)
-                getattr(self.main_gui, f"startImgScan{meas.laser_mode}").setText(
-                    f"{meas.laser_mode} \nScan"
+                getattr(self.main_gui, f"startImgScan{meas.laser_mode.capitalize()}").setText(
+                    f"{meas.laser_mode.capitalize()} \nScan"
                 )
 
             # manual stop
