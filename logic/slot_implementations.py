@@ -362,7 +362,7 @@ class MainWin:
                 )
             )
             new_item = QListWidgetItem(
-                f"{kwargs['file_template']}_{pattern}_{laser_mode.lower()} - {kwargs['duration']:.0f} {kwargs['duration_units']}"
+                f"{kwargs['file_template']}_{pattern}_{laser_mode.lower()} - {kwargs['duration']:.0f} {kwargs['duration_units']}{' (REPEATED)' if kwargs['repeat'] else ''}{' (FINAL)' if kwargs['final'] else ''}"
             )
             self._gui.main.measQueue.addItem(new_item)
             self._gui.main.measQueue.setCurrentItem(new_item)

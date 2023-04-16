@@ -2,13 +2,18 @@ newTemplate,sol_static_exc
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
-solScanFileTemplate,
 imgScanFileTemplate,gb
+solScanFileTemplate,
 spadMode,free running
 expStrctFctrRbstIntrpPnts,3
 tdcCalibGating,40
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
+currPlane,0
 solScanFloatingAmp,0
 maxLineLen,100
 angAoSampFreq,10000
@@ -23,11 +28,6 @@ circAoSampFreq,10000
 circDiameter,25
 circSpeed,25
 numOfCircles,3
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
-currPlane,0
 depPow,130
 depCurr,1500
 stageSteps,250
@@ -37,15 +37,15 @@ expStrctFctrGMin,0.01
 customGateLifetimesLower,5.0
 customGateLifetimesUpper,20.0
 solAnalysisRemoveOverSpinner,2.0
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,10.0
+imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solLinFrac,0.9
 solAngActualSpeed,8800.0
 solActualScanFreq,40.0
 solScanDur,5.0
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,10.0
-imgScanLinFrac,0.9
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -66,12 +66,12 @@ gateMeasType,STED
 availableGates,
 importedSolDataTemplates2,
 importedSolDataTemplates1,
-solMeasPreset,Standard Static
-solScanType,static
-solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - actual counts per pixel
+solMeasPreset,Standard Static
+solScanType,static
+solScanDurUnits,seconds
 avgInterval,5
 posAxis,X
 importStacked,1
@@ -100,7 +100,7 @@ exposure1,99
 pixel_clock2,99
 framerate2,99
 exposure2,99
-tabWidget,0
+tabWidget,1
 tabWidget_2,0
 tabWidget_4,0
 tabWidget_3,0
@@ -109,10 +109,10 @@ solImportReCorrelate,False
 solImportAutoLoadProcessed,False
 bwMask,False
 normRows,False
-circShouldPrecess,False
-accumAcf,True
 autoCrosshair,True
 alwaysSaveImg,False
+circShouldPrecess,False
+accumAcf,True
 autoExp1,False
 camTranspose1,False
 grayscaleMode1,True
