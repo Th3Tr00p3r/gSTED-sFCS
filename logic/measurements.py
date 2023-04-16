@@ -6,11 +6,13 @@ import logging
 import re
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import suppress
 from datetime import datetime as dt
 from pathlib import Path
 from types import SimpleNamespace
 
+import dill
 import nidaqmx.constants as ni_consts
 import numpy as np
 
@@ -188,7 +190,7 @@ class MeasurementProcedure:
         )
 
         file_utilities.save_object(
-            data_dict, file_path, compression_method="gzip", obj_name="raw data"
+            data_dict, file_path, compression_method="gzip", obj_name="measurement data"
         )
         logging.debug(f"Saved measurement file: '{file_path}'.")
 
@@ -530,7 +532,9 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             # prepare data
             data_dict = self.prep_meas_dict()
             if self.always_save:  # save data
-                self.save_data(data_dict, self.build_filename())
+                await self._app.loop.run_in_executor(
+                    None, lambda: self.save_data(data_dict, self.build_filename())
+                )
             self.keep_last_meas(data_dict)
             # show middle plane
             mid_plane = int(len(self.scan_params["set_pnts_planes"]) / 2)
@@ -853,12 +857,23 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 # case final alignment and not manually stopped
                 elif self.final and self.is_running:
                     if should_save:
-                        self.save_data(self.prep_meas_dict(), self.build_filename(0))
+                        await self._app.loop.run_in_executor(
+                            None,
+                            lambda: self.save_data(self.prep_meas_dict(), self.build_filename(0)),
+                        )
 
                 # case regular measurement and finished file or measurement
                 elif not self.repeat:
                     if should_save:
-                        self.save_data(self.prep_meas_dict(), self.build_filename(file_num))
+                        with ProcessPoolExecutor() as pool:
+                            await self._app.loop.run_in_executor(
+                                pool,
+                                dill.dumps(
+                                    lambda: self.save_data(
+                                        self.prep_meas_dict(), self.build_filename(file_num)
+                                    )
+                                ),
+                            )
                         if self.scanning:
                             self.scanners_dvc.init_ai_buffer(
                                 type="circular", size=self.ao_buffer.shape[1]
