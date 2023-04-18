@@ -15,6 +15,7 @@ from sklearn import linear_model
 
 from data_analysis.data_processing import (
     CountsImageMixin,
+    CountsImageStackData,
     TDCCalibration,
     TDCPhotonDataProcessor,
     TDCPhotonFileData,
@@ -2136,27 +2137,67 @@ class SolutionSFCSExperiment:
 class ImageSFCSMeasurement(CountsImageMixin):
     """Doc."""
 
+    laser_freq_hz: int
+    fpga_freq_hz: int
+    detector_settings: Dict
+
     def __init__(self):
-        pass
+        self.file_path = None
+        self.file_dict = None
 
-    def read_image_data(self, file_path, **kwargs) -> None:
+    def read_ci_data(
+        self, file_path: Path = None, file_dict: Dict = None, **kwargs
+    ) -> CountsImageStackData:
         """Doc."""
 
-        file_dict = load_file_dict(file_path)
-        self.process_data_file(file_dict, **kwargs)
-
-    def process_data_file(self, file_dict: dict, **kwargs) -> None:
-        """Doc."""
+        if file_path is not None:
+            self.file_path = file_path
+            self.file_dict = load_file_dict(file_path)
+        elif file_dict is not None:
+            self.file_dict = file_dict
+        # already loaded once
+        elif not hasattr(self, "file_path"):
+            raise ValueError("Must supply either a file path or a file dictionary!")
 
         # store relevant attributes (add more as needed)
-        self.laser_mode = file_dict.get("laser_mode")
-        self.scan_params = file_dict.get("scan_params")
+        self.laser_mode = self.file_dict.get("laser_mode")
+        self.scan_params = self.file_dict.get("scan_settings")
 
-        # Get ungated image (excitation or sted)
-        self.image_data = self.create_image_stack_data(file_dict)
+        # Get counts (ungated) image (excitation or sted)
+        self.ci_data = self.create_image_stack_data(self.file_dict)
+        return self.ci_data
 
-        # gating stuff (TDC) - not yet implemented
-        self.data = None
+    def read_fpga_data(
+        self, file_path: Path = None, file_dict: Dict = None, **proc_options
+    ) -> None:
+        """Doc."""
+
+        if file_path is not None:
+            self.file_path = file_path
+            self.file_dict = load_file_dict(file_path)
+        elif file_dict is not None:
+            self.file_dict = file_dict
+        # already loaded once
+        elif not hasattr(self, "file_path"):
+            raise ValueError("Must supply either a file path or a file dictionary!")
+
+        print("\nLoading image FPGA data from disk -")
+        print(f"File path: '{self.file_path}'")
+
+        # actual data processing
+        # initialize data processor
+        self.dump_path = DUMP_PATH / self.file_path.stem
+        self.data_processor = TDCPhotonDataProcessor(
+            self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
+        )
+
+        self.data = self.data_processor.process_data(file_dict["full_data"], **proc_options)
+
+        # calculate average count rate
+        self.avg_cnt_rate_khz = self.data.general.avg_cnt_rate_khz
+
+        # done with loading
+        print("Finished loading FPGA data.\n")
 
 
 def calculate_calibrated_afterpulse(

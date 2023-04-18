@@ -592,10 +592,9 @@ class MainWin:
         with suppress(AttributeError):
             # IndexError - 'App' object has no attribute 'curr_img_idx'
             image_tdc = ImageSFCSMeasurement()
-            image_tdc.process_data_file(
+            image_data = image_tdc.read_ci_data(
                 file_dict=self._app.last_image_scans[self._app.curr_img_idx]
             )
-            image_data = image_tdc.image_data
             line_ticks_v = image_data.line_ticks_v
             row_ticks_v = image_data.row_ticks_v
             plane_ticks_v = image_data.plane_ticks_v
@@ -692,7 +691,7 @@ class MainWin:
             # IndexError - No last_image_scans appended yet
             image_tdc = ImageSFCSMeasurement()
             image_tdc.process_data_file(file_dict=self._app.last_image_scans[img_idx])
-            image_data = image_tdc.image_data
+            image_data = image_tdc.ci_data
             if plane_idx is None:
                 # use center plane if not supplied
                 plane_idx = int(image_data.n_planes / 2)
@@ -1378,12 +1377,14 @@ class MainWin:
             # import the data
             try:
                 image_tdc = ImageSFCSMeasurement()
-                image_tdc.read_image_data(self.current_date_type_dir_path() / template)
+                ci_data = image_tdc.read_ci_data(
+                    file_path=self.current_date_type_dir_path() / template
+                )
             except FileNotFoundError:
                 self.switch_data_type()
                 return
             # get the center plane image, in "forward"
-            image = image_tdc.image_data.construct_image("forward")
+            image = ci_data.construct_image("forward")
             # plot it (below)
             data_import_wdgts["img_preview_disp"].obj.display_image(
                 image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
