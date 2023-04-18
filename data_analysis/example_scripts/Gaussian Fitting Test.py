@@ -118,10 +118,10 @@ print(f"FWHM width determined to be {sigma_mm:.3f} +/- {sigma_mm_err:.3f} nm")
 
 # %%
 image_meas = ImageSFCSMeasurement()
-image_meas.read_image_data(IMG_DATA_ROOT / "gb_exc_XY_165607.pkl")
+image_meas.read_ci_data(file_path=IMG_DATA_ROOT / "gb_exc_XY_165607.pkl")
 
 # get the center plane image, in "forward"
-gb_image = image_meas.image_data.get_image("forward")
+gb_image = image_meas.ci_data.get_image("forward")
 
 # %%
 gb_image.shape
