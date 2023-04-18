@@ -66,7 +66,7 @@ class GuiDisplay:
             try:
                 for (x, y), label in zip(xy_pairs_list, labels):
                     ax.plot(x, y, lw=0.4, label=label)
-                    ax.legend(fontsize=6)
+                    ax.legend()
             except TypeError:  # xy_pairs_list is a really 'x', 'y' is in args
                 ax.plot(xy_pairs_list, *args, "k", lw=0.3)
             ax.set_aspect("equal")
