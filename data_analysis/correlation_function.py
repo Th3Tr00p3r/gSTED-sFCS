@@ -39,7 +39,6 @@ from utilities.helper import (
     InterpExtrap1D,
     Limits,
     extrapolate_over_noise,
-    timer,
     unify_length,
 )
 
@@ -819,7 +818,6 @@ class SolutionSFCSMeasurement:
                 pass
             print("Done.\n")
 
-    @timer()
     def _process_all_data(
         self,
         file_paths: List[Path],
@@ -2143,7 +2141,7 @@ class ImageSFCSMeasurement(CountsImageMixin):
 
     def __init__(self):
         self.file_path = None
-        self.file_dict = None
+        self._file_dict = None
 
     def read_ci_data(
         self, file_path: Path = None, file_dict: Dict = None, **kwargs
@@ -2152,19 +2150,15 @@ class ImageSFCSMeasurement(CountsImageMixin):
 
         if file_path is not None:
             self.file_path = file_path
-            self.file_dict = load_file_dict(file_path)
+            self._file_dict = load_file_dict(file_path)
         elif file_dict is not None:
-            self.file_dict = file_dict
+            self._file_dict = file_dict
         # already loaded once
         elif not hasattr(self, "file_path"):
             raise ValueError("Must supply either a file path or a file dictionary!")
 
-        # store relevant attributes (add more as needed)
-        self.laser_mode = self.file_dict.get("laser_mode")
-        self.scan_params = self.file_dict.get("scan_settings")
-
         # Get counts (ungated) image (excitation or sted)
-        self.ci_data = self.create_image_stack_data(self.file_dict)
+        self.ci_data = self.create_image_stack_data(self._file_dict)
         return self.ci_data
 
     def read_fpga_data(
@@ -2174,9 +2168,9 @@ class ImageSFCSMeasurement(CountsImageMixin):
 
         if file_path is not None:
             self.file_path = file_path
-            self.file_dict = load_file_dict(file_path)
+            self._file_dict = load_file_dict(file_path)
         elif file_dict is not None:
-            self.file_dict = file_dict
+            self._file_dict = file_dict
         # already loaded once
         elif not hasattr(self, "file_path"):
             raise ValueError("Must supply either a file path or a file dictionary!")
@@ -2184,20 +2178,71 @@ class ImageSFCSMeasurement(CountsImageMixin):
         print("\nLoading image FPGA data from disk -")
         print(f"File path: '{self.file_path}'")
 
-        # actual data processing
+        # get general properties from file_dict
+        self._get_general_properties()
+
         # initialize data processor
         self.dump_path = DUMP_PATH / self.file_path.stem
         self.data_processor = TDCPhotonDataProcessor(
             self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
         )
-
-        self.data = self.data_processor.process_data(file_dict["full_data"], **proc_options)
+        # actual data processing
+        self.data = self.data_processor.process_data(
+            0, self._file_dict["full_data"], **proc_options
+        )
 
         # calculate average count rate
         self.avg_cnt_rate_khz = self.data.general.avg_cnt_rate_khz
 
         # done with loading
         print("Finished loading FPGA data.\n")
+
+    def _get_general_properties(
+        self,
+        should_ignore_hard_gate: bool = False,
+        **kwargs,
+    ) -> None:
+        """Get general measurement properties."""
+        # _file_dict_keys(['laser_mode', 'ai', 'ci', 'ao', 'is_fast_scan', 'system_info', 'tdc_scan_data', 'scan_settings'])
+
+        full_data = self._file_dict["full_data"]
+
+        self.laser_mode = full_data.get("laser_mode")
+        self.scan_settings = full_data.get("scan_settings")
+
+        # get countrate estimate (for multiprocessing threshod). calculated more precisely in the end of processing.ArithmeticError
+        self.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
+
+        self.afterpulse_params = self._file_dict["system_info"]["afterpulse_params"]
+        self.detector_settings = full_data.get("detector_settings")
+        self.delayer_settings = full_data.get("delayer_settings")
+        self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
+        self.pulse_period_ns = 1 / self.laser_freq_hz * 1e9
+        self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
+        self.duration_min = (
+            full_data.get("duration_s", 0) / 60
+        )  # TODO: (was the 'None' used? is the new default 0 OK?)
+
+        # TODO: missing gate - move this to legacy handeling
+        if self.detector_settings.get("gate_ns") is not None and (
+            not self.detector_settings["gate_ns"] and self.detector_settings["mode"] == "external"
+        ):
+            print("This should not happen (missing detector gate) - move this to legacy handeling!")
+            self.detector_settings["gate_ns"] = Gate(
+                98 - self.detector_settings["gate_width_ns"],
+                self.detector_settings["gate_width_ns"],
+                is_hard=True,
+            )
+        elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
+            self.detector_settings["gate_ns"] = Gate()
+
+        # sFCS
+        scan_settings = full_data.get("scan_settings")
+        self.scan_type = scan_settings["pattern"]
+        self.scan_settings = scan_settings
+
+
+#        self.v_um_ms = self.scan_settings["speed_um_s"] * 1e-3
 
 
 def calculate_calibrated_afterpulse(
