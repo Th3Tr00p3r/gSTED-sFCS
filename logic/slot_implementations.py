@@ -370,13 +370,15 @@ class MainWin:
 
         elif meas_type == "SFCSImage":
             # get parameters from GUI
-            kwargs = wdgts.IMG_MEAS_COLL.gui_to_dict(self._app.gui)
+            kwargs = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
+            scan_params = wdgts.IMG_SCAN_COLL.gui_to_dict(self._gui)
+            scan_params["pattern"] = "image"
 
             # add to FIFO queue
             self._app.meas_queue.append(
                 meas.ImageMeasurementProcedure(
                     app=self._app,
-                    scan_params=wdgts.IMG_SCAN_COLL.gui_to_dict(self._gui),
+                    scan_params=scan_params,
                     laser_mode=laser_mode.lower(),
                     **kwargs,
                 )
@@ -690,8 +692,7 @@ class MainWin:
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
             image_tdc = ImageSFCSMeasurement()
-            image_tdc.process_data_file(file_dict=self._app.last_image_scans[img_idx])
-            image_data = image_tdc.ci_data
+            image_data = image_tdc.read_ci_data(file_dict=self._app.last_image_scans[img_idx])
             if plane_idx is None:
                 # use center plane if not supplied
                 plane_idx = int(image_data.n_planes / 2)

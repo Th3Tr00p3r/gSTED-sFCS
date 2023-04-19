@@ -1199,6 +1199,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 p = self._process_angular_scan_data_file(
                     idx, full_data, should_dump=should_dump, **proc_options
                 )
+            # TODO: YOU ARE HERE - I need to create/fit a processing function for image measurements.
+            # First, let's try to squeeze it into '_process_angular_scan_data_file'?
         # FCS
         else:
             scan_type = "static"
@@ -2221,6 +2223,8 @@ class CountsImageStackData:
             norm1 = self.norm_stack_forward[:, :, plane_idx]
             norm2 = self.norm_stack_backward[:, :, plane_idx]
             img = (p1 + p2) / (norm1 + norm2)
+        else:
+            raise ValueError(f"'{method}' is not a valid counts image construction method.")
 
         return img
 
@@ -2231,10 +2235,10 @@ class CountsImageMixin:
     def create_image_stack_data(self, file_dict: dict) -> CountsImageStackData:
         """Doc."""
 
-        scan_settings = file_dict["scan_settings"]
+        scan_settings = file_dict["full_data"]["scan_settings"]
         um_v_ratio = file_dict["system_info"]["xyz_um_to_v"]
-        ao = file_dict["ao"]
-        counts = file_dict["ci"]
+        ao = file_dict["full_data"]["scan_settings"]["ao"].T
+        counts = file_dict["full_data"]["ci"]
 
         n_planes = scan_settings["n_planes"]
         n_lines = scan_settings["n_lines"]

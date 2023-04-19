@@ -15,7 +15,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import Limits, reverse_dict, timer
+from utilities.helper import Gate, Limits, reverse_dict, timer
 
 DUMP_PATH = Path("D:/temp_sfcs_data/")
 
@@ -359,7 +359,7 @@ def load_processed_solution_measurement(dir_path: Path, file_template: str, shou
     return meas
 
 
-def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
+def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):  # NOQA C901
     """Fixes data saved in varios legacy formats in-place"""
 
     # patches for legacy Python files
@@ -427,6 +427,21 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):
                 scan_settings["dim_order"] = (1, 2, 0)
             elif scan_settings["plane_orientation"] == "XZ":
                 scan_settings["dim_order"] = (0, 2, 1)
+
+    # patches for legacy Python image files
+    if "full_data" not in file_dict:
+        file_dict["full_data"] = file_dict.pop("tdc_scan_data")
+        file_dict["full_data"]["laser_mode"] = file_dict.pop("laser_mode")
+        file_dict["full_data"]["ci"] = file_dict.pop("ci")
+        file_dict["full_data"]["fpga_freq_hz"] = int(400e6)
+        file_dict["full_data"]["laser_freq_hz"] = int(10e6)
+        file_dict["full_data"]["scan_settings"] = file_dict.pop("scan_settings")
+        file_dict["full_data"]["scan_settings"]["ai"] = file_dict.pop("ai")
+        file_dict["full_data"]["scan_settings"]["ao"] = file_dict.pop("ao").T
+        file_dict["full_data"]["scan_settings"]["pattern"] = "image"
+        file_dict["full_data"]["detector_settings"] = {}
+        file_dict["full_data"]["detector_settings"]["gate_ns"] = Gate()
+        file_dict["full_data"]["detector_settings"]["mode"] = "free running"
 
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["afterpulse_params"], tuple):
