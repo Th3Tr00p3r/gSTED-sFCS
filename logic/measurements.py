@@ -22,6 +22,8 @@ from utilities import errors, file_utilities, fit_tools, helper
 class MeasurementProcedure:
     """Base class for measurement procedures"""
 
+    scanning: bool
+
     def __init__(
         self,
         app,
@@ -152,6 +154,81 @@ class MeasurementProcedure:
 
         await self.data_dvc.read_TDC()  # read leftovers
         self._app.gui.main.impl.device_toggle("TDC", leave_off=True)
+
+    def _prep_meas_dict(self) -> dict:
+        """Doc."""
+
+        full_data = {
+            "laser_mode": self.laser_mode,
+            "duration_s": self.duration_s if hasattr(self, "duration_s") else None,
+            # TODO: prepare a function to cut img data into planes, similar to how the counts are cut
+            "byte_data": np.asarray(self.data_dvc.data, dtype=np.uint8),
+            "version": self.tdc_dvc.tdc_vrsn,
+            "data_version": self.tdc_dvc.data_vrsn,
+            "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
+            "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
+            "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
+            "detector_settings": getattr(self.spad_dvc, "settings", {}),
+        }
+        full_data["delayer_settings"] = (
+            self.delayer_dvc.settings if self.delayer_dvc.is_on else None
+        )
+
+        if self.scanning:
+            full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
+            full_data["scan_settings"] = dict(
+                pattern=self.scan_params["pattern"],
+                ai=np.array(self.scanners_dvc.ai_buffer, dtype=np.float32),
+                ao=self.ao_buffer.T,
+                speed_um_s=self.scan_params["eff_speed_um_s"]
+                if hasattr(self, "duration_s")
+                else None,
+                ao_sampling_freq_hz=self.scan_params["ao_sampling_freq_hz"]
+                if hasattr(self, "duration_s")
+                else None,
+            )
+            if self.scan_params["pattern"] == "circle":
+                full_data["scan_settings"].update(
+                    diameter_um=self.scan_params["diameter_um"],
+                    n_circles=self.scan_params["n_circles"],
+                    circle_freq_hz=self.scan_params["circle_freq_hz"],
+                )
+            elif self.scan_params["pattern"] == "angular":
+                full_data["scan_settings"].update(
+                    line_freq_hz=self.scan_params["line_freq_hz"],
+                    samples_per_line=self.scan_params["samples_per_line"],
+                    ppl=self.scan_params["ppl"],
+                    n_lines=self.scan_params["n_lines"],
+                    linear_len_um=self.scan_params["linear_len_um"],
+                    max_line_length_um=self.scan_params["max_line_len_um"],
+                    line_shift_um=self.scan_params["line_shift_um"],
+                    angle_degrees=self.scan_params["angle_deg"],
+                    linear_frac=self.scan_params["linear_fraction"],
+                    linear_part=self.scan_params["linear_part"],
+                    x_lim=self.scan_params["x_lim"],
+                    y_lim=self.scan_params["y_lim"],
+                )
+            elif self.scan_params["pattern"] == "image":
+                full_data["scan_settings"].update(
+                    ai=np.asarray(self.scanners_dvc.ai_buffer, dtype=np.float64),
+                    set_pnts_lines_odd=self.scan_params["set_pnts_lines_odd"],
+                    set_pnts_planes=self.scan_params["set_pnts_planes"],
+                    dim1_um=self.scan_params["dim1_um"],
+                    dim2_um=self.scan_params["dim2_um"],
+                    dim3_um=self.scan_params["dim3_um"],
+                    dim_order=self.scan_params["dim_order"],
+                    n_lines=self.scan_params["n_lines"],
+                    n_planes=self.scan_params["n_planes"],
+                    line_freq_hz=self.scan_params["line_freq_hz"],
+                    ppl=self.scan_params["ppl"],
+                    plane_orientation=self.scan_params["plane_orientation"],
+                    initial_ao=self.scan_params["initial_ao"],
+                    what_stage="Galvanometers",
+                    linear_frac=self.scan_params["linear_fraction"],
+                )
+                full_data["ci"] = np.asarray(self.counter_dvc.ci_buffer, dtype=np.int64)
+
+        return {"full_data": full_data, "system_info": self.sys_info}
 
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
@@ -421,48 +498,6 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             type=plane_axis,
         )
 
-    def keep_last_meas(self, data_dict):
-        """Doc."""
-
-        self._app.last_image_scans.appendleft(data_dict)
-
-    # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
-    def prep_meas_dict(self) -> dict:
-        """Doc."""
-
-        return {
-            "laser_mode": self.laser_mode,
-            "ai": np.array(self.scanners_dvc.ai_buffer, dtype=np.float64),
-            "ci": np.array(self.counter_dvc.ci_buffer, dtype=np.int64),
-            "ao": self.ao_buffer,
-            "is_fast_scan": True,
-            "system_info": self.sys_info,
-            "tdc_scan_data": {
-                # TODO: prepare a function to cut the data into planes, similar to how the counts are cut
-                "byte_data": np.array(self.data_dvc.data, dtype=np.uint8),
-                "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
-                "pix_clk_freq_mhz": self.pxl_clk_dvc.freq_MHz,
-                "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
-                "version": self.tdc_dvc.tdc_vrsn,
-            },
-            "scan_settings": {
-                "set_pnts_lines_odd": self.scan_params["set_pnts_lines_odd"],
-                "set_pnts_planes": self.scan_params["set_pnts_planes"],
-                "dim1_um": self.scan_params["dim1_um"],
-                "dim2_um": self.scan_params["dim2_um"],
-                "dim3_um": self.scan_params["dim3_um"],
-                "dim_order": self.scan_params["dim_order"],
-                "n_lines": self.scan_params["n_lines"],
-                "n_planes": self.scan_params["n_planes"],
-                "line_freq_hz": self.scan_params["line_freq_hz"],
-                "ppl": self.scan_params["ppl"],
-                "plane_orientation": self.scan_params["plane_orientation"],
-                "initial_ao": self.scan_params["initial_ao"],
-                "what_stage": "Galvanometers",
-                "linear_frac": self.scan_params["linear_fraction"],
-            },
-        }
-
     async def run(self):
         """Doc."""
 
@@ -528,10 +563,11 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         # finished measurement
         if self.is_running:  # if not manually stopped
             # prepare data
-            data_dict = self.prep_meas_dict()
+            data_dict = self._prep_meas_dict()
             if self.always_save:  # save data
                 self.save_data(data_dict, self.build_filename())
-            self.keep_last_meas(data_dict)
+            # keep last measurement
+            self._app.last_image_scans.appendleft(data_dict)
             # show middle plane
             mid_plane = int(len(self.scan_params["set_pnts_planes"]) / 2)
             self.plane_shown.set(mid_plane)
@@ -642,7 +678,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             s = SolutionSFCSMeasurement(meas_laser_type_dict[self.laser_mode])
             # NOTE: using only up to first 10 Mb to avoid blocking measurements for too long
             p = s.process_data_file(
-                file_dict=self.prep_meas_dict(),
+                file_dict=self._prep_meas_dict(),
                 byte_data=byte_data,
                 byte_data_slice=slice(0, int(10e6)),
                 **self.processing_options,
@@ -706,58 +742,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 logging.info(
                     f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f} K, tau: {tau*1e3:.1f} us."
                 )
-
-    # TODO: generalize these and unite in base class (use basic dict and add specific, shorter dict from inheriting classes)
-    def prep_meas_dict(self) -> dict:
-        """Doc."""
-
-        full_data = {
-            "laser_mode": self.laser_mode,
-            "duration_s": self.duration_s,
-            "byte_data": np.array(self.data_dvc.data, dtype=np.uint8),
-            "version": self.tdc_dvc.tdc_vrsn,
-            "data_version": self.tdc_dvc.data_vrsn,
-            "fpga_freq_mhz": self.tdc_dvc.fpga_freq_mhz,
-            "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
-            "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
-            "detector_settings": getattr(self.spad_dvc, "settings", {}),
-        }
-        full_data["delayer_settings"] = (
-            self.delayer_dvc.settings if self.delayer_dvc.is_on else None
-        )
-
-        if self.scanning:
-            full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
-            full_data["scan_settings"] = dict(
-                pattern=self.scan_params["pattern"],
-                ai=np.array(self.scanners_dvc.ai_buffer, dtype=np.float32),
-                ao=self.ao_buffer.T,
-                speed_um_s=self.scan_params["eff_speed_um_s"],
-                ao_sampling_freq_hz=self.scan_params["ao_sampling_freq_hz"],
-            )
-            if self.scan_params["pattern"] == "circle":
-                full_data["scan_settings"].update(
-                    diameter_um=self.scan_params["diameter_um"],
-                    n_circles=self.scan_params["n_circles"],
-                    circle_freq_hz=self.scan_params["circle_freq_hz"],
-                )
-            elif self.scan_params["pattern"] == "angular":
-                full_data["scan_settings"].update(
-                    line_freq_hz=self.scan_params["line_freq_hz"],
-                    samples_per_line=self.scan_params["samples_per_line"],
-                    ppl=self.scan_params["ppl"],
-                    n_lines=self.scan_params["n_lines"],
-                    linear_len_um=self.scan_params["linear_len_um"],
-                    max_line_length_um=self.scan_params["max_line_len_um"],
-                    line_shift_um=self.scan_params["line_shift_um"],
-                    angle_degrees=self.scan_params["angle_deg"],
-                    linear_frac=self.scan_params["linear_fraction"],
-                    linear_part=self.scan_params["linear_part"],
-                    x_lim=self.scan_params["x_lim"],
-                    y_lim=self.scan_params["y_lim"],
-                )
-
-        return {"full_data": full_data, "system_info": self.sys_info}
 
     async def run(self, should_save=True):  # NOQA C901
         """Doc."""
@@ -853,12 +837,12 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 # case final alignment and not manually stopped
                 elif self.final and self.is_running:
                     if should_save:
-                        self.save_data(self.prep_meas_dict(), self.build_filename(0))
+                        self.save_data(self._prep_meas_dict(), self.build_filename(0))
 
                 # case regular measurement and finished file or measurement
                 elif not self.repeat:
                     if should_save:
-                        self.save_data(self.prep_meas_dict(), self.build_filename(file_num))
+                        self.save_data(self._prep_meas_dict(), self.build_filename(file_num))
                         if self.scanning:
                             self.scanners_dvc.init_ai_buffer(
                                 type="circular", size=self.ao_buffer.shape[1]
@@ -876,7 +860,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         if self.is_running:  # if not manually stopped
             if not should_save:
                 # if not saving a file, keep the last measurement in memory
-                self._app.last_meas_data = self.prep_meas_dict()
+                self._app.last_meas_data = self._prep_meas_dict()
             await self.stop()
 
 
