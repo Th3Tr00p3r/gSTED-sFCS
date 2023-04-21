@@ -594,7 +594,7 @@ class MainWin:
         with suppress(AttributeError):
             # IndexError - 'App' object has no attribute 'curr_img_idx'
             image_tdc = ImageSFCSMeasurement()
-            image_data = image_tdc.read_ci_data(
+            image_data = image_tdc.generate_ci_image_stack_data(
                 file_dict=self._app.last_image_scans[self._app.curr_img_idx]
             )
             line_ticks_v = image_data.line_ticks_v
@@ -692,11 +692,13 @@ class MainWin:
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
             image_tdc = ImageSFCSMeasurement()
-            image_data = image_tdc.read_ci_data(file_dict=self._app.last_image_scans[img_idx])
+            image_data = image_tdc.generate_ci_image_stack_data(
+                file_dict=self._app.last_image_scans[img_idx]
+            )
             if plane_idx is None:
                 # use center plane if not supplied
                 plane_idx = int(image_data.n_planes / 2)
-            image = image_data.construct_image(method_dict[disp_mthd], plane_idx)
+            image = image_data.construct_plane_image(method_dict[disp_mthd], plane_idx)
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
             img_meas_wdgts["image_wdgt"].obj.display_image(
@@ -1366,31 +1368,6 @@ class MainWin:
                 # UnboundLocalError
                 DATA_IMPORT_COLL["log_text"].set("\n".join(text_lines))
 
-    def preview_img_scan(self, template: str) -> None:
-        """Doc."""
-
-        if not template:
-            return
-
-        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
-
-        if data_import_wdgts["is_image_type"]:
-            # import the data
-            try:
-                image_tdc = ImageSFCSMeasurement()
-                ci_data = image_tdc.read_ci_data(
-                    file_path=self.current_date_type_dir_path() / template
-                )
-            except FileNotFoundError:
-                self.switch_data_type()
-                return
-            # get the center plane image, in "forward"
-            image = ci_data.construct_image("forward")
-            # plot it (below)
-            data_import_wdgts["img_preview_disp"].obj.display_image(
-                image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
-            )
-
     def save_processed_data(self):
         """Doc."""
 
@@ -1483,6 +1460,117 @@ class MainWin:
 
         print("Done.")
         logging.info(f"{current_template} converted to MATLAB format")
+
+    #####################
+    ## Analysis Tab - Single Image
+    #####################
+
+    def preview_img_scan(self, template: str) -> None:
+        """Doc."""
+
+        if not template:
+            return
+
+        data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
+
+        if data_import_wdgts["is_image_type"]:
+            # import the data
+            try:
+                image_tdc = ImageSFCSMeasurement()
+                ci_image_data = image_tdc.generate_ci_image_stack_data(
+                    file_path=self.current_date_type_dir_path() / template
+                )
+            except FileNotFoundError:
+                self.switch_data_type()
+                return
+            # get the center plane image, in "forward"
+            image = ci_image_data.construct_plane_image("forward")
+            # plot it (below)
+            data_import_wdgts["img_preview_disp"].obj.display_image(
+                image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
+            )
+
+    def import_image_data(self, should_load_processed=False) -> None:
+        """Doc."""
+
+        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
+        current_template = import_wdgts["data_templates"].get()
+        curr_dir = self.current_date_type_dir_path()
+
+        if self._app.analysis.loaded_measurements.get(current_template) is not None:
+            logging.info(f"Data '{current_template}' already loaded - ignoring.")
+            return
+
+        with self._app.pause_ai_ci():
+
+            measurement = None
+
+            if should_load_processed or import_wdgts["auto_load_processed"]:
+                try:
+                    file_path = curr_dir / "processed" / re.sub("_[*].pkl", "", current_template)
+                    logging.info(f"Loading processed data '{current_template}' from hard drive...")
+                    measurement = file_utilities.load_processed_solution_measurement(
+                        file_path,
+                        current_template,
+                    )
+                    print("Done.")
+                except OSError:
+                    print(
+                        f"Pre-processed measurement not found at: '{file_path}'. Processing data regularly."
+                    )
+            with suppress(AttributeError):  # TODO: delete button should be disabled!
+                if import_wdgts["should_re_correlate"]:
+                    options_dict = self.get_processing_options_as_dict()
+                    # Inferring data_dype from template
+                    data_type = self.infer_data_type_from_template(current_template)
+
+                    measurement.correlate_data(
+                        cf_name=data_type,
+                        is_verbose=True,
+                        **options_dict,
+                    )
+
+            if measurement is None:  # process data
+                options_dict = self.get_processing_options_as_dict()
+
+                # Inferring data_dype from template
+                data_type = self.infer_data_type_from_template(current_template)
+
+                # loading and correlating
+                try:
+                    #                    with suppress(AttributeError):
+                    #                        # AttributeError - No directories found
+                    measurement = ImageSFCSMeasurement()
+                    measurement.read_fpga_data(
+                        curr_dir / current_template,
+                        **options_dict,
+                    )
+                    measurement.correlate_data(
+                        cf_name=data_type,
+                        is_verbose=True,
+                        **options_dict,
+                    )
+
+                except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
+                    err_hndlr(exc, sys._getframe(), locals())
+                    return
+
+            #            # save data and populate combobox
+            #            imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
+            #            imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
+
+            self._app.analysis.loaded_measurements[current_template] = measurement
+
+    #            imported_combobox1.obj.addItem(current_template)
+    #            imported_combobox2.obj.addItem(current_template)
+    #
+    #            imported_combobox1.set(current_template)
+    #            imported_combobox2.set(current_template)
+    #
+    #            logging.info(f"Data '{current_template}' ready for analysis.")
+    #
+    #            self.toggle_save_processed_enabled()  # refresh save option
+    #            self.toggle_load_processed_enabled(current_template)  # refresh load option
 
     ##########################
     ## Analysis Tab - Single Measurement

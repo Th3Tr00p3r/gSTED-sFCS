@@ -1199,8 +1199,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 p = self._process_angular_scan_data_file(
                     idx, full_data, should_dump=should_dump, **proc_options
                 )
-            # TODO: YOU ARE HERE - I need to create/fit a processing function for image measurements.
-            # First, let's try to squeeze it into '_process_angular_scan_data_file'?
+            elif scan_type == "image":  # image sFCS
+                p = self._process_image_scan_plane_data(
+                    idx, full_data, should_dump=should_dump, **proc_options
+                )
         # FCS
         else:
             scan_type = "static"
@@ -1542,6 +1544,30 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 break
         return None
 
+    def _process_image_scan_plane_data(
+        self,
+        idx,
+        full_data,
+        should_dump=True,
+        **kwargs,
+    ) -> TDCPhotonFileData:
+        """
+        Processes a single plane image sFCS data ('full_data').
+        Returns the processed results as a 'TDCPhotonData' object.
+        '"""
+
+        try:
+            p = self._convert_fpga_data_to_photons(
+                idx,
+                byte_data=full_data["byte_data"],
+                **kwargs,
+            )
+        except RuntimeError as exc:
+            print(f"{exc} Skipping plane.")
+            return None
+
+        return p
+
     def _process_circular_scan_data_file(
         self, idx, full_data, should_dump=True, **proc_options
     ) -> TDCPhotonFileData:
@@ -1611,6 +1637,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             return None
 
         scan_settings = full_data["scan_settings"]
+        # TODO: why is the .round() needed? (probably for old data - should move to file_utilities)
         linear_part = scan_settings["linear_part"].round().astype(np.uint16)
         ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
         p.general.samples_per_line = int(scan_settings["samples_per_line"])
@@ -2165,7 +2192,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
 
 @dataclass
-class CountsImageStackData:
+class ImageStackData:
     """
     Holds a stack of images along with some relevant scan data,
     built from CI (counter input) NIDAQmx data.
@@ -2182,7 +2209,7 @@ class CountsImageStackData:
     plane_orientation: str
     dim_order: Tuple[int, int, int]
 
-    def construct_image(self, method: str, plane_idx: int = None) -> np.ndarray:
+    def construct_plane_image(self, method: str, plane_idx: int = None) -> np.ndarray:
         """Doc."""
 
         if plane_idx is None:
@@ -2229,16 +2256,73 @@ class CountsImageStackData:
         return img
 
 
-class CountsImageMixin:
+class ImageMixin:
     """Doc."""
 
-    def create_image_stack_data(self, file_dict: dict) -> CountsImageStackData:
+    # TODO: if this ends up being just one function, move it to 'ImageSFCSMeasurement'
+
+    #    def get_counts_from_fpga_data(self, gate_ns: Gate=Gate(), **kwargs):
+    #
+    #        # COPIED FROM MATLAB
+    #        Img = Image_Class
+    #        Img.PixSizeXYZ = []
+    #        ScanParam = self.ScanParam
+    #
+    #        PixLines = ScanParam.Dimension2_col_um/ScanParam.Lines
+    #        if ScanParam.Planes > 1:
+    #            PixPlanes = ScanParam.Dimension3_um/(ScanParam.Planes - 1)
+    #        else: # irrelevant
+    #            PixPlanes = 0
+    #
+    #        for i in range(len(self.data)):
+    #            [Pict1, Norm1, PhotonInd1, Pict2, Norm2, PhotonInd2, PixSize] = ReconstructImageFromTDC_v1(self.data(i), self.AIO_um, ScanParam, self.LaserFreq, varargin{:})
+    #            Jlin = ((1-self.ScanParam.LinFrac)/2*size(Norm1, 2)):((1+self.ScanParam.LinFrac)/2*size(Norm1, 2))
+    #            meanNorm1 = mean(mean(Norm1(:, round(Jlin))))
+    #            meanNorm2 = mean(mean(Norm2(:, round(Jlin))))
+    #            Pic1 = Pict1./Norm1*meanNorm1 # to get roughly the actual number of photons
+    #            Pic2 = Pict2./Norm2*meanNorm2
+    #                K=1:ScanParam.Lines
+    #
+    #            % align images
+    #            invPic1 = Pic1(:, end:-1:1)
+    #            if (i > 1) & (sum(sum((Img.Pic1(:, :, i-1)-Pic1(K, :)).^2)) > ...
+    #                sum(sum((Img.Pic2(:, :, i-1)-invPic1(K, :)).^2))),
+    #                Img.Pic1(:, :, i) = Pic2(K,  end:-1:1)
+    #                Img.Pic2(:, :, i) = invPic1(K, :)
+    #                Img.PhotonInd(i).phInd1 = PhotonInd2(K,  end:-1:1, :)
+    #                Img.PhotonInd(i).phInd2 = PhotonInd1(K,  end:-1:1, :)
+    #            else  % i ==1 or Pic1 closer to the rest of Pic1
+    #                Img.Pic1(:, :, i) = Pic1(K, :)
+    #                Img.Pic2(:, :, i) = Pic2(K, :)
+    #                Img.PhotonInd(i).phInd1 = PhotonInd1(K, :, :)
+    #                Img.PhotonInd(i).phInd2 = PhotonInd2(K, :, :)
+    #            end
+    #        end
+    #        Img.timePerPixel_s = meanNorm1/(ScanParam.Line_freq_Hz*ScanParam.Points_per_Line)
+    #
+    #        self.ImageArray = Img
+    #
+    #        if strcmp(ScanParam.ScanType,'XYscan')
+    #            self.ImageArray(end).PixSizeXYZ = [PixSize PixLines PixPlanes]
+    #        elseif strcmp(ScanParam.ScanType,'YZscan')
+    #            self.ImageArray(end).PixSizeXYZ = [PixPlanes PixSize PixLines]
+    #        elseif strcmp(ScanParam.ScanType,'ZXscan')
+    #            self.ImageArray(end).PixSizeXYZ = [PixLines PixPlanes PixSize]
+    #        else
+    #            warning('No pixel resolutions set for this scan type option!')
+    #        end
+    #        self.ImageArray(end).ScanType = ScanParam.ScanType
+    #        self.ImageArray(end).PixSizeHVP = [PixSize PixLines PixPlanes]
+    #        self.ImageArray(end).DoShowImage
+    #        clear Img
+    #        # /COPIED FROM MATLAB
+
+    def create_image_stack_data(self, file_dict: dict, counts: np.ndarray) -> ImageStackData:
         """Doc."""
 
         scan_settings = file_dict["full_data"]["scan_settings"]
         um_v_ratio = file_dict["system_info"]["xyz_um_to_v"]
         ao = file_dict["full_data"]["scan_settings"]["ao"].T
-        counts = file_dict["full_data"]["ci"]
 
         n_planes = scan_settings["n_planes"]
         n_lines = scan_settings["n_lines"]
@@ -2281,7 +2365,7 @@ class CountsImageMixin:
             counts_stack_backward, eff_idxs_backward, pxls_per_line
         )
 
-        return CountsImageStackData(
+        return ImageStackData(
             image_stack_forward=image_stack_forward,
             norm_stack_forward=norm_stack_forward,
             image_stack_backward=image_stack_backward,
