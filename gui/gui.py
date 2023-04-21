@@ -138,6 +138,9 @@ class MainWin(QtWidgets.QMainWindow):
         self.removeAvailableGate.released.connect(self.impl.remove_available_gate)
         self.calculateStructureFactors.released.connect(self.impl.calculate_structure_factors)
 
+        # analysis - image
+        self.importImgData.released.connect(self.impl.import_image_data)
+
         # Device LEDs
         def led_clicked(wdgt):
             self.impl.led_clicked(str(wdgt.sender().objectName()))

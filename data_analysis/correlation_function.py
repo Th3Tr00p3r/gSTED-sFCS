@@ -14,8 +14,8 @@ from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
 
 from data_analysis.data_processing import (
-    CountsImageMixin,
-    CountsImageStackData,
+    ImageMixin,
+    ImageStackData,
     TDCCalibration,
     TDCPhotonDataProcessor,
     TDCPhotonFileData,
@@ -2132,34 +2132,18 @@ class SolutionSFCSExperiment:
         raise NotImplementedError
 
 
-class ImageSFCSMeasurement(CountsImageMixin):
+class ImageSFCSMeasurement(ImageMixin):
     """Doc."""
 
     laser_freq_hz: int
     fpga_freq_hz: int
     detector_settings: Dict
+    tdc_calib: TDCCalibration
 
     def __init__(self):
         self.file_path = None
         self._file_dict = None
-
-    def read_ci_data(
-        self, file_path: Path = None, file_dict: Dict = None, **kwargs
-    ) -> CountsImageStackData:
-        """Doc."""
-
-        if file_path is not None:
-            self.file_path = file_path
-            self._file_dict = load_file_dict(file_path)
-        elif file_dict is not None:
-            self._file_dict = file_dict
-        # already loaded once
-        elif not hasattr(self, "file_path"):
-            raise ValueError("Must supply either a file path or a file dictionary!")
-
-        # Get counts (ungated) image (excitation or sted)
-        self.ci_data = self.create_image_stack_data(self._file_dict)
-        return self.ci_data
+        self.data = TDCPhotonMeasurementData()
 
     def read_fpga_data(
         self, file_path: Path = None, file_dict: Dict = None, **proc_options
@@ -2186,13 +2170,31 @@ class ImageSFCSMeasurement(CountsImageMixin):
         self.data_processor = TDCPhotonDataProcessor(
             self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
         )
-        # actual data processing
-        self.data = self.data_processor.process_data(
-            0, self._file_dict["full_data"], **proc_options
-        )
+        # actual plane data processing
+        for plane_idx in range(n_planes := self.scan_settings["n_planes"]):
+            print(
+                f"Loading and processing plane No. {plane_idx} ({n_planes} planes): '{self.file_path.stem}'...",
+                end=" ",
+            )
+            # Processing data
+            p = self.data_processor.process_data(
+                plane_idx, self._file_dict["full_data"], **proc_options
+            )
+            print("Done.\n")
+            # Appending data to self
+            if p is not None:
+                self.data.append(p)
 
         # calculate average count rate
-        self.avg_cnt_rate_khz = self.data.general.avg_cnt_rate_khz
+        with suppress(TypeError):
+            # TypeError: p.general.avg_cnt_rate_khz is None for legacy measurements.
+            self.avg_cnt_rate_khz = np.mean([p.general.avg_cnt_rate_khz for p in self.data])
+            try:
+                self.std_cnt_rate_khz = np.std(
+                    [p.general.avg_cnt_rate_khz for p in self.data], ddof=1
+                )
+            except RuntimeWarning:  # single file
+                self.std_cnt_rate_khz = 0.0
 
         # done with loading
         print("Finished loading FPGA data.\n")
@@ -2241,8 +2243,57 @@ class ImageSFCSMeasurement(CountsImageMixin):
         self.scan_type = scan_settings["pattern"]
         self.scan_settings = scan_settings
 
+    #        self.v_um_ms = self.scan_settings["speed_um_s"] * 1e-3
 
-#        self.v_um_ms = self.scan_settings["speed_um_s"] * 1e-3
+    def calibrate_tdc(self, force_processing=True, **kwargs) -> None:
+        """Doc."""
+
+        if not force_processing and hasattr(self, "tdc_calib"):
+            print("\nTDC calibration exists, skipping.")
+            if kwargs.get("should_plot"):
+                self.tdc_calib.plot()
+            return
+
+        if kwargs.get("is_verbose"):
+            print("\nCalibrating TDC...", end=" ")
+
+        # perform actual TDC calibration
+        self.tdc_calib = self.data_processor.calibrate_tdc(self.data, self.scan_type, **kwargs)
+
+        if kwargs.get("should_plot"):
+            self.tdc_calib.plot()
+
+        if kwargs.get("is_verbose"):
+            print("Done.")
+
+    def generate_tdc_image_stack_data(self, gate_ns: Gate = Gate(), **kwargs):  # -> ImageStackData:
+        """Doc."""
+
+        if gate_ns:
+            # calibrate TDC
+            self.calibrate_tdc(**kwargs)
+
+        # TODO: USE JUPYTER NOTEBOOK (PROTOTYPE) AND FILL-IN THIS METHOD
+
+    def generate_ci_image_stack_data(
+        self, file_path: Path = None, file_dict: Dict = None, **kwargs
+    ) -> ImageStackData:
+        """Doc."""
+
+        if file_path is not None:
+            self.file_path = file_path
+            self._file_dict = load_file_dict(file_path)
+        elif file_dict is not None:
+            self._file_dict = file_dict
+        # already loaded once
+        elif not hasattr(self, "file_path"):
+            raise ValueError("Must supply either a file path or a file dictionary!")
+
+        # Get counts (ungated) image (excitation or sted)
+        self.ci_image_data = self.create_image_stack_data(
+            self._file_dict, self._file_dict["full_data"]["ci"]
+        )
+        return self.ci_image_data
 
 
 def calculate_calibrated_afterpulse(
