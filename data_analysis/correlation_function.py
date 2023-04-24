@@ -14,7 +14,6 @@ from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
 
 from data_analysis.data_processing import (
-    ImageMixin,
     ImageStackData,
     TDCCalibration,
     TDCPhotonDataProcessor,
@@ -38,7 +37,9 @@ from utilities.helper import (
     Gate,
     InterpExtrap1D,
     Limits,
+    div_ceil,
     extrapolate_over_noise,
+    rebin,
     unify_length,
 )
 
@@ -2132,8 +2133,10 @@ class SolutionSFCSExperiment:
         raise NotImplementedError
 
 
-class ImageSFCSMeasurement(ImageMixin):
+class ImageSFCSMeasurement:
     """Doc."""
+
+    # TODO: Later, create ImageSFCSExperiment which will have .confocal and .sted (synchronize delay times and everything...)
 
     laser_freq_hz: int
     fpga_freq_hz: int
@@ -2144,20 +2147,17 @@ class ImageSFCSMeasurement(ImageMixin):
         self.file_path = None
         self._file_dict = None
         self.data = TDCPhotonMeasurementData()
+        self.tdc_image_data = {}
 
     def read_fpga_data(
         self, file_path: Path = None, file_dict: Dict = None, **proc_options
     ) -> None:
         """Doc."""
 
+        # load file if needed
         if file_path is not None:
             self.file_path = file_path
             self._file_dict = load_file_dict(file_path)
-        elif file_dict is not None:
-            self._file_dict = file_dict
-        # already loaded once
-        elif not hasattr(self, "file_path"):
-            raise ValueError("Must supply either a file path or a file dictionary!")
 
         print("\nLoading image FPGA data from disk -")
         print(f"File path: '{self.file_path}'")
@@ -2171,19 +2171,18 @@ class ImageSFCSMeasurement(ImageMixin):
             self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
         )
         # actual plane data processing
-        for plane_idx in range(n_planes := self.scan_settings["n_planes"]):
-            print(
-                f"Loading and processing plane No. {plane_idx} ({n_planes} planes): '{self.file_path.stem}'...",
-                end=" ",
-            )
-            # Processing data
-            p = self.data_processor.process_data(
-                plane_idx, self._file_dict["full_data"], **proc_options
-            )
-            print("Done.\n")
-            # Appending data to self
-            if p is not None:
-                self.data.append(p)
+        print(
+            f"Loading and processing total data ({self.scan_settings['n_planes']} planes): '{self.file_path.stem}'...",
+            end=" ",
+        )
+        # Processing data
+        p = self.data_processor.process_data(0, self._file_dict["full_data"], **proc_options)
+        print("Done.\n")
+        # Appending data to self
+        if p is not None:
+            self.data.append(p)
+        else:
+            raise RuntimeError("Loading FPGA data catastrophically failed.")
 
         # calculate average count rate
         with suppress(TypeError):
@@ -2239,9 +2238,7 @@ class ImageSFCSMeasurement(ImageMixin):
             self.detector_settings["gate_ns"] = Gate()
 
         # sFCS
-        scan_settings = full_data.get("scan_settings")
-        self.scan_type = scan_settings["pattern"]
-        self.scan_settings = scan_settings
+        self.scan_type = self.scan_settings["pattern"]
 
     #        self.v_um_ms = self.scan_settings["speed_um_s"] * 1e-3
 
@@ -2266,14 +2263,76 @@ class ImageSFCSMeasurement(ImageMixin):
         if kwargs.get("is_verbose"):
             print("Done.")
 
-    def generate_tdc_image_stack_data(self, gate_ns: Gate = Gate(), **kwargs):  # -> ImageStackData:
+    def generate_tdc_image_stack_data(
+        self, file_path: Path = None, file_dict: Dict = None, gate_ns: Gate = Gate(), **kwargs
+    ):  # -> ImageStackData:
         """Doc."""
 
+        if not self.data:
+            if file_path is not None:
+                self.read_fpga_data(file_path=file_path, **kwargs)
+            elif file_dict is not None:
+                self.read_fpga_data(file_dict=file_dict, **kwargs)
+            else:
+                raise ValueError(
+                    "Must supply either a file path or a file dictionary if no data is loaded!"
+                )
+
+        # Get (possibly gated) TDC image
+        ao_sampling_freq_hz = self.scan_settings["ao_sampling_freq_hz"]
+        samples_per_line = self.scan_settings["ppl"] // 2
+        #        n_planes = self.scan_settings["n_planes"]
+
+        # only one file for images. using .data as list for consistency with SolutionSFCSMeasurement
+        data = self.data[0]
+
+        # gate
         if gate_ns:
             # calibrate TDC
             self.calibrate_tdc(**kwargs)
+            delay_time = data.raw._delay_time  # using just the first plane
+            in_gate_idxs = gate_ns.valid_indices(delay_time)
+        # ungated
+        else:
+            in_gate_idxs = slice(None)
 
-        # TODO: USE JUPYTER NOTEBOOK (PROTOTYPE) AND FILL-IN THIS METHOD
+        # TODO: The total data will be chopped into planes according to scan parameters, similarly to how it happens
+        # in 'generate_ci_image_stack_data'
+        # The idea is to attach to each photon a pixel in a 3D array (plane images) - right now we use line_num and pixel_num. There should also be a
+        # 'plane_num'.
+
+        # define sample runtime
+        pulse_runtime = data.raw._pulse_runtime
+        sample_runtime = pulse_runtime * ao_sampling_freq_hz // self.laser_freq_hz
+
+        # get pixel_num
+        pixel_num = sample_runtime % samples_per_line
+        pixel_num = pixel_num[in_gate_idxs]  # gating
+
+        # get line_num
+        n_lines = self.scan_settings["n_lines"]
+        line_num_tot = sample_runtime // samples_per_line
+        line_num = (line_num_tot % (n_lines + 0)).astype(np.int16)
+        line_num = line_num[in_gate_idxs]  # gating
+
+        # build the gated image
+        gated_img = np.empty((n_lines, samples_per_line), dtype=np.uint16)
+        bins = np.arange(-0.5, samples_per_line)
+        for j in range(n_lines):
+            gated_img[j, :], _ = np.histogram(pixel_num[line_num == j], bins=bins)
+
+        # TODO: try to use '_calculate_plane_image_stack'??? (auto binning and stacking of planes?)
+
+        # rebin along rows # TODO: binning could be determined automatically?
+        gated_img = rebin(gated_img, (gated_img.shape[0], gated_img.shape[1] // 2))
+
+        tdc_forward_gated_img = gated_img[:, : gated_img.shape[1] // 2]
+        tdc_backward_gated_img = np.fliplr(gated_img[:, gated_img.shape[1] // 2 :])
+
+        return tdc_forward_gated_img, tdc_backward_gated_img
+
+    #        self.tdc_image_data[gate_ns] = self._create_tdc_image_stack_data(self._file_dict)
+    #        return self.tdc_image_data[gate_ns]
 
     def generate_ci_image_stack_data(
         self, file_path: Path = None, file_dict: Dict = None, **kwargs
@@ -2290,10 +2349,80 @@ class ImageSFCSMeasurement(ImageMixin):
             raise ValueError("Must supply either a file path or a file dictionary!")
 
         # Get counts (ungated) image (excitation or sted)
-        self.ci_image_data = self.create_image_stack_data(
-            self._file_dict, self._file_dict["full_data"]["ci"]
+        counts = self._file_dict["full_data"]["ci"]
+        um_v_ratio = self._file_dict["system_info"]["xyz_um_to_v"]
+        self.scan_settings = self._file_dict["full_data"]["scan_settings"]
+        ao = self.scan_settings["ao"].T
+
+        n_planes = self.scan_settings["n_planes"]
+        n_lines = self.scan_settings["n_lines"]
+        pxl_size_um = self.scan_settings["dim2_um"] / n_lines
+        pxls_per_line = div_ceil(self.scan_settings["dim1_um"], pxl_size_um)
+        dim_order = self.scan_settings["dim_order"]
+        ppl = self.scan_settings["ppl"]
+        ppp = n_lines * ppl
+        turn_idx = ppl // 2
+
+        first_dim = dim_order[0]
+        dim1_center = self.scan_settings["initial_ao"][first_dim]
+        um_per_v = um_v_ratio[first_dim]
+
+        line_len_v = self.scan_settings["dim1_um"] / um_per_v
+        dim1_min = dim1_center - line_len_v / 2
+
+        pxl_size_v = pxl_size_um / um_per_v
+        pxls_per_line = div_ceil(self.scan_settings["dim1_um"], pxl_size_um)
+
+        # prepare to remove counts from outside limits
+        dim1_ao_single = ao[0][:ppl]
+        eff_idxs = ((dim1_ao_single - dim1_min) // pxl_size_v + 1).astype(np.int16)
+        eff_idxs_forward = eff_idxs[:turn_idx]
+        eff_idxs_backward = eff_idxs[-1 : (turn_idx - 1) : -1]
+
+        # create counts stack shaped (n_lines, ppl, n_planes) - e.g. 80 x 1000 x 1
+        j0 = ppp * np.arange(n_planes)[:, np.newaxis]
+        J = np.tile(np.arange(ppp), (n_planes, 1)) + j0
+        counts_stack = np.diff(np.concatenate((j0, counts[J]), axis=1))
+        counts_stack = counts_stack.T.reshape(n_lines, ppl, n_planes)
+        counts_stack_forward = counts_stack[:, :turn_idx, :]
+        counts_stack_backward = counts_stack[:, -1 : (turn_idx - 1) : -1, :]
+
+        # calculate the images and normalization separately for the forward/backward parts of the scan
+        image_stack_forward, norm_stack_forward = self._calculate_plane_image_stack(
+            counts_stack_forward, eff_idxs_forward, pxls_per_line
+        )
+        image_stack_backward, norm_stack_backward = self._calculate_plane_image_stack(
+            counts_stack_backward, eff_idxs_backward, pxls_per_line
+        )
+
+        self.ci_image_data = ImageStackData(
+            image_stack_forward=image_stack_forward,
+            norm_stack_forward=norm_stack_forward,
+            image_stack_backward=image_stack_backward,
+            norm_stack_backward=norm_stack_backward,
+            line_ticks_v=dim1_min + np.arange(pxls_per_line) * pxl_size_v,
+            row_ticks_v=self.scan_settings["set_pnts_lines_odd"],
+            plane_ticks_v=self.scan_settings.get(
+                "set_pnts_planes"
+            ),  # doesn't exist in older versions
+            n_planes=n_planes,
+            plane_orientation=self.scan_settings["plane_orientation"],
+            dim_order=dim_order,
         )
         return self.ci_image_data
+
+    def _calculate_plane_image_stack(self, counts_stack, eff_idxs, pxls_per_line):
+        """Doc."""
+
+        n_lines, _, n_planes = counts_stack.shape
+        image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+        norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+
+        for i in range(pxls_per_line):
+            image_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].sum(axis=1)
+            norm_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].shape[1]
+
+        return image_stack, norm_stack
 
 
 def calculate_calibrated_afterpulse(
