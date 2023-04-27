@@ -2220,9 +2220,6 @@ class ImageSFCSMeasurement:
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
         self.pulse_period_ns = 1 / self.laser_freq_hz * 1e9
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
-        self.duration_min = (
-            full_data.get("duration_s", 0) / 60
-        )  # TODO: (was the 'None' used? is the new default 0 OK?)
 
         # TODO: missing gate - move this to legacy handeling
         if self.detector_settings.get("gate_ns") is not None and (

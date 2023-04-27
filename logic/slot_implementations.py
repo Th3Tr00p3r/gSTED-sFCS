@@ -751,7 +751,8 @@ class MainWin:
 
         with suppress(AttributeError):
             file_dict = self._app.last_image_scans[self._app.curr_img_idx]
-            file_name = f"{wdgt_coll['file_template']}_{file_dict['laser_mode']}_{file_dict['scan_settings']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
+            full_data = file_dict["full_data"]
+            file_name = f"{wdgt_coll['file_template']}_{full_data['laser_mode']}_{full_data['scan_settings']['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
             today_dir = Path(wdgt_coll["save_path"]) / dt.now().strftime("%d_%m_%Y")
             dir_path = today_dir / "image"
             file_path = dir_path / (re.sub("\\s", "_", file_name) + ".pkl")
