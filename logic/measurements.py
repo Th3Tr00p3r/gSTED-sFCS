@@ -183,9 +183,7 @@ class MeasurementProcedure:
                 speed_um_s=self.scan_params["eff_speed_um_s"]
                 if hasattr(self, "duration_s")
                 else None,
-                ao_sampling_freq_hz=self.scan_params["ao_sampling_freq_hz"]
-                if hasattr(self, "duration_s")
-                else None,
+                ao_sampling_freq_hz=self.scan_params["ao_sampling_freq_hz"],
             )
             if self.scan_params["pattern"] == "circle":
                 full_data["scan_settings"].update(
