@@ -39,7 +39,6 @@ from utilities.helper import (
     Limits,
     div_ceil,
     extrapolate_over_noise,
-    rebin,
     unify_length,
 )
 
@@ -2204,7 +2203,6 @@ class ImageSFCSMeasurement:
         **kwargs,
     ) -> None:
         """Get general measurement properties."""
-        # _file_dict_keys(['laser_mode', 'ai', 'ci', 'ao', 'is_fast_scan', 'system_info', 'tdc_scan_data', 'scan_settings'])
 
         full_data = self._file_dict["full_data"]
 
@@ -2275,10 +2273,13 @@ class ImageSFCSMeasurement:
                     "Must supply either a file path or a file dictionary if no data is loaded!"
                 )
 
-        # Get (possibly gated) TDC image
-        ao_sampling_freq_hz = self.scan_settings["ao_sampling_freq_hz"]
-        samples_per_line = self.scan_settings["ppl"] // 2
-        #        n_planes = self.scan_settings["n_planes"]
+        # definitions
+        ao_sampling_freq_hz = self.scan_settings["line_freq_hz"] * self.scan_settings["ppl"]
+        n_lines = self.scan_settings["n_lines"]
+        n_planes = self.scan_settings["n_planes"]
+        ppl = self.scan_settings["ppl"]
+        turn_idx = ppl // 2
+        ppp = ppl * n_lines
 
         # only one file for images. using .data as list for consistency with SolutionSFCSMeasurement
         data = self.data[0]
@@ -2286,7 +2287,7 @@ class ImageSFCSMeasurement:
         # gate
         if gate_ns:
             # calibrate TDC
-            self.calibrate_tdc(**kwargs)
+            self.calibrate_tdc()
             delay_time = data.raw._delay_time  # using just the first plane
             in_gate_idxs = gate_ns.valid_indices(delay_time)
         # ungated
@@ -2303,33 +2304,58 @@ class ImageSFCSMeasurement:
         sample_runtime = pulse_runtime * ao_sampling_freq_hz // self.laser_freq_hz
 
         # get pixel_num
-        pixel_num = sample_runtime % samples_per_line
+        pixel_num = sample_runtime % ppl
         pixel_num = pixel_num[in_gate_idxs]  # gating
 
         # get line_num
-        n_lines = self.scan_settings["n_lines"]
-        line_num_tot = sample_runtime // samples_per_line
-        line_num = (line_num_tot % (n_lines + 0)).astype(np.int16)
+        line_num_tot = sample_runtime // ppl
+        line_num = (line_num_tot % n_lines).astype(np.int16)
         line_num = line_num[in_gate_idxs]  # gating
 
-        # build the gated image
-        gated_img = np.empty((n_lines, samples_per_line), dtype=np.uint16)
-        bins = np.arange(-0.5, samples_per_line)
-        for j in range(n_lines):
-            gated_img[j, :], _ = np.histogram(pixel_num[line_num == j], bins=bins)
+        # get plane_num
+        plane_num_tot = sample_runtime // ppp
+        plane_num = (plane_num_tot % n_planes).astype(np.int8)
+        plane_num[plane_num_tot > n_planes - 1] = 100  # TESTESTEST
+        plane_num = plane_num[in_gate_idxs]  # gating
 
-        # TODO: try to use '_calculate_plane_image_stack'??? (auto binning and stacking of planes?)
+        # build the (optionally gated) plane images
+        gated_counts_stack = np.empty((n_lines, ppl, n_planes), dtype=np.uint16)
+        for p_idx in range(n_planes):
+            bins = np.arange(-0.5, ppl)
+            for l_idx in range(n_lines):
+                gated_counts_stack[l_idx, :, p_idx], _ = np.histogram(
+                    pixel_num[(line_num == l_idx) & (plane_num == p_idx)], bins=bins
+                )
 
-        # rebin along rows # TODO: binning could be determined automatically?
-        gated_img = rebin(gated_img, (gated_img.shape[0], gated_img.shape[1] // 2))
+        # get effective indices, pixels-per-line and line_ticks_v
+        # TODO: what do "effective" indices mean?
+        eff_idxs, pxls_per_line, line_ticks_v = self._get_effective_idices()
 
-        tdc_forward_gated_img = gated_img[:, : gated_img.shape[1] // 2]
-        tdc_backward_gated_img = np.fliplr(gated_img[:, gated_img.shape[1] // 2 :])
+        # calculate the images and normalization separately for the forward/backward parts of the scan
+        gated_counts_stack_forward = gated_counts_stack[:, :turn_idx, :]
+        image_stack_forward, norm_stack_forward = self._calculate_plane_image_stack(
+            gated_counts_stack_forward, eff_idxs[:turn_idx], pxls_per_line
+        )
+        gated_counts_stack_backward = gated_counts_stack[:, -1 : (turn_idx - 1) : -1, :]
+        image_stack_backward, norm_stack_backward = self._calculate_plane_image_stack(
+            gated_counts_stack_backward, eff_idxs[-1 : (turn_idx - 1) : -1], pxls_per_line
+        )
 
-        return tdc_forward_gated_img, tdc_backward_gated_img
-
-    #        self.tdc_image_data[gate_ns] = self._create_tdc_image_stack_data(self._file_dict)
-    #        return self.tdc_image_data[gate_ns]
+        self.tdc_image_data = ImageStackData(
+            image_stack_forward=image_stack_forward,
+            norm_stack_forward=norm_stack_forward,
+            image_stack_backward=image_stack_backward,
+            norm_stack_backward=norm_stack_backward,
+            line_ticks_v=line_ticks_v,
+            row_ticks_v=self.scan_settings["set_pnts_lines_odd"],
+            plane_ticks_v=self.scan_settings.get(
+                "set_pnts_planes"
+            ),  # doesn't exist in older versions
+            n_planes=n_planes,
+            plane_orientation=self.scan_settings["plane_orientation"],
+            dim_order=self.scan_settings["dim_order"],
+        )
+        return self.tdc_image_data
 
     def generate_ci_image_stack_data(
         self, file_path: Path = None, file_dict: Dict = None, **kwargs
@@ -2347,9 +2373,7 @@ class ImageSFCSMeasurement:
 
         # Get counts (ungated) image (excitation or sted)
         counts = self._file_dict["full_data"]["ci"]
-        um_v_ratio = self._file_dict["system_info"]["xyz_um_to_v"]
         self.scan_settings = self._file_dict["full_data"]["scan_settings"]
-        ao = self.scan_settings["ao"].T
 
         n_planes = self.scan_settings["n_planes"]
         n_lines = self.scan_settings["n_lines"]
@@ -2360,36 +2384,23 @@ class ImageSFCSMeasurement:
         ppp = n_lines * ppl
         turn_idx = ppl // 2
 
-        first_dim = dim_order[0]
-        dim1_center = self.scan_settings["initial_ao"][first_dim]
-        um_per_v = um_v_ratio[first_dim]
-
-        line_len_v = self.scan_settings["dim1_um"] / um_per_v
-        dim1_min = dim1_center - line_len_v / 2
-
-        pxl_size_v = pxl_size_um / um_per_v
-        pxls_per_line = div_ceil(self.scan_settings["dim1_um"], pxl_size_um)
-
         # prepare to remove counts from outside limits
-        dim1_ao_single = ao[0][:ppl]
-        eff_idxs = ((dim1_ao_single - dim1_min) // pxl_size_v + 1).astype(np.int16)
-        eff_idxs_forward = eff_idxs[:turn_idx]
-        eff_idxs_backward = eff_idxs[-1 : (turn_idx - 1) : -1]
+        eff_idxs, pxls_per_line, line_ticks_v = self._get_effective_idices()
 
         # create counts stack shaped (n_lines, ppl, n_planes) - e.g. 80 x 1000 x 1
         j0 = ppp * np.arange(n_planes)[:, np.newaxis]
         J = np.tile(np.arange(ppp), (n_planes, 1)) + j0
         counts_stack = np.diff(np.concatenate((j0, counts[J]), axis=1))
         counts_stack = counts_stack.T.reshape(n_lines, ppl, n_planes)
-        counts_stack_forward = counts_stack[:, :turn_idx, :]
-        counts_stack_backward = counts_stack[:, -1 : (turn_idx - 1) : -1, :]
 
         # calculate the images and normalization separately for the forward/backward parts of the scan
+        counts_stack_forward = counts_stack[:, :turn_idx, :]
         image_stack_forward, norm_stack_forward = self._calculate_plane_image_stack(
-            counts_stack_forward, eff_idxs_forward, pxls_per_line
+            counts_stack_forward, eff_idxs[:turn_idx], pxls_per_line
         )
+        counts_stack_backward = counts_stack[:, -1 : (turn_idx - 1) : -1, :]
         image_stack_backward, norm_stack_backward = self._calculate_plane_image_stack(
-            counts_stack_backward, eff_idxs_backward, pxls_per_line
+            counts_stack_backward, eff_idxs[-1 : (turn_idx - 1) : -1], pxls_per_line
         )
 
         self.ci_image_data = ImageStackData(
@@ -2397,7 +2408,7 @@ class ImageSFCSMeasurement:
             norm_stack_forward=norm_stack_forward,
             image_stack_backward=image_stack_backward,
             norm_stack_backward=norm_stack_backward,
-            line_ticks_v=dim1_min + np.arange(pxls_per_line) * pxl_size_v,
+            line_ticks_v=line_ticks_v,
             row_ticks_v=self.scan_settings["set_pnts_lines_odd"],
             plane_ticks_v=self.scan_settings.get(
                 "set_pnts_planes"
@@ -2407,6 +2418,32 @@ class ImageSFCSMeasurement:
             dim_order=dim_order,
         )
         return self.ci_image_data
+
+    def _get_effective_idices(self):
+        """Doc."""
+
+        # existing meas params definitions
+        ao = self.scan_settings["ao"].T
+        um_v_ratio = self._file_dict["system_info"]["xyz_um_to_v"]
+        dim_order = self.scan_settings["dim_order"]
+        ppl = self.scan_settings["ppl"]
+        n_lines = self.scan_settings["n_lines"]
+
+        # derived params
+        pxl_size_um = self.scan_settings["dim2_um"] / n_lines
+        first_dim = dim_order[0]
+        dim1_center = self.scan_settings["initial_ao"][first_dim]
+        um_per_v = um_v_ratio[first_dim]
+        line_len_v = self.scan_settings["dim1_um"] / um_per_v
+        dim1_min = dim1_center - line_len_v / 2
+        pxl_size_v = pxl_size_um / um_per_v
+        dim1_ao_single = ao[0][:ppl]
+
+        # calculate and return needed values
+        eff_idxs = ((dim1_ao_single - dim1_min) // pxl_size_v + 1).astype(np.int16)
+        pxls_per_line = div_ceil(self.scan_settings["dim1_um"], pxl_size_um)
+        line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
+        return eff_idxs, pxls_per_line, line_ticks_v
 
     def _calculate_plane_image_stack(self, counts_stack, eff_idxs, pxls_per_line):
         """Doc."""
@@ -2420,6 +2457,13 @@ class ImageSFCSMeasurement:
             norm_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].shape[1]
 
         return image_stack, norm_stack
+
+    def estimate_spatial_resolution(self):
+        """Doc."""
+
+        raise NotImplementedError(
+            "Finish working on 'generate_tdc_image_stack_data()' method, then use Gaussian fitting (as for alignment) for estimating the spatial resolution."
+        )
 
 
 def calculate_calibrated_afterpulse(

@@ -443,8 +443,6 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):  
         file_dict["full_data"]["detector_settings"] = {}
         file_dict["full_data"]["detector_settings"]["gate_ns"] = Gate()
         file_dict["full_data"]["detector_settings"]["mode"] = "free running"
-    if file_dict["full_data"]["scan_settings"]["ao_sampling_freq_hz"] is None:
-        file_dict["full_data"]["scan_settings"]["ao_sampling_freq_hz"] = int(1e4)
 
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["afterpulse_params"], tuple):

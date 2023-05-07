@@ -423,13 +423,6 @@ def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
 
-def rebin(arr, new_shape):
-    """Rebin 2D array arr to shape new_shape by averaging."""
-
-    shape = (new_shape[0], arr.shape[0] // new_shape[0], new_shape[1], arr.shape[1] // new_shape[1])
-    return arr.reshape(shape).mean((-1, 1))
-
-
 def chunked_bincount(arr_mmap: MemMapping, n_chunks=10):
     """Performes 'bincount' in series on disk-loaded array chunks using a MemMapping object"""
 
