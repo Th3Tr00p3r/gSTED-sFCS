@@ -712,9 +712,11 @@ class MainWin:
     def plane_choice_changed(self, plane_idx):
         """Doc."""
 
+        img_meas_wdgts = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
+        img_meas_wdgts["plane_shown"].set(plane_idx)
+
         with suppress(AttributeError):
             # AttributeError - no scan performed since app init
-            self._app.meas.plane_shown.set(plane_idx)
             self.disp_plane_img(plane_idx=plane_idx)
 
     def fill_img_scan_preset_gui(self, curr_text: str) -> None:
@@ -1288,10 +1290,10 @@ class MainWin:
             # Inferring data_dype from template
             data_type = self.infer_data_type_from_template(template)
 
-            measurement = SolutionSFCSMeasurement(data_type)
+            meas = SolutionSFCSMeasurement(data_type)
             try:
-                measurement.read_fpga_data(date_dir_path / template)
-                measurement.correlate_and_average(
+                meas.read_fpga_data(date_dir_path / template)
+                meas.correlate_and_average(
                     cf_name=f"{data_type} alignment", afterpulsing_method="filter"
                 )
 
@@ -1302,8 +1304,8 @@ class MainWin:
             except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                 err_hndlr(exc, sys._getframe(), locals())
 
-            first_cf = list(measurement.cf.values())[0]
-            #            cf = measurement.cf[data_type]
+            first_cf = list(meas.cf.values())[0]
+            #            cf = meas.cf[data_type]
 
             try:
                 fp = first_cf.fit_correlation_function()
@@ -1372,8 +1374,8 @@ class MainWin:
     def save_processed_data(self):
         """Doc."""
 
-        with self.get_measurement_from_template() as measurement:
-            was_saved = measurement.save_processed(should_force=True, is_verbose=True)
+        with self.get_measurement_from_template() as meas:
+            was_saved = meas.save_processed(should_force=True, is_verbose=True)
             if was_saved:
                 logging.info("Saved the processed data.")
             else:
@@ -1410,8 +1412,8 @@ class MainWin:
     def toggle_save_processed_enabled(self):
         """Doc."""
 
-        with self.get_measurement_from_template() as measurement:
-            if measurement is None:
+        with self.get_measurement_from_template() as meas:
+            if meas is None:
                 self.main_gui.solImportSaveProcessed.setEnabled(False)
             else:
                 self.main_gui.solImportSaveProcessed.setEnabled(True)
@@ -1504,13 +1506,13 @@ class MainWin:
 
         with self._app.pause_ai_ci():
 
-            measurement = None
+            meas = None
 
             if should_load_processed or import_wdgts["auto_load_processed"]:
                 try:
                     file_path = curr_dir / "processed" / re.sub("_[*].pkl", "", current_template)
                     logging.info(f"Loading processed data '{current_template}' from hard drive...")
-                    measurement = file_utilities.load_processed_solution_measurement(
+                    meas = file_utilities.load_processed_solution_measurement(
                         file_path,
                         current_template,
                     )
@@ -1519,19 +1521,8 @@ class MainWin:
                     print(
                         f"Pre-processed measurement not found at: '{file_path}'. Processing data regularly."
                     )
-            with suppress(AttributeError):  # TODO: delete button should be disabled!
-                if import_wdgts["should_re_correlate"]:
-                    options_dict = self.get_processing_options_as_dict()
-                    # Inferring data_dype from template
-                    data_type = self.infer_data_type_from_template(current_template)
 
-                    measurement.correlate_data(
-                        cf_name=data_type,
-                        is_verbose=True,
-                        **options_dict,
-                    )
-
-            if measurement is None:  # process data
+            if meas is None:  # process data
                 options_dict = self.get_processing_options_as_dict()
 
                 # Inferring data_dype from template
@@ -1541,16 +1532,22 @@ class MainWin:
                 try:
                     #                    with suppress(AttributeError):
                     #                        # AttributeError - No directories found
-                    measurement = ImageSFCSMeasurement()
-                    measurement.read_fpga_data(
-                        curr_dir / current_template,
+                    meas = ImageSFCSMeasurement()
+                    meas.generate_tdc_image_stack_data(
+                        file_path=curr_dir / current_template,
                         **options_dict,
                     )
-                    measurement.correlate_data(
-                        cf_name=data_type,
-                        is_verbose=True,
-                        **options_dict,
-                    )
+
+                    from utilities.display import Plotter
+
+                    with Plotter() as ax:
+                        ax.imshow(meas.tdc_image_data.construct_plane_image("forward normalized"))
+
+                #                    meas.correlate_data(
+                #                        cf_name=data_type,
+                #                        is_verbose=True,
+                #                        **options_dict,
+                #                    )
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())
@@ -1560,7 +1557,7 @@ class MainWin:
             #            imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
             #            imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
 
-            self._app.analysis.loaded_measurements[current_template] = measurement
+            self._app.analysis.loaded_measurements[current_template] = meas
 
     #            imported_combobox1.obj.addItem(current_template)
     #            imported_combobox2.obj.addItem(current_template)
@@ -1590,13 +1587,13 @@ class MainWin:
 
         with self._app.pause_ai_ci():
 
-            measurement = None
+            meas = None
 
             if should_load_processed or import_wdgts["auto_load_processed"]:
                 try:
                     file_path = curr_dir / "processed" / re.sub("_[*].pkl", "", current_template)
                     logging.info(f"Loading processed data '{current_template}' from hard drive...")
-                    measurement = file_utilities.load_processed_solution_measurement(
+                    meas = file_utilities.load_processed_solution_measurement(
                         file_path,
                         current_template,
                     )
@@ -1611,13 +1608,13 @@ class MainWin:
                     # Inferring data_dype from template
                     data_type = self.infer_data_type_from_template(current_template)
 
-                    measurement.correlate_data(
+                    meas.correlate_data(
                         cf_name=data_type,
                         is_verbose=True,
                         **options_dict,
                     )
 
-            if measurement is None:  # process data
+            if meas is None:  # process data
                 options_dict = self.get_processing_options_as_dict()
 
                 # Inferring data_dype from template
@@ -1627,12 +1624,12 @@ class MainWin:
                 try:
                     #                    with suppress(AttributeError):
                     #                        # AttributeError - No directories found
-                    measurement = SolutionSFCSMeasurement(data_type)
-                    measurement.read_fpga_data(
+                    meas = SolutionSFCSMeasurement(data_type)
+                    meas.read_fpga_data(
                         curr_dir / current_template,
                         **options_dict,
                     )
-                    measurement.correlate_data(
+                    meas.correlate_data(
                         cf_name=data_type,
                         is_verbose=True,
                         **options_dict,
@@ -1646,7 +1643,7 @@ class MainWin:
             imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
             imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
 
-            self._app.analysis.loaded_measurements[current_template] = measurement
+            self._app.analysis.loaded_measurements[current_template] = meas
 
             imported_combobox1.obj.addItem(current_template)
             imported_combobox2.obj.addItem(current_template)
@@ -1698,8 +1695,8 @@ class MainWin:
         if not template:
             template = cast(str, wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates.get())
         curr_data_type, *_ = re.split(" -", template)
-        measurement = self._app.analysis.loaded_measurements.get(curr_data_type)
-        yield measurement
+        meas = self._app.analysis.loaded_measurements.get(curr_data_type)
+        yield meas
 
     def infer_data_type_from_template(self, template: str) -> str:
         """Doc."""
@@ -1718,23 +1715,23 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_dict(self._app.gui)
 
-        with self.get_measurement_from_template(imported_template) as measurement:
-            if measurement is None:
+        with self.get_measurement_from_template(imported_template) as meas:
+            if meas is None:
                 # no imported templates (deleted)
                 wdgts.SOL_MEAS_ANALYSIS_COLL.clear_all_objects()
                 sol_data_analysis_wdgts["scan_img_file_num"].obj.setRange(1, 1)
                 sol_data_analysis_wdgts["scan_img_file_num"].set(1)
             else:
-                num_files = measurement.n_files
+                num_files = meas.n_files
                 logging.debug("Populating analysis GUI...")
 
                 # populate general measurement properties
                 sol_data_analysis_wdgts["n_files"].set(num_files)
-                sol_data_analysis_wdgts["scan_duration_min"].set(measurement.duration_min)
-                sol_data_analysis_wdgts["avg_cnt_rate_khz"].set(measurement.avg_cnt_rate_khz)
-                sol_data_analysis_wdgts["std_cnt_rate_khz"].set(measurement.std_cnt_rate_khz)
+                sol_data_analysis_wdgts["scan_duration_min"].set(meas.duration_min)
+                sol_data_analysis_wdgts["avg_cnt_rate_khz"].set(meas.avg_cnt_rate_khz)
+                sol_data_analysis_wdgts["std_cnt_rate_khz"].set(meas.std_cnt_rate_khz)
 
-                if measurement.scan_type == "circle":
+                if meas.scan_type == "circle":
                     # populate scan image tab
                     logging.debug("Displaying scan images...")
                     sol_data_analysis_wdgts["scan_img_file_num"].obj.setEnabled(False)
@@ -1750,11 +1747,11 @@ class MainWin:
                     scan_settings_text = "\n\n".join(
                         [
                             f"{key}: {np.array_str(val[:5], precision=2) if isinstance(val, np.ndarray) else (f'{val:.2f}' if helper.can_float(val) else val)}"
-                            for key, val in measurement.scan_settings.items()
+                            for key, val in meas.scan_settings.items()
                         ]
                     )
 
-                if measurement.scan_type == "angular":
+                if meas.scan_type == "angular":
                     # populate scan images tab
                     logging.debug("Displaying scan images...")
                     sol_data_analysis_wdgts["scan_img_file_num"].obj.setEnabled(True)
@@ -1771,11 +1768,11 @@ class MainWin:
                     scan_settings_text = "\n\n".join(
                         [
                             f"{key}: {np.array_str(val[:5], precision=2) if isinstance(val, np.ndarray) else (f'{val:.2f}' if helper.can_float(val) else val)}"
-                            for key, val in measurement.scan_settings.items()
+                            for key, val in meas.scan_settings.items()
                         ]
                     )
 
-                elif measurement.scan_type == "static":
+                elif meas.scan_type == "static":
                     logging.debug("Averaging, plotting and fitting...")
                     self.calculate_and_show_sol_mean_acf(imported_template)
                     scan_settings_text = "no scan."
@@ -1792,8 +1789,8 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            with self.get_measurement_from_template(imported_template) as measurement:
-                img = measurement.scan_image
+            with self.get_measurement_from_template(imported_template) as meas:
+                img = meas.scan_image
 
                 scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
@@ -1809,7 +1806,7 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            with self.get_measurement_from_template(imported_template) as measurement:
+            with self.get_measurement_from_template(imported_template) as meas:
 
                 sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_dict(self._app.gui)
 
@@ -1817,9 +1814,9 @@ class MainWin:
                 should_bw_mask = sol_data_analysis_wdgts["should_bw_mask"]
                 should_normalize_rows = sol_data_analysis_wdgts["should_normalize_rows"]
 
-                mask = measurement.data[file_idx].general.image_bw_mask
-                img = measurement.scan_images_dstack[:, :, file_idx].copy()
-                roi = measurement.roi_list[file_idx]
+                mask = meas.data[file_idx].general.image_bw_mask
+                img = meas.scan_images_dstack[:, :, file_idx].copy()
+                roi = meas.roi_list[file_idx]
 
                 if should_normalize_rows:
                     img = AngularScanDataMixin().normalize_scan_img_rows(img, mask)
@@ -1837,10 +1834,10 @@ class MainWin:
         with suppress(IndexError, KeyError, AttributeError):
             # IndexError - data import failed
             # KeyError, AttributeError - data deleted
-            with self.get_measurement_from_template(imported_template) as measurement:
+            with self.get_measurement_from_template(imported_template) as meas:
                 display = wdgts.SOL_MEAS_ANALYSIS_COLL.pattern_wdgt.obj
-                aox, aoy, *_ = measurement.scan_settings["ao"].T
-                aix, aiy, _, aox_int, aoy_int, _ = measurement.scan_settings["ai"].T
+                aox, aoy, *_ = meas.scan_settings["ao"].T
+                aix, aiy, _, aox_int, aoy_int, _ = meas.scan_settings["ai"].T
                 display.display_patterns(
                     [(aox, aoy), (aox_int, aoy_int), (aix, aiy)],
                     labels=["AO", "AO_int", "AI"],
@@ -1852,20 +1849,20 @@ class MainWin:
 
         sol_data_analysis_wdgts = wdgts.SOL_MEAS_ANALYSIS_COLL.gui_to_dict(self._app.gui)
 
-        with self.get_measurement_from_template(imported_template) as measurement:
-            if measurement is None:
+        with self.get_measurement_from_template(imported_template) as meas:
+            if meas is None:
                 return
 
-            if measurement.scan_type == "circle":
-                data_type = self.infer_data_type_from_template(measurement.template)
+            if meas.scan_type == "circle":
+                data_type = self.infer_data_type_from_template(meas.template)
                 try:
-                    cf = measurement.cf[data_type]
+                    cf = meas.cf[data_type]
                 except KeyError:
                     # TODO: TEST THIS - possibly needed in other scan_types? (seems related to detector-gated measurements)
                     print(
                         f"Infered data_type ({data_type}) is not a key of CorrFunc dictionary (probably a detector-gated measurement). Using first CorrFunc"
                     )
-                    cf = list(measurement.cf.values())[0]
+                    cf = list(meas.cf.values())[0]
                 cf.average_correlation()
 
                 # setting values and plotting
@@ -1886,7 +1883,7 @@ class MainWin:
                 )
                 sol_data_analysis_wdgts["row_acf_disp"].obj.entitle_and_label(x_label, "G0")
 
-            if measurement.scan_type == "angular":
+            if meas.scan_type == "angular":
                 row_disc_method = sol_data_analysis_wdgts["row_dicrimination"].objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts["remove_over"])
@@ -1899,11 +1896,11 @@ class MainWin:
 
                 with suppress(AttributeError, RuntimeError):
                     # AttributeError - no data loaded
-                    data_type = self.infer_data_type_from_template(measurement.template)
+                    data_type = self.infer_data_type_from_template(meas.template)
                     try:
-                        cf = measurement.cf[data_type]
+                        cf = meas.cf[data_type]
                     except KeyError:
-                        cf = list(measurement.cf.values())[-1]
+                        cf = list(meas.cf.values())[-1]
                         print(
                             "Warning! data type was errorneously inferred from template - possible bad template naming..."
                         )
@@ -1931,9 +1928,9 @@ class MainWin:
                     sol_data_analysis_wdgts["n_bad_rows"].set(n_bad := len(cf.j_bad))
                     sol_data_analysis_wdgts["remove_worst"].obj.setMaximum(n_good + n_bad - 2)
 
-            elif measurement.scan_type == "static":
-                data_type = self.infer_data_type_from_template(measurement.template)
-                cf = measurement.cf[
+            elif meas.scan_type == "static":
+                data_type = self.infer_data_type_from_template(meas.template)
+                cf = meas.cf[
                     data_type
                 ]  # TODO: keyerror might result from testing (using confocal as STED)
                 cf.average_correlation()
@@ -2029,8 +2026,8 @@ class MainWin:
                 if assignment_params.method == "loaded":
                     with self.get_measurement_from_template(
                         wdgt_coll[f"assigned_{meas_type}_template"].get(),
-                    ) as measurement:
-                        kwargs[meas_type] = measurement
+                    ) as meas:
+                        kwargs[meas_type] = meas
 
                 elif assignment_params.method == "raw":
                     curr_dir = self.current_date_type_dir_path()
