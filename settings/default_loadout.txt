@@ -27,7 +27,6 @@ imgScanNumLines,80
 imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
-currPlane,0
 depPow,130
 depCurr,1500
 stageSteps,250

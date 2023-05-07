@@ -1540,8 +1540,19 @@ class MainWin:
 
                     from utilities.display import Plotter
 
-                    with Plotter() as ax:
-                        ax.imshow(meas.tdc_image_data.construct_plane_image("forward normalized"))
+                    with Plotter(subplots=(1, meas.scan_settings["n_planes"])) as axes:
+                        try:
+                            for plane_idx, ax in enumerate(axes):
+                                ax.imshow(
+                                    meas.tdc_image_data.construct_plane_image(
+                                        "forward normalized", plane_idx
+                                    )
+                                )
+                        except TypeError:
+                            # 'Axes' object is not iterable
+                            axes.imshow(
+                                meas.tdc_image_data.construct_plane_image("forward normalized")
+                            )
 
                 #                    meas.correlate_data(
                 #                        cf_name=data_type,

@@ -2235,8 +2235,6 @@ class ImageSFCSMeasurement:
         # sFCS
         self.scan_type = self.scan_settings["pattern"]
 
-    #        self.v_um_ms = self.scan_settings["speed_um_s"] * 1e-3
-
     def calibrate_tdc(self, force_processing=True, **kwargs) -> None:
         """Doc."""
 
@@ -2293,11 +2291,6 @@ class ImageSFCSMeasurement:
         # ungated
         else:
             in_gate_idxs = slice(None)
-
-        # TODO: The total data will be chopped into planes according to scan parameters, similarly to how it happens
-        # in 'generate_ci_image_stack_data'
-        # The idea is to attach to each photon a pixel in a 3D array (plane images) - right now we use line_num and pixel_num. There should also be a
-        # 'plane_num'.
 
         # define sample runtime
         pulse_runtime = data.raw._pulse_runtime
