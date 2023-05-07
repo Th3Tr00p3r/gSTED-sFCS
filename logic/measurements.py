@@ -125,8 +125,8 @@ class MeasurementProcedure:
 
         self._app.gui.main.impl.device_toggle("TDC", leave_on=True)
 
+        # Solution - record data until time is up or ordered to stop
         if timed:
-            # Solution
             while self.is_running:
                 await self.data_dvc.read_TDC()
                 self.time_passed_s = time.perf_counter() - self.start_time
@@ -135,22 +135,11 @@ class MeasurementProcedure:
                 if size_limited and ((self.data_dvc.tot_bytes_read / 1e6) >= self.max_file_size_mb):
                     break
 
+        # Image - record data until image scan task is done
         else:
-            # Image
-            while (
-                self.is_running
-                and not self.scanners_dvc.are_tasks_done("ao")
-                and not (
-                    overdue := self.time_passed_s
-                    > (self.est_plane_duration * (self.curr_plane + 1) * 1.1)
-                )
-            ):
+            while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
                 await self.data_dvc.read_TDC()
                 self.time_passed_s = time.perf_counter() - self.start_time
-            if overdue:
-                raise MeasurementError(
-                    "Tasks are overdue. Check that all relevant devices are turned ON"
-                )
 
         await self.data_dvc.read_TDC()  # read leftovers
         self._app.gui.main.impl.device_toggle("TDC", leave_off=True)
@@ -160,6 +149,7 @@ class MeasurementProcedure:
 
         full_data = {
             "laser_mode": self.laser_mode,
+            "dep_power_mw": pow_mw if (pow_mw := self.laser_dvcs.dep.get_prop("pow")) > 0 else None,
             "duration_s": self.duration_s if hasattr(self, "duration_s") else None,
             # TODO: prepare a function to cut img data into planes, similar to how the counts are cut
             "byte_data": np.asarray(self.data_dvc.data, dtype=np.uint8),
@@ -354,8 +344,10 @@ class MeasurementProcedure:
             await asyncio.sleep(5)
             button.setEnabled(True)
 
-    def init_scan_tasks(self, ao_sample_mode: str, ao_only=False) -> None:
+    def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""
+
+        # initialize write task
 
         # multiplication of the internal PC buffer size by this factor avoids buffer overflow
         buff_ovflw_const = 1.2  # could be redundant, but just to be safe...
@@ -364,7 +356,7 @@ class MeasurementProcedure:
 
         self.scanners_dvc.start_write_task(
             ao_data=self.ao_buffer,
-            type=self.scan_params["plane_orientation"],
+            type=self.scan_params["plane_orientation"] if self.ao_buffer.ndim < 3 else "XYZ",
             samp_clk_cnfg_xy={
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ao_sample_mode,
@@ -380,32 +372,32 @@ class MeasurementProcedure:
             start=False,
         )
 
-        if not ao_only:
-            xy_ao_task = [task for task in self.scanners_dvc.tasks.ao if (task.name == "AO XY")][0]
-            ao_clk_src = xy_ao_task.timing.samp_clk_term
+        # initialize read tasks
+        xy_ao_task = [task for task in self.scanners_dvc.tasks.ao if (task.name == "AO XY")][0]
+        ao_clk_src = xy_ao_task.timing.samp_clk_term
 
-            # init continuous AI
-            self.scanners_dvc.start_scan_read_task(
-                samp_clk_cnfg={},
-                timing_params={
-                    "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                    "samp_quant_samp_per_chan": int(self.n_ao_samps * buff_ovflw_const),
-                    "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
-                    "samp_clk_src": ao_clk_src,
-                    "ai_conv_rate": self.ai_conv_rate,
-                },
-            )
+        # init continuous AI
+        self.scanners_dvc.start_scan_read_task(
+            samp_clk_cnfg={},
+            timing_params={
+                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "samp_quant_samp_per_chan": int(self.n_ao_samps * buff_ovflw_const),
+                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
+                "samp_clk_src": ao_clk_src,
+                "ai_conv_rate": self.ai_conv_rate,
+            },
+        )
 
-            # init continuous CI
-            self.counter_dvc.start_scan_read_task(
-                samp_clk_cnfg={},
-                timing_params={
-                    "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
-                    "samp_quant_samp_per_chan": int(self.n_ao_samps * buff_ovflw_const),
-                    "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
-                    "samp_clk_src": ao_clk_src,
-                },
-            )
+        # init continuous CI
+        self.counter_dvc.start_scan_read_task(
+            samp_clk_cnfg={},
+            timing_params={
+                "samp_quant_samp_mode": ni_consts.AcquisitionType.CONTINUOUS,
+                "samp_quant_samp_per_chan": int(self.n_ao_samps * buff_ovflw_const),
+                "samp_timing_type": ni_consts.SampleTimingType.SAMPLE_CLOCK,
+                "samp_clk_src": ao_clk_src,
+            },
+        )
 
     def return_to_regular_tasks(self):
         """Close ao tasks and resume continuous ai/CI"""
@@ -421,7 +413,6 @@ class ImageMeasurementProcedure(MeasurementProcedure):
     def __init__(self, app, scan_params, **kwargs):
         super().__init__(app=app, type="SFCSImage", scan_params=scan_params, **kwargs)
         self.always_save = kwargs["always_save"]
-        self.curr_plane_wdgt = kwargs["curr_plane_wdgt"]
         self.plane_shown = kwargs["plane_shown"]
         self.plane_choice = kwargs["plane_choice"]
         self.image_wdgt = kwargs["image_wdgt"]
@@ -479,24 +470,21 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
         self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params["dt"] - 1.5e-7))
-        self.est_plane_duration = self.n_ao_samps * self.scan_params["dt"]
-        self.est_total_duration_s = self.est_plane_duration * len(
-            self.scan_params["set_pnts_planes"]
-        )
+        self.est_total_duration_s = self.n_ao_samps * self.scan_params["dt"]
         self.plane_choice.obj.setMaximum(len(self.scan_params["set_pnts_planes"]) - 1)
 
-    def change_plane(self, plane_idx):
-        """Doc."""
-
-        for axis in "XYZ":
-            if axis not in self.scan_params["plane_orientation"]:
-                plane_axis = axis
-                break
-
-        self.scanners_dvc.start_write_task(
-            ao_data=[[self.scan_params["set_pnts_planes"][plane_idx]]],
-            type=plane_axis,
-        )
+    #    def change_plane(self, plane_idx):
+    #        """Doc."""
+    #
+    #        for axis in "XYZ":
+    #            if axis not in self.scan_params["plane_orientation"]:
+    #                plane_axis = axis
+    #                break
+    #
+    #        self.scanners_dvc.start_write_task(
+    #            ao_data=[[self.scan_params["set_pnts_planes"][plane_idx]]],
+    #            type=plane_axis,
+    #        )
 
     async def run(self):
         """Doc."""
@@ -525,31 +513,16 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             logging.info(f"Running {self.type} measurement")
 
         # start all tasks (AO, AI, CI)
-        self.init_scan_tasks("FINITE")
-        self.scanners_dvc.start_tasks("ao")
-
         try:
-            for plane_idx in range(n_planes):
+            self.init_scan_tasks("FINITE")
+            self.scanners_dvc.start_tasks("ao")
 
-                if self.is_running:
+            # record data during scan
+            await self.record_data(self.start_time, timed=False)
 
-                    self.change_plane(plane_idx)
-                    self.curr_plane_wdgt.set(plane_idx)
-                    self.curr_plane = plane_idx
-
-                    # Re-start only AO
-                    self.init_scan_tasks("FINITE", ao_only=True)
-                    self.scanners_dvc.start_tasks("ao")
-
-                    # recording
-                    await self.record_data(self.start_time, timed=False)
-
-                    # collect final ai/CI
-                    self.counter_dvc.fill_ci_buffer()
-                    self.scanners_dvc.fill_ai_buffer()
-
-                else:
-                    break
+            # collect final ai/CI
+            self.counter_dvc.fill_ci_buffer()
+            self.scanners_dvc.fill_ai_buffer()
 
         except MeasurementError as exc:
             await self.stop()

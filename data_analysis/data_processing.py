@@ -1189,6 +1189,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
     def process_data(self, idx, full_data, should_dump=True, **proc_options) -> TDCPhotonFileData:
         """Doc."""
 
+        print("HEY:")  # TESTESTEST
+        if proc_options.get("is_verbose"):  # TESTESTEST
+            print("HO!")  # TESTESTEST
+
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
             if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
@@ -1555,6 +1559,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         Processes a single plane image sFCS data ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
+
+        #        # TESTESTEST - attempt to chop-off leftovers (photons caught between scans
+        #        byte_data = full_data["byte_data"]
 
         try:
             p = self._convert_fpga_data_to_photons(
