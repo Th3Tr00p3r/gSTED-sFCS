@@ -412,7 +412,6 @@ IMG_MEAS_COLL = QtWidgetCollection(
     sub_dir_name=("imgSubdirName", "QLineEdit", "settings", False),
     prog_bar_wdgt=("imgScanProgressBar", "QSlider", "main", True),
     always_save=("alwaysSaveImg", "QCheckBox", "main", False),
-    curr_plane_wdgt=("currPlane", "QSpinBox", "main", True),
     plane_shown=("numPlaneShown", "QSpinBox", "main", True),
     plane_choice=("numPlaneShownChoice", "QSlider", "main", True),
     image_wdgt=("imgScanPlot", None, "main", True),

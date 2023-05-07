@@ -48,6 +48,10 @@ class ScanPatternAO:
         dim_um = tuple(self.scan_params[f"dim{i}_um"] for i in (1, 2, 3))
         n_lines = self.scan_params["n_lines"]
         n_planes = self.scan_params["n_planes"]
+        ppp = ppl * n_lines
+
+        # initialize the XYZ AO buffer
+        ao_buffer = np.empty((3, ppp * n_planes), dtype=np.float64)
 
         # order according to relevant plane dimensions
         if plane_orientation == "XY":
@@ -105,8 +109,17 @@ class ScanPatternAO:
 
         # at this point we have the AO (1D) for a single row,
         # and the voltages corresponding to each row and plane.
-        # now we build the full AO (2D):
-        ao_buffer = calculate_image_ao(set_pnts_lines_odd, single_line_ao)
+        # now we build the full AO (2D), and insert it to the total AO in the right order:
+        dim1_ao, dim2_ao = calculate_image_ao(set_pnts_lines_odd, single_line_ao)
+        for dim_idx, dim_ao in zip(dim_order, (dim1_ao, dim2_ao)):
+            ao_buffer[dim_idx, :] = np.tile(dim_ao, n_planes)
+
+        # Now, all that remains is tp build the 'planes' component (dim3)
+        dim3_ao = np.empty(ppp * n_planes, dtype=np.float64)
+        for plane_idx in range(n_planes):
+            dim3_ao[plane_idx * ppp : (plane_idx + 1) * ppp] = set_pnts_planes[plane_idx]
+        # and insert it into the proper position (X/Y/Z)
+        ao_buffer[dim_order[-1], :] = dim3_ao
 
         self.scan_params["dt"] = 1 / (line_freq_hz * ppl)
         self.scan_params["dim_order"] = dim_order
@@ -114,7 +127,7 @@ class ScanPatternAO:
         self.scan_params["set_pnts_lines_even"] = set_pnts_lines_even
         self.scan_params["set_pnts_planes"] = set_pnts_planes
 
-        return ao_buffer, self.scan_params
+        return ao_buffer[dim_order, :], self.scan_params
 
     def calc_angular_pattern(self) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Doc."""
@@ -352,4 +365,4 @@ def calculate_image_ao(set_pnts_lines_odd, single_line_ao):
         dim1_ao[idx * ppl : idx * ppl + ppl] = single_line_ao
         dim2_ao[idx * ppl : idx * ppl + ppl] = [odd_line_set_pnt] * ppl
 
-    return np.vstack((dim1_ao, dim2_ao))
+    return dim1_ao, dim2_ao
