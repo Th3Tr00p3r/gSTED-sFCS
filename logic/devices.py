@@ -299,9 +299,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         # set the maximum possible gate width according to the lower gate chosen
         laser_period_ns = round(1 / (self.laser_freq_mhz * 1e6) * 1e9)
         # calculating the maximal pulse width (subtracting extra 2 ns to be safe)
-        gate_width_ns = (
-            laser_period_ns - self.lower_gate_ns + self.delayer_dvc.cal_pulse_prop_time_ns - 2
-        )
+        gate_width_ns = round(laser_period_ns - self.lower_gate_ns - 2)
 
         # setting the gate width
         await self.set_gate_width(gate_width_ns)
@@ -320,9 +318,9 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         """Doc."""
 
         if gate_width_ns is None:  # Manually set from GUI (needed?)
-            gate_width_ps = int(self.set_gate_width_wdgt.get() * 1e3)
+            gate_width_ps = round(self.set_gate_width_wdgt.get() * 1e3)
         else:
-            gate_width_ps = gate_width_ns * 1e3
+            gate_width_ps = round(gate_width_ns * 1e3)
 
         response, _ = await self.mpd_command(
             [
@@ -330,10 +328,6 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 ("AD", None),
             ]
         )
-
-        # handle weird stuff happening with what seems to be mixing of responses (from get_stats)
-        if isinstance(response, list):
-            response = response[0]
 
         with suppress(TypeError):  # response is empty?
             effective_gatewidth_ns = int(next(generate_numbers_from_string(response)) * 1e-3)
@@ -428,21 +422,15 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
 
-            # TESTESTEST
             # get existing settings
-            current_delay_ps, current_pulse_width_ns = await self.mpd_command(
-                [("RD", None), ("RP", None)]
-            )
-            print(
-                f"current_delay_ps: {current_delay_ps}\ncurrent_pulse_width_ns: {current_pulse_width_ns}"
-            )
+            response, _ = await self.mpd_command([("RD", None), ("RP", None)])
+            current_delay_ps, current_pulse_width_ns = cast(List[str], response)
             # Show delay in GUI
             self.eff_delay_ns = (
                 int(cast(str, current_pulse_width_ns)) + int(cast(str, current_delay_ps)) * 1e-3
             )
             lower_gate_ns = self.eff_delay_ns - self.sync_delay_ns
             self.set_delay_wdgt.set(lower_gate_ns)
-            # /TESTESTEST
 
     async def close(self):
         """Doc."""
@@ -460,13 +448,11 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         for syncronizing the laser pulse with the fluorescence pulse.
         (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
         """
-        # TODO: need to manually set the "cal_pulse_prop_time_ns" before each detector-gated measurement! (or each day of measurements).
-        # This can be achieved by using the free ATTO measurement or any other non-gated measurement to get the pulse time
-        # (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
 
         lower_gate_ns = self.set_delay_wdgt.get()
 
         try:
+            # add the synchronized delay time
             req_total_delay_ns = self.sync_delay_ns + lower_gate_ns
 
             # ensure pulsewidth step doesn't go past 'req_delay_ns' by subtracting 5 ns (steps are 3 or 4 ns)
@@ -493,8 +479,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.settings["effective_delay_ns"] = self.eff_delay_ns
 
             # keep the chosen gate in spad device (where it is relevant)
-            # add the calibrated pulse travel time to be consistent with TDC gating (which includes the travel time)
-            self.spad_dvc.lower_gate_ns = lower_gate_ns + self.cal_pulse_prop_time_ns
+            self.spad_dvc.lower_gate_ns = lower_gate_ns
 
     def calibrate_sync_time(self):
         """Doc."""
@@ -894,7 +879,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         [[0.5, 0.7, -0.2], [-0.5, -0.7, 0.2], [0.1, 0., 0.], [-0.1, 0., 0.]]
         """
 
-        if len(ao_data.shape) == 2:
+        if ao_data.ndim == 2:
             # 2D array
             diff_ao_data = np.empty(
                 shape=(ao_data.shape[0] * 2, ao_data.shape[1]), dtype=np.float64

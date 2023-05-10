@@ -159,21 +159,21 @@ class SoftwareCorrelator:
         n_corr_channels = np.zeros(1, dtype=np.int32)
 
         if correlator_option == CorrelatorType.PH_DELAY_CORRELATOR:
-            if len(photon_array.shape) != 1:
+            if photon_array.ndim != 1:
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should be 1D for this correlator option!"
                 )
             countrate = n_entries / photon_array.sum() / timebase_ms * 1000
 
         elif correlator_option == CorrelatorType.PH_COUNT_CORRELATOR:
-            if len(photon_array.shape) != 1:
+            if photon_array.ndim != 1:
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should be 1D for this correlator option!"
                 )
             countrate = photon_array.sum() / n_entries / timebase_ms * 1000
 
         elif correlator_option == CorrelatorType.PH_DELAY_CROSS_CORRELATOR:
-            if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 3):
+            if (photon_array.ndim == 1) or (photon_array.shape[0] != 3):
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should have 3 rows for this correlator option! 0th row with photon time-stamps, 1st (2nd)  row contains 1s for photons in channel A (B) and 0s for photons in channel B(A)"
                 )
@@ -183,7 +183,7 @@ class SoftwareCorrelator:
             countrate = CrossCorrCountRates(countrate_a, countrate_b)
 
         elif correlator_option == CorrelatorType.PH_DELAY_CORRELATOR_LINES:
-            if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
+            if (photon_array.ndim == 1) or (photon_array.shape[0] != 2):
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should have 2 rows for this correlator option! 0th row with photon time-stamps, 1st row is 1 for valid lines"
                 )
@@ -192,7 +192,7 @@ class SoftwareCorrelator:
             countrate = np.sum(photon_array[1, :] == 1) / duration_s
 
         elif correlator_option == CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES:
-            if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 4):
+            if (photon_array.ndim == 1) or (photon_array.shape[0] != 4):
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should have 4 rows for this correlator option! 0th row with photon time-stamps, 1st (2nd) row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
                 )
@@ -204,11 +204,11 @@ class SoftwareCorrelator:
             countrate = CrossCorrCountRates(countrate_a, countrate_b)
 
         elif correlator_option == CorrelatorType.PH_DELAY_LIFETIME_CROSS_CORRELATOR:
-            if len(photon_array.shape) != 1:
+            if photon_array.ndim != 1:
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should be 1D for this correlator option!"
                 )
-            if (len(filter_array.shape) == 1) or (filter_array.shape[0] != 2):
+            if (filter_array.ndim == 1) or (filter_array.shape[0] != 2):
                 raise RuntimeError(
                     f"Filter array {filter_array.shape} should have 2 rows for this correlator option! 0th & 1st rows should contain float filter values for photons in channels A & B (respectively)"
                 )
@@ -218,22 +218,22 @@ class SoftwareCorrelator:
             countrate = CrossCorrCountRates(countrate_a, countrate_b)
 
         elif correlator_option == CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR:
-            if len(photon_array.shape) != 1:
+            if photon_array.ndim != 1:
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should be 1D for this correlator option!"
                 )
-            if len(filter_array.shape) != 1:
+            if filter_array.ndim != 1:
                 raise RuntimeError(
                     f"Filter array {filter_array.shape} should be 1D for this correlator option! It should contain float filter values for fluorescence photons (as in not afterpulsing photons)"
                 )
             countrate = n_entries / photon_array.sum() / timebase_ms * 1000
 
         elif correlator_option == CorrelatorType.PH_DELAY_LIFETIME_CROSS_CORRELATOR_LINES:
-            if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 4):
+            if (photon_array.ndim == 1) or (photon_array.shape[0] != 4):
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should have 4 rows for this correlator option! 0th row with photon time-stamps, 1st (2nd) row contains 1s for photons in channel A (B) and 0s for photons in channel B(A), and 4th row is 1s for valid lines"
                 )
-            if (len(filter_array.shape) == 1) or (filter_array.shape[0] != 2):
+            if (filter_array.ndim == 1) or (filter_array.shape[0] != 2):
                 raise RuntimeError(
                     f"Filter array {filter_array.shape} should have 2 rows for this correlator option! 0th & 1st rows should contain float filter values for photons in channels A & B (respectively)"
                 )
@@ -245,11 +245,11 @@ class SoftwareCorrelator:
             countrate = CrossCorrCountRates(countrate_a, countrate_b)
 
         elif correlator_option == CorrelatorType.PH_DELAY_LIFETIME_CORRELATOR_LINES:
-            if (len(photon_array.shape) == 1) or (photon_array.shape[0] != 2):
+            if (photon_array.ndim == 1) or (photon_array.shape[0] != 2):
                 raise RuntimeError(
                     f"Photon array {photon_array.shape} should have 2 rows for this correlator option! 0th row with photon time-stamps, 1st row is 1 for valid lines"
                 )
-            if len(filter_array.shape) != 1:
+            if filter_array.ndim != 1:
                 raise RuntimeError(
                     f"Filter array {filter_array.shape} should be 1D for this correlator option! It should contain float filter values for fluorescence photons (as in not afterpulsing photons)"
                 )
