@@ -1533,26 +1533,27 @@ class MainWin:
                     #                    with suppress(AttributeError):
                     #                        # AttributeError - No directories found
                     meas = ImageSFCSMeasurement()
-                    meas.generate_tdc_image_stack_data(
+                    img_data = meas.generate_lifetime_image_stack_data(
                         file_path=curr_dir / current_template,
+                        is_multiscan=True,  # TODO - move to options_dict (GUI)
                         **options_dict,
                     )
 
                     from utilities.display import Plotter
 
-                    with Plotter(subplots=(1, meas.scan_settings["n_planes"])) as axes:
+                    with Plotter(
+                        super_title=current_template,
+                        subplots=(1, meas.tdc_image_data.image_stack_forward.shape[2]),
+                    ) as axes:
                         try:
                             for plane_idx, ax in enumerate(axes):
                                 ax.imshow(
-                                    meas.tdc_image_data.construct_plane_image(
-                                        "forward normalized", plane_idx
-                                    )
+                                    img_data.construct_plane_image("forward normalized", plane_idx)
                                 )
+                                ax.set_title(f"Scan/Plane #{plane_idx+1}")
                         except TypeError:
                             # 'Axes' object is not iterable
-                            axes.imshow(
-                                meas.tdc_image_data.construct_plane_image("forward normalized")
-                            )
+                            axes.imshow(img_data.construct_plane_image("forward normalized"))
 
                 #                    meas.correlate_data(
                 #                        cf_name=data_type,
@@ -1568,7 +1569,7 @@ class MainWin:
             #            imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
             #            imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
 
-            self._app.analysis.loaded_measurements[current_template] = meas
+    #            self._app.analysis.loaded_measurements[current_template] = meas
 
     #            imported_combobox1.obj.addItem(current_template)
     #            imported_combobox2.obj.addItem(current_template)
@@ -2138,14 +2139,6 @@ class MainWin:
                 wdgt_coll["fluoresence_lifetime"].set(lt_params.lifetime_ns)
                 wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
                 calc_pulse_delay_ns = lt_params.laser_pulse_delay_ns
-                #                calib_pulse_delay_ns = self._app.devices.delayer.cal_pulse_prop_time_ns
-                #                if abs(calc_pulse_delay_ns - calib_pulse_delay_ns) / calc_pulse_delay_ns > 0.1:
-                #                    logging.info(
-                #                        f"Calculated laser pulse delay time ({calc_pulse_delay_ns} ns) is very different from calibrated value. Using calibrated value ({calib_pulse_delay_ns} ns)"
-                #                    )
-                #                    wdgt_coll["laser_pulse_delay"].set(calib_pulse_delay_ns)
-                #                    experiment.lifetime_params.laser_pulse_delay_ns = calib_pulse_delay_ns
-                #                else:
                 wdgt_coll["laser_pulse_delay"].set(calc_pulse_delay_ns)
 
     def assign_gate(self) -> None:

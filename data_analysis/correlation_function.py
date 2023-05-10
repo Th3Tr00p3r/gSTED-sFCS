@@ -1085,7 +1085,7 @@ class SolutionSFCSMeasurement:
         )
 
         # Unite TDC gate and detector gate
-        gate_ns = Gate(tdc_gate_ns) & self.detector_settings["gate_ns"]
+        gate_ns = Gate(tdc_gate_ns) & Gate(hard_gate=self.detector_settings["gate_ns"])
 
         #  add gate to cf_name
         if gate_ns:
@@ -2146,7 +2146,9 @@ class ImageSFCSMeasurement:
         self.file_path = None
         self._file_dict = None
         self.data = TDCPhotonMeasurementData()
-        self.tdc_image_data = {}
+        self.tdc_image_data = None
+        self.lifetime_image_data = None
+        self.ci_image_data = None
 
     def read_fpga_data(
         self, file_path: Path = None, file_dict: Dict = None, **proc_options
@@ -2218,6 +2220,7 @@ class ImageSFCSMeasurement:
         self.laser_freq_hz = int(full_data["laser_freq_mhz"] * 1e6)
         self.pulse_period_ns = 1 / self.laser_freq_hz * 1e9
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
+        self.ao_sampling_freq_hz = self.scan_settings["line_freq_hz"] * self.scan_settings["ppl"]
 
         # TODO: missing gate - move this to legacy handeling
         if self.detector_settings.get("gate_ns") is not None and (
@@ -2257,8 +2260,13 @@ class ImageSFCSMeasurement:
             print("Done.")
 
     def generate_tdc_image_stack_data(
-        self, file_path: Path = None, file_dict: Dict = None, gate_ns: Gate = Gate(), **kwargs
-    ):  # -> ImageStackData:
+        self,
+        file_path: Path = None,
+        file_dict: Dict = None,
+        gate_ns: Gate = Gate(),
+        is_multiscan=False,
+        **kwargs,
+    ) -> ImageStackData:
         """Doc."""
 
         if not self.data:
@@ -2272,11 +2280,9 @@ class ImageSFCSMeasurement:
                 )
 
         # definitions
-        ao_sampling_freq_hz = self.scan_settings["line_freq_hz"] * self.scan_settings["ppl"]
         n_lines = self.scan_settings["n_lines"]
         n_planes = self.scan_settings["n_planes"]
         ppl = self.scan_settings["ppl"]
-        turn_idx = ppl // 2
         ppp = ppl * n_lines
 
         # only one file for images. using .data as list for consistency with SolutionSFCSMeasurement
@@ -2294,7 +2300,7 @@ class ImageSFCSMeasurement:
 
         # define sample runtime
         pulse_runtime = data.raw._pulse_runtime
-        sample_runtime = pulse_runtime * ao_sampling_freq_hz // self.laser_freq_hz
+        sample_runtime = pulse_runtime * self.ao_sampling_freq_hz // self.laser_freq_hz
 
         # get pixel_num
         pixel_num = sample_runtime % ppl
@@ -2305,53 +2311,182 @@ class ImageSFCSMeasurement:
         line_num = (line_num_tot % n_lines).astype(np.int16)
         line_num = line_num[in_gate_idxs]  # gating
 
-        # get plane_num
-        plane_num_tot = sample_runtime // ppp
-        plane_num = (plane_num_tot % n_planes).astype(np.int8)
-        plane_num[plane_num_tot > n_planes - 1] = 100  # TESTESTEST
-        plane_num = plane_num[in_gate_idxs]  # gating
-
-        # build the (optionally gated) plane images
-        gated_counts_stack = np.empty((n_lines, ppl, n_planes), dtype=np.uint16)
-        for p_idx in range(n_planes):
+        # build the (optionally gated) images
+        # planes are unique (slices)
+        if not is_multiscan:
+            # get plane_num
+            plane_num_tot = sample_runtime // ppp
+            plane_num = (plane_num_tot % n_planes).astype(np.int8)
+            plane_num = plane_num[in_gate_idxs]  # gating
+            gated_counts_stack = np.empty((n_lines, ppl, n_planes), dtype=np.uint16)
+            for plane_idx in range(n_planes):
+                bins = np.arange(-0.5, ppl)
+                for line_idx in range(n_lines):
+                    gated_counts_stack[line_idx, :, plane_idx], _ = np.histogram(
+                        pixel_num[(line_num == line_idx) & (plane_num == plane_idx)], bins=bins
+                    )
+        # multiscan - plans are "identical" sequential scans - group photons by planes
+        else:
+            gated_counts_stack = np.empty((n_lines, ppl, 1), dtype=np.uint16)
             bins = np.arange(-0.5, ppl)
-            for l_idx in range(n_lines):
-                gated_counts_stack[l_idx, :, p_idx], _ = np.histogram(
-                    pixel_num[(line_num == l_idx) & (plane_num == p_idx)], bins=bins
+            for line_idx in range(n_lines):
+                gated_counts_stack[line_idx, :, 0], _ = np.histogram(
+                    pixel_num[line_num == line_idx], bins=bins
                 )
 
         # get effective indices, pixels-per-line and line_ticks_v
         # TODO: what do "effective" indices mean?
         eff_idxs, pxls_per_line, line_ticks_v = self._get_effective_idices()
 
-        # calculate the images and normalization separately for the forward/backward parts of the scan
-        gated_counts_stack_forward = gated_counts_stack[:, :turn_idx, :]
-        image_stack_forward, norm_stack_forward = self._calculate_plane_image_stack(
-            gated_counts_stack_forward, eff_idxs[:turn_idx], pxls_per_line
-        )
-        gated_counts_stack_backward = gated_counts_stack[:, -1 : (turn_idx - 1) : -1, :]
-        image_stack_backward, norm_stack_backward = self._calculate_plane_image_stack(
-            gated_counts_stack_backward, eff_idxs[-1 : (turn_idx - 1) : -1], pxls_per_line
-        )
-
         self.tdc_image_data = ImageStackData(
-            image_stack_forward=image_stack_forward,
-            norm_stack_forward=norm_stack_forward,
-            image_stack_backward=image_stack_backward,
-            norm_stack_backward=norm_stack_backward,
+            image_stack=gated_counts_stack,
+            effective_idxs=eff_idxs,
+            pxls_per_line=pxls_per_line,
             line_ticks_v=line_ticks_v,
             row_ticks_v=self.scan_settings["set_pnts_lines_odd"],
-            plane_ticks_v=self.scan_settings.get(
-                "set_pnts_planes"
-            ),  # doesn't exist in older versions
+            plane_ticks_v=self.scan_settings.get("set_pnts_planes"),
             n_planes=n_planes,
             plane_orientation=self.scan_settings["plane_orientation"],
             dim_order=self.scan_settings["dim_order"],
         )
         return self.tdc_image_data
 
+    def generate_lifetime_image_stack_data(
+        self,
+        file_path: Path = None,
+        file_dict: Dict = None,
+        gate_ns: Gate = Gate(),
+        min_n_photons: int = None,
+        median_factor=0.5,
+        is_multiscan=False,
+        **kwargs,
+    ) -> ImageStackData:
+        """Doc."""
+
+        if not self.data:
+            if file_path is not None:
+                self.read_fpga_data(file_path=file_path, **kwargs)
+            elif file_dict is not None:
+                self.read_fpga_data(file_dict=file_dict, **kwargs)
+            else:
+                raise ValueError(
+                    "Must supply either a file path or a file dictionary if no data is loaded!"
+                )
+
+        # auto-determination of 'min_n_photons' if not given
+        if min_n_photons is None:
+            print(
+                f"Auto-determining 'min_n_photons' according to {median_factor:.1f} times median number of photons-per-pixel... ",
+                end="",
+            )
+            # get TDC counts data (use existing or make new)
+            if self.tdc_image_data is None:
+                counts_stack = self.generate_tdc_image_stack_data(
+                    gate_ns=gate_ns, is_multiscan=is_multiscan, **kwargs
+                )
+            else:
+                counts_stack = self.tdc_image_data
+
+            # use the median as the minimum
+            if is_multiscan:  # sum over planes first
+                min_n_photons = round(
+                    np.median(counts_stack.image_stack_forward.sum(axis=2)) * median_factor
+                )
+            else:  # assume equal contribution for each plane (median of entire stack)
+                min_n_photons = round(np.median(counts_stack.image_stack_forward) * median_factor)
+            print(f"Using min_n_photons={min_n_photons}.")
+
+        # definitions
+        n_lines = self.scan_settings["n_lines"]
+        n_planes = self.scan_settings["n_planes"]
+        ppl = self.scan_settings["ppl"]
+        ppp = ppl * n_lines
+
+        # only one file for images. using .data as list for consistency with SolutionSFCSMeasurement
+        data = self.data[0]
+
+        pulse_runtime = data.raw.pulse_runtime
+        sample_runtime = pulse_runtime * self.ao_sampling_freq_hz // self.laser_freq_hz
+        self.calibrate_tdc()
+        delay_time = data.raw.delay_time
+
+        # gate
+        if gate_ns:
+            in_gate_idxs = gate_ns.valid_indices(delay_time)
+            delay_time = delay_time[in_gate_idxs]
+        # ungated
+        else:
+            in_gate_idxs = slice(None)
+
+        # get pixel_num
+        pixel_num = sample_runtime % ppl
+        pixel_num = pixel_num[in_gate_idxs]  # gating
+
+        # get line_num
+        line_num_tot = sample_runtime // ppl
+        line_num = (line_num_tot % n_lines).astype(np.int16)
+        line_num = line_num[in_gate_idxs]  # gating
+
+        # build the (optionally gated) images
+        print("Building image stack (line-by-line)... ", end="")
+        # planes are unique (slices)
+        if not is_multiscan:
+            # get plane_num
+            plane_num_tot = sample_runtime // ppp
+            plane_num = (plane_num_tot % n_planes).astype(np.int8)
+            plane_num = plane_num[in_gate_idxs]  # gating
+            gated_lt_stack = np.zeros((n_lines, ppl, n_planes), dtype=np.float64)
+            for plane_idx in range(n_planes):
+                bins = np.arange(-0.5, ppl)
+                for line_idx in range(n_lines):
+                    plane_line_idxs = (line_num == line_idx) & (plane_num == plane_idx)
+                    hist_l, bin_edges_l = np.histogram(pixel_num[plane_line_idxs], bins=bins)
+                    bin_idxs_l = np.digitize(pixel_num[plane_line_idxs], bin_edges_l)
+                    for pxl_idx in range(ppl):
+                        # check that there are enough photons in pixel
+                        if np.nonzero(bin_idxs_l == pxl_idx)[0].size >= min_n_photons:
+                            gated_lt_stack[line_idx, pxl_idx, plane_idx] = np.median(
+                                delay_time[plane_line_idxs][bin_idxs_l == pxl_idx]
+                            )
+                    print(".", end="")
+                print(f"({plane_idx})")
+
+        # multiscan - plans are "identical" sequential scans - group photons by planes
+        else:
+            gated_lt_stack = np.zeros((n_lines, ppl, 1), dtype=np.float64)
+            bins = np.arange(-0.5, ppl)
+            for line_idx in range(n_lines):
+                line_idxs = line_num == line_idx
+                hist_l, bin_edges_l = np.histogram(pixel_num[line_idxs], bins=bins)
+                bin_idxs_l = np.digitize(pixel_num[line_idxs], bin_edges_l)
+                for pxl_idx in range(ppl):
+                    # check that there are enough photons in pixel
+                    if np.nonzero(bin_idxs_l == pxl_idx)[0].size >= min_n_photons:
+                        gated_lt_stack[line_idx, pxl_idx, 0] = np.median(
+                            delay_time[line_idxs][bin_idxs_l == pxl_idx]
+                        )
+                print(".", end="")
+        print(" Done.")
+
+        # get effective indices, pixels-per-line and line_ticks_v
+        # TODO: what do "effective" indices mean?
+        eff_idxs, pxls_per_line, line_ticks_v = self._get_effective_idices()
+
+        self.lifetime_image_data = ImageStackData(
+            image_stack=gated_lt_stack,
+            effective_idxs=eff_idxs,
+            pxls_per_line=pxls_per_line,
+            line_ticks_v=line_ticks_v,
+            row_ticks_v=self.scan_settings["set_pnts_lines_odd"],
+            plane_ticks_v=self.scan_settings.get("set_pnts_planes"),
+            n_planes=n_planes,
+            plane_orientation=self.scan_settings["plane_orientation"],
+            dim_order=self.scan_settings["dim_order"],
+        )
+        return self.lifetime_image_data
+
     def generate_ci_image_stack_data(
-        self, file_path: Path = None, file_dict: Dict = None, **kwargs
+        self, file_path: Path = None, file_dict: Dict = None, is_multiscan=False, **kwargs
     ) -> ImageStackData:
         """Doc."""
 
@@ -2370,12 +2505,9 @@ class ImageSFCSMeasurement:
 
         n_planes = self.scan_settings["n_planes"]
         n_lines = self.scan_settings["n_lines"]
-        pxl_size_um = self.scan_settings["dim2_um"] / n_lines
-        pxls_per_line = div_ceil(self.scan_settings["dim1_um"], pxl_size_um)
         dim_order = self.scan_settings["dim_order"]
         ppl = self.scan_settings["ppl"]
         ppp = n_lines * ppl
-        turn_idx = ppl // 2
 
         # prepare to remove counts from outside limits
         eff_idxs, pxls_per_line, line_ticks_v = self._get_effective_idices()
@@ -2386,26 +2518,17 @@ class ImageSFCSMeasurement:
         counts_stack = np.diff(np.concatenate((j0, counts[J]), axis=1))
         counts_stack = counts_stack.T.reshape(n_lines, ppl, n_planes)
 
-        # calculate the images and normalization separately for the forward/backward parts of the scan
-        counts_stack_forward = counts_stack[:, :turn_idx, :]
-        image_stack_forward, norm_stack_forward = self._calculate_plane_image_stack(
-            counts_stack_forward, eff_idxs[:turn_idx], pxls_per_line
-        )
-        counts_stack_backward = counts_stack[:, -1 : (turn_idx - 1) : -1, :]
-        image_stack_backward, norm_stack_backward = self._calculate_plane_image_stack(
-            counts_stack_backward, eff_idxs[-1 : (turn_idx - 1) : -1], pxls_per_line
-        )
+        # sum the planes if multiscan
+        if is_multiscan and counts_stack.shape[2] > 1:
+            counts_stack = np.atleast_3d(counts_stack.sum(axis=2))
 
         self.ci_image_data = ImageStackData(
-            image_stack_forward=image_stack_forward,
-            norm_stack_forward=norm_stack_forward,
-            image_stack_backward=image_stack_backward,
-            norm_stack_backward=norm_stack_backward,
+            image_stack=counts_stack,
+            effective_idxs=eff_idxs,
+            pxls_per_line=pxls_per_line,
             line_ticks_v=line_ticks_v,
             row_ticks_v=self.scan_settings["set_pnts_lines_odd"],
-            plane_ticks_v=self.scan_settings.get(
-                "set_pnts_planes"
-            ),  # doesn't exist in older versions
+            plane_ticks_v=self.scan_settings.get("set_pnts_planes"),
             n_planes=n_planes,
             plane_orientation=self.scan_settings["plane_orientation"],
             dim_order=dim_order,
@@ -2437,19 +2560,6 @@ class ImageSFCSMeasurement:
         pxls_per_line = div_ceil(self.scan_settings["dim1_um"], pxl_size_um)
         line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         return eff_idxs, pxls_per_line, line_ticks_v
-
-    def _calculate_plane_image_stack(self, counts_stack, eff_idxs, pxls_per_line):
-        """Doc."""
-
-        n_lines, _, n_planes = counts_stack.shape
-        image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
-        norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
-
-        for i in range(pxls_per_line):
-            image_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].sum(axis=1)
-            norm_stack[:, i, :] = counts_stack[:, eff_idxs == i, :].shape[1]
-
-        return image_stack, norm_stack
 
     def estimate_spatial_resolution(self):
         """Doc."""

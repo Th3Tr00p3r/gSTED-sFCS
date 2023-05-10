@@ -4,7 +4,7 @@ import multiprocessing as mp
 from collections import deque
 from contextlib import suppress
 from copy import copy
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from functools import partial
 from itertools import count as infinite_range
 from pathlib import Path
@@ -1189,10 +1189,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
     def process_data(self, idx, full_data, should_dump=True, **proc_options) -> TDCPhotonFileData:
         """Doc."""
 
-        print("HEY:")  # TESTESTEST
-        if proc_options.get("is_verbose"):  # TESTESTEST
-            print("HO!")  # TESTESTEST
-
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
             if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
@@ -2205,22 +2201,51 @@ class ImageStackData:
     built from CI (counter input) NIDAQmx data.
     """
 
-    image_stack_forward: np.ndarray
-    norm_stack_forward: np.ndarray
-    image_stack_backward: np.ndarray
-    norm_stack_backward: np.ndarray
+    image_stack: np.ndarray
+    effective_idxs: InitVar[np.ndarray]
+    pxls_per_line: InitVar[int]
     line_ticks_v: np.ndarray
     row_ticks_v: np.ndarray
     plane_ticks_v: np.ndarray
     n_planes: int
     plane_orientation: str
     dim_order: Tuple[int, int, int]
+    image_stack_forward: np.ndarray = None
+    norm_stack_forward: np.ndarray = None
+    image_stack_backward: np.ndarray = None
+    norm_stack_backward: np.ndarray = None
+
+    def __post_init__(self, effective_idxs, pxls_per_line):
+        turn_idx = self.image_stack.shape[1] // 2
+        self.image_stack_forward, self.norm_stack_forward = self._rebin_and_normalize_image_stack(
+            self.image_stack[:, :turn_idx, :],
+            effective_idxs[:turn_idx],
+            pxls_per_line,
+        )
+        self.image_stack_backward, self.norm_stack_backward = self._rebin_and_normalize_image_stack(
+            self.image_stack[:, -1 : (turn_idx - 1) : -1, :],
+            effective_idxs[-1 : (turn_idx - 1) : -1],
+            pxls_per_line,
+        )
+
+    def _rebin_and_normalize_image_stack(self, image_stack, eff_idxs, pxls_per_line):
+        """Doc."""
+
+        n_lines, _, n_planes = image_stack.shape
+        binned_image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+        binned_norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+
+        for i in range(pxls_per_line):
+            binned_image_stack[:, i, :] = image_stack[:, eff_idxs == i, :].sum(axis=1)
+            binned_norm_stack[:, i, :] = image_stack[:, eff_idxs == i, :].shape[1]
+
+        return binned_image_stack, binned_norm_stack
 
     def construct_plane_image(self, method: str, plane_idx: int = None) -> np.ndarray:
         """Doc."""
 
         if plane_idx is None:
-            plane_idx = self.n_planes // 2
+            plane_idx = self.image_stack_forward.shape[2] // 2
 
         if method == "forward":
             img = self.image_stack_forward[:, :, plane_idx]
