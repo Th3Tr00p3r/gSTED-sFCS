@@ -2112,7 +2112,7 @@ class MainWin:
         experiment_name = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments.get()
         return self._app.analysis.loaded_experiments.get(experiment_name)
 
-    def calibrate_tdc(self, **kwargs) -> None:
+    def calibrate_tdc(self) -> None:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
@@ -2131,6 +2131,18 @@ class MainWin:
         else:
             display_kwargs["gui_display"] = wdgt_coll["gui_display_comp_lifetimes"].obj
             experiment.compare_lifetimes(**display_kwargs)
+            self.get_lifetime_params()
+
+    def get_lifetime_params(self):
+        """Doc."""
+
+        experiment = self.get_experiment()
+        if (
+            experiment is not None
+            and hasattr(experiment.sted, "scan_type")
+            and hasattr(experiment.confocal, "scan_type")
+        ):
+            wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
             if hasattr(experiment.sted, "scan_type") and hasattr(experiment.confocal, "scan_type"):
                 lt_params = experiment.get_lifetime_parameters()
@@ -2138,8 +2150,7 @@ class MainWin:
                 # display parameters in GUI
                 wdgt_coll["fluoresence_lifetime"].set(lt_params.lifetime_ns)
                 wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
-                calc_pulse_delay_ns = lt_params.laser_pulse_delay_ns
-                wdgt_coll["laser_pulse_delay"].set(calc_pulse_delay_ns)
+                wdgt_coll["laser_pulse_delay"].set(lt_params.laser_pulse_delay_ns)
 
     def assign_gate(self) -> None:
         """Doc."""

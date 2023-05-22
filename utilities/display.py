@@ -65,10 +65,13 @@ class GuiDisplay:
         ) as ax:
             try:
                 for (x, y), label in zip(xy_pairs_list, labels):
-                    ax.plot(x, y, lw=0.4, label=label)
-                    ax.legend()
+                    with suppress(ValueError):
+                        # ValueError: x/y is NaN (no AO_int in legacy measurements?)
+                        ax.plot(x, y, lw=0.4, label=label)
             except TypeError:  # xy_pairs_list is a really 'x', 'y' is in args
                 ax.plot(xy_pairs_list, *args, "k", lw=0.3)
+            else:
+                ax.legend()
             ax.set_aspect("equal")
             ax.invert_xaxis()  # NOTE: this is to match the scan image orientation # TESTESTEST
 

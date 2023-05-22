@@ -222,7 +222,7 @@ class NIDAQmx:
         """Doc."""
 
         task_list = getattr(self.tasks, task_type)
-        [task.wait_until_done(timeout=3) for task in task_list if (task.name == task_name)]
+        [task.wait_until_done(timeout=5) for task in task_list if (task.name == task_name)]
 
     def create_ai_task(
         self,

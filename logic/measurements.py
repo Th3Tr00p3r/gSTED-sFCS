@@ -361,13 +361,13 @@ class MeasurementProcedure:
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ao_sample_mode,
                 "samps_per_chan": self.n_ao_samps,
-                "rate": 100000,
+                "rate": 100000,  # TODO: should be defined by some meaningful constant
             },
             samp_clk_cnfg_z={
                 "source": self.pxl_clk_dvc.out_ext_term,
                 "sample_mode": ao_sample_mode,
                 "samps_per_chan": self.n_ao_samps,
-                "rate": 100000,
+                "rate": 100000,  # TODO: should be defined by some meaningful constant
             },
             start=False,
         )
@@ -455,7 +455,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             self.pxl_clk_dvc.freq_MHz * 1e6,
         )
         self.pxl_clk_dvc.low_ticks = clk_div - 2
-        self.ppl = fix_ppl(
+        self.scan_params["ppl"] = fix_ppl(
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
             self.scan_params["line_freq_hz"],
             self.scan_params["ppl"],
@@ -469,22 +469,9 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params["dt"] - 1.5e-7))
-        self.est_total_duration_s = self.n_ao_samps * self.scan_params["dt"]
+        self.ai_conv_rate = 6 * (1 / (self.scan_params["dt"] - 1.5e-7))
+        self.est_total_duration_s = self.n_ao_samps * self.scan_params["dt"] / 2
         self.plane_choice.obj.setMaximum(len(self.scan_params["set_pnts_planes"]) - 1)
-
-    #    def change_plane(self, plane_idx):
-    #        """Doc."""
-    #
-    #        for axis in "XYZ":
-    #            if axis not in self.scan_params["plane_orientation"]:
-    #                plane_axis = axis
-    #                break
-    #
-    #        self.scanners_dvc.start_write_task(
-    #            ao_data=[[self.scan_params["set_pnts_planes"][plane_idx]]],
-    #            type=plane_axis,
-    #        )
 
     async def run(self):
         """Doc."""
@@ -735,8 +722,8 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.setup_scan()
                 self._app.gui.main.impl.device_toggle("pixel_clock", leave_on=True)
                 # make the circular ai buffer clip as long as the ao buffer
-                self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
-                self.counter_dvc.init_ci_buffer()
+                self.scanners_dvc.init_ai_buffer(size=self.ao_buffer.shape[1])
+                self.counter_dvc.init_ci_buffer(size=self.ao_buffer.shape[1])
             else:
                 self.scanners_dvc.init_ai_buffer()
 
@@ -760,7 +747,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.data_dvc.purge_buffers()
 
                 if self.scanning:
-                    self.counter_dvc.init_ci_buffer()
+                    self.counter_dvc.init_ci_buffer(size=self.ao_buffer.shape[1])
                     # re-start scan for each file
 
                     # if scanning measurement, ensure proper Y-galvo calibration during measurement and re-setup the scan if was recalibrated
@@ -772,7 +759,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                         logging.info("Re-calibrating Y-galvo.")
                         self.setup_scan()
 
-                    self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
+                    self.scanners_dvc.init_ai_buffer(size=self.ao_buffer.shape[1])
                     self.init_scan_tasks("CONTINUOUS")
                     self.scanners_dvc.start_tasks("ao")
                 else:
@@ -817,9 +804,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     if should_save:
                         self.save_data(self._prep_meas_dict(), self.build_filename(file_num))
                         if self.scanning:
-                            self.scanners_dvc.init_ai_buffer(
-                                type="circular", size=self.ao_buffer.shape[1]
-                            )
+                            self.scanners_dvc.init_ai_buffer(size=self.ao_buffer.shape[1])
 
                 file_num += 1
 

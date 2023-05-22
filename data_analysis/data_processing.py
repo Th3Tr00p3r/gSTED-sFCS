@@ -2216,6 +2216,7 @@ class ImageStackData:
     norm_stack_backward: np.ndarray = None
 
     def __post_init__(self, effective_idxs, pxls_per_line):
+        self.effective_binned_size = np.unique(effective_idxs).size
         turn_idx = self.image_stack.shape[1] // 2
         self.image_stack_forward, self.norm_stack_forward = self._rebin_and_normalize_image_stack(
             self.image_stack[:, :turn_idx, :],
