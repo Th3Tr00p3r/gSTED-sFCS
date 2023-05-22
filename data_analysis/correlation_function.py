@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union, cast
 
 import numpy as np
+from matplotlib.patches import Ellipse
 from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
 
@@ -31,7 +32,13 @@ from utilities.file_utilities import (
     prepare_file_paths,
     save_object,
 )
-from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
+from utilities.fit_tools import (
+    FitError,
+    FitParams,
+    curve_fit_lims,
+    fit_2d_gaussian_to_image,
+    multi_exponent_fit,
+)
 from utilities.helper import (
     EPS,
     Gate,
@@ -2429,6 +2436,7 @@ class ImageSFCSMeasurement:
 
         # build the (optionally gated) images
         print("Building image stack (line-by-line)... ", end="")
+        bins = np.arange(-0.5, ppl)
         # planes are unique (slices)
         if not is_multiscan:
             # get plane_num
@@ -2437,11 +2445,9 @@ class ImageSFCSMeasurement:
             plane_num = plane_num[in_gate_idxs]  # gating
             gated_lt_stack = np.zeros((n_lines, ppl, n_planes), dtype=np.float64)
             for plane_idx in range(n_planes):
-                bins = np.arange(-0.5, ppl)
                 for line_idx in range(n_lines):
                     plane_line_idxs = (line_num == line_idx) & (plane_num == plane_idx)
-                    hist_l, bin_edges_l = np.histogram(pixel_num[plane_line_idxs], bins=bins)
-                    bin_idxs_l = np.digitize(pixel_num[plane_line_idxs], bin_edges_l)
+                    bin_idxs_l = np.digitize(pixel_num[plane_line_idxs], bins)
                     for pxl_idx in range(ppl):
                         # check that there are enough photons in pixel
                         if np.nonzero(bin_idxs_l == pxl_idx)[0].size >= min_n_photons:
@@ -2454,11 +2460,9 @@ class ImageSFCSMeasurement:
         # multiscan - plans are "identical" sequential scans - group photons by planes
         else:
             gated_lt_stack = np.zeros((n_lines, ppl, 1), dtype=np.float64)
-            bins = np.arange(-0.5, ppl)
             for line_idx in range(n_lines):
                 line_idxs = line_num == line_idx
-                hist_l, bin_edges_l = np.histogram(pixel_num[line_idxs], bins=bins)
-                bin_idxs_l = np.digitize(pixel_num[line_idxs], bin_edges_l)
+                bin_idxs_l = np.digitize(pixel_num[line_idxs], bins)
                 for pxl_idx in range(ppl):
                     # check that there are enough photons in pixel
                     if np.nonzero(bin_idxs_l == pxl_idx)[0].size >= min_n_photons:
@@ -2561,12 +2565,66 @@ class ImageSFCSMeasurement:
         line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         return eff_idxs, pxls_per_line, line_ticks_v
 
-    def estimate_spatial_resolution(self):
-        """Doc."""
+    def estimate_spatial_resolution(self, should_plot=True, **kwargs):
+        """Fit a 2D Gaussian to image in order to estimate the resolution (e.g. for fluorescent beads)"""
 
-        raise NotImplementedError(
-            "Finish working on 'generate_tdc_image_stack_data()' method, then use Gaussian fitting (as for alignment) for estimating the spatial resolution."
+        img = self.tdc_image_data.construct_plane_image("forward normalized")
+
+        try:
+            fp = fit_2d_gaussian_to_image(img)
+        except FitError as exc:
+            print(f"Gaussian fit failed! [{exc}]")
+            return
+        x0, y0, sigma_x, sigma_y, phi = (
+            fp.beta["x0"],
+            fp.beta["y0"],
+            fp.beta["sigma_x"],
+            fp.beta["sigma_y"],
+            fp.beta["phi"],
         )
+
+        max_sigma_y, max_sigma_x = img.shape
+        if (
+            x0 < 0
+            or y0 < 0
+            or abs(1 - sigma_x / sigma_y) > 2
+            or sigma_x > max_sigma_x
+            or sigma_y > max_sigma_y
+        ):
+            print(f"Gaussian fit is irrational!\n({fp.beta})")
+            return
+
+        # calculating the FWHM
+        pxl_size_um = self.scan_settings["dim1_um"] / self.tdc_image_data.effective_binned_size
+        FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))  # 1/e^2 width is FWHM * 1.699
+        one_over_e2_factor = 1.699 * FWHM_FACTOR
+        diameter_nm = np.mean([sigma_x, sigma_y]) * one_over_e2_factor * pxl_size_um * 1e3
+        diameter_nm_err = np.std([sigma_x, sigma_y]) * one_over_e2_factor * pxl_size_um * 1e3
+
+        print(f"1/e^2 diameter determined to be {diameter_nm:.0f} +/- {diameter_nm_err:.0f} nm")
+
+        if should_plot:
+            ellipse = Ellipse(
+                xy=(x0, y0),
+                width=sigma_y * one_over_e2_factor,
+                height=sigma_x * one_over_e2_factor,
+                angle=phi,
+            )
+            ellipse.set_facecolor((0, 0, 0, 0))
+            ellipse.set_edgecolor("red")
+            annotation = f"$1/e^2$: {diameter_nm:.0f}$\\pm${diameter_nm_err:.0f} nm\n$\\chi^2$={fp.chi_sq_norm:.2f}"
+            with Plotter(**kwargs) as ax:
+                ax.imshow(img)
+                ax.add_artist(ellipse)
+                ax.annotate(
+                    annotation,
+                    ellipse._center,
+                    color="w",
+                    weight="bold",
+                    fontsize=11,
+                    ha="center",
+                    va="center",
+                )
 
 
 def calculate_calibrated_afterpulse(

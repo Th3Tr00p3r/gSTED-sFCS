@@ -121,7 +121,7 @@ class ScanPatternAO:
         # and insert it into the proper position (X/Y/Z)
         ao_buffer[dim_order[-1], :] = dim3_ao
 
-        self.scan_params["dt"] = 1 / (line_freq_hz * ppl)
+        self.scan_params["dt"] = 1 / (line_freq_hz / 2 * ppl)
         self.scan_params["dim_order"] = dim_order
         self.scan_params["set_pnts_lines_odd"] = set_pnts_lines_odd
         self.scan_params["set_pnts_lines_even"] = set_pnts_lines_even

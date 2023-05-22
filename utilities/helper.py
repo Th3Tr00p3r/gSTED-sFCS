@@ -939,7 +939,12 @@ def deep_getattr(obj, deep_attr_name: str, default=None):
 def div_ceil(x: Number, y: Number) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
-    return int(-(-x // y))
+    # case x and y are divisible
+    if x / y == x // y:
+        return int(x // y)
+    # otherwise, round up
+    else:
+        return int(-(-x // y))
 
 
 def reverse_dict(dict_: dict, ignore_unhashable=False) -> dict:

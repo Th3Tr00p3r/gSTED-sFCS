@@ -132,6 +132,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.assignExpStedMeas.released.connect(lambda: self.impl.assign_measurement("sted"))
         self.loadExperiment.released.connect(self.impl.load_experiment)
         self.calibrateTdc.released.connect(self.impl.calibrate_tdc)
+        self.getLifetimeParams.released.connect(self.impl.get_lifetime_params)
         self.AddCustomGate.released.connect(self.impl.assign_gate)
         self.removeAssignedGate.released.connect(self.impl.remove_assigned_gate)
         self.addGates.released.connect(self.impl.gate)

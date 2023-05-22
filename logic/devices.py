@@ -1092,7 +1092,7 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         elif type == "inf":
             self.ci_buffer = []
         else:
-            raise ValueError("type parameter must be either 'standard' or 'inf'.")
+            raise ValueError("type parameter must be either 'circular' or 'inf'.")
 
 
 class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
@@ -1207,8 +1207,8 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     update_interval_s = 0.5
     MIN_SHG_TEMP_C = 45  # Celsius # was 53 for old laser # TODO: move to settings
-    power_limits_mW = Limits(99, 1000)
-    current_limits_mA = Limits(1500, 2500)
+    power_limits_mW = Limits(100, 1000)
+    current_limits_mA = Limits(0, 6000)
 
     def __init__(self, app):
 
@@ -1553,8 +1553,8 @@ class BaseCamera:
         # plotting the FWHM on top of the image
         ellipse = Ellipse(
             xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
-            width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
-            height=sigma_x * FWHM_FACTOR * RESCALE_FACTOR,
+            width=sigma_y * one_over_e2_factor * RESCALE_FACTOR,
+            height=sigma_x * one_over_e2_factor * RESCALE_FACTOR,
             angle=phi,
         )
         ellipse.set_facecolor((0, 0, 0, 0))
