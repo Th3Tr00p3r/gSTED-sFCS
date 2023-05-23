@@ -2395,14 +2395,14 @@ class ImageSFCSMeasurement:
             else:
                 counts_stack = self.tdc_image_data
 
-            # use the median as the minimum
-            if is_multiscan:  # sum over planes first
-                min_n_photons = round(
-                    np.median(counts_stack.image_stack_forward.sum(axis=2)) * median_factor
-                )
-            else:  # assume equal contribution for each plane (median of entire stack)
-                min_n_photons = round(np.median(counts_stack.image_stack_forward) * median_factor)
-            print(f"Using min_n_photons={min_n_photons}.")
+            # use the median of the photon-containing pixels as the minimum
+            valid_counts = counts_stack.image_stack_forward[counts_stack.image_stack_forward > 0]
+            # assume equal contribution for each plane (median of entire stack)
+            if (min_n_photons := round(np.median(valid_counts) * median_factor)) < 5:
+                min_n_photons = 5
+                print(f"Warning: min_n_photons < {min_n_photons}. Using 5...")
+            else:
+                print(f"Using min_n_photons={min_n_photons}.")
 
         # definitions
         n_lines = self.scan_settings["n_lines"]
