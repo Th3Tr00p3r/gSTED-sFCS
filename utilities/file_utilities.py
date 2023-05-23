@@ -67,6 +67,7 @@ legacy_matlab_trans_dict = {
     "PointsPerLineTotal": "samples_per_line",
     "PointsPerLine": "points_per_line",
     "NofLines": "n_lines",
+    "Lines": "n_lines",
     "LineLengthMax": "max_line_length_um",
     "LineShift": "line_shift_um",
     "AngleDegrees": "angle_degrees",
@@ -78,19 +79,20 @@ legacy_matlab_trans_dict = {
     "CircleSpeed_um_sec": "circle_speed_um_s",
     "AnglularScanSettings": "angular_scan_settings",
     # Image Scan
-    "Cnt": "cnt",
+    "PixClkFreq": "pix_clk_freq_mhz",
+    "Cnt": "ci",
     "PID": "pid",
-    "SP": "scan_params",
-    "LinesOdd": "lines_odd",
+    "SP": "sp",
+    "LinesOdd": "set_pnts_lines_odd",
     "FastScan": "is_fast_scan",
     "TdcScanData": "tdc_scan_data",
     "Plane": "plane",
-    "ScanParam": "scan_params",
+    "ScanParam": "scan_settings",
     "Dimension1_lines_um": "dim1_um",
     "Dimension2_col_um": "dim2_um",
     "Dimension3_um": "dim3_um",
-    "Line": "lines",
-    "Planes": "planes",
+    "Line": "n_lines",
+    "Planes": "n_planes",
     "Line_freq_Hz": "line_freq_hz",
     "Points_per_Line": "ppl",
     "ScanType": "scan_type",
@@ -107,6 +109,7 @@ legacy_matlab_trans_dict = {
     "AO": "ao",
     "FpgaFreq": "fpga_freq_mhz",
     "DataVersion": "data_version",
+    "Version": "version",
     "PixelFreq": "pix_clk_freq_mhz",
     "PixClockFreq": "pix_clk_freq_mhz",
     "LaserFreq": "laser_freq_mhz",
@@ -166,7 +169,7 @@ def estimate_bytes(obj) -> int:
         raise MemoryError("Object is too big!")
 
 
-def deep_size_estimate(obj, threshold_mb=0, level=np.inf, indent=4, name=None) -> None:
+def deep_size_estimate(obj, threshold_mb=1e-6, level=np.inf, indent=4, name=None) -> None:
     """
     Print a cascading size description of object 'obj' up to level 'level'
     for objects (and subobjects) requiring an estimated disk space over 'threshold_mb'.
@@ -419,7 +422,8 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):  
         if isinstance(full_data.get("delayer_settings"), SimpleNamespace):
             full_data["delayer_settings"] = full_data.get("delayer_settings").__dict__
 
-    if scan_settings := file_dict.get("scan_settings"):  # legacy image scan
+    # legacy Python image scan
+    if scan_settings := file_dict.get("scan_settings"):
         if scan_settings.get("plane_orientation") and not scan_settings.get("dim_order"):
             if scan_settings["plane_orientation"] == "XY":
                 scan_settings["dim_order"] = (0, 1, 2)
@@ -428,21 +432,49 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):  
             elif scan_settings["plane_orientation"] == "XZ":
                 scan_settings["dim_order"] = (0, 2, 1)
 
-    # patches for legacy Python image files
+    # patches for legacy image files
     if "full_data" not in file_dict:
         file_dict["full_data"] = file_dict.pop("tdc_scan_data")
-        file_dict["full_data"]["laser_mode"] = file_dict.pop("laser_mode")
-        file_dict["full_data"]["ci"] = file_dict.pop("ci")
         file_dict["full_data"]["fpga_freq_hz"] = int(400e6)
-        file_dict["full_data"]["laser_freq_hz"] = int(10e6)
+        file_dict["full_data"]["ci"] = file_dict.pop("ci")
         file_dict["full_data"]["scan_settings"] = file_dict.pop("scan_settings")
         file_dict["full_data"]["scan_settings"]["ai"] = file_dict.pop("ai")
         file_dict["full_data"]["scan_settings"]["ao"] = file_dict.pop("ao").T
         file_dict["full_data"]["scan_settings"]["pattern"] = "image"
         file_dict["full_data"]["scan_settings"]["ao_sampling_freq_hz"] = int(1e4)
+        file_dict["full_data"]["scan_settings"]["pattern"] = "image"
         file_dict["full_data"]["detector_settings"] = {}
-        file_dict["full_data"]["detector_settings"]["gate_ns"] = Gate()
         file_dict["full_data"]["detector_settings"]["mode"] = "free running"
+        file_dict["full_data"]["detector_settings"]["gate_ns"] = Gate()
+        file_dict["full_data"]["laser_mode"] = file_dict.pop("laser_mode", None)
+        # legacy MATLAB
+        if "pid" in file_dict:
+            # get rid of useless values
+            file_dict.pop("pid")
+            file_dict.pop("sp")
+            file_dict.pop("is_fast_scan")
+            file_dict["full_data"]["scan_settings"].pop("is_fast_scan")
+            file_dict.pop("__version__")
+            file_dict.pop("__globals__")
+            # move stuff around
+            file_dict["full_data"]["version"] = file_dict.pop("version")
+            file_dict["full_data"]["pix_clk_freq_mhz"] = file_dict.pop("pix_clk_freq_mhz")
+            file_dict["full_data"]["scan_settings"]["set_pnts_lines_odd"] = file_dict.pop(
+                "set_pnts_lines_odd"
+            )
+            file_dict["full_data"]["byte_data"] = np.array(file_dict["full_data"].pop("plane"))
+            # modify and patch
+            if (stage := file_dict["full_data"]["scan_settings"]["what_stage"]) == "Galvanometers":
+                file_dict["full_data"]["scan_settings"]["dim_order"] = (0, 1, 2)
+                file_dict["full_data"]["scan_settings"]["plane_orientation"] = "XY"
+            else:
+                raise NotImplementedError(f"Handle this (dim_order) for '{stage}' stage.")
+            ao_center = file_dict["full_data"]["scan_settings"]["ao"].mean()
+            file_dict["full_data"]["scan_settings"]["initial_ao"] = (ao_center, None, None)
+            ao_1d = file_dict["full_data"]["scan_settings"]["ao"]
+            file_dict["full_data"]["scan_settings"]["ao"] = np.vstack(
+                (ao_1d, np.empty_like(ao_1d), np.empty_like(ao_1d))
+            ).T
 
     # patch MATLAB files
     elif not isinstance(file_dict["system_info"]["afterpulse_params"], tuple):

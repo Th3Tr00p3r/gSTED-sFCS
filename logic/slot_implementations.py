@@ -1121,7 +1121,13 @@ class MainWin:
                     curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
                 except IndexError:
                     # legacy template which has no underscores
-                    curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[0]
+                    try:
+                        curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[
+                            0
+                        ]
+                    except IndexError:
+                        # 'freestyle' template
+                        curr_template_prefix = curr_template
 
             data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._app.gui)
             data_import_wdgts["new_template"].set(curr_template_prefix)
@@ -1147,7 +1153,11 @@ class MainWin:
                 curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
             except IndexError:
                 # legacy template which has no underscores
-                curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[0]
+                try:
+                    curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[0]
+                except IndexError:
+                    # 'freestyle' template
+                    curr_template_prefix = curr_template
 
         if new_template_prefix == curr_template_prefix:
             logging.warning(
