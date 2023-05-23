@@ -2242,7 +2242,7 @@ class ImageStackData:
 
         return binned_image_stack, binned_norm_stack
 
-    def construct_plane_image(self, method: str, plane_idx: int = None) -> np.ndarray:
+    def construct_plane_image(self, method: str, plane_idx: int = None, **kwargs) -> np.ndarray:
         """Doc."""
 
         if plane_idx is None:

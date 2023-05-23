@@ -723,12 +723,12 @@ class MainWin:
         """Doc."""
 
         img_scn_wdgt_fillout_dict = {
-            "Locate Plane - YZ Coarse": ["YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
-            "MFC - XY compartment": ["XY", 70, 70, 0, 80, 1000, 20, 0.9, 1],
-            "GB -  XY Coarse": ["XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
-            "GB - XY bead area": ["XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
-            "GB - XY single bead": ["XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],
-            "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
+            "Locate Plane - YZ Coarse": ["YZ", 15, 15, 10, 80, 1000, None, 0.9, 1],
+            "MFC - XY compartment": ["XY", 70, 70, 0, 80, 1000, None, 0.9, 1],
+            "GB -  XY Coarse": ["XY", 15, 15, 0, 80, 1000, None, 0.9, 1],
+            "GB - XY bead area": ["XY", 5, 5, 0, 80, 1000, None, 0.9, 1],
+            "GB - XY single bead": ["XY", 1, 1, 0, 80, 1000, None, 0.9, 1],
+            "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, None, 0.9, 1],
         }
 
         wdgts.IMG_SCAN_COLL.obj_to_gui(self._gui, img_scn_wdgt_fillout_dict[curr_text])
@@ -1487,7 +1487,7 @@ class MainWin:
                 self.switch_data_type()
                 return
             # get the center plane image, in "forward"
-            image = ci_image_data.construct_plane_image("forward")
+            image = ci_image_data.construct_plane_image("forward normalized")
             # plot it (below)
             data_import_wdgts["img_preview_disp"].obj.display_image(
                 image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
@@ -1528,10 +1528,8 @@ class MainWin:
                 # Inferring data_dype from template
                 data_type = self.infer_data_type_from_template(current_template)
 
-                # loading and correlating
+                # Plotting lifetime images
                 try:
-                    #                    with suppress(AttributeError):
-                    #                        # AttributeError - No directories found
                     meas = ImageSFCSMeasurement()
                     img_data = meas.generate_lifetime_image_stack_data(
                         file_path=curr_dir / current_template,
@@ -1542,8 +1540,8 @@ class MainWin:
                     from utilities.display import Plotter
 
                     with Plotter(
-                        super_title=current_template,
-                        subplots=(1, meas.tdc_image_data.image_stack_forward.shape[2]),
+                        super_title=f"{current_template}:\nLifetime Images",
+                        subplots=(1, meas.lifetime_image_data.image_stack_forward.shape[2]),
                     ) as axes:
                         try:
                             for plane_idx, ax in enumerate(axes):
@@ -1555,32 +1553,24 @@ class MainWin:
                             # 'Axes' object is not iterable
                             axes.imshow(img_data.construct_plane_image("forward normalized"))
 
-                #                    meas.correlate_data(
-                #                        cf_name=data_type,
-                #                        is_verbose=True,
-                #                        **options_dict,
-                #                    )
+                    # Plotting TDC images with resolution estimate
+                    img_data = meas.tdc_image_data
+
+                    with Plotter(
+                        super_title=f"{current_template}:\nResolution Estimate",
+                        subplots=(1, img_data.image_stack_forward.shape[2]),
+                    ) as axes:
+                        try:
+                            for plane_idx, ax in enumerate(axes):
+                                meas.estimate_spatial_resolution(parent_ax=ax, plane_idx=plane_idx)
+                                ax.set_title(f"Scan/Plane #{plane_idx+1}")
+                        except TypeError:
+                            # 'Axes' object is not iterable
+                            meas.estimate_spatial_resolution(parent_ax=axes)
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())
                     return
-
-            #            # save data and populate combobox
-            #            imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
-            #            imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
-
-    #            self._app.analysis.loaded_measurements[current_template] = meas
-
-    #            imported_combobox1.obj.addItem(current_template)
-    #            imported_combobox2.obj.addItem(current_template)
-    #
-    #            imported_combobox1.set(current_template)
-    #            imported_combobox2.set(current_template)
-    #
-    #            logging.info(f"Data '{current_template}' ready for analysis.")
-    #
-    #            self.toggle_save_processed_enabled()  # refresh save option
-    #            self.toggle_load_processed_enabled(current_template)  # refresh load option
 
     ##########################
     ## Analysis Tab - Single Measurement
