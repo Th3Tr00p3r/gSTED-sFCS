@@ -33,7 +33,6 @@ from utilities.file_utilities import (
     save_object,
 )
 from utilities.fit_tools import (
-    FitError,
     FitParams,
     curve_fit_lims,
     fit_2d_gaussian_to_image,
@@ -2184,6 +2183,8 @@ class ImageSFCSMeasurement:
             end=" ",
         )
         # Processing data
+        if "len_factor" not in proc_options:
+            proc_options["len_factor"] = 0.001
         p = self.data_processor.process_data(0, self._file_dict["full_data"], **proc_options)
         print("Done.\n")
         # Appending data to self
@@ -2565,22 +2566,24 @@ class ImageSFCSMeasurement:
         line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         return eff_idxs, pxls_per_line, line_ticks_v
 
-    def estimate_spatial_resolution(self, should_plot=True, **kwargs):
+    def estimate_spatial_resolution(self, should_plot=True, **kwargs) -> FitParams:
         """Fit a 2D Gaussian to image in order to estimate the resolution (e.g. for fluorescent beads)"""
 
-        img = self.tdc_image_data.construct_plane_image("forward normalized")
-
-        try:
-            fp = fit_2d_gaussian_to_image(img)
-        except FitError as exc:
-            print(f"Gaussian fit failed! [{exc}]")
-            return
+        img = self.tdc_image_data.construct_plane_image("forward normalized", **kwargs)
+        fp = fit_2d_gaussian_to_image(img)
         x0, y0, sigma_x, sigma_y, phi = (
             fp.beta["x0"],
             fp.beta["y0"],
             fp.beta["sigma_x"],
             fp.beta["sigma_y"],
             fp.beta["phi"],
+        )
+        _, _, sigma_x_err, sigma_y_err, _ = (
+            fp.beta_error["x0"],
+            fp.beta_error["y0"],
+            fp.beta_error["sigma_x"],
+            fp.beta_error["sigma_y"],
+            fp.beta_error["phi"],
         )
 
         max_sigma_y, max_sigma_x = img.shape
@@ -2592,27 +2595,32 @@ class ImageSFCSMeasurement:
             or sigma_y > max_sigma_y
         ):
             print(f"Gaussian fit is irrational!\n({fp.beta})")
-            return
 
         # calculating the FWHM
         pxl_size_um = self.scan_settings["dim1_um"] / self.tdc_image_data.effective_binned_size
         FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))  # 1/e^2 width is FWHM * 1.699
         one_over_e2_factor = 1.699 * FWHM_FACTOR
-        diameter_nm = np.mean([sigma_x, sigma_y]) * one_over_e2_factor * pxl_size_um * 1e3
-        diameter_nm_err = np.std([sigma_x, sigma_y]) * one_over_e2_factor * pxl_size_um * 1e3
+        diameter_x_nm = sigma_x * one_over_e2_factor * pxl_size_um * 1e3
+        diameter_x_nm_err = sigma_x_err * one_over_e2_factor * pxl_size_um * 1e3
+        diameter_y_nm = sigma_y * one_over_e2_factor * pxl_size_um * 1e3
+        diameter_y_nm_err = sigma_y_err * one_over_e2_factor * pxl_size_um * 1e3
 
-        print(f"1/e^2 diameter determined to be {diameter_nm:.0f} +/- {diameter_nm_err:.0f} nm")
+        # print
+        dim1_char, dim2_char = self.scan_settings["plane_orientation"]
+        print(
+            f"1/e^2 diameter determined to be:\n{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm"
+        )
 
         if should_plot:
             ellipse = Ellipse(
                 xy=(x0, y0),
-                width=sigma_y * one_over_e2_factor,
-                height=sigma_x * one_over_e2_factor,
+                width=sigma_x * one_over_e2_factor,
+                height=sigma_y * one_over_e2_factor,
                 angle=phi,
             )
             ellipse.set_facecolor((0, 0, 0, 0))
             ellipse.set_edgecolor("red")
-            annotation = f"$1/e^2$: {diameter_nm:.0f}$\\pm${diameter_nm_err:.0f} nm\n$\\chi^2$={fp.chi_sq_norm:.2f}"
+            annotation = f"$1/e^2$: \n{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm\n$\\chi^2$={fp.chi_sq_norm:.2f}"
             with Plotter(**kwargs) as ax:
                 ax.imshow(img)
                 ax.add_artist(ellipse)
@@ -2625,6 +2633,8 @@ class ImageSFCSMeasurement:
                     ha="center",
                     va="center",
                 )
+
+        return fp
 
 
 def calculate_calibrated_afterpulse(

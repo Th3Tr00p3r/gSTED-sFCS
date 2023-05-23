@@ -70,7 +70,7 @@ solScanType,static
 solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
-imgShowMethod,Forward scan - actual counts per pixel
+imgShowMethod,Forward scan - normalized
 avgInterval,5
 posAxis,X
 importStacked,1

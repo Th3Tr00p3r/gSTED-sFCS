@@ -75,6 +75,9 @@ class App:
         # get icons
         self.icon_dict = gui.gui.get_icon_paths()
 
+        # init last images deque
+        self.last_image_scans = deque([], maxlen=10)
+
         # init windows
         print("    Initializing GUI...", end=" ")
         self.gui = SimpleNamespace()
@@ -123,9 +126,6 @@ class App:
         sol_pattern = wdgts.SOL_MEAS_COLL.gui_to_dict(self.gui)["scan_type"]
         self.gui.main.impl.disp_scn_pttrn(sol_pattern)
         print("Done.")
-
-        # init last images deque
-        self.last_image_scans = deque([], maxlen=10)
 
         # init existing data folders (solution scan data by default)
         print("    Fetching lastest measurement data...", end=" ")

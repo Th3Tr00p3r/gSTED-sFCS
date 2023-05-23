@@ -94,10 +94,11 @@ class QtWidgetCollection:
             for attr_name, val in obj.items():
                 with suppress(AttributeError):
                     # AttributeError - obj contains key with no matching wdgt in coll
-                    wdgt = getattr(self, attr_name)
-                    parent_gui = getattr(gui, wdgt.gui_parent_name)
-                    if not isinstance(val, QtWidgetAccess):
-                        wdgt.set(val, parent_gui)
+                    if val is not None:
+                        wdgt = getattr(self, attr_name)
+                        parent_gui = getattr(gui, wdgt.gui_parent_name)
+                        if not isinstance(val, QtWidgetAccess):
+                            wdgt.set(val, parent_gui)
         else:
             for wdgt in vars(self).values():
                 parent_gui = getattr(gui, wdgt.gui_parent_name)
