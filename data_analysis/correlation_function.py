@@ -1914,6 +1914,44 @@ class SolutionSFCSExperiment:
         if should_plot:
             self.plot_standard(**kwargs)
 
+    def remove_gates(
+        self,
+        gate_list: Sequence[Tuple[float, float] | Gate] = None,
+        meas_type="sted",
+        should_plot=False,
+        **kwargs,
+    ):
+        """
+        A convecience method for removing multiple gates.
+        """
+
+        meas = getattr(self, meas_type)
+        cf_names = list(meas.cf.keys())
+        # remove all gates
+        if gate_list is None:
+            print(
+                f"Removing ALL '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
+                end="",
+            )
+            for cf_name in cf_names:
+                if "gated" in cf_name:
+                    meas.cf.pop(cf_name)
+        else:
+            print(
+                f"Removing multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
+                end="",
+            )
+            for tdc_gate_ns in gate_list:
+                for cf_name in cf_names:
+                    if str(tdc_gate_ns) in cf_name:
+                        meas.cf.pop(cf_name)
+                        print(f"Removed {tdc_gate_ns}... ", end="")
+
+        print("Done.")
+
+        if should_plot:
+            self.plot_standard(**kwargs)
+
     def plot_standard(self, should_add_exp_name=True, **kwargs):
         """Doc."""
 

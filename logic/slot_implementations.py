@@ -723,12 +723,12 @@ class MainWin:
         """Doc."""
 
         img_scn_wdgt_fillout_dict = {
-            "Locate Plane - YZ Coarse": ["YZ", 15, 15, 10, 80, 1000, None, 0.9, 1],
-            "MFC - XY compartment": ["XY", 70, 70, 0, 80, 1000, None, 0.9, 1],
-            "GB -  XY Coarse": ["XY", 15, 15, 0, 80, 1000, None, 0.9, 1],
-            "GB - XY bead area": ["XY", 5, 5, 0, 80, 1000, None, 0.9, 1],
-            "GB - XY single bead": ["XY", 1, 1, 0, 80, 1000, None, 0.9, 1],
-            "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, None, 0.9, 1],
+            "Locate Plane - YZ Coarse": ["YZ", 15, 15, 0, None, None, None, 0.9, 1],
+            "MFC - XY compartment": ["XY", 70, 70, 0, None, None, None, 0.9, 1],
+            "GB -  XY Coarse": ["XY", 15, 15, 0, None, None, None, 0.9, 1],
+            "GB - XY bead area": ["XY", 5, 5, 0, None, None, None, 0.9, 1],
+            "GB - XY single bead": ["XY", 1, 1, 0, None, None, None, 0.9, 1],
+            "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, None, None, None, 0.9, 1],
         }
 
         wdgts.IMG_SCAN_COLL.obj_to_gui(self._gui, img_scn_wdgt_fillout_dict[curr_text])
