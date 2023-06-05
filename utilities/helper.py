@@ -893,8 +893,8 @@ def center_of_mass(arr: np.ndarray) -> Tuple[float, ...]:
         """
 
         total_mass = arr.sum()
-        displacements = np.arange(arr.shape[dim])
         masses_at_displacements = np.atleast_2d(arr).sum(axis=dim)
+        displacements = np.arange(masses_at_displacements.size)
         return 1 / total_mass * np.dot(displacements, masses_at_displacements)
 
     return tuple(center_of_mass_of_dimension(arr, dim) for dim in range(len(arr.shape)))

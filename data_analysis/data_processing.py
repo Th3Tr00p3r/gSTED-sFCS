@@ -933,6 +933,7 @@ class TDCPhotonMeasurementData(list):
 
         # serial (regular) processing
         else:
+            #            print() # TESTESTEST
             file_xcorr_input_dict_list = [
                 p.get_xcorr_input_dict(xcorr_types, **kwargs) for p in self
             ]
@@ -951,7 +952,7 @@ class TDCPhotonMeasurementData(list):
 
 
 @dataclass
-class AfterulsingFilter:
+class AfterpulsingFilter:
     """Doc."""
 
     t_hist: np.ndarray
@@ -1148,13 +1149,18 @@ class TDCCalibration:
         lower_idx = round(valid_limits.lower * 10)
         F_pad_before = np.zeros((2, lower_idx))
         if gate_ns.upper != np.inf:
-            upper_idx = round(valid_limits.upper * 10)
+            upper_idx = int(valid_limits.upper * 10)
             F_pad_after = np.zeros((2, len(t_hist) - upper_idx))
         else:
             F_pad_after = np.zeros((2, 0))
         F = np.hstack((F_pad_before, F, F_pad_after))
 
-        ap_filter = AfterulsingFilter(
+        if F.shape[1] != self.fine_bins.size - 1:  # TESTESTEST
+            print(
+                f"\nWARNING: Filter length ({F.shape[1]}) should be exactly fine_bins.size - 1 ({self.fine_bins.size - 1})!"
+            )  # TESTESTEST
+
+        ap_filter = AfterpulsingFilter(
             t_hist,
             all_hist_norm,
             baseline,
@@ -2233,8 +2239,10 @@ class ImageStackData:
         """Doc."""
 
         n_lines, _, n_planes = image_stack.shape
-        binned_image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
-        binned_norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+        binned_image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=image_stack.dtype)
+        #        binned_image_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
+        binned_norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=image_stack.dtype)
+        #        binned_norm_stack = np.empty((n_lines, pxls_per_line, n_planes), dtype=np.int32)
 
         for i in range(pxls_per_line):
             binned_image_stack[:, i, :] = image_stack[:, eff_idxs == i, :].sum(axis=1)

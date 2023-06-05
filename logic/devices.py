@@ -1224,10 +1224,12 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         self.turn_on_time = None
         self.time_of_operation_hr = None
 
-        with suppress(DeviceError):
+        try:
             self.toggle(True, should_change_icons=False)
             if self.is_on:
                 self.set_current(1500)
+        except DeviceError:
+            self.mode = None
 
     def toggle(self, is_being_switched_on, **kwargs):
         """Doc."""
@@ -1289,6 +1291,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             # change the mode to power
             cmnd = "powerenable 1"
             self.write(cmnd)
+            self.mode = "power"
             # then set the power
             cmnd = f"setpower 0 {value_mW}"
             self.write(cmnd)
@@ -1303,6 +1306,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             # change the mode to current
             cmnd = "powerenable 0"
             self.write(cmnd)
+            self.mode = "current"
             # then set the current
             cmnd = f"setLDcur 1 {value_mA}"
             self.write(cmnd)

@@ -54,6 +54,16 @@ class MeasurementProcedure:
         self._app = app
         self.type = type
         self.laser_mode = laser_mode
+        if laser_mode in {"dep", "sted"}:
+            self.dep_type = self.laser_dvcs.dep.mode
+            if self.dep_type == "current":
+                self.dep_value = app.gui.main.depCurr.value()
+            else:  # power mode
+                self.dep_value = app.gui.main.depPow.value()
+            # keep laser power
+            self.dep_power_mw = self.dep_value
+        else:
+            self.dep_power_mw = None
         self.file_template = file_template
         self.save_path = save_path
         self.sub_dir_name = sub_dir_name
@@ -149,7 +159,7 @@ class MeasurementProcedure:
 
         full_data = {
             "laser_mode": self.laser_mode,
-            "dep_power_mw": pow_mw if (pow_mw := self.laser_dvcs.dep.get_prop("pow")) > 0 else None,
+            "dep_power_mw": self.dep_power_mw,
             "duration_s": self.duration_s if hasattr(self, "duration_s") else None,
             # TODO: prepare a function to cut img data into planes, similar to how the counts are cut
             "byte_data": np.asarray(self.data_dvc.data, dtype=np.uint8),
@@ -284,6 +294,7 @@ class MeasurementProcedure:
             else:
                 return "nolaser"
 
+        # measurement ends
         if finish:
             # reset automatic shutdown for depletion laser
             if self.laser_mode in {"dep", "sted"}:
@@ -297,8 +308,15 @@ class MeasurementProcedure:
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
 
+        # measurement begins
         else:
-            # measurement begins
+            # set dep laser power if necessary
+            if self.laser_mode in {"dep", "sted"}:
+                if self.dep_type == "current":
+                    self.laser_dvcs.dep.set_current(self.dep_value)
+                else:  # power mode
+                    self.laser_dvcs.dep.set_power(self.dep_value)
+            # turn on emissions
             if self.laser_mode == "exc":
                 # turn excitation ON and depletion shutter OFF
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
@@ -426,7 +444,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         )
 
     def build_filename(self) -> str:
-        return f"{self.file_template}_{self.laser_mode}_{self.scan_params['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
+        return f"{self.file_template}_{self.laser_mode}_{self.scan_params['plane_orientation']}{(f'_{self.dep_power_mw}mW' if self.dep_power_mw is not None else '')}_{dt.now().strftime('%H%M%S')}"
 
     def setup_scan(self):
         """Doc."""
@@ -588,7 +606,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         else:
             if not self.file_template:
                 self.file_template = "sol"
-            return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{self.start_time_str}_{file_no}"
+            return f"{self.file_template}_{self.scan_type}_{self.laser_mode}{(f'_{self.dep_power_mw}mW' if self.dep_power_mw is not None else '')}_{self.start_time_str}_{file_no}"
 
     def set_current_and_end_times(self) -> None:
         """Doc."""
