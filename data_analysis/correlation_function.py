@@ -1091,6 +1091,8 @@ class SolutionSFCSMeasurement:
         )
 
         # Unite TDC gate and detector gate
+        # TODO: detector gate represents the actual effective gate (since pulse travel time is already synchronized before measuring), This means that
+        # I should add the fit-deduced pulse travel time (affected by TDC +/- 2.5 ns) to the lower gate to compare with TDC gate???
         gate_ns = Gate(tdc_gate_ns) & Gate(hard_gate=self.detector_settings["gate_ns"])
 
         #  add gate to cf_name
@@ -1121,7 +1123,10 @@ class SolutionSFCSMeasurement:
         # build correlator input - create list of split data (and optionally filters) for correlator. TDC-gating is performed here
         if corr_options.get("is_verbose"):
             print("Building correlator input splits: ", end="")
-        # -
+
+        # TODO: refactor so the input list includes the delay_time, is saved to the measurement and gating is applied to it
+        # (losing the out-of-gate photon timestamps). This should save a lot of time when gating large measurements.
+        # the filter will also be affected and should be also gated outside 'prepare_xcorr_input'.
         corr_input_list, filter_input_list = zip(
             *self.data.prepare_xcorr_input(
                 ["AA"],
@@ -1978,11 +1983,12 @@ class SolutionSFCSExperiment:
         x_scale=None,
         y_scale=None,
         should_add_exp_name=True,
+        sted_only=False,
         **kwargs,
     ):
         """Doc."""
 
-        if self.confocal.is_loaded:
+        if self.confocal.is_loaded and not sted_only:
             ref_meas = self.confocal
         else:
             ref_meas = self.sted
@@ -2030,7 +2036,7 @@ class SolutionSFCSExperiment:
                 existing_lines = parent_ax.get_lines()
                 kwargs.pop("parent_ax")
 
-            for meas_type in ("confocal", "sted"):
+            for meas_type in ("sted") if sted_only else ("confocal", "sted"):
                 getattr(self, meas_type).plot_correlation_functions(
                     parent_ax=ax,
                     x_field=x_field,
