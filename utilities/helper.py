@@ -240,10 +240,10 @@ class Limits:
         self_copy.upper = self.upper**other
         return self_copy
 
-    def __round__(self):
+    def __round__(self, ndigits=None):
         self_copy = copy(self)
-        self_copy.lower = round(self.lower)
-        self_copy.upper = round(self.upper)
+        self_copy.lower = round(self.lower, ndigits=ndigits)
+        self_copy.upper = round(self.upper, ndigits=ndigits)
         return self_copy
 
     def __bool__(self):
